@@ -1,5 +1,6 @@
 import { randomUUID, createHash } from 'node:crypto'
 import { attachReceiptSignature } from './lib/receipt-signing.js'
+import { readJsonBody } from './lib/request-body.js'
 
 const VERSION          = 'gate-1'
 const PROTOCOL_VERSION = '1.0'
@@ -59,7 +60,7 @@ async function handler(req, res) {
   }
 
   let body
-  try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body }
+  try { body = await readJsonBody(req) }
   catch { return res.status(400).json({ ok: false, error: 'INVALID_JSON' }) }
 
   const {

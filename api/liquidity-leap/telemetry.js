@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { attachReceiptSignature, canonicalJSON, sha256Hex } from '../lib/receipt-signing.js'
+import { readJsonBody } from '../lib/request-body.js'
 
 const SCHEMA_VERSION = 'liquidity-leap.telemetry.v1'
 const MAX_BODY_BYTES = 16 * 1024
@@ -10,14 +11,6 @@ const EVENTS = new Set([
   'MARKET_SHOCK_ENDED',
   'VALIDATION_REQUIRED',
 ])
-
-function parseBody(req) {
-  if (typeof req.body === 'string') {
-    if (Buffer.byteLength(req.body, 'utf8') > MAX_BODY_BYTES) throw new Error('BODY_TOO_LARGE')
-    return JSON.parse(req.body)
-  }
-  return req.body ?? {}
-}
 
 function finiteNumber(value, name, min, max, errors) {
   const n = Number(value)
@@ -72,7 +65,7 @@ async function handler(req, res) {
 
   let body
   try {
-    body = parseBody(req)
+    body = await readJsonBody(req, { maxBytes: MAX_BODY_BYTES })
   } catch (_) {
     return res.status(400).json({ ok: false, error: 'INVALID_JSON' })
   }

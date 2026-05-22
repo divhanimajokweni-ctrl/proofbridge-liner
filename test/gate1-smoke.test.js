@@ -4,6 +4,7 @@ import { test } from "node:test"
 import handler from "../api/verify.js"
 import telemetryHandler from "../api/liquidity-leap/telemetry.js"
 import { createHash, generateKeyPairSync } from "node:crypto"
+import { Readable } from "node:stream"
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 })
 process.env.PROOFBRIDGE_RECEIPT_PRIVATE_KEY = privateKey.export({ type: "pkcs8", format: "pem" })
@@ -16,6 +17,13 @@ const DEEDMN = createHash("sha256").update("gate-1-mainnet-rejection").digest("h
 
 function mockReq(body) {
   return { method: "POST", body }
+}
+
+function mockStreamReq(body) {
+  const req = Readable.from([JSON.stringify(body)])
+  req.method = "POST"
+  req.headers = { "content-type": "application/json" }
+  return req
 }
 
 function mockRes() {
@@ -93,6 +101,31 @@ test("Liquidity Leap telemetry ingress: signed validation_required receipt", asy
   t.assert.ok(p.decision.reasons.includes("PANIC_BUY_DURING_MARKET_SHOCK"))
   t.assert.strictEqual(p.signature.alg, "RS256")
   t.assert.match(p.signature.payload_hash, /^[a-f0-9]{64}$/)
+})
+
+test("Liquidity Leap telemetry ingress: accepts raw Vercel request stream", async (t) => {
+  const res = mockRes()
+  await telemetryHandler(
+    mockStreamReq({
+      schema_version: "liquidity-leap.telemetry.v1",
+      session_id: "session_gate_1_stream",
+      game_event: "VALIDATION_REQUIRED",
+      last_action: "JUMP_HIGH_RISK",
+      asset_class: "HIGH_RISK",
+      shock_type: "LIQUIDITY_SHOCK",
+      current_pool_balance: 250,
+      impulse_stability_score: 0.2,
+      volatility_multiplier: 3,
+      client_unix_ms: Date.now(),
+    }),
+    res
+  )
+
+  t.assert.strictEqual(res.statusCode, 200, "http 200")
+  const p = JSON.parse(res.body)
+  t.assert.strictEqual(p.ok, true)
+  t.assert.strictEqual(p.decision.validation_required, true)
+  t.assert.strictEqual(p.signature.alg, "RS256")
 })
 
 // ── Test 2: MAINNET rejected before computation ──────────────────────────────
