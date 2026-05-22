@@ -15,6 +15,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = path.resolve(__dirname, '..');
 const ASSETS_PATH = path.join(ROOT, 'config', 'assets.json');
@@ -59,6 +60,36 @@ function readJsonSafe(p, fallback) {
   } catch (_) {
     return fallback;
   }
+}
+
+function canonicalJSON(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((entry) => canonicalJSON(entry)).join(',')}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJSON(value[key])}`).join(',')}}`;
+}
+
+function normalizePem(raw) {
+  if (!raw) return '';
+  const trimmed = String(raw).trim();
+  if (trimmed.includes('-----BEGIN ')) return trimmed.replace(/\\n/g, '\n');
+  try {
+    const decoded = Buffer.from(trimmed, 'base64').toString('utf8').trim();
+    if (decoded.includes('-----BEGIN ')) return decoded;
+  } catch (_) {}
+  return trimmed;
+}
+
+function signReceipt(payload) {
+  const pem = normalizePem(process.env.PROOFBRIDGE_RECEIPT_PRIVATE_KEY);
+  if (!pem) throw new Error('PROOFBRIDGE_RECEIPT_PRIVATE_KEY is required for Gate-1 RS256 receipt signing');
+  const privateKey = crypto.createPrivateKey(pem);
+  const canonicalPayload = canonicalJSON(payload);
+  return {
+    alg: 'RS256',
+    signature: crypto.sign('RSA-SHA256', Buffer.from(canonicalPayload), privateKey).toString('base64url'),
+    payload_hash: crypto.createHash('sha256').update(canonicalPayload).digest('hex'),
+    key_ref: process.env.PROOFBRIDGE_RECEIPT_KEY_ID || 'proofbridge-gate1-rs256',
+  };
 }
 
 const app = express();
@@ -147,7 +178,7 @@ app.get('/api/status', (_req, res) => {
 });
 
 app.post('/api/verify', (req, res) => {
-  const { infer, hmacsha256 } = require('../vvv/lib/kernel');
+  const { infer } = require('../vvv/lib/kernel');
   const { alpha = 24, beta = 8, gamma = 1.0, threshold = 0.6 } = req.body || {};
   const a = Number(alpha), b = Number(beta), g = Number(gamma), t = Number(threshold);
   if (![a, b, g, t].every(Number.isFinite) || a < 0 || b < 0 || g <= 0 || t < 0 || t > 1) {
@@ -155,18 +186,17 @@ app.post('/api/verify', (req, res) => {
   }
   try {
     const result = infer({ alpha: a, beta: b, gamma: g, threshold: t });
-    const secret = process.env.KERNEL_SECRET || 'dev-secret';
-    const signature = hmacsha256(`${result.belief}:${result.threshold}:${result.verdict}`, secret);
-    res.status(200).json({
+    const payload = {
       kernel_version: 'v0.9',
       verdict: result.verdict,
       belief: result.belief,
       threshold: result.threshold,
       safety_margin: result.safety_margin,
       reasoning_chain: result.reasoning_chain,
-      signature,
       metadata: { alpha: a, beta: b, gamma: g, base_threshold: t, timestamp: new Date().toISOString() }
-    });
+    };
+    payload.signature = signReceipt(payload);
+    res.status(200).json(payload);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

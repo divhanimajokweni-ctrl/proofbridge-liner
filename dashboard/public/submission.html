@@ -172,7 +172,7 @@ h2{font-family:'Syne',sans-serif;font-weight:700;font-size:clamp(1.2rem,2.5vw,1.
         <span class="meta-chip">Bayesian Safety Kernel</span>
         <span class="meta-chip">Polygon Amoy 80002</span>
         <span class="meta-chip">Coq · TLA+ Verified</span>
-        <span class="meta-chip">HMAC-SHA256</span>
+        <span class="meta-chip">RS256 Receipts</span>
         <span class="meta-chip">TEE Gate · AMD MI300X</span>
       </div>
     </div>
@@ -199,14 +199,14 @@ h2{font-family:'Syne',sans-serif;font-weight:700;font-size:clamp(1.2rem,2.5vw,1.
       <div class="track-card t1">
         <div class="track-num">TRACK 1</div>
         <div class="track-name">Working Prototype</div>
-        <div class="track-desc">Bayesian kernel with live Vercel API + ops dashboard. 4 scenario POSTs return deterministic HMAC-signed verdicts.</div>
+        <div class="track-desc">Bayesian kernel with live Vercel API + ops dashboard. 4 scenario POSTs return deterministic RS256-signed verdicts.</div>
         <div style="display:flex;flex-direction:column;gap:5px">
-          <div class="track-item"><span class="dot dot-done"></span>&nbsp; POST /api/verify returns μ, τ, S, reasoning_chain, HMAC</div>
+          <div class="track-item"><span class="dot dot-done"></span>&nbsp; POST /api/verify returns μ, τ, S, reasoning_chain, RS256 receipt</div>
           <div class="track-item"><span class="dot dot-done"></span>&nbsp; 3-layer architecture (TEE → Kernel → Breaker)</div>
           <div class="track-item"><span class="dot dot-done"></span>&nbsp; RUN DEMO button — fires 4 live test scenarios</div>
           <div class="track-item"><span class="dot dot-done"></span>&nbsp; Polygon Amoy testnet deployed</div>
         </div>
-        <div class="track-footer"><a href="https://proofbridge-liner.vercel.app/api/verify" class="track-link" target="_blank">Test endpoint ↗</a></div>
+        <div class="track-footer"><a href="https://venturevisionubuntu.co.za/api/verify" class="track-link" target="_blank">Test endpoint ↗</a></div>
       </div>
       <div class="track-card t2">
         <div class="track-num">TRACK 2</div>
@@ -315,8 +315,8 @@ h2{font-family:'Syne',sans-serif;font-weight:700;font-size:clamp(1.2rem,2.5vw,1.
     <div class="wp-card">
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">
         <a href="https://github.com/divhanimajokweni-ctrl/proofbridge-liner" class="del-tag" target="_blank">📦 GitHub Repository ↗</a>
-        <a href="https://proofbridge-liner.vercel.app/api/health" class="del-tag" target="_blank">🚀 Live API Health ↗</a>
-        <a href="https://divhanimajokweni-ctrl.github.io/proofbridge-liner" class="del-tag" target="_blank">🖥 GitHub Pages ↗</a>
+        <a href="https://venturevisionubuntu.co.za/api/health" class="del-tag" target="_blank">🚀 Live API Health ↗</a>
+        <a href="https://venturevisionubuntu.co.za" class="del-tag" target="_blank">🖥 Production Site ↗</a>
         <span class="del-tag">💡 MIT License</span>
         <span class="del-tag green">✅ Deterministic &amp; auditable</span>
       </div>

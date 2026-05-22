@@ -50,7 +50,7 @@ Check the live app at:
 - ✅ **FSCA Joint Standard 2 of 2024**: Hardware-attested incident reporting
 - ✅ **FICA / FIC Amendment Act**: Automated goAML SAR generation
 - ✅ **Cybercrimes Act 19 of 2020**: Forensic evidence bundling
-- ✅ **POPIA**: PII sanitization with HMAC-SHA256 hashing
+- ✅ **POPIA**: PII sanitization with RS256 hashing
 - ✅ **Electronic Deeds Registration Systems Act 20 of 2024**: Digital integrity validation
 
 ### Architecture

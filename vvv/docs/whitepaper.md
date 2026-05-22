@@ -60,7 +60,7 @@ This whitepaper presents:
 │  • Compute S = μ − τ                        │
 │  • If S > 0 → SAFE (release)                │
 │  • If S ≤ 0 → TRIP (hold + alert)           │
-│  • Write JSON log + HMAC signature           │
+│  • Write JSON log + RS256 signature           │
 └────────┬────────────────────────────────────┘
          │
          ▼
@@ -76,7 +76,7 @@ This whitepaper presents:
 - **Deterministic:** same inputs → same outputs (within enclave)
 - **Auditable:** every step logged with timestamp + input hash
 - **Timestamped:** each reasoning step recorded
-- **Integrity-protected:** HMAC with `KERNEL_SECRET` signs final verdict
+- **Integrity-protected:** RS256 with `PROOFBRIDGE_RECEIPT_PRIVATE_KEY` signs final verdict
 
 ---
 
@@ -204,7 +204,7 @@ Every API response includes a `reasoning_chain` array:
 ]
 ```
 
-Each `input_hash` is SHA-256 of the inputs to that step. The final response includes an HMAC-SHA256 signature over `belief:threshold:verdict` using a secret `KERNEL_SECRET` (TEE-protected).
+Each `input_hash` is SHA-256 of the inputs to that step. The final response includes an RS256 signature over `belief:threshold:verdict` using a secret `PROOFBRIDGE_RECEIPT_PRIVATE_KEY` (TEE-protected).
 
 ### 5.2 API Specification
 
@@ -230,7 +230,7 @@ Each `input_hash` is SHA-256 of the inputs to that step. The final response incl
   "threshold": 0.5586,
   "safety_margin": 0.2007,
   "reasoning_chain": [...],
-  "signature": "hmac-sha256-hex",
+  "signature": { "alg": "RS256", "signature": "base64url", "payload_hash": "sha256-hex" },
   "metadata": { ... }
 }
 ```
@@ -315,7 +315,7 @@ The kernel is not a silver bullet, but it is a principled foundation for on-chai
       "computed_value": "any"
     }
   ],
-  "signature": "hmac-sha256 hex",
+  "signature": { "alg": "RS256", "signature": "base64url", "payload_hash": "sha256 hex" },
   "metadata": {
     "alpha": "int ≥0",
     "beta": "int ≥0",

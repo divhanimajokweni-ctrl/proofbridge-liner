@@ -14,15 +14,12 @@
  * @see api/verify.js — Gate-1 base handler (no client_nonce required)
  */
 
-import { randomUUID, createHash, createHmac } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
+import { attachReceiptSignature, canonicalJSON } from './lib/receipt-signing.js'
 
 // ── primitives ───────────────────────────────────────────────────────────────
 
 function    sha256Hex(msg) { return createHash('sha256').update(msg).digest('hex') }
-function hmacSHA256(message, secret) {
-  return `hmac-sha256:${createHmac('sha256', secret).update(message).digest('hex')}`
-}
-
 function uuidv4() { return randomUUID() }
 
 function isHex64(s)  { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s) }
@@ -36,10 +33,6 @@ const SAFEGRID_VERSION   = '1.0.0'
 const ALLOWED_CHAINS     = ['AMOY', 'FABRIC']
 
 // ── serialisation helpers ─────────────────────────────────────────────────────
-
-function canonicalJSON(obj) {
-  return JSON.stringify(obj, Object.keys(obj).sort())
-}
 
 function envelopeHash(handshake, envelope) {
   return sha256Hex(JSON.stringify({ handshake, envelope, version: PROTOCOL_VERSION }))
@@ -172,8 +165,8 @@ async function handler(req, res) {
   // ── Handshake envelope hash ─────────────────────────────────────────────────
   const handshake_hash = envelopeHash(handshake, envelope)
 
-  // ── Canonical payload for HMAC signature ────────────────────────────────────
-  const payload = {
+  // Signed payload: RS256 receipt authority, not a shared-secret receipt.
+  const payload = attachReceiptSignature({
     ok: true,
     issuer_did:        issuer_did ?? null,
     deed_hash,
@@ -199,12 +192,7 @@ async function handler(req, res) {
     },
     safegrid_signal:    safegridSignal(SAFEGRID_VERSION, verdict),
     program_version_raw: VERSION,
-  }
-
-  const hmacSecret = process.env.PROOFBRIDGE_HMAC_SECRET
-    || process.env.KERNEL_SECRET
-    || 'dev-secret'
-  const signature = hmacSHA256(canonicalJSON(payload), hmacSecret)
+  })
 
   // ── Response ───────────────────────────────────────────────────────────────
   res.setHeader('Content-Type',     'application/json')
@@ -213,7 +201,7 @@ async function handler(req, res) {
   return res.status(200).json({
     status: verdict === 'HALT' ? 'CIRCUIT_BREAKER_TRIPPED' : 'VERIFIED_SOVEREIGN_TRUTH',
     payload,
-    signature,
+    signature: payload.signature,
   })
 }
 

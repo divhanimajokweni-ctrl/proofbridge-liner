@@ -1,318 +1,166 @@
-# ProofBridge Liner — Bayesian Safety Kernel
+# ProofBridge Liner
 
-Hardware-enforced circuit breaker for tokenised real-world assets. Three-layer kernel: TEE Gate → Bayesian Engine → Circuit Breaker. 100% recall on historical failures, zero false negatives.
+ProofBridge Liner is the production shell for Venture Vision Ubuntu and Ubuntu Pools. It serves the public VVU pages, pool journey pages, Gate-1 verification routes, Liquidity Leap telemetry ingress, and the SARB/BOP3 cryptographic compliance execution fabric.
 
-## 🚀 Quick Deploy (One-Click)
+## Current Production State
 
-### Vercel (Prototype + Dashboard)
+- Canonical production domain: `https://venturevisionubuntu.co.za`
+- Custom domain alignment: apex `venturevisionubuntu.co.za` and `www.venturevisionubuntu.co.za` resolve to Vercel edge IP `76.76.21.21` in current DNS checks.
+- Health route: `https://venturevisionubuntu.co.za/api/health`
+- Gate-1 verify route: `POST https://venturevisionubuntu.co.za/api/verify`
+- Gate-1 mint route: `POST https://venturevisionubuntu.co.za/api/mint`
+- Liquidity Leap telemetry ingress: `POST https://venturevisionubuntu.co.za/api/liquidity-leap/telemetry`
+- Production signing contract: RS256 receipts with `PROOFBRIDGE_RECEIPT_PRIVATE_KEY`; the old Gate-1 shared-secret receipt path has been removed from active handlers.
 
-Deploy the kernel API + interactive dashboard in one click:
+The typo domain `venturevisualubuntu.co.za` is not part of the production surface and must not be recreated.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fdivhanimajokweni-ctrl%2Fproofbridge-liner&env=KERNEL_SECRET&project-name=proofbridge-liner&repository-name=proofbridge-liner)
+## Runtime Surfaces
 
-**Manual:**
+### Vercel
+
+Vercel serves static files and serverless routes from root `vercel.json`.
+
+```txt
+/                              -> /vvv/index.html
+/gate-1                        -> /vvv/gate-1.html
+/pools                         -> /vvv/pools.html
+/pools/blueprint               -> /vvv/pools-blueprint.html
+/pools/onboarding              -> /vvv/pools-onboarding.html
+/pools/trust                   -> /vvv/pools-trust.html
+/pools/ledger                  -> /vvv/pools-ledger.html
+/pools/governance              -> /vvv/pools-governance.html
+/pools/learning                -> /vvv/pools-learning.html
+/pools/profile                 -> /vvv/pools-profile.html
+/pools/compliance              -> /vvv/pools-compliance.html
+/admin/pools                   -> /vvv/admin-pools.html
+/proofbridge                   -> /vvv/proofbridge.html
+/submission                    -> /vvv/submission.html
+/api/health                    -> /api/verify.js
+/api/status                    -> /api/verify.js
+/api/verify                    -> /api/verify.js
+/api/mint                      -> /api/mint.js
+/api/liquidity-leap/telemetry  -> /api/liquidity-leap/telemetry.js
+```
+
+### Replit
+
+Replit remains the autoscale dashboard/runtime surface.
+
+```txt
+Workflow: Start application
+Command: npm run start
+Server: dashboard/server.js
+Port: 5000
+Deployment target: autoscale
+```
+
+### Unity Liquidity Leap
+
+`unity/liquidity-leap/LiquidityLeapManager.cs` sends schemaed gameplay telemetry to two boundaries:
+
+- vLLM/Kasi WebSocket bridge: `ws://localhost:8000/v1/chat/stream`
+- Vercel ingress: `https://venturevisionubuntu.co.za/api/liquidity-leap/telemetry`
+
+The telemetry schema is `liquidity-leap.telemetry.v1` and includes `session_id`, `game_event`, `last_action`, `asset_class`, `shock_type`, `current_pool_balance`, `impulse_stability_score`, `volatility_multiplier`, and `client_unix_ms`.
+
+## Production Environment Contract
+
+Set these in Vercel production and Replit secrets where applicable:
+
+```txt
+PROOFBRIDGE_RECEIPT_PRIVATE_KEY
+PROOFBRIDGE_RECEIPT_PUBLIC_KEY
+PROOFBRIDGE_RECEIPT_KEY_ID
+LIQUIDITY_LEAP_TELEMETRY_KEY
+ORACLE_PRIVATE_KEY
+ORACLE_PUBLIC_KEY
+CONTRACT_ADDRESS
+STITCH_CLIENT_ID
+STITCH_CLIENT_SECRET
+STITCH_SECRET
+POOLS_ENGINE_ADDRESS
+```
+
+`PROOFBRIDGE_RECEIPT_PRIVATE_KEY` must be a PEM private key with escaped newlines or a base64-encoded PEM. Do not use a random hex string for this value.
+
+## Deploy
+
+Preferred Replit-to-Vercel deploy path:
 
 ```bash
-# Clone and install
-git clone https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
-cd proofbridge-liner
-
-# Install dependencies (Node.js required)
-npm install
-
-# Copy environment template and set a random secret
-cp .env.example .env.local
-# Edit .env.local: KERNEL_SECRET=<random-32-char-string>
-
-# Run locally
-vercel dev
-
-# Deploy to production
-vercel --prod
+export VERCEL_AUTH_TOKEN=...
+export EXPECTED_GIT_BRANCH=main
+export EXPECTED_GIT_HEAD=<short-or-full-commit>
+export CONFIRM_PROD_DEPLOY=yes
+export PRODUCTION_ALIAS_DOMAIN=venturevisionubuntu.co.za
+export PRODUCTION_HEALTH_URL=https://venturevisionubuntu.co.za/api/health
+npm run deploy:vercel:replit
 ```
 
-After deploy, set `KERNEL_SECRET` in Vercel dashboard (Environment Variables).
+The deploy helper fails before build/deploy if the branch, commit, clean tree, route surface, Vercel env names, contract addresses, alias state, or Vercel CLI path do not match the production contract.
 
-### GitHub Pages (Landing)
+## Local Verification
 
-The VVU gateway is already deployed at:
-- https://venturevisionubuntu.co.za (DNS configured to Vercel)
-- https://proofbridge-liner.vercel.app/
-
----
-
-## 📦 Repository Structure
-
-```
-proofbridge-liner/
-├── api/
-│   └── verify.js          # Vercel serverless function — Bayesian kernel
-├── dashboard/
-│   └── index.html         # Standalone UI (single file, no build)
-├── test/
-│   ├── boundary.test.js   # Edge cases: α/β extremes, γ calibration
-│   └── adversarial.test.js # Monte Carlo stability tests
-├── data/
-│   └── haridev888.csv     # Sample calibration dataset
-├── visuals/
-│   ├── architecture.png   # System diagram (Excalidraw)
-│   ├── roc_curve.png      # ROC from haridev888
-│   └── pr_curve.png       # Precision-Recall curve
-├── docs/
-│   ├── deck.md            # 10-slide pitch deck (source)
-│   ├── deck.pdf           # Export via Pandoc
-│   ├── whitepaper.md      # 4–6 page technical paper
-│   └── whitepaper.pdf     # PDF build
-├── demo/
-│   └── video.mp4          # <2 min voice-over demo
-├── CNAME                  # Custom domain for GitHub Pages
-├── README.md              # This file
-├── .env.example           # KERNEL_SECRET placeholder
-├── pandoc-config.yaml     # PDF build configuration
-└── .github/
-    └── workflows/
-        └── ci.yml         # Auto-test on push
-```
-
----
-
-## 🔧 Local Development
-
-### Kernel API
+Use Node.js 22 LTS.
 
 ```bash
-cd api
-npm init -y
-npm install --save-dev jest node-fetch
-# Add "type": "module" to package.json for ES module syntax
-vercel dev  # runs at http://localhost:3000
+npm ci
+npm run build
+node --test test/gate1-smoke.test.js
 ```
 
-Test endpoint:
+The smoke test verifies:
 
-```bash
-curl -X POST http://localhost:3000/api/verify \
-  -H "Content-Type: application/json" \
-  -d '{"alpha":24,"beta":8,"gamma":1.3,"threshold":0.6}'
+- RS256 Gate-1 verify receipts
+- MAINNET rejection before proof computation
+- signed Liquidity Leap telemetry ingress receipts
+
+## Cryptographic Compliance Execution Fabric
+
+The TypeScript compliance fabric signs deterministic compliance artifacts and verifies SARB/BOP3-style evidence envelopes.
+
+```txt
+prover/compliance_tokenizer.ts       RS256 pool tokens and signed compliance envelopes
+server/mock_sarb_endpoint.ts         Mock SARB ingest endpoint for signature verification
+scripts/generate_keys.mjs            Local RSA keypair generation
+test/verification_loop.test.ts       End-to-end verification loop
+tsconfig.json                        Strict TypeScript build config
+report_and_justification_mapping.txt Design rationale and mapping
 ```
 
-Expected response:
+## DNS
 
-```json
-{
-  "kernel_version": "v0.9",
-  "verdict": "SAFE",
-  "belief": 0.759259,
-  "threshold": 0.56,
-  "safety_margin": 0.199259,
-  "reasoning_chain": [...],
-  "signature": "a1b2c3...",
-  "metadata": { ... }
-}
+Authoritative DNS remains with `ns1.host-ww.net` and `ns2.host-ww.net` unless the registrar is moved. Required Vercel records:
+
+```txt
+@    A     76.76.21.21
+www  CNAME cname.vercel-dns.com.
+api  A     76.76.21.21
 ```
 
-### Dashboard
+`vvv/dns/zone.corrected.bind` and `vvv/dns/zone.updated.txt` are aligned to this Vercel contract.
 
-Open `dashboard/index.html` directly in browser (works as static file) or serve via Vercel:
+## Repository Hygiene
 
-```bash
-cd dashboard
-vercel --prod  # deploys to <project>.vercel.app
+Do not commit generated or local-only artifacts:
+
+```txt
+.env
+.env.*
+private_key.pem
+public_key.pem
+dist/
+node_modules/
+.vercel/output
+.vercel/.env*.local
+.local/
 ```
 
-The dashboard calls `/api/verify` — if running locally without Vercel, edit `dashboard/index.html` line 120 to point to `http://localhost:3000/api/verify`.
+The old deprecated Gate-1 legacy API folder was removed because it preserved the obsolete shared-secret receipt path.
 
-### Tests
+## Security Notes
 
-```bash
-npm test  # runs jest on test/*.test.js
-```
-
-Boundary tests cover:
-- α → 0, β → ∞ (belief → 0)
-- β → 0, α → ∞ (belief → 1)
-- α = β = 0 (uniform prior → 0.5)
-- γ = 0 (threshold neutral)
-- γ high (threshold collapse)
-- Reasoning chain determinism
-
----
-
-## 🧮 Mathematical Core
-
-### Model
-
-We model latent risk probability θ as Beta(α, β) where:
-- α = count of positive evidence (safe signals, repayments, clean records)
-- β = count of risk evidence (defaults, anomalies, red flags)
-
-Posterior belief (mean of Beta(α+1, β+1)):
-
-**μ = (α+1) / (α+β+2)**
-
-### Calibrated Threshold
-
-Base threshold τ₀ is adjusted by industry calibration factor γ:
-
-**τ = τ₀ / (1 + γ·β/α)**
-
-- γ > 1 → more risk-sensitive (threshold lowers, easier to TRIP)
-- γ < 1 → more lenient (threshold raises, harder to TRIP)
-- γ = 1 → neutral
-
-### Decision Rule
-
-**Verdict = SAFE iff μ > τ**
-
-Safety Margin **S = μ – τ** is the interpretability anchor.
-
----
-
-## 📊 Calibration Profiles
-
-| Industry | γ | Rationale |
-|----------|---|-----------|
-| Taxi Safety | 1.2 | Passenger safety critical; false negatives costly |
-| Micro-finance | 0.8 | Financial inclusion; false positives exclude vulnerable |
-| Healthcare | 1.5 | Life-critical decisions; maximum sensitivity |
-| Content Moderation | 1.0 | Balanced; scale vs accuracy trade-off |
-
-Profiles stored in `dashboard/index.html` as presets.
-
----
-
-## 🎥 Hackathon Deliverables
-
-| Track | Artifact | Status | Location |
-|-------|----------|--------|----------|
-| 1 | Working prototype (api/verify.js + dashboard) | ✅ Complete | `/api`, `/dashboard` |
-| 2 | Video demo (90s voice-over) | ⬜ pending | `/demo/video.mp4` |
-| 3 | Pitch deck (10 slides) | ⬜ pending | `/docs/deck.pdf` |
-| 4 | Whitepaper (4–6 pages) | ⬜ pending | `/docs/whitepaper.pdf` |
-
-**Prototype is production-ready:** deterministic, auditable, timestamped reasoning chain. Deploy to Vercel and run.
-
----
-
-## 🔬 Testing
-
-### Boundary tests (run automatically on CI)
-
-```bash
-npm test
-```
-
-Covers:
-- Extreme α/β ratios (0, ∞)
-- Gamma calibration edge cases (γ=0, γ→∞)
-- Reasoning chain field validation
-- Signature consistency
-
-### Adversarial Monte Carlo
-
-Perturbs inputs by ε and verifies verdict stability for clearly safe/trip cases.
-
-### Manual Smoke Test
-
-```bash
-# Test with default values
-curl -X POST http://localhost:3000/api/verify \
-  -H "Content-Type: application/json" \
-  -d '{"alpha":24,"beta":8,"gamma":1.3,"threshold":0.6}'
-```
-
-Expected: `verdict: "SAFE"`, `safety_margin: ~0.20`
-
----
-
-## 📈 Build Artifacts (CI/CD)
-
-GitHub Actions workflow (`.github/workflows/ci.yml`):
-
-1. On push to `main`:
-   - Run Jest tests
-   - Build PDF whitepaper from Markdown (Pandoc)
-   - Generate ROC/PR PNG charts from `data/haridev888.csv` (Python script)
-   - Upload artifacts to GitHub Releases
-
-2. Manual trigger (workflow_dispatch):
-   - Build full deliverable ZIP (prototype + docs + demo)
-
----
-
-## 🗂️ Pandoc PDF Build
-
-Install Pandoc + LaTeX (TeX Live):
-
-```bash
-# Ubuntu/Debian
-sudo apt-get install pandoc texlive-xetex texlive-fonts-recommended
-
-# macOS
-brew install pandoc basictex
-
-# Build whitepaper PDF
-pandoc docs/whitepaper.md \
-  --pdf-engine=xelatex \
-  --variable geometry:margin=1in \
-  --variable fontsize=11pt \
-  --variable linestretch=1.2 \
-  -o docs/whitepaper.pdf
-
-# Build pitch deck PDF (from Markdown slides)
-pandoc docs/deck.md -V geometry:margin=0.5in -o docs/deck.pdf
-```
-
-Custom template: `pandoc-config.yaml` defines metadata, fonts, colors.
-
----
-
-## 🏆 Success Criteria (Hackathon Judges)
-
-✅ **Working demo** — api/verify.js returns correct posterior, dashboard interactive live  
-✅ **Clear separation** — Belief (μ) ≠ Threshold (τ) surfaced in every deliverable  
-✅ **Explicit limitations** — manual priors, sparse evidence, calibration drift, adversarial adaptation stated  
-✅ **Deterministic audit trail** — reasoning_chain JSON, timestamped, HMAC signature  
-✅ **Industry calibration** — γ profiles differ per use case, not one-size-fits-all  
-
----
-
-## 🚀 Deployment Status
-
-### Smart Contracts (Solidity)
-
-| Contract | Address (Anvil Local) | Status |
-|----------|----------------------|--------|
-| CircuitBreaker | 0x5FbDB2315678afecb367f032d93F642f64180aa3 | ✅ Deployed |
-| AssetRegistry | 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0 | ✅ Deployed |
-| TEEVerifier | 0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 | ✅ Deployed |
-
-### Test Results
-- **45 tests passed** across CircuitBreaker, AssetRegistry, and TEEVerifier test suites
-- All deployment transactions successful on local Anvil testnet
-
-### Live Deployment (Polygon Amoy)
-Contracts are ready for deployment to Polygon Amoy testnet:
-
-```bash
-export PRIVATE_KEY=<your-private-key>
-export POLYGON_AMOY_RPC_URL=<your-rpc-url>
-export ORACLE_ADDRESS=<oracle-address>
-export ENCLAVE_ADDRESS=<enclave-address>
-
-forge script script/DeployFull.s.sol --rpc-url $POLYGON_AMOY_RPC_URL --broadcast
-```
-
----
-
-## 📞 Contact
-
-Vaguely Vanity LLC · Gqeberha, ZA  
-hello@venturevisionubuntu.co.za  
-https://venturevisionubuntu.co.za
-
----
-
-## 📄 License
-
-MIT — see LICENSE.md for details.
+- Keep GitHub, Hugging Face, Vercel, wallet, RPC, and telemetry keys in provider secrets only.
+- Use token-free Git remotes.
+- Rotate any credential that previously appeared in local config or documentation.
+- Treat deployment as incomplete until the production endpoint returns RS256 receipt metadata from `/api/health`.

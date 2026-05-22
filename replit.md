@@ -1,106 +1,88 @@
-# ProofBridge Liner — Replit Project Notes
+# ProofBridge Liner Replit Notes
 
-## What this project is
+Replit is the autoscale dashboard/runtime surface for ProofBridge Liner. Vercel serves the public production site at `https://venturevisionubuntu.co.za`.
 
-A **Ghost-Risk Circuit-Breaker** (proofBRIDGE-liner) that any tokenised
-real-world asset (e.g. a RealT property token) can integrate with a
-5-line `_beforeTokenTransfer` hook. The on-chain `CircuitBreaker.sol`
-contract is fed deed hashes by an off-chain prover; if the deed bytes
-on IPFS no longer hash to the expected value, transfers revert.
+## Runtime
 
-Implemented at **institution-grade** with three formal layers:
-1. **Logic Layer** — Coq-verified total functions (`proofs/SafetyKernel.v`)
-2. **Input Layer** — TEE-signed attestations (`contracts/TEEVerifier.sol`)
-3. **Enforcement Layer** — Per-asset isolated EVM kernels (`contracts/AssetRegistry.sol`)
-
-## Stack
-
-- **Solidity 0.8.20** + **Foundry** for all on-chain contracts and tests.
-- **Node.js 20** for the off-chain prover and the operations dashboard.
-- **Express 4** for the dashboard web app (port 5000).
-- **Coq** (external) for the formal safety kernel proof.
-
-## Project layout
-
-```
-contracts/
-  CircuitBreaker.sol      MVP single-oracle circuit breaker (Phase 1–2)
-  CircuitBreakerV2.sol    Threshold-signature upgrade (3-of-5 ECDSA)
-  AssetRegistry.sol       Multi-asset isolated kernels (institution-grade)
-  TEEVerifier.sol         TEE input-admissibility bridge (institution-grade)
-  IProofHook.sol          Token-integration interface
-  mock/MockRealT.sol      ERC-20 mock for integration testing
-proofs/
-  SafetyKernel.v          Coq formal proof — 4 theorems, HALTED absorbing
-test/
-  CircuitBreaker.t.sol    14 Foundry tests — 100% pass
-  AssetRegistry.t.sol     Foundry tests — isolation, check, reset coverage
-  TEEVerifier.t.sol       Foundry tests — happy-path + adversarial sigs
-script/
-  DeployCircuitBreaker.s.sol  Phase 2 single deployment
-  DeployFull.s.sol            Full institution-grade deployment
-prover/
-  fetcher.js, tss-signer.js, submitter.js, auditor.js, broadcaster.js
-signer-nodes/             Phase 4 Docker quorum placeholder
-config/
-  assets.json, signer-nodes.json
-dashboard/
-  server.js               Express API + ops dashboard (port 5000)
-  public/                 index.html, app.js, styles.css, favicon.svg
+```txt
+Node module: nodejs-20
+Workflow: Start application
+Workflow command: npm run start
+Server: dashboard/server.js
+Local port: 5000
+Deployment target: autoscale
+Deployment run command: node dashboard/server.js
 ```
 
-## Architecture layers
+## Production Boundary
 
-| Layer | Contract | Role |
-|---|---|---|
-| Logic | `proofs/SafetyKernel.v` | Coq proof: UNAUTH cannot reset |
-| Input | `TEEVerifier.sol` | EIP-191 enclave attestation gate |
-| Enforcement | `AssetRegistry.sol` | Per-asset isolated OPEN/HALTED kernels |
-| Token hook | `assertOpen(assetId)` | Called in every `transfer()` |
+Replit must not define a different production contract from Vercel. The same route and environment names apply before a production deploy is allowed.
 
-## Formal verification artifacts
+Required runtime environment:
 
-- **Coq Proof** ✅ — 4 theorems; `HALTED` is absorbing for `UNAUTH` actors
-- **Gas analysis** ✅ — `check()` and `assertOpen()` are O(1)
-- **TLA+ Model** ✅ — 4 invariants + liveness; no deadlocks (`proofs/SafetyKernel.tla` + `.cfg`)
-- **SOC 2 CC6** ✅ — CC6.1/2/3/6/7/8 fully mapped (`docs/SOC2-CC6-Mapping.md`)
+```txt
+PROOFBRIDGE_RECEIPT_PRIVATE_KEY
+PROOFBRIDGE_RECEIPT_PUBLIC_KEY
+PROOFBRIDGE_RECEIPT_KEY_ID
+LIQUIDITY_LEAP_TELEMETRY_KEY
+ORACLE_PRIVATE_KEY
+ORACLE_PUBLIC_KEY
+CONTRACT_ADDRESS
+STITCH_CLIENT_ID
+STITCH_CLIENT_SECRET
+STITCH_SECRET
+POOLS_ENGINE_ADDRESS
+```
 
-## Replit setup
+## Replit-to-Vercel Deploy Command
 
-- Workflow **Start application** runs `npm run start` and serves the
-  ops dashboard on `http://0.0.0.0:5000`.
-- The Express server sets `app.set('trust proxy', true)` and disables
-  caching in dev so the Replit iframe preview always sees fresh content.
-- Deployment target: **autoscale**, run command `node dashboard/server.js`.
+```bash
+export VERCEL_AUTH_TOKEN=...
+export EXPECTED_GIT_BRANCH=main
+export EXPECTED_GIT_HEAD=<short-or-full-commit>
+export CONFIRM_PROD_DEPLOY=yes
+export PRODUCTION_ALIAS_DOMAIN=venturevisionubuntu.co.za
+export PRODUCTION_HEALTH_URL=https://venturevisionubuntu.co.za/api/health
+npm run deploy:vercel:replit
+```
 
-## Environment variables (set after deployment)
+The helper blocks deploy when the branch, commit, clean tree, route contract, Vercel env names, contract addresses, alias state, build, or tests fail.
 
-| Variable | Purpose |
-|---|---|
-| `CIRCUIT_BREAKER_ADDRESS` | MVP CircuitBreaker address on Amoy |
-| `ORACLE_ADDRESS` | Single oracle address (MVP) |
-| `ASSET_REGISTRY_ADDRESS` | AssetRegistry address on Amoy |
-| `TEE_VERIFIER_ADDRESS` | TEEVerifier address on Amoy |
-| `ENCLAVE_ADDRESS` | TEE enclave public key (address form) |
-| `POLYGON_AMOY_RPC_URL` | RPC endpoint for deployment/submission |
-| `PRIVATE_KEY` | Deployer private key (secret) |
+## Project Layout
 
-## What still requires the user
+```txt
+api/                         Vercel serverless API routes
+api/lib/receipt-signing.js   Shared RS256 receipt authority
+api/liquidity-leap/          Unity telemetry ingress
+vvv/                         Production static VVU and Ubuntu Pools pages
+dashboard/                   Express dashboard/runtime for Replit
+contracts/                   Solidity contracts
+proofs/                      Formal verification artifacts
+prover/                      Existing JS prover scripts plus TS compliance tokenizer
+server/mock_sarb_endpoint.ts Mock SARB compliance ingest endpoint
+test/gate1-smoke.test.js     Gate-1 and Liquidity Leap smoke tests
+```
 
-- `forge` is not installed in the Replit container. Foundry test/deploy
-  commands are run locally or in CI.
-- To deploy: set env vars above and run `npm run deploy:amoy` (CircuitBreaker)
-  or `forge script script/DeployFull.s.sol ...` (full suite).
-- To compile the Coq proof: `coqc proofs/SafetyKernel.v` (requires Coq ≥ 8.16).
+## Verification
 
-## Recent changes
+```bash
+npm run build
+node --test test/gate1-smoke.test.js
+```
 
-- 2026-04-26 — Initial scaffold: contracts, Foundry tests, deploy script,
-  Phase 3 fetcher/tss-signer/submitter stubs, ops dashboard, workflow.
-- 2026-05-01 — Institution-grade implementation:
-  - `contracts/TEEVerifier.sol` — EIP-191 TEE attestation bridge
-  - `contracts/AssetRegistry.sol` — Multi-asset isolated safety kernels
-  - `proofs/SafetyKernel.v` — Coq formal proof (4 theorems)
-  - `test/TEEVerifier.t.sol`, `test/AssetRegistry.t.sol` — Foundry coverage
-  - `script/DeployFull.s.sol` — Full suite deployment script
-  - Dashboard updated: architecture layers, verification artifacts, new addresses
+The smoke test verifies RS256 receipts, MAINNET rejection, and Liquidity Leap telemetry ingress.
+
+## DNS
+
+Production DNS must align to Vercel:
+
+```txt
+venturevisionubuntu.co.za      A      76.76.21.21
+www.venturevisionubuntu.co.za  CNAME  cname.vercel-dns.com.
+```
+
+The typo domain `venturevisualubuntu.co.za` is not used.
+
+## Security Notes
+
+Do not commit `.env`, private keys, generated PEM files, local Vercel output, `dist/`, `node_modules/`, or `.local` state. Keep operational tokens in provider secrets only.

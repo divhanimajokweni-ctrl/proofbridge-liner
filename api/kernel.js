@@ -19,14 +19,10 @@ function computeVerdict(belief, threshold) {
   }
 }
 
-const { createHash, createHmac } = require('crypto')
+const { createHash } = require('crypto')
 
 function sha256(str) {
   return createHash('sha256').update(str).digest('hex')
-}
-
-function hmacsha256(str, secret) {
-  return createHmac('sha256', secret).update(str).digest('hex')
 }
 
 function buildReasoningChain(alpha, beta, gamma, baseThreshold, belief, calibratedThreshold, verdict, margin) {
@@ -82,7 +78,6 @@ module.exports = {
   calibratedThreshold,
   computeVerdict,
   sha256,
-  hmacsha256,
   buildReasoningChain,
   infer
 }

@@ -48,7 +48,7 @@
   <!-- Log Chain -->
   <rect class="box" x="300" y="400" width="200" height="60"/>
   <text x="400" y="420" class="header" text-anchor="middle">Audit Log</text>
-  <text x="400" y="445" class="text" text-anchor="middle">JSON + HMAC + Timestamp</text>
+  <text x="400" y="445" class="text" text-anchor="middle">JSON + RS256 + Timestamp</text>
 
   <!-- Polygon Amoy -->
   <rect class="box" x="550" y="500" width="200" height="60"/>

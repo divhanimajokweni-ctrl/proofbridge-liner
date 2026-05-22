@@ -72,8 +72,8 @@
     @keyframes fadeUp { from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)} }
     .gate-eyebrow{animation:fadeUp .6s .1s ease both}h1{animation:fadeUp .7s .2s ease both}.gate-subtitle{animation:fadeUp .6s .25s ease both}.gate-desc{animation:fadeUp .6s .3s ease both}.terminal{animation:fadeUp .6s .35s ease both}
   </style>
-  <script defer src="https://accuracy.vercel.app/script.js" data-host="proofbridge-liner.vercel.app"></script>
-  <script defer src="https://cdn.vercelinsights.com/script.js" data-host="proofbridge-liner.vercel.app"></script>
+  <script defer src="https://accuracy.vercel.app/script.js" data-host="venturevisionubuntu.co.za"></script>
+  <script defer src="https://cdn.vercelinsights.com/script.js" data-host="venturevisionubuntu.co.za"></script>
 </head>
 <body>
   <nav>
@@ -104,9 +104,10 @@
           <div class="status-row"><span class="status-key">receipt_id</span><span class="status-val pass">UUID v4 · server-generated</span></div>
           <div class="status-row"><span class="status-key">pipeline_hash</span><span class="status-val pass">SHA-256 · handshake envelope</span></div>
           <div class="status-row"><span class="status-key">anchored_at</span><span class="status-val null">null — contract invariant</span></div>
-          <div class="status-row"><span class="status-key">signature</span><span class="status-val pass">hmac-sha256:<hex></span></div>
+          <div class="status-row"><span class="status-key">signature</span><span class="status-val pass">RS256 receipt authority</span></div>
           <div class="status-row"><span class="status-key">safegrid_signal</span><span class="status-val pass">signal_id · verdict · evaluator_version</span></div>
-          <div class="status-row"><span class="status-key">PROOFBRIDGE_HMAC_SECRET</span><span class="status-val pass">server-side key guard (required)</span></div>
+          <div class="status-row"><span class="status-key">PROOFBRIDGE_RECEIPT_PRIVATE_KEY</span><span class="status-val pass">server-side signing authority (required)</span></div>
+          <div class="status-row"><span class="status-key">POST /api/liquidity-leap/telemetry</span><span class="status-val pass">Unity telemetry ingress</span></div>
         </div>
       </div>
     </div>
@@ -148,7 +149,7 @@
       <div class="inv-card">
         <p class="inv-tag">Signature</p>
         <p class="inv-key">signed response payload</p>
-        <p class="inv-desc">HMAC-SHA256 over `posterior:threshold:verdict`. Key held in `PROOFBRIDGE_HMAC_SECRET`. Never returned in the body.</p>
+        <p class="inv-desc">RS256 over canonical receipt JSON. Private key held in `PROOFBRIDGE_RECEIPT_PRIVATE_KEY`. Public key may be exposed for verification.</p>
       </div>
       <div class="inv-card">
         <p class="inv-tag">Signal</p>

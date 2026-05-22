@@ -1,36 +1,36 @@
 $ORIGIN venturevisionubuntu.co.za.
 $TTL 3600
-venturevisionubuntu.co.za.                                               86400 IN SOA   (
-                                                                                        ns1.host-ww.net            ; MNAME
-                                                                                        server-admin.cloud2m.co.za ; RNAME
-                                                                                        2026051223                 ; SERIAL
-                                                                                        3600                       ; REFRESH
-                                                                                        1800                       ; RETRY
-                                                                                        1209600                    ; EXPIRE
-                                                                                        86400                      ; MINIMUM
-                                                                                        )
+@                                      86400 IN SOA   ns1.host-ww.net. server-admin.cloud2m.co.za. 2026052001 3600 1800 1209600 86400
 
-; NS RECORDS
-venturevisionubuntu.co.za.                                               86400 IN NS    ns1.host-ww.net
-venturevisionubuntu.co.za.                                               86400 IN NS    ns2.host-ww.net
+; NS RECORDS — authoritative DNS remains host-ww/cloud2m unless registrar is moved to Vercel nameservers.
+@                                      86400 IN NS    ns1.host-ww.net.
+@                                      86400 IN NS    ns2.host-ww.net.
 
-; A RECORDS
-; NOTE: api subdomain kept for Vercel backend (will point to Vercel IPs later)
-api.venturevisionubuntu.co.za.                                           300   IN A     76.76.21.21
+; VERCEL RECORDS — required for venturevisionubuntu.co.za + www on Vercel
+; Apex/root domain
+@                                      300   IN A     76.76.21.21
 
-; GitHub Pages apex records — replace all existing A records with these four
-venturevisionubuntu.co.za.                                               300   IN A     185.199.108.153
-venturevisionubuntu.co.za.                                               300   IN A     185.199.109.153
-venturevisionubuntu.co.za.                                               300   IN A     185.199.110.153
-venturevisionubuntu.co.za.                                               300   IN A     185.199.111.153
+; WWW subdomain — use this OR Vercel's recommended A record. Prefer CNAME where provider allows it.
+www                                    300   IN CNAME cname.vercel-dns.com.
+
+; Optional API subdomain, also hosted on Vercel
+api                                    300   IN A     76.76.21.21
 
 ; CNAME RECORDS
-ftp.venturevisionubuntu.co.za.                                           14400 IN CNAME venturevisionubuntu.co.za
-mail.venturevisionubuntu.co.za.                                          14400 IN CNAME venturevisionubuntu.co.za
-www.venturevisionubuntu.co.za.                                           14400 IN CNAME divhanimajokweni-ctrl.github.io
+ftp                                    14400 IN CNAME @
+mail                                   14400 IN CNAME @
 
-; MX RECORDS
-venturevisionubuntu.co.za.                                               14400 IN MX    0 venturevisionubuntu.co.za
+; MX RECORDS — preserve only if this domain actually receives mail here.
+@                                      14400 IN MX    0 @
 
-; TXT RECORDS — GitHub Pages domain verification (keep unchanged)
-_github-pages-challenge-divhanimajokweni-ctrl.venturevisionubuntu.co.za. 300   IN TXT   "959b84c8ec710837b5ee4f82b56e98"
+; CAA RECORDS — allow Vercel certificate authorities
+@                                      300   IN CAA   0 issue "pki.goog"
+@                                      300   IN CAA   0 issue "sectigo.com"
+@                                      300   IN CAA   0 issue "letsencrypt.org"
+
+; REMOVE OLD GITHUB PAGES RECORDS:
+; @ A 185.199.108.153
+; @ A 185.199.109.153
+; @ A 185.199.110.153
+; @ A 185.199.111.153
+; www CNAME divhanimajokweni-ctrl.github.io.

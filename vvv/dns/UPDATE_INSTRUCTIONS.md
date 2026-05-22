@@ -1,29 +1,69 @@
 # DNS Update Instructions for venturevisionubuntu.co.za
-# Nameservers: ns1.host-ww.net, ns2.host-ww.net
-# Login to your DNS hosting control panel (host-ww.net / cloud2m.co.za)
 
-## CRITICAL RECORDS TO ADD/UPDATE
+The production site is hosted on Vercel. Keep the apex domain and `www` host aligned to Vercel.
 
-### 1. Apex A Records (ADD these 4, DELETE any existing A records for @)
-Type: A  |  Name/Host: @ (or leave blank)  |  Value/Points to: 185.199.108.153  |  TTL: 300 (5min)
-Type: A  |  Name/Host: @                   |  Value: 185.199.109.153          |  TTL: 300
-Type: A  |  Name/Host: @                   |  Value: 185.199.110.153          |  TTL: 300
-Type: A  |  Name/Host: @                   |  Value: 185.199.111.153          |  TTL: 300
+## Required Records
 
-### 2. WWW CNAME (ADD or UPDATE)
-Type: CNAME  |  Name/Host: www  |  Value: divhanimajokweni-ctrl.github.io.  |  TTL: 14400
+```txt
+Type: A
+Name: @
+Value: 76.76.21.21
+TTL: 300
+```
 
-### 3. TXT Verification (ADD if missing, or VERIFY exact value)
-Type: TXT  |  Name/Host: _github-pages-challenge-divhanimajokweni-ctrl  |  Value: "959b84c8ec710837b5ee4f82b56e98"  |  TTL: 300
+```txt
+Type: CNAME
+Name: www
+Value: cname.vercel-dns.com.
+TTL: 300
+```
 
-### 4. API subdomain (preserve existing if needed)
-Type: A  |  Name/Host: api  |  Value: 76.76.21.21  |  TTL: 300
+```txt
+Type: A
+Name: api
+Value: 76.76.21.21
+TTL: 300
+```
 
-## REMOVE any conflicting A records for @ that point elsewhere
+## Remove Stale GitHub Pages Records
 
-## After updating DNS, verify:
-dig A venturevisionubuntu.co.za +short
-# Should return 4 GitHub IPs above
+Delete these from active DNS if present:
 
-curl -I https://venturevisionubuntu.co.za/
-# Should return 200
+```txt
+@ A 185.199.108.153
+@ A 185.199.109.153
+@ A 185.199.110.153
+@ A 185.199.111.153
+www CNAME divhanimajokweni-ctrl.github.io
+```
+
+## Certificate Alignment
+
+Vercel can issue the certificate only after the Vercel project contains the domain and DNS resolves to Vercel. The expected production hosts are:
+
+```txt
+venturevisionubuntu.co.za
+www.venturevisionubuntu.co.za
+```
+
+Do not create or use `venturevisualubuntu.co.za`.
+
+## Verification
+
+```powershell
+Resolve-DnsName venturevisionubuntu.co.za
+Resolve-DnsName www.venturevisionubuntu.co.za
+curl.exe -I https://venturevisionubuntu.co.za
+curl.exe -I https://www.venturevisionubuntu.co.za
+curl.exe -i https://venturevisionubuntu.co.za/api/health
+```
+
+Expected:
+
+```txt
+venturevisionubuntu.co.za -> 76.76.21.21
+www.venturevisionubuntu.co.za -> Vercel target or Vercel edge IP
+HTTPS apex -> 200
+HTTPS www -> 200
+/api/health -> JSON health payload with receipt_algorithm: RS256
+```

@@ -1,4 +1,5 @@
-import { randomUUID, createHash, createHmac } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
+import { attachReceiptSignature } from './lib/receipt-signing.js'
 
 const VERSION          = 'gate-1'
 const PROTOCOL_VERSION = '1.0'
@@ -6,10 +7,6 @@ const SAFEGRID_VERSION = '1.0.0'
 const ALLOWED_CHAINS   = ['AMOY', 'FABRIC']
 
 export function    sha256(msg) { return createHash('sha256').update(msg).digest('hex') }
-export function hmacSHA256(msg, secret) {
-  return createHmac('sha256', secret).update(msg).digest('hex')
-}
-
 function receiptUUID() { return randomUUID() }
 
 function envelopeHash(handshake, envelope) {
@@ -46,6 +43,17 @@ function buildHandshake(chain) {
 }
 
 async function handler(req, res) {
+  if (req.method === 'GET') {
+    return res.status(200).json({
+      ok: true,
+      service: 'proofbridge-gate-1',
+      receipt_algorithm: 'RS256',
+      telemetry_ingress: '/api/liquidity-leap/telemetry',
+      required_env: ['PROOFBRIDGE_RECEIPT_PRIVATE_KEY'],
+      optional_env: ['PROOFBRIDGE_RECEIPT_PUBLIC_KEY', 'PROOFBRIDGE_RECEIPT_KEY_ID', 'LIQUIDITY_LEAP_TELEMETRY_KEY'],
+    })
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'method_not_allowed', allowed: ['POST'] })
   }
@@ -100,13 +108,7 @@ async function handler(req, res) {
   const anchoredCount = 0
   const pipeline_hash = envelopeHash(handshake, envelope)
 
-  const hmacSecret = process.env.PROOFBRIDGE_HMAC_SECRET
-    || process.env.KERNEL_SECRET
-    || 'dev-secret'
-  const signingString = `${posterior.toFixed(6)}:${t.toFixed(6)}:${verdict}`
-  const signature = `hmac-sha256:${hmacSHA256(signingString, hmacSecret)}`
-
-  const payload = {
+  const payload = attachReceiptSignature({
     ok: true,
     posterior:        Number(posterior.toFixed(6)),
     threshold:        t,
@@ -125,10 +127,9 @@ async function handler(req, res) {
       patching_profile:  envelope.patching_profile,
       depth_hint:        a + b,
     },
-    signature,
     safegrid_signal: safegridSignal(SAFEGRID_VERSION, verdict),
     program_version_raw: VERSION,
-  }
+  })
 
   res.setHeader('Content-Type',     'application/json')
   res.setHeader('Cache-Control',    'no-store')

@@ -85,7 +85,7 @@ Action: TRANSACTION BLOCKED
 - **Regulatory Coverage:** 100% (Act 47, JS2, POPIA, FICA, Cybercrimes Act)
 - **False Positive Rate:** 0% (Class B accuracy maintained)
 - **Audit Trail Integrity:** Hardware-signed logs with PCR0 attestation
-- **PII Protection:** HMAC-SHA256 sanitization active
+- **PII Protection:** RS256 sanitization active
 
 ---
 
@@ -118,7 +118,7 @@ Action: TRANSACTION BLOCKED
 |------------|-------------|---------------------------|--------|
 | **Act 47 (Deeds Registries)** | Title integrity validation | Bayesian scoring + TEE attestation | ✅ Compliant |
 | **JS2 (FSCA)** | 24-hour cyber incident reporting | Automated JS2 report generation | ✅ Compliant |
-| **POPIA** | Personal information protection | HMAC-SHA256 PII sanitization | ✅ Compliant |
+| **POPIA** | Personal information protection | RS256 PII sanitization | ✅ Compliant |
 | **FICA** | Suspicious activity reporting | goAML XML SAR generation | ✅ Compliant |
 | **Cybercrimes Act** | Digital evidence preservation | SHA-512 sealed forensic bundles | ✅ Compliant |
 

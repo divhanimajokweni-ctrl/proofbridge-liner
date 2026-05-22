@@ -1,194 +1,144 @@
 # Deployment Guide
 
-## Prerequisites
+This document is the production deployment contract for ProofBridge Liner and Venture Vision Ubuntu.
 
-### Environment Setup
-1. Install Node.js >= 20.0
-2. Install Foundry (latest version)
-3. Clone repository and install dependencies:
-   ```bash
-   git clone https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
-   cd proofbridge-liner
-   npm install
-   ```
+## Canonical Production
 
-### Wallet Funding
-- Deployer address: `0x49A1ba2Bde61B96685385F4Ce012586A518c3E70`
-- Required balance: ~0.06 POL for contracts + gas
-- Faucet: https://faucet.polygon.technology/ (Amoy testnet)
+- Domain: `https://venturevisionubuntu.co.za`
+- Apex DNS: `A 76.76.21.21`
+- WWW DNS: `CNAME cname.vercel-dns.com.`
+- Health route: `https://venturevisionubuntu.co.za/api/health`
+- Verify route: `POST https://venturevisionubuntu.co.za/api/verify`
+- Mint route: `POST https://venturevisionubuntu.co.za/api/mint`
+- Liquidity Leap ingress: `POST https://venturevisionubuntu.co.za/api/liquidity-leap/telemetry`
 
-### Environment Variables
-Create `.env` file:
+Do not use `venturevisualubuntu.co.za`.
+
+## Required Production Environment
+
+The Replit-to-Vercel deploy gate and Vercel production environment must agree on these names:
+
+```txt
+PROOFBRIDGE_RECEIPT_PRIVATE_KEY
+PROOFBRIDGE_RECEIPT_PUBLIC_KEY
+PROOFBRIDGE_RECEIPT_KEY_ID
+LIQUIDITY_LEAP_TELEMETRY_KEY
+ORACLE_PRIVATE_KEY
+ORACLE_PUBLIC_KEY
+CONTRACT_ADDRESS
+STITCH_CLIENT_ID
+STITCH_CLIENT_SECRET
+STITCH_SECRET
+POOLS_ENGINE_ADDRESS
+```
+
+`PROOFBRIDGE_RECEIPT_PRIVATE_KEY` is an RS256 PEM private key, not a shared secret. It may be stored with escaped newlines or as a base64-encoded PEM.
+
+## Predeploy Checks
+
+Run these from the repository root:
+
 ```bash
-# Polygon Amoy deployment
-POLYGON_AMOY_RPC_URL=https://rpc-amoy.polygon.technology/
-PRIVATE_KEY=REMOVED_SECRET
-
-# Contract addresses (after deployment)
-CIRCUIT_BREAKER_ADDRESS=0x0DA76b3179d1bce8045c832BB6D8fe9C226BfE57
-MOCK_REAL_T_ADDRESS=0xb91C1aC1Bbc9D7df85A858BCb7705D7edd8fEc82
-
-# Oracle configuration
-ORACLE_ADDRESS=0x49A1ba2Bde61B96685385F4Ce012586A518c3E70
-
-# Contract verification
-POLYGONSCAN_API_KEY=your_polygonscan_api_key
-
-# Dashboard
-DASHBOARD_PORT=5000
-DASHBOARD_HOST=0.0.0.0
-
-# Fetcher configuration
-FETCHER_POLL_MS=300000
+npm ci
+npm run build
+node --test test/gate1-smoke.test.js
 ```
 
-## Contract Deployment
+Expected smoke coverage:
 
-### CircuitBreaker Contract
-1. Deploy to Polygon Amoy:
-   ```bash
-   npm run deploy:amoy
-   ```
+```txt
+Gate-1 AMOY signed receipt -> RS256
+Liquidity Leap telemetry ingress -> signed validation_required receipt
+Gate-1 MAINNET -> 400 before proof computation
+```
 
-2. Verify deployment logs:
-   ```
-   CircuitBreaker deployed at: 0x770342c49e1F4710E0Eed605dCe41e7f3F7600Eb
-   Oracle: 0x49A1ba2Bde61B96685385F4Ce012586A518c3E70
-   ```
+## Replit-to-Vercel Production Deploy
 
-3. Update `.env` with contract address
-
-### MockRealT Integration Demo
-1. Deploy integration test contract:
-   ```bash
-   npm run deploy:amoy  # Uses DeployMockRealT.s.sol
-   ```
-
-2. Test transfer blocking:
-   ```bash
-   cast send <mock_address> "transfer(address,uint256)" <recipient> 1000000000000000000 --private-key $PRIVATE_KEY --rpc-url $POLYGON_AMOY_RPC_URL
-   # Should revert: "MockRealT: ghost-risk detected"
-   ```
-
-## Prover Pipeline Setup
-
-### TSS Quorum (Optional for Live Broadcasting)
 ```bash
-docker-compose -f signer-nodes/docker-compose.quorum.yml up -d
+export VERCEL_AUTH_TOKEN=...
+export EXPECTED_GIT_BRANCH=main
+export EXPECTED_GIT_HEAD=<short-or-full-commit>
+export CONFIRM_PROD_DEPLOY=yes
+export PRODUCTION_ALIAS_DOMAIN=venturevisionubuntu.co.za
+export PRODUCTION_HEALTH_URL=https://venturevisionubuntu.co.za/api/health
+npm run deploy:vercel:replit
 ```
 
-### Asset Configuration
-Create `config/assets.json`:
-```json
-[
-  {
-    "assetId": "0x52aa9c8c3e83a0f1f4f73b1f4d0f2c4a4b3a2d1c0e9d8c7b6a5948372615040f",
-    "label": "RealT Detroit Property #1",
-    "ipfsCid": "bafybeiczsscdsbs7ffqz55asqdf3smv6klcw3gofszvwlyarci47bgf354",
-    "expectedHash": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "gateways": ["https://ipfs.io/ipfs/", "https://dweb.link/ipfs/"]
-  }
-]
+The helper performs these gates before production deploy:
+
+```txt
+branch and commit match requested release
+worktree is clean
+package-lock.json exists
+build script exists and passes
+test script exists and passes unless explicitly skipped
+api/verify.js exists
+api/liquidity-leap/telemetry.js exists
+vercel.json maps /api/health to /api/verify.js
+vercel.json maps /api/liquidity-leap/telemetry to /api/liquidity-leap/telemetry.js
+Vercel CLI is trusted and executable
+Vercel production env contains every required runtime name
+CONTRACT_ADDRESS and POOLS_ENGINE_ADDRESS are present
+stale aliases are absent
 ```
 
-### Scoring Configuration
-Create `config/scoring.json` (South Africa jurisdiction):
-```json
-{
-  "jurisdiction": "South Africa",
-  "deterministicFloor": 0.8,
-  "thresholdA": 0.285,
-  "thresholdB": 0.45,
-  "minMismatchesB": 2,
-  "deterministicOverride": true
-}
+## GitHub Actions Production Deploy
+
+`.github/workflows/deploy-vercel.yml` runs on `main` and manual dispatch. It uses `npm ci`, syntax-checks all active API handlers, builds the TypeScript compliance fabric, runs the Gate-1/Liquidity Leap smoke test, pulls the Vercel production environment, builds with `vercel build --prod`, and deploys with `vercel deploy --prebuilt --prod`.
+
+Required GitHub secrets:
+
+```txt
+PROOFBRIDGE_LINER_VERCEL
+VERCEL_ORG_ID
+VERCEL_PROJECT_ID
 ```
 
-**TEE Setup**: Ensure TEE attestation service is configured for Act 47 of 1937 compliance validation.
+## DNS
 
-## Verification Steps
+Authoritative nameservers:
 
-### On-Chain State
+```txt
+ns1.host-ww.net
+ns2.host-ww.net
+```
+
+Zone records:
+
+```txt
+@    300 IN A     76.76.21.21
+www  300 IN CNAME cname.vercel-dns.com.
+api  300 IN A     76.76.21.21
+```
+
+Remove stale GitHub Pages records from active DNS:
+
+```txt
+@ A 185.199.108.153
+@ A 185.199.109.153
+@ A 185.199.110.153
+@ A 185.199.111.153
+www CNAME divhanimajokweni-ctrl.github.io.
+```
+
+## Post-Deploy Verification
+
 ```bash
-# Check circuit status
-cast call $CIRCUIT_BREAKER_ADDRESS "circuitOpen()" --rpc-url $POLYGON_AMOY_RPC_URL
-
-# Check oracle address
-cast call $CIRCUIT_BREAKER_ADDRESS "oracle()" --rpc-url $POLYGON_AMOY_RPC_URL
+curl -I https://venturevisionubuntu.co.za
+curl -i https://venturevisionubuntu.co.za/api/health
+curl -i https://venturevisionubuntu.co.za/api/liquidity-leap/telemetry
+Resolve-DnsName venturevisionubuntu.co.za
+Resolve-DnsName www.venturevisionubuntu.co.za
 ```
 
-### Pipeline Testing
-```bash
-# Single run
-npm run fetch
+Expected:
 
-# Dry-run full pipeline
-npm run submit:dry
-npm run broadcast:dry
-
-# Live operations (requires TSS)
-npm run broadcast
+```txt
+apex HTTPS returns 200
+/api/health returns JSON with receipt_algorithm: RS256
+/api/liquidity-leap/telemetry rejects GET with 405
+venturevisionubuntu.co.za resolves to 76.76.21.21
+www.venturevisionubuntu.co.za resolves to Vercel
 ```
 
-### Dashboard
-```bash
-npm start  # Access at http://localhost:5000
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### Foundry Not Found
-```bash
-# Install Foundry
-curl -L https://foundry.paradigm.xyz | bash
-source ~/.bashrc
-foundryup
-```
-
-#### Insufficient Funds
-- Check balance: `cast balance $DEPLOYER_ADDRESS --rpc-url $POLYGON_AMOY_RPC_URL`
-- Fund via faucet if needed
-
-#### TSS Connection Failed
-- Start quorum: `docker-compose -f signer-nodes/docker-compose.quorum.yml up -d`
-- Check ports 7001-7005 are accessible
-
-#### RPC Rate Limits
-- Switch to Alchemy or Infura RPC endpoint
-- Implement exponential backoff in applications
-
-### Health Checks
-
-#### Contract Health
-- All functions return expected values
-- Circuit properly opens/closes
-- Oracle operations work with threshold signatures
-
-#### Pipeline Health
-- Fetcher resolves assets without errors
-- Scorer computes probabilities correctly
-- Submitter generates valid attestations
-- Broadcaster submits transactions successfully
-
-## Production Deployment
-
-### Mainnet Preparation
-1. Update RPC to Polygon mainnet
-2. Deploy contracts with verified source code
-3. Set up production TSS quorum
-4. Configure monitoring and alerting
-5. Perform comprehensive security audit
-
-### Scaling Considerations
-- Monitor gas costs for large asset portfolios
-- Implement batch processing for efficiency
-- Set up multi-region gateway access
-- Configure automated recovery procedures
-
-### Backup and Recovery
-- Regular state snapshots
-- Multi-signature admin controls
-- Emergency circuit trip procedures
-- Off-chain data backup strategies
+If `/api/health` returns JavaScript source instead of JSON, production is still serving an old static artifact and must be redeployed from the root project with the current `vercel.json`.

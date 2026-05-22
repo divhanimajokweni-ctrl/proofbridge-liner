@@ -122,7 +122,7 @@ Margin S   = +0.2007 → SAFE
 **UI panels:**
 - Left: sliders for α, β, γ, τ₀
 - Right: three gauges (Belief, Threshold, Safety Margin)
-- Bottom: expandable JSON audit log with reasoning chain + HMAC signature
+- Bottom: expandable JSON audit log with reasoning chain + RS256 signature
 
 [Live demo screenshot]
 
@@ -177,7 +177,7 @@ Margin S   = +0.2007 → SAFE
 *The pool is the proof. The proof is the platform. The platform is the community.*
 
 **Contact:** hello@venturevisionubuntu.co.za  
-**Demo:** https://proofbridge-liner.vercel.app
+**Demo:** https://venturevisionubuntu.co.za
 
 ---
 

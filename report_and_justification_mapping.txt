@@ -1,0 +1,51 @@
+Phase 1: Deconstruction (The Socratic Strip)
+
+Common Assumptions:
+- A Replit to Vercel deploy contract is stable if the shell script still runs.
+- Gate-1 receipts can remain HMAC-signed because the key is server-side.
+- Unity gameplay telemetry can stream only to a local vLLM/Kasi WebSocket.
+- Adding a Vercel route is sufficient without making the deploy guard prove the route and env contract.
+- Health, verify, mint, and telemetry can each name different cryptographic dependencies.
+
+Irreducible Truths:
+- A deploy contract is the exact set of production env names, route mappings, executable files, and runtime cryptographic prerequisites the deployed code actually reads.
+- HMAC receipts prove shared-secret possession, not asymmetric receipt authorship. They do not support public verification without disclosing the verification secret.
+- Gate-1 production receipts require asymmetric signing: the private key remains server-side and the public key can verify receipts externally.
+- Liquidity Leap telemetry has no ingress until an HTTP route accepts, validates, hashes, and signs the schemaed event payload.
+- Vercel production readiness must fail before deploy if the pulled production env lacks the variables used by the runtime.
+- The current deploy contract must name PROOFBRIDGE_RECEIPT_PRIVATE_KEY, PROOFBRIDGE_RECEIPT_PUBLIC_KEY, PROOFBRIDGE_RECEIPT_KEY_ID, LIQUIDITY_LEAP_TELEMETRY_KEY, ORACLE_PRIVATE_KEY, ORACLE_PUBLIC_KEY, CONTRACT_ADDRESS, STITCH_CLIENT_ID, STITCH_CLIENT_SECRET, STITCH_SECRET, and POOLS_ENGINE_ADDRESS.
+
+Fundamental Logic:
+- Runtime drift happens when code reads one env contract while deploy gates enforce another.
+- Receipt drift happens when one Gate-1 path signs with RS256 while another still emits hmac-sha256.
+- Telemetry drift happens when Unity can produce behavioral risk events but Vercel has no route to receive them.
+- The bedrock logic is one deploy contract, one receipt authority, one telemetry ingress, and fail-closed validation before production deploy.
+
+Phase 2: Reconstruction (The Ground-Up Build)
+
+Core Solution:
+- Added api/lib/receipt-signing.js as the single RS256 receipt authority for Vercel handlers.
+- Replaced api/verify.js HMAC receipt generation with canonical JSON RS256 signing.
+- Replaced api/mint.js HMAC receipt generation with the same RS256 signer and returned the structured signature object.
+- Added GET health metadata in api/verify.js exposing the receipt algorithm, telemetry ingress path, and env contract.
+- Added api/liquidity-leap/telemetry.js as the Liquidity Leap telemetry ingress.
+- The telemetry ingress accepts POST /api/liquidity-leap/telemetry, validates liquidity-leap.telemetry.v1, bounds numeric fields, checks LIQUIDITY_LEAP_TELEMETRY_KEY when configured, hashes normalized telemetry, derives validation_required, and signs the receipt with RS256.
+- Added the Vercel route for POST /api/liquidity-leap/telemetry before the catch-all API route.
+- Updated unity/liquidity-leap/LiquidityLeapManager.cs to POST every telemetry JSON payload to the Vercel ingress while preserving the vLLM/Kasi WebSocket bridge.
+- Updated scripts/replit-vercel-prod-deploy.sh so the deploy gate requires the RS256 receipt env names, the Liquidity Leap telemetry key, the telemetry handler file, and the telemetry Vercel route.
+- Updated .env.example with the RS256 receipt authority and Liquidity Leap ingress key names.
+- Updated the Gate-1 HTML/status surfaces and dashboard rendering away from HMAC wording.
+- Added smoke-test coverage for RS256 Gate-1 receipts and signed Liquidity Leap telemetry ingress.
+
+Mental Model:
+- Replit supplies executable code and declared secrets.
+- Vercel supplies production routes and production env.
+- Gate-1 supplies asymmetric receipt authorship.
+- Liquidity Leap supplies behavioral telemetry.
+- The deploy script is the contract judge: if any code-read env name, route, or handler is missing, production deploy stops before artifact creation.
+
+Phase 3: Personal Integration (The "Living" Application)
+
+Biological DevOps:
+- Treat drift as a mismatch between what your system believes and what it can prove at the boundary.
+- Concrete habit: before every deploy, write the live contract as three columns: code reads, platform provides, guard verifies. Do not execute while any row is blank or mismatched.

@@ -2,7 +2,13 @@
 // Gate-1 smoke test — Node 20, ESM-native, `node --test`
 import { test } from "node:test"
 import handler from "../api/verify.js"
-import { createHash } from "node:crypto"
+import telemetryHandler from "../api/liquidity-leap/telemetry.js"
+import { createHash, generateKeyPairSync } from "node:crypto"
+
+const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 })
+process.env.PROOFBRIDGE_RECEIPT_PRIVATE_KEY = privateKey.export({ type: "pkcs8", format: "pem" })
+process.env.PROOFBRIDGE_RECEIPT_PUBLIC_KEY = publicKey.export({ type: "spki", format: "pem" })
+process.env.PROOFBRIDGE_RECEIPT_KEY_ID = "gate1-smoke-test-key"
 
 const ISSUER_DID = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
 const DEED   = createHash("sha256").update("gate-1-smoke-test-deed").digest("hex")
@@ -46,8 +52,11 @@ test("Gate-1 AMOY: signed receipt — posterior[0,1], verdict∈{PASS|WARN|HALT}
   t.assert.match(p.pipeline_hash, /^[a-f0-9]{64}$/)
   // anchored_at: null — active amends do not overwrite (contract invariant)
   t.assert.strictEqual(p.anchored_at, null, "anchored_at must be null")
-  // HMAC-SHA256
-  t.assert.match(p.signature, /^hmac-sha256:[a-f0-9]{64}$/)
+  // RS256 receipt authority
+  t.assert.strictEqual(p.signature.alg, "RS256")
+  t.assert.match(p.signature.signature, /^[A-Za-z0-9_-]+$/)
+  t.assert.match(p.signature.payload_hash, /^[a-f0-9]{64}$/)
+  t.assert.strictEqual(p.signature.key_ref, "gate1-smoke-test-key")
   // safegrid_signal
   t.assert.ok(p.safegrid_signal,               "safegrid_signal missing")
   t.assert.ok(p.safegrid_signal.signal_id,         "signal_id missing")
@@ -55,6 +64,35 @@ test("Gate-1 AMOY: signed receipt — posterior[0,1], verdict∈{PASS|WARN|HALT}
   t.assert.ok(p.safegrid_signal.evaluator_version,  "evaluator_version missing")
   // typo guard
   t.assert.strictEqual(p.safefgrid_signal, undefined, "safefgrid_signal must not be in the response")
+})
+
+test("Liquidity Leap telemetry ingress: signed validation_required receipt", async (t) => {
+  const res = mockRes()
+  await telemetryHandler(
+    mockReq({
+      schema_version: "liquidity-leap.telemetry.v1",
+      session_id: "session_gate_1_smoke",
+      game_event: "PLAYER_JUMP_ACTION",
+      last_action: "JUMP_HIGH_RISK",
+      asset_class: "HIGH_RISK",
+      shock_type: "LIQUIDITY_SHOCK",
+      current_pool_balance: 750,
+      impulse_stability_score: 0.25,
+      volatility_multiplier: 2.25,
+      client_unix_ms: Date.now(),
+    }),
+    res
+  )
+
+  t.assert.strictEqual(res.statusCode, 200, "http 200")
+  const p = JSON.parse(res.body)
+  t.assert.strictEqual(p.ok, true)
+  t.assert.strictEqual(p.ingress, "liquidity-leap")
+  t.assert.match(p.telemetry_hash, /^[a-f0-9]{64}$/)
+  t.assert.strictEqual(p.decision.validation_required, true)
+  t.assert.ok(p.decision.reasons.includes("PANIC_BUY_DURING_MARKET_SHOCK"))
+  t.assert.strictEqual(p.signature.alg, "RS256")
+  t.assert.match(p.signature.payload_hash, /^[a-f0-9]{64}$/)
 })
 
 // ── Test 2: MAINNET rejected before computation ──────────────────────────────

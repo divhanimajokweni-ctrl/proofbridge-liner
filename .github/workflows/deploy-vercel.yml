@@ -34,10 +34,19 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Syntax-check API files
-        run: cd api && node --check verify.js && node --check kernel.js
+        run: |
+          node --check api/verify.js
+          node --check api/mint.js
+          node --check api/liquidity-leap/telemetry.js
+          node --check api/lib/receipt-signing.js
+
+      - name: Build and smoke-test
+        run: |
+          npm run build
+          node --test test/gate1-smoke.test.js
 
       - name: Validate Vercel Secrets
         run: |

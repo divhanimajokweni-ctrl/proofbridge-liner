@@ -37,7 +37,7 @@ User / AI Output
  │  ① TEE Gate — attest proof │
  │  ② Bayesian belief μ       │
  │  ③ Calibrated threshold τ  │
- │  ④ Sign trace (HMAC)       │
+ │  ④ Sign trace (RS256)       │
  └────────────┬────────────────┘
               │ verdict
               ▼
@@ -54,7 +54,7 @@ User / AI Output
 | ① TEE Gate | Hardware root of trust — EIP-191 ECDSA |
 | ② Bayesian Kernel | μ = (α+1)/(α+β+2) — calibrated posterior |
 | ③ Threshold | τ = τ₀ / (1 + γ·β/α) |
-| ④ HMAC Trace | Every verdict — signed and timestamped |
+| ④ RS256 Trace | Every verdict — signed and timestamped |
 
 **Captions** cycle through one callout as each layer highlights.
 
@@ -65,7 +65,7 @@ User / AI Output
 
 ## [00:28–00:55] Scene 3 — Live Dashboard Run
 
-**Visual:** Dashboard loads at `divhanimajokweni-ctrl.github.io/proofbridge-liner/dashboard/`.
+**Visual:** Dashboard loads at `venturevisionubuntu.co.za/`.
 
 **Cursor highlights** each area with a **3 s pause** per section:
 
@@ -91,7 +91,7 @@ User / AI Output
 **Visual:** Terminal window, clean background. Cursor types once, output appears below — **held on screen for 8 s**:
 
 ```bash
-curl -X POST https://proofbridge-liner.vercel.app/api/verify \
+curl -X POST https://venturevisionubuntu.co.za/api/verify \
   -H "Content-Type: application/json" \
   -d '{"alpha":24,"beta":8,"gamma":1.3,"threshold":0.6}'
 ```
@@ -102,7 +102,7 @@ curl -X POST https://proofbridge-liner.vercel.app/api/verify \
   "belief": 0.759,
   "threshold": 0.514,
   "safety_margin": 0.245,
-  "signature": "a3f2e…(HMAC-SHA256)" }
+  "signature": "a3f2e…(RS256)" }
 ```
 
 *(Formatted compactly — ~25 % fewer characters.)*
@@ -128,7 +128,7 @@ On the left, a small three-property row:
 | ✅ | Deterministic | Reproducible kernel output |
 |---|---|---|
 | ✅ | Auditable | Full reasoning chain logged |
-| ✅ | Timestamped | HMAC-signed immutable proof |
+| ✅ | Timestamped | RS256-signed immutable proof |
 
 **Captions:** Three words only, inline with card.
 `Deterministic  ·  Auditable  ·  Timestamped`

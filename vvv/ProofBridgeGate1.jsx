@@ -40,12 +40,13 @@ function VerdictBadge({ verdict }) {
 // ── receipt card ──────────────────────────────────────────────────────────────
 
 function ReceiptCard({ r }) {
+  const sig = r.signature && r.signature.signature ? `${r.signature.alg}:${r.signature.signature}` : r.signature
   const rows = [
     ['receipt_id', r.receipt_id],
     ['deed_hash',  r.deed_hash],
     ['pipeline_hash', r.pipeline_hash],
     ['anchored_at', r.anchored_at ?? 'null'],
-    ['signature',  r.signature],
+    ['signature',  sig],
   ]
   return h('div', { className: 'rcard' },
     h('div', { className: 'rheader' },
@@ -123,7 +124,7 @@ function App() {
       if (r.ok) {
         setReceipt(r)
         setAnonUrl(
-          `https://proofbridge-liner.vercel.app/api/verify` +
+          `https://venturevisionubuntu.co.za/api/verify` +
           `#r=${encodeURIComponent(JSON.stringify({ok:true,receipt_id:r.receipt_id,verdict:r.verdict,anchored_at:null,signature:r.signature}))}`
         )
       } else {

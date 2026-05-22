@@ -59,7 +59,7 @@ ProofBridge Liner is a Bayesian safety kernel. It does not generate answers; it 
                                         │ ② Bayesian belief μ (Beta-Binomial posterior)
                                         │ 3 Calibrate threshold τ (γ × industry baseline)
                                         │ 4→ Compute S = μ − τ, emit reasoning chain
-                                        │ ⑤ HMAC-sign proof trace (deterministic)
+                                        │ ⑤ RS256-sign proof trace (deterministic)
                                         ▼
                                ┌──────────────────┐
                                │  On-chain        │
@@ -127,7 +127,7 @@ Every verdict is accompanied by a three-step reasoning chain:
 ]
 ```
 
-Timestamps are strictly incremented; input hashes prevent retrodiction. The entire chain is HMAC-SHA256 signed on delivery. Any alteration of any step changes the chain hash, providing non-repudiable auditability.
+Timestamps are strictly incremented; input hashes prevent retrodiction. The entire chain is RS256 signed on delivery. Any alteration of any step changes the chain hash, providing non-repudiable auditability.
 
 ---
 

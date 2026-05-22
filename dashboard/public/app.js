@@ -224,7 +224,8 @@
         var data = await res.json();
         var v = (data.verdict || '').toUpperCase();
         var s = data.safety_margin != null ? data.safety_margin.toFixed(4) : '—';
-        var sig = data.signature || '';
+        var sig = data.signature && data.signature.signature ? data.signature.signature : (data.signature || '');
+        var sigAlg = data.signature && data.signature.alg ? data.signature.alg : 'RS256';
         var prettySig = sig.length > 16 ? sig.substring(0, 12) + '…' + sig.substring(sig.length - 6) : sig;
         if (v !== 'SAFE') allOk = false;
         verdictEl.textContent = v;
@@ -233,7 +234,7 @@
                  `  Params : α=${params.alpha}  β=${params.beta}  γ=${params.gamma}  τ=${params.threshold}\n` +
                  `  Verdict : ${v}  (safety margin ${s})\n` +
                  `  Reasoning chain : ${JSON.stringify(data.reasoning_chain, null, 2)}\n` +
-                 `  Signature : HMAC-SHA256  ${esc(prettySig)}\n\n`;
+                 `  Signature : ${esc(sigAlg)}  ${esc(prettySig)}\n\n`;
         logEl.textContent = lines;
         try { window.updateVerificationBadge(data); } catch (_) {}
       } catch (err) {

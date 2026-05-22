@@ -16,7 +16,7 @@ ProofBridge Liner transforms every AI output into a **provable, adjudicatable st
 
 **Name:** Mihle "Divhani" Majokweni  
 **Repository:** github.com / divhanimajokweni / proofbridge-liner  
-**Live:** divhanimajokweni-ctrl.github.io/proofbridge-liner
+**Live:** venturevisionubuntu.co.za
 
 ---
 
@@ -56,7 +56,7 @@ Input → AI Model → ProofBridge Liner → Downstream
                     ② Belief check μ      ← Beta-Binomial posterior
                     ③ Threshold τ         ← γ-adjusted per industry
                     4→ Decision: SAFE or TRIP
-                    ⑤ Signed proof trace (HMAC)
+                    ⑤ Signed proof trace (RS256)
 ```
 
 Two-part guarantee:
@@ -146,7 +146,7 @@ SECTION 09  Last Fetcher Run:  fresh ✓
 API Response (default `alpha=24, beta=8, gamma=1.0`):
 ```
 belief:  0.759   threshold: 0.600   safety_margin: +0.159   → SAFE ✓
-reasoning_chain posted · HMAC-SHA256 signature attached
+reasoning_chain posted · RS256 signature attached
 ```
 
 **Verdict lands in <200 ms.** Deterministic. No hot wallet signing.
@@ -219,10 +219,10 @@ Vaguely Vanity LLC · Gqeberha, South Africa
 github.com/divhanimajokweni/proofbridge-liner
 
 **Live Dashboard:**  
-divhanimajokweni-ctrl.github.io/proofbridge-liner
+venturevisionubuntu.co.za
 
 **Vercel Verify API:**  
-https://proofbridge-liner.vercel.app/api/verify
+https://venturevisionubuntu.co.za/api/verify
 
 ---
 
