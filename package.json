@@ -21,9 +21,9 @@
     "deploy:droplet": "bash scripts/deploy-droplet.sh",
     "deploy:droplet:rocm": "bash scripts/deploy-droplet.sh --rocm",
     "deploy:droplet:dry": "bash scripts/deploy-droplet.sh --dry-run",
-    "check:secrets": "node scripts/check-secrets.js",
-    "check:env": "node scripts/env-check.js",
-    "precommit": "node scripts/check-secrets.js",
+    "check:secrets": "node scripts/check-secrets.cjs",
+    "check:env": "node scripts/env-check.cjs",
+    "precommit": "node scripts/check-secrets.cjs",
     "predeploy": "npm run check:secrets && npm run check:env"
   },
   "dependencies": {
