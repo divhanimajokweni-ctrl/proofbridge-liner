@@ -6,6 +6,12 @@
 <title>ProofBridge · Cryptographic Financial Truth</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script
+  async
+  crossorigin="anonymous"
+  src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+  data-clerk-publishable-key="pk_test_YOUR_CLERK_PUBLISHABLE_KEY"
+></script>
 <style>
 :root {
   --void: #080808;
@@ -817,6 +823,37 @@ footer {
   .nav-links { display: none; }
   .hero-headline { font-size: 36px; }
 }
+.clerk-user-badge{
+  display:none;align-items:center;gap:6px;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--green-term);padding:6px 10px;
+  border:1px solid rgba(0,200,83,0.3);cursor:pointer;
+}
+.clerk-user-badge img{width:18px;height:18px;border-radius:50%}
+.clerk-signin-btn{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--white-dim);text-decoration:none;letter-spacing:0.06em;
+  padding:6px 10px;border:1px solid var(--border);
+  transition:all 0.2s;
+}
+.clerk-signin-btn:hover{color:var(--amber);border-color:var(--amber)}
+.contact-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:center;justify-content:center}
+.contact-modal{background:var(--panel);border:1px solid var(--border-bright);max-width:460px;width:90%;padding:32px;position:relative}
+.contact-modal h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px;color:white}
+.contact-modal p{font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--white-dim);margin-bottom:20px}
+.contact-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--white-muted)}
+.contact-close:hover{color:var(--white)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--white-dim);margin-bottom:4px}
+.form-group input,.form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--border);font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--white);background:var(--surface);outline:none}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--amber)}
+.form-group textarea{resize:vertical;min-height:80px}
+.btn-contact{width:100%;padding:12px;background:var(--amber);color:var(--void);border:none;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;letter-spacing:0.06em;transition:background 0.2s}
+.btn-contact:hover{background:#F2B84B}
+.btn-contact:disabled{opacity:0.5;cursor:not-allowed}
+.contact-status{font-size:11px;margin-top:8px;display:none;font-family:'IBM Plex Mono',monospace}
+.contact-status.ok{color:var(--green-term);display:block}
+.contact-status.err{color:var(--red-term);display:block}
 </style>
 </head>
 <body>
@@ -866,6 +903,8 @@ footer {
     <a href="/gate-1" style="text-decoration:none"><div class="nav-status"><div class="nav-status-dot"></div>KERNEL ONLINE // V2.5</div></a>
     <a href="/gate-1" class="btn-terminal">$ terminal</a>
     <a href="/submission" class="btn-terminal-solid">Connect wallet →</a>
+    <span id="clerkAuthPB" class="clerk-user-badge"></span>
+    <a href="#" id="signInBtnPB" class="clerk-signin-btn">Sign in →</a>
   </div>
 </nav>
 
@@ -1235,6 +1274,31 @@ footer {
   <div class="compliance-item"><span class="c-dot-g"></span>0 Disputed Payouts</div>
 </div>
 
+<!-- CONTACT OVERLAY -->
+<div class="contact-overlay" id="contactOverlayPB">
+  <div class="contact-modal">
+    <button class="contact-close" id="contactClosePB">×</button>
+    <h3>Contact ProofBridge</h3>
+    <p>Send us a message — we'll respond within 24 hours.</p>
+    <form id="contactFormPB">
+      <div class="form-group">
+        <label for="contactNamePB">Name</label>
+        <input type="text" id="contactNamePB" placeholder="Your name" required>
+      </div>
+      <div class="form-group">
+        <label for="contactEmailPB">Email</label>
+        <input type="email" id="contactEmailPB" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label for="contactMsgPB">Message</label>
+        <textarea id="contactMsgPB" placeholder="How can we help?" required></textarea>
+      </div>
+      <button type="submit" class="btn-contact" id="contactSubmitPB">Send message</button>
+      <div class="contact-status" id="contactStatusPB"></div>
+    </form>
+  </div>
+</div>
+
 <!-- FOOTER -->
 <footer>
   <div class="footer-inner">
@@ -1268,7 +1332,7 @@ footer {
         <a href="/pools/compliance">POPIA Policy</a>
         <a href="#">Terms</a>
         <a href="#">Audit Reports</a>
-        <a href="mailto:hello@venturevisionubuntu.co.za">Contact</a>
+        <a href="#" id="contactLinkPB">Contact</a>
       </div>
     </div>
     <div class="footer-bottom">
@@ -1283,7 +1347,71 @@ footer {
 </footer>
 
 <script>
-// Animated proof feed — simulate live events
+// ── CLERK AUTH ──────────────────────────────────────────
+async function initClerkPB(){
+  if(typeof window.Clerk === 'undefined') return;
+  try{
+    await window.Clerk.load();
+    const authBtn = document.getElementById('clerkAuthPB');
+    const signInBtn = document.getElementById('signInBtnPB');
+    if(window.Clerk.user){
+      if(signInBtn) signInBtn.style.display = 'none';
+      if(authBtn){ authBtn.style.display = 'flex';
+        const u = window.Clerk.user;
+        authBtn.innerHTML = (u.imageUrl ? '<img src="'+u.imageUrl+'" alt="">' : '') + '<span>'+(u.firstName || u.primaryEmailAddress?.emailAddress || 'User')+'</span>';
+        authBtn.onclick = () => window.Clerk.signOut(); }
+    } else {
+      if(signInBtn) signInBtn.style.display = 'inline-flex';
+      if(authBtn) authBtn.style.display = 'none';
+      if(signInBtn) signInBtn.onclick = (e) => { e.preventDefault(); window.Clerk.openSignIn(); };
+    }
+  }catch(e){ console.error('Clerk init error:',e); }
+}
+if(document.readyState !== 'loading'){ initClerkPB(); } else { document.addEventListener('DOMContentLoaded', initClerkPB); }
+
+// ── CONTACT FORM (Resend) ──────────────────────────────
+(function(){
+  const overlay = document.getElementById('contactOverlayPB');
+  const link = document.getElementById('contactLinkPB');
+  const close = document.getElementById('contactClosePB');
+  const form = document.getElementById('contactFormPB');
+  const submit = document.getElementById('contactSubmitPB');
+  const status = document.getElementById('contactStatusPB');
+  if(!overlay) return;
+  if(link) link.addEventListener('click', function(e){ e.preventDefault(); overlay.style.display = 'flex'; if(status){status.className='contact-status';status.textContent='';} });
+  if(close) close.addEventListener('click', function(){ overlay.style.display = 'none'; });
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) overlay.style.display = 'none'; });
+  if(form){
+    form.addEventListener('submit', async function(e){
+      e.preventDefault();
+      submit.disabled = true; submit.textContent = 'Sending…';
+      if(status){status.className='contact-status';status.textContent='';}
+      try{
+        const res = await fetch('/api/contact', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            name: document.getElementById('contactNamePB').value.trim(),
+            email: document.getElementById('contactEmailPB').value.trim(),
+            message: document.getElementById('contactMsgPB').value.trim(),
+          }),
+        });
+        const data = await res.json();
+        if(res.ok){
+          if(status){status.className='contact-status ok';status.textContent=data.message||'Message sent.';}
+          form.reset();
+        } else {
+          if(status){status.className='contact-status err';status.textContent=data.error||'Failed to send.';}
+        }
+      }catch(err){
+        if(status){status.className='contact-status err';status.textContent='Network error. Please try again.';}
+      }finally{
+        submit.disabled = false; submit.textContent = 'Send message';
+      }
+    });
+  }
+})();
+
+// ── PROOF FEED ─────────────────────────────────────────
 const events = [
   { type: 'MINT', hash: '0xa3f8c921...d721 · R500 · PILOT-C2', status: 'VERIFIED', cls: 'proof-event-status-ok' },
   { type: 'PAYOUT', hash: '0x7b2e1fa3...8c4d · R15,000 · Thabo S.', status: 'CONFIRMED', cls: 'proof-event-status-ok' },
