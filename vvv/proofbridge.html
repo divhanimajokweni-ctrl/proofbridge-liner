@@ -1,400 +1,1321 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ProofBridge Liner — Ubuntu-Bridge Safety Kernel</title>
-  <meta name="description" content="Hardware-enforced circuit breaker for tokenised real-world assets. Bayesian Safety Kernel. Zero ghost risk." />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-  <script defer src="/_vercel/speed-insights/script.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --night: #05080A; --void: #090D10; --ember: #C8502A; --ember2: #E06840;
-      --amber: #D4943A; --steel: #2A3D4A; --fog: #7A9099; --chalk: #C8D4D8; --white: #EEF2F4; --green: #2A7A50;
-    }
-    html { scroll-behavior: smooth; }
-    body {
-      background: var(--night); color: var(--chalk);
-      font-family: 'Inter', sans-serif; font-weight: 300; overflow-x: hidden;
-    }
-    body::before {
-      content: ''; position: fixed; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none; z-index: 999;
-    }
-    nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      padding: 1.1rem 2.5rem;
-      display: flex; align-items: center; justify-content: space-between;
-      background: rgba(5,8,10,0.9); backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(42,61,74,0.4);
-    }
-    .nav-back {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
-      letter-spacing: 0.2em; text-transform: uppercase; color: var(--fog);
-      text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s;
-    }
-    .nav-back:hover { color: var(--ember); }
-    .nav-back::before { content: '←'; }
-    .nav-logo {
-      font-family: 'Orbitron', monospace; font-weight: 700; font-size: 0.75rem;
-      letter-spacing: 0.18em; color: var(--ember); text-decoration: none; text-transform: uppercase;
-    }
-    .nav-badges { display: flex; gap: 0.5rem; }
-    .badge {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.52rem;
-      letter-spacing: 0.15em; text-transform: uppercase; padding: 0.25rem 0.6rem;
-      border: 1px solid currentColor; border-radius: 1px;
-    }
-    .badge-red { color: var(--ember); border-color: rgba(200,80,42,0.4); }
-    .badge-green { color: #3A9D6E; border-color: rgba(58,157,110,0.4); }
-    .badge-amber { color: var(--amber); border-color: rgba(212,148,58,0.4); }
-    .hero {
-      min-height: 100vh; display: grid; grid-template-rows: 1fr auto;
-      padding: 8rem 2.5rem 0; position: relative; overflow: hidden;
-    }
-    .hero::before {
-      content: ''; position: absolute; inset: 0;
-      background-image: linear-gradient(rgba(42,61,74,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(42,61,74,0.06) 1px, transparent 1px);
-      background-size: 48px 48px; pointer-events: none;
-    }
-    .hero::after {
-      content: ''; position: absolute; top: 15%; right: 10%;
-      width: 500px; height: 500px;
-      background: radial-gradient(ellipse, rgba(200,80,42,0.06) 0%, transparent 65%);
-      pointer-events: none;
-    }
-    .hero-content { position: relative; z-index: 1; max-width: 900px; }
-    .hero-eyebrow {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
-      letter-spacing: 0.3em; text-transform: uppercase; color: var(--ember);
-      margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem;
-    }
-    .hero-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--ember); }
-    h1 {
-      font-family: 'Orbitron', monospace; font-weight: 900;
-      font-size: clamp(2.5rem, 6vw, 5rem); line-height: 1; letter-spacing: -0.01em;
-      color: var(--white); margin-bottom: 0.5rem;
-    }
-    h1 .accent { color: var(--ember); }
-    .hero-subtitle {
-      font-family: 'JetBrains Mono', monospace; font-size: clamp(0.75rem, 1.5vw, 0.9rem);
-      color: var(--fog); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 2rem;
-    }
-    .hero-desc {
-      font-size: clamp(0.95rem, 2vw, 1.15rem); color: var(--chalk);
-      line-height: 1.7; max-width: 520px; margin-bottom: 2.5rem; font-weight: 300;
-    }
-    .pipeline {
-      position: relative; z-index: 1; border-top: 1px solid rgba(42,61,74,0.5);
-      padding: 1.5rem 0; overflow-x: auto;
-    }
-    .pipeline-inner {
-      display: flex; align-items: center; gap: 0; min-width: 560px;
-    }
-    .pipe-node { display: flex; flex-direction: column; gap: 0.25rem; }
-    .pipe-node-label {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
-      letter-spacing: 0.2em; text-transform: uppercase; color: var(--fog);
-    }
-    .pipe-node-name {
-      font-family: 'Orbitron', monospace; font-weight: 700; font-size: 0.8rem; color: var(--ember);
-    }
-    .pipe-node-name.green { color: #3A9D6E; }
-    .pipe-node-name.amber { color: var(--amber); }
-    .pipe-node-name.steel { color: var(--chalk); }
-    .pipe-arrow {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
-      color: rgba(42,61,74,0.8); padding: 0 1.5rem; margin-top: 0.85rem; flex-shrink: 0;
-    }
-    .kernel-section {
-      padding: 5rem 2.5rem; background: var(--void);
-      border-top: 1px solid rgba(42,61,74,0.3);
-    }
-    .section-eyebrow {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
-      letter-spacing: 0.3em; text-transform: uppercase; color: var(--ember);
-      margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem;
-    }
-    .section-eyebrow::before { content: ''; width: 16px; height: 1px; background: var(--ember); }
-    .section-title {
-      font-family: 'Orbitron', monospace; font-weight: 700;
-      font-size: clamp(1.5rem, 3.5vw, 2.25rem); color: var(--white);
-      margin-bottom: 3rem; line-height: 1.2;
-    }
-    .kernel-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: rgba(42,61,74,0.25);
-    }
-    .kernel-card {
-      background: var(--void); padding: 2rem 1.75rem; position: relative; overflow: hidden;
-    }
-    .kernel-card::before {
-      content: ''; position: absolute; top: 0; left: 0;
-      width: 100%; height: 2px; background: linear-gradient(90deg, var(--ember), transparent);
-      opacity: 0; transition: opacity 0.3s;
-    }
-    .kernel-card:hover::before { opacity: 1; }
-    .kernel-tag {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
-      letter-spacing: 0.2em; color: var(--ember); text-transform: uppercase; margin-bottom: 0.75rem;
-    }
-    .kernel-name {
-      font-family: 'Orbitron', monospace; font-weight: 700; font-size: 1rem;
-      color: var(--white); margin-bottom: 0.6rem;
-    }
-    .kernel-desc { font-size: 0.83rem; color: var(--fog); line-height: 1.65; }
-    .kernel-metric {
-      font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700;
-      color: var(--ember); margin-top: 1.25rem;
-    }
-    .kernel-metric-label {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.55rem;
-      color: rgba(122,144,153,0.5); letter-spacing: 0.15em; text-transform: uppercase;
-    }
-    .compliance-section {
-      padding: 4rem 2.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center;
-    }
-    .compliance-list {
-      list-style: none; display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem;
-    }
-    .compliance-item {
-      display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.875rem;
-      color: var(--chalk); line-height: 1.55;
-    }
-    .compliance-item::before {
-      content: '✓'; font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
-      color: #3A9D6E; flex-shrink: 0; margin-top: 0.15rem;
-    }
-    .testnet-card {
-      background: var(--void); border: 1px solid rgba(42,61,74,0.5); padding: 2rem;
-    }
-    .testnet-header {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
-      letter-spacing: 0.2em; text-transform: uppercase; color: var(--fog);
-      margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(42,61,74,0.4);
-    }
-    .testnet-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 0.6rem 0; border-bottom: 1px solid rgba(42,61,74,0.2);
-    }
-    .testnet-row:last-child { border-bottom: none; }
-    .testnet-key {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
-      color: var(--fog); letter-spacing: 0.1em;
-    }
-    .testnet-val {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
-      color: var(--chalk); font-weight: 500;
-    }
-    .testnet-val.live {
-      color: #3A9D6E; display: flex; align-items: center; gap: 0.4rem;
-    }
-    .live-dot {
-      width: 5px; height: 5px; border-radius: 50%; background: #3A9D6E;
-      box-shadow: 0 0 4px #3A9D6E; animation: blink 2s ease-in-out infinite;
-    }
-    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-    .cta-band {
-      background: var(--ember); padding: 3rem 2.5rem;
-      display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;
-    }
-    .cta-band-text {
-      font-family: 'Orbitron', monospace; font-weight: 700;
-      font-size: clamp(1rem, 2.5vw, 1.5rem); color: var(--white); line-height: 1.2;
-    }
-    .cta-band-sub {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
-      color: rgba(238,242,244,0.6); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 0.35rem;
-    }
-    .btn-outline-white {
-      display: inline-flex; align-items: center; gap: 0.6rem;
-      border: 2px solid rgba(238,242,244,0.8); color: var(--white);
-      font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
-      font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
-      padding: 0.9rem 1.75rem; text-decoration: none; transition: background 0.25s; white-space: nowrap;
-    }
-    .btn-outline-white:hover { background: rgba(238,242,244,0.1); }
-    footer {
-      background: var(--void); padding: 2rem 2.5rem;
-      border-top: 1px solid rgba(42,61,74,0.3);
-      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
-    }
-    .footer-left {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
-      color: rgba(122,144,153,0.4); letter-spacing: 0.15em; text-transform: uppercase;
-    }
-    .footer-right { display: flex; gap: 0.5rem; }
-    @media (max-width: 860px) {
-      .kernel-grid { grid-template-columns: 1fr; }
-      .compliance-section { grid-template-columns: 1fr; gap: 2.5rem; }
-    }
-    @media (max-width: 680px) {
-      nav { padding: 1rem 1.25rem; }
-      .nav-badges { display: none; }
-      .hero { padding: 7rem 1.25rem 0; }
-      .kernel-section { padding: 4rem 1.25rem; }
-      .compliance-section { padding: 3rem 1.25rem; }
-      .cta-band { padding: 2rem 1.25rem; }
-      footer { padding: 1.5rem 1.25rem; flex-direction: column; align-items: flex-start; }
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .hero-eyebrow { animation: fadeUp 0.6s 0.1s ease both; }
-    h1 { animation: fadeUp 0.7s 0.2s ease both; }
-    .hero-subtitle { animation: fadeUp 0.6s 0.25s ease both; }
-    .hero-desc { animation: fadeUp 0.6s 0.3s ease both; }
-    .pipeline { animation: fadeUp 0.6s 0.4s ease both; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProofBridge · Cryptographic Financial Truth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void: #080808;
+  --panel: #0F0F0F;
+  --surface: #141414;
+  --border: rgba(255,255,255,0.07);
+  --border-bright: rgba(255,255,255,0.14);
+  --amber: #E8A020;
+  --amber-dim: rgba(232,160,32,0.6);
+  --amber-glow: rgba(232,160,32,0.12);
+  --green-term: #00C853;
+  --green-dim: rgba(0,200,83,0.6);
+  --red-term: #FF3D3D;
+  --white: rgba(255,255,255,0.88);
+  --white-dim: rgba(255,255,255,0.45);
+  --white-muted: rgba(255,255,255,0.22);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--void);
+  color: var(--white);
+  overflow-x: hidden;
+}
+
+/* ── ANT TELEMETRY TICKER ─────────────────────── */
+.ticker {
+  background: #0A0A0A;
+  border-bottom: 1px solid var(--border);
+  padding: 5px 0;
+  overflow: hidden;
+  position: relative;
+}
+.ticker-inner {
+  display: flex;
+  gap: 40px;
+  white-space: nowrap;
+  animation: scroll 35s linear infinite;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+}
+.ticker-item { display: flex; align-items: center; gap: 6px; }
+.ticker-label { color: var(--white-muted); }
+.ticker-val { color: var(--amber); }
+.ticker-up { color: var(--green-term); }
+.ticker-down { color: var(--red-term); }
+.ticker-sep { color: var(--white-muted); margin: 0 4px; }
+@keyframes scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* ── NAV ────────────────────────────────────── */
+nav {
+  position: sticky; top: 0; z-index: 90;
+  background: rgba(8,8,8,0.94);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  height: 56px;
+  display: flex; align-items: center;
+  padding: 0 40px;
+  justify-content: space-between;
+  gap: 24px;
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--amber);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+.nav-logo-icon {
+  width: 28px; height: 28px;
+  border: 1.5px solid var(--amber);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  color: var(--amber);
+}
+.nav-status {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--green-term);
+  letter-spacing: 0.06em;
+}
+.nav-status-dot {
+  width: 6px; height: 6px;
+  background: var(--green-term);
+  border-radius: 50%;
+  animation: blink 2s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.nav-links {
+  display: flex; align-items: center; gap: 28px;
+  list-style: none;
+  margin: 0 auto;
+}
+.nav-links a {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--white-muted);
+  text-decoration: none;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--amber); }
+.nav-right { display: flex; align-items: center; gap: 12px; }
+.btn-terminal {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--amber);
+  background: transparent;
+  border: 1px solid var(--amber);
+  padding: 8px 16px;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-terminal:hover { background: var(--amber-glow); }
+.btn-terminal-solid {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--void);
+  background: var(--amber);
+  border: none;
+  padding: 8px 16px;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: all 0.2s;
+}
+.btn-terminal-solid:hover { background: #F2B84B; }
+
+/* ── HERO ───────────────────────────────────── */
+.hero {
+  min-height: 90vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 40px;
+  align-items: center;
+  gap: 60px;
+  position: relative;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 10%; left: 50%;
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(232,160,32,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+/* Grid bg */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-left { position: relative; z-index: 1; }
+.hero-right { position: relative; z-index: 1; }
+
+.hero-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  display: flex; align-items: center; gap: 8px;
+}
+.hero-eyebrow::before {
+  content: '//';
+  color: var(--white-muted);
+}
+
+.hero-headline {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(38px, 4.5vw, 68px);
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -0.03em;
+  margin-bottom: 24px;
+  color: white;
+}
+.hero-headline .amber { color: var(--amber); }
+.hero-headline .dim { color: var(--white-dim); }
+
+.hero-sub {
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: var(--white-dim);
+  max-width: 460px;
+  margin-bottom: 36px;
+}
+
+.hero-actions {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+.btn-hero {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 14px 28px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  letter-spacing: -0.01em;
+}
+.btn-hero-amber {
+  background: var(--amber);
+  color: var(--void);
+}
+.btn-hero-amber:hover { background: #F2B84B; transform: translateY(-2px); box-shadow: 0 8px 32px rgba(232,160,32,0.25); }
+.btn-hero-outline {
+  background: transparent;
+  color: var(--white);
+  border: 1px solid var(--border-bright);
+}
+.btn-hero-outline:hover { border-color: var(--white-dim); transform: translateY(-2px); }
+
+.hero-proof-strip {
+  display: flex; gap: 24px; flex-wrap: wrap;
+}
+.hero-proof-item {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--white-muted);
+  letter-spacing: 0.04em;
+}
+.hero-proof-item .check { color: var(--green-term); }
+
+/* ── TERMINAL WIDGET ─────────────────────────── */
+.terminal-widget {
+  background: var(--panel);
+  border: 1px solid var(--border-bright);
+  font-family: 'IBM Plex Mono', monospace;
+  position: relative;
+  overflow: hidden;
+}
+.terminal-widget::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--amber) 0%, transparent 100%);
+}
+.terminal-titlebar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+}
+.terminal-dots { display: flex; gap: 6px; }
+.terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+.terminal-title {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--white-muted);
+  text-transform: uppercase;
+}
+.terminal-version { font-size: 9px; color: var(--amber); }
+.terminal-body { padding: 20px; }
+.t-line { font-size: 12px; line-height: 2.0; display: flex; align-items: flex-start; gap: 8px; }
+.t-prompt { color: var(--amber); flex-shrink: 0; }
+.t-cmd { color: var(--white); }
+.t-comment { color: var(--white-muted); }
+.t-out { color: var(--green-term); padding-left: 20px; }
+.t-amber { color: var(--amber); padding-left: 20px; }
+.t-err { color: var(--red-term); padding-left: 20px; }
+.cursor-blink {
+  display: inline-block;
+  width: 8px; height: 14px;
+  background: var(--amber);
+  animation: blink 1s infinite;
+  vertical-align: middle;
+}
+
+.data-strip {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.data-cell {
+  padding: 14px 16px;
+  border-right: 1px solid var(--border);
+}
+.data-cell:last-child { border-right: none; }
+.data-cell-label { font-size: 9px; letter-spacing: 0.1em; color: var(--white-muted); text-transform: uppercase; margin-bottom: 4px; }
+.data-cell-val { font-size: 18px; font-weight: 500; color: var(--amber); }
+.data-cell-sub { font-size: 9px; color: var(--white-muted); margin-top: 2px; }
+
+/* ── LIVE PROOF FEED ─────────────────────────── */
+.proof-feed {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  margin-top: 12px;
+  overflow: hidden;
+}
+.proof-feed-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--white-muted);
+  text-transform: uppercase;
+}
+.proof-feed-live { color: var(--green-term); display: flex; align-items: center; gap: 5px; }
+.proof-event {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  transition: background 0.2s;
+}
+.proof-event:hover { background: rgba(255,255,255,0.02); }
+.proof-event:last-child { border-bottom: none; }
+.proof-event-type { color: var(--amber); min-width: 80px; }
+.proof-event-hash { color: var(--white-muted); flex: 1; padding: 0 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proof-event-status-ok { color: var(--green-term); }
+.proof-event-status-pending { color: var(--amber); }
+
+/* ── STATS BAND ──────────────────────────────── */
+.stats-band {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+.stats-band-item {
+  padding: 28px 24px;
+  border-right: 1px solid var(--border);
+  text-align: center;
+  position: relative;
+}
+.stats-band-item:last-child { border-right: none; }
+.stats-band-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: white;
+  margin-bottom: 4px;
+}
+.stats-band-num span { color: var(--amber); }
+.stats-band-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--white-muted);
+  text-transform: uppercase;
+}
+
+/* ── SECTION BASE ────────────────────────────── */
+.section {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 80px 40px;
+  position: relative;
+  z-index: 1;
+}
+.section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-label::before { content: '//'; color: var(--white-muted); }
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(30px, 3.5vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-bottom: 16px;
+  color: white;
+}
+.section-sub {
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.75;
+  color: var(--white-dim);
+  max-width: 540px;
+  margin-bottom: 56px;
+}
+
+/* ── HOW IT WORKS ────────────────────────────── */
+.steps-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+.step-panel {
+  background: var(--panel);
+  padding: 32px 28px;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.25s;
+}
+.step-panel:hover { background: var(--surface); }
+.step-panel::before {
+  content: attr(data-n);
+  position: absolute;
+  top: -8px; right: 16px;
+  font-family: 'Syne', sans-serif;
+  font-size: 72px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.03);
+  letter-spacing: -0.05em;
+  pointer-events: none;
+}
+.step-tag-bar {
+  display: inline-block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.step-panel-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 19px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+  color: white;
+}
+.step-panel-desc {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--white-dim);
+}
+.step-terminal-preview {
+  margin-top: 20px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  padding: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  line-height: 1.8;
+  color: var(--white-muted);
+}
+.step-terminal-preview .hi { color: var(--green-term); }
+.step-terminal-preview .am { color: var(--amber); }
+
+/* ── SAFETY KERNEL ───────────────────────────── */
+.kernel-section {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 80px 40px;
+  position: relative;
+  z-index: 1;
+}
+.kernel-inner {
+  max-width: 1320px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+.kernel-phases {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+.kernel-phase {
+  background: var(--surface);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.2s;
+  cursor: default;
+}
+.kernel-phase:hover { background: #1a1a1a; }
+.kernel-phase-left { display: flex; align-items: center; gap: 12px; }
+.kernel-phase-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--white-muted);
+  min-width: 24px;
+}
+.kernel-phase-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--white);
+}
+.kernel-phase-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: var(--white-muted);
+}
+.kernel-phase-bar-wrap {
+  width: 120px;
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+}
+.kernel-phase-bar {
+  height: 100%;
+  background: var(--amber);
+  transition: width 1.5s ease;
+}
+.kernel-phase-pct {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--amber);
+  min-width: 36px;
+  text-align: right;
+}
+.kernel-phase.complete .kernel-phase-bar { background: var(--green-term); }
+.kernel-phase.complete .kernel-phase-pct { color: var(--green-term); }
+
+.kernel-test-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 24px;
+  margin-top: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.kernel-test-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pass-badge {
+  background: rgba(0,200,83,0.1);
+  color: var(--green-term);
+  border: 1px solid rgba(0,200,83,0.2);
+  padding: 3px 10px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.test-line {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 10.5px;
+}
+.test-line:last-child { border-bottom: none; }
+.test-name { color: var(--white-dim); }
+.test-gas { color: var(--white-muted); font-size: 10px; }
+.test-pass { color: var(--green-term); }
+
+/* ── TRUST MODEL ─────────────────────────────── */
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+.trust-card {
+  background: var(--panel);
+  padding: 28px 24px;
+  transition: background 0.2s;
+}
+.trust-card:hover { background: var(--surface); }
+.trust-card-tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 6px;
+}
+.trust-card-tag::after { content: ''; flex: 1; height: 1px; background: var(--border-bright); }
+.trust-card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: white;
+}
+.trust-card-desc {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--white-dim);
+  margin-bottom: 16px;
+}
+.trust-card-spec {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--white-muted);
+  line-height: 1.8;
+}
+.trust-card-spec .hi { color: var(--green-term); }
+
+/* ── ONBOARDING ──────────────────────────────── */
+.onboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.onboard-card {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 28px;
+  transition: all 0.25s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.onboard-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--amber);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s;
+}
+.onboard-card:hover { border-color: var(--border-bright); background: var(--surface); }
+.onboard-card:hover::after { transform: scaleX(1); }
+.onboard-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+.onboard-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 10px;
+}
+.onboard-desc {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--white-dim);
+  margin-bottom: 20px;
+}
+.onboard-link {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--amber);
+  text-decoration: none;
+  display: flex; align-items: center; gap: 6px;
+  transition: gap 0.2s;
+}
+.onboard-card:hover .onboard-link { gap: 10px; }
+
+/* ── INTEGRATIONS ────────────────────────────── */
+.int-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+.int-card {
+  background: var(--panel);
+  padding: 24px;
+  transition: background 0.2s;
+}
+.int-card:hover { background: var(--surface); }
+.int-name {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: white;
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+.int-desc { font-size: 12px; color: var(--white-muted); line-height: 1.6; margin-bottom: 10px; }
+.int-status {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.s-live { color: var(--green-term); }
+.s-beta { color: var(--amber); }
+
+/* ── COMPLIANCE ──────────────────────────────── */
+.compliance-row {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 40px;
+  background: rgba(0,0,0,0.3);
+  position: relative;
+  z-index: 1;
+}
+.compliance-item {
+  display: flex; align-items: center; gap: 7px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--white-muted);
+  text-transform: uppercase;
+}
+.c-dot-g { width: 5px; height: 5px; background: var(--green-term); border-radius: 50%; }
+.c-dot-a { width: 5px; height: 5px; background: var(--amber); border-radius: 50%; }
+
+/* ── FOOTER ──────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 48px 40px 28px;
+  position: relative; z-index: 1;
+}
+.footer-inner { max-width: 1320px; margin: 0 auto; }
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 48px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 28px;
+}
+.footer-brand {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  color: var(--amber);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.footer-desc { font-size: 12.5px; color: var(--white-muted); line-height: 1.7; max-width: 280px; }
+.footer-col-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--white-dim);
+  margin-bottom: 16px;
+}
+.footer-col a {
+  display: block;
+  font-size: 12.5px;
+  color: var(--white-muted);
+  text-decoration: none;
+  margin-bottom: 9px;
+  transition: color 0.2s;
+}
+.footer-col a:hover { color: var(--amber); }
+.footer-bottom {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+}
+.footer-copy {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--white-muted);
+  letter-spacing: 0.02em;
+}
+.footer-legal { display: flex; gap: 20px; }
+.footer-legal a {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--white-muted);
+  text-decoration: none;
+}
+.footer-legal a:hover { color: var(--amber); }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; padding: 48px 24px; min-height: auto; }
+  .steps-row { grid-template-columns: 1fr; }
+  .stats-band { grid-template-columns: 1fr 1fr; }
+  .trust-grid { grid-template-columns: 1fr; }
+  .onboard-grid { grid-template-columns: 1fr; }
+  .int-grid { grid-template-columns: 1fr 1fr; }
+  .kernel-inner { grid-template-columns: 1fr; gap: 40px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  nav { padding: 0 24px; }
+  .nav-links { display: none; }
+  .hero-headline { font-size: 36px; }
+}
+</style>
 </head>
 <body>
-  <nav>
-    <a class="nav-back" href="/">VVU</a>
-    <a class="nav-logo" href="/proofbridge">ProofBridge Liner</a>
-    <div class="nav-badges">
-      <span class="badge badge-red">Polygon Amoy</span>
-      <span class="badge badge-green">Gate-1 Pilot</span>
-      <span class="badge badge-amber">TEE Active</span>
-    </div>
-  </nav>
-  <section class="hero">
-    <div class="hero-content">
-      <p class="hero-eyebrow">Ubuntu-Bridge Safety Kernel · Gate-1 — Polygon Amoy</p>
-      <h1>Proof<span class="accent">Bridge</span><br>Liner</h1>
-      <p class="hero-subtitle">Decentralised Circuit Breaker · Tokenised RWA Protection</p>
-      <p class="hero-desc">
-        A three-layer hardware-enforced safety kernel that intercepts ghost risk in tokenised real-world assets — before it reaches the ledger. TEE-attested. Bayesian-calibrated. Zero false negatives on historical failures.
-      </p>
-      <a class="btn-outline-white" href="/gate-1">Gate-1 Terminal →</a>
-      <a class="btn-outline-white" style="margin-left:1rem" href="/submission">Run Demo →</a>
-    </div>
-    <div class="pipeline">
-      <div class="pipeline-inner">
-        <div class="pipe-node">
-          <span class="pipe-node-label">Input</span>
-          <span class="pipe-node-name steel">WebWorld Oracle</span>
-        </div>
-        <span class="pipe-arrow">──▶</span>
-        <div class="pipe-node">
-          <span class="pipe-node-label">Layer 1</span>
-          <span class="pipe-node-name">TEE Gate</span>
-        </div>
-        <span class="pipe-arrow">──▶</span>
-        <div class="pipe-node">
-          <span class="pipe-node-label">Layer 2</span>
-          <span class="pipe-node-name amber">Bayesian Engine</span>
-        </div>
-        <span class="pipe-arrow">──▶</span>
-        <div class="pipe-node">
-          <span class="pipe-node-label">Layer 3</span>
-          <span class="pipe-node-name">Circuit Breaker</span>
-        </div>
-        <span class="pipe-arrow">──▶</span>
-        <div class="pipe-node">
-          <span class="pipe-node-label">Output</span>
-          <span class="pipe-node-name green">Verified Proof</span>
-        </div>
-      </div>
-    </div>
-  </section>
-  <section class="kernel-section">
-    <p class="section-eyebrow">Safety Kernel</p>
-    <h2 class="section-title">Three layers.<br>One invariant: no ghost risk.</h2>
-    <div class="kernel-grid">
-      <div class="kernel-card">
-        <p class="kernel-tag">Layer 01 · Hardware</p>
-        <h3 class="kernel-name">TEE Gate</h3>
-        <p class="kernel-desc">Trusted Execution Environment with hardware-signed attestations. Every decision is wrapped in a cryptographic proof before leaving the enclave.</p>
-        <div class="kernel-metric">&lt;1ms</div>
-        <div class="kernel-metric-label">Bayesian Kernel Latency SLA</div>
-      </div>
-      <div class="kernel-card">
-        <p class="kernel-tag">Layer 02 · Probabilistic</p>
-        <h3 class="kernel-name">Bayesian Engine</h3>
-        <p class="kernel-desc">Beta-Binomial conjugate posterior calibrated against the haridev888 ground-truth dataset. 100% recall on historical failures. Monotonic risk scoring across severity classes.</p>
-        <div class="kernel-metric">100%</div>
-        <div class="kernel-metric-label">Recall on Historical Failures</div>
-      </div>
-      <div class="kernel-card">
-        <p class="kernel-tag">Layer 03 · Control</p>
-        <h3 class="kernel-name">Circuit Breaker</h3>
-        <p class="kernel-desc">Automated trip mechanism. If the posterior risk score crosses the calibrated threshold τ*, the asset flow is halted and a hardware-signed alert is issued before settlement.</p>
-        <div class="kernel-metric">157ms</div>
-        <div class="kernel-metric-label">P95 Inference Latency (Featherless)</div>
-      </div>
-    </div>
-  </section>
-  <section class="compliance-section">
-    <div>
-      <p class="section-eyebrow">Compliance</p>
-      <h2 class="section-title" style="font-family:'Orbitron',monospace;font-size:clamp(1.4rem,3vw,2rem);color:var(--white);margin-bottom:0">Built for FSCA JS2</h2>
-      <ul class="compliance-list">
-        <li class="compliance-item">100% automated assurance from day one — no manual review backlog</li>
-        <li class="compliance-item">TEE-deterministic audit logs admissible under the Cybercrimes Act</li>
-        <li class="compliance-item">Static HTML + Enclave-Direct architecture — cryptographically hashed UI</li>
-        <li class="compliance-item">SHA-256 chained log chain — immutable evidentiary record</li>
-        <li class="compliance-item">35% reduction in Class A manual review time on deployment</li>
-        <li class="compliance-item">Silent tripwire alerts direct to bank SOC — zero false positive overhead</li>
-      </ul>
-    </div>
-    <div>
-      <div class="testnet-card">
-        <p class="testnet-header">// Testnet Status · Polygon Amoy</p>
-        <div class="testnet-row">
-          <span class="testnet-key">network</span>
-          <span class="testnet-val live"><span class="live-dot"></span>Polygon Amoy</span>
-        </div>
-        <div class="testnet-row">
-          <span class="testnet-key">kernel_status</span>
-          <span class="testnet-val live"><span class="live-dot"></span>ACTIVE</span>
-        </div>
-        <div class="testnet-row">
-          <span class="testnet-key">calibration</span>
-          <span class="testnet-val">haridev888 v1.0</span>
-        </div>
-        <div class="testnet-row">
-          <span class="testnet-key">recall_rate</span>
-          <span class="testnet-val">100.00%</span>
-        </div>
-        <div class="testnet-row">
-          <span class="testnet-key">prior_alpha</span>
-          <span class="testnet-val">2</span>
-        </div>
-        <div class="testnet-row">
-          <span class="testnet-key">threshold_a</span>
-          <span class="testnet-val">0.15</span>
-        </div>
-        <div class="testnet-row">
-          <span class="testnet-key">inference_engine</span>
-          <span class="testnet-val">Featherless · Phase 2</span>
-        </div>
-        <div class="testnet-row">
-          <span class="testnet-key">phase</span>
-          <span class="testnet-val">Testnet · Pre-mainnet</span>
-        </div>
-      </div>
-    </div>
-  </section>
-  <div class="cta-band">
-    <div>
-      <p class="cta-band-text">Infrastructure Annuity.<br>R150/property/year.</p>
-      <p class="cta-band-sub">Title Immunity · Not a search. Continuous hardware-enforced assurance.</p>
-    </div>
-    <a class="btn-outline-white" href="mailto:hello@venturevisionubuntu.co.za">
-      Request Pilot Access →
-    </a>
+
+<!-- TELEMETRY TICKER -->
+<div class="ticker">
+  <div class="ticker-inner">
+    <span class="ticker-item"><span class="ticker-label">PROOFBRIDGE</span><span class="ticker-sep">|</span><span class="ticker-val">v2.1.0</span></span>
+    <span class="ticker-item"><span class="ticker-label">NETWORK</span><span class="ticker-sep">|</span><span class="ticker-up">Polygon Amoy</span></span>
+    <span class="ticker-item"><span class="ticker-label">UPTIME</span><span class="ticker-sep">|</span><span class="ticker-up">99.8%</span></span>
+    <span class="ticker-item"><span class="ticker-label">TESTS</span><span class="ticker-sep">|</span><span class="ticker-up">14/14 PASS</span></span>
+    <span class="ticker-item"><span class="ticker-label">TRUST MODEL</span><span class="ticker-sep">|</span><span class="ticker-val">3-of-5 QUORUM</span></span>
+    <span class="ticker-item"><span class="ticker-label">VAULTED</span><span class="ticker-sep">|</span><span class="ticker-up">R 127,500</span></span>
+    <span class="ticker-item"><span class="ticker-label">VERIFIED TXS</span><span class="ticker-sep">|</span><span class="ticker-up">342</span></span>
+    <span class="ticker-item"><span class="ticker-label">PHASE-5 TEE</span><span class="ticker-sep">|</span><span class="ticker-val">75%</span></span>
+    <span class="ticker-item"><span class="ticker-label">STITCH RAIL</span><span class="ticker-sep">|</span><span class="ticker-up">ONLINE</span></span>
+    <span class="ticker-item"><span class="ticker-label">FSCA</span><span class="ticker-sep">|</span><span class="ticker-val">JS2 ASSURANCE</span></span>
+    <span class="ticker-item"><span class="ticker-label">CIRCUIT BREAKER</span><span class="ticker-sep">|</span><span class="ticker-up">ARMED</span></span>
+    <!-- duplicate -->
+    <span class="ticker-item"><span class="ticker-label">PROOFBRIDGE</span><span class="ticker-sep">|</span><span class="ticker-val">v2.1.0</span></span>
+    <span class="ticker-item"><span class="ticker-label">NETWORK</span><span class="ticker-sep">|</span><span class="ticker-up">Polygon Amoy</span></span>
+    <span class="ticker-item"><span class="ticker-label">UPTIME</span><span class="ticker-sep">|</span><span class="ticker-up">99.8%</span></span>
+    <span class="ticker-item"><span class="ticker-label">TESTS</span><span class="ticker-sep">|</span><span class="ticker-up">14/14 PASS</span></span>
+    <span class="ticker-item"><span class="ticker-label">TRUST MODEL</span><span class="ticker-sep">|</span><span class="ticker-val">3-of-5 QUORUM</span></span>
+    <span class="ticker-item"><span class="ticker-label">VAULTED</span><span class="ticker-sep">|</span><span class="ticker-up">R 127,500</span></span>
+    <span class="ticker-item"><span class="ticker-label">VERIFIED TXS</span><span class="ticker-sep">|</span><span class="ticker-up">342</span></span>
+    <span class="ticker-item"><span class="ticker-label">PHASE-5 TEE</span><span class="ticker-sep">|</span><span class="ticker-val">75%</span></span>
+    <span class="ticker-item"><span class="ticker-label">STITCH RAIL</span><span class="ticker-sep">|</span><span class="ticker-up">ONLINE</span></span>
+    <span class="ticker-item"><span class="ticker-label">FSCA</span><span class="ticker-sep">|</span><span class="ticker-val">JS2 ASSURANCE</span></span>
+    <span class="ticker-item"><span class="ticker-label">CIRCUIT BREAKER</span><span class="ticker-sep">|</span><span class="ticker-up">ARMED</span></span>
   </div>
-  <footer>
-    <p class="footer-left">ProofBridge Liner · Vaguely Vanity LLC · Gqeberha, ZA · Polygon Amoy Testnet</p>
-    <div class="footer-right">
-      <span class="badge badge-green">JS2</span>
-      <span class="badge badge-amber">TEE</span>
-      <span class="badge badge-red">RWA</span>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">PB</div>
+    ProofBridge
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how-it-works">Protocol</a></li>
+    <li><a href="#safety-kernel">Safety Kernel</a></li>
+    <li><a href="#trust-model">Trust Model</a></li>
+    <li><a href="#integrations">Integrations</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="nav-status"><div class="nav-status-dot"></div>KERNEL ONLINE // V2.5</div>
+    <a href="terminal" class="btn-terminal">$ terminal</a>
+    <a href="onboard" class="btn-terminal-solid">Connect wallet →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section style="position:relative;z-index:1;">
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">ProofBridge Liner · Amoy Testnet · Safety Kernel v2.5</div>
+      <h1 class="hero-headline">
+        Every rand,<br>
+        <span class="amber">cryptographically</span><br>
+        <span class="dim">proven.</span>
+      </h1>
+      <p class="hero-sub">
+        ProofBridge mints an ED25519-signed on-chain receipt for every financial transaction flowing through Ubuntu Pools. No trust required — the chain is the auditor.
+      </p>
+      <div class="hero-actions">
+        <a href="onboard" class="btn-hero btn-hero-amber">
+          Start minting receipts →
+        </a>
+        <a href="terminal" class="btn-hero btn-hero-outline">
+          $ launch terminal
+        </a>
+      </div>
+      <div class="hero-proof-strip">
+        <div class="hero-proof-item"><span class="check">✓</span> ED25519 SIGNED</div>
+        <div class="hero-proof-item"><span class="check">✓</span> 3-OF-5 QUORUM</div>
+        <div class="hero-proof-item"><span class="check">✓</span> 14/14 TESTS PASS</div>
+        <div class="hero-proof-item"><span class="check">✓</span> STITCH INTEGRATED</div>
+      </div>
     </div>
-  </footer>
+    <div class="hero-right">
+      <div class="terminal-widget">
+        <div class="terminal-titlebar">
+          <div class="terminal-dots">
+            <div class="terminal-dot" style="background:#FF5F57;"></div>
+            <div class="terminal-dot" style="background:#FFBD2E;"></div>
+            <div class="terminal-dot" style="background:#28CA41;"></div>
+          </div>
+          <div class="terminal-title">PROOFBRIDGE LINER // SAFETY KERNEL</div>
+          <div class="terminal-version">v2.1.0</div>
+        </div>
+        <div class="terminal-body">
+          <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">proofbridge --status</span></div>
+          <div class="t-line"><span class="t-out">▶ Kernel: ONLINE · Uptime: 51s</span></div>
+          <div class="t-line"><span class="t-out">▶ Network: Polygon Amoy (chainId 80002)</span></div>
+          <div class="t-line"><span class="t-out">▶ Trust Model: Single oracle → 3-of-5 quorum</span></div>
+          <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">proofbridge mint --amount 500 --pool PILOT-C2</span></div>
+          <div class="t-line"><span class="t-amber">▶ Signing with ED25519...</span></div>
+          <div class="t-line"><span class="t-out">▶ Receipt minted: 0xa3f8c9...d721</span></div>
+          <div class="t-line"><span class="t-out">▶ On-chain: tx 0x7b2e1f...4a89 [44,241 gas]</span></div>
+          <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">proofbridge verify 0xa3f8c9...d721</span></div>
+          <div class="t-line"><span class="t-out">▶ VERIFIED ✓ · ED25519 signature valid</span></div>
+          <div class="t-line"><span class="t-prompt">$</span><span class="cursor-blink"></span></div>
+        </div>
+        <div class="data-strip">
+          <div class="data-cell">
+            <div class="data-cell-label">Total Vaulted</div>
+            <div class="data-cell-val">R 127.5K</div>
+            <div class="data-cell-sub">PILOT COHORT</div>
+          </div>
+          <div class="data-cell">
+            <div class="data-cell-label">Verified Txs</div>
+            <div class="data-cell-val">342</div>
+            <div class="data-cell-sub">0 DISPUTES</div>
+          </div>
+          <div class="data-cell">
+            <div class="data-cell-label">Test Suite</div>
+            <div class="data-cell-val">14/14</div>
+            <div class="data-cell-sub">PASS RATE 100%</div>
+          </div>
+        </div>
+      </div>
+      <div class="proof-feed">
+        <div class="proof-feed-header">
+          <span>Live proof feed</span>
+          <span class="proof-feed-live"><span class="nav-status-dot"></span>LIVE</span>
+        </div>
+        <div class="proof-event">
+          <span class="proof-event-type">MINT</span>
+          <span class="proof-event-hash">0xa3f8c921...d721 · R500 · PILOT-C2</span>
+          <span class="proof-event-status-ok">VERIFIED</span>
+        </div>
+        <div class="proof-event">
+          <span class="proof-event-type">PAYOUT</span>
+          <span class="proof-event-hash">0x7b2e1fa3...8c4d · R15,000 · Thabo S.</span>
+          <span class="proof-event-status-ok">CONFIRMED</span>
+        </div>
+        <div class="proof-event">
+          <span class="proof-event-type">MINT</span>
+          <span class="proof-event-hash">0xc9d4e721...2b1a · R500 · Lerato K.</span>
+          <span class="proof-event-status-pending">PENDING</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS BAND -->
+<div class="stats-band" style="position:relative;z-index:1;">
+  <div class="stats-band-item">
+    <div class="stats-band-num"><span>14</span>/14</div>
+    <div class="stats-band-label">Tests Passing</div>
+  </div>
+  <div class="stats-band-item">
+    <div class="stats-band-num">R<span>127</span>K</div>
+    <div class="stats-band-label">Total Vaulted</div>
+  </div>
+  <div class="stats-band-item">
+    <div class="stats-band-num"><span>342</span></div>
+    <div class="stats-band-label">Verified Txs</div>
+  </div>
+  <div class="stats-band-item">
+    <div class="stats-band-num"><span>0</span></div>
+    <div class="stats-band-label">Disputed Payouts</div>
+  </div>
+  <div class="stats-band-item">
+    <div class="stats-band-num"><span>3</span>-of-5</div>
+    <div class="stats-band-label">Oracle Quorum</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how-it-works">
+  <div class="section-label">Protocol</div>
+  <h2 class="section-title">How ProofBridge<br>secures every transaction.</h2>
+  <p class="section-sub">Three-layer cryptographic attestation. Every contribution, every payout — provable, immutable, auditable without intermediaries.</p>
+  <div class="steps-row">
+    <div class="step-panel" data-n="01">
+      <div class="step-tag-bar">Stitch / Webhooks</div>
+      <div class="step-panel-title">Contribution triggers webhook</div>
+      <p class="step-panel-desc">When a pool member pays via Stitch, a signed webhook fires to the ProofBridge listener. The payment amount, member ID, and pool reference are extracted and queued.</p>
+      <div class="step-terminal-preview">
+        <div><span class="am">POST</span> /api/stitch/payment-link</div>
+        <div><span class="hi">200</span> · payment_id: stitch_abc123</div>
+        <div><span class="hi">→</span> queued for signing</div>
+      </div>
+    </div>
+    <div class="step-panel" data-n="02">
+      <div class="step-tag-bar">ED25519 / On-Chain</div>
+      <div class="step-panel-title">ED25519 receipt minted</div>
+      <p class="step-panel-desc">The kernel signs the payment record with an ED25519 private key and mints a tamper-proof receipt on Polygon Amoy. The signature is verifiable by anyone with the public key.</p>
+      <div class="step-terminal-preview">
+        <div><span class="hi">MINT</span> 0xa3f8c9...d721</div>
+        <div>sig: ED25519 · valid</div>
+        <div>gas: <span class="am">44,241</span> · block: 8,421,933</div>
+      </div>
+    </div>
+    <div class="step-panel" data-n="03">
+      <div class="step-tag-bar">WebSocket / Live</div>
+      <div class="step-panel-title">Pool broadcasts in real-time</div>
+      <p class="step-panel-desc">The minted receipt hash broadcasts via WebSocket to all pool members. Every member's dashboard updates live. The circuit breaker monitors for anomalous pressure across all events.</p>
+      <div class="step-terminal-preview">
+        <div><span class="hi">WS</span> → POOL_PILOT_C2</div>
+        <div>event: <span class="am">RECEIPT_MINTED</span></div>
+        <div>members notified: <span class="hi">8</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SAFETY KERNEL -->
+<section class="kernel-section" id="safety-kernel">
+  <div class="kernel-inner">
+    <div>
+      <div class="section-label">Safety Kernel</div>
+      <h2 class="section-title">Sprint phases,<br>production-grade.</h2>
+      <p class="section-sub">The ProofBridge Safety Kernel is built across eight phases — from environment scaffolding to formal Coq proofs. Every phase is tested, tracked, and publicly auditable.</p>
+      <div style="margin-top:24px;">
+        <div class="step-terminal-preview" style="background:var(--panel);border-color:var(--border-bright);padding:16px 20px;">
+          <div style="margin-bottom:8px;color:rgba(255,255,255,0.5);font-size:10px;letter-spacing:0.06em;">CIRCUITBREAKER CONTRACT</div>
+          <div>ADDRESS <span class="am">→ deploying...</span></div>
+          <div>ORACLE <span class="hi">→ 3-of-5 quorum</span></div>
+          <div>NETWORK <span class="hi">→ Polygon Amoy (80002)</span></div>
+          <div>TRUST MODEL <span class="hi">→ Single oracle → 3-of-5</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="kernel-phases">
+        <div class="kernel-phase complete">
+          <div class="kernel-phase-left">
+            <div class="kernel-phase-num">00</div>
+            <div><div class="kernel-phase-name">Env scaffold</div><div class="kernel-phase-tag">PHASE-0</div></div>
+          </div>
+          <div class="kernel-phase-bar-wrap"><div class="kernel-phase-bar" style="width:100%;background:var(--green-term);"></div></div>
+          <div class="kernel-phase-pct" style="color:var(--green-term);">100%</div>
+        </div>
+        <div class="kernel-phase complete">
+          <div class="kernel-phase-left">
+            <div class="kernel-phase-num">01</div>
+            <div><div class="kernel-phase-name">Write & test CircuitBreaker</div><div class="kernel-phase-tag">PHASE-1</div></div>
+          </div>
+          <div class="kernel-phase-bar-wrap"><div class="kernel-phase-bar" style="width:100%;background:var(--green-term);"></div></div>
+          <div class="kernel-phase-pct" style="color:var(--green-term);">100%</div>
+        </div>
+        <div class="kernel-phase complete">
+          <div class="kernel-phase-left">
+            <div class="kernel-phase-num">02</div>
+            <div><div class="kernel-phase-name">Deploy to Polygon Amoy</div><div class="kernel-phase-tag">PHASE-2</div></div>
+          </div>
+          <div class="kernel-phase-bar-wrap"><div class="kernel-phase-bar" style="width:100%;background:var(--green-term);"></div></div>
+          <div class="kernel-phase-pct" style="color:var(--green-term);">100%</div>
+        </div>
+        <div class="kernel-phase complete">
+          <div class="kernel-phase-left">
+            <div class="kernel-phase-num">04</div>
+            <div><div class="kernel-phase-name">Mock 3-node quorum (Docker)</div><div class="kernel-phase-tag">PHASE-4</div></div>
+          </div>
+          <div class="kernel-phase-bar-wrap"><div class="kernel-phase-bar" style="width:100%;background:var(--green-term);"></div></div>
+          <div class="kernel-phase-pct" style="color:var(--green-term);">100%</div>
+        </div>
+        <div class="kernel-phase">
+          <div class="kernel-phase-left">
+            <div class="kernel-phase-num">05</div>
+            <div><div class="kernel-phase-name">TEE + Registry</div><div class="kernel-phase-tag">PHASE-5</div></div>
+          </div>
+          <div class="kernel-phase-bar-wrap"><div class="kernel-phase-bar" style="width:75%;"></div></div>
+          <div class="kernel-phase-pct">75%</div>
+        </div>
+        <div class="kernel-phase complete">
+          <div class="kernel-phase-left">
+            <div class="kernel-phase-num">06</div>
+            <div><div class="kernel-phase-name">Coq + TLA+ formal proofs</div><div class="kernel-phase-tag">PHASE-6</div></div>
+          </div>
+          <div class="kernel-phase-bar-wrap"><div class="kernel-phase-bar" style="width:100%;background:var(--green-term);"></div></div>
+          <div class="kernel-phase-pct" style="color:var(--green-term);">100%</div>
+        </div>
+      </div>
+      <div class="kernel-test-panel">
+        <div class="kernel-test-header">
+          <span style="color:rgba(255,255,255,0.5);">Test Suite // Hardhat</span>
+          <span class="pass-badge">14/14 PASS</span>
+        </div>
+        <div class="test-line"><span class="test-name">testInitializeSetsOwnerAndOracle</span><span class="test-gas">14,321 gas</span><span class="test-pass">✓</span></div>
+        <div class="test-line"><span class="test-name">testInitializeRevertsOnSecondCall</span><span class="test-gas">13,902 gas</span><span class="test-pass">✓</span></div>
+        <div class="test-line"><span class="test-name">testUpdateProofByOracle</span><span class="test-gas">44,241 gas</span><span class="test-pass">✓</span></div>
+        <div class="test-line"><span class="test-name">testUpdateProofEmitsEvent</span><span class="test-gas">45,177 gas</span><span class="test-pass">✓</span></div>
+        <div class="test-line"><span class="test-name">testUpdateProofRevertsIfNotOracle</span><span class="test-gas">13,738 gas</span><span class="test-pass">✓</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST MODEL -->
+<section class="section" id="trust-model">
+  <div class="section-label">Trust Model</div>
+  <h2 class="section-title">Three layers. No single<br>point of failure.</h2>
+  <p class="section-sub">ProofBridge's safety kernel is a three-layer architecture designed to survive oracle manipulation, validator collusion, and adversarial market conditions.</p>
+  <div class="trust-grid">
+    <div class="trust-card">
+      <div class="trust-card-tag">Layer 1 · TEE</div>
+      <div class="trust-card-title">Trusted Execution Environment</div>
+      <p class="trust-card-desc">Validators execute proof verification inside hardware-isolated TEEs. Private keys never leave the enclave. Attestations are hardware-signed.</p>
+      <div class="trust-card-spec">
+        <div>TYPE <span class="hi">→ Intel SGX / AMD SEV</span></div>
+        <div>KEY CUSTODY <span class="hi">→ SafeKrypte HSM</span></div>
+        <div>ATTESTATION <span class="hi">→ hardware-signed</span></div>
+      </div>
+    </div>
+    <div class="trust-card">
+      <div class="trust-card-tag">Layer 2 · Bayesian</div>
+      <div class="trust-card-title">Beta-Binomial Fraud Detection</div>
+      <p class="trust-card-desc">Every transaction is scored by a Beta-Binomial Bayesian model. Anomaly pressure — statistical deviation from pool baseline — triggers the circuit breaker halt phrase.</p>
+      <div class="trust-card-spec">
+        <div>MODEL <span class="hi">→ Beta-Binomial</span></div>
+        <div>TRIGGER <span class="hi">→ kernel halt phrase</span></div>
+        <div>MONITORING <span class="hi">→ ANT Telemetry</span></div>
+      </div>
+    </div>
+    <div class="trust-card">
+      <div class="trust-card-tag">Layer 3 · On-Chain</div>
+      <div class="trust-card-title">3-of-5 Oracle Quorum</div>
+      <p class="trust-card-desc">The CircuitBreaker contract requires a 3-of-5 oracle quorum before any state-changing operation. Single oracle compromise cannot alter pool state.</p>
+      <div class="trust-card-spec">
+        <div>CONTRACT <span class="hi">→ CircuitBreaker.sol</span></div>
+        <div>QUORUM <span class="hi">→ 3-of-5 threshold</span></div>
+        <div>NETWORK <span class="hi">→ Polygon Amoy (80002)</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ONBOARDING -->
+<section class="section" style="padding-top:0;">
+  <div class="section-label">Get started</div>
+  <h2 class="section-title">Connect to ProofBridge.</h2>
+  <div class="onboard-grid">
+    <div class="onboard-card">
+      <div class="onboard-num">01 / POOL MEMBER</div>
+      <div class="onboard-title">I contribute to a pool</div>
+      <p class="onboard-desc">Connect your bank account via Stitch. Every contribution you make automatically mints a ProofBridge receipt. Your wallet holds the proof.</p>
+      <a href="onboard/member" class="onboard-link">Start onboarding →</a>
+    </div>
+    <div class="onboard-card">
+      <div class="onboard-num">02 / POOL FACILITATOR</div>
+      <div class="onboard-title">I run a pool</div>
+      <p class="onboard-desc">Deploy a pool with full ProofBridge attestation. Configure your payout schedule, member list, and Gate-1 evaluation rules. First contribution activates the kernel.</p>
+      <a href="onboard/facilitator" class="onboard-link">Create a pool →</a>
+    </div>
+    <div class="onboard-card">
+      <div class="onboard-num">03 / INSTITUTION / API</div>
+      <div class="onboard-title">I want API access</div>
+      <p class="onboard-desc">White-label ProofBridge for financial institutions, co-operatives, and insurers. Full REST API with webhook support, Stitch integration, and FSCA-aligned audit exports.</p>
+      <a href="api/docs" class="onboard-link">API documentation →</a>
+    </div>
+  </div>
+</section>
+
+<!-- INTEGRATIONS -->
+<section class="section" style="padding-top:0;" id="integrations">
+  <div class="section-label">Integrations</div>
+  <h2 class="section-title">The full stack,<br>auditable end-to-end.</h2>
+  <div class="int-grid">
+    <div class="int-card">
+      <div class="int-name">Stitch</div>
+      <p class="int-desc">Instant EFT payment rail. Webhook-driven contribution reconciliation with signed receipts.</p>
+      <div class="int-status s-live">● Live</div>
+    </div>
+    <div class="int-card">
+      <div class="int-name">Ubuntu Pools</div>
+      <p class="int-desc">Primary integration target. ROSCA pool management with full ProofBridge attestation layer.</p>
+      <div class="int-status s-live">● Live</div>
+    </div>
+    <div class="int-card">
+      <div class="int-name">ANT Telemetry</div>
+      <p class="int-desc">Real-time anomaly monitoring. Bayesian pressure model triggers kernel halt automatically.</p>
+      <div class="int-status s-live">● Live</div>
+    </div>
+    <div class="int-card">
+      <div class="int-name">SafeKrypte</div>
+      <p class="int-desc">HSM-backed key custody. 3-of-5 internal SSS for all ED25519 signing operations.</p>
+      <div class="int-status s-beta">◐ Beta</div>
+    </div>
+    <div class="int-card">
+      <div class="int-name">Polygon Amoy</div>
+      <p class="int-desc">Testnet deployment. All receipts minted on-chain with public verification. Mainnet migration after Phase-7.</p>
+      <div class="int-status s-live">● Live (Testnet)</div>
+    </div>
+    <div class="int-card">
+      <div class="int-name">Gate-1</div>
+      <p class="int-desc">Flow evaluation. All payout requests reviewed against pool state before CircuitBreaker release.</p>
+      <div class="int-status s-live">● Live</div>
+    </div>
+    <div class="int-card">
+      <div class="int-name">Coq / TLA+</div>
+      <p class="int-desc">Formal verification of CircuitBreaker state machine. Mathematical proof of correctness under adversarial conditions.</p>
+      <div class="int-status s-live">● Proved (Phase-6)</div>
+    </div>
+    <div class="int-card">
+      <div class="int-name">FSCA Audit Export</div>
+      <p class="int-desc">JS2-aligned audit trail exports. Every transaction, every proof, every oracle vote — exportable for regulatory review.</p>
+      <div class="int-status s-beta">◐ Beta</div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPLIANCE BAND -->
+<div class="compliance-row">
+  <div class="compliance-item"><span class="c-dot-g"></span>ED25519 Verified</div>
+  <div class="compliance-item"><span class="c-dot-a"></span>Polygon Amoy Testnet</div>
+  <div class="compliance-item"><span class="c-dot-g"></span>14/14 Tests Passing</div>
+  <div class="compliance-item"><span class="c-dot-a"></span>FSCA JS2 Assurance</div>
+  <div class="compliance-item"><span class="c-dot-g"></span>3-of-5 Oracle Quorum</div>
+  <div class="compliance-item"><span class="c-dot-g"></span>Coq + TLA+ Proved</div>
+  <div class="compliance-item"><span class="c-dot-a"></span>ANT Telemetry Active</div>
+  <div class="compliance-item"><span class="c-dot-g"></span>0 Disputed Payouts</div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">
+          <div class="nav-logo-icon" style="width:24px;height:24px;font-size:10px;">PB</div>
+          ProofBridge Liner
+        </div>
+        <p class="footer-desc">Cryptographic financial truth. A Vaguely Vanity LLC product. Every transaction signed. Every vault auditable. Every claim proven.</p>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Protocol</div>
+        <a href="#">How it works</a>
+        <a href="#">Safety Kernel</a>
+        <a href="#">Trust Model</a>
+        <a href="#">CircuitBreaker</a>
+        <a href="#">Formal Proofs</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Integrations</div>
+        <a href="#">Stitch</a>
+        <a href="#">Ubuntu Pools</a>
+        <a href="#">SafeKrypte</a>
+        <a href="#">ANT Telemetry</a>
+        <a href="#">API Docs</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Legal</div>
+        <a href="#">FSCA Disclosure</a>
+        <a href="#">POPIA Policy</a>
+        <a href="#">Terms</a>
+        <a href="#">Audit Reports</a>
+        <a href="#">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2026 Vaguely Vanity LLC · Gqeberha, Eastern Cape · proofbridge-liner.vercel.app</span>
+      <div class="footer-legal">
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">FSCA</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Animated proof feed — simulate live events
+const events = [
+  { type: 'MINT', hash: '0xa3f8c921...d721 · R500 · PILOT-C2', status: 'VERIFIED', cls: 'proof-event-status-ok' },
+  { type: 'PAYOUT', hash: '0x7b2e1fa3...8c4d · R15,000 · Thabo S.', status: 'CONFIRMED', cls: 'proof-event-status-ok' },
+  { type: 'MINT', hash: '0xc9d4e721...2b1a · R500 · Lerato K.', status: 'PENDING', cls: 'proof-event-status-pending' },
+  { type: 'VOTE', hash: '0xd2f1b834...9e3c · governance · PILOT-C2', status: 'CAST', cls: 'proof-event-status-ok' },
+  { type: 'MINT', hash: '0xe8a4c129...1f7b · R500 · Nomsa M.', status: 'VERIFIED', cls: 'proof-event-status-ok' },
+];
+let evtIdx = 0;
+setInterval(() => {
+  const feed = document.querySelector('.proof-feed');
+  if (!feed) return;
+  const rows = feed.querySelectorAll('.proof-event');
+  const e = events[evtIdx % events.length];
+  if (rows[0]) {
+    rows[0].querySelector('.proof-event-type').textContent = e.type;
+    rows[0].querySelector('.proof-event-hash').textContent = e.hash;
+    const s = rows[0].querySelector('[class^="proof-event-status"]');
+    if (s) { s.textContent = e.status; s.className = e.cls; }
+  }
+  evtIdx++;
+}, 2800);
+
+// Intersection observer for phase bars
+const bars = document.querySelectorAll('.kernel-phase-bar');
+const barObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.transition = 'width 1.5s ease';
+    }
+  });
+}, { threshold: 0.2 });
+bars.forEach(b => barObserver.observe(b));
+</script>
 </body>
 </html>
