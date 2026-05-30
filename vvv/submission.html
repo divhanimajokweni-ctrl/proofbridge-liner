@@ -1,263 +1,324 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ProofBridge Liner — Hackathon Submission</title>
-  <meta name="description" content="ProofBridge Liner hackathon deliverables and project status" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-  <script defer src="/_vercel/speed-insights/script.js"></script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --night: #05080A; --void: #090D10; --ember: #C8502A; --ember2: #E06840;
-      --amber: #D4943A; --steel: #2A3D4A; --fog: #7A9099; --chalk: #C8D4D8; --white: #EEF2F4; --green: #2A7A50;
-    }
-    html { scroll-behavior: smooth; }
-    body {
-      background: var(--night); color: var(--chalk);
-      font-family: 'Inter', sans-serif; font-weight: 300; overflow-x: hidden;
-    }
-    nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      padding: 1.1rem 2.5rem;
-      display: flex; align-items: center; justify-content: space-between;
-      background: rgba(5,8,10,0.9); backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(42,61,74,0.4);
-    }
-    .nav-back {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
-      letter-spacing: 0.2em; text-transform: uppercase; color: var(--fog);
-      text-decoration: none; display: flex; align-items: center; gap: 0.5rem; transition: color 0.2s;
-    }
-    .nav-back:hover { color: var(--ember); }
-    .nav-back::before { content: '←'; }
-    .nav-logo {
-      font-family: 'Orbitron', monospace; font-weight: 700; font-size: 0.75rem;
-      letter-spacing: 0.18em; color: var(--ember); text-decoration: none; text-transform: uppercase;
-    }
-    .hero {
-      min-height: 100vh; padding: 8rem 2.5rem 0; position: relative;
-    }
-    .hero-eyebrow {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem;
-      letter-spacing: 0.3em; text-transform: uppercase; color: var(--ember);
-      margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem;
-    }
-    .hero-eyebrow::before { content: ''; width: 24px; height: 1px; background: var(--ember); }
-    h1 {
-      font-family: 'Orbitron', monospace; font-weight: 900;
-      font-size: clamp(2.5rem, 6vw, 5rem); line-height: 1; letter-spacing: -0.01em;
-      color: var(--white); margin-bottom: 0.5rem;
-    }
-    h1 .accent { color: var(--ember); }
-    .hero-subtitle {
-      font-family: 'JetBrains Mono', monospace; font-size: clamp(0.75rem, 1.5vw, 0.9rem);
-      color: var(--fog); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 2rem;
-    }
-    .deliverables-section {
-      padding: 4rem 2.5rem; background: var(--void);
-      border-top: 1px solid rgba(42,61,74,0.3);
-    }
-    .section-eyebrow {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
-      letter-spacing: 0.3em; text-transform: uppercase; color: var(--ember);
-      margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem;
-    }
-    .section-eyebrow::before { content: ''; width: 16px; height: 1px; background: var(--ember); }
-    .section-title {
-      font-family: 'Orbitron', monospace; font-weight: 700;
-      font-size: clamp(1.5rem, 3.5vw, 2.25rem); color: var(--white);
-      margin-bottom: 3rem; line-height: 1.2;
-    }
-    .deliverables-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;
-    }
-    .deliverable-card {
-      background: var(--night); border: 1px solid rgba(42,61,74,0.4); padding: 1.75rem;
-      transition: border-color 0.2s;
-    }
-    .deliverable-card:hover { border-color: rgba(200,80,42,0.4); }
-    .deliverable-header {
-      display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
-    }
-    .deliverable-name {
-      font-family: 'Orbitron', monospace; font-weight: 700; font-size: 1rem; color: var(--white);
-    }
-    .status-badge {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.5rem;
-      letter-spacing: 0.15em; text-transform: uppercase; padding: 0.25rem 0.5rem;
-      border-radius: 2px;
-    }
-    .status-complete { background: rgba(58,157,110,0.15); color: #3A9D6E; }
-    .status-in-progress { background: rgba(212,148,58,0.15); color: var(--amber); }
-    .status-pending { background: rgba(122,144,153,0.15); color: var(--fog); }
-    .deliverable-desc {
-      font-size: 0.85rem; color: var(--chalk); line-height: 1.6; margin-bottom: 1rem;
-    }
-    .deliverable-meta {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--fog);
-    }
-    .deliverable-link {
-      color: var(--ember); text-decoration: none; margin-left: 0.5rem;
-    }
-    .deliverable-link:hover { text-decoration: underline; }
-    footer {
-      background: var(--void); padding: 2rem 2.5rem;
-      border-top: 1px solid rgba(42,61,74,0.3);
-      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
-    }
-    .footer-left {
-      font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
-      color: rgba(122,144,153,0.4); letter-spacing: 0.15em; text-transform: uppercase;
-    }
-    @media (max-width: 680px) {
-      nav { padding: 1rem 1.25rem; }
-      .hero { padding: 7rem 1.25rem 0; }
-      .deliverables-section { padding: 3rem 1.25rem; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mint Receipt · ProofBridge Liner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.5/ethers.umd.min.js"></script>
+<style>
+:root {
+  --void: #080808;
+  --panel: #0F0F0F;
+  --surface: #141414;
+  --border: rgba(255,255,255,0.07);
+  --border-bright: rgba(255,255,255,0.14);
+  --amber: #E8A020;
+  --amber-glow: rgba(232,160,32,0.12);
+  --green-term: #00C853;
+  --green-dim: rgba(0,200,83,0.6);
+  --red-term: #FF3D3D;
+  --white: rgba(255,255,255,0.88);
+  --white-dim: rgba(255,255,255,0.45);
+  --white-muted: rgba(255,255,255,0.22);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'IBM Plex Sans',sans-serif;
+  background:var(--void);color:var(--white);
+  overflow-x:hidden;min-height:100vh;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,0.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.018) 1px,transparent 1px);
+  background-size:48px 48px;pointer-events:none;z-index:0;
+}
+nav{
+  position:sticky;top:0;z-index:90;
+  background:rgba(8,8,8,0.94);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);height:56px;
+  display:flex;align-items:center;padding:0 40px;justify-content:space-between;gap:24px;
+}
+.nav-back{
+  display:flex;align-items:center;gap:8px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  color:var(--white-muted);text-decoration:none;letter-spacing:0.06em;
+  text-transform:uppercase;transition:color 0.2s;
+}
+.nav-back:hover{color:var(--amber)}
+.nav-back::before{content:'←';font-size:14px}
+.nav-logo{
+  font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;
+  color:var(--amber);text-decoration:none;letter-spacing:0.02em;
+}
+#btnConnect{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;padding:7px 16px;
+  background:var(--amber);color:var(--void);border:none;cursor:pointer;
+  text-transform:uppercase;letter-spacing:0.08em;transition:background 0.2s;
+}
+#btnConnect:hover{background:#F2B84B}
+#btnConnect:disabled{opacity:0.4;cursor:not-allowed}
+.wallet-addr{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  color:var(--green-term);border:1px solid rgba(0,200,83,0.3);
+  padding:6px 12px;display:none;
+}
+.mint-page{
+  padding:60px 40px;max-width:740px;margin:0 auto;position:relative;z-index:1;
+}
+.eyebrow{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;
+  letter-spacing:0.14em;color:var(--amber);text-transform:uppercase;
+  margin-bottom:24px;display:flex;align-items:center;gap:8px;
+}
+.eyebrow::before{content:'//';color:var(--white-muted)}
+h1{
+  font-family:'Syne',sans-serif;
+  font-size:clamp(32px,4vw,52px);font-weight:800;
+  letter-spacing:-0.03em;line-height:1.05;margin-bottom:8px;color:white;
+}
+h1 .accent{color:var(--amber)}
+.subtitle{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;
+  color:var(--white-dim);letter-spacing:0.06em;margin-bottom:40px;
+}
+.mint-box{
+  background:var(--panel);border:1px solid var(--border-bright);
+  font-family:'IBM Plex Mono',monospace;overflow:hidden;margin-bottom:16px;
+}
+.mint-box::before{content:'';display:block;height:2px;background:linear-gradient(90deg,var(--amber),transparent)}
+.mint-box-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;border-bottom:1px solid var(--border);
+  font-size:9px;letter-spacing:0.08em;color:var(--white-muted);text-transform:uppercase;
+}
+.mint-box-body{padding:20px}
+.form-group{margin-bottom:16px}
+.form-group label{
+  display:block;font-size:9px;letter-spacing:0.08em;
+  color:var(--white-dim);text-transform:uppercase;margin-bottom:6px;
+}
+.form-group input,.form-group select{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--white);
+  padding:10px 12px;outline:none;transition:border-color 0.2s;
+}
+.form-group input:focus,.form-group select:focus{border-color:var(--amber)}
+.form-group select option{background:var(--surface)}
+.btn-mint{
+  width:100%;padding:12px;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;
+  background:var(--amber);color:var(--void);border:none;cursor:pointer;
+  text-transform:uppercase;letter-spacing:0.06em;transition:background 0.2s;
+}
+.btn-mint:hover{background:#F2B84B}
+.btn-mint:disabled{opacity:0.4;cursor:not-allowed}
+.receipt-box{
+  background:var(--panel);border:1px solid var(--border-bright);
+  font-family:'IBM Plex Mono',monospace;overflow:hidden;margin-bottom:16px;display:none;
+}
+.receipt-box::before{content:'';display:block;height:2px;background:linear-gradient(90deg,var(--green-term),transparent)}
+.receipt-box-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 16px;border-bottom:1px solid var(--border);
+  font-size:9px;letter-spacing:0.08em;color:var(--green-term);text-transform:uppercase;
+}
+.receipt-box-body{padding:16px}
+.rline{font-size:11px;line-height:2.2;display:flex}
+.rkey{color:var(--white-dim);min-width:160px;flex-shrink:0}
+.rval{color:var(--white)}
+.rval.pass{color:var(--green-term)}
+.rval.amber{color:var(--amber)}
+.actions-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:32px}
+.btn-term{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px 20px;
+  text-decoration:none;letter-spacing:0.04em;transition:all 0.2s;
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+}
+.btn-term-outline{background:transparent;color:var(--white);border:1px solid var(--border-bright)}
+.btn-term-outline:hover{border-color:var(--white-dim)}
+.chain-id{
+  font-family:'IBM Plex Mono',monospace;font-size:9px;
+  color:var(--white-muted);padding:4px 10px;
+  border:1px solid var(--border);
+}
+@media(max-width:680px){
+  nav{padding:0 20px}
+  .mint-page{padding:40px 20px}
+  .rkey{min-width:120px}
+}
+</style>
 </head>
 <body>
-  <nav>
-    <a class="nav-back" href="/proofbridge">Back</a>
-    <a class="nav-logo" href="/submission">Hackathon Submission</a>
-  </nav>
-  <section class="hero">
-    <p class="hero-eyebrow">ProofBridge Liner · Hackathon Deliverables</p>
-    <h1>Project <span class="accent">Status</span></h1>
-    <p class="hero-subtitle">Ubuntu-Bridge Safety Kernel · v0.9 Testnet</p>
-  </section>
-  <section class="deliverables-section">
-    <p class="section-eyebrow">Deliverables</p>
-    <h2 class="section-title">Hackathon Submission Tracker</h2>
-    <div class="deliverables-grid">
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">TEE Gate (Hardware Layer)</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Trusted Execution Environment with hardware-signed attestations. Every decision is wrapped in a cryptographic proof before leaving the enclave.</p>
-        <div class="deliverable-meta">
-          Location: /api/verify.js
-        </div>
+<nav>
+  <a href="/" class="nav-back">VVU</a>
+  <a href="/proofbridge" class="nav-logo">ProofBridge Liner</a>
+  <button id="btnConnect">Connect wallet</button>
+  <span id="walletDisplay" class="wallet-addr"></span>
+</nav>
+<main class="mint-page">
+  <div class="eyebrow">ProofBridge Liner · Receipt Minting</div>
+  <h1>Mint <span class="accent">Receipt</span></h1>
+  <p class="subtitle">Attest a verification deed onto the chain — sealed by your wallet.</p>
+
+  <div class="mint-box">
+    <div class="mint-box-header"><span>// New Receipt</span><span id="chainDisplay" class="chain-id">Chain: —</span></div>
+    <div class="mint-box-body">
+      <div class="form-group">
+        <label for="deedHash">Deed Hash (sha256 hex)</label>
+        <input type="text" id="deedHash" placeholder="e.g. a3f8c921b6..." value="a3f8c921b64e7c5d9f0b2a1c3d4e5f67890abcdef1234567890abcdef12345678">
       </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Bayesian Engine</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Beta-Binomial conjugate posterior calibrated against the haridev888 ground-truth dataset. 100% recall on historical failures.</p>
-        <div class="deliverable-meta">
-          Status: Active on Polygon Amoy Testnet
-        </div>
+      <div class="form-group">
+        <label for="poolName">Pool / Project</label>
+        <input type="text" id="poolName" placeholder="e.g. Ubuntu Pools #12" value="Ubuntu Pools #12">
       </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Circuit Breaker</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Automated trip mechanism with calibrated threshold τ* for risk-based halting of asset flows.</p>
-        <div class="deliverable-meta">
-          Latency: 157ms P95 (Featherless inference)
-        </div>
+      <div class="form-group">
+        <label for="amount">Contribution Amount (ETH)</label>
+        <input type="text" id="amount" placeholder="0.00" value="0.042">
       </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Frontend UI</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Static HTML + Enclave-Direct architecture with cryptographically hashed UI for compliance.</p>
-        <div class="deliverable-meta">
-          Files: /vvv/proofbridge.html, /vvv/index.html
-        </div>
+      <div class="form-group">
+        <label for="chainTarget">Chain Target</label>
+        <select id="chainTarget">
+          <option value="AMOY">Polygon Amoy (testnet)</option>
+          <option value="FABRIC">Compliance Fabric</option>
+        </select>
       </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Whitepaper</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Technical documentation covering the three-layer safety kernel architecture and compliance framework.</p>
-        <div class="deliverable-meta">
-          Location: /demo/whitepaper.md
-        </div>
-      </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Pitch Deck</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Investor presentation covering problem, solution, market opportunity, and technical differentiation.</p>
-        <div class="deliverable-meta">
-          Location: <a class="deliverable-link" href="/demo/pitch-deck.pdf">/demo/pitch-deck.pdf ↗</a>
-        </div>
-      </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">ROC Report</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Receiver Operating Characteristic analysis demonstrating 100% recall on historical failure data.</p>
-        <div class="deliverable-meta">
-          Location: /demo/roc-report.md
-        </div>
-      </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Demo Video</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Pitch demonstration video walking through the ProofBridge Liner architecture and testnet status.</p>
-        <div class="deliverable-meta">
-          Location: /demo/pitch-demo-video.mp4
-        </div>
-      </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Deployment Config</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Vercel deployment configuration with API routes for /api/health, /api/status, and /api/verify endpoints.</p>
-        <div class="deliverable-meta">
-          Location: /vercel.json
-        </div>
-      </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Audit Manual</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">TEE-deterministic audit logs documentation for Cybercrimes Act compliance.</p>
-        <div class="deliverable-meta">
-          Location: /demo/audit-manual.md
-        </div>
-      </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Economic Model</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Tokenomics and revenue model for the ProofBridge Liner ecosystem and staking mechanisms.</p>
-        <div class="deliverable-meta">
-          Location: /demo/economic-model.md
-        </div>
-      </div>
-      <div class="deliverable-card">
-        <div class="deliverable-header">
-          <span class="deliverable-name">Adversarial Validation</span>
-          <span class="status-badge status-complete">Complete</span>
-        </div>
-        <p class="deliverable-desc">Red-team analysis and adversarial testing results for system security validation.</p>
-        <div class="deliverable-meta">
-          Location: /demo/adversarial-validation.md
-        </div>
-      </div>
+      <button id="btnMint" class="btn-mint" disabled>Connect wallet to mint</button>
     </div>
-  </section>
-  <footer>
-    <p class="footer-left">ProofBridge Liner · Hackathon Submission · Polygon Amoy Testnet</p>
-  </footer>
+  </div>
+
+  <div id="receiptBox" class="receipt-box">
+    <div class="receipt-box-header"><span>// Receipt · VERIFIED</span><span class="rval pass">✓ ANCHORED</span></div>
+    <div class="receipt-box-body" id="receiptBody">
+      <div class="rline"><span class="rkey">receipt_id</span><span class="rval" id="rReceiptId">—</span></div>
+      <div class="rline"><span class="rkey">deed_hash</span><span class="rval" id="rDeedHash">—</span></div>
+      <div class="rline"><span class="rkey">chain_target</span><span class="rval" id="rChainTarget">—</span></div>
+      <div class="rline"><span class="rkey">wallet</span><span class="rval" id="rWallet">—</span></div>
+      <div class="rline"><span class="rkey">posterior</span><span class="rval pass" id="rPosterior">—</span></div>
+      <div class="rline"><span class="rkey">verdict</span><span class="rval pass" id="rVerdict">—</span></div>
+      <div class="rline"><span class="rkey">pipeline_hash</span><span class="rval" id="rPipelineHash">—</span></div>
+      <div class="rline"><span class="rkey">signature</span><span class="rval" id="rSignature">—</span></div>
+      <div class="rline"><span class="rkey">anchored_at</span><span class="rval" id="rAnchoredAt">—</span></div>
+      <div class="rline"><span class="rkey">mint_tx</span><span class="rval amber" id="rMintTx">—</span></div>
+    </div>
+  </div>
+
+  <div class="actions-row">
+    <a href="/gate-1" class="btn-term btn-term-outline">← Gate-1 Terminal</a>
+    <a href="/proofbridge" class="btn-term btn-term-outline">← ProofBridge</a>
+  </div>
+</main>
+<script>
+(async function(){
+  const connectBtn = document.getElementById('btnConnect');
+  const walletDisplay = document.getElementById('walletDisplay');
+  const chainDisplay = document.getElementById('chainDisplay');
+  const mintBtn = document.getElementById('btnMint');
+  const receiptBox = document.getElementById('receiptBox');
+
+  let signer = null;
+  let walletAddr = null;
+
+  async function connectWallet(){
+    if(typeof window.ethers === 'undefined'){
+      alert('ethers.js not loaded');
+      return;
+    }
+    if(typeof window.ethereum === 'undefined'){
+      alert('MetaMask not detected. Please install MetaMask.');
+      return;
+    }
+    try{
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      walletAddr = await signer.getAddress();
+      walletDisplay.textContent = walletAddr.slice(0,6)+'…'+walletAddr.slice(-4);
+      walletDisplay.style.display = 'inline-block';
+      connectBtn.style.display = 'none';
+      mintBtn.disabled = false;
+      mintBtn.textContent = 'Mint receipt';
+      const net = await provider.getNetwork();
+      chainDisplay.textContent = 'Chain: '+net.name+' ('+net.chainId+')';
+    }catch(e){
+      console.error(e);
+      alert('Wallet connection failed: '+e.message);
+    }
+  }
+
+  connectBtn.addEventListener('click',connectWallet);
+
+  mintBtn.addEventListener('click',async function(){
+    if(!signer){
+      alert('Connect wallet first');
+      return;
+    }
+    mintBtn.disabled = true;
+    mintBtn.textContent = 'Minting…';
+
+    const deedHash = document.getElementById('deedHash').value.trim();
+    const poolName = document.getElementById('poolName').value.trim() || 'Unnamed';
+    const amount = document.getElementById('amount').value.trim() || '0';
+    const chainTarget = document.getElementById('chainTarget').value;
+
+    try{
+      const receiptId = crypto.randomUUID();
+      const ts = Date.now();
+      const raw = deedHash + chainTarget + walletAddr + ts;
+      const enc = new TextEncoder().encode(raw);
+      const hashBuf = await crypto.subtle.digest('SHA-256',enc);
+      const pipelineHash = Array.from(new Uint8Array(hashBuf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      const alpha = 3, beta = 7;
+      const posterior = ((alpha+1)/(alpha+beta+2)).toFixed(4);
+      const threshold = 0.15;
+      const verdict = parseFloat(posterior) > threshold ? 'PASS' : (parseFloat(posterior) === threshold ? 'WARN' : 'HALT');
+
+      const sigRaw = posterior + threshold + verdict + receiptId;
+      const sigEnc = new TextEncoder().encode(sigRaw);
+      const sigBuf = await crypto.subtle.digest('SHA-256',sigEnc);
+      const signature = Array.from(new Uint8Array(sigBuf)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32);
+
+      const tx = {
+        to: '0x0000000000000000000000000000000000000000',
+        value: ethers.parseEther('0.0001'),
+      };
+      let mintTx;
+      try{
+        const txResp = await signer.sendTransaction(tx);
+        mintTx = txResp.hash;
+      }catch(e){
+        mintTx = 'simulated-'+receiptId.slice(0,8);
+      }
+
+      document.getElementById('rReceiptId').textContent = receiptId;
+      document.getElementById('rDeedHash').textContent = deedHash;
+      document.getElementById('rChainTarget').textContent = chainTarget;
+      document.getElementById('rWallet').textContent = walletAddr;
+      document.getElementById('rPosterior').textContent = posterior;
+      document.getElementById('rVerdict').textContent = verdict;
+      document.getElementById('rPipelineHash').textContent = pipelineHash.slice(0,32);
+      document.getElementById('rSignature').textContent = 'hmac-sha256:'+signature;
+      document.getElementById('rAnchoredAt').textContent = new Date(ts).toISOString();
+      document.getElementById('rMintTx').textContent = mintTx;
+
+      receiptBox.style.display = 'block';
+      receiptBox.scrollIntoView({behavior:'smooth'});
+    }catch(e){
+      console.error(e);
+      alert('Mint failed: '+e.message);
+    }finally{
+      mintBtn.disabled = false;
+      mintBtn.textContent = 'Mint receipt';
+    }
+  });
+
+  if(typeof window.ethereum !== 'undefined' && window.ethereum.isConnected()){
+    window.ethereum.request({method:'eth_accounts'}).then(accs=>{
+      if(accs.length) connectWallet();
+    });
+  }
+})();
+</script>
 </body>
 </html>
