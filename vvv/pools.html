@@ -6,6 +6,12 @@
 <title>Ubuntu Pools — Collective Prosperity, Cryptographically Secured</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script
+  async
+  crossorigin="anonymous"
+  src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+  data-clerk-publishable-key="pk_test_YOUR_CLERK_PUBLISHABLE_KEY"
+></script>
 <style>
 :root {
   --ink: #0D0D0D;
@@ -987,6 +993,30 @@ footer {
   .score-inner { grid-template-columns: 1fr; gap: 40px; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
 }
+.clerk-user-badge{
+  display:none;align-items:center;gap:8px;
+  font-family:'DM Mono',monospace;font-size:11px;
+  color:var(--sage);padding:6px 12px;
+  border:1px solid var(--card-border);cursor:pointer;
+}
+.clerk-user-badge img{width:20px;height:20px;border-radius:50%}
+.contact-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);align-items:center;justify-content:center}
+.contact-modal{background:white;max-width:460px;width:90%;padding:32px;position:relative}
+.contact-modal h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px}
+.contact-modal p{font-size:13px;color:var(--dust);margin-bottom:20px}
+.contact-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--dust)}
+.contact-close:hover{color:var(--ink)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--dust);margin-bottom:4px}
+.form-group input,.form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--card-border);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--warm-white);outline:none}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--amber)}
+.form-group textarea{resize:vertical;min-height:80px}
+.btn-contact{width:100%;padding:12px;background:var(--amber);color:white;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:background 0.2s}
+.btn-contact:hover{background:var(--amber-muted)}
+.btn-contact:disabled{opacity:0.5;cursor:not-allowed}
+.contact-status{font-size:11px;margin-top:8px;display:none}
+.contact-status.ok{color:var(--sage);display:block}
+.contact-status.err{color:var(--rust);display:block}
 </style>
 </head>
 <body>
@@ -1031,7 +1061,8 @@ footer {
     <li><a href="#integrations">Integrations</a></li>
   </ul>
   <div class="nav-cta">
-    <a href="/" class="btn-ghost">Sign in</a>
+    <span id="clerkAuth" class="clerk-user-badge"></span>
+    <a href="#" id="signInBtn" class="btn-ghost">Sign in</a>
     <a href="/pools/onboarding" class="btn-primary">Start a pool →</a>
   </div>
 </nav>
@@ -1405,6 +1436,31 @@ footer {
   </div>
 </section>
 
+<!-- CONTACT OVERLAY -->
+<div class="contact-overlay" id="contactOverlay">
+  <div class="contact-modal">
+    <button class="contact-close" id="contactClose">×</button>
+    <h3>Contact Ubuntu Pools</h3>
+    <p>Send us a message — we'll respond within 24 hours.</p>
+    <form id="contactForm">
+      <div class="form-group">
+        <label for="contactName">Name</label>
+        <input type="text" id="contactName" placeholder="Your name" required>
+      </div>
+      <div class="form-group">
+        <label for="contactEmail">Email</label>
+        <input type="email" id="contactEmail" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label for="contactMsg">Message</label>
+        <textarea id="contactMsg" placeholder="How can we help?" required></textarea>
+      </div>
+      <button type="submit" class="btn-contact" id="contactSubmit">Send message</button>
+      <div class="contact-status" id="contactStatus"></div>
+    </form>
+  </div>
+</div>
+
 <!-- COMPLIANCE BAND -->
 <div class="compliance-band">
   <div class="compliance-item"><span class="dot-green"></span>POPIA JS2 Compliant</div>
@@ -1449,7 +1505,7 @@ footer {
         <a href="#">Terms of Service</a>
         <a href="/pools/compliance">Data Retention</a>
         <a href="#">FSCA Disclosure</a>
-        <a href="mailto:hello@venturevisionubuntu.co.za">Contact</a>
+        <a href="#" id="contactLink">Contact</a>
       </div>
     </div>
     <div class="footer-bottom">
@@ -1464,7 +1520,88 @@ footer {
 </footer>
 
 <script>
-// Animate stats on scroll
+// ── CLERK AUTH ──────────────────────────────────────────
+async function initClerk(){
+  if(typeof window.Clerk === 'undefined') return;
+  try{
+    await window.Clerk.load();
+    const authBtn = document.getElementById('clerkAuth');
+    const signInBtn = document.getElementById('signInBtn');
+    if(window.Clerk.user){
+      signInBtn.style.display = 'none';
+      authBtn.style.display = 'flex';
+      const u = window.Clerk.user;
+      authBtn.innerHTML = (u.imageUrl ? '<img src="'+u.imageUrl+'" alt="">' : '') + '<span>'+(u.firstName || u.primaryEmailAddress?.emailAddress || 'User')+'</span>';
+      authBtn.onclick = () => window.Clerk.signOut();
+    } else {
+      signInBtn.style.display = 'inline-flex';
+      authBtn.style.display = 'none';
+      signInBtn.onclick = (e) => { e.preventDefault(); window.Clerk.openSignIn(); };
+    }
+  }catch(e){ console.error('Clerk init error:',e); }
+}
+if(document.readyState !== 'loading'){ initClerk(); } else { document.addEventListener('DOMContentLoaded', initClerk); }
+
+// ── CONTACT FORM (Resend) ──────────────────────────────
+const contactOverlay = document.getElementById('contactOverlay');
+const contactLink = document.getElementById('contactLink');
+const contactClose = document.getElementById('contactClose');
+const contactForm = document.getElementById('contactForm');
+const contactSubmit = document.getElementById('contactSubmit');
+const contactStatus = document.getElementById('contactStatus');
+
+if(contactLink){
+  contactLink.addEventListener('click', function(e){
+    e.preventDefault();
+    contactOverlay.style.display = 'flex';
+    contactStatus.className = 'contact-status';
+    contactStatus.textContent = '';
+  });
+}
+if(contactClose){
+  contactClose.addEventListener('click', function(){ contactOverlay.style.display = 'none'; });
+}
+contactOverlay.addEventListener('click', function(e){
+  if(e.target === contactOverlay) contactOverlay.style.display = 'none';
+});
+
+if(contactForm){
+  contactForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    contactSubmit.disabled = true;
+    contactSubmit.textContent = 'Sending…';
+    contactStatus.className = 'contact-status';
+    contactStatus.textContent = '';
+    try{
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('contactName').value.trim(),
+          email: document.getElementById('contactEmail').value.trim(),
+          message: document.getElementById('contactMsg').value.trim(),
+        }),
+      });
+      const data = await res.json();
+      if(res.ok){
+        contactStatus.className = 'contact-status ok';
+        contactStatus.textContent = data.message || 'Message sent. We\'ll be in touch.';
+        contactForm.reset();
+      } else {
+        contactStatus.className = 'contact-status err';
+        contactStatus.textContent = data.error || 'Failed to send. Try emailing us directly.';
+      }
+    }catch(err){
+      contactStatus.className = 'contact-status err';
+      contactStatus.textContent = 'Network error. Please try again or email us directly.';
+    }finally{
+      contactSubmit.disabled = false;
+      contactSubmit.textContent = 'Send message';
+    }
+  });
+}
+
+// ── INTERSECTION OBSERVER ──────────────────────────────
 const observerOptions = { threshold: 0.3 };
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(e => {
@@ -1475,7 +1612,7 @@ const observer = new IntersectionObserver((entries) => {
 }, observerOptions);
 document.querySelectorAll('.step-card, .pool-type-card, .integration-card, .onboard-card').forEach(el => observer.observe(el));
 
-// Live ticker update simulation
+// ── TICKER ─────────────────────────────────────────────
 function updateTicker() {
   const velocity = document.querySelector('.ant-metric-value');
   if (velocity) {
