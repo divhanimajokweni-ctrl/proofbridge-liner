@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/lib/auth/SessionProvider';
+import { useAuth } from '@/utils/auth/SessionProvider';
 
 export default function Nav() {
   const { user, signOut, loading } = useAuth();

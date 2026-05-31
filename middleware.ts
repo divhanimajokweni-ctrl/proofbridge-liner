@@ -1,35 +1,51 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const publicRoutes = ['/auth', '/auth/callback', '/vvv', '/demo', '/gate-1', '/proofbridge', '/pools', '/submission'];
-
 const adminRoutes = ['/admin'];
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
-  const { data: { session } } = await supabase.auth.getSession();
-  const { pathname } = req.nextUrl;
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({ request });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { pathname } = request.nextUrl;
 
   // Allow public routes without session
   if (publicRoutes.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
-    return res;
+    return supabaseResponse;
   }
 
   // Protect admin routes — require facilitator role
   if (adminRoutes.some((r) => pathname.startsWith(r))) {
-    if (!session) {
-      return NextResponse.redirect(new URL('/auth', req.url));
+    if (!user) {
+      return NextResponse.redirect(new URL('/auth', request.url));
     }
-    const role = session.user.user_metadata?.role;
+    const role = user.user_metadata?.role;
     if (role !== 'facilitator') {
-      return NextResponse.redirect(new URL('/pools?error=unauthorized', req.url));
+      return NextResponse.redirect(new URL('/pools?error=unauthorized', request.url));
     }
-    return res;
+    return supabaseResponse;
   }
 
-  return res;
+  return supabaseResponse;
 }
 
 export const config = {
