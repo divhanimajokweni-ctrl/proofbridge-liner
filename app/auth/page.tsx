@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabaseBrowserClient';
+import { createClient } from '@/utils/supabase/client';
 
 type State = 'idle' | 'loading' | 'sent' | 'error';
 

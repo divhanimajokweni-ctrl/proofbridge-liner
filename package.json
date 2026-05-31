@@ -12,7 +12,7 @@
     "deploy": "vercel --prod"
   },
   "dependencies": {
-    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/ssr": "^0.6.0",
     "@supabase/supabase-js": "^2.49.4",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",

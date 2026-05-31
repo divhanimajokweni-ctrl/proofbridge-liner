@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/lib/auth/SessionProvider';
+import { useAuth } from '@/utils/auth/SessionProvider';
 import Nav from '@/components/Nav';
 
 export default function AdminPoolsPage() {
