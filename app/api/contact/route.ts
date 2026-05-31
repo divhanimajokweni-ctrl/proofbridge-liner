@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const CONTACT_EMAIL  = 'hello@venturevisionubuntu.co.za';
+const CONTACT_EMAIL  = 'hello@venturevisualubuntu.co.za';
 
 export async function POST(request: Request) {
   let body;

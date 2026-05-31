@@ -4,13 +4,13 @@ This document reflects the current production operating state for ProofBridge Li
 
 ## Current Production
 
-- Canonical domain: https://venturevisionubuntu.co.za
+- Canonical domain: https://venturevisualubuntu.co.za
 - Vercel production deployment: `proofbridge-liner-qcfdfyoch-divhanimajokweni-1651s-projects.vercel.app`
-- Vercel alias: `venturevisionubuntu.co.za`
+- Vercel alias: `venturevisualubuntu.co.za`
 - DNS apex target: `76.76.21.21`
-- Health route: https://venturevisionubuntu.co.za/api/health
+- Health route: https://venturevisualubuntu.co.za/api/health
 
-Do not use `venturevisualubuntu.co.za`; that typo domain was removed from Vercel.
+Do not use `venturevisionubuntu.co.za`; that typo domain was removed from Vercel.
 
 ## Production Deploy
 
@@ -25,14 +25,14 @@ vercel deploy --prod --yes
 If the production alias does not move automatically, set it explicitly:
 
 ```bash
-vercel alias set <deployment-url> venturevisionubuntu.co.za
+vercel alias set <deployment-url> venturevisualubuntu.co.za
 ```
 
 Verify:
 
 ```bash
-curl -I https://venturevisionubuntu.co.za
-curl -I https://venturevisionubuntu.co.za/api/health
+curl -I https://venturevisualubuntu.co.za
+curl -I https://venturevisualubuntu.co.za/api/health
 ```
 
 Expected: `HTTP/1.1 200 OK`.
@@ -64,7 +64,7 @@ Value: cname.vercel-dns.com.
 TTL: 300 or provider default
 ```
 
-The repository zone file at `vvv/dns/zone.corrected.bind` should remain aligned to `venturevisionubuntu.co.za`.
+The repository zone file at `vvv/dns/zone.corrected.bind` should remain aligned to `venturevisualubuntu.co.za`.
 
 ## Vercel Routes
 
@@ -154,7 +154,7 @@ Do not place real private keys in documentation or committed env files.
 
 1. Run `npm test` locally or in CI.
 2. Deploy with `vercel deploy --prod --yes`.
-3. Alias the deployment to `venturevisionubuntu.co.za`.
+3. Alias the deployment to `venturevisualubuntu.co.za`.
 4. Verify apex HTTPS and `/api/health` return 200.
-5. Confirm Vercel domain list contains `venturevisionubuntu.co.za` and not the typo domain.
+5. Confirm Vercel domain list contains `venturevisualubuntu.co.za` and not the typo domain `venturevisionubuntu.co.za`.
 6. Confirm Git remotes are token-free before pushing.

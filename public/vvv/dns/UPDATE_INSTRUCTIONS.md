@@ -1,4 +1,4 @@
-# DNS Update Instructions for venturevisionubuntu.co.za
+# DNS Update Instructions for venturevisualubuntu.co.za
 # Nameservers: ns1.host-ww.net, ns2.host-ww.net
 # Login to your DNS hosting control panel (host-ww.net / cloud2m.co.za)
 
@@ -22,8 +22,8 @@ Type: A  |  Name/Host: api  |  Value: 76.76.21.21  |  TTL: 300
 ## REMOVE any conflicting A records for @ that point elsewhere
 
 ## After updating DNS, verify:
-dig A venturevisionubuntu.co.za +short
+dig A venturevisualubuntu.co.za +short
 # Should return 4 GitHub IPs above
 
-curl -I https://venturevisionubuntu.co.za/
+curl -I https://venturevisualubuntu.co.za/
 # Should return 200

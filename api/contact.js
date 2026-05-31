@@ -4,11 +4,11 @@
  * POST /api/contact
  *
  * Requires RESEND_API_KEY environment variable.
- * Sends email via Resend SDK to hello@venturevisionubuntu.co.za.
+ * Sends email via Resend SDK to hello@venturevisualubuntu.co.za.
  */
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const CONTACT_EMAIL  = 'hello@venturevisionubuntu.co.za';
+const CONTACT_EMAIL  = 'hello@venturevisualubuntu.co.za';
 
 async function handler(req, res) {
   if (req.method !== 'POST') {

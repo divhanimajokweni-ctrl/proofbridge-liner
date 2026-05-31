@@ -4,15 +4,15 @@ ProofBridge Liner is the production shell for the Venture Vision Ubuntu / Ubuntu
 
 ## Current Production State
 
-- Production domain: https://venturevisionubuntu.co.za
+- Production domain: https://venturevisualubuntu.co.za
 - Current Vercel deployment: `proofbridge-liner-qcfdfyoch-divhanimajokweni-1651s-projects.vercel.app`
-- Production alias verified: `venturevisionubuntu.co.za -> proofbridge-liner-qcfdfyoch-divhanimajokweni-1651s-projects.vercel.app`
-- DNS apex: `venturevisionubuntu.co.za -> 76.76.21.21`
-- Health route: https://venturevisionubuntu.co.za/api/health
+- Production alias verified: `venturevisualubuntu.co.za -> proofbridge-liner-qcfdfyoch-divhanimajokweni-1651s-projects.vercel.app`
+- DNS apex: `venturevisualubuntu.co.za -> 76.76.21.21`
+- Health route: https://venturevisualubuntu.co.za/api/health
 - Active clean integration branch: `compliance-fabric`
 - Suspicious deployment replay branch: `gate-1` is intentionally not the source of this clean production sync.
 
-The typo domain `venturevisualubuntu.co.za` was removed from Vercel. Use `venturevisionubuntu.co.za` everywhere.
+The typo domain `venturevisionubuntu.co.za` was removed from Vercel. Use `venturevisualubuntu.co.za` everywhere.
 
 ## Operational Surfaces
 
@@ -44,14 +44,14 @@ Deploy production from the clean worktree/branch:
 
 ```bash
 vercel deploy --prod --yes
-vercel alias set <deployment-url> venturevisionubuntu.co.za
+vercel alias set <deployment-url> venturevisualubuntu.co.za
 ```
 
 Verify after deploy:
 
 ```bash
-curl -I https://venturevisionubuntu.co.za
-curl -I https://venturevisionubuntu.co.za/api/health
+curl -I https://venturevisualubuntu.co.za
+curl -I https://venturevisualubuntu.co.za/api/health
 ```
 
 Expected: `HTTP/1.1 200 OK`.
@@ -163,7 +163,7 @@ The legacy ProofBridge safety kernel remains present in this repository:
 Last verified during this sync:
 
 ```txt
-https://venturevisionubuntu.co.za              HTTP 200
-https://venturevisionubuntu.co.za/api/health   HTTP 200
-DNS A venturevisionubuntu.co.za                76.76.21.21
+https://venturevisualubuntu.co.za              HTTP 200
+https://venturevisualubuntu.co.za/api/health   HTTP 200
+DNS A venturevisualubuntu.co.za                76.76.21.21
 ```

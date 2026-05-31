@@ -5,10 +5,10 @@
 Replit is the autoscale dashboard/runtime surface for ProofBridge Liner. Production public traffic is served by Vercel at:
 
 ```txt
-https://venturevisionubuntu.co.za
+https://venturevisualubuntu.co.za
 ```
 
-The typo domain `venturevisualubuntu.co.za` is not used.
+The typo domain `venturevisionubuntu.co.za` is not used.
 
 ## Runtime
 
@@ -34,9 +34,9 @@ ProofBridge Liner is a Ghost-Risk Circuit-Breaker and VVU/Ubuntu Pools operating
 Verified during the current sync:
 
 ```txt
-https://venturevisionubuntu.co.za              HTTP 200
-https://venturevisionubuntu.co.za/api/health   HTTP 200
-DNS A venturevisionubuntu.co.za                76.76.21.21
+https://venturevisualubuntu.co.za              HTTP 200
+https://venturevisualubuntu.co.za/api/health   HTTP 200
+DNS A venturevisualubuntu.co.za                76.76.21.21
 ```
 
 Current production deployment:

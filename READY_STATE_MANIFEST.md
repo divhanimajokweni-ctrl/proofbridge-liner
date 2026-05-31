@@ -1,13 +1,13 @@
 # ProofBridge Liner: Ready-State Manifest
 
 **Last Updated:** 2026-05-20  
-**Current Production Domain:** https://venturevisionubuntu.co.za  
+**Current Production Domain:** https://venturevisualubuntu.co.za  
 **Current Clean Branch:** `compliance-fabric`
 
 ## Production State
 
 - [x] Vercel production deployment is live.
-- [x] Canonical domain `venturevisionubuntu.co.za` resolves to Vercel.
+- [x] Canonical domain `venturevisualubuntu.co.za` resolves to Vercel.
 - [x] HTTPS returns `HTTP 200` for the public site.
 - [x] `/api/health` returns `HTTP 200`.
 - [x] Typo domain `venturevisualubuntu.co.za` removed from Vercel.
@@ -17,22 +17,22 @@
 ## Verified Endpoints
 
 ```txt
-https://venturevisionubuntu.co.za              HTTP 200
-https://venturevisionubuntu.co.za/api/health   HTTP 200
-DNS A venturevisionubuntu.co.za                76.76.21.21
+https://venturevisualubuntu.co.za              HTTP 200
+https://venturevisualubuntu.co.za/api/health   HTTP 200
+DNS A venturevisualubuntu.co.za                76.76.21.21
 ```
 
 ## Vercel
 
 - Project: `proofbridge-liner`
 - Production deployment: `proofbridge-liner-qcfdfyoch-divhanimajokweni-1651s-projects.vercel.app`
-- Production alias: `venturevisionubuntu.co.za`
+- Production alias: `venturevisualubuntu.co.za`
 - Domain list should include:
-  - `venturevisionubuntu.co.za`
+  - `venturevisualubuntu.co.za`
   - `ubuntupools-vvlcc.app`
   - `ubuntuvvlcc.com`
 
-Do not recreate or use `venturevisualubuntu.co.za`.
+Do not recreate or use `venturevisionubuntu.co.za`.
 
 ## Replit
 

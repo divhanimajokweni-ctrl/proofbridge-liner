@@ -176,7 +176,7 @@ Margin S   = +0.2007 → SAFE
 **Tagline:**  
 *The pool is the proof. The proof is the platform. The platform is the community.*
 
-**Contact:** hello@venturevisionubuntu.co.za  
+**Contact:** hello@venturevisualubuntu.co.za  
 **Demo:** https://proofbridge-liner.vercel.app
 
 ---
