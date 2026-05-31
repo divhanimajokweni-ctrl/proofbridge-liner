@@ -329,5 +329,5 @@ The kernel is not a silver bullet, but it is a principled foundation for on-chai
 ---
 
 **Document version:** 0.9 — Testnet  
-**Contact:** hello@venturevisionubuntu.co.za  
+**Contact:** hello@venturevisualubuntu.co.za  
 **Repository:** https://github.com/divhanimajokweni-ctrl/proofbridge-liner
