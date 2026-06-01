@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // output: 'standalone' removed — Vercel uses default serverless output
   async rewrites() {
     return [
       { source: '/',
