@@ -6,29 +6,29 @@ const PROTOCOL_VERSION = '1.0'
 const SAFEGRID_VERSION = '1.0.0'
 const ALLOWED_CHAINS   = ['AMOY', 'FABRIC']
 
-function    sha256(msg) { return createHash('sha256').update(msg).digest('hex') }
-function hmacSHA256(msg, secret) {
+function sha256(msg: string): string { return createHash('sha256').update(msg).digest('hex') }
+function hmacSHA256(msg: string, secret: string): string {
   return createHmac('sha256', secret).update(msg).digest('hex')
 }
 
-function receiptUUID() { return randomUUID() }
+function receiptUUID(): string { return randomUUID() }
 
-function envelopeHash(handshake, envelope) {
+function envelopeHash(handshake: Record<string, unknown>, envelope: Record<string, unknown>): string {
   return sha256(JSON.stringify({ handshake, envelope, version: PROTOCOL_VERSION }))
 }
 
-function safegridSignal(evaluatorVersion, verdict) {
+function safegridSignal(evaluatorVersion: string, verdict: string) {
   return { evaluator_version: evaluatorVersion, verdict, signal_id: receiptUUID() }
 }
 
-function betaMean(a, b) { return (a + 1) / (a + b + 2) }
+function betaMean(a: number, b: number): number { return (a + 1) / (a + b + 2) }
 
-function calibratedThreshold(baseThreshold, gamma, alpha, betaCount) {
+function calibratedThreshold(baseThreshold: number, gamma: number, alpha: number, betaCount: number): number {
   if (alpha <= 0) return 0
   return baseThreshold / (1 + gamma * (betaCount / alpha))
 }
 
-function buildEnvelope(chain, alpha, betaCount) {
+function buildEnvelope(chain: string, alpha: number, betaCount: number) {
   return {
     handler: chain,
     patching_profile: [500, 10, 2],
@@ -42,12 +42,12 @@ function buildEnvelope(chain, alpha, betaCount) {
   }
 }
 
-function buildHandshake(chain) {
+function buildHandshake(chain: string) {
   return { domain: chain, pairable_chains: ALLOWED_CHAINS }
 }
 
 export async function POST(request: NextRequest) {
-  let body
+  let body: Record<string, unknown>
   try { body = await request.json() }
   catch { return NextResponse.json({ ok: false, error: 'INVALID_JSON' }, { status: 400 }) }
 
