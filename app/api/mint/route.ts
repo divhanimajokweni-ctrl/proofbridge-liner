@@ -6,40 +6,40 @@ const PROTOCOL_VERSION   = '1.0'
 const SAFEGRID_VERSION   = '1.0.0'
 const ALLOWED_CHAINS     = ['AMOY', 'FABRIC']
 
-function    sha256Hex(msg) { return createHash('sha256').update(msg).digest('hex') }
-function hmacSHA256(message, secret) {
+function sha256Hex(msg: string): string { return createHash('sha256').update(msg).digest('hex') }
+function hmacSHA256(message: string, secret: string): string {
   return `hmac-sha256:${createHmac('sha256', secret).update(message).digest('hex')}`
 }
 
-function uuidv4() { return randomUUID() }
+function uuidv4(): string { return randomUUID() }
 
-function isHex64(s)  { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s) }
-function isHexNonce(s) { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s) }
+function isHex64(s: string): boolean  { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s) }
+function isHexNonce(s: string): boolean { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s) }
 
-function canonicalJSON(obj) {
+function canonicalJSON(obj: Record<string, unknown>): string {
   return JSON.stringify(obj, Object.keys(obj).sort())
 }
 
-function envelopeHash(handshake, envelope) {
+function envelopeHash(handshake: Record<string, unknown>, envelope: Record<string, unknown>): string {
   return sha256Hex(JSON.stringify({ handshake, envelope, version: PROTOCOL_VERSION }))
 }
 
-function safegridSignal(evaluatorVersion, verdict) {
+function safegridSignal(evaluatorVersion: string, verdict: string) {
   return { evaluator_version: evaluatorVersion, verdict, signal_id: uuidv4() }
 }
 
-function betaMean(a, b) { return (a + 1) / (a + b + 2) }
+function betaMean(a: number, b: number): number { return (a + 1) / (a + b + 2) }
 
-function calibratedThreshold(baseThreshold, gamma, alpha, betaCount) {
+function calibratedThreshold(baseThreshold: number, gamma: number, alpha: number, betaCount: number): number {
   if (alpha <= 0) return 0
   return baseThreshold / (1 + gamma * (betaCount / alpha))
 }
 
-function handshakeFor(chain) {
+function handshakeFor(chain: string) {
   return { domain: chain, pairable_chains: ALLOWED_CHAINS }
 }
 
-function envelopeFor(chain, alpha, betaCount) {
+function envelopeFor(chain: string, alpha: number, betaCount: number) {
   return {
     handler: chain,
     patching_profile: [500, 10, 2],
@@ -54,7 +54,7 @@ function envelopeFor(chain, alpha, betaCount) {
 }
 
 export async function POST(request: NextRequest) {
-  let body
+  let body: Record<string, unknown>
   try { body = await request.json() }
   catch { return NextResponse.json({ ok: false, error: 'INVALID_JSON' }, { status: 400 }) }
 

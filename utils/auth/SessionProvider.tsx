@@ -29,7 +29,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, s: Session | null) => {
       setSession(s);
       setUser(s?.user ?? null);
       setLoading(false);
