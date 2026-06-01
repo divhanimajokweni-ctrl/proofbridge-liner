@@ -1,0 +1,38 @@
+name: Qodana Code Inspection
+
+on:
+  push:
+    branches: [main, compliance-fabric]
+  pull_request:
+    branches: [main, compliance-fabric]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  qodana:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: JetBrains Qodana Action
+        uses: JetBrains/qodana-action@v2024.3
+        with:
+          project-token: ${{ secrets.QODANA_TOKEN }}
+          args: >
+            --baseline=.qodana.baseline.json
+          post-action-token: ${{ secrets.QODANA_TOKEN }}
+
+      - name: Upload Qodana Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qodana-results
+          path: ${{ github.workspace }}/qodana/
+          retention-days: 30
