@@ -9,7 +9,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<State>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const supabase = createSupabaseBrowserClient();
+  const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
