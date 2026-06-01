@@ -46,15 +46,20 @@ function buildHandshake(chain: string) {
   return { domain: chain, pairable_chains: ALLOWED_CHAINS }
 }
 
+type VerifyBody = {
+  alpha?: number; beta?: number; gamma?: number; threshold?: number;
+  deed_hash?: string; issuer_did?: string; property_ref?: string; chain_target?: string;
+};
+
 export async function POST(request: NextRequest) {
-  let body: Record<string, unknown>
+  let body: VerifyBody
   try { body = await request.json() }
   catch { return NextResponse.json({ ok: false, error: 'INVALID_JSON' }, { status: 400 }) }
 
   const {
-    alpha, beta, gamma, threshold,
+    alpha = 0, beta = 0, gamma = 0, threshold = 0,
     deed_hash, issuer_did, property_ref, chain_target,
-  } = body ?? {}
+  } = body
 
   const a = +alpha, b = +beta, g = +gamma, t = +threshold
 

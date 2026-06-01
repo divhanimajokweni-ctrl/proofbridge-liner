@@ -13,8 +13,8 @@ function hmacSHA256(message: string, secret: string): string {
 
 function uuidv4(): string { return randomUUID() }
 
-function isHex64(s: string): boolean  { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s) }
-function isHexNonce(s: string): boolean { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s) }
+function isHex64(s: unknown): boolean  { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s) }
+function isHexNonce(s: unknown): boolean { return typeof s === 'string' && /^[0-9a-f]{64}$/.test(s) }
 
 function canonicalJSON(obj: Record<string, unknown>): string {
   return JSON.stringify(obj, Object.keys(obj).sort())
@@ -53,15 +53,21 @@ function envelopeFor(chain: string, alpha: number, betaCount: number) {
   }
 }
 
+type MintBody = {
+  alpha?: number; beta?: number; gamma?: number; threshold?: number;
+  deed_hash?: string; client_nonce?: string; issuer_did?: string;
+  property_ref?: string; chain_target?: string;
+};
+
 export async function POST(request: NextRequest) {
-  let body: Record<string, unknown>
+  let body: MintBody
   try { body = await request.json() }
   catch { return NextResponse.json({ ok: false, error: 'INVALID_JSON' }, { status: 400 }) }
 
   const {
-    alpha, beta, gamma, threshold: rawThreshold,
+    alpha = 0, beta = 0, gamma = 0, threshold: rawThreshold = 0,
     deed_hash, client_nonce, issuer_did, property_ref, chain_target,
-  } = body ?? {}
+  } = body
 
   const a = +alpha, b = +beta, g = +gamma, t = +rawThreshold
 
