@@ -71,6 +71,13 @@ export async function POST(request: NextRequest) {
 
   const a = +alpha, b = +beta, g = +gamma, t = +rawThreshold
 
+  if (![a, b, g, t].every(Number.isFinite) || a < 0 || b < 0 || g <= 0 || t < 0 || t > 1) {
+    return NextResponse.json({
+      ok: false, error: 'VALIDATION_ERROR',
+      errors: ['alpha must be ≥ 0', 'beta must be ≥ 0', 'gamma must be > 0', 'threshold must be between 0 and 1'],
+    }, { status: 400 })
+  }
+
   if (!isHex64(deed_hash)) {
     return NextResponse.json({
       ok: false, error: 'VALIDATION_ERROR',
