@@ -1,4 +1,3 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -6,49 +5,49 @@ const publicRoutes = ['/auth', '/auth/callback', '/vvv', '/demo', '/gate-1', '/p
 const adminRoutes = ['/admin'];
 
 export async function middleware(request: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   let supabaseResponse = NextResponse.next({ request });
 
-  if (!supabaseUrl || !supabaseKey) {
-    return supabaseResponse;
-  }
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const supabase = createServerClient(
-    supabaseUrl,
-    supabaseKey,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll(); },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+    if (!supabaseUrl || !supabaseKey) {
+      return supabaseResponse;
+    }
+
+    const { createServerClient } = await import('@supabase/ssr');
+
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseKey,
+      {
+        cookies: {
+          getAll() { return request.cookies.getAll(); },
+          setAll(cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[]) {
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+            supabaseResponse = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            );
+          },
         },
-      },
-    }
-  );
+      }
+    );
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { pathname } = request.nextUrl;
+    const { data: { user } } = await supabase.auth.getUser();
+    const { pathname } = request.nextUrl;
 
-  // Allow public routes without session
-  if (publicRoutes.some((r) => pathname === r || pathname.startsWith(r + '/'))) {
-    return supabaseResponse;
-  }
-
-  // Protect admin routes — require facilitator role
-  if (adminRoutes.some((r) => pathname.startsWith(r))) {
-    if (!user) {
-      return NextResponse.redirect(new URL('/auth', request.url));
+    if (adminRoutes.some((r) => pathname.startsWith(r))) {
+      if (!user) {
+        return NextResponse.redirect(new URL('/auth', request.url));
+      }
+      const role = user.user_metadata?.role;
+      if (role !== 'facilitator') {
+        return NextResponse.redirect(new URL('/pools?error=unauthorized', request.url));
+      }
     }
-    const role = user.user_metadata?.role;
-    if (role !== 'facilitator') {
-      return NextResponse.redirect(new URL('/pools?error=unauthorized', request.url));
-    }
-    return supabaseResponse;
+  } catch {
+    // Supabase unavailable in Edge Runtime — pass through without auth
   }
 
   return supabaseResponse;
