@@ -5,24 +5,67 @@ ProofBridge Liner is the production shell for the Venture Vision Ubuntu / Ubuntu
 ## Current Production State
 
 - Production domain: https://venturevisualubuntu.co.za
-- Current Vercel deployment: `proofbridge-liner-qcfdfyoch-divhanimajokweni-1651s-projects.vercel.app`
-- Production alias verified: `venturevisualubuntu.co.za -> proofbridge-liner-qcfdfyoch-divhanimajokweni-1651s-projects.vercel.app`
-- DNS apex: `venturevisualubuntu.co.za -> 76.76.21.21`
-- Health route: https://venturevisualubuntu.co.za/api/health
 - Active clean integration branch: `compliance-fabric`
-- Suspicious deployment replay branch: `gate-1` is intentionally not the source of this clean production sync.
+- Runtime: Next.js 15 App Router on Vercel Edge
+- Node.js: 24.x (engines field)
+- Middleware: `middleware.ts` (dynamic import for Edge Runtime)
 
-The typo domain `venturevisionubuntu.co.za` was removed from Vercel. Use `venturevisualubuntu.co.za` everywhere.
+## Architecture
 
-## Operational Surfaces
+```
+app/
+├── layout.tsx              Root layout (SessionProvider wrapper)
+├── page.tsx                Redirects to /vvv/index.html
+├── globals.css             Global styles
+├── auth/
+│   ├── page.tsx            Magic link sign-in (client)
+│   └── callback/route.ts   Supabase code exchange
+├── api/
+│   ├── verify/route.ts     Gate-1 Bayesian verification (POST)
+│   ├── mint/route.ts       Gate-1 v2 mint with nonce (POST)
+│   └── contact/route.ts    Contact form via Resend (POST)
+└── admin/
+    └── pools/page.tsx      Admin pool dashboard (auth-required)
 
-### Vercel
+middleware.ts               Edge auth guard (Supabase dynamic import)
+next.config.js              Rewrites to /vvv/ static pages
+vercel.json                 Vercel config (no rewrites — handled by Next.js)
+```
 
-Vercel serves the static VVU pages and serverless API routes from `vercel.json`.
+## API Routes
 
-Important routes:
+All routes are Next.js App Router handlers in `app/api/`:
 
-```txt
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/verify` | POST | Gate-1 Bayesian verification — computes posterior, threshold, verdict |
+| `/api/mint` | POST | Gate-1 v2 mint — adds replay protection via client_nonce |
+| `/api/contact` | POST | Contact form — sends via Resend API |
+
+### POST /api/verify
+
+```json
+{
+  "alpha": 10, "beta": 2, "gamma": 1.5, "threshold": 0.7,
+  "deed_hash": "64-char-hex", "chain_target": "AMOY"
+}
+```
+
+### POST /api/mint
+
+```json
+{
+  "alpha": 10, "beta": 2, "gamma": 1.5, "threshold": 0.7,
+  "deed_hash": "64-char-hex", "client_nonce": "64-char-hex",
+  "chain_target": "AMOY"
+}
+```
+
+## Static Routes
+
+Rewrites in `next.config.js` serve static HTML from `public/vvv/`:
+
+```
 /                  -> /vvv/index.html
 /gate-1            -> /vvv/gate-1.html
 /pools             -> /vvv/pools.html
@@ -34,136 +77,80 @@ Important routes:
 /pools/profile     -> /vvv/pools-profile.html
 /pools/compliance  -> /vvv/pools-compliance.html
 /admin/pools       -> /vvv/admin-pools.html
-/api/health        -> /api/verify.js
-/api/status        -> /api/verify.js
-/api/verify        -> /api/verify.js
-/api/mint          -> /api/mint.js
+/proofbridge       -> /vvv/proofbridge.html
+/submission        -> /vvv/submission.html
 ```
 
-Deploy production from the clean worktree/branch:
+## Authentication
+
+- Middleware uses `@supabase/ssr` with dynamic import for Edge Runtime compatibility
+- Public routes: `/auth`, `/auth/callback`, `/vvv`, `/demo`, `/gate-1`, `/proofbridge`, `/pools`, `/submission`
+- Admin routes: `/admin` — requires `facilitator` role in Supabase user metadata
+- Auth pages: `/auth` (magic link), `/auth/callback` (code exchange)
+
+## Deployment
 
 ```bash
+# Install and build
+npm install
+npm run build
+
+# Deploy to Vercel
 vercel deploy --prod --yes
 vercel alias set <deployment-url> venturevisualubuntu.co.za
-```
 
-Verify after deploy:
-
-```bash
+# Verify
 curl -I https://venturevisualubuntu.co.za
-curl -I https://venturevisualubuntu.co.za/api/health
+curl -I https://venturevisualubuntu.co.za/api/verify
 ```
 
 Expected: `HTTP/1.1 200 OK`.
 
-### Replit
-
-Replit remains configured as an autoscale dashboard/runtime surface using Node.js 20 and `dashboard/server.js`.
-
-- Workflow: `Start application`
-- Command: `npm run start`
-- Local app port: `5000`
-- Deployment target: `autoscale`
-
-### Git
-
-Use the token-free origin URL:
-
-```bash
-git remote set-url origin https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
-```
-
-Do not commit generated key material, `dist/`, `node_modules/`, local Vercel output, or personal `.env` files.
-
-## Cryptographic Compliance Execution Fabric
-
-The TypeScript compliance fabric adds deterministic, signed compliance artifacts without changing the existing VVU production routes.
-
-Core files:
-
-```txt
-prover/compliance_tokenizer.ts       RS256 pool tokens and signed compliance envelopes
-server/mock_sarb_endpoint.ts         Mock SARB ingest endpoint for signature verification
-scripts/generate_keys.mjs            Local RSA keypair generation
- test/verification_loop.test.ts       End-to-end verification loop
-tsconfig.json                        Strict TypeScript build config
-report_and_justification_mapping.txt Design rationale and mapping
-```
-
-The compliance artifact binds:
-
-- financial payload
-- SARB/BOP3-aligned telemetry
-- posterior/threshold/safety-margin/verdict consistency
-- hardware attestation hash
-- canonical JSON payload hash
-- RS256 signature
-
-Verification fails closed on malformed, unsigned, or tampered packets.
-
-## Local Setup
-
-Use Node.js 22 LTS for the compliance TypeScript workflow.
+## Local Development
 
 ```bash
 npm install
-npm run build
-npm test
+npm run dev
 ```
 
-Expected verification output:
+Dev server starts at `http://localhost:3000`.
 
-```txt
-ISOLATED_MEMORY_BOUNDS_AND_SYNTAX_PARSE_PASS
-ASYMMETRIC_JWT_CRYPTOGRAPHIC_VERIFICATION_PASS
-SARB_BOP3_ISO20022_SERIALIZATION_PASS
-TIMING_PATHWAY_REAUDIT_PASS
-FINAL_EXECUTION_CORRECTNESS_PASS
-```
-
-Generate local RSA keys only when needed:
+### QStash Local Development
 
 ```bash
-npm run keys
+npx @upstash/qstash-cli@latest dev
 ```
 
-This creates `private_key.pem` and `public_key.pem`, both ignored by Git.
+Local QStash server runs at `http://127.0.0.1:8080`.
 
-Start the mock SARB endpoint:
+### AI Gateway
+
+The `ai-gateway/` directory contains a standalone Vercel AI Gateway integration:
 
 ```bash
-npm run server:webhook
+cd ai-gateway
+npm install
+npx tsx index.ts
 ```
 
-Endpoint:
+Requires `AI_GATEWAY_API_KEY` in `ai-gateway/.env.local`.
 
-```txt
-POST http://localhost:8080/api/sarb/bop3-ingest
+## Cryptographic Compliance Execution Fabric
+
+The TypeScript compliance fabric adds deterministic, signed compliance artifacts.
+
+Core files:
+
 ```
-
-## Existing Safety Kernel
-
-The legacy ProofBridge safety kernel remains present in this repository:
-
-- `api/verify.js` and `api/mint.js` for Vercel routes
-- `contracts/` for Solidity safety-kernel contracts
-- `proofs/` for formal verification artifacts
-- `prover/*.js` for existing off-chain prover workflows
-- `dashboard/server.js` for the Replit/Express dashboard
+prover/compliance_tokenizer.ts       RS256 pool tokens and signed compliance envelopes
+server/mock_sarb_endpoint.ts         Mock SARB ingest endpoint for signature verification
+scripts/generate_keys.mjs            Local RSA keypair generation
+test/verification_loop.test.ts       End-to-end verification loop
+```
 
 ## Security Notes
 
-- Never embed GitHub, Hugging Face, Vercel, wallet, or RPC secrets in `.git/config`, docs, examples, or committed env files.
-- Use token-free remote URLs and a credential manager or environment-scoped auth.
-- Treat `private_key.pem`, `.env`, `.env.*`, `dist/`, and `node_modules/` as local/generated artifacts.
-- Rotate any token or private key that previously appeared in local config or documentation.
-
-## Production Verification Snapshot
-
-Last verified during this sync:
-
-```txt
-https://venturevisualubuntu.co.za              HTTP 200
-https://venturevisualubuntu.co.za/api/health   HTTP 200
-DNS A venturevisualubuntu.co.za                76.76.21.21
-```
+- Never embed GitHub, Vercel, wallet, or RPC secrets in committed files
+- Treat `private_key.pem`, `.env`, `.env.*`, `dist/`, `node_modules/` as local artifacts
+- Middleware degrades gracefully when Supabase env vars are missing
+- All API routes validate input and reject malformed requests
