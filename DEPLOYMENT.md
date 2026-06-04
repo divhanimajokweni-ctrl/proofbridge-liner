@@ -68,37 +68,36 @@ The repository zone file at `vvv/dns/zone.corrected.bind` should remain aligned 
 
 ## Vercel Routes
 
-Route behavior is defined in `vercel.json`.
+Route behavior is defined in `next.config.js` rewrites. `vercel.json` contains no rewrites.
 
 Important routes:
 
 ```txt
-/                 -> /vvv/index.html
-/gate-1           -> /vvv/gate-1.html
-/pools/*          -> Ubuntu Pools static journey pages
-/admin/pools      -> /vvv/admin-pools.html
-/api/health       -> /api/verify.js
-/api/status       -> /api/verify.js
-/api/verify       -> /api/verify.js
-/api/mint         -> /api/mint.js
+/                 -> /vvv/index.html (rewrite)
+/gate-1           -> /vvv/gate-1.html (rewrite)
+/pools/*          -> Ubuntu Pools static journey pages (rewrite)
+/admin/pools      -> /vvv/admin-pools.html (rewrite)
+/api/verify       -> app/api/verify/route.ts (App Router)
+/api/mint         -> app/api/mint/route.ts (App Router)
+/api/contact      -> app/api/contact/route.ts (App Router)
 ```
 
 ## Replit Runtime
 
-Replit is configured for the Express dashboard/runtime:
+Replit is configured for autoscale deployment:
 
 ```txt
-Node module: nodejs-20
+Node module: nodejs-24
 Workflow: Start application
 Command: npm run start
 Deployment target: autoscale
-Run command: node dashboard/server.js
+Run command: npm run start
 Port: 5000
 ```
 
 ## Compliance Fabric Verification
 
-The TypeScript compliance fabric is build/test verified with Node.js 22 LTS:
+The TypeScript compliance fabric is build/test verified with Node.js 24:
 
 ```bash
 npm run build
