@@ -9,12 +9,14 @@ import {
   type ReactNode,
 } from 'react';
 import type { Session, User, SupabaseClient } from '@supabase/supabase-js';
+import { hasRole } from './roles';
 
 type AuthContext = {
   user: User | null;
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  isFacilitator: boolean;
 };
 
 const AuthCtx = createContext<AuthContext>({
@@ -22,6 +24,7 @@ const AuthCtx = createContext<AuthContext>({
   session: null,
   loading: true,
   signOut: async () => {},
+  isFacilitator: false,
 });
 
 function createSafeClient(): SupabaseClient | null {
@@ -46,6 +49,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFacilitator, setIsFacilitator] = useState(false);
 
   const supabase = useMemo(() => createSafeClient(), []);
 
@@ -59,6 +63,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     client.auth.getSession().then(({ data: { session: s } }: { data: { session: Session | null } }) => {
       setSession(s);
       setUser(s?.user ?? null);
+      setIsFacilitator(hasRole(s?.user ?? null, 'facilitator'));
       setLoading(false);
     });
 
@@ -67,6 +72,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } = client.auth.onAuthStateChange((_event: string, s: Session | null) => {
       setSession(s);
       setUser(s?.user ?? null);
+      setIsFacilitator(hasRole(s?.user ?? null, 'facilitator'));
       setLoading(false);
     });
 
@@ -83,7 +89,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthCtx.Provider value={{ user, session, loading, signOut }}>
+    <AuthCtx.Provider value={{ user, session, loading, signOut, isFacilitator }}>
       {children}
     </AuthCtx.Provider>
   );
