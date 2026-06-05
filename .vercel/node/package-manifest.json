@@ -1,0 +1,816 @@
+{
+  "version": "20260304",
+  "runtime": "node",
+  "runtimeVersion": {
+    "resolved": "24",
+    "requested": "24.x",
+    "requestedSource": "package.json"
+  },
+  "dependencies": [
+    {
+      "name": "@playwright/test",
+      "type": "direct",
+      "scopes": [
+        "dev"
+      ],
+      "requested": "^1.52.0",
+      "resolved": "1.60.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@supabase/ssr",
+      "type": "direct",
+      "scopes": [
+        "prod"
+      ],
+      "requested": "^0.6.0",
+      "resolved": "0.6.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@supabase/supabase-js",
+      "type": "direct",
+      "scopes": [
+        "prod"
+      ],
+      "requested": "^2.49.4",
+      "resolved": "2.107.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@types/node",
+      "type": "direct",
+      "scopes": [
+        "dev"
+      ],
+      "requested": "^22.0.0",
+      "resolved": "22.7.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@types/react",
+      "type": "direct",
+      "scopes": [
+        "dev"
+      ],
+      "requested": "^19.0.0",
+      "resolved": "19.2.16",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@types/react-dom",
+      "type": "direct",
+      "scopes": [
+        "dev"
+      ],
+      "requested": "^19.0.0",
+      "resolved": "19.2.3",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@vercel/analytics",
+      "type": "direct",
+      "scopes": [
+        "prod"
+      ],
+      "requested": "^2.0.1",
+      "resolved": "2.0.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@vercel/speed-insights",
+      "type": "direct",
+      "scopes": [
+        "prod"
+      ],
+      "requested": "^2.0.0",
+      "resolved": "2.0.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "chrome-devtools-mcp",
+      "type": "direct",
+      "scopes": [
+        "dev"
+      ],
+      "requested": "^1.1.1",
+      "resolved": "1.1.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "ethers",
+      "type": "direct",
+      "scopes": [
+        "prod"
+      ],
+      "requested": "^6.13.0",
+      "resolved": "6.16.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "next",
+      "type": "direct",
+      "scopes": [
+        "prod"
+      ],
+      "requested": "^15.2.4",
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "react",
+      "type": "direct",
+      "scopes": [
+        "prod"
+      ],
+      "requested": "^19.0.0",
+      "resolved": "19.2.7",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "react-dom",
+      "type": "direct",
+      "scopes": [
+        "prod"
+      ],
+      "requested": "^19.0.0",
+      "resolved": "19.2.7",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "typescript",
+      "type": "direct",
+      "scopes": [
+        "dev"
+      ],
+      "requested": "^5.6.0",
+      "resolved": "5.9.3",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@adraffy/ens-normalize",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "1.10.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@emnapi/runtime",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.10.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/colour",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.1.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-darwin-arm64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-darwin-x64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-darwin-arm64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-darwin-x64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-linux-arm",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-linux-arm64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-linux-ppc64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-linux-riscv64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-linux-s390x",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-linux-x64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-linuxmusl-arm64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-libvips-linuxmusl-x64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "1.2.4",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-linux-arm",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-linux-arm64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-linux-ppc64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-linux-riscv64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-linux-s390x",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-linux-x64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-linuxmusl-arm64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-linuxmusl-x64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-wasm32",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-win32-arm64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-win32-ia32",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@img/sharp-win32-x64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@next/env",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@next/swc-darwin-arm64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@next/swc-darwin-x64",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@next/swc-linux-arm64-gnu",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@next/swc-linux-arm64-musl",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@next/swc-linux-x64-gnu",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@next/swc-linux-x64-musl",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@next/swc-win32-arm64-msvc",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@next/swc-win32-x64-msvc",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "15.5.19",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@noble/curves",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "1.2.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@noble/hashes",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "1.3.2",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@supabase/auth-js",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "2.107.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@supabase/functions-js",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "2.107.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@supabase/phoenix",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "0.4.2",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@supabase/postgrest-js",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "2.107.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@supabase/realtime-js",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "2.107.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@supabase/storage-js",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "2.107.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "@swc/helpers",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "0.5.15",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "aes-js",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "4.0.0-beta.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "caniuse-lite",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "1.0.30001793",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "client-only",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "0.0.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "csstype",
+      "type": "transitive",
+      "scopes": [
+        "dev"
+      ],
+      "resolved": "3.2.3",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "detect-libc",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "2.1.2",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "fsevents",
+      "type": "transitive",
+      "scopes": [
+        "dev",
+        "optional"
+      ],
+      "resolved": "2.3.2",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "iceberg-js",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "0.8.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "nanoid",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "3.3.12",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "picocolors",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "1.1.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "playwright",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "1.60.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "playwright-core",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "1.60.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "postcss",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "8.4.31",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "scheduler",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "0.27.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "semver",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "7.8.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "sharp",
+      "type": "transitive",
+      "scopes": [
+        "optional"
+      ],
+      "resolved": "0.34.5",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "source-map-js",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "1.2.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "styled-jsx",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "5.1.6",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "tslib",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "2.7.0",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "undici-types",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "6.19.8",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    },
+    {
+      "name": "ws",
+      "type": "transitive",
+      "scopes": [
+        "prod"
+      ],
+      "resolved": "8.17.1",
+      "source": "registry",
+      "sourceUrl": "https://registry.npmjs.org"
+    }
+  ]
+}
