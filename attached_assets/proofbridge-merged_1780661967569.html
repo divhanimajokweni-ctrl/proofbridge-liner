@@ -4,9 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ProofBridge Liner · Safety Kernel V2.5</title>
-<meta name="description" content="Hardware-enforced circuit breaker for tokenised real-world assets. ED25519-signed on-chain receipts for every Ubuntu Pool transaction. No trust required — the chain is the auditor." />
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
-<script defer src="/_vercel/speed-insights/script.js"></script>
 <style>
   :root {
     --gold: #F5A623;
@@ -58,16 +56,6 @@
     line-height: 1.3; margin-left: 4px;
   }
   .nav-spacer { flex: 1; }
-  .nav-links {
-    display: flex; align-items: center; gap: 4px;
-  }
-  .nav-link {
-    font-family: var(--mono); font-size: 10px; color: var(--muted);
-    text-decoration: none; padding: 6px 10px;
-    border: 1px solid transparent;
-    transition: all 0.15s; letter-spacing: 0.08em;
-  }
-  .nav-link:hover { color: var(--gold); border-color: var(--border); }
   .nav-stat {
     font-family: var(--mono); font-size: 10px; color: var(--muted);
     display: flex; align-items: center; gap: 6px;
@@ -124,14 +112,12 @@
     padding: 14px 28px; background: var(--gold); color: #000;
     font-family: var(--mono); font-size: 12px; font-weight: 700;
     cursor: pointer; border: none; transition: all 0.15s;
-    text-decoration: none; display: inline-flex; align-items: center;
   }
   .cta-primary:hover { background: #e0941a; transform: translateY(-1px); }
   .cta-ghost {
     padding: 14px 28px; background: transparent; color: var(--text);
     font-family: var(--mono); font-size: 12px;
     cursor: pointer; border: 1px solid var(--border); transition: all 0.15s;
-    text-decoration: none; display: inline-flex; align-items: center;
   }
   .cta-ghost:hover { border-color: var(--gold); color: var(--gold); }
 
@@ -432,37 +418,25 @@
   ::-webkit-scrollbar { width: 4px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: #333; }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 768px) {
-    .nav-links { display: none; }
-    .stats-bar { grid-template-columns: 1fr; margin: 0; }
-    .stat-cell { border-right: none; border-bottom: 1px solid var(--border); }
-    .int-grid { grid-template-columns: 1fr; }
-    .trust-grid { grid-template-columns: 1fr; }
-    .footer-grid { grid-template-columns: 1fr; }
-    .footer-brand { grid-column: auto; }
-  }
 </style>
 </head>
 <body>
 
 <!-- NAV -->
 <nav>
-  <a class="nav-logo" href="/">
+  <a class="nav-logo" href="#">
     <div class="nav-logo-box">PB</div>
     ProofBridge
   </a>
   <div class="nav-kernel">KERNEL<br>ONLINE<br>// V2.5</div>
   <div class="nav-spacer"></div>
-  <div class="nav-links">
-    <a class="nav-link" href="/dlt">DLT Layer</a>
-    <a class="nav-link" href="/gate-1">Gate-1</a>
-    <a class="nav-link" href="/pools">Ubuntu Pools</a>
-    <a class="nav-link" href="/submission">Demo</a>
+  <div class="nav-stat" style="display:none;gap:16px;" id="navStats">
+    <span>NETWORK | Polygon Amoy</span>
+    <span>UPTIME | <span id="navUptime">—</span></span>
+    <span>TESTS | <span id="navTests">—</span></span>
   </div>
   <button class="nav-btn nav-btn-ghost" onclick="openTerminalModal()">$ terminal</button>
-  <button class="nav-btn nav-btn-primary" onclick="openOnboard()">Connect wallet</button>
+  <button class="nav-btn nav-btn-primary" onclick="openOnboard()">Connect wallet 'n</button>
 </nav>
 
 <!-- HERO -->
@@ -477,7 +451,7 @@
     <div class="badge live"><span class="dot"></span>STITCH INTEGRATED</div>
   </div>
   <div class="hero-ctas">
-    <button class="cta-primary" onclick="openOnboard()">Start minting receipts</button>
+    <button class="cta-primary" onclick="openOnboard()">Start minting receipts 'n</button>
     <button class="cta-ghost" onclick="openTerminalModal()">$ launch terminal</button>
   </div>
 
@@ -490,7 +464,7 @@
     </div>
     <div class="terminal-body">
       <div><span class="t-prompt">$</span> <span class="t-cmd">proofbridge --status</span></div>
-      <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Kernel: <span class="t-val">ONLINE</span> · Uptime: <span class="t-val" id="termUptime">0s</span></div>
+      <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Kernel: <span class="t-val">ONLINE</span> · Uptime: <span class="t-val" id="termUptime">51s</span></div>
       <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Network: <span class="t-val">Polygon Amoy (chainId 80002)</span></div>
       <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Trust Model: <span class="t-val">Single oracle → 3-of-5 quorum</span></div>
       <div><span class="t-prompt">$</span> <span class="t-cmd">proofbridge mint --amount 500 --pool PILOT-C2</span></div>
@@ -530,14 +504,14 @@
 
   <div class="contract-box" id="contractBox">
     <div class="cb-row" style="margin-bottom:8px;">
-      <span class="cb-label">ADDRESS</span> <span class="cb-val" id="cbAddress">deploying...</span>
+      <span class="cb-label">ADDRESS</span> <span class="cb-val" id="cbAddress">'n deploying...</span>
     </div>
     <div class="cb-row" style="margin-bottom:8px;">
       <span class="cb-label">ORACLE</span> <span class="cb-val">3-of-5 quorum</span>
       &nbsp;&nbsp;<span class="cb-label">NETWORK</span> <span class="cb-val">Polygon Amoy (80002)</span>
     </div>
     <div class="cb-row">
-      <span class="cb-label">TRUST MODEL</span> <span class="cb-val">Single oracle → 3-of-5</span>
+      <span class="cb-label">TRUST MODEL</span> <span class="cb-val">Single oracle 'n 3-of-5</span>
     </div>
   </div>
 
@@ -594,42 +568,42 @@
     <div>
       <p class="footer-col-title">PROTOCOL</p>
       <ul class="footer-links">
-        <li><a href="/dlt">DLT Layer</a></li>
-        <li><a href="/gate-1">Safety Kernel</a></li>
-        <li><a href="/submission">Demo</a></li>
-        <li><a href="/gate-1">CircuitBreaker</a></li>
-        <li><a href="/proofs">Formal Proofs</a></li>
+        <li><a href="#">How it works</a></li>
+        <li><a href="#">Safety Kernel</a></li>
+        <li><a href="#">Trust Model</a></li>
+        <li><a href="#">CircuitBreaker</a></li>
+        <li><a href="#">Formal Proofs</a></li>
       </ul>
     </div>
     <div>
       <p class="footer-col-title">INTEGRATIONS</p>
       <ul class="footer-links">
-        <li><a href="/submission">Stitch</a></li>
-        <li><a href="/pools">Ubuntu Pools</a></li>
-        <li><a href="/dlt">SafeKrypte</a></li>
-        <li><a href="/dlt">ANT Telemetry</a></li>
-        <li><a href="/submission">API Demo</a></li>
+        <li><a href="#">Stitch</a></li>
+        <li><a href="#">Ubuntu Pools</a></li>
+        <li><a href="#">SafeKrypte</a></li>
+        <li><a href="#">ANT Telemetry</a></li>
+        <li><a href="#">API Docs</a></li>
       </ul>
     </div>
     <div>
       <p class="footer-col-title">LEGAL</p>
       <ul class="footer-links">
-        <li><a href="/pools/compliance">FSCA Disclosure</a></li>
-        <li><a href="/pools/compliance">POPIA Policy</a></li>
-        <li><a href="/pools/trust">Terms</a></li>
-        <li><a href="/gate-1">Audit Reports</a></li>
-        <li><a href="mailto:hello@venturevisionubuntu.co.za">Contact</a></li>
+        <li><a href="#">FSCA Disclosure</a></li>
+        <li><a href="#">POPIA Policy</a></li>
+        <li><a href="#">Terms</a></li>
+        <li><a href="#">Audit Reports</a></li>
+        <li><a href="#">Contact</a></li>
       </ul>
     </div>
   </div>
   <div class="footer-bottom">
     <div class="footer-copy">
-      © 2026 Vaguely Vanity LLC · Gqeberha, Eastern Cape · venturevisualubuntu.co.za
+      © 2026 Vaguely Vanity LLC · Gqeberha, Eastern Cape · proofbridge-liner.vercel.app
     </div>
     <div class="footer-legal">
-      <a href="/pools/compliance">Privacy</a>
-      <a href="/pools/trust">Terms</a>
-      <a href="/pools/compliance">FSCA</a>
+      <a href="#">Privacy</a>
+      <a href="#">Terms</a>
+      <a href="#">FSCA</a>
     </div>
   </div>
 </footer>
@@ -639,7 +613,7 @@
   <div class="modal" id="onboardModal">
     <div class="modal-header">
       <div>
-        <div class="modal-title" id="modalTitle">Connect &amp; Configure</div>
+        <div class="modal-title" id="modalTitle">Connect & Configure</div>
         <div class="modal-subtitle" id="modalSubtitle">PROOFBRIDGE LINER · ONBOARDING</div>
       </div>
       <button class="modal-close" onclick="closeOnboard()">✕</button>
@@ -946,6 +920,7 @@ function activateKernel(receipt, pool) {
   document.getElementById('btnNext').style.display = 'none';
   document.getElementById('btnBack').style.display = 'none';
   document.getElementById('modalTitle').textContent = 'Connected & Active';
+  // mark all steps done
   STEPS.forEach((_, i) => {
     document.getElementById(`stepDot${i}`).className = 'step-circle done';
     document.getElementById(`stepDot${i}`).textContent = '✓';
