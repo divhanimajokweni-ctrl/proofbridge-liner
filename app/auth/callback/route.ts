@@ -7,7 +7,12 @@ export async function GET(request: Request) {
   const next = searchParams.get('next') ?? '/pools';
 
   if (code) {
-    const supabase = await createSupabaseServerClient();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) {
+      return NextResponse.redirect(`${origin}/auth?error=config_error`);
+    }
+    const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {

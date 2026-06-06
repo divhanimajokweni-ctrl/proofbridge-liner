@@ -22,15 +22,18 @@ This is the VV LLC production codebase. The canonical production branch is
 
 ```
 /
-├── api/
-│   ├── kernel.js              ← CRITICAL — pure functions layer
-│   ├── mint.js                ← CRITICAL — minting endpoint
-│   └── verify.js              ← CRITICAL — Gate-1 verification handler
-├── vercel.json                ← outputDirectory: "." — DO NOT add builds array
-├── package.json               ← typescript in devDeps, node: "22.x" — DO NOT gut
+├── app/
+│   └── api/
+│       ├── verify/route.ts      ← CRITICAL — Gate-1 verification handler
+│       ├── mint/route.ts        ← CRITICAL — minting endpoint
+│       └── contact/route.ts     ← CRITICAL — contact form handler
+├── middleware.ts                ← CRITICAL — Edge auth guard (Supabase dynamic import)
+├── next.config.js              ← rewrites to /vvv/ static pages
+├── vercel.json                 ← Vercel config — DO NOT add builds or rewrites
+├── package.json                ← typescript in devDeps, node: "24.x" — DO NOT gut
 └── .github/
     └── workflows/
-        └── attestation.yml    ← commit gate — DO NOT disable
+        └── attestation.yml     ← commit gate — DO NOT disable
 ```
 
 ### Deploy pipeline (compliance-fabric)
@@ -81,7 +84,7 @@ COMMIT_HISTORY: [output]
 ### Step 3 — Confirm critical files exist
 
 ```bash
-ls api/kernel.js api/mint.js api/verify.js vercel.json package.json 2>&1
+ls app/api/verify/route.ts app/api/mint/route.ts middleware.ts vercel.json package.json next.config.js 2>&1
 ```
 
 **Required declaration:**
@@ -171,7 +174,7 @@ Embed that 8-character hex string as `sha256:<value>` in every commit.
 | Delete any file under api/              | Production endpoints — breaks live system   |
 | Add `builds` array to vercel.json       | Triggers 12-function serverless limit       |
 | Remove typescript from devDependencies  | Build chain dependency                      |
-| Change engines.node away from "22.x"   | Runtime version lock                        |
+| Change engines.node away from "24.x"   | Runtime version lock                        |
 | Push directly to main                   | main is a mirror — use PRs only             |
 | Push directly to compliance-fabric      | Protected — use PRs from feature branches   |
 | Skip pre-flight protocol                | Non-negotiable — no exceptions              |

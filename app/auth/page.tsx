@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { useMemo, useState, type FormEvent } from 'react';
 
 type State = 'idle' | 'loading' | 'sent' | 'error';
 
@@ -9,12 +8,35 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<State>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const supabase = createSupabaseBrowserClient();
 
-  async function handleSubmit(e: React.FormEvent) {
+  const supabase = useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!url || !key) {
+      return null;
+    }
+
+    try {
+      const { createBrowserClient } = require('@supabase/ssr') as {
+        createBrowserClient: (url: string, key: string) => { auth: { signInWithOtp: (opts: unknown) => Promise<{ error?: Error }> } };
+      };
+      return createBrowserClient(url, key);
+    } catch {
+      return null;
+    }
+  }, []);
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!email || !email.includes('@')) {
       setErrorMsg('Enter a valid email address.');
+      setState('error');
+      return;
+    }
+
+    if (!supabase) {
+      setErrorMsg('Auth is not configured.');
       setState('error');
       return;
     }
