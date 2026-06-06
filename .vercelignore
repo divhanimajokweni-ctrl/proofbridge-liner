@@ -1,5 +1,7 @@
 .git
 .local
+.next
+.vercel/output
 node_modules
 lib
 out
@@ -18,3 +20,4 @@ cloud-init.yml
 *.log
 *.md
 foundry.toml
+vvv/.vercel

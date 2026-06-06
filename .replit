@@ -1,4 +1,4 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-24"]
 [agent]
 expertMode = true
 stack = "BEST_EFFORT_FALLBACK"
@@ -43,6 +43,10 @@ localPort = 3333
 externalPort = 3000
 
 [[ports]]
+localPort = 3456
+externalPort = 8008
+
+[[ports]]
 localPort = 3999
 externalPort = 6800
 
@@ -70,6 +74,14 @@ externalPort = 3003
 localPort = 7777
 externalPort = 4200
 
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 23636
+externalPort = 8000
+
 [deployment]
 deploymentTarget = "autoscale"
-run = ["node", "dashboard/server.js"]
+run = ["npm", "run", "start"]
