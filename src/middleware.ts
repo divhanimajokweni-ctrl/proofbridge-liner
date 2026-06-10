@@ -24,7 +24,8 @@ export async function middleware(req: NextRequest) {
 
   const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data } = await supabase.auth.getSession();
+  const session = data?.session;
 
   if (!session) {
     // Read the tracking header to calculate redirect iterations

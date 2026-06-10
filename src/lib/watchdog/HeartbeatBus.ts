@@ -30,11 +30,20 @@ export class HeartbeatBus {
 
     try {
       this.db = await this.initDB();
-      this.channel = new BroadcastChannel('vvu-heartbeat-bus');
-      this.channel.onmessage = (e: MessageEvent<Incident>) => {
-        this.listeners.forEach(cb => cb(e.data));
-      };
-      this.status = 'ONLINE';
+      try {
+        this.channel = new BroadcastChannel('vvu-heartbeat-bus');
+        this.channel.onmessage = (e: MessageEvent<Incident>) => {
+          this.listeners.forEach(cb => cb(e.data));
+        };
+        this.status = 'ONLINE';
+      } catch (channelError) {
+        // If BroadcastChannel fails, clean up IndexedDB connection
+        if (this.db) {
+          this.db.close();
+          this.db = null;
+        }
+        throw channelError;
+      }
     } catch (e) {
       this.status = 'OFFLINE';
       console.error('Failed to activate HeartbeatBus:', e);
@@ -79,9 +88,13 @@ export class HeartbeatBus {
       if (this.channel) {
         this.channel.postMessage(incident);
       }
-      this.listeners.forEach(cb => cb(incident));
+      // Note: Listeners are called via BroadcastChannel onmessage event
+      // This prevents duplicate processing in the originating tab
     } catch (err) {
       console.error('Incident tracking write hazard:', err);
+      // Even if persistence fails, still attempt to notify listeners
+      // as a fallback for critical incidents
+      this.listeners.forEach(cb => cb(incident));
     }
   }
 

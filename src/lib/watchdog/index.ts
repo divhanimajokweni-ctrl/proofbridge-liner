@@ -6,10 +6,17 @@ import { HeartbeatBus } from './HeartbeatBus';import { OrchestratorEngine } from
 let _bootstrapped = false;
 export async function bootstrapHeartbeat(): Promise<void> {
   if (_bootstrapped) return;
-  _bootstrapped = true;
 
-  await HeartbeatBus.getInstance().activate();
-  OrchestratorEngine.getInstance().start();
+  try {
+    await HeartbeatBus.getInstance().activate();
+    OrchestratorEngine.getInstance().start();
+    _bootstrapped = true;
+  } catch (error) {
+    console.error('Failed to bootstrap heartbeat system:', error);
+    // Reset bootstrapped flag on failure to allow retry
+    _bootstrapped = false;
+    throw error;
+  }
 }
 export function suspendHeartbeat(): void {
   HeartbeatBus.getInstance().suspend();

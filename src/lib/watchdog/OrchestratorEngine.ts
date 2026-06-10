@@ -11,6 +11,7 @@ export class OrchestratorEngine {
   private handlers: Map<OpTag, IncidentHandler> = new Map();
   private intervalId: any | null = null;
   private unsubscribeBus: (() => void) | null = null;
+  private processing: boolean = false;
 
   private constructor() {
     this.registerBuiltInHandlers();
@@ -34,7 +35,7 @@ export class OrchestratorEngine {
       }
     });
 
-    this.intervalId = setInterval(() => this.processNext(), 1000);
+    this.scheduleNextTick();
   }
 
   public pause(): void { if (this.status === 'RUNNING') this.status = 'PAUSED'; }
@@ -42,9 +43,10 @@ export class OrchestratorEngine {
 
   public stop(): void {
     this.status = 'STOPPED';
-    if (this.intervalId) { clearInterval(this.intervalId); this.intervalId = null; }
+    if (this.intervalId) { clearTimeout(this.intervalId); this.intervalId = null; }
     if (this.unsubscribeBus) { this.unsubscribeBus(); this.unsubscribeBus = null; }
     this.queue = [];
+    this.processing = false;
   }
 
   public registerHandler(opTag: OpTag, handler: IncidentHandler): void {
@@ -58,16 +60,37 @@ export class OrchestratorEngine {
     this.queue.sort((a, b) => priorityWeights[b.priority] - priorityWeights[a.priority]);
   }
 
-  private async processNext(): Promise<void> {
-    if (this.status !== 'RUNNING' || this.queue.length === 0) return;
-    const incident = this.queue.shift()!;
-    const handler = this.handlers.get(incident.opTag) || this.handlers.get(OpTag.UNKNOWN);
-    if (handler) {
-      try {
-        await handler(incident);
-      } catch (e) {
-        console.error(`Orchestrator critical handler mutation failure on ${incident.opTag}:`, e);
+  private scheduleNextTick(): void {
+    if (this.status !== 'RUNNING' || this.processing) return;
+    this.intervalId = setTimeout(() => this.processQueue(), 0);
+  }
+
+  private async processQueue(): Promise<void> {
+    if (this.status !== 'RUNNING') {
+      this.processing = false;
+      return;
+    }
+
+    this.processing = true;
+
+    // Process all available items in the queue atomically
+    while (this.status === 'RUNNING' && this.queue.length > 0) {
+      const incident = this.queue.shift()!;
+      const handler = this.handlers.get(incident.opTag) || this.handlers.get(OpTag.UNKNOWN);
+      if (handler) {
+        try {
+          await handler(incident);
+        } catch (e) {
+          console.error(`Orchestrator critical handler mutation failure on ${incident.opTag}:`, e);
+        }
       }
+    }
+
+    this.processing = false;
+
+    // Schedule next tick if still running
+    if (this.status === 'RUNNING') {
+      this.scheduleNextTick();
     }
   }
 

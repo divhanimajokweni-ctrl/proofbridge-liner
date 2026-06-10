@@ -26,7 +26,7 @@ export async function GET() {
 
   try {
     const { data } = await supabase.auth.getSession();
-    checks.auth = !!data || true;
+    checks.auth = !!data;
   } catch {
     checks.auth = false;
   }
