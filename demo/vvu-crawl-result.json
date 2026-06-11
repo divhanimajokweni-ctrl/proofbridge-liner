@@ -1,0 +1,1852 @@
+{
+  "invariant": "events are the only domain truth; all views are deterministic projections",
+  "architecture": {
+    "kernel": "Crawler Event Stream",
+    "transport": "CLI/API invocation",
+    "store": "in-memory ReceiptEvent[] compatible log",
+    "projectors": [
+      "cleaned_offers",
+      "dedupe_index",
+      "comparison_grid",
+      "trend_charts",
+      "value_labels"
+    ],
+    "ui": "Next.js demo page with zero local domain state for results"
+  },
+  "run": {
+    "keyword": "solar inverter",
+    "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+    "startedAt": "2026-06-11T03:41:15.245Z",
+    "completedAt": "2026-06-11T03:41:15.246Z",
+    "totalEvents": 19,
+    "observedOffers": 11,
+    "cleanedOffers": 10,
+    "uniqueProducts": 4,
+    "duplicatesRemoved": 1,
+    "sourcesVisited": 3
+  },
+  "datasetPreview": {
+    "description": "Sample seeded dataset used for initialization and live-demo fallback",
+    "totalSeedRows": 11,
+    "rows": [
+      {
+        "source": "Market Alpha",
+        "vendor": "VoltHub",
+        "title": "EcoVolt 5kW Hybrid Inverter 48V",
+        "priceDisplay": "R 24 999,00",
+        "keywordTokens": [
+          "solar inverter",
+          "hybrid inverter",
+          "48v inverter"
+        ]
+      },
+      {
+        "source": "Market Bravo",
+        "vendor": "SunMart",
+        "title": "EcoVolt 5KW Hybrid Inverter - 48V",
+        "priceDisplay": "R 25 499,00",
+        "keywordTokens": [
+          "solar inverter",
+          "hybrid inverter"
+        ]
+      },
+      {
+        "source": "Market Charlie",
+        "vendor": "GridShop",
+        "title": "EcoVolt 5 kW Hybrid Inverter 48 Volt",
+        "priceDisplay": "R 25 999,00",
+        "keywordTokens": [
+          "solar inverter",
+          "48v inverter"
+        ]
+      },
+      {
+        "source": "Market Alpha",
+        "vendor": "VoltHub",
+        "title": "EcoVolt 5kW hybrid inverter 48V",
+        "priceDisplay": "R 24 999,00",
+        "keywordTokens": [
+          "solar inverter"
+        ]
+      },
+      {
+        "source": "Market Alpha",
+        "vendor": "VoltHub",
+        "title": "SunCore 8kW Hybrid Pro Inverter",
+        "priceDisplay": "R 36 990,00",
+        "keywordTokens": [
+          "solar inverter",
+          "8kw inverter",
+          "hybrid inverter"
+        ]
+      }
+    ]
+  },
+  "comparisonColumns": [
+    "Product",
+    "Lowest price",
+    "Average price",
+    "Vendors",
+    "Spread",
+    "Trend",
+    "Recommendation",
+    "Best offer vendor"
+  ],
+  "comparisons": [
+    {
+      "rank": 1,
+      "productId": "2319cdd0a00d6443",
+      "productName": "GridFlex Lite 3.6kW",
+      "lowestPriceCents": 1510000,
+      "lowestPriceDisplay": "R 15 100,00",
+      "averagePriceDisplay": "R 15 249,50",
+      "vendorCount": 2,
+      "priceSpreadDisplay": "R 299,00",
+      "trendSummary": "6.0% down",
+      "recommendationLabel": "Lowest Price",
+      "bestOfferVendor": "VoltHub",
+      "bestOfferSource": "Market Alpha",
+      "specSummary": "3.6kW | single phase | 3 years | 95.4%",
+      "sparklinePath": "M0.0,0.0 L60.0,22.4 L120.0,36.4 L180.0,54.0",
+      "sparklinePoints": [
+        {
+          "date": "2026-05-03",
+          "priceCents": 1609000,
+          "priceDisplay": "R 16 090,00"
+        },
+        {
+          "date": "2026-05-10",
+          "priceCents": 1569000,
+          "priceDisplay": "R 15 690,00"
+        },
+        {
+          "date": "2026-05-20",
+          "priceCents": 1544000,
+          "priceDisplay": "R 15 440,00"
+        },
+        {
+          "date": "2026-06-05",
+          "priceCents": 1512450,
+          "priceDisplay": "R 15 124,50"
+        }
+      ],
+      "offers": [
+        {
+          "vendor": "VoltHub",
+          "sourceName": "Market Alpha",
+          "title": "GridFlex Lite 3.6kW Solar Inverter",
+          "totalPriceDisplay": "R 15 100,00",
+          "url": "https://example.test/volthub/gridflex-36"
+        },
+        {
+          "vendor": "GridShop",
+          "sourceName": "Market Charlie",
+          "title": "GridFlex Lite 3.6 KW inverter",
+          "totalPriceDisplay": "R 15 399,00",
+          "url": "https://example.test/gridshop/gridflex-36"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "productId": "0dcd2bb1124b9a73",
+      "productName": "EcoVolt Hybrid 5kW 5kW",
+      "lowestPriceCents": 2499900,
+      "lowestPriceDisplay": "R 24 999,00",
+      "averagePriceDisplay": "R 25 649,00",
+      "vendorCount": 3,
+      "priceSpreadDisplay": "R 1 000,00",
+      "trendSummary": "7.0% down",
+      "recommendationLabel": "Watchlist Deal",
+      "bestOfferVendor": "VoltHub",
+      "bestOfferSource": "Market Alpha",
+      "specSummary": "5kW | single phase | 5 years | 97.2%",
+      "sparklinePath": "M0.0,0.0 L60.0,24.2 L120.0,40.0 L180.0,54.0",
+      "sparklinePoints": [
+        {
+          "date": "2026-05-03",
+          "priceCents": 2743233,
+          "priceDisplay": "R 27 432,33"
+        },
+        {
+          "date": "2026-05-10",
+          "priceCents": 2656567,
+          "priceDisplay": "R 26 565,67"
+        },
+        {
+          "date": "2026-05-20",
+          "priceCents": 2599900,
+          "priceDisplay": "R 25 999,00"
+        },
+        {
+          "date": "2026-06-05",
+          "priceCents": 2549900,
+          "priceDisplay": "R 25 499,00"
+        }
+      ],
+      "offers": [
+        {
+          "vendor": "VoltHub",
+          "sourceName": "Market Alpha",
+          "title": "EcoVolt 5kW Hybrid Inverter 48V",
+          "totalPriceDisplay": "R 24 999,00",
+          "url": "https://example.test/volthub/ecovolt-5kw"
+        },
+        {
+          "vendor": "SunMart",
+          "sourceName": "Market Bravo",
+          "title": "EcoVolt 5KW Hybrid Inverter - 48V",
+          "totalPriceDisplay": "R 25 949,00",
+          "url": "https://example.test/sunmart/ecovolt-5kw"
+        },
+        {
+          "vendor": "GridShop",
+          "sourceName": "Market Charlie",
+          "title": "EcoVolt 5 kW Hybrid Inverter 48 Volt",
+          "totalPriceDisplay": "R 25 999,00",
+          "url": "https://example.test/gridshop/ecovolt-5kw"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "productId": "928c513be95a75cf",
+      "productName": "SunCore Hybrid Pro 8kW",
+      "lowestPriceCents": 3659000,
+      "lowestPriceDisplay": "R 36 590,00",
+      "averagePriceDisplay": "R 37 140,00",
+      "vendorCount": 3,
+      "priceSpreadDisplay": "R 900,00",
+      "trendSummary": "4.2% down",
+      "recommendationLabel": "Market Consensus",
+      "bestOfferVendor": "SunMart",
+      "bestOfferSource": "Market Bravo",
+      "specSummary": "8kW | single phase | 10 years | 98.1%",
+      "sparklinePath": "M0.0,0.0 L60.0,25.8 L120.0,41.5 L180.0,54.0",
+      "sparklinePoints": [
+        {
+          "date": "2026-05-03",
+          "priceCents": 3842633,
+          "priceDisplay": "R 38 426,33"
+        },
+        {
+          "date": "2026-05-10",
+          "priceCents": 3765967,
+          "priceDisplay": "R 37 659,67"
+        },
+        {
+          "date": "2026-05-20",
+          "priceCents": 3719300,
+          "priceDisplay": "R 37 193,00"
+        },
+        {
+          "date": "2026-06-05",
+          "priceCents": 3682333,
+          "priceDisplay": "R 36 823,33"
+        }
+      ],
+      "offers": [
+        {
+          "vendor": "SunMart",
+          "sourceName": "Market Bravo",
+          "title": "SunCore 8KW Hybrid Pro",
+          "totalPriceDisplay": "R 36 590,00",
+          "url": "https://example.test/sunmart/suncore-8kw"
+        },
+        {
+          "vendor": "VoltHub",
+          "sourceName": "Market Alpha",
+          "title": "SunCore 8kW Hybrid Pro Inverter",
+          "totalPriceDisplay": "R 37 340,00",
+          "url": "https://example.test/volthub/suncore-8kw"
+        },
+        {
+          "vendor": "GridShop",
+          "sourceName": "Market Charlie",
+          "title": "SunCore Hybrid Pro 8kW Inverter",
+          "totalPriceDisplay": "R 37 490,00",
+          "url": "https://example.test/gridshop/suncore-8kw"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "productId": "bb643cbd63256db2",
+      "productName": "Atlas Max 10kW",
+      "lowestPriceCents": 4789000,
+      "lowestPriceDisplay": "R 47 890,00",
+      "averagePriceDisplay": "R 47 940,00",
+      "vendorCount": 2,
+      "priceSpreadDisplay": "R 100,00",
+      "trendSummary": "3.7% down",
+      "recommendationLabel": "Balanced Pick",
+      "bestOfferVendor": "SunMart",
+      "bestOfferSource": "Market Bravo",
+      "specSummary": "10kW | three phase | 10 years | 98.4%",
+      "sparklinePath": "M0.0,0.0 L60.0,19.5 L120.0,39.0 L180.0,54.0",
+      "sparklinePoints": [
+        {
+          "date": "2026-05-03",
+          "priceCents": 4929000,
+          "priceDisplay": "R 49 290,00"
+        },
+        {
+          "date": "2026-05-10",
+          "priceCents": 4864000,
+          "priceDisplay": "R 48 640,00"
+        },
+        {
+          "date": "2026-05-20",
+          "priceCents": 4799000,
+          "priceDisplay": "R 47 990,00"
+        },
+        {
+          "date": "2026-06-05",
+          "priceCents": 4749000,
+          "priceDisplay": "R 47 490,00"
+        }
+      ],
+      "offers": [
+        {
+          "vendor": "SunMart",
+          "sourceName": "Market Bravo",
+          "title": "Atlas Max 10kW Three-Phase Hybrid Inverter",
+          "totalPriceDisplay": "R 47 890,00",
+          "url": "https://example.test/sunmart/atlas-10kw"
+        },
+        {
+          "vendor": "GridShop",
+          "sourceName": "Market Charlie",
+          "title": "Atlas Max 10kW Hybrid Inverter 3 Phase",
+          "totalPriceDisplay": "R 47 990,00",
+          "url": "https://example.test/gridshop/atlas-10kw"
+        }
+      ]
+    }
+  ],
+  "products": [
+    {
+      "productId": "2319cdd0a00d6443",
+      "productName": "GridFlex Lite 3.6kW",
+      "brand": "GridFlex",
+      "model": "Lite",
+      "capacity": "3.6kW",
+      "specs": {
+        "power": "3.6kW",
+        "battery": "24V",
+        "phase": "single phase",
+        "warranty": "3 years",
+        "efficiency": "95.4%"
+      },
+      "specSummary": "3.6kW | single phase | 3 years | 95.4%",
+      "vendorCount": 2,
+      "sourceCount": 2,
+      "lowestPriceCents": 1510000,
+      "lowestPriceDisplay": "R 15 100,00",
+      "averagePriceCents": 1524950,
+      "averagePriceDisplay": "R 15 249,50",
+      "priceSpreadCents": 29900,
+      "priceSpreadDisplay": "R 299,00",
+      "bestOfferVendor": "VoltHub",
+      "bestOfferSource": "Market Alpha",
+      "offers": [
+        {
+          "offerId": "852f0410-a5ef-4952-a2a4-b9991e090a0a",
+          "sourceId": "market-alpha",
+          "sourceName": "Market Alpha",
+          "sourceProductId": "alpha-gridflex-36-1",
+          "vendor": "VoltHub",
+          "title": "GridFlex Lite 3.6kW Solar Inverter",
+          "canonicalTitle": "gridflex lite 3 6kw solar inverter",
+          "brand": "GridFlex",
+          "model": "Lite",
+          "capacity": "3.6kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/volthub/gridflex-36",
+          "specs": {
+            "power": "3.6kW",
+            "battery": "24V",
+            "phase": "single phase",
+            "warranty": "3 years",
+            "efficiency": "95.4%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "entry inverter"
+          ],
+          "priceCents": 1485000,
+          "shippingCents": 25000,
+          "totalPriceCents": 1510000,
+          "priceDisplay": "R 14 850,00",
+          "totalPriceDisplay": "R 15 100,00",
+          "productFingerprint": "2319cdd0a00d6443",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 1599000,
+              "priceDisplay": "R 15 990,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 1549000,
+              "priceDisplay": "R 15 490,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 1519000,
+              "priceDisplay": "R 15 190,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 1485000,
+              "priceDisplay": "R 14 850,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        },
+        {
+          "offerId": "4659a3dc-9716-4559-a5b4-717fa6680f3d",
+          "sourceId": "market-charlie",
+          "sourceName": "Market Charlie",
+          "sourceProductId": "charlie-gridflex-36-1",
+          "vendor": "GridShop",
+          "title": "GridFlex Lite 3.6 KW inverter",
+          "canonicalTitle": "gridflex lite 3 6 kw inverter",
+          "brand": "GridFlex",
+          "model": "Lite",
+          "capacity": "3.6kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/gridshop/gridflex-36",
+          "specs": {
+            "power": "3.6kW",
+            "battery": "24V",
+            "phase": "single phase",
+            "warranty": "3 years",
+            "efficiency": "95.4%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "entry inverter"
+          ],
+          "priceCents": 1539900,
+          "shippingCents": 0,
+          "totalPriceCents": 1539900,
+          "priceDisplay": "R 15 399,00",
+          "totalPriceDisplay": "R 15 399,00",
+          "productFingerprint": "2319cdd0a00d6443",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 1619000,
+              "priceDisplay": "R 16 190,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 1589000,
+              "priceDisplay": "R 15 890,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 1569000,
+              "priceDisplay": "R 15 690,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 1539900,
+              "priceDisplay": "R 15 399,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        }
+      ],
+      "priceHistory": [
+        {
+          "date": "2026-05-03",
+          "priceCents": 1609000,
+          "priceDisplay": "R 16 090,00"
+        },
+        {
+          "date": "2026-05-10",
+          "priceCents": 1569000,
+          "priceDisplay": "R 15 690,00"
+        },
+        {
+          "date": "2026-05-20",
+          "priceCents": 1544000,
+          "priceDisplay": "R 15 440,00"
+        },
+        {
+          "date": "2026-06-05",
+          "priceCents": 1512450,
+          "priceDisplay": "R 15 124,50"
+        }
+      ],
+      "sparklinePath": "M0.0,0.0 L60.0,22.4 L120.0,36.4 L180.0,54.0",
+      "trend": {
+        "direction": "down",
+        "percentChange": -6.000621504039776,
+        "summary": "6.0% down"
+      },
+      "valueScore": 90.46,
+      "recommendationLabel": "Lowest Price"
+    },
+    {
+      "productId": "0dcd2bb1124b9a73",
+      "productName": "EcoVolt Hybrid 5kW 5kW",
+      "brand": "EcoVolt",
+      "model": "Hybrid 5kW",
+      "capacity": "5kW",
+      "specs": {
+        "power": "5kW",
+        "battery": "48V",
+        "phase": "single phase",
+        "warranty": "5 years",
+        "efficiency": "97.2%"
+      },
+      "specSummary": "5kW | single phase | 5 years | 97.2%",
+      "vendorCount": 3,
+      "sourceCount": 3,
+      "lowestPriceCents": 2499900,
+      "lowestPriceDisplay": "R 24 999,00",
+      "averagePriceCents": 2564900,
+      "averagePriceDisplay": "R 25 649,00",
+      "priceSpreadCents": 100000,
+      "priceSpreadDisplay": "R 1 000,00",
+      "bestOfferVendor": "VoltHub",
+      "bestOfferSource": "Market Alpha",
+      "offers": [
+        {
+          "offerId": "a533d802-b99f-4805-a42f-7d72f46212b5",
+          "sourceId": "market-alpha",
+          "sourceName": "Market Alpha",
+          "sourceProductId": "alpha-eco-5kw-1",
+          "vendor": "VoltHub",
+          "title": "EcoVolt 5kW Hybrid Inverter 48V",
+          "canonicalTitle": "ecovolt 5kw hybrid inverter 48v",
+          "brand": "EcoVolt",
+          "model": "Hybrid 5kW",
+          "capacity": "5kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/volthub/ecovolt-5kw",
+          "specs": {
+            "power": "5kW",
+            "battery": "48V",
+            "phase": "single phase",
+            "warranty": "5 years",
+            "efficiency": "97.2%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "hybrid inverter",
+            "48v inverter"
+          ],
+          "priceCents": 2499900,
+          "shippingCents": 0,
+          "totalPriceCents": 2499900,
+          "priceDisplay": "R 24 999,00",
+          "totalPriceDisplay": "R 24 999,00",
+          "productFingerprint": "0dcd2bb1124b9a73",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 2699900,
+              "priceDisplay": "R 26 999,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 2599900,
+              "priceDisplay": "R 25 999,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 2549900,
+              "priceDisplay": "R 25 499,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 2499900,
+              "priceDisplay": "R 24 999,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        },
+        {
+          "offerId": "7e2828dc-b438-4bd6-9e54-1956aacb5720",
+          "sourceId": "market-bravo",
+          "sourceName": "Market Bravo",
+          "sourceProductId": "bravo-eco-5kw-1",
+          "vendor": "SunMart",
+          "title": "EcoVolt 5KW Hybrid Inverter - 48V",
+          "canonicalTitle": "ecovolt 5kw hybrid inverter 48v",
+          "brand": "EcoVolt",
+          "model": "Hybrid 5kW",
+          "capacity": "5kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/sunmart/ecovolt-5kw",
+          "specs": {
+            "power": "5kW",
+            "battery": "48V",
+            "phase": "single phase",
+            "warranty": "5 years",
+            "efficiency": "97.2%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "hybrid inverter"
+          ],
+          "priceCents": 2549900,
+          "shippingCents": 45000,
+          "totalPriceCents": 2594900,
+          "priceDisplay": "R 25 499,00",
+          "totalPriceDisplay": "R 25 949,00",
+          "productFingerprint": "0dcd2bb1124b9a73",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 2729900,
+              "priceDisplay": "R 27 299,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 2669900,
+              "priceDisplay": "R 26 699,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 2599900,
+              "priceDisplay": "R 25 999,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 2549900,
+              "priceDisplay": "R 25 499,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        },
+        {
+          "offerId": "8fc3a3dc-5552-4a40-88c6-3e9ed8e570e7",
+          "sourceId": "market-charlie",
+          "sourceName": "Market Charlie",
+          "sourceProductId": "charlie-eco-5kw-1",
+          "vendor": "GridShop",
+          "title": "EcoVolt 5 kW Hybrid Inverter 48 Volt",
+          "canonicalTitle": "ecovolt 5 kw hybrid inverter 48 volt",
+          "brand": "EcoVolt",
+          "model": "Hybrid 5kW",
+          "capacity": "5kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/gridshop/ecovolt-5kw",
+          "specs": {
+            "power": "5kW",
+            "battery": "48V",
+            "phase": "single phase",
+            "warranty": "5 years",
+            "efficiency": "97.2%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "48v inverter"
+          ],
+          "priceCents": 2599900,
+          "shippingCents": 0,
+          "totalPriceCents": 2599900,
+          "priceDisplay": "R 25 999,00",
+          "totalPriceDisplay": "R 25 999,00",
+          "productFingerprint": "0dcd2bb1124b9a73",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 2799900,
+              "priceDisplay": "R 27 999,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 2699900,
+              "priceDisplay": "R 26 999,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 2649900,
+              "priceDisplay": "R 26 499,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 2599900,
+              "priceDisplay": "R 25 999,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        }
+      ],
+      "priceHistory": [
+        {
+          "date": "2026-05-03",
+          "priceCents": 2743233,
+          "priceDisplay": "R 27 432,33"
+        },
+        {
+          "date": "2026-05-10",
+          "priceCents": 2656567,
+          "priceDisplay": "R 26 565,67"
+        },
+        {
+          "date": "2026-05-20",
+          "priceCents": 2599900,
+          "priceDisplay": "R 25 999,00"
+        },
+        {
+          "date": "2026-06-05",
+          "priceCents": 2549900,
+          "priceDisplay": "R 25 499,00"
+        }
+      ],
+      "sparklinePath": "M0.0,0.0 L60.0,24.2 L120.0,40.0 L180.0,54.0",
+      "trend": {
+        "direction": "down",
+        "percentChange": -7.047633212344705,
+        "summary": "7.0% down"
+      },
+      "valueScore": 80.11,
+      "recommendationLabel": "Watchlist Deal"
+    },
+    {
+      "productId": "928c513be95a75cf",
+      "productName": "SunCore Hybrid Pro 8kW",
+      "brand": "SunCore",
+      "model": "Hybrid Pro",
+      "capacity": "8kW",
+      "specs": {
+        "power": "8kW",
+        "battery": "48V",
+        "phase": "single phase",
+        "warranty": "10 years",
+        "efficiency": "98.1%"
+      },
+      "specSummary": "8kW | single phase | 10 years | 98.1%",
+      "vendorCount": 3,
+      "sourceCount": 3,
+      "lowestPriceCents": 3659000,
+      "lowestPriceDisplay": "R 36 590,00",
+      "averagePriceCents": 3714000,
+      "averagePriceDisplay": "R 37 140,00",
+      "priceSpreadCents": 90000,
+      "priceSpreadDisplay": "R 900,00",
+      "bestOfferVendor": "SunMart",
+      "bestOfferSource": "Market Bravo",
+      "offers": [
+        {
+          "offerId": "abc22f7c-18ac-49aa-9e4a-098b4927ab50",
+          "sourceId": "market-bravo",
+          "sourceName": "Market Bravo",
+          "sourceProductId": "bravo-suncore-8kw-1",
+          "vendor": "SunMart",
+          "title": "SunCore 8KW Hybrid Pro",
+          "canonicalTitle": "suncore 8kw hybrid pro",
+          "brand": "SunCore",
+          "model": "Hybrid Pro",
+          "capacity": "8kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/sunmart/suncore-8kw",
+          "specs": {
+            "power": "8kW",
+            "battery": "48V",
+            "phase": "single phase",
+            "warranty": "10 years",
+            "efficiency": "98.1%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "8kw inverter"
+          ],
+          "priceCents": 3599000,
+          "shippingCents": 60000,
+          "totalPriceCents": 3659000,
+          "priceDisplay": "R 35 990,00",
+          "totalPriceDisplay": "R 36 590,00",
+          "productFingerprint": "928c513be95a75cf",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 3799000,
+              "priceDisplay": "R 37 990,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 3699000,
+              "priceDisplay": "R 36 990,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 3649000,
+              "priceDisplay": "R 36 490,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 3599000,
+              "priceDisplay": "R 35 990,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        },
+        {
+          "offerId": "8b355d41-7f63-4133-8507-31dbfaa5137a",
+          "sourceId": "market-alpha",
+          "sourceName": "Market Alpha",
+          "sourceProductId": "alpha-suncore-8kw-1",
+          "vendor": "VoltHub",
+          "title": "SunCore 8kW Hybrid Pro Inverter",
+          "canonicalTitle": "suncore 8kw hybrid pro inverter",
+          "brand": "SunCore",
+          "model": "Hybrid Pro",
+          "capacity": "8kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/volthub/suncore-8kw",
+          "specs": {
+            "power": "8kW",
+            "battery": "48V",
+            "phase": "single phase",
+            "warranty": "10 years",
+            "efficiency": "98.1%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "8kw inverter",
+            "hybrid inverter"
+          ],
+          "priceCents": 3699000,
+          "shippingCents": 35000,
+          "totalPriceCents": 3734000,
+          "priceDisplay": "R 36 990,00",
+          "totalPriceDisplay": "R 37 340,00",
+          "productFingerprint": "928c513be95a75cf",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 3829900,
+              "priceDisplay": "R 38 299,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 3769900,
+              "priceDisplay": "R 37 699,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 3719900,
+              "priceDisplay": "R 37 199,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 3699000,
+              "priceDisplay": "R 36 990,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        },
+        {
+          "offerId": "f87ee7ae-c4fa-4f37-8032-facede109c1a",
+          "sourceId": "market-charlie",
+          "sourceName": "Market Charlie",
+          "sourceProductId": "charlie-suncore-8kw-1",
+          "vendor": "GridShop",
+          "title": "SunCore Hybrid Pro 8kW Inverter",
+          "canonicalTitle": "suncore hybrid pro 8kw inverter",
+          "brand": "SunCore",
+          "model": "Hybrid Pro",
+          "capacity": "8kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/gridshop/suncore-8kw",
+          "specs": {
+            "power": "8kW",
+            "battery": "48V",
+            "phase": "single phase",
+            "warranty": "10 years",
+            "efficiency": "98.1%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "hybrid inverter"
+          ],
+          "priceCents": 3749000,
+          "shippingCents": 0,
+          "totalPriceCents": 3749000,
+          "priceDisplay": "R 37 490,00",
+          "totalPriceDisplay": "R 37 490,00",
+          "productFingerprint": "928c513be95a75cf",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 3899000,
+              "priceDisplay": "R 38 990,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 3829000,
+              "priceDisplay": "R 38 290,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 3789000,
+              "priceDisplay": "R 37 890,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 3749000,
+              "priceDisplay": "R 37 490,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        }
+      ],
+      "priceHistory": [
+        {
+          "date": "2026-05-03",
+          "priceCents": 3842633,
+          "priceDisplay": "R 38 426,33"
+        },
+        {
+          "date": "2026-05-10",
+          "priceCents": 3765967,
+          "priceDisplay": "R 37 659,67"
+        },
+        {
+          "date": "2026-05-20",
+          "priceCents": 3719300,
+          "priceDisplay": "R 37 193,00"
+        },
+        {
+          "date": "2026-06-05",
+          "priceCents": 3682333,
+          "priceDisplay": "R 36 823,33"
+        }
+      ],
+      "sparklinePath": "M0.0,0.0 L60.0,25.8 L120.0,41.5 L180.0,54.0",
+      "trend": {
+        "direction": "down",
+        "percentChange": -4.171618783266577,
+        "summary": "4.2% down"
+      },
+      "valueScore": 70.72,
+      "recommendationLabel": "Market Consensus"
+    },
+    {
+      "productId": "bb643cbd63256db2",
+      "productName": "Atlas Max 10kW",
+      "brand": "Atlas",
+      "model": "Max",
+      "capacity": "10kW",
+      "specs": {
+        "power": "10kW",
+        "battery": "48V",
+        "phase": "three phase",
+        "warranty": "10 years",
+        "efficiency": "98.4%"
+      },
+      "specSummary": "10kW | three phase | 10 years | 98.4%",
+      "vendorCount": 2,
+      "sourceCount": 2,
+      "lowestPriceCents": 4789000,
+      "lowestPriceDisplay": "R 47 890,00",
+      "averagePriceCents": 4794000,
+      "averagePriceDisplay": "R 47 940,00",
+      "priceSpreadCents": 10000,
+      "priceSpreadDisplay": "R 100,00",
+      "bestOfferVendor": "SunMart",
+      "bestOfferSource": "Market Bravo",
+      "offers": [
+        {
+          "offerId": "2a3867a4-4df7-494a-9645-e268df967624",
+          "sourceId": "market-bravo",
+          "sourceName": "Market Bravo",
+          "sourceProductId": "bravo-atlas-10kw-1",
+          "vendor": "SunMart",
+          "title": "Atlas Max 10kW Three-Phase Hybrid Inverter",
+          "canonicalTitle": "atlas max 10kw three phase hybrid inverter",
+          "brand": "Atlas",
+          "model": "Max",
+          "capacity": "10kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/sunmart/atlas-10kw",
+          "specs": {
+            "power": "10kW",
+            "battery": "48V",
+            "phase": "three phase",
+            "warranty": "10 years",
+            "efficiency": "98.4%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "three phase",
+            "10kw inverter"
+          ],
+          "priceCents": 4699000,
+          "shippingCents": 90000,
+          "totalPriceCents": 4789000,
+          "priceDisplay": "R 46 990,00",
+          "totalPriceDisplay": "R 47 890,00",
+          "productFingerprint": "bb643cbd63256db2",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 4899000,
+              "priceDisplay": "R 48 990,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 4829000,
+              "priceDisplay": "R 48 290,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 4749000,
+              "priceDisplay": "R 47 490,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 4699000,
+              "priceDisplay": "R 46 990,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        },
+        {
+          "offerId": "3e8c0213-0e23-49e8-b45b-678e71b34b83",
+          "sourceId": "market-charlie",
+          "sourceName": "Market Charlie",
+          "sourceProductId": "charlie-atlas-10kw-1",
+          "vendor": "GridShop",
+          "title": "Atlas Max 10kW Hybrid Inverter 3 Phase",
+          "canonicalTitle": "atlas max 10kw hybrid inverter 3 phase",
+          "brand": "Atlas",
+          "model": "Max",
+          "capacity": "10kW",
+          "condition": "new",
+          "currency": "ZAR",
+          "url": "https://example.test/gridshop/atlas-10kw",
+          "specs": {
+            "power": "10kW",
+            "battery": "48V",
+            "phase": "three phase",
+            "warranty": "10 years",
+            "efficiency": "98.4%"
+          },
+          "keywordTokens": [
+            "solar inverter",
+            "three phase"
+          ],
+          "priceCents": 4799000,
+          "shippingCents": 0,
+          "totalPriceCents": 4799000,
+          "priceDisplay": "R 47 990,00",
+          "totalPriceDisplay": "R 47 990,00",
+          "productFingerprint": "bb643cbd63256db2",
+          "priceHistory": [
+            {
+              "date": "2026-05-03",
+              "priceCents": 4959000,
+              "priceDisplay": "R 49 590,00"
+            },
+            {
+              "date": "2026-05-10",
+              "priceCents": 4899000,
+              "priceDisplay": "R 48 990,00"
+            },
+            {
+              "date": "2026-05-20",
+              "priceCents": 4849000,
+              "priceDisplay": "R 48 490,00"
+            },
+            {
+              "date": "2026-06-05",
+              "priceCents": 4799000,
+              "priceDisplay": "R 47 990,00"
+            }
+          ],
+          "observedAt": "2026-06-11T03:41:15.246Z"
+        }
+      ],
+      "priceHistory": [
+        {
+          "date": "2026-05-03",
+          "priceCents": 4929000,
+          "priceDisplay": "R 49 290,00"
+        },
+        {
+          "date": "2026-05-10",
+          "priceCents": 4864000,
+          "priceDisplay": "R 48 640,00"
+        },
+        {
+          "date": "2026-05-20",
+          "priceCents": 4799000,
+          "priceDisplay": "R 47 990,00"
+        },
+        {
+          "date": "2026-06-05",
+          "priceCents": 4749000,
+          "priceDisplay": "R 47 490,00"
+        }
+      ],
+      "sparklinePath": "M0.0,0.0 L60.0,19.5 L120.0,39.0 L180.0,54.0",
+      "trend": {
+        "direction": "down",
+        "percentChange": -3.6518563603164944,
+        "summary": "3.7% down"
+      },
+      "valueScore": 52.11,
+      "recommendationLabel": "Balanced Pick"
+    }
+  ],
+  "events": [
+    {
+      "eventId": "55fc505c-06ac-47b6-9ba2-dee10a9897b9",
+      "eventType": "CrawlerRunRequested",
+      "occurredAt": "2026-06-11T03:41:15.245Z",
+      "traceContext": {
+        "traceId": "ecc39e77bb6749fa93ae601d78404803",
+        "spanId": "7922f9298e854cf4",
+        "traceparent": "00-ecc39e77bb6749fa93ae601d78404803-7922f9298e854cf4-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "maxResults": 24
+      }
+    },
+    {
+      "eventId": "cf4607e0-be1b-45c3-a01c-70fa44223bf2",
+      "eventType": "SourceCrawlStarted",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "01396ca586e746cebc4487d34806ac64",
+        "spanId": "9c9515f3a61f43e8",
+        "traceparent": "00-01396ca586e746cebc4487d34806ac64-9c9515f3a61f43e8-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-alpha"
+      }
+    },
+    {
+      "eventId": "a533d802-b99f-4805-a42f-7d72f46212b5",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "f8a50c7f72d14ed6add3038d4230eaf9",
+        "spanId": "39323a8698aa4b24",
+        "traceparent": "00-f8a50c7f72d14ed6add3038d4230eaf9-39323a8698aa4b24-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-alpha",
+        "sourceName": "Market Alpha",
+        "sourceProductId": "alpha-eco-5kw-1",
+        "vendor": "VoltHub",
+        "title": "EcoVolt 5kW Hybrid Inverter 48V",
+        "brand": "EcoVolt",
+        "model": "Hybrid 5kW",
+        "capacity": "5kW",
+        "price": "R 24,999",
+        "shippingPrice": "R 0",
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/volthub/ecovolt-5kw",
+        "keywordTokens": [
+          "solar inverter",
+          "hybrid inverter",
+          "48v inverter"
+        ],
+        "specs": {
+          "power": "5kW",
+          "battery": "48V",
+          "phase": "single phase",
+          "warranty": "5 years",
+          "efficiency": "97.2%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 2699900
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 2599900
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 2549900
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 2499900
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "a62df36c-b187-410f-97b7-b9279d16810e",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "17bb9a3f5d6944eca4bb754a92926a7b",
+        "spanId": "b25186ce9bd74310",
+        "traceparent": "00-17bb9a3f5d6944eca4bb754a92926a7b-b25186ce9bd74310-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-alpha",
+        "sourceName": "Market Alpha",
+        "sourceProductId": "alpha-eco-5kw-dup",
+        "vendor": "VoltHub",
+        "title": "  EcoVolt 5kW hybrid inverter 48V  ",
+        "brand": "EcoVolt",
+        "model": "Hybrid 5kW",
+        "capacity": "5kW",
+        "price": "R 24,999.00",
+        "shippingPrice": "R 0",
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/volthub/ecovolt-5kw-duplicate",
+        "keywordTokens": [
+          "solar inverter"
+        ],
+        "specs": {
+          "power": "5kW",
+          "battery": "48V",
+          "phase": "single phase",
+          "warranty": "5 years",
+          "efficiency": "97.2%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 2699900
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 2599900
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 2549900
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 2499900
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "8b355d41-7f63-4133-8507-31dbfaa5137a",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "e11713728fcd430cb22bb37ca827944f",
+        "spanId": "c649d327ce114d12",
+        "traceparent": "00-e11713728fcd430cb22bb37ca827944f-c649d327ce114d12-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-alpha",
+        "sourceName": "Market Alpha",
+        "sourceProductId": "alpha-suncore-8kw-1",
+        "vendor": "VoltHub",
+        "title": "SunCore 8kW Hybrid Pro Inverter",
+        "brand": "SunCore",
+        "model": "Hybrid Pro",
+        "capacity": "8kW",
+        "price": "R 36,990",
+        "shippingPrice": "R 350",
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/volthub/suncore-8kw",
+        "keywordTokens": [
+          "solar inverter",
+          "8kw inverter",
+          "hybrid inverter"
+        ],
+        "specs": {
+          "power": "8kW",
+          "battery": "48V",
+          "phase": "single phase",
+          "warranty": "10 years",
+          "efficiency": "98.1%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 3829900
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 3769900
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 3719900
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 3699000
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "852f0410-a5ef-4952-a2a4-b9991e090a0a",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "c4e3743cc8e54e64ae1467806f6273ae",
+        "spanId": "aaaeb0095b7b4850",
+        "traceparent": "00-c4e3743cc8e54e64ae1467806f6273ae-aaaeb0095b7b4850-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-alpha",
+        "sourceName": "Market Alpha",
+        "sourceProductId": "alpha-gridflex-36-1",
+        "vendor": "VoltHub",
+        "title": "GridFlex Lite 3.6kW Solar Inverter",
+        "brand": "GridFlex",
+        "model": "Lite",
+        "capacity": "3.6kW",
+        "price": "R 14,850",
+        "shippingPrice": "R 250",
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/volthub/gridflex-36",
+        "keywordTokens": [
+          "solar inverter",
+          "entry inverter"
+        ],
+        "specs": {
+          "power": "3.6kW",
+          "battery": "24V",
+          "phase": "single phase",
+          "warranty": "3 years",
+          "efficiency": "95.4%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 1599000
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 1549000
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 1519000
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 1485000
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "d2fb4006-8d26-4902-868f-8d0cd3223fcc",
+      "eventType": "SourceCrawlCompleted",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "01396ca586e746cebc4487d34806ac64",
+        "spanId": "9c9515f3a61f43e8",
+        "traceparent": "00-01396ca586e746cebc4487d34806ac64-9c9515f3a61f43e8-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-alpha",
+        "observedCount": 4
+      }
+    },
+    {
+      "eventId": "4a122001-03c9-410b-b949-2d25a970a557",
+      "eventType": "SourceCrawlStarted",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "7e1edc2bca0e4d1a9132749a69a40669",
+        "spanId": "7838886801614e05",
+        "traceparent": "00-7e1edc2bca0e4d1a9132749a69a40669-7838886801614e05-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-bravo"
+      }
+    },
+    {
+      "eventId": "7e2828dc-b438-4bd6-9e54-1956aacb5720",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "7c9b5672e4204b5c829ff9df94fe40bc",
+        "spanId": "7f6c0febdd1a45f0",
+        "traceparent": "00-7c9b5672e4204b5c829ff9df94fe40bc-7f6c0febdd1a45f0-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-bravo",
+        "sourceName": "Market Bravo",
+        "sourceProductId": "bravo-eco-5kw-1",
+        "vendor": "SunMart",
+        "title": "EcoVolt 5KW Hybrid Inverter - 48V",
+        "brand": "EcoVolt",
+        "model": "Hybrid 5kW",
+        "capacity": "5kW",
+        "price": "R25 499",
+        "shippingPrice": "R 450",
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/sunmart/ecovolt-5kw",
+        "keywordTokens": [
+          "solar inverter",
+          "hybrid inverter"
+        ],
+        "specs": {
+          "power": "5kW",
+          "battery": "48V",
+          "phase": "single phase",
+          "warranty": "5 years",
+          "efficiency": "97.2%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 2729900
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 2669900
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 2599900
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 2549900
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "abc22f7c-18ac-49aa-9e4a-098b4927ab50",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "a5cf50557b414c8cbd308d7f4767a50d",
+        "spanId": "38c76340519a4054",
+        "traceparent": "00-a5cf50557b414c8cbd308d7f4767a50d-38c76340519a4054-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-bravo",
+        "sourceName": "Market Bravo",
+        "sourceProductId": "bravo-suncore-8kw-1",
+        "vendor": "SunMart",
+        "title": "SunCore 8KW Hybrid Pro",
+        "brand": "SunCore",
+        "model": "Hybrid Pro",
+        "capacity": "8kW",
+        "price": "R 35 990",
+        "shippingPrice": "R 600",
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/sunmart/suncore-8kw",
+        "keywordTokens": [
+          "solar inverter",
+          "8kw inverter"
+        ],
+        "specs": {
+          "power": "8kW",
+          "battery": "48V",
+          "phase": "single phase",
+          "warranty": "10 years",
+          "efficiency": "98.1%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 3799000
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 3699000
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 3649000
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 3599000
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "2a3867a4-4df7-494a-9645-e268df967624",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "3c3026fa762245feaaa470ff98cbd758",
+        "spanId": "d9880946a4034ee0",
+        "traceparent": "00-3c3026fa762245feaaa470ff98cbd758-d9880946a4034ee0-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-bravo",
+        "sourceName": "Market Bravo",
+        "sourceProductId": "bravo-atlas-10kw-1",
+        "vendor": "SunMart",
+        "title": "Atlas Max 10kW Three-Phase Hybrid Inverter",
+        "brand": "Atlas",
+        "model": "Max",
+        "capacity": "10kW",
+        "price": "R 46,990",
+        "shippingPrice": "R 900",
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/sunmart/atlas-10kw",
+        "keywordTokens": [
+          "solar inverter",
+          "three phase",
+          "10kw inverter"
+        ],
+        "specs": {
+          "power": "10kW",
+          "battery": "48V",
+          "phase": "three phase",
+          "warranty": "10 years",
+          "efficiency": "98.4%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 4899000
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 4829000
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 4749000
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 4699000
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "cc00e211-267c-47ef-ab7b-f196d1bafd8a",
+      "eventType": "SourceCrawlCompleted",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "7e1edc2bca0e4d1a9132749a69a40669",
+        "spanId": "7838886801614e05",
+        "traceparent": "00-7e1edc2bca0e4d1a9132749a69a40669-7838886801614e05-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-bravo",
+        "observedCount": 3
+      }
+    },
+    {
+      "eventId": "eb431a69-5ea9-4733-a08b-97084403c443",
+      "eventType": "SourceCrawlStarted",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "1e4c3723fe864818a1993a3455da254e",
+        "spanId": "e8b3eabb306d4f95",
+        "traceparent": "00-1e4c3723fe864818a1993a3455da254e-e8b3eabb306d4f95-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-charlie"
+      }
+    },
+    {
+      "eventId": "8fc3a3dc-5552-4a40-88c6-3e9ed8e570e7",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "9c6bf132f85b4790910410fe739e1922",
+        "spanId": "4aac1393e22641da",
+        "traceparent": "00-9c6bf132f85b4790910410fe739e1922-4aac1393e22641da-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-charlie",
+        "sourceName": "Market Charlie",
+        "sourceProductId": "charlie-eco-5kw-1",
+        "vendor": "GridShop",
+        "title": "EcoVolt 5 kW Hybrid Inverter 48 Volt",
+        "brand": "EcoVolt",
+        "model": "Hybrid 5kW",
+        "capacity": "5kW",
+        "price": 2599900,
+        "shippingPrice": 0,
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/gridshop/ecovolt-5kw",
+        "keywordTokens": [
+          "solar inverter",
+          "48v inverter"
+        ],
+        "specs": {
+          "power": "5kW",
+          "battery": "48V",
+          "phase": "single phase",
+          "warranty": "5 years",
+          "efficiency": "97.2%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 2799900
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 2699900
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 2649900
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 2599900
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "f87ee7ae-c4fa-4f37-8032-facede109c1a",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "bce8bc77a6e14141b7c8fed1095c9ea0",
+        "spanId": "49e20e2d73a7458e",
+        "traceparent": "00-bce8bc77a6e14141b7c8fed1095c9ea0-49e20e2d73a7458e-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-charlie",
+        "sourceName": "Market Charlie",
+        "sourceProductId": "charlie-suncore-8kw-1",
+        "vendor": "GridShop",
+        "title": "SunCore Hybrid Pro 8kW Inverter",
+        "brand": "SunCore",
+        "model": "Hybrid Pro",
+        "capacity": "8kW",
+        "price": 3749000,
+        "shippingPrice": 0,
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/gridshop/suncore-8kw",
+        "keywordTokens": [
+          "solar inverter",
+          "hybrid inverter"
+        ],
+        "specs": {
+          "power": "8kW",
+          "battery": "48V",
+          "phase": "single phase",
+          "warranty": "10 years",
+          "efficiency": "98.1%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 3899000
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 3829000
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 3789000
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 3749000
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "4659a3dc-9716-4559-a5b4-717fa6680f3d",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "e02c1ee8b3b14fe585805323cce24c44",
+        "spanId": "bc5270832b1f4b86",
+        "traceparent": "00-e02c1ee8b3b14fe585805323cce24c44-bc5270832b1f4b86-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-charlie",
+        "sourceName": "Market Charlie",
+        "sourceProductId": "charlie-gridflex-36-1",
+        "vendor": "GridShop",
+        "title": "GridFlex Lite 3.6 KW inverter",
+        "brand": "GridFlex",
+        "model": "Lite",
+        "capacity": "3.6kW",
+        "price": "R 15,399",
+        "shippingPrice": "R 0",
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/gridshop/gridflex-36",
+        "keywordTokens": [
+          "solar inverter",
+          "entry inverter"
+        ],
+        "specs": {
+          "power": "3.6kW",
+          "battery": "24V",
+          "phase": "single phase",
+          "warranty": "3 years",
+          "efficiency": "95.4%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 1619000
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 1589000
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 1569000
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 1539900
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "3e8c0213-0e23-49e8-b45b-678e71b34b83",
+      "eventType": "ProductObserved",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "42c9d1a1d92c415a9b118e1e8bcebfdc",
+        "spanId": "445931fa81ea47c1",
+        "traceparent": "00-42c9d1a1d92c415a9b118e1e8bcebfdc-445931fa81ea47c1-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-charlie",
+        "sourceName": "Market Charlie",
+        "sourceProductId": "charlie-atlas-10kw-1",
+        "vendor": "GridShop",
+        "title": "Atlas Max 10kW Hybrid Inverter 3 Phase",
+        "brand": "Atlas",
+        "model": "Max",
+        "capacity": "10kW",
+        "price": 4799000,
+        "shippingPrice": 0,
+        "currency": "ZAR",
+        "condition": "new",
+        "url": "https://example.test/gridshop/atlas-10kw",
+        "keywordTokens": [
+          "solar inverter",
+          "three phase"
+        ],
+        "specs": {
+          "power": "10kW",
+          "battery": "48V",
+          "phase": "three phase",
+          "warranty": "10 years",
+          "efficiency": "98.4%"
+        },
+        "priceHistory": [
+          {
+            "date": "2026-05-03",
+            "priceCents": 4959000
+          },
+          {
+            "date": "2026-05-10",
+            "priceCents": 4899000
+          },
+          {
+            "date": "2026-05-20",
+            "priceCents": 4849000
+          },
+          {
+            "date": "2026-06-05",
+            "priceCents": 4799000
+          }
+        ]
+      }
+    },
+    {
+      "eventId": "a2793f4e-4216-4f4b-8ef4-6963f408eb87",
+      "eventType": "SourceCrawlCompleted",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "1e4c3723fe864818a1993a3455da254e",
+        "spanId": "e8b3eabb306d4f95",
+        "traceparent": "00-1e4c3723fe864818a1993a3455da254e-e8b3eabb306d4f95-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter",
+        "sourceId": "market-charlie",
+        "observedCount": 4
+      }
+    },
+    {
+      "eventId": "98c1a628-d01d-453f-8987-ae2d3369bac4",
+      "eventType": "CrawlerRunCompleted",
+      "occurredAt": "2026-06-11T03:41:15.246Z",
+      "traceContext": {
+        "traceId": "ecc39e77bb6749fa93ae601d78404803",
+        "spanId": "7922f9298e854cf4",
+        "traceparent": "00-ecc39e77bb6749fa93ae601d78404803-7922f9298e854cf4-01"
+      },
+      "payload": {
+        "crawlId": "e22c40a5-f10c-41cc-97a3-c8d57e8ca0db",
+        "keyword": "solar inverter"
+      }
+    }
+  ]
+}
