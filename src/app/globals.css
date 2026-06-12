@@ -1,0 +1,13 @@
+:root {
+  --background: #0a0a0d;
+  --foreground: #b8b8c4;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  margin: 0;
+  padding: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  overflow: hidden; /* Ensure scrolling is disabled at the CSS level too */
+}

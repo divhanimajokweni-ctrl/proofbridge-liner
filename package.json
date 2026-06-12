@@ -12,6 +12,7 @@
     "supabase:migrate": "supabase db migrate",
     "verify": "node scripts/verify-setup.js",
     "typecheck": "tsc --noEmit",
+    "orchestrate": "node scripts/orchestrate-gates.js",
     "lint:fix": "eslint . --ext .ts,.tsx --fix"
   },
   "dependencies": {

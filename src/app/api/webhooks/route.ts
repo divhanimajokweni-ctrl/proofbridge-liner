@@ -340,11 +340,3 @@ async function handleAMLAlertTriggered(payload: any) {
   // Simulate processing
   await new Promise(resolve => setTimeout(resolve, 100));
 }
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
-  },
-};

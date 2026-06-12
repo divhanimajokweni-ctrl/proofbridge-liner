@@ -2,8 +2,12 @@
  * File: src/middleware.ts
  * Description: Loop protection middleware with isolated routes and internal header tracing.
  */
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';import { NextResponse } from 'next/server';import type { NextRequest } from 'next/server';
-// Gate A Remediation: Explicit isolation of routing endpoints to prevent loopsconst PUBLIC_PATHS = [
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+// Gate A Remediation: Explicit isolation of routing endpoints to prevent loops
+const PUBLIC_PATHS = [
   '/',
   '/login',
   '/api/health',
