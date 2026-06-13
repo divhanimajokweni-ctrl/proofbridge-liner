@@ -13,7 +13,9 @@
     "verify": "node scripts/verify-setup.js",
     "typecheck": "tsc --noEmit",
     "orchestrate": "node scripts/orchestrate-gates.js",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix"
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "prepare": "bash scripts/install-hooks.sh",
+    "precommit": "node scripts/secret-scan-precommit.js"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.8.0",
