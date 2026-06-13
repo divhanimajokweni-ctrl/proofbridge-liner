@@ -1,0 +1,23 @@
+#!/bin/bash
+# VV LLC Pre-Commit Branch Guard
+# Blocks direct commits to protected branches.
+
+set -e
+
+CURRENT_BRANCH=$(git branch --show-current)
+PROTECTED_BRANCHES="main"
+
+if echo "$PROTECTED_BRANCHES" | grep -qw "$CURRENT_BRANCH"; then
+  echo ""
+  echo "╔══════════════════════════════════════════════════════════╗"
+  echo "║  BLOCKED: Direct commit to '$CURRENT_BRANCH' is forbidden ║"
+  echo "║                                                          ║"
+  echo "║  main is a mirror of compliance-fabric only.             ║"
+  echo "║  Work on compliance-fabric or a feature branch.          ║"
+  echo "║  Create a PR to merge into main.                         ║"
+  echo "╚══════════════════════════════════════════════════════════╝"
+  echo ""
+  exit 1
+fi
+
+echo "✓ Branch check passed: $CURRENT_BRANCH"
