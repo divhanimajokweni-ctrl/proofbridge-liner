@@ -1,0 +1,65 @@
+#!/bin/bash
+# VV LLC Commit Message Attestation Validator
+# Rejects commits without a valid ATTESTATION block.
+
+set -e
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Check for ATTESTATION block
+if ! echo "$COMMIT_MSG" | grep -q "ATTESTATION:"; then
+  echo ""
+  echo "╔══════════════════════════════════════════════════════════╗"
+  echo "║  REJECTED: No ATTESTATION block in commit message.      ║"
+  echo "║                                                          ║"
+  echo "║  Every commit must include:                              ║"
+  echo "║    ATTESTATION:                                          ║"
+  echo "║      agent: <agent-id>                                   ║"
+  echo "║      branch_verified: <branch>                           ║"
+  echo "║      pre_flight: PASSED                                  ║"
+  echo "║      review_token: sha256:<8-char-hex>                   ║"
+  echo "║      session_owner: mino@vvllc                           ║"
+  echo "║                                                          ║"
+  echo "║  See AGENTS.md for the full protocol.                    ║"
+  echo "╚══════════════════════════════════════════════════════════╝"
+  echo ""
+  exit 1
+fi
+
+# Validate required fields
+MISSING_FIELDS=()
+
+if ! echo "$COMMIT_MSG" | grep -q "branch_verified:"; then
+  MISSING_FIELDS+=("branch_verified")
+fi
+
+if ! echo "$COMMIT_MSG" | grep -q "pre_flight: PASSED"; then
+  MISSING_FIELDS+=("pre_flight: PASSED")
+fi
+
+if ! echo "$COMMIT_MSG" | grep -q "review_token:"; then
+  MISSING_FIELDS+=("review_token")
+fi
+
+if ! echo "$COMMIT_MSG" | grep -q "session_owner:"; then
+  MISSING_FIELDS+=("session_owner")
+fi
+
+if [ ${#MISSING_FIELDS[@]} -gt 0 ]; then
+  echo ""
+  echo "╔══════════════════════════════════════════════════════════╗"
+  echo "║  REJECTED: ATTESTATION block is incomplete.             ║"
+  echo "║                                                          ║"
+  echo "║  Missing fields:                                         ║"
+  for field in "${MISSING_FIELDS[@]}"; do
+    echo "║    - $field"
+  done
+  echo "║                                                          ║"
+  echo "║  See AGENTS.md for the full protocol.                    ║"
+  echo "╚══════════════════════════════════════════════════════════╝"
+  echo ""
+  exit 1
+fi
+
+echo "✓ ATTESTATION block validated"
