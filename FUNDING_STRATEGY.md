@@ -3,6 +3,24 @@
 ## Overview
 ProofBridge Liner is a decentralized circuit-breaker system for tokenized real-world assets (RWAs) with TEE-enhanced security. This funding strategy outlines a phased approach to secure capital for development, deployment, and scaling.
 
+## 🚀 **Immediate Execution Focus (Q3 2026)**
+**Goal**: Secure $250K in rapid-deployment capital to launch VVU Infrastructure Prod.
+
+1. **Standard Bank OneHub Integration Pilot**
+   - Leverage the successful Gate A/B verification to pitch a paid sandbox pilot.
+   - Focus: Cross-border settlement safety for Ubuntu Pools.
+   - Target: $50K pilot fee.
+
+2. **Stitch Money Strategic Partnership**
+   - Co-marketing the "Safety Kernel" for high-value ROSCA payments.
+   - Focus: Fraud reduction and idempotency guarantees.
+   - Target: Referral revenue sharing + $30K integration grant.
+
+3. **South African Cybercrimes Act Forensic Grant**
+   - Apply for innovation funding based on the `forensic-preservation` skill.
+   - Focus: Digital evidence chain of custody for tokenized assets.
+   - Target: R500K (approx $27K) DTI grant.
+
 ## Phase 1: Seed Funding (Pre-MVP, 6-12 months)
 **Goal**: $500K-$1M to complete MVP and initial testnet deployment
 
