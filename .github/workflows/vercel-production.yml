@@ -1,0 +1,66 @@
+name: Vercel Production Deployment
+
+on:
+  push:
+    branches:
+      - compliance-fabric
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-production-proofbridge-liner
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+  deploy:
+    name: Deploy to Production
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy to Vercel
+        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Verify production deployment
+        run: |
+          URL=$(vercel inspect proofbridge-liner --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/URL/ {print $2}' | head -n 1)
+          echo "Production URL: $URL"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL/")
+          echo "Root status: $STATUS"
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL/api/health" || true)
+          echo "Health status: $HEALTH_STATUS"
