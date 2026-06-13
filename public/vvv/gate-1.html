@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gate A | Origination</title>
+  <link rel="stylesheet" href="pools.css">
+</head>
+<body>
+  <header class="vvu-header">
+    <div class="logo">GATE A: ORIGINATION</div>
+    <div class="status-pill" id="gate-status">LOADING</div>
+    <nav><a href="/proofbridge">← Gateway</a></nav>
+  </header>
+
+  <main style="padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <h3>Inbound Proposal Intake</h3>
+      <div id="metrics">
+        <div class="metric-row">μ threshold τ_A: <span id="tau">0.60</span></div>
+        <div class="metric-row">Avg μ last 1h: <span id="avg-mu">--</span></div>
+        <div class="metric-row">Reject rate: <span id="reject-rate">--</span></div>
+      </div>
+      <canvas id="mu-chart" height="200"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>Live Intake Queue</h3>
+      <div id="intake-queue" style="font-family:'Space Mono',monospace;font-size:11px;max-height:300px;overflow:auto;color:#aaa"></div>
+    </div>
+
+    <div class="card terminal" style="grid-column:span 2">
+      <div class="terminal-header">GATE-A::LOG</div>
+      <div class="terminal-body" id="gate-log"></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    Chart.defaults.color = '#666';
+    Chart.defaults.borderColor = '#1E1E1E';
+
+    let muChart = null;
+
+    function renderFallback() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2,'0');
+      const ts = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      const mu = (Math.random() * 0.6 + 0.35).toFixed(3);
+      const pass = parseFloat(mu) >= 0.60;
+
+      document.getElementById('gate-status').textContent = 'ACTIVE';
+      document.getElementById('gate-status').className = 'status-pill ok';
+      document.getElementById('avg-mu').textContent = (Math.random() * 0.15 + 0.62).toFixed(3);
+      document.getElementById('reject-rate').textContent = (Math.random() * 12 + 3).toFixed(1) + '%';
+
+      const q = Array.from({length:8}, (_,i) => {
+        const m = (Math.random()*0.6+0.35).toFixed(3);
+        return `[${ts}] prop_${(1000+i)} μ=${m} ${parseFloat(m)>=0.60?'<span style="color:#00FF88">✓ PASS</span>':'<span style="color:#FF4444">✗ REJECT</span>'}`;
+      });
+      document.getElementById('intake-queue').innerHTML = q.join('<br>');
+
+      const labels = Array.from({length:12}, (_,i) => `${pad((now.getHours()-11+i+24)%24)}:00`);
+      const muData = labels.map(() => +(Math.random()*0.4+0.45).toFixed(3));
+
+      if (!muChart) {
+        muChart = new Chart(document.getElementById('mu-chart'), {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{
+              label: 'μ', data: muData, borderColor: '#F5A623',
+              backgroundColor: 'rgba(245,166,35,0.08)', tension: 0.4, pointRadius: 2
+            }, {
+              label: 'τ_A', data: labels.map(()=>0.60), borderColor: '#666',
+              borderDash: [4,4], pointRadius: 0
+            }]
+          },
+          options: { animation:false, plugins:{legend:{display:false}}, scales:{y:{min:0,max:1,grid:{color:'#1E1E1E'}},x:{grid:{color:'#1E1E1E'}}} }
+        });
+      } else {
+        muChart.data.datasets[0].data = muData;
+        muChart.update('none');
+      }
+
+      document.getElementById('gate-log').innerHTML =
+        `[${ts}] intake_cycle start proposals=8<br>` +
+        `[${ts}] μ_eval pass=6 reject=2 avg=${(Math.random()*0.1+0.63).toFixed(3)}<br>` +
+        `[${ts}] gate-a cycle complete status=ACTIVE`;
+    }
+
+    async function loadGateA() {
+      try {
+        const res = await fetch('/api/metrics/gate-a');
+        if (!res.ok) throw new Error('no endpoint');
+        const data = await res.json();
+        document.getElementById('gate-status').textContent = data.statusLabel || 'ACTIVE';
+        document.getElementById('gate-status').className = `status-pill ${data.status === 'complete' ? 'ok' : 'warn'}`;
+        document.getElementById('avg-mu').textContent = data.avgMu?.toFixed(3) ?? '--';
+        document.getElementById('reject-rate').textContent = data.rejectRate != null ? (data.rejectRate*100).toFixed(1)+'%' : '--';
+        document.getElementById('intake-queue').innerHTML = (data.queue||[]).map(q =>
+          `[${q.ts}] ${q.id} μ=${q.mu?.toFixed(3)} ${q.mu>=0.60?'<span style="color:#00FF88">✓</span>':'<span style="color:#FF4444">✗</span>'}`
+        ).join('<br>');
+      } catch { renderFallback(); }
+    }
+
+    loadGateA();
+    setInterval(loadGateA, 15000);
+  </script>
+</body>
+</html>

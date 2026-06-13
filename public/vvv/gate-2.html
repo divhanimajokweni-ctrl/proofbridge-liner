@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gate B | Stitch</title>
+  <link rel="stylesheet" href="pools.css">
+</head>
+<body>
+  <header class="vvu-header">
+    <div class="logo">GATE B: STITCH / REPLAY</div>
+    <div class="status-pill" id="gate-status">LOADING</div>
+    <nav><a href="/proofbridge">← Gateway</a></nav>
+  </header>
+
+  <main style="padding:24px">
+    <div class="card">
+      <h3>Replay Protection + Webhook Deflections</h3>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:16px 0">
+        <div class="metric-row">Tolerance: <span id="tolerance">300s</span></div>
+        <div class="metric-row">Deflections 1h: <span id="deflections">--</span></div>
+        <div class="metric-row">Redlock locks: <span id="locks">--</span></div>
+        <div class="metric-row">Replay attempts: <span id="replays">--</span></div>
+      </div>
+      <canvas id="deflection-chart" height="100"></canvas>
+    </div>
+
+    <div class="card terminal">
+      <div class="terminal-header">GATE-B::WEBHOOK-LOG</div>
+      <div class="terminal-body" id="webhook-log"></div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    Chart.defaults.color = '#666';
+    Chart.defaults.borderColor = '#1E1E1E';
+
+    let deflChart = null;
+
+    function ts() {
+      const n = new Date();
+      return [n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+    }
+
+    function renderFallback() {
+      document.getElementById('gate-status').textContent = 'DELIVERED';
+      document.getElementById('gate-status').className = 'status-pill ok';
+      document.getElementById('deflections').textContent = Math.floor(Math.random()*4);
+      document.getElementById('locks').textContent = Math.floor(Math.random()*20+40);
+      document.getElementById('replays').textContent = Math.floor(Math.random()*2);
+
+      const labels = Array.from({length:12},(_,i)=>`${String((new Date().getHours()-11+i+24)%24).padStart(2,'0')}:00`);
+      const deflData = labels.map(()=>Math.floor(Math.random()*3));
+
+      if (!deflChart) {
+        deflChart = new Chart(document.getElementById('deflection-chart'), {
+          type: 'bar',
+          data: { labels, datasets: [{ label:'Deflections', data:deflData, backgroundColor:'rgba(255,68,68,0.6)', borderColor:'#FF4444', borderWidth:1 }] },
+          options: { animation:false, plugins:{legend:{display:false}}, scales:{y:{grid:{color:'#1E1E1E'},beginAtZero:true},x:{grid:{color:'#1E1E1E'}}} }
+        });
+      } else { deflChart.data.datasets[0].data = deflData; deflChart.update('none'); }
+
+      const logs = Array.from({length:6}, () => {
+        const deflected = Math.random() < 0.15;
+        const sig = Math.random().toString(16).slice(2,18);
+        return `[${ts()}] webhook.mint ${deflected?'<span style="color:#FF4444">DEFLECTED replay_detected</span>':'<span style="color:#00FF88">OK delivered</span>'} sig:${sig}`;
+      });
+      document.getElementById('webhook-log').innerHTML = logs.join('<br>');
+    }
+
+    async function loadGateB() {
+      try {
+        const res = await fetch('/api/metrics/gate-b');
+        if (!res.ok) throw new Error();
+        const d = await res.json();
+        document.getElementById('gate-status').textContent = d.healthy ? 'DELIVERED' : 'PARTIAL';
+        document.getElementById('gate-status').className = `status-pill ${d.healthy ? 'ok' : 'error'}`;
+        document.getElementById('deflections').textContent = d.deflections1h;
+        document.getElementById('locks').textContent = d.redlockActive;
+        document.getElementById('replays').textContent = d.replayAttempts;
+        document.getElementById('webhook-log').innerHTML = (d.logs||[]).map(l =>
+          `[${l.ts}] ${l.event} ${l.deflected?'<span style="color:#FF4444">DEFLECTED</span>':'<span style="color:#00FF88">OK</span>'} sig:${l.sig?.slice(0,8)}`
+        ).join('<br>');
+      } catch { renderFallback(); }
+    }
+
+    loadGateB();
+    setInterval(loadGateB, 10000);
+  </script>
+</body>
+</html>

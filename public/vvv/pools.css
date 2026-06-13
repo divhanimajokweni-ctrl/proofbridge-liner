@@ -1,0 +1,87 @@
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0A0A0A;
+  --surface:#111111;
+  --border:#1E1E1E;
+  --green:#00FF88;
+  --red:#FF4444;
+  --gold:#F5A623;
+  --teal:#2dd4bf;
+  --muted:#666;
+  --text:#E0E0E0;
+  --text-dim:#999;
+  --font-mono:'Space Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.5;overflow-x:hidden}
+a{color:var(--gold);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.vvu-header{
+  display:flex;align-items:center;gap:16px;padding:12px 24px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+}
+.vvu-header .logo{
+  font-family:var(--font-mono);font-size:13px;font-weight:700;
+  letter-spacing:.1em;color:var(--gold);flex:1;
+}
+.vvu-header nav a{
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);
+  letter-spacing:.08em;text-transform:uppercase;
+}
+.vvu-header nav a:hover{color:var(--text)}
+
+.status-pill{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;
+  padding:4px 10px;border-radius:3px;text-transform:uppercase;font-weight:700;
+  background:var(--border);color:var(--muted);
+}
+.status-pill.ok{background:rgba(0,255,136,.12);color:var(--green);border:1px solid rgba(0,255,136,.3)}
+.status-pill.error{background:rgba(255,68,68,.12);color:var(--red);border:1px solid rgba(255,68,68,.3)}
+.status-pill.warn{background:rgba(245,166,35,.12);color:var(--gold);border:1px solid rgba(245,166,35,.3)}
+
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:20px;margin-bottom:16px;
+}
+.card h3{
+  font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--gold);margin-bottom:14px;
+}
+.card h4{
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:10px;
+}
+
+.metric-row{
+  font-family:var(--font-mono);font-size:12px;color:var(--text-dim);
+  padding:4px 0;border-bottom:1px solid var(--border);
+}
+.metric-row span{color:var(--text);font-weight:700}
+
+.card.terminal{background:#050505;border-color:#1a1a1a}
+.terminal-header{
+  font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted);padding:8px 0;
+  border-bottom:1px solid var(--border);margin-bottom:12px;
+}
+.terminal-body{
+  font-family:var(--font-mono);font-size:11px;color:var(--green);
+  line-height:1.8;max-height:280px;overflow-y:auto;
+}
+
+.signer{
+  background:var(--border);border-radius:4px;padding:10px 8px;
+  font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;
+}
+.signer span{display:block;margin-top:4px;font-weight:700}
+
+code{
+  font-family:var(--font-mono);font-size:11px;color:var(--teal);
+  background:rgba(45,212,191,.08);padding:2px 6px;border-radius:3px;
+}
+
+canvas{margin-top:12px;border-radius:4px}
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500&display=swap');
