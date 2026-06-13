@@ -10,6 +10,7 @@ const nextConfig = {
       { source: '/gate-4',      destination: '/vvv/gate-4.html' },
       { source: '/gate-5',      destination: '/vvv/gate-5.html' },
       { source: '/gate-6',      destination: '/vvv/gate-6.html' },
+      { source: '/gates',       destination: '/vvv/index.html' },
     ]
   },
 }

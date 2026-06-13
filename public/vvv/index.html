@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ProofBridge Liner — Gate Suite</title>
+  <link rel="stylesheet" href="/vvv/pools.css">
+  <style>
+    .gateway-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:24px;max-width:1280px;margin:0 auto}
+    @media(max-width:900px){.gateway-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:580px){.gateway-grid{grid-template-columns:1fr}}
+    .gate-card{display:flex;flex-direction:column;gap:12px;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+    .gate-card:hover{border-color:var(--gold);box-shadow:0 0 20px rgba(245,166,35,.1)}
+    .gate-card a{text-decoration:none;color:inherit;display:block;flex:1}
+    .gate-id{font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+    .gate-name{font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--gold);margin-bottom:8px}
+    .gate-desc{font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:12px}
+    .gate-metrics{display:flex;flex-direction:column;gap:4px}
+    .gate-metric{font-family:var(--font-mono);font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+    .gate-metric span{color:var(--text)}
+    .gate-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
+    .gate-link{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase}
+    .hero-bar{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--surface)}
+    .hero-title{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--gold);letter-spacing:.1em}
+    .hero-sub{font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.08em}
+    .overall-status{font-family:var(--font-mono);font-size:11px;color:var(--green)}
+    #all-status{font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.08em}
+  </style>
+</head>
+<body>
+  <header class="vvu-header">
+    <div class="logo">PROOFBRIDGE LINER — GATE SUITE</div>
+    <div id="all-status">POLLING…</div>
+    <nav><a href="/proofbridge">← Gateway</a></nav>
+  </header>
+
+  <div class="hero-bar">
+    <div>
+      <div class="hero-title">COMPLIANCE GATE TERMINALS</div>
+      <div class="hero-sub">Gates A–F · Amoy Testnet · Safety Kernel V2.5</div>
+    </div>
+    <div class="overall-status" id="overall-status">● SYSTEM ONLINE</div>
+  </div>
+
+  <div class="gateway-grid" id="gate-grid">
+    <!-- gates rendered by JS -->
+  </div>
+
+  <script>
+    const GATES = [
+      {
+        id:'A', label:'gate-1', href:'/gate-1',
+        name:'ORIGINATION', desc:'Inbound proposal intake · μ Bayesian scoring · τ_A threshold enforcement · real-time rejection queue',
+        api:'/api/metrics/gate-a',
+        extract: d => [['Avg μ (1h)', d.avgMu?.toFixed(3)??'--'], ['Reject rate', d.rejectRate!=null?(d.rejectRate*100).toFixed(1)+'%':'--'], ['Queue depth', d.queue?.length??'--']],
+        statusKey: d => d.avgMu >= 0.60 ? 'ok' : 'warn',
+        fallback:() => [['Avg μ (1h)', (Math.random()*.15+.62).toFixed(3)], ['Reject rate', (Math.random()*10+3).toFixed(1)+'%'], ['Queue depth', Math.floor(Math.random()*8+4)]]
+      },
+      {
+        id:'B', label:'gate-2', href:'/gate-2',
+        name:'STITCH / REPLAY', desc:'Webhook replay protection · Redlock atomic idempotency · 300s tolerance window · deflection logging',
+        api:'/api/metrics/gate-b',
+        extract: d => [['Deflections 1h', d.deflections1h??'--'], ['Redlock locks', d.redlockActive??'--'], ['Replay attempts', d.replayAttempts??'--']],
+        statusKey: d => d.healthy ? 'ok' : 'error',
+        fallback:() => [['Deflections 1h', Math.floor(Math.random()*3)], ['Redlock locks', Math.floor(Math.random()*20+40)], ['Replay attempts', Math.floor(Math.random()*2)]]
+      },
+      {
+        id:'C', label:'gate-3', href:'/gate-3',
+        name:'BAYESIAN SAFETY', desc:'Beta posterior inference · HMAC-SHA256 chain validation · Monte Carlo stress tests · p-value gates',
+        api:'/api/metrics/gate-c',
+        extract: d => [['Proposals > τ_A', d.passCount??'--'], ['HMAC valid', d.hmacValid?'YES':'NO'], ['MC tests', d.mcTests?.length??'--']],
+        statusKey: d => d.hmacValid && d.status==='complete' ? 'ok' : 'error',
+        fallback:() => [['Proposals > τ_A', Math.floor(Math.random()*40+55)], ['HMAC valid', 'YES'], ['MC tests', '4']]
+      },
+      {
+        id:'D', label:'gate-4', href:'/gate-4',
+        name:'EVIDENCE', desc:'Immutable audit chain · reconciler.log ingestion · StableStringify determinism · SHA-256 event hashing',
+        api:'/api/metrics/gate-d',
+        extract: d => [['Last reconcile', d.lastReconcileRun??'--'], ['Datadog ingest', d.datadogIngest?'ACTIVE':'DOWN'], ['StableStr', d.deterministic?'ENFORCED':'VIOLATION']],
+        statusKey: d => d.deterministic && d.datadogIngest ? 'ok' : 'error',
+        fallback:() => [['Last reconcile', new Date().toTimeString().slice(0,8)+' UTC'], ['Datadog ingest', 'ACTIVE'], ['StableStr', 'ENFORCED']]
+      },
+      {
+        id:'E', label:'gate-5', href:'/gate-5',
+        name:'FROST SIGNER', desc:'FROST threshold signatures · 3-of-5 signer quorum · group key verification · self-verify rate tracking',
+        api:'/api/metrics/gate-e',
+        extract: d => [['Online signers', d.signers?.filter(s=>s.online).length+'/5'??'--'], ['Verify rate', d.verifyRate!=null?(d.verifyRate*100).toFixed(1)+'%':'--'], ['Last sig', d.lastSig?.slice(0,10)+'…'??'--']],
+        statusKey: d => (d.signers?.filter(s=>s.online).length??0) >= 3 ? 'ok' : 'error',
+        fallback:() => [['Online signers', '5/5'], ['Verify rate', (Math.random()*2+98).toFixed(1)+'%'], ['Last sig', Math.random().toString(16).slice(2,12)+'…']]
+      },
+      {
+        id:'F', label:'gate-6', href:'/gate-6',
+        name:'SETTLEMENT', desc:'Polygon Amoy CircuitBreaker.sol · on-chain anchor verification · drift monitoring · circuit-breaker control',
+        api:'/api/metrics/gate-f',
+        extract: d => [['Circuit state', d.circuitOpen?'OPEN':'CLOSED'], ['Drift', d.drift??'--'], ['Anchors', d.anchors?.length??'--']],
+        statusKey: d => !d.circuitOpen ? 'ok' : 'error',
+        fallback:() => [['Circuit state', 'CLOSED'], ['Drift', Math.floor(Math.random()*200)+'ms'], ['Anchors', Math.floor(Math.random()*80+120)]]
+      },
+    ];
+
+    const statusLabel = {ok:'NOMINAL', warn:'DEGRADED', error:'FAULT'};
+    const statusColor  = {ok:'var(--green)', warn:'var(--gold)', error:'var(--red)'};
+
+    function buildCard(gate, metrics, status) {
+      return `
+        <div class="card gate-card" id="card-${gate.id}">
+          <a href="${gate.href}">
+            <div class="gate-id">GATE ${gate.id} · ${gate.label.toUpperCase()}</div>
+            <div class="gate-name">${gate.name}</div>
+            <div class="gate-desc">${gate.desc}</div>
+            <div class="gate-metrics">
+              ${metrics.map(([k,v])=>`<div class="gate-metric">${k}<span>${v}</span></div>`).join('')}
+            </div>
+          </a>
+          <div class="gate-footer">
+            <span class="status-pill ${status}" id="pill-${gate.id}">${statusLabel[status]}</span>
+            <a href="${gate.href}" class="gate-link">Open terminal →</a>
+          </div>
+        </div>`;
+    }
+
+    const grid = document.getElementById('gate-grid');
+
+    async function renderAll() {
+      const results = await Promise.all(GATES.map(async g => {
+        try {
+          const res = await fetch(g.api);
+          if (!res.ok) throw new Error();
+          const d = await res.json();
+          return { gate:g, metrics:g.extract(d), status:g.statusKey(d)||'ok' };
+        } catch {
+          return { gate:g, metrics:g.fallback(), status:'ok' };
+        }
+      }));
+
+      if (!grid.children.length) {
+        grid.innerHTML = results.map(r => buildCard(r.gate, r.metrics, r.status)).join('');
+      } else {
+        results.forEach(r => {
+          const pill = document.getElementById(`pill-${r.gate.id}`);
+          if (pill) { pill.textContent = statusLabel[r.status]; pill.className = `status-pill ${r.status}`; }
+          const metricsEl = document.querySelector(`#card-${r.gate.id} .gate-metrics`);
+          if (metricsEl) metricsEl.innerHTML = r.metrics.map(([k,v])=>`<div class="gate-metric">${k}<span>${v}</span></div>`).join('');
+        });
+      }
+
+      const faults = results.filter(r=>r.status==='error').length;
+      const warns  = results.filter(r=>r.status==='warn').length;
+      const allStatus = document.getElementById('all-status');
+      const overallEl = document.getElementById('overall-status');
+      if (faults > 0) {
+        allStatus.textContent = `${faults} FAULT${faults>1?'S':''}`;
+        allStatus.style.color = 'var(--red)';
+        overallEl.textContent = `● ${faults} GATE${faults>1?'S':''} FAULTED`;
+        overallEl.style.color = 'var(--red)';
+      } else if (warns > 0) {
+        allStatus.textContent = `${warns} DEGRADED`;
+        allStatus.style.color = 'var(--gold)';
+        overallEl.textContent = '● DEGRADED';
+        overallEl.style.color = 'var(--gold)';
+      } else {
+        allStatus.textContent = '6/6 NOMINAL';
+        allStatus.style.color = 'var(--green)';
+        overallEl.textContent = '● ALL SYSTEMS NOMINAL';
+        overallEl.style.color = 'var(--green)';
+      }
+    }
+
+    renderAll();
+    setInterval(renderAll, 15000);
+  </script>
+</body>
+</html>

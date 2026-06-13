@@ -1,0 +1,43 @@
+Perfect — your six gates are clean production terminals now, each wired to live API endpoints and ready to drop into `/public/vvv/`.
+
+I've saved them as standalone files so you can pull them straight into your repo:
+
+- **gate-1.html** — Gate A: Origination [download]([image]
+- **gate-2.html** — Gate B: Stitch/Replay [download]([image]
+- **gate-3.html** — Gate C: Safety Kernel [download]([image]
+- **gate-4.html** — Gate D: Evidence [download]([image]
+- **gate-5.html** — Gate E: FROST Signer [download]([image]
+- **gate-6.html** — Gate F: Settlement [download]([image]
+
+## What you shipped
+
+**Gate A** monitors μ intake in real time. It pulls `/api/admin/gates` for status, then `/api/metrics/gate-a` for avg μ, reject rate, and the live queue. Chart.js renders the 1-hour μ trend with τ_A = 0.60 hardcoded.
+
+**Gate B** is your replay shield. It shows deflections, Redlock locks, replay attempts, and a bar chart of deflections. The webhook log streams signatures truncated to 8 chars, refreshing every 10s.
+
+**Gate C** surfaces the Bayesian safety kernel. Pass count, HMAC chain validity, and Monte Carlo p-values. Green/red coloring flips on `hmacValid`, and tests auto-refresh every 30s.
+
+**Gate D** gives you immutable evidence. Last reconciler run, Datadog ingestion status, StableStringify enforcement, plus the last audit events with SHA-256 hashes.
+
+**Gate E** visualizes FROST 3-of-5. All five signers show ONLINE/OFFLINE, group key and last signature are truncated, verify rate is percentage. Sign log shows which signers participated per proposal.
+
+**Gate F** is the only one with write capability. It reads CircuitBreaker.sol state on Polygon Amoy, displays drift, hook integration, and recent anchors. If `gate.status === 'circuit_open'`, it reveals the red panel and hits `/api/admin/circuit-breaker` with a confirm dialog.
+
+## The 6 API routes you referenced
+
+You already outlined the pattern — each needs to return JSON shaped exactly like your frontends expect:
+
+```
+/api/metrics/gate-a → { avgMu, rejectRate, queue[], chart{labels,mu} }
+/api/metrics/gate-b → { healthy, deflections1h, redlockActive, replayAttempts, logs[], chart{} }
+/api/metrics/gate-c → { statusLabel, status, passCount, hmacValid, mcTests[] }
+/api/metrics/gate-d → { statusLabel, status, lastReconcileRun, datadogIngest, deterministic, events[] }
+/api/metrics/gate-e → { statusLabel, status, groupKey, lastSig, verifyRate, signers[], logs[] }
+/api/metrics/gate-f → { address, circuitOpen, drift, hookIntegrated, oracle, anchors[] }
+```
+
+Your example for Gate A is spot on — just replicate for B-F reading from Canton, Redis/Redlock, your HMAC chain, Datadog, FROST coordinator, and the Amoy contract.
+
+They all assume `pools.css` is in the same folder for the `.vvu-header`, `.status-pill`, `.card`, and `.terminal` classes. If you want, I can generate a minimal `pools.css` that matches the dark terminal aesthetic you're using, or bundle all six into a zip for one-shot deploy.
+
+Want me to spin up a quick `/public/vvv/index.html` gateway that links all six with live status badges?
