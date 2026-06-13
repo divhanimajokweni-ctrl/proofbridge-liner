@@ -1,113 +1,430 @@
-# VVU Platform - Embedded Watchdog + Gate A Integration
+The current README no longer reflects the architectural reality of the project based on the recent direction toward ProofBridge, the Compliance Fabric, Transition Receipts, distributed tracing, circuit breakers, and Ubuntu Pools.
 
-A production-grade implementation of the VVU Platform featuring:
-- Embedded Watchdog system for operational observability
-- Gate A Authentication & Identity Infrastructure integration
-- Pre-registered Gate B Contribution Rail Infrastructure hooks
-- Schema v2.1 compliant
+The Watchdog/Gate A material should not be discarded, but it should be repositioned as one subsystem within a broader production architecture rather than the project's primary identity.
 
-## Architecture Overview
+A replacement README could be:
 
-This implementation combines systemic observability with a Next.js/Supabase auth stack, featuring:
+````md
+# ProofBridge-Liner
 
-### Core Components
-1. **Watchdog System** (`src/lib/watchdog/`)
-   - HeartbeatSchema: Operational tags, incident contracts, fault classification
-   - HeartbeatBus: Distributed event bus using IndexedDB and BroadcastChannel
-   - WatchdogProbes: Operational probe classes for direct error boundary instrumentation
-   - OrchestratorEngine: Priority-sorted diagnostic engine running on eternal clock loop
+Production-grade deterministic verification and compliance runtime for the VVU ecosystem.
 
-2. **Gate A: Auth & Identity Infrastructure**
-   - Remediated cookies() invocation in route handlers
-   - Loop protection middleware with redirect counting
-   - RLS compliance with explicit UUID type casting
-   - Health monitoring with infrastructure degradation detection
+ProofBridge-Liner is the execution and evidence layer that transforms state transitions into cryptographically verifiable receipts, enabling replayability, auditability, and compliance across Ubuntu Pools and future financial infrastructure.
 
-3. **Gate B: Contribution Rail Infrastructure (Pre-Registered)**
-   - Pre-registered fault tags for future integration
-   - Stubbed E2E tests for zero-friction activation
+---
 
-## Infrastructure & Monitoring
+# Current Status
 
-The VVUP platform is designed for a **globally distributed Vercel deployment** with a strict observability stack:
+**Phase:** Production Hardening
 
-- **Datadog & PagerDuty:** Production monitors for P99 latency (250ms ceiling) and security deflection spikes. Linked directly to `@pagerduty-VVUP-Core-OnCall`.
-- **Infrastructure as Code:** Managed via Terraform in `src/lib/main.tf`.
-- **Performance Benchmarking:** Automated **Autocannon** telemetry integrated into the CI/CD pipeline.
-- **Regional Routing:** Multi-region Redis mesh routing via Upstash (US-East, EU-West).
+Core architectural foundations are in place and the project is transitioning from a functional prototype toward a production-grade deterministic runtime.
 
-## Getting Started
+Current focus:
 
-### Prerequisites
-- Node.js 20+ 
-- Supabase CLI
-- Terraform 1.5.7+
-- Playwright browsers (for E2E testing)
+- Compliance Fabric completion
+- Transition Receipt stability
+- Circuit Breaker enforcement
+- Distributed trace continuity
+- Immutable evidence generation
+- End-to-end deterministic replay
+- Ubuntu Pools production readiness
 
-### Installation
+---
+
+# North Star
+
+The primary objective remains unchanged:
+
+> Ubuntu Pools operating with real members, real money, and real contribution cycles.
+
+Everything else in the repository exists to make that event cryptographically provable, operationally observable, and independently auditable.
+
+---
+
+# Core Architecture
+
+```
+                 User Action
+                      │
+                      ▼
+
+             State Transition Request
+
+                      │
+                      ▼
+
+              Deterministic Evaluation
+
+                      │
+                      ▼
+
+               Compliance Fabric
+
+                      │
+          ┌───────────┴────────────┐
+          │                        │
+
+          ▼                        ▼
+
+     Transition Receipt      Circuit Breaker
+
+          │                        │
+
+          └───────────┬────────────┘
+                      │
+
+                      ▼
+
+             Cryptographic Evidence
+
+                      │
+
+                      ▼
+
+              Immutable Audit Trail
+
+                      │
+
+                      ▼
+
+                 Ubuntu Pools
+```
+
+---
+
+# Major Components
+
+## ProofBridge
+
+Deterministic execution layer responsible for:
+
+- canonical state transitions
+- reproducible evaluation
+- evidence generation
+- replayability
+- cryptographic integrity
+
+---
+
+## Compliance Fabric
+
+Compliance runtime responsible for:
+
+- deterministic canonicalization
+- payload validation
+- compliance tokenization
+- cryptographic signing
+- signature verification
+- telemetry verification
+- SAFE/TRIP evaluation
+
+Target properties:
+
+- deterministic
+- independently verifiable
+- regulator-friendly
+- replayable
+
+---
+
+## Transition Receipts
+
+Every accepted state transition produces a canonical receipt describing:
+
+- previous state
+- next state
+- transition hash
+- pipeline hash
+- state hash
+- compliance evidence
+- timestamps
+- trace identifiers
+
+Receipts represent the authoritative historical record.
+
+---
+
+## Circuit Breaker Layer
+
+Protective runtime responsible for:
+
+- unsafe state interruption
+- policy enforcement
+- deterministic fail-safe behaviour
+- evaluation halting
+- infrastructure degradation response
+
+Circuit breaker outputs become part of the permanent evidence chain.
+
+---
+
+## Embedded Watchdog
+
+Operational observability subsystem.
+
+Includes:
+
+- HeartbeatSchema
+- HeartbeatBus
+- WatchdogProbes
+- OrchestratorEngine
+
+Responsibilities:
+
+- operational diagnostics
+- distributed heartbeat monitoring
+- fault classification
+- incident reporting
+- runtime instrumentation
+
+---
+
+## Gate A Infrastructure
+
+Identity and authentication infrastructure.
+
+Includes:
+
+- Supabase integration
+- cookie remediation
+- redirect loop protection
+- UUID-safe RLS operations
+- authentication health monitoring
+
+---
+
+## Gate B Infrastructure
+
+Pre-registered contribution rail integration.
+
+Foundation includes:
+
+- webhook contracts
+- contribution fault taxonomy
+- ledger integration points
+- reconciliation hooks
+- idempotency support
+
+Future integrations:
+
+- payment providers
+- FX oracle
+- settlement verification
+- contribution lifecycle management
+
+---
+
+# Current Production Capabilities
+
+Implemented:
+
+- deterministic canonicalization
+- payload hashing
+- cryptographic signatures
+- telemetry validation
+- internal consistency verification
+- compliance token generation
+- watchdog infrastructure
+- Gate A authentication infrastructure
+- Gate B registration hooks
+- schema v2.1 compatibility
+
+---
+
+# Production Hardening Remaining
+
+Before production release:
+
+## Compliance
+
+- replay protection
+- trust infrastructure
+- key rotation
+- certificate governance
+- versioned compliance envelopes
+
+## Evidence
+
+- immutable append-only audit chain
+- historical replay verification
+- deterministic replay testing
+
+## Runtime
+
+- middleware hardening
+- distributed trace continuity
+- state transition verification
+- production telemetry validation
+
+## Operations
+
+- production monitoring validation
+- regional failover verification
+- infrastructure resilience testing
+
+---
+
+# Infrastructure
+
+Current infrastructure includes:
+
+- Next.js
+- Supabase
+- Terraform
+- Datadog
+- PagerDuty
+- Upstash Redis
+- IndexedDB
+- BroadcastChannel
+- Playwright
+- Autocannon
+
+Target deployment:
+
+- globally distributed
+- deterministic
+- observable
+- cryptographically verifiable
+
+---
+
+# Development
+
+Install:
+
 ```bash
 npm install
 ```
 
-### Performance Benchmarking
-Execute a local performance telemetry run and stream metrics to Datadog:
-```bash
-# Requires VERCEL_URL and DATADOG_API_KEY
-npm run benchmark
-```
+Development:
 
-### Environment Setup
-Create a `.env.local` file with:
-```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-### Database Migrations
-```bash
-npx supabase db migrate
-```
-
-### Development
 ```bash
 npm run dev
 ```
 
-### Testing
-```bash
-# Unit tests
-npm test
+Tests:
 
-# E2E tests
+```bash
+npm test
 npm run test:e2e
 ```
 
-## Watchdog Usage
+Performance:
 
-### Adding Observability to Components
-As part of your development process, initialize components with an explicit tracking boundary:
-
-```typescript
-// Add this line to your constructors before writing business logic
-private probe = new NullProbe();
-
-// When you hit a production code checkpoint, replace the NullProbe 
-// with the correct typed probe class from WatchdogProbes.ts
+```bash
+npm run benchmark
 ```
 
-### Available Probes
-- **Operational (P01-P06)**: Tab coordination, network sync, cache eviction, etc.
-- **Gate A Infrastructure**: Cookie faults, middleware loops, RLS violations, etc.
-- **Gate B Contribution Pipeline**: Payment webhook failures, ledger mismatches, etc.
+Database:
 
-## Gate B Integration Roadmap
+```bash
+npx supabase db migrate
+```
 
-Once Gate A pipeline is verified, Gate B integration can proceed with:
+---
 
-1. **Webhook Payload Structure** (see below)
-2. **Ledger Reconciliation Engine** 
-3. **FX Oracle Integration**
-4. **Idempotency Key Management**
+# Next Replit Execution Instruction
 
-## License
-MIT
+Execute strictly in sequence.
+
+## Phase 1
+
+Resolve all middleware defects introduced during recent integration work.
+
+Deliverables:
+
+- deterministic routing
+- redirect stability
+- cookie correctness
+- authentication continuity
+
+---
+
+## Phase 2
+
+Complete Compliance Fabric production hardening.
+
+Deliverables:
+
+- replay protection
+- versioned envelopes
+- trust chain
+- key lifecycle support
+
+---
+
+## Phase 3
+
+Verify distributed tracing across the complete proposal lifecycle.
+
+Deliverables:
+
+- trace continuity
+- carrier persistence
+- Stitch webhook re-anchoring
+- OpenTelemetry validation
+
+---
+
+## Phase 4
+
+Finalize Transition Receipt integrity.
+
+Deliverables:
+
+- canonical hashes
+- stateHash correctness
+- pipelineHash validation
+- deterministic replay
+
+---
+
+## Phase 5
+
+Complete Circuit Breaker enforcement.
+
+Deliverables:
+
+- runtime interruption
+- policy enforcement
+- permanent evidence recording
+
+---
+
+## Phase 6
+
+Execute end-to-end deterministic replay validation.
+
+Required result:
+
+- identical inputs
+- identical outputs
+- identical receipts
+- identical hashes
+
+---
+
+## Phase 7
+
+Production verification.
+
+Validate:
+
+- observability
+- compliance
+- receipts
+- tracing
+- watchdog
+- authentication
+- contribution rails
+
+before release.
+
+---
+
+# Mission
+
+ProofBridge-Liner exists to make critical financial and governance state transitions independently verifiable, cryptographically provable, operationally observable, and deterministically reproducible.
+````
+
+This structure better reflects the repository's current trajectory and the sequencing established in your recent architectural work, while preserving the existing Watchdog and Gate A/B infrastructure as integrated components rather than the defining focus of the project.
