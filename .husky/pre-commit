@@ -1,1 +1,3 @@
-npm run precommit
+#!/usr/bin/env bash
+set -e
+node scripts/secret-scan-precommit.js

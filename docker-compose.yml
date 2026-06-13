@@ -1,0 +1,42 @@
+version: '2.4'
+services:
+  # Main VVUP Risk Engine Application
+  main-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vvup-risk-engine
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+      - DD_SERVICE=vvup-risk-engine
+      - DD_ENV=dev
+      - DD_VERSION=2.1.0
+      - DD_LOGS_INJECTION=true
+      - DD_TRACE_ENABLED=true
+      - DD_AGENT_HOST=datadog-agent
+    volumes:
+      - shared-logs:/app/logs
+    depends_on:
+      - datadog-agent
+
+  # Datadog Agent Sidecar
+  datadog-agent:
+    image: datadog/agent:latest
+    container_name: datadog-agent
+    environment:
+      - DD_API_KEY=${DATADOG_API_KEY}
+      - DD_SITE=datadoghq.com
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_PROCESS_AGENT_ENABLED=true
+      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+      - shared-logs:/var/log/vvup:ro
+
+volumes:
+  shared-logs:

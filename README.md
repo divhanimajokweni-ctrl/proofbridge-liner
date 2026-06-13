@@ -1,156 +1,113 @@
-# ProofBridge Liner
+# VVU Platform - Embedded Watchdog + Gate A Integration
 
-ProofBridge Liner is the production shell for the Venture Vision Ubuntu / Ubuntu Pools safety kernel. It serves the public VVU experience, pool journey pages, verification API routes, and a new cryptographic compliance execution fabric for SARB/BOP3-style regulatory evidence.
+A production-grade implementation of the VVU Platform featuring:
+- Embedded Watchdog system for operational observability
+- Gate A Authentication & Identity Infrastructure integration
+- Pre-registered Gate B Contribution Rail Infrastructure hooks
+- Schema v2.1 compliant
 
-## Current Production State
+## Architecture Overview
 
-- Production domain: https://venturevisualubuntu.co.za
-- Active clean integration branch: `compliance-fabric`
-- Runtime: Next.js 15 App Router on Vercel Edge
-- Node.js: 24.x (engines field)
-- Middleware: `middleware.ts` (dynamic import for Edge Runtime)
+This implementation combines systemic observability with a Next.js/Supabase auth stack, featuring:
 
-## Architecture
+### Core Components
+1. **Watchdog System** (`src/lib/watchdog/`)
+   - HeartbeatSchema: Operational tags, incident contracts, fault classification
+   - HeartbeatBus: Distributed event bus using IndexedDB and BroadcastChannel
+   - WatchdogProbes: Operational probe classes for direct error boundary instrumentation
+   - OrchestratorEngine: Priority-sorted diagnostic engine running on eternal clock loop
 
-```
-app/
-├── layout.tsx              Root layout (SessionProvider wrapper)
-├── page.tsx                Redirects to /vvv/index.html
-├── globals.css             Global styles
-├── auth/
-│   ├── page.tsx            Magic link sign-in (client)
-│   └── callback/route.ts   Supabase code exchange
-├── api/
-│   ├── verify/route.ts     Gate-1 Bayesian verification (POST)
-│   ├── mint/route.ts       Gate-1 v2 mint with nonce (POST)
-│   └── contact/route.ts    Contact form via Resend (POST)
-└── admin/
-    └── pools/page.tsx      Admin pool dashboard (auth-required)
+2. **Gate A: Auth & Identity Infrastructure**
+   - Remediated cookies() invocation in route handlers
+   - Loop protection middleware with redirect counting
+   - RLS compliance with explicit UUID type casting
+   - Health monitoring with infrastructure degradation detection
 
-middleware.ts               Edge auth guard (Supabase dynamic import)
-next.config.js              Rewrites to /vvv/ static pages
-vercel.json                 Vercel config (no rewrites — handled by Next.js)
-```
+3. **Gate B: Contribution Rail Infrastructure (Pre-Registered)**
+   - Pre-registered fault tags for future integration
+   - Stubbed E2E tests for zero-friction activation
 
-## API Routes
+## Infrastructure & Monitoring
 
-All routes are Next.js App Router handlers in `app/api/`:
+The VVUP platform is designed for a **globally distributed Vercel deployment** with a strict observability stack:
 
-| Route | Method | Purpose |
-|-------|--------|---------|
-| `/api/verify` | POST | Gate-1 Bayesian verification — computes posterior, threshold, verdict |
-| `/api/mint` | POST | Gate-1 v2 mint — adds replay protection via client_nonce |
-| `/api/contact` | POST | Contact form — sends via Resend API |
+- **Datadog & PagerDuty:** Production monitors for P99 latency (250ms ceiling) and security deflection spikes. Linked directly to `@pagerduty-VVUP-Core-OnCall`.
+- **Infrastructure as Code:** Managed via Terraform in `src/lib/main.tf`.
+- **Performance Benchmarking:** Automated **Autocannon** telemetry integrated into the CI/CD pipeline.
+- **Regional Routing:** Multi-region Redis mesh routing via Upstash (US-East, EU-West).
 
-### POST /api/verify
+## Getting Started
 
-```json
-{
-  "alpha": 10, "beta": 2, "gamma": 1.5, "threshold": 0.7,
-  "deed_hash": "64-char-hex", "chain_target": "AMOY"
-}
-```
+### Prerequisites
+- Node.js 20+ 
+- Supabase CLI
+- Terraform 1.5.7+
+- Playwright browsers (for E2E testing)
 
-### POST /api/mint
-
-```json
-{
-  "alpha": 10, "beta": 2, "gamma": 1.5, "threshold": 0.7,
-  "deed_hash": "64-char-hex", "client_nonce": "64-char-hex",
-  "chain_target": "AMOY"
-}
-```
-
-## Static Routes
-
-Rewrites in `next.config.js` serve static HTML from `public/vvv/`:
-
-```
-/                  -> /vvv/index.html
-/gate-1            -> /vvv/gate-1.html
-/pools             -> /vvv/pools.html
-/pools/onboarding  -> /vvv/pools-onboarding.html
-/pools/trust       -> /vvv/pools-trust.html
-/pools/ledger      -> /vvv/pools-ledger.html
-/pools/governance  -> /vvv/pools-governance.html
-/pools/learning    -> /vvv/pools-learning.html
-/pools/profile     -> /vvv/pools-profile.html
-/pools/compliance  -> /vvv/pools-compliance.html
-/admin/pools       -> /vvv/admin-pools.html
-/proofbridge       -> /vvv/proofbridge.html
-/submission        -> /vvv/submission.html
-```
-
-## Authentication
-
-- Middleware uses `@supabase/ssr` with dynamic import for Edge Runtime compatibility
-- Public routes: `/auth`, `/auth/callback`, `/vvv`, `/demo`, `/gate-1`, `/proofbridge`, `/pools`, `/submission`
-- Admin routes: `/admin` — requires `facilitator` role in Supabase user metadata
-- Auth pages: `/auth` (magic link), `/auth/callback` (code exchange)
-
-## Deployment
-
-```bash
-# Install and build
-npm install
-npm run build
-
-# Deploy to Vercel
-vercel deploy --prod --yes
-vercel alias set <deployment-url> venturevisualubuntu.co.za
-
-# Verify
-curl -I https://venturevisualubuntu.co.za
-curl -I https://venturevisualubuntu.co.za/api/verify
-```
-
-Expected: `HTTP/1.1 200 OK`.
-
-## Local Development
-
+### Installation
 ```bash
 npm install
+```
+
+### Performance Benchmarking
+Execute a local performance telemetry run and stream metrics to Datadog:
+```bash
+# Requires VERCEL_URL and DATADOG_API_KEY
+npm run benchmark
+```
+
+### Environment Setup
+Create a `.env.local` file with:
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### Database Migrations
+```bash
+npx supabase db migrate
+```
+
+### Development
+```bash
 npm run dev
 ```
 
-Dev server starts at `http://localhost:3000`.
-
-### QStash Local Development
-
+### Testing
 ```bash
-npx @upstash/qstash-cli@latest dev
+# Unit tests
+npm test
+
+# E2E tests
+npm run test:e2e
 ```
 
-Local QStash server runs at `http://127.0.0.1:8080`.
+## Watchdog Usage
 
-### AI Gateway
+### Adding Observability to Components
+As part of your development process, initialize components with an explicit tracking boundary:
 
-The `ai-gateway/` directory contains a standalone Vercel AI Gateway integration:
+```typescript
+// Add this line to your constructors before writing business logic
+private probe = new NullProbe();
 
-```bash
-cd ai-gateway
-npm install
-npx tsx index.ts
+// When you hit a production code checkpoint, replace the NullProbe 
+// with the correct typed probe class from WatchdogProbes.ts
 ```
 
-Requires `AI_GATEWAY_API_KEY` in `ai-gateway/.env.local`.
+### Available Probes
+- **Operational (P01-P06)**: Tab coordination, network sync, cache eviction, etc.
+- **Gate A Infrastructure**: Cookie faults, middleware loops, RLS violations, etc.
+- **Gate B Contribution Pipeline**: Payment webhook failures, ledger mismatches, etc.
 
-## Cryptographic Compliance Execution Fabric
+## Gate B Integration Roadmap
 
-The TypeScript compliance fabric adds deterministic, signed compliance artifacts.
+Once Gate A pipeline is verified, Gate B integration can proceed with:
 
-Core files:
+1. **Webhook Payload Structure** (see below)
+2. **Ledger Reconciliation Engine** 
+3. **FX Oracle Integration**
+4. **Idempotency Key Management**
 
-```
-prover/compliance_tokenizer.ts       RS256 pool tokens and signed compliance envelopes
-server/mock_sarb_endpoint.ts         Mock SARB ingest endpoint for signature verification
-scripts/generate_keys.mjs            Local RSA keypair generation
-test/verification_loop.test.ts       End-to-end verification loop
-```
-
-## Security Notes
-
-- Never embed GitHub, Vercel, wallet, or RPC secrets in committed files
-- Treat `private_key.pem`, `.env`, `.env.*`, `dist/`, `node_modules/` as local artifacts
-- Middleware degrades gracefully when Supabase env vars are missing
-- All API routes validate input and reject malformed requests
+## License
+MIT

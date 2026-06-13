@@ -1,22 +1,23 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "es2022",
     "lib": [
       "dom",
       "dom.iterable",
       "esnext"
     ],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "allowJs": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
     "plugins": [
       {
         "name": "next"
@@ -24,10 +25,9 @@
     ],
     "paths": {
       "@/*": [
-        "./*"
+        "./src/*"
       ]
-    },
-    "noEmit": true
+    }
   },
   "include": [
     "next-env.d.ts",
@@ -37,6 +37,10 @@
   ],
   "exclude": [
     "node_modules",
-    "ai-gateway"
+    "deer-flow",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "jest.setup.ts",
+    "e2e"
   ]
 }
