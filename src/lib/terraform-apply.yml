@@ -1,0 +1,74 @@
+name: Terraform Apply to HCP Terraform
+
+on:
+  push:
+    branches:
+      - compliance-fabric
+      - feature/gate-a-watchdog-remediation
+  pull_request: # Trigger on pull requests
+    branches:
+      - compliance-fabric
+
+jobs:
+  terraform_plan: # New job to run terraform plan on pull requests
+    name: "Terraform Plan"
+    runs-on: ubuntu-latest
+    environment: production # Use the production environment for consistent access to secrets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.x # Use a specific version or range
+
+      - name: Terraform Login to HCP Terraform
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.HCP_TERRAFORM_VVU_ARCHITECT_TOKEN }}
+        run: |
+          terraform login
+
+      - name: Terraform Init
+        run: terraform init -backend-config="workspace=proofbridge-liner-prod" # Explicitly specify workspace for clarity
+        working-directory: ./src/lib # Assuming terraform files are in src/lib
+
+      - name: Terraform Plan
+        run: terraform plan -var="vvu_env=production"
+        working-directory: ./src/lib # Assuming terraform files are in src/lib
+
+  terraform_apply:
+    name: "Terraform Apply"
+    runs-on: ubuntu-latest
+    environment: production # Assuming 'production' environment is configured in GitHub
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.x # Use a specific version or range
+
+      - name: Terraform Login to HCP Terraform
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.HCP_TERRAFORM_VVU_ARCHITECT_TOKEN }}
+        run: |
+          terraform login
+
+      - name: Terraform Init
+        run: terraform init -backend-config="workspace=proofbridge-liner-prod" # Explicitly specify workspace for clarity
+        working-directory: ./src/lib # Assuming terraform files are in src/lib
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -var="vvu_env=production"
+        working-directory: ./src/lib # Assuming terraform files are in src/libservices:
+          tfc-agent:
+            image: hashicorp/tfc-agent:latest
+            container_name: tfc-agent
+            restart: always
+            platform: linux/amd64
+            env_file: .env
+        

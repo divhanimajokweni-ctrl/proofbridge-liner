@@ -27,16 +27,33 @@ This implementation combines systemic observability with a Next.js/Supabase auth
    - Pre-registered fault tags for future integration
    - Stubbed E2E tests for zero-friction activation
 
+## Infrastructure & Monitoring
+
+The VVUP platform is designed for a **globally distributed Vercel deployment** with a strict observability stack:
+
+- **Datadog & PagerDuty:** Production monitors for P99 latency (250ms ceiling) and security deflection spikes. Linked directly to `@pagerduty-VVUP-Core-OnCall`.
+- **Infrastructure as Code:** Managed via Terraform in `src/lib/main.tf`.
+- **Performance Benchmarking:** Automated **Autocannon** telemetry integrated into the CI/CD pipeline.
+- **Regional Routing:** Multi-region Redis mesh routing via Upstash (US-East, EU-West).
+
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js 20+ 
 - Supabase CLI
+- Terraform 1.5.7+
 - Playwright browsers (for E2E testing)
 
 ### Installation
 ```bash
 npm install
+```
+
+### Performance Benchmarking
+Execute a local performance telemetry run and stream metrics to Datadog:
+```bash
+# Requires VERCEL_URL and DATADOG_API_KEY
+npm run benchmark
 ```
 
 ### Environment Setup
