@@ -1,4 +1,6 @@
 {
+  "framework": "nextjs",
+  "outputDirectory": ".next",
   "crons": [
     {
       "path": "/api/cron/reconcile-gate-f",
