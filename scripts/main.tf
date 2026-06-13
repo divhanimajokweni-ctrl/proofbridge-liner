@@ -20,16 +20,22 @@ variable "secrets" {
 
 variable "github_owner" { type = string }
 variable "github_repo" { type = string }
-variable "github_token" { type = string; sensitive = true }
+variable "github_token" {
+  type      = string
+  sensitive = true
+}
 variable "replit_id" { type = string }
-variable "replit_api_key" { type = string; sensitive = true }
+variable "replit_api_key" {
+  type      = string
+  sensitive = true
+}
 
 # 1. Manage GitHub Repository Secrets
 resource "github_actions_secret" "secrets" {
   for_each        = var.secrets
   repository      = var.github_repo
   secret_name     = each.key
-  plaintext_value = each.value
+  value           = each.value
 }
 
 # 2. Sync to Replit Environment (Kilo CLI)
@@ -39,22 +45,55 @@ resource "null_resource" "replit_secrets" {
 
   triggers = {
     secret_hash = sha256(each.value)
+    repl_id     = var.replit_id
+    secret_name = each.key
   }
 
   provisioner "local-exec" {
     command = <<EOT
-      curl -X POST https://replit.com/graphql \
-        -H "X-Replit-Identity: ${var.replit_api_key}" \
+      RESPONSE=$(curl --fail -s -X POST https://replit.com/graphql \
+        -H "X-Replit-Identity: $REPLIT_API_KEY" \
         -H "Content-Type: application/json" \
-        -d '{
-          "query": "mutation SetSecret($replId: String!, $name: String!, $value: String!) { setSecret(replId: $replId, name: $name, value: $value) { id } }",
-          "variables": {
-            "replId": "${var.replit_id}",
-            "name": "${each.key}",
-            "value": "${each.value}"
-          }
-        }'
+        -d "$PAYLOAD")
+      
+      if echo "$RESPONSE" | grep -q '"errors"'; then
+        echo "GraphQL Error: $RESPONSE"
+        exit 1
+      fi
     EOT
+
+    environment = {
+      REPLIT_API_KEY = var.replit_api_key
+      PAYLOAD = jsonencode({
+        query = "mutation SetSecret($replId: String!, $name: String!, $value: String!) { setSecret(replId: $replId, name: $name, value: $value) { id } }"
+        variables = {
+          replId = var.replit_id
+          name   = each.key
+          value  = each.value
+        }
+      })
+    }
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = <<EOT
+      curl --fail -s -X POST https://replit.com/graphql \
+        -H "X-Replit-Identity: $REPLIT_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d "$PAYLOAD"
+    EOT
+
+    environment = {
+      REPLIT_API_KEY = var.replit_api_key
+      PAYLOAD = jsonencode({
+        query = "mutation DeleteSecret($replId: String!, $name: String!) { deleteSecret(replId: $replId, name: $name) }"
+        variables = {
+          replId = self.triggers.repl_id
+          name   = self.triggers.secret_name
+        }
+      })
+    }
   }
 }
 
