@@ -8,7 +8,18 @@ terraform {
 }
 
 provider "datadog" {
-  # API and App keys are automatically picked up from DATADOG_API_KEY and DATADOG_APP_KEY env vars
+  api_key = var.DATADOG_API_KEY
+  app_key = var.DATADOG_APP_KEY
+}
+
+variable "DATADOG_API_KEY" {
+  type      = string
+  sensitive = true
+}
+
+variable "DATADOG_APP_KEY" {
+  type      = string
+  sensitive = true
 }
 
 # Monitor for P99 Latency (Ceiling: 250ms)
