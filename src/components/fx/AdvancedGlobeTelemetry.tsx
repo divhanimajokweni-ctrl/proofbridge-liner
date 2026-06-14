@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three-stdlib';
 
+
 const HUB_LOCATIONS = [
   { id: 'JHB', name: 'Johannesburg (ZA)', lat: -26.2041, lon: 28.0473, isAlert: true, ip: '102.14.88.24', ping: '12ms' },
   { id: 'CPT', name: 'Cape Town (ZA)', lat: -33.9249, lon: 18.4241, isAlert: true, ip: '102.14.90.11', ping: '14ms' },
