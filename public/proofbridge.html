@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        /* ========== VVU EARTH-TECH DESIGN TOKENS ========== */
         :root {
             --sage: #8A9A5B;
             --sage-light: #b8c98a;
@@ -19,22 +18,18 @@
             --paper: #F4F5F0;
             --stone: #E2E3DB;
             --gravel: #5A5A55;
-            
             --color-text-primary: rgba(255, 255, 255, 0.92);
             --color-text-secondary: rgba(255, 255, 255, 0.62);
             --color-border-tertiary: rgba(255, 255, 255, 0.08);
             --color-background-primary: var(--charcoal);
             --color-background-secondary: #262624;
-            
             --font-sans: 'Syne', system-ui, sans-serif;
             --font-mono: 'DM Mono', monospace;
             --radius-md: 12px;
             --radius-pill: 40px;
             --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
         body {
             background: var(--charcoal);
             font-family: var(--font-sans);
@@ -43,7 +38,6 @@
             overflow-x: hidden;
             -webkit-font-smoothing: antialiased;
         }
-        
         body::before {
             content: '';
             position: fixed;
@@ -54,9 +48,7 @@
             pointer-events: none;
             z-index: 0;
         }
-        
         .vvu-wrapper { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 0 24px; }
-        
         .ticker {
             background: #11110F;
             border-bottom: 1px solid var(--color-border-tertiary);
@@ -76,12 +68,10 @@
         .ticker-label { color: var(--sage-light); letter-spacing: 0.04em; }
         .ticker-val { color: var(--ochre); }
         .ticker-up { color: var(--sage); }
-        
         @keyframes tickerScroll {
             from { transform: translateX(0); }
             to { transform: translateX(-50%); }
         }
-        
         nav {
             display: flex;
             align-items: center;
@@ -91,15 +81,8 @@
             flex-wrap: wrap;
             gap: 16px;
         }
-        .logo-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .logo-mark {
-            width: 44px;
-            height: 44px;
-        }
+        .logo-group { display: flex; align-items: center; gap: 12px; }
+        .logo-mark { width: 44px; height: 44px; }
         .logo-text h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
         .logo-text p { font-size: 0.7rem; font-family: var(--font-mono); color: var(--sage); letter-spacing: 2px; }
         .nav-links { display: flex; gap: 32px; list-style: none; }
@@ -107,7 +90,6 @@
         .nav-links a:hover { color: var(--ochre); }
         .btn-terminal-sm { background: transparent; border: 1px solid var(--ochre); padding: 6px 14px; border-radius: 40px; font-family: var(--font-mono); font-size: 0.7rem; color: var(--ochre); cursor: pointer; transition: var(--transition); }
         .btn-terminal-sm:hover { background: rgba(204,119,34,0.12); }
-        
         .hero-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -125,7 +107,6 @@
         .btn-primary:hover { background: var(--sage-dark); transform: translateY(-2px); }
         .btn-outline-light { background: transparent; border: 1px solid var(--color-border-tertiary); padding: 12px 28px; border-radius: 40px; font-weight: 600; color: white; cursor: pointer; transition: var(--transition); }
         .btn-outline-light:hover { border-color: var(--ochre); color: var(--ochre); }
-        
         .terminal-widget {
             background: #11110F;
             border: 1px solid var(--color-border-tertiary);
@@ -152,7 +133,6 @@
         .data-cell:last-child { border-right: none; }
         .data-label { font-size: 0.6rem; color: var(--gravel); letter-spacing: 1px; text-transform: uppercase; }
         .data-value { font-size: 1.4rem; font-weight: 700; color: var(--ochre); }
-        
         .proof-feed { margin-top: 18px; background: #11110F; border-radius: 16px; border: 1px solid var(--color-border-tertiary); overflow: hidden; }
         .proof-feed-header { padding: 10px 16px; border-bottom: 1px solid var(--color-border-tertiary); font-family: var(--font-mono); font-size: 0.65rem; display: flex; justify-content: space-between; }
         .live-dot { display: inline-block; width: 6px; height: 6px; background: var(--sage); border-radius: 50%; margin-right: 6px; animation: pulse 2s infinite; }
@@ -161,7 +141,6 @@
         .event-hash { color: var(--color-text-secondary); }
         .status-ok { color: var(--sage); }
         .status-pending { color: var(--ochre-light); animation: pulseText 1.5s infinite; }
-        
         .stats-band {
             display: grid;
             grid-template-columns: repeat(5,1fr);
@@ -173,42 +152,24 @@
         .stat-item { padding: 28px 12px; text-align: center; border-right: 1px solid var(--color-border-tertiary); }
         .stat-number { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--ochre); }
         .stat-label { font-family: var(--font-mono); font-size: 0.65rem; color: var(--gravel); text-transform: uppercase; }
-        
         .section { margin: 72px 0; }
         .section-tag { font-family: var(--font-mono); font-size: 0.7rem; color: var(--sage); letter-spacing: 3px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .section-title { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
         .section-sub { color: var(--color-text-secondary); max-width: 560px; margin-bottom: 40px; }
-        
         .steps-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--color-border-tertiary); border-radius: 16px; overflow: hidden; }
         .step-card { background: #11110F; padding: 32px 24px; transition: var(--transition); }
         .step-card:hover { background: #1A1A18; }
         .step-badge { font-family: var(--font-mono); font-size: 0.6rem; border: 1px solid var(--ochre); display: inline-block; padding: 4px 12px; border-radius: 40px; color: var(--ochre); margin-bottom: 24px; }
         .step-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 12px; }
         .step-preview { background: #0A0A08; margin-top: 20px; padding: 12px; border-radius: 8px; font-family: var(--font-mono); font-size: 0.7rem; }
-        
-        .kernel-section { background: #0C0C0A; border-radius: 24px; padding: 48px 40px; margin: 48px 0; border: 1px solid var(--color-border-tertiary); }
-        .kernel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
-        .phase-list { display: flex; flex-direction: column; gap: 8px; }
-        .phase-row { display: flex; align-items: center; gap: 12px; background: #1A1A18; padding: 12px 16px; border-radius: 12px; }
-        .phase-name { flex: 1; font-size: 0.8rem; font-weight: 600; }
-        .phase-bar { width: 100px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
-        .phase-fill { height: 100%; background: var(--ochre); width: 0%; transition: width 0.8s ease; }
-        .phase-percent { font-family: var(--font-mono); font-size: 0.7rem; min-width: 45px; text-align: right; }
-        .test-panel { background: #11110F; border-radius: 16px; padding: 20px; border: 1px solid var(--color-border-tertiary); }
-        .trust-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--color-border-tertiary); border-radius: 20px; overflow: hidden; margin: 32px 0; }
-        .trust-card { background: #11110F; padding: 28px; }
-        
+        .methodology-section { background: #11110F; border-radius: 16px; padding: 24px; margin-bottom: 32px; border: 1px solid var(--color-border-tertiary); }
         .integrations-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--color-border-tertiary); border-radius: 20px; overflow: hidden; margin: 32px 0; }
         .int-card { background: #11110F; padding: 20px; }
-        
-        .methodology-section { background: #11110F; border-radius: 20px; padding: 32px; margin: 32px 0; border: 1px solid var(--color-border-tertiary); }
-        
         footer { border-top: 1px solid var(--color-border-tertiary); padding: 48px 0 32px; margin-top: 48px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 24px; }
-        
         @media (max-width: 900px) {
-            .hero-grid, .kernel-grid { grid-template-columns: 1fr; }
+            .hero-grid { grid-template-columns: 1fr; }
             .stats-band { grid-template-columns: repeat(2,1fr); }
-            .steps-row, .trust-grid, .integrations-grid { grid-template-columns: 1fr; }
+            .steps-row, .integrations-grid { grid-template-columns: 1fr; }
             .vvu-wrapper { padding: 0 20px; }
             .hero-title { font-size: 2.2rem; }
         }
@@ -223,7 +184,6 @@
 </head>
 <body>
 <div class="ticker"><div class="ticker-inner" id="tickerInner"><span class="ticker-item"><span class="ticker-label">PROOFBRIDGE</span><span class="ticker-up">⨀ v2.1</span></span><span class="ticker-item"><span class="ticker-label">NETWORK</span><span class="ticker-up">Polygon Amoy</span></span><span class="ticker-item"><span class="ticker-label">UPTIME</span><span class="ticker-up" id="uptimeDisplay">99.8%</span></span><span class="ticker-item"><span class="ticker-label">TESTS</span><span class="ticker-up">14/14</span></span><span class="ticker-item"><span class="ticker-label">QUORUM</span><span class="ticker-up">3-of-5</span></span><span class="ticker-item"><span class="ticker-label">VAULTED</span><span class="ticker-up">R127.5K</span></span><span class="ticker-item"><span class="ticker-label">TX COUNT</span><span class="ticker-up" id="tickerTx">342</span></span><span class="ticker-item"><span class="ticker-label">CIRCUIT</span><span class="ticker-up">ARMED</span></span></div></div>
-
 <div class="vvu-wrapper">
     <nav>
         <div class="logo-group">
@@ -233,22 +193,16 @@
         <ul class="nav-links"><li><a href="#protocol">Protocol</a></li><li><a href="#methodology">Methodology</a></li><li><a href="#integrations">Integrations</a></li></ul>
         <div><button class="btn-terminal-sm" id="connectWalletMock">⚡ Connect Wallet</button></div>
     </nav>
-
     <div class="hero-grid">
-        <div><div class="hero-eyebrow">ROSCA VILLAGE PROTOCOL · GQEBERHA</div><h1 class="hero-title">Every rand, <span class="accent">cryptographically</span> proven.</h1><p class="hero-sub">ProofBridge mints ED25519-signed on-chain receipts for every Ubuntu Pool transaction. The chain is the auditor.</p><div class="hero-actions"><button class="btn-primary" onclick="alert('Onboarding flow → connect Stitch')">Start minting →</button><button class="btn-outline-light" onclick="document.getElementById('terminal-widget').scrollIntoView({behavior:'smooth'})">$ launch terminal</button></div><div class="hero-proof-strip" style="display:flex; gap:20px; font-family:var(--font-mono); font-size:0.7rem;"><span>✓ ED25519</span><span>✓ 3-of-5 QUORUM</span><span>✓ 14/14 TESTS</span></div></div>
+        <div><div class="hero-eyebrow">ROSCA VILLAGE PROTOCOL · GQEBERHA</div><h1 class="hero-title">Every rand, <span class="accent">cryptographically</span> proven.</h1><p class="hero-sub">ProofBridge mints ED25519-signed on-chain receipts for every Ubuntu Pool transaction. The chain is the auditor.</p><div class="hero-actions"><button class="btn-primary" onclick="window.location.href='#onboard'">Start minting →</button><button class="btn-outline-light" onclick="document.getElementById('terminal-widget').scrollIntoView({behavior:'smooth'})">$ launch terminal</button></div><div style="display:flex; gap:20px; font-family:var(--font-mono); font-size:0.7rem;"><span>✓ ED25519</span><span>✓ 3-of-5 QUORUM</span><span>✓ 14/14 TESTS</span></div></div>
         <div id="terminal-widget"><div class="terminal-widget"><div class="terminal-header"><div class="terminal-dots"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div><div class="terminal-title">PROOFBRIDGE SHELL // VVU v2.1</div></div><div class="terminal-body" id="termBody"><div class="t-line"><span class="prompt">$</span> proofbridge --status</div><div class="t-line"><span class="output">▶ Kernel ONLINE · uptime <span id="termUptime">47s</span></span></div><div class="t-line"><span class="output">▶ Network: Polygon Amoy (80002)</span></div><div class="t-line"><span class="prompt">$</span> proofbridge mint --amount 500 --pool CYCLE-03</div><div class="t-line"><span class="output">▶ Receipt minted: 0xa3f8c9...d721</span></div><div class="t-line"><span class="output">▶ On-chain tx: 0x7b2e1f...4a89 [44,241 gas]</span></div><div class="t-line"><span class="prompt">$</span> proofbridge verify 0xa3f8c9...d721</div><div class="t-line"><span class="output">✓ ED25519 signature valid</span></div><div class="t-line"><span class="prompt">$</span><span class="cursor-blink"></span></div></div><div class="data-strip"><div class="data-cell"><div class="data-label">Total Vaulted</div><div class="data-value" id="vaultedVal">R127.5K</div></div><div class="data-cell"><div class="data-label">Verified Txs</div><div class="data-value" id="txCountVal">342</div></div><div class="data-cell"><div class="data-label">Test Pass</div><div class="data-value">14/14</div></div></div></div><div class="proof-feed"><div class="proof-feed-header"><span>LIVE PROOF FEED</span><span><span class="live-dot"></span>WEBSOCKET</span></div><div id="proofFeedList"><div class="proof-event"><span class="event-type">MINT</span><span class="event-hash">0xa3f8c9...d721 · R500 · PILOT-C2</span><span class="status-ok">VERIFIED</span></div><div class="proof-event"><span class="event-type">PAYOUT</span><span class="event-hash">0x7b2e1f...8c4d · R15,000 · Thabo S.</span><span class="status-ok">CONFIRMED</span></div><div class="proof-event"><span class="event-type">MINT</span><span class="event-hash">0xc9d4e7...2b1a · R500 · Lerato K.</span><span class="status-pending">PENDING</span></div></div></div></div>
     </div>
-
     <div class="stats-band"><div class="stat-item"><div class="stat-number">14/14</div><div class="stat-label">Tests Passing</div></div><div class="stat-item"><div class="stat-number">R127K</div><div class="stat-label">Vaulted</div></div><div class="stat-item"><div class="stat-number" id="statTxNum">342</div><div class="stat-label">Verified Txs</div></div><div class="stat-item"><div class="stat-number">0</div><div class="stat-label">Disputes</div></div><div class="stat-item"><div class="stat-number">3-of-5</div><div class="stat-label">Oracle Quorum</div></div></div>
-
     <section id="protocol"><div class="section-tag">// VVU ROSCA + CRYPTO</div><h2 class="section-title">How ProofBridge secures every transaction.</h2><p class="section-sub">Three-layer cryptographic attestation. Every contribution, every payout — immutable, auditable.</p><div class="methodology-section">Under VVU's methodology: (1) Stitch Webhook-secured transactions are receipted in-store with ED25519 keys; (2) CircuitBreaker.sol enforces 3-of-5 oracle quorum on-chain; (3) ANT Telemetry runs Bayesian anomaly detection across log evidence; (4) Reconciliation anchors SHA-256 hashes to Polygon Amoy; (5) FROST threshold signatures provide TEE-backed key custody; (6) All proof objects undergo StableStringify canonicalization before storage. <a href="#integrations" style="color:var(--sage);">View integrations →</a></div><div class="steps-row"><div class="step-card"><div class="step-badge">Stitch Webhook</div><div class="step-title">1. Contribution triggers</div><p style="color:var(--color-text-secondary); margin-bottom:16px;">When a member pays via Stitch, signed webhook fires to listener. Payment amount + member ID queued.</p><div class="step-preview"><span class="output">POST /api/stitch/payment-link → queued</span></div></div><div class="step-card"><div class="step-badge">ED25519 / On-Chain</div><div class="step-title">2. Receipt minted</div><p style="color:var(--color-text-secondary); margin-bottom:16px;">Kernel signs record with ED25519, mints receipt on Polygon Amoy. Publicly verifiable signature.</p><div class="step-preview"><span class="output">MINT 0xa3f8c9...d721 · gas 44,241</span></div></div><div class="step-card"><div class="step-badge">WebSocket / Live</div><div class="step-title">3. Real-time broadcast</div><p style="color:var(--color-text-secondary); margin-bottom:16px;">Receipt hash broadcasts to pool members. Circuit breaker monitors anomalies.</p><div class="step-preview"><span class="output">WS → RECEIPT_MINTED · members notified: 8</span></div></div></div></section>
-
     <section id="integrations"><div class="section-tag">ECOSYSTEM</div><h2 class="section-title">Full stack, auditable end-to-end.</h2><p class="section-sub">Every component in the VVU stack is auditable, tested, and purpose-built.</p><div class="integrations-grid"><div class="int-card"><div class="step-title">Stitch</div><p>Instant EFT, webhook-driven receipts</p></div><div class="int-card"><div class="step-title">Ubuntu Pools</div><p>ROSCA + ProofBridge attestation</p></div><div class="int-card"><div class="step-title">ANT Telemetry</div><p>Bayesian model, real-time anomaly</p></div><div class="int-card"><div class="step-title">SafeKrypte HSM</div><p>Key custody, 3-of-5 SSS</p></div><div class="int-card"><div class="step-title">Polygon Amoy</div><p>Testnet receipts, mainnet soon</p></div><div class="int-card"><div class="step-title">Coq/TLA+</div><p>Formal verification proofs</p></div></div></section>
-
     <footer><div><span style="font-weight:800">VENTURE VISION UBUNTU</span><br><span style="font-family:var(--font-mono); font-size:0.7rem;">ProofBridge Liner · ROSCA + EVM</span></div><div style="font-family:var(--font-mono); font-size:0.7rem;">© 2026 VVU Foundation · Gqeberha · FSCA JS2</div></footer>
 </div>
 <button class="scroll-top" id="scrollTopBtn">↑</button>
-
 <script>
     (function(){
         let uptimeSecs = 47;
