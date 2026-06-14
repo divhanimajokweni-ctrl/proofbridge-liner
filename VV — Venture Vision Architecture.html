@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<!-- saved from url=(0079)file:///C:/Users/s217665446/Downloads/New%20folder%20(2)/vv-architecture-1.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VV — Venture Vision Architecture</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;1,400&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --purple: #4B42A8;
+  --purple-light: #ECEAF9;
+  --purple-dark: #211D5A;
+  --purple-mid: #6860C8;
+
+  --teal: #1A8C68;
+  --teal-light: #DFF5EE;
+  --teal-dark: #033A2D;
+  --teal-mid: #0D6B52;
+
+  --crimson: #8C2541;
+  --crimson-light: #FAEDF1;
+  --crimson-dark: #420E1F;
+  --crimson-mid: #C03A5B;
+
+  --amber: #A8660E;
+  --amber-light: #FBF0DC;
+  --amber-dark: #3A1F00;
+  --amber-mid: #D48520;
+
+  --blue: #1352A0;
+  --blue-light: #E3EEF9;
+  --blue-dark: #031E3F;
+
+  --rust: #8C4A2A;
+  --rust-light: #FAF0E8;
+
+  --ink: #0E0E0E;
+  --paper: #F9F8F5;
+  --border: #D8D6CF;
+  --muted: #6E6C65;
+  --surface: #FFFFFF;
+}
+
+body {
+  font-family: 'Lora', Georgia, serif;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* HEADER */
+.site-header {
+  background: var(--ink);
+  padding: 28px 36px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.site-header::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 240px; height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(75,66,168,0.4) 0%, transparent 70%);
+  pointer-events: none;
+}
+.site-header::after {
+  content: '';
+  position: absolute;
+  bottom: -40px; left: 200px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(140,37,65,0.3) 0%, transparent 70%);
+  pointer-events: none;
+}
+.header-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 8px;
+}
+.header-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: #FFFFFF;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+.header-title span {
+  color: var(--purple-mid);
+}
+.header-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+  margin-top: 10px;
+  font-style: italic;
+}
+.header-spine-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+}
+.spine-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+/* TABS */
+.tabs-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 36px;
+  display: flex;
+  gap: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.tab-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 14px 18px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--ink); }
+.tab-btn.on {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+  font-weight: 500;
+}
+
+/* CONTENT */
+.content {
+  padding: 28px 36px 48px;
+  max-width: 1000px;
+}
+.tab-pane { display: none; }
+.tab-pane.on { display: block; }
+
+/* LAYERS */
+.layer {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  margin-bottom: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.layer-header {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.1px;
+}
+.layer-body {
+  padding: 16px 20px 20px;
+  border-top: 1px solid var(--border);
+}
+.layer-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 14px;
+  font-style: italic;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: auto;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* GRIDS */
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.span-2 { grid-column: span 2; }
+.span-4 { grid-column: span 4; }
+
+/* CARDS */
+.card {
+  background: var(--paper);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 13px 14px;
+}
+.card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.card-micro {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 400;
+  padding: 1px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+.card-body {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.card-tag {
+  display: inline-block;
+  margin-top: 7px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 8px;
+  letter-spacing: 0.3px;
+}
+
+/* CONNECTOR */
+.connector-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 5px 0;
+  color: var(--muted);
+}
+.connector-row .arrow { font-size: 14px; }
+.connector-row .label {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* SPINE NOTE */
+.spine-note {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--purple-light);
+  border-left: 3px solid var(--purple);
+  font-size: 11px;
+  color: var(--purple-dark);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.6;
+}
+.spine-duo { display: flex; gap: 3px; margin-top: 2px; }
+
+/* UNDERWRITING FLOW */
+.uw-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin: 12px 0 8px;
+}
+.uw-step {
+  flex: 1;
+  background: var(--crimson-light);
+  border-radius: 8px;
+  border: 1px solid #EDAABB;
+  padding: 13px 10px;
+  text-align: center;
+}
+.uw-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--crimson);
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+.uw-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--crimson-dark);
+  margin-bottom: 5px;
+}
+.uw-body { font-size: 10px; color: var(--crimson); line-height: 1.5; }
+.uw-arrow { display: flex; align-items: center; color: var(--crimson-mid); font-size: 16px; }
+
+.mainframe-triad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  margin: 10px 0;
+  background: rgba(140,37,65,0.06);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #EDAABB;
+}
+.triad-item {
+  text-align: center;
+  padding: 10px 8px;
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--crimson-dark);
+  border-right: 1px solid #EDAABB;
+}
+.triad-item:last-child { border-right: none; }
+.triad-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 8px;
+  color: var(--crimson);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 3px;
+}
+
+.stakes-note {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--crimson);
+  text-align: center;
+  padding: 4px 0 6px;
+  letter-spacing: 0.3px;
+}
+
+.question-block {
+  background: #FFFBEE;
+  border: 1px solid #E8D48A;
+  border-radius: 8px;
+  padding: 13px 16px;
+  margin-top: 12px;
+}
+.q-text {
+  font-size: 13px;
+  font-style: italic;
+  color: #4A3800;
+  margin-bottom: 6px;
+}
+.q-answer {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--crimson-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* PLATFORMS SECTION */
+.platforms-header {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+.platform-card {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  background: var(--paper);
+}
+.platform-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.platform-tagline {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  letter-spacing: 0.2px;
+}
+.platform-body { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.platform-tag {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+}
+
+/* PILLAR ROW */
+.pillar-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  background: var(--paper);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-top: 12px;
+}
+.pillar {
+  padding: 10px 5px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  font-size: 10px;
+}
+.pillar:last-child { border-right: none; }
+.pillar-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 3px;
+}
+.pillar-name { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); line-height: 1.4; }
+
+/* INHERITANCE NOTE */
+.inheritance-note {
+  margin-top: 10px;
+  padding: 8px 14px;
+  background: rgba(168,102,14,0.05);
+  border-radius: 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--amber-dark);
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+.inheritance-note code {
+  background: rgba(168,102,14,0.1);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: 'DM Mono', monospace;
+}
+
+/* PIPELINE */
+.pipeline { display: flex; flex-direction: column; align-items: stretch; }
+.pipe-step {
+  padding: 13px 16px;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  margin-bottom: -1px;
+}
+.pipe-step:first-child { border-radius: 8px 8px 0 0; }
+.pipe-step:last-child { border-radius: 0 0 8px 8px; border-bottom: 2px solid var(--blue); }
+.pipe-step-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  color: var(--blue);
+  letter-spacing: 1px;
+  margin-bottom: 3px;
+}
+.pipe-step-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--blue-dark);
+}
+.pipe-step-body { font-size: 11px; color: var(--muted); line-height: 1.55; }
+.pipe-arrow { text-align: center; padding: 3px 0; color: #AAA; font-size: 14px; }
+
+/* OPS DETAIL */
+.ops-card {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  background: var(--paper);
+}
+.ops-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--amber);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.ops-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.ops-body { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.ops-timeline {
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  margin-top: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+/* METHOD DESCRIPTION */
+.method-note {
+  background: var(--teal-light);
+  border: 1px solid #A0D8C8;
+  border-radius: 8px;
+  padding: 13px 16px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--teal-dark);
+  line-height: 1.7;
+}
+
+/* LEGEND */
+.legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.legend-item { display: flex; align-items: center; gap: 5px; }
+
+/* RESPONSIVE */
+@media (max-width: 700px) {
+  .content { padding: 20px 16px 40px; }
+  .site-header { padding: 20px 16px 18px; }
+  .tabs-bar { padding: 0 12px; overflow-x: auto; }
+  .grid-4, .grid-3 { grid-template-columns: 1fr 1fr; }
+  .pillar-row { grid-template-columns: repeat(4, 1fr); }
+  .uw-flow { flex-direction: column; }
+  .uw-arrow { transform: rotate(90deg); justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="site-header">
+  <div class="header-eyebrow">Venture Vision Ubuntu LLC · CIPC 2026/259053/07 · Gqeberha, ZA</div>
+  <div class="header-title">VV — <span>Architecture</span></div>
+  <div class="header-sub">Security Spine integrated · Underwriting Function named · April 2026</div>
+  <div>
+    <span class="header-spine-badge">
+      <span class="spine-dot" style="background:#6860C8"></span>
+      <span class="spine-dot" style="background:#C03A5B"></span>
+      Security Spine: SafeKrypte + SafeStakes
+    </span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn on" onclick="tab(&#39;arch&#39;,this)">VV Architecture</button>
+  <button class="tab-btn" onclick="tab(&#39;platforms&#39;,this)">Three Platforms</button>
+  <button class="tab-btn" onclick="tab(&#39;pipeline&#39;,this)">Learning Pipeline</button>
+  <button class="tab-btn" onclick="tab(&#39;ops&#39;,this)">Operational Pillars</button>
+</div>
+
+<div class="content">
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 1: VV ARCHITECTURE
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-arch" class="tab-pane on">
+
+  <!-- LAYER 1: VV ENTITY CONTAINER -->
+  <div class="layer" style="border-color: var(--purple)">
+    <div class="layer-header" style="background: var(--purple-light)">
+      <div class="dot" style="background: var(--purple)"></div>
+      <span style="color: var(--purple-dark); font-family: &#39;Syne&#39;, sans-serif">VV — Venture Vision</span>
+      <span class="badge" style="background: var(--purple-light); color: var(--purple); border: 0.5px solid #AFA9E8">entity container</span>
+    </div>
+    <div class="layer-body">
+      <p class="layer-desc">The legal and logical container for all primitives, methods, and applications. Everything built under VV inherits from the Security Spine. No entity scales before its foundation is proven.</p>
+
+      <div class="grid-4">
+        <!-- SafeKrypte -->
+        <div class="card" style="border-color: #C0BBEC; border-left: 3px solid var(--purple)">
+          <div class="card-title" style="color: var(--purple-dark)">
+            SafeKrypte
+            <span class="card-micro" style="background: var(--purple-light); color: var(--purple)">primitive</span>
+          </div>
+          <div class="card-body">HSM architecture. Cryptographic escrow. Key ceremony protocols. The logical root all VV entities depend on for signing, attestation, and recovery.</div>
+          <span class="card-tag" style="background: var(--purple-light); color: var(--purple)">Security Spine ·</span>
+        </div>
+
+        <!-- SafeStakes -->
+        <div class="card" style="border-color: #C0BBEC; border-left: 3px solid var(--purple)">
+          <div class="card-title" style="color: var(--purple-dark)">
+            SafeStakes
+            <span class="card-micro" style="background: var(--purple-light); color: var(--purple)">primitive</span>
+          </div>
+          <div class="card-body">HSM-secured stake pools. Underwriting commitments staked. Defined upside/downside conditions. Verifiable cryptographic receipts. Staking-as-a-service.</div>
+          <span class="card-tag" style="background: var(--purple-light); color: var(--purple)">Security Spine ·</span>
+        </div>
+
+        <!-- Ubuntu Pools -->
+        <div class="card" style="border-color: #D8D6CF">
+          <div class="card-title" style="color: var(--amber-dark)">
+            Ubuntu Pools
+            <span class="card-micro" style="background: var(--amber-light); color: var(--amber)">application</span>
+          </div>
+          <div class="card-body">Collective financial platform. Stokvel governance, reputation engine, community credit. First full application built on the Security Spine.</div>
+          <span class="card-tag" style="background: var(--amber-light); color: var(--amber)">First live entity</span>
+        </div>
+
+        <!-- Future entities -->
+        <div class="card" style="border-color: #D8D6CF">
+          <div class="card-title" style="color: var(--blue-dark)">
+            Future Entities
+            <span class="card-micro" style="background: var(--blue-light); color: var(--blue)">pending</span>
+          </div>
+          <div class="card-body">SafeGrid, SafeStakes (external), SafeVault, SafeAttest. Each inherits SafeKrypte keys and SafeStakes pools. The spine before the entity.</div>
+          <span class="card-tag" style="background: var(--blue-light); color: var(--blue)">Gate: Ubuntu Pools live</span>
+        </div>
+      </div>
+
+      <!-- Security Spine callout -->
+      <div class="spine-note">
+        <div class="spine-duo">
+          <span class="spine-dot" style="background: var(--purple)"></span>
+          <span class="spine-dot" style="background: var(--purple)"></span>
+        </div>
+        <div>
+          <strong>Security Spine: SafeKrypte + SafeStakes.</strong>
+          Twin primitives. SafeKrypte answers "who controls the keys?" — SafeStakes answers "what is at stake if this fails?" Neither is optional. No spine, no entity.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector-row">
+    <span class="arrow">↕</span>
+    <span class="label">depends on · secured by</span>
+    <span class="arrow">↕</span>
+  </div>
+
+  <!-- LAYER 2: FIRST PRINCIPLES -->
+  <div class="layer" style="border-color: var(--teal)">
+    <div class="layer-header" style="background: var(--teal-light)">
+      <div class="dot" style="background: var(--teal)"></div>
+      <span style="color: var(--teal-dark); font-family: &#39;Syne&#39;, sans-serif">First Principles Meta-Prompt</span>
+      <span class="badge" style="background: var(--teal-light); color: var(--teal); border: 0.5px solid #7DCEBA">the algorithm is the method</span>
+    </div>
+    <div class="layer-body">
+      <div class="method-note">
+        The thinking engine. Takes any domain and strips it to irreducible truth before building upward. Three phases that are not sequential — they are recursive. Each Integration feeds new material back into Deconstruction.
+      </div>
+      <div class="grid-3">
+        <div class="card" style="border-color: #9ED8C4; text-align: center">
+          <div class="card-title" style="color: var(--teal-mid); justify-content: center">
+            <span style="font-family: &#39;DM Mono&#39;, monospace; font-size: 10px">Phase 1</span>
+          </div>
+          <div style="font-family: &#39;Syne&#39;, sans-serif; font-size: 14px; font-weight: 700; color: var(--teal-dark); margin-bottom: 5px">Deconstruction</div>
+          <div class="card-body">Strip inherited assumptions. Find what is irreducibly, verifiably true. The Socratic strip. Nothing survives that relies on convention.</div>
+        </div>
+        <div class="card" style="border-color: #9ED8C4; text-align: center">
+          <div class="card-title" style="color: var(--teal-mid); justify-content: center">
+            <span style="font-family: &#39;DM Mono&#39;, monospace; font-size: 10px">Phase 2</span>
+          </div>
+          <div style="font-family: &#39;Syne&#39;, sans-serif; font-size: 14px; font-weight: 700; color: var(--teal-dark); margin-bottom: 5px">Reconstruction</div>
+          <div class="card-body">Build from verified facts only. Compress into fewer, harder truths. No inherited scaffolding. Every element must justify its existence.</div>
+        </div>
+        <div class="card" style="border-color: #9ED8C4; text-align: center">
+          <div class="card-title" style="color: var(--teal-mid); justify-content: center">
+            <span style="font-family: &#39;DM Mono&#39;, monospace; font-size: 10px">Phase 3</span>
+          </div>
+          <div style="font-family: &#39;Syne&#39;, sans-serif; font-size: 14px; font-weight: 700; color: var(--teal-dark); margin-bottom: 5px">Integration</div>
+          <div class="card-body">Connect the reconstructed truth to high-performance execution principles. This is where abstract becomes operational. The comb enters here.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector-row">
+    <span class="arrow">↕</span>
+    <span class="label">combing · underwriting · brokering</span>
+    <span class="arrow">↕</span>
+  </div>
+
+  <!-- LAYER 3: UNDERWRITING FUNCTION -->
+  <div class="layer" style="border-color: var(--crimson)">
+    <div class="layer-header" style="background: var(--crimson-light)">
+      <div class="dot" style="background: var(--crimson)"></div>
+      <span style="color: var(--crimson-dark); font-family: &#39;Syne&#39;, sans-serif">The Underwriting Function</span>
+      <span class="badge" style="background: var(--crimson-light); color: var(--crimson); border: 0.5px solid #D899AB">the string · the comb · the hinge</span>
+    </div>
+    <div class="layer-body">
+      <p class="layer-desc">The missing piece. The broker between abstract truth and operational reality. The function that takes First Principles output and converts it into viable, investable, profitable strands — with its signature backed by staked capital in SafeStakes.</p>
+
+      <div class="uw-flow">
+        <div class="uw-step">
+          <div class="uw-num">01 · COMB</div>
+          <div class="uw-label">Combing</div>
+          <div class="uw-body">Separate actionable strands from pure theory. The broker sorts what can survive contact with infrastructure, capital, and human reality.</div>
+        </div>
+        <div class="uw-arrow">→</div>
+        <div class="uw-step">
+          <div class="uw-num">02 · TEST</div>
+          <div class="uw-label">Viability</div>
+          <div class="uw-body">Test the strand against real constraints. Infrastructure. Capital envelope. Regulatory surface. Human behaviour. Does it hold weight?</div>
+        </div>
+        <div class="uw-arrow">→</div>
+        <div class="uw-step">
+          <div class="uw-num">03 · SIGN</div>
+          <div class="uw-label">Profitability</div>
+          <div class="uw-body">Convert viable strands into investable units that compound. The signature clears. The underwriter stakes their name and capital on the conversion.</div>
+        </div>
+      </div>
+
+      <div class="stakes-note">
+        ↑ every underwriting signature is staked against the SafeStakes underwriting pool — the signature has economic weight, not just reputation ↑
+      </div>
+
+      <div class="mainframe-triad">
+        <div class="triad-item">
+          <div class="triad-label">Pillar 2</div>
+          Production
+        </div>
+        <div class="triad-item">
+          <div class="triad-label">Pillar 3</div>
+          Operation
+        </div>
+        <div class="triad-item">
+          <div class="triad-label">Pillar 4</div>
+          Maintenance
+        </div>
+      </div>
+      <div style="font-size: 10px; color: var(--crimson); font-family: &#39;DM Mono&#39;, monospace; text-align: center; margin-top: 4px; margin-bottom: 10px; letter-spacing: 0.3px">
+        The Mainframe — minimum underwritable asset · you cannot underwrite what has no stable spine
+      </div>
+
+      <div class="question-block">
+        <div class="q-text">"Combing Operations Brokers? To investing?"</div>
+        <div class="q-answer">Yes. The Underwriter is the broker between operations and capital. Combing is the function. SafeStakes makes the signature binding. Profitability is what happens when underwriting is done correctly — it is the output, not the goal.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector-row">
+    <span class="arrow">↕</span>
+    <span class="label">executes as · consumes primitives</span>
+    <span class="arrow">↕</span>
+  </div>
+
+  <!-- LAYER 4: UBUNTU POOLS -->
+  <div class="layer" style="border-color: var(--amber)">
+    <div class="layer-header" style="background: var(--amber-light)">
+      <div class="dot" style="background: var(--amber)"></div>
+      <span style="color: var(--amber-dark); font-family: &#39;Syne&#39;, sans-serif">Ubuntu Pools — Operational Spine</span>
+      <span class="badge" style="background: var(--amber-light); color: var(--amber); border: 0.5px solid #D48520">produce → feature → service → instance</span>
+    </div>
+    <div class="layer-body">
+      <div class="inheritance-note">
+        ⛓ Consumes Security Spine: <code>SafeKrypte</code> for keys, signing, attestation
+        &nbsp;·&nbsp; <code>SafeStakes</code> for pool creation, staking, member receipts
+      </div>
+      <div class="pillar-row">
+        <div class="pillar">
+          <div class="pillar-num" style="color: var(--amber)">1</div>
+          <div class="pillar-name">Infra-structure</div>
+        </div>
+        <div class="pillar" style="background: rgba(140,37,65,0.04)">
+          <div class="pillar-num" style="color: var(--crimson)">2</div>
+          <div class="pillar-name">Production</div>
+        </div>
+        <div class="pillar" style="background: rgba(140,37,65,0.04)">
+          <div class="pillar-num" style="color: var(--crimson)">3</div>
+          <div class="pillar-name">Operations</div>
+        </div>
+        <div class="pillar" style="background: rgba(140,37,65,0.04)">
+          <div class="pillar-num" style="color: var(--crimson)">4</div>
+          <div class="pillar-name">Maintenance</div>
+        </div>
+        <div class="pillar">
+          <div class="pillar-num" style="color: var(--amber)">5</div>
+          <div class="pillar-name">Scaling</div>
+        </div>
+        <div class="pillar">
+          <div class="pillar-num" style="color: var(--amber)">6</div>
+          <div class="pillar-name">Development</div>
+        </div>
+        <div class="pillar" style="background: rgba(140,37,65,0.06)">
+          <div class="pillar-num" style="color: var(--crimson)">7</div>
+          <div class="pillar-name">Upscaling</div>
+        </div>
+      </div>
+      <p style="font-family: &#39;DM Mono&#39;, monospace; font-size: 9px; color: var(--muted); text-align: center; margin-top: 8px; letter-spacing: 0.3px">
+        Pillars 2–4 highlighted in crimson: the Mainframe triad — the underwritable core the Underwriting Function signs against.
+        Pillar 7: SafeStakes becomes standalone external infrastructure.
+      </p>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><div class="dot" style="background: var(--purple)"></div>VV entity layer</div>
+    <div class="legend-item"><div class="dot" style="background: var(--purple); outline: 2px solid var(--purple); outline-offset: 1px"></div>Security Spine (SafeKrypte + SafeStakes)</div>
+    <div class="legend-item"><div class="dot" style="background: var(--teal)"></div>First Principles method</div>
+    <div class="legend-item"><div class="dot" style="background: var(--crimson)"></div>Underwriting function</div>
+    <div class="legend-item"><div class="dot" style="background: var(--amber)"></div>Ubuntu Pools operations</div>
+    <div class="legend-item"><div class="dot" style="background: var(--blue)"></div>Learning pipeline</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 2: THREE PLATFORMS
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-platforms" class="tab-pane">
+
+  <p style="font-family: &#39;DM Mono&#39;, monospace; font-size: 10px; color: var(--muted); margin-bottom: 16px; letter-spacing: 0.5px">The three core B2B API platforms under VV. All three consume the Security Spine. Ubuntu Pools is live. SafeGrid and SafeStakes are gated behind it.</p>
+
+  <div class="grid-3" style="margin-bottom: 14px">
+
+    <!-- Ubuntu Pools -->
+    <div class="platform-card" style="border-left: 4px solid var(--amber)">
+      <div class="platform-name" style="color: var(--amber-dark)">Ubuntu Pools</div>
+      <div class="platform-tagline">Community Savings &amp; Stokvel Digitalisation Engine</div>
+      <div class="platform-body">Operationalises the Ubuntu philosophy through digital stokvel governance, trust-based credit facilities, and AI-powered financial intelligence. The unit of value is the group, not the user. Built on SafeKrypte (keys) and SafeStakes (pool mechanics).</div>
+      <div>
+        <span class="platform-tag" style="background: var(--amber-light); color: var(--amber)">B2B API · Tier 1-3 ZAR</span>
+        <span class="platform-tag" style="background: var(--teal-light); color: var(--teal); margin-left: 4px">GATE-1 complete</span>
+      </div>
+    </div>
+
+    <!-- SafeGrid -->
+    <div class="platform-card" style="border-left: 4px solid var(--blue)">
+      <div class="platform-name" style="color: var(--blue-dark)">SafeGrid</div>
+      <div class="platform-tagline">Edge-to-Cloud Security Intelligence Platform</div>
+      <div class="platform-body">Camera mesh alert network, security audit booking, and crime intelligence dashboard fused into a hybrid B2B platform. LINDIWE AI Engine eliminates human control room costs. Eastern Cape is primary uncontested territory vs. Vumacam dominance in other provinces.</div>
+      <div>
+        <span class="platform-tag" style="background: var(--blue-light); color: var(--blue)">B2B API · Security vertical</span>
+        <span class="platform-tag" style="background: #F0EEF9; color: var(--purple); margin-left: 4px">Gated on Pools live</span>
+      </div>
+    </div>
+
+    <!-- SafeStakes -->
+    <div class="platform-card" style="border-left: 4px solid var(--crimson)">
+      <div class="platform-name" style="color: var(--crimson-dark)">SafeStakes</div>
+      <div class="platform-tagline">Responsible Wagering Harm Reduction + Staking Infrastructure</div>
+      <div class="platform-body">Loss Velocity Engine detects gambling harm velocity in real time. Redirect-to-Earn mechanism routes redirected losses into Ubuntu Pools savings circles. Also functions as a standalone staking-as-a-service primitive for any entity that needs HSM-backed stake pools.</div>
+      <div>
+        <span class="platform-tag" style="background: var(--crimson-light); color: var(--crimson)">B2B API · Wagering + Staking</span>
+        <span class="platform-tag" style="background: #F0EEF9; color: var(--purple); margin-left: 4px">Gated on Pools live</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SafeStakes bridge detail -->
+  <div class="layer" style="border-color: var(--crimson)">
+    <div class="layer-header" style="background: var(--crimson-light)">
+      <div class="dot" style="background: var(--crimson)"></div>
+      <span style="color: var(--crimson-dark); font-family: &#39;Syne&#39;, sans-serif">The SafeStakes Bridge — Harm Reduction as Architecture</span>
+    </div>
+    <div class="layer-body">
+      <div class="grid-3">
+        <div class="card" style="border-color: #EDAABB">
+          <div class="card-title" style="color: var(--crimson-dark)">Loss Velocity Engine</div>
+          <div class="card-body">Detects the acceleration pattern of gambling loss — not just the amount but the velocity. When velocity crosses a defined threshold, the harm trigger activates. This is behavioural pattern detection, not spend monitoring.</div>
+        </div>
+        <div class="card" style="border-color: #EDAABB">
+          <div class="card-title" style="color: var(--crimson-dark)">Redirect-to-Earn</div>
+          <div class="card-body">The redirected capital does not disappear. It routes into the user's Ubuntu Pools savings circle. Harm reduction becomes asset building. The loss that would have compounded a debt cycle instead seeds a community savings position.</div>
+        </div>
+        <div class="card" style="border-color: #EDAABB">
+          <div class="card-title" style="color: var(--crimson-dark)">The Ubuntu Meta-Protocol</div>
+          <div class="card-body">No entity may extract value from a vulnerable node. SafeStakes is the mechanism that enforces this at the transaction level. The bridge is not a feature — it is the proof of the constitutional principle.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINDIWE -->
+  <div class="layer" style="border-color: #1352A0; margin-top: 6px">
+    <div class="layer-header" style="background: var(--blue-light)">
+      <div class="dot" style="background: var(--blue)"></div>
+      <span style="color: var(--blue-dark); font-family: &#39;Syne&#39;, sans-serif">LINDIWE AI Engine — Cross-Platform Intelligence Layer</span>
+      <span class="badge" style="background: var(--blue-light); color: var(--blue); border: 0.5px solid #8AB8E0">licensable service</span>
+    </div>
+    <div class="layer-body">
+      <p class="layer-desc">Not a product in isolation. The AI intelligence layer that sits across all three platforms. In SafeGrid: eliminates human control room operators via real-time camera mesh analysis. In Ubuntu Pools: powers the Ubuntu Score credit intelligence engine. In SafeStakes: drives the Loss Velocity Engine's behavioural classification. Standalone: licensable to radio stations, streaming platforms, and clubs as Ubuntu DJ / LINDIWE AI Engine.</p>
+      <div class="grid-4">
+        <div class="card" style="border-color: #B5D4F4">
+          <div class="card-title" style="color: var(--blue-dark)">SafeGrid Brain</div>
+          <div class="card-body">Threat classification. Cosine similarity dedup. Real-time alert mesh. Replaces human monitoring cost entirely.</div>
+        </div>
+        <div class="card" style="border-color: #B5D4F4">
+          <div class="card-title" style="color: var(--blue-dark)">Ubuntu Score</div>
+          <div class="card-body">Community trust scoring engine. Credit intelligence from behavioural data. Group reputation, not individual FICO.</div>
+        </div>
+        <div class="card" style="border-color: #B5D4F4">
+          <div class="card-title" style="color: var(--blue-dark)">Loss Velocity</div>
+          <div class="card-body">Wagering harm classifier. Pattern acceleration detection. Redirect trigger when threshold crossed.</div>
+        </div>
+        <div class="card" style="border-color: #B5D4F4">
+          <div class="card-title" style="color: var(--blue-dark)">Ubuntu DJ</div>
+          <div class="card-body">Music intelligence layer. Standalone licensable. Radio, streaming, clubs. Afro House · Amapiano · Gqom · Afro Tech.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 3: LEARNING PIPELINE
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-pipeline" class="tab-pane">
+
+  <div class="layer" style="border-color: var(--blue)">
+    <div class="layer-header" style="background: var(--blue-light)">
+      <div class="dot" style="background: var(--blue)"></div>
+      <span style="color: var(--blue-dark); font-family: &#39;Syne&#39;, sans-serif">Education → Foundation — the compounding pipeline</span>
+    </div>
+    <div class="layer-body">
+      <p class="layer-desc">Reads top-down as an execution sequence. Bottom-up as a compounding knowledge stack. Each layer makes the one below it more stable. The pipeline is not separate from First Principles — it feeds it. What is learned at the top becomes new material for Deconstruction.</p>
+
+      <div class="pipeline">
+        <div class="pipe-step">
+          <div class="pipe-step-num">01 · INPUT</div>
+          <div class="pipe-step-title">Education</div>
+          <div class="pipe-step-body">First Principles input. Skill acquisition. Context from each session. The raw material that enters the comb. The quality of the foundation is determined entirely by what education is allowed in.</div>
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step">
+          <div class="pipe-step-num">02 · FILTER</div>
+          <div class="pipe-step-title">Modulation</div>
+          <div class="pipe-step-body">Calibrate the output. Adjust for domain, constraint, and context. Remove inherited noise before building. This is the First Principles strip — what survives modulation is irreducible.</div>
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step">
+          <div class="pipe-step-num">03 · EXECUTE</div>
+          <div class="pipe-step-title">Function</div>
+          <div class="pipe-step-body">Execute the task. Build the artifact. Generate the code, document, or system component. This is where the thinking becomes a thing. ATLAS, NOVA, KAYA, LEX, LINDIWE operate here.</div>
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step">
+          <div class="pipe-step-num">04 · SYSTEMATISE</div>
+          <div class="pipe-step-title">Process</div>
+          <div class="pipe-step-body">Convert one-off execution into a repeatable pattern that can be delegated to an agent runner. The transition from craft to system. What cannot be processed cannot be handed off — it becomes a bottleneck.</div>
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step">
+          <div class="pipe-step-num">05 · SEQUENCE</div>
+          <div class="pipe-step-title">Phases</div>
+          <div class="pipe-step-body">Order the processes into a delivery timeline. Q2 spine → Q3 pilot → Q4 scale → Q1 2027 intelligence. The phases are not arbitrary — they follow the dependency chain. No phase activates before its gate is proven.</div>
+        </div>
+        <div class="pipe-arrow">↓</div>
+        <div class="pipe-step" style="border-bottom: 2px solid var(--blue); background: var(--blue-light)">
+          <div class="pipe-step-num">06 · ROOT</div>
+          <div class="pipe-step-title">Foundation</div>
+          <div class="pipe-step-body">The proven spine. The irreducible root. SafeKrypte → SafeStakes → Ubuntu Pools. Nothing above it is credible until this is proven. The entire stack is only as stable as what is at this layer. GATE-1 complete. North star: /api/health returning 200.</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 14px; padding: 13px 15px; background: var(--paper); border-radius: 8px; border: 1px solid var(--border); font-size: 11px; color: var(--muted); line-height: 1.7">
+        <strong style="color: var(--ink); font-family: &#39;Syne&#39;, sans-serif; font-size: 12px">Deployment branch</strong> — runs parallel: Generation → Resolution → Planning → Shipped artifact. This is the execution arm that converts phases into code, documents, and systems. ATLAS manages SDLC. NOVA manages infrastructure. KAYA manages operations. LEX manages compliance. LINDIWE manages intelligence.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TAB 4: OPERATIONAL PILLARS
+═══════════════════════════════════════════════════════════ -->
+<div id="tab-ops" class="tab-pane">
+
+  <div class="layer" style="border-color: var(--amber)">
+    <div class="layer-header" style="background: var(--amber-light)">
+      <div class="dot" style="background: var(--amber)"></div>
+      <span style="color: var(--amber-dark); font-family: &#39;Syne&#39;, sans-serif">Seven Pillars — Ubuntu Pools Operational Lifecycle</span>
+    </div>
+    <div class="layer-body">
+      <p class="layer-desc">The seven operational pillars that define Ubuntu Pools' production lifecycle. Pillars 2–4 form the Mainframe triad — the stable core the Underwriting Function signs against. No pillar activates before its predecessor is proven.</p>
+
+      <!-- SafeStakes integration note -->
+      <div style="margin-bottom: 16px; padding: 10px 14px; background: var(--crimson-light); border-radius: 8px; border-left: 3px solid var(--crimson); font-size: 11px; color: var(--crimson-dark); line-height: 1.6">
+        <strong style="font-family: &#39;Syne&#39;, sans-serif">SafeStakes integration path:</strong> Pillar 5 (Scaling) → SafeStakes pool infrastructure exposed externally. Pillar 7 (Upscaling) → SafeStakes becomes standalone staking-as-a-service for partner entities.
+      </div>
+
+      <div class="grid-2">
+
+        <div class="ops-card">
+          <div class="ops-num">1</div>
+          <div class="ops-title">Infrastructure</div>
+          <div class="ops-body">Vercel + Postgres + Redis + WhatsApp API. SafeKrypte HSM endpoints live. Production Supabase schema migrated. The wiring that makes the spine possible. /api/health → 200 is the north star milestone for GATE-2 activation.</div>
+          <span class="ops-timeline" style="background: var(--teal-light); color: var(--teal-dark)">Q2 2026 · now</span>
+        </div>
+
+        <div class="ops-card" style="border-color: #D0B0BB; background: rgba(140,37,65,0.03)">
+          <div class="ops-num" style="color: var(--crimson)">2</div>
+          <div class="ops-title">Production <span style="font-family: &#39;DM Mono&#39;, monospace; font-size: 9px; color: var(--crimson)">MAINFRAME</span></div>
+          <div class="ops-body">First real village. First real contribution. Spine proven. SafeKrypte signing operational. Dashboard reflects persisted truth, not seeded data. GATE-2: 200 waitlist users imported.</div>
+          <span class="ops-timeline" style="background: var(--amber-light); color: var(--amber-dark)">Q3 2026</span>
+        </div>
+
+        <div class="ops-card" style="border-color: #D0B0BB; background: rgba(140,37,65,0.03)">
+          <div class="ops-num" style="color: var(--crimson)">3</div>
+          <div class="ops-title">Operations <span style="font-family: &#39;DM Mono&#39;, monospace; font-size: 9px; color: var(--crimson)">MAINFRAME</span></div>
+          <div class="ops-body">3-person team. Daily health checks. Friction log. Transaction reconciliation. POPIA consent audit monthly. The Mainframe must breathe before it can be underwritten.</div>
+          <span class="ops-timeline" style="background: var(--amber-light); color: var(--amber-dark)">Ongoing from Q3</span>
+        </div>
+
+        <div class="ops-card" style="border-color: #D0B0BB; background: rgba(140,37,65,0.03)">
+          <div class="ops-num" style="color: var(--crimson)">4</div>
+          <div class="ops-title">Maintenance <span style="font-family: &#39;DM Mono&#39;, monospace; font-size: 9px; color: var(--crimson)">MAINFRAME</span></div>
+          <div class="ops-body">7 agent runners automated. Dependency scanner. SafeKrypte ceremony logs archived. Weekly spine tests blocking CI gate. The Mainframe triad is only underwritable when maintenance is provably operational.</div>
+          <span class="ops-timeline" style="background: var(--amber-light); color: var(--amber-dark)">Ongoing</span>
+        </div>
+
+        <div class="ops-card">
+          <div class="ops-num">5</div>
+          <div class="ops-title">Scaling</div>
+          <div class="ops-body">10 → 50 → 150 villages. Community credit facility live. <strong style="color: var(--crimson)">SafeStakes pool infrastructure exposed externally.</strong> NASASA partnership signed. The Security Spine begins serving entities outside VV.</div>
+          <span class="ops-timeline" style="background: var(--amber-light); color: var(--amber-dark)">Q4 2026</span>
+        </div>
+
+        <div class="ops-card">
+          <div class="ops-num">6</div>
+          <div class="ops-title">Development</div>
+          <div class="ops-body">LINDIWE on real data. CPME pilot. SafeGrid pilot activation. <strong style="color: var(--crimson)">SafeStakes external pilot.</strong> Series A preparation. The underwriting record is now the pitch. Every staked signature is auditable.</div>
+          <span class="ops-timeline" style="background: var(--blue-light); color: var(--blue-dark)">Q1–Q2 2027</span>
+        </div>
+
+        <div class="ops-card span-2" style="border-color: var(--crimson); background: var(--crimson-light)">
+          <div class="ops-num" style="color: var(--crimson)">7</div>
+          <div class="ops-title" style="color: var(--crimson-dark)">Upscaling</div>
+          <div class="ops-body" style="color: var(--crimson)">150–400 villages. Pan-African expansion. White-label licensing. Full LINDIWE credit scoring operational. <strong>SafeStakes offered as standalone staking infrastructure to partners — the primitive becomes a product line.</strong> Series A closed. SafeGrid Eastern Cape fully operational. The algorithm that started as a rhythm becomes a market. The Ubuntu Meta-Protocol — no entity may extract value from a vulnerable node — is now architecturally enforced at scale.</div>
+          <span class="ops-timeline" style="background: var(--crimson-light); color: var(--crimson-dark); border: 1px solid #D899AB">Q3–Q4 2027</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent team footnote -->
+  <div style="margin-top: 12px; padding: 13px 16px; background: var(--surface); border-radius: 8px; border: 1px solid var(--border)">
+    <div style="font-family: &#39;Syne&#39;, sans-serif; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: var(--ink)">UBUNTU-PROTOCOL:CODEBASE/KND — Execution Team</div>
+    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; font-family: &#39;DM Mono&#39;, monospace; font-size: 10px; color: var(--muted)">
+      <div><strong style="color: var(--ink)">ATLAS</strong><br>SDLC engine · ChatDev</div>
+      <div><strong style="color: var(--ink)">NOVA</strong><br>Infrastructure</div>
+      <div><strong style="color: var(--ink)">KAYA</strong><br>Operations floor</div>
+      <div><strong style="color: var(--ink)">LEX</strong><br>Compliance · POPIA</div>
+      <div><strong style="color: var(--ink)">LINDIWE</strong><br>AI intelligence layer</div>
+    </div>
+    <div style="font-family: &#39;DM Mono&#39;, monospace; font-size: 9px; color: var(--muted); margin-top: 8px">Director: Mihle Iviwe Majokweni (Mino) · Gqeberha, Eastern Cape · Non-overlapping mandates · Director approval gates on all GATE events</div>
+  </div>
+
+</div>
+
+</div><!-- /content -->
+
+<script>
+function tab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('on'));
+  document.getElementById('tab-' + id).classList.add('on');
+  btn.classList.add('on');
+}
+</script>
+
+
+</body></html>

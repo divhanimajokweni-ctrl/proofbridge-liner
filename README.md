@@ -1,96 +1,38 @@
-# VVU Platform - Embedded Watchdog + Gate A Integration
+# VVU Platform
 
-A production-grade implementation of the VVU Platform featuring:
-- Embedded Watchdog system for operational observability
-- Gate A Authentication & Identity Infrastructure integration
-- Pre-registered Gate B Contribution Rail Infrastructure hooks
-- Schema v2.1 compliant
+Next.js 14 App Router implementation for the Venture Vision Ubuntu platform, integrating animated UI-FX components, ProofBridge marketing flows, and the existing compliance-fabric gate infrastructure.
 
-## Architecture Overview
+## Structure
 
-This implementation combines systemic observability with a Next.js/Supabase auth stack, featuring:
+- `app/(marketing)/` — Public marketing pages and the ProofBridge landing page
+- `app/(app)/` — Authenticated platform surfaces: Dashboard, Ledger, Village, Wallet, Compliance, Governance, Trust
+- `app/(developer)/` — Developer docs, API dashboard, and integration portals
+- `app/(admin)/` — Admin-only pages: monitoring, onboarding
+- `app/api/` — Backend route handlers (metrics, gates, lindiwe, verify, mint)
 
-### Core Components
-1. **Watchdog System** (`src/lib/watchdog/`)
-   - HeartbeatSchema: Operational tags, incident contracts, fault classification
-   - HeartbeatBus: Distributed event bus using IndexedDB and BroadcastChannel
-   - WatchdogProbes: Operational probe classes for direct error boundary instrumentation
-   - OrchestratorEngine: Priority-sorted diagnostic engine running on eternal clock loop
+## Key UI Surface
 
-2. **Gate A: Auth & Identity Infrastructure**
-   - Remediated cookies() invocation in route handlers
-   - Loop protection middleware with redirect counting
-   - RLS compliance with explicit UUID type casting
-   - Health monitoring with infrastructure degradation detection
-
-3. **Gate B: Contribution Rail Infrastructure (Pre-Registered)**
-   - Pre-registered fault tags for future integration
-   - Stubbed E2E tests for zero-friction activation
+- `src/app/page.tsx` — FX dashboard with AntColonyLoader overlay and AdvancedGlobeTelemetry Three.js globe
+- `src/components/fx/` — Animated dashboard components from `vvv/UI-FX.md`
 
 ## Getting Started
 
-### Prerequisites
-- Node.js 18+ 
-- Supabase CLI
-- Playwright browsers (for E2E testing)
-
-### Installation
 ```bash
 npm install
-```
-
-### Environment Setup
-Create a `.env.local` file with:
-```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-### Database Migrations
-```bash
-npx supabase db migrate
-```
-
-### Development
-```bash
 npm run dev
 ```
 
-### Testing
-```bash
-# Unit tests
-npm test
+## Environment
 
-# E2E tests
-npm run test:e2e
+Configure in `.env.local`:
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
-## Watchdog Usage
+## Scripts
 
-### Adding Observability to Components
-As part of your development process, initialize components with an explicit tracking boundary:
-
-```typescript
-// Add this line to your constructors before writing business logic
-private probe = new NullProbe();
-
-// When you hit a production code checkpoint, replace the NullProbe 
-// with the correct typed probe class from WatchdogProbes.ts
-```
-
-### Available Probes
-- **Operational (P01-P06)**: Tab coordination, network sync, cache eviction, etc.
-- **Gate A Infrastructure**: Cookie faults, middleware loops, RLS violations, etc.
-- **Gate B Contribution Pipeline**: Payment webhook failures, ledger mismatches, etc.
-
-## Gate B Integration Roadmap
-
-Once Gate A pipeline is verified, Gate B integration can proceed with:
-
-1. **Webhook Payload Structure** (see below)
-2. **Ledger Reconciliation Engine** 
-3. **FX Oracle Integration**
-4. **Idempotency Key Management**
-
-## License
-MIT
+- `npm run dev` — local dev server
+- `npm run build` — production build
+- `npm test` / `npm run test:e2e` — unit and Playwright tests
+- `npm run lint` — ESLint checks
