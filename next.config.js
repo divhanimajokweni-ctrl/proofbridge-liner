@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Use src directory for app and pages
+  dir: {
+    src: './src',
+  },
   // Disable static-only mode to allow dynamic content serving
   staticPageGenerationTimeout: 120,
   async rewrites() {
