@@ -1,38 +1,73 @@
-# VVU Platform
+# VVU Gateway — Ubuntu Pools / ProofBridge
 
-Next.js 14 App Router implementation for the Venture Vision Ubuntu platform, integrating animated UI-FX components, ProofBridge marketing flows, and the existing compliance-fabric gate infrastructure.
+Next.js 14 App Router UI for the Venture Vision Ubuntu (VVU) Gateway — Phase 1 surface focused on Ubuntu Pools, ProofBridge on-chain receipting, Village OS dashboards, and the minimal dark VVU Gateway aesthetic for authenticated tooling.
 
-## Structure
+## What’s in this build
 
-- `app/(marketing)/` — Public marketing pages and the ProofBridge landing page
-- `app/(app)/` — Authenticated platform surfaces: Dashboard, Ledger, Village, Wallet, Compliance, Governance, Trust
-- `app/(developer)/` — Developer docs, API dashboard, and integration portals
-- `app/(admin)/` — Admin-only pages: monitoring, onboarding
-- `app/api/` — Backend route handlers (metrics, gates, lindiwe, verify, mint)
+- Public marketing flow (warm Ubuntu Pools theme): `/(marketing)/`
+  - `/` — ProofBridge / Ubuntu Pools landing
+  - `/about` — VVU background + Phase 1 / Phase 2 toggle
+  - `/faqs` — POPIA, KYC, Stitch, ProofBridge Q&A
+  - `/ubuntu-pools` — pool types + how-it-works
 
-## Key UI Surface
+- Authenticated platform (minimal dark VVU Gateway theme): `/(app)/`
+  - `/dashboard` — Village OS dashboard (Ubuntu Score, Pool Creator, Architecture Visualizer, Lindiwe AI)
+  - `/dashboard/ledger` — transaction records
+  - `/dashboard/village` — village node/operations
+  - `/dashboard/wallet` — financial operations
+  - `/compliance` — KYC/POPIA/AML
+  - `/governance` — proposals + voting
+  - `/trust` — security/audit overview
 
-- `src/app/page.tsx` — FX dashboard with AntColonyLoader overlay and AdvancedGlobeTelemetry Three.js globe
-- `src/components/fx/` — Animated dashboard components from `vvv/UI-FX.md`
+- Developer portals: `/(developer)/`
+  - `/docs` — API/SDK documentation hub
+  - `/api` — developer token dashboard
+  - `/integrations/b2b` — B2B partner portal
+  - `/integrations/terminal` — POS/hardware integrations
 
-## Getting Started
+- Admin tools: `/(admin)/`
+  - `/admin/monitoring` — systems health
+  - `/onboarding/whatsapp` — WhatsApp onboarding
+
+- Backend route handlers: `app/api/` (metrics, gates, mint, verify, webhooks, admin circuit breaker)
+
+## Tech
+
+- Next.js 14 App Router + Route Groups
+- Inline styles + CSS custom properties (no Tailwind install required)
+- AntColonyLoader FX + AdvancedGlobeTelemetry on the root FX dashboard
+- Supabase auth middleware for protected route groups
+
+## Local setup
 
 ```bash
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-## Environment
-
-Configure in `.env.local`:
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-```
+Open `http://localhost:3000` for the marketing landing; `/dashboard` requires an authenticated session via middleware.
 
 ## Scripts
 
 - `npm run dev` — local dev server
 - `npm run build` — production build
-- `npm test` / `npm run test:e2e` — unit and Playwright tests
+- `npm start` — start compiled app
 - `npm run lint` — ESLint checks
+- `npm run lint:fix` — auto-fix lint issues
+- `npm test` — Jest unit/integration tests
+- `npm run test:e2e` — Playwright E2E
+
+## Deployment
+
+```bash
+npm run build
+vercel --prod --force
+```
+
+`.vercelignore` excludes cache, build artifacts, large fixtures, and old standalone HTML files.
+
+## Phase roadmap
+
+- Phase 1 (current): Ubuntu Pools + ProofBridge + Village OS + ANT Telemetry + Gate-1
+- Phase 2 (Q1 2027 transition period): SAFEGRID, SAFESTAKES, Parallel Water Economy, ProofBridge-Liner upscale, automated scaling gates
