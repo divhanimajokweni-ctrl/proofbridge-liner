@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ProofEvent {
+  id          String    @id @default(cuid())
+  paymentId   String    @unique
+  eventHash   String    @unique
+  status      String
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  txHash      String?
+  payload     Json
+  attempts    Int       @default(0)
+  error       String?
+
+  @@index([status, receivedAt])
+}
+
+model ProofAudit {
+  id        String   @id @default(cuid())
+  eventHash String
+  action    String
+  actor     String
+  timestamp DateTime @default(now())
+  metadata  Json
+
+  @@index([eventHash, timestamp])
+}
+
+model ProofSubmission {
+  id          String    @id @default(cuid())
+  proofHash   String    @unique
+  txHash      String
+  nonce       Int
+  status      String
+  createdAt   DateTime  @default(now())
+  confirmedAt DateTime?
+
+  @@index([status, createdAt])
+}

@@ -15,7 +15,9 @@
     "verify": "node scripts/verify-setup.js",
     "orchestrate": "node scripts/orchestrate-gates.js",
     "prepare": "echo 'hooks skipped in CI'",
-    "precommit": "node scripts/secret-scan-precommit.js"
+    "precommit": "node scripts/secret-scan-precommit.js",
+    "worker:proof": "node scripts/proof-worker.js",
+    "worker:recovery": "node scripts/proof-worker.js"
   },
   "dependencies": {
     "@supabase/auth-helpers-nextjs": "^0.8.0",

@@ -1,173 +1,38 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-ZA">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ProofBridge Liner — Gate Suite</title>
-  <link rel="stylesheet" href="/vvv/pools.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>VVU Gateway · Venture Vision Ubuntu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    .gateway-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:24px;max-width:1280px;margin:0 auto}
-    @media(max-width:900px){.gateway-grid{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:580px){.gateway-grid{grid-template-columns:1fr}}
-    .gate-card{display:flex;flex-direction:column;gap:12px;cursor:pointer;transition:border-color .2s,box-shadow .2s}
-    .gate-card:hover{border-color:var(--gold);box-shadow:0 0 20px rgba(245,166,35,.1)}
-    .gate-card a{text-decoration:none;color:inherit;display:block;flex:1}
-    .gate-id{font-family:var(--font-mono);font-size:10px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
-    .gate-name{font-family:var(--font-mono);font-size:16px;font-weight:700;color:var(--gold);margin-bottom:8px}
-    .gate-desc{font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:12px}
-    .gate-metrics{display:flex;flex-direction:column;gap:4px}
-    .gate-metric{font-family:var(--font-mono);font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
-    .gate-metric span{color:var(--text)}
-    .gate-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
-    .gate-link{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;color:var(--gold);text-transform:uppercase}
-    .hero-bar{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;background:var(--surface)}
-    .hero-title{font-family:var(--font-mono);font-size:14px;font-weight:700;color:var(--gold);letter-spacing:.1em}
-    .hero-sub{font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.08em}
-    .overall-status{font-family:var(--font-mono);font-size:11px;color:var(--green)}
-    #all-status{font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.08em}
+    :root{--sage:#8A9A5B;--sage-light:#b8c98a;--sage-dark:#5c6b38;--ochre:#CC7722;--charcoal:#1E1E1C;--stone:#E2E3DB;--gravel:#5A5A55;--color-text-primary:rgba(255,255,255,.92);--color-text-secondary:rgba(255,255,255,.62);--color-border-tertiary:rgba(255,255,255,.08);--font-sans:'Syne',system-ui,sans-serif;--font-mono:'DM Mono',monospace;--transition:.3s cubic-bezier(.4,0,.2,1)}
+    *{margin:0;padding:0;box-sizing:border-box}body{background:var(--charcoal);font-family:var(--font-sans);color:var(--color-text-primary);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(232,160,32,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(232,160,32,.018) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0}
+    @media (prefers-reduced-motion:reduce){.ant-worker,.pulse-dot,.status-dot.pending,.dot-indicator.pending{animation:none!important}.ant-worker{opacity:.6!important}.progress-fill{transition:none!important}.matrix-rain{display:none!important}.animate-in{animation:none!important}}
+    .gateway-wrapper{position:relative;z-index:1;width:100%;max-width:720px;display:flex;flex-direction:column;align-items:center;gap:18px}.logo-group{display:flex;align-items:center;gap:16px;text-decoration:none}.logo-mark{width:52px;height:52px;flex-shrink:0}.logo-text h1{font-size:1.4rem;font-weight:800;letter-spacing:-.02em;line-height:1.1;color:white}.logo-text p{font-size:.6rem;font-family:var(--font-mono);color:var(--sage);letter-spacing:3px;text-transform:uppercase}
+    .incident-banner{width:100%;padding:8px 16px;border-radius:10px;font-family:var(--font-mono);font-size:.6rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;transition:all .4s ease}.incident-banner .status-icon{font-size:14px}.incident-banner .status-label{font-weight:600;letter-spacing:.5px;text-transform:uppercase}.incident-banner .status-message{color:var(--color-text-secondary);font-size:.55rem}.incident-banner .status-time{color:var(--gravel);font-size:.5rem}.incident-banner.normal{background:rgba(138,154,91,.1);border:1px solid rgba(138,154,91,.2)}.incident-banner.normal .status-label{color:var(--sage)}.incident-banner.degraded{background:rgba(204,119,34,.1);border:1px solid rgba(204,119,34,.25)}.incident-banner.degraded .status-label{color:var(--ochre)}.incident-banner.incident{background:rgba(255,60,60,.08);border:1px solid rgba(255,60,60,.2)}.incident-banner.incident .status-label{color:#FF3D3D}.incident-banner.maintenance{background:rgba(90,90,85,.15);border:1px solid rgba(90,90,85,.25)}.incident-banner.maintenance .status-label{color:var(--gravel)}
+    .ant-loader{width:100%;background:#0C0C0A;border:1px solid var(--color-border-tertiary);border-radius:18px;padding:22px 18px;position:relative;overflow:hidden}.ant-loader::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--sage) 0%,var(--ochre) 55%,var(--sage-dark) 100%)}.matrix-rain{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.08}.terminal-header{display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid var(--color-border-tertiary);margin-bottom:12px;position:relative;z-index:1}.terminal-dots{display:flex;gap:5px}.dot{width:9px;height:9px;border-radius:50%;background:#5A5A55}.dot.red{background:#FF5F56}.dot.yellow{background:#FFBD2E}.dot.green{background:#27C93F}.terminal-title{font-family:var(--font-mono);font-size:.55rem;color:var(--gravel);letter-spacing:.5px;text-transform:uppercase}.terminal-version{font-family:var(--font-mono);font-size:.5rem;color:var(--ochre)}
+    .pipeline{height:34px;background:#0A0A08;border:1px dashed var(--color-border-tertiary);border-radius:8px;position:relative;overflow:hidden;margin-bottom:12px;z-index:1;display:flex;align-items:center}.ant-worker{position:absolute;animation:antMarch var(--march-duration,4s) infinite linear;display:flex;align-items:center;gap:3px;white-space:nowrap;font-family:var(--font-mono);font-size:9px;color:var(--color-text-secondary)}.ant-worker .emoji{font-size:13px}.ant-worker .label{font-size:7.5px;color:var(--sage-light);letter-spacing:.5px}.ant-worker .status-dot{display:inline-block;width:4px;height:4px;border-radius:50%;margin-left:3px}.status-dot.online{background:var(--sage)}.status-dot.pending{background:var(--ochre);animation:pulse-dot 1.5s infinite}.status-dot.offline{background:#5A5A55}.status-dot.degraded{background:var(--ochre)}@keyframes antMarch{0%{transform:translateX(-100px);opacity:0}10%,90%{opacity:1}100%{transform:translateX(calc(100% + 100px));opacity:0}}@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+    .progress-wrap{width:100%;height:2px;background:rgba(255,255,255,.04);border-radius:2px;overflow:hidden;margin-bottom:10px;z-index:1;position:relative}.progress-fill{height:100%;background:linear-gradient(90deg,var(--sage),var(--ochre));width:0%;transition:width .8s ease;border-radius:2px}.checklist{display:grid;grid-template-columns:1fr 1fr;gap:2px 20px;z-index:1;position:relative;margin-bottom:4px}.check-item{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:.5rem;color:var(--color-text-secondary);opacity:.4;transition:opacity .4s ease,color .4s ease;padding:2px 0}.check-item.done{opacity:1;color:var(--color-text-primary)}.check-item.error{opacity:.6;color:#FF3D3D}.check-item .icon{font-size:.55rem;width:14px;text-align:center}.check-item .status-text{font-size:.45rem;color:var(--gravel);margin-left:auto}.check-item.done .status-text{color:var(--sage)}.check-item.error .status-text{color:#FF3D3D}
+    .status-panel{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;z-index:1;position:relative;margin-top:2px;padding-top:10px;border-top:1px solid var(--color-border-tertiary)}.status-item{display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--font-mono);font-size:.45rem;color:var(--color-text-secondary);padding:4px 0;background:rgba(255,255,255,.02);border-radius:6px}.dot-indicator{width:6px;height:6px;border-radius:50%;flex-shrink:0;transition:background .4s ease}.dot-indicator.online{background:var(--sage);box-shadow:0 0 8px rgba(138,154,91,.3)}.dot-indicator.offline{background:#5A5A55}.dot-indicator.pending{background:var(--ochre);animation:pulse-dot 1.5s infinite}.dot-indicator.degraded{background:var(--ochre)}.status-item .name{font-weight:500}.status-item .value{font-size:.4rem;letter-spacing:.3px;text-transform:uppercase;color:var(--gravel)}
+    .metrics-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;z-index:1;position:relative}.metric-item{text-align:center;padding:6px 4px;background:rgba(255,255,255,.02);border-radius:8px;border:1px solid var(--color-border-tertiary)}.metric-item .number{font-family:var(--font-sans);font-size:.95rem;font-weight:700;color:var(--ochre);display:block;line-height:1.2}.metric-item .label{font-family:var(--font-mono);font-size:.4rem;color:var(--gravel);letter-spacing:.3px;text-transform:uppercase}.redirect-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;z-index:1;position:relative}.redirect-btn{background:#0C0C0A;border:1px solid var(--color-border-tertiary);border-radius:14px;padding:14px 10px;text-decoration:none;color:var(--color-text-primary);text-align:center;transition:var(--transition);cursor:pointer;position:relative;overflow:hidden;opacity:.5;pointer-events:none}.redirect-btn.active{opacity:1;pointer-events:auto}.redirect-btn::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--ochre);transform:scaleX(0);transform-origin:left;transition:transform .3s ease}.redirect-btn:hover::before{transform:scaleX(1)}.redirect-btn:hover{border-color:var(--ochre);transform:translateY(-2px)}.redirect-btn .icon{font-size:20px;display:block;margin-bottom:4px}.redirect-btn .label{font-size:.7rem;font-weight:700;letter-spacing:-.01em;display:block}.redirect-btn .sub{font-family:var(--font-mono);font-size:.45rem;color:var(--gravel);letter-spacing:.3px;text-transform:uppercase;margin-top:2px;display:block}.redirect-btn .badge{display:inline-block;font-family:var(--font-mono);font-size:.4rem;padding:2px 8px;border-radius:20px;background:var(--sage);color:var(--charcoal);font-weight:600;letter-spacing:.3px;margin-top:4px;text-transform:uppercase}.redirect-btn .badge.dark{background:var(--charcoal);color:var(--sage);border:1px solid var(--color-border-tertiary)}.redirect-btn .badge.ops{background:var(--ochre);color:var(--charcoal)}.redirect-btn.ubuntu{border-color:rgba(138,154,91,.2)}.redirect-btn.ubuntu:hover{border-color:var(--sage)}.redirect-btn.proofbridge{border-color:rgba(204,119,34,.2)}.redirect-btn.proofbridge:hover{border-color:var(--ochre)}.redirect-btn.ops{border-color:rgba(90,90,85,.2)}.redirect-btn.ops:hover{border-color:var(--gravel)}
+    .build-provenance{display:flex;align-items:center;gap:12px;font-family:var(--font-mono);font-size:.4rem;color:var(--gravel);letter-spacing:.3px;text-transform:uppercase;padding:4px 0;flex-wrap:wrap;justify-content:center}.build-provenance .sep{color:var(--color-border-tertiary)}.animate-in{animation:fadeInUp .6s ease both}.delay-1{animation-delay:.1s}.delay-2{animation-delay:.2s}.delay-3{animation-delay:.35s}.delay-4{animation-delay:.5s}@keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @media (max-width:600px){body{padding:16px}.gateway-wrapper{gap:14px}.ant-loader{padding:14px 12px}.logo-text h1{font-size:1.1rem}.redirect-grid{grid-template-columns:1fr}.metrics-row{grid-template-columns:repeat(3,1fr)}.status-panel{grid-template-columns:repeat(2,1fr)}.checklist{grid-template-columns:1fr;gap:1px}.terminal-title{font-size:.45rem}.incident-banner{font-size:.5rem;padding:6px 12px}.build-provenance{font-size:.35rem;gap:6px}}@media (max-width:400px){body{padding:10px}.ant-loader{padding:10px 8px}.metrics-row{grid-template-columns:repeat(2,1fr)}.status-panel{grid-template-columns:1fr 1fr;gap:2px}.status-item{font-size:.4rem;padding:3px 0}.redirect-btn{padding:10px 8px}.redirect-btn .icon{font-size:16px}.redirect-btn .label{font-size:.6rem}}
   </style>
 </head>
 <body>
-  <header class="vvu-header">
-    <div class="logo">PROOFBRIDGE LINER — GATE SUITE</div>
-    <div id="all-status">POLLING…</div>
-    <nav><a href="/proofbridge">← Gateway</a></nav>
-  </header>
-
-  <div class="hero-bar">
-    <div>
-      <div class="hero-title">COMPLIANCE GATE TERMINALS</div>
-      <div class="hero-sub">Gates A–F · Amoy Testnet · Safety Kernel V2.5</div>
-    </div>
-    <div class="overall-status" id="overall-status">● SYSTEM ONLINE</div>
+  <div class="gateway-wrapper">
+    <a href="/" class="logo-group animate-in delay-1" aria-label="Venture Vision Ubuntu home"><svg class="logo-mark" width="52" height="52" viewBox="0 0 100 100" fill="none" aria-hidden="true"><circle cx="35" cy="40" r="16" stroke="#8A9A5B" stroke-width="5"/><circle cx="65" cy="40" r="16" stroke="#CC7722" stroke-width="5"/><circle cx="50" cy="64" r="16" stroke="#E2E3DB" stroke-width="5"/></svg><div class="logo-text"><h1>VENTURE VISION<br>UBUNTU</h1><p>EARTH-TECH GATEWAY</p></div></a>
+    <div class="incident-banner normal animate-in delay-1" id="incidentBanner"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span class="status-icon" id="incidentIcon">◉</span><span class="status-label" id="incidentLabel">ALL SYSTEMS OPERATIONAL</span><span class="status-message" id="incidentMessage">No active incidents</span></div><span class="status-time" id="incidentTime">Updated: --</span></div>
+    <div class="ant-loader animate-in delay-2" role="status" aria-label="System telemetry"><canvas class="matrix-rain" id="matrixCanvas"></canvas><div class="terminal-header"><div class="terminal-dots" aria-hidden="true"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div><div class="terminal-title">VVU KERNEL // CONDUCTOR v2.1</div><div class="terminal-version" id="buildVersion">build:prod</div></div><div class="pipeline" id="antPipeline" aria-hidden="true"><div class="ant-worker" style="animation-delay:0s;left:5%;"><span class="emoji">🐜</span><span class="label">VERIFY</span><span class="status-dot online" id="antVerify"></span></div><div class="ant-worker" style="animation-delay:.8s;left:5%;"><span class="emoji">🐜</span><span class="label">QUEUE</span><span class="status-dot online" id="antQueue"></span></div><div class="ant-worker" style="animation-delay:1.6s;left:5%;"><span class="emoji">🐜</span><span class="label">SIGN</span><span class="status-dot pending" id="antSign"></span></div><div class="ant-worker" style="animation-delay:2.4s;left:5%;"><span class="emoji">🐜</span><span class="label">COMMIT</span><span class="status-dot pending" id="antCommit"></span></div></div><div class="progress-wrap" aria-hidden="true"><div class="progress-fill" id="progressFill"></div></div><div class="checklist" id="checklist" role="list"><div class="check-item" data-key="keygen" role="listitem"><span class="icon">□</span><span>ED25519 Keypair</span><span class="status-text">pending</span></div><div class="check-item" data-key="network" role="listitem"><span class="icon">□</span><span>Polygon Amoy RPC</span><span class="status-text">pending</span></div><div class="check-item" data-key="contract" role="listitem"><span class="icon">□</span><span>CircuitBreaker.sol</span><span class="status-text">pending</span></div><div class="check-item" data-key="oracle" role="listitem"><span class="icon">□</span><span>Health Oracle</span><span class="status-text">pending</span></div><div class="check-item" data-key="frost" role="listitem"><span class="icon">□</span><span>FROST 3-of-5</span><span class="status-text">pending</span></div><div class="check-item" data-key="webhook" role="listitem"><span class="icon">□</span><span>Webhook Verify</span><span class="status-text">pending</span></div><div class="check-item" data-key="reconcile" role="listitem"><span class="icon">□</span><span>Reconciler</span><span class="status-text">pending</span></div><div class="check-item" data-key="datadog" role="listitem"><span class="icon">□</span><span>Datadog APM</span><span class="status-text">pending</span></div><div class="check-item" data-key="tests" role="listitem"><span class="icon">□</span><span>Gate Tests</span><span class="status-text">0/14</span></div><div class="check-item" data-key="security" role="listitem"><span class="icon">□</span><span>Security Audit</span><span class="status-text">pending</span></div></div><div class="status-panel" id="statusPanel"><div class="status-item"><span class="dot-indicator offline" id="dot-api"></span><span class="name">API</span><span class="value" id="val-api">--</span></div><div class="status-item"><span class="dot-indicator offline" id="dot-polygon"></span><span class="name">Polygon</span><span class="value" id="val-polygon">--</span></div><div class="status-item"><span class="dot-indicator offline" id="dot-canton"></span><span class="name">Canton</span><span class="value" id="val-canton">--</span></div><div class="status-item"><span class="dot-indicator offline" id="dot-circuit"></span><span class="name">Circuit</span><span class="value" id="val-circuit">--</span></div></div></div>
+    <div class="metrics-row animate-in delay-3" id="metricsRow"><div class="metric-item"><span class="number" id="metricUp">--</span><span class="label">Uptime</span></div><div class="metric-item"><span class="number" id="metricTx">--</span><span class="label">Tx 24h</span></div><div class="metric-item"><span class="number" id="metricGas">--</span><span class="label">Avg Gas</span></div><div class="metric-item"><span class="number" id="metricP99">--</span><span class="label">P99 Lat</span></div><div class="metric-item"><span class="number" id="metricDrift">--</span><span class="label">Drift</span></div></div>
+    <div class="redirect-grid animate-in delay-4" id="redirectGrid"><a href="gate-1.html" class="redirect-btn ubuntu" id="btnGateA"><span class="icon">🌱</span><span class="label">Gate A</span><span class="sub">Origination</span><span class="badge">LIVE</span></a><a href="gate-3.html" class="redirect-btn proofbridge" id="btnGateC"><span class="icon">🛡️</span><span class="label">Gate C</span><span class="sub">Safety Kernel</span><span class="badge dark">ON-CHAIN</span></a><a href="gate-6.html" class="redirect-btn ops" id="btnGateF"><span class="icon">⚙️</span><span class="label">Gate F</span><span class="sub">Settlement</span><span class="badge ops">CONTROL</span></a></div>
+    <div class="build-provenance animate-in delay-4" id="buildProvenance"><span id="buildCommit">commit: --</span><span class="sep">|</span><span id="buildTime">built: --</span><span class="sep">|</span><span id="buildRegion">region: --</span><span class="sep">|</span><span id="buildSig">sig: --</span></div>
   </div>
-
-  <div class="gateway-grid" id="gate-grid">
-    <!-- gates rendered by JS -->
-  </div>
-
   <script>
-    const GATES = [
-      {
-        id:'A', label:'gate-1', href:'/gate-1',
-        name:'ORIGINATION', desc:'Inbound proposal intake · μ Bayesian scoring · τ_A threshold enforcement · real-time rejection queue',
-        api:'/api/metrics/gate-a',
-        extract: d => [['Avg μ (1h)', d.avgMu?.toFixed(3)??'--'], ['Reject rate', d.rejectRate!=null?(d.rejectRate*100).toFixed(1)+'%':'--'], ['Queue depth', d.queue?.length??'--']],
-        statusKey: d => d.avgMu >= 0.60 ? 'ok' : 'warn',
-        fallback:() => [['Avg μ (1h)', (Math.random()*.15+.62).toFixed(3)], ['Reject rate', (Math.random()*10+3).toFixed(1)+'%'], ['Queue depth', Math.floor(Math.random()*8+4)]]
-      },
-      {
-        id:'B', label:'gate-2', href:'/gate-2',
-        name:'STITCH / REPLAY', desc:'Webhook replay protection · Redlock atomic idempotency · 300s tolerance window · deflection logging',
-        api:'/api/metrics/gate-b',
-        extract: d => [['Deflections 1h', d.deflections1h??'--'], ['Redlock locks', d.redlockActive??'--'], ['Replay attempts', d.replayAttempts??'--']],
-        statusKey: d => d.healthy ? 'ok' : 'error',
-        fallback:() => [['Deflections 1h', Math.floor(Math.random()*3)], ['Redlock locks', Math.floor(Math.random()*20+40)], ['Replay attempts', Math.floor(Math.random()*2)]]
-      },
-      {
-        id:'C', label:'gate-3', href:'/gate-3',
-        name:'BAYESIAN SAFETY', desc:'Beta posterior inference · HMAC-SHA256 chain validation · Monte Carlo stress tests · p-value gates',
-        api:'/api/metrics/gate-c',
-        extract: d => [['Proposals > τ_A', d.passCount??'--'], ['HMAC valid', d.hmacValid?'YES':'NO'], ['MC tests', d.mcTests?.length??'--']],
-        statusKey: d => d.hmacValid && d.status==='complete' ? 'ok' : 'error',
-        fallback:() => [['Proposals > τ_A', Math.floor(Math.random()*40+55)], ['HMAC valid', 'YES'], ['MC tests', '4']]
-      },
-      {
-        id:'D', label:'gate-4', href:'/gate-4',
-        name:'EVIDENCE', desc:'Immutable audit chain · reconciler.log ingestion · StableStringify determinism · SHA-256 event hashing',
-        api:'/api/metrics/gate-d',
-        extract: d => [['Last reconcile', d.lastReconcileRun??'--'], ['Datadog ingest', d.datadogIngest?'ACTIVE':'DOWN'], ['StableStr', d.deterministic?'ENFORCED':'VIOLATION']],
-        statusKey: d => d.deterministic && d.datadogIngest ? 'ok' : 'error',
-        fallback:() => [['Last reconcile', new Date().toTimeString().slice(0,8)+' UTC'], ['Datadog ingest', 'ACTIVE'], ['StableStr', 'ENFORCED']]
-      },
-      {
-        id:'E', label:'gate-5', href:'/gate-5',
-        name:'FROST SIGNER', desc:'FROST threshold signatures · 3-of-5 signer quorum · group key verification · self-verify rate tracking',
-        api:'/api/metrics/gate-e',
-        extract: d => [['Online signers', d.signers?.filter(s=>s.online).length+'/5'??'--'], ['Verify rate', d.verifyRate!=null?(d.verifyRate*100).toFixed(1)+'%':'--'], ['Last sig', d.lastSig?.slice(0,10)+'…'??'--']],
-        statusKey: d => (d.signers?.filter(s=>s.online).length??0) >= 3 ? 'ok' : 'error',
-        fallback:() => [['Online signers', '5/5'], ['Verify rate', (Math.random()*2+98).toFixed(1)+'%'], ['Last sig', Math.random().toString(16).slice(2,12)+'…']]
-      },
-      {
-        id:'F', label:'gate-6', href:'/gate-6',
-        name:'SETTLEMENT', desc:'Polygon Amoy CircuitBreaker.sol · on-chain anchor verification · drift monitoring · circuit-breaker control',
-        api:'/api/metrics/gate-f',
-        extract: d => [['Circuit state', d.circuitOpen?'OPEN':'CLOSED'], ['Drift', d.drift??'--'], ['Anchors', d.anchors?.length??'--']],
-        statusKey: d => !d.circuitOpen ? 'ok' : 'error',
-        fallback:() => [['Circuit state', 'CLOSED'], ['Drift', Math.floor(Math.random()*200)+'ms'], ['Anchors', Math.floor(Math.random()*80+120)]]
-      },
-    ];
-
-    const statusLabel = {ok:'NOMINAL', warn:'DEGRADED', error:'FAULT'};
-    const statusColor  = {ok:'var(--green)', warn:'var(--gold)', error:'var(--red)'};
-
-    function buildCard(gate, metrics, status) {
-      return `
-        <div class="card gate-card" id="card-${gate.id}">
-          <a href="${gate.href}">
-            <div class="gate-id">GATE ${gate.id} · ${gate.label.toUpperCase()}</div>
-            <div class="gate-name">${gate.name}</div>
-            <div class="gate-desc">${gate.desc}</div>
-            <div class="gate-metrics">
-              ${metrics.map(([k,v])=>`<div class="gate-metric">${k}<span>${v}</span></div>`).join('')}
-            </div>
-          </a>
-          <div class="gate-footer">
-            <span class="status-pill ${status}" id="pill-${gate.id}">${statusLabel[status]}</span>
-            <a href="${gate.href}" class="gate-link">Open terminal →</a>
-          </div>
-        </div>`;
-    }
-
-    const grid = document.getElementById('gate-grid');
-
-    async function renderAll() {
-      const results = await Promise.all(GATES.map(async g => {
-        try {
-          const res = await fetch(g.api);
-          if (!res.ok) throw new Error();
-          const d = await res.json();
-          return { gate:g, metrics:g.extract(d), status:g.statusKey(d)||'ok' };
-        } catch {
-          return { gate:g, metrics:g.fallback(), status:'ok' };
-        }
-      }));
-
-      if (!grid.children.length) {
-        grid.innerHTML = results.map(r => buildCard(r.gate, r.metrics, r.status)).join('');
-      } else {
-        results.forEach(r => {
-          const pill = document.getElementById(`pill-${r.gate.id}`);
-          if (pill) { pill.textContent = statusLabel[r.status]; pill.className = `status-pill ${r.status}`; }
-          const metricsEl = document.querySelector(`#card-${r.gate.id} .gate-metrics`);
-          if (metricsEl) metricsEl.innerHTML = r.metrics.map(([k,v])=>`<div class="gate-metric">${k}<span>${v}</span></div>`).join('');
-        });
-      }
-
-      const faults = results.filter(r=>r.status==='error').length;
-      const warns  = results.filter(r=>r.status==='warn').length;
-      const allStatus = document.getElementById('all-status');
-      const overallEl = document.getElementById('overall-status');
-      if (faults > 0) {
-        allStatus.textContent = `${faults} FAULT${faults>1?'S':''}`;
-        allStatus.style.color = 'var(--red)';
-        overallEl.textContent = `● ${faults} GATE${faults>1?'S':''} FAULTED`;
-        overallEl.style.color = 'var(--red)';
-      } else if (warns > 0) {
-        allStatus.textContent = `${warns} DEGRADED`;
-        allStatus.style.color = 'var(--gold)';
-        overallEl.textContent = '● DEGRADED';
-        overallEl.style.color = 'var(--gold)';
-      } else {
-        allStatus.textContent = '6/6 NOMINAL';
-        allStatus.style.color = 'var(--green)';
-        overallEl.textContent = '● ALL SYSTEMS NOMINAL';
-        overallEl.style.color = 'var(--green)';
-      }
-    }
-
-    renderAll();
-    setInterval(renderAll, 15000);
+    (function(){'use strict';const GATE_API='/api/admin/gates';const METRICS_API='/api/metrics/system';const BUILD_API='/api/system/build';const POLL_INTERVAL=3000;const checkItems=document.querySelectorAll('.check-item');const progressFill=document.getElementById('progressFill');const statusDots={api:document.getElementById('dot-api'),polygon:document.getElementById('dot-polygon'),canton:document.getElementById('dot-canton'),circuit:document.getElementById('dot-circuit')};const statusVals={api:document.getElementById('val-api'),polygon:document.getElementById('val-polygon'),canton:document.getElementById('val-canton'),circuit:document.getElementById('val-circuit')};const antDots={verify:document.getElementById('antVerify'),queue:document.getElementById('antQueue'),sign:document.getElementById('antSign'),commit:document.getElementById('antCommit')};const metricsEls={up:document.getElementById('metricUp'),tx:document.getElementById('metricTx'),gas:document.getElementById('metricGas'),p99:document.getElementById('metricP99'),drift:document.getElementById('metricDrift')};const incidentBanner=document.getElementById('incidentBanner');const incidentIcon=document.getElementById('incidentIcon');const incidentLabel=document.getElementById('incidentLabel');const incidentMessage=document.getElementById('incidentMessage');const incidentTime=document.getElementById('incidentTime');const buildEls={version:document.getElementById('buildVersion'),commit:document.getElementById('buildCommit'),time:document.getElementById('buildTime'),region:document.getElementById('buildRegion'),sig:document.getElementById('buildSig')};const redirectBtns=document.querySelectorAll('.redirect-btn');let healthChecksComplete=0;const totalChecks=checkItems.length;const canvas=document.getElementById('matrixCanvas');const ctx=canvas.getContext('2d');let drops=[];function resizeCanvas(){const rect=canvas.parentElement.getBoundingClientRect();canvas.width=rect.width;canvas.height=rect.height;const columns=Math.max(1,Math.floor(canvas.width/20));drops=new Array(columns).fill(0)}resizeCanvas();window.addEventListener('resize',resizeCanvas);const matrixChars=['🐜','·','·','·','🐜','·','·','·'];function drawMatrix(){ctx.fillStyle='rgba(12,12,10,.04)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.font='9px monospace';ctx.textAlign='center';for(let i=0;i<drops.length;i++){const char=matrixChars[Math.floor(Math.random()*matrixChars.length)];const x=i*20+10;const y=drops[i]*13+13;ctx.fillStyle='#8A9A5B';ctx.globalAlpha=.05+Math.random()*.05;ctx.fillText(char,x,y);if(y>canvas.height+26)drops[i]=0;drops[i]+=.4+Math.random()*.4}ctx.globalAlpha=1;requestAnimationFrame(drawMatrix)}if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches)drawMatrix();function normalizeStatus(status){if(status==='done'||status==='online'||status==='complete'||status==='nominal')return'done';if(status==='error'||status==='offline'||status==='failed'||status==='incident')return'error';return'pending'}function updateCheckItem(index,status,message){const item=checkItems[index];if(!item)return;const icon=item.querySelector('.icon');const statusText=item.querySelector('.status-text');const normalized=normalizeStatus(status);if(normalized==='done'){item.classList.remove('error');item.classList.add('done');icon.textContent='✓';statusText.textContent=message||'online'}else if(normalized==='error'){item.classList.remove('done');item.classList.add('error');icon.textContent='✗';statusText.textContent=message||'offline'}else{item.classList.remove('done','error');icon.textContent='◌';statusText.textContent=message||'pending'}}function updateStatusPanel(service,status,label){const dot=statusDots[service];const val=statusVals[service];if(!dot||!val)return;const normalized=status==='degraded'?'degraded':normalizeStatus(status)==='done'?'online':normalizeStatus(status)==='error'?'offline':'pending';dot.className='dot-indicator '+normalized;val.textContent=label||normalized.toUpperCase()}function updateAntDots(verify,queue,sign,commit){const statusMap={online:'online',done:'online',pending:'pending',offline:'offline',error:'offline',degraded:'degraded'};if(antDots.verify)antDots.verify.className='status-dot '+(statusMap[verify]||'pending');if(antDots.queue)antDots.queue.className='status-dot '+(statusMap[queue]||'pending');if(antDots.sign)antDots.sign.className='status-dot '+(statusMap[sign]||'pending');if(antDots.commit)antDots.commit.className='status-dot '+(statusMap[commit]||'pending')}function updateIncidentBanner(status,message){const statusMap={normal:{icon:'◉',label:'ALL SYSTEMS OPERATIONAL',cls:'normal'},degraded:{icon:'◌',label:'DEGRADED PERFORMANCE',cls:'degraded'},incident:{icon:'✕',label:'INCIDENT ACTIVE',cls:'incident'},maintenance:{icon:'◐',label:'MAINTENANCE MODE',cls:'maintenance'}};const s=statusMap[status]||statusMap.normal;incidentBanner.className='incident-banner '+s.cls;incidentIcon.textContent=s.icon;incidentLabel.textContent=s.label;incidentMessage.textContent=message||'No active incidents';incidentTime.textContent='Updated: '+new Date().toLocaleTimeString('en-ZA',{hour12:false})}function updateMetrics(data){if(data.uptime!==undefined)metricsEls.up.textContent=data.uptime;if(data.tx24h!==undefined)metricsEls.tx.textContent=data.tx24h;if(data.avgGas!==undefined)metricsEls.gas.textContent=data.avgGas;if(data.p99Lat!==undefined)metricsEls.p99.textContent=data.p99Lat+'ms';if(data.drift!==undefined)metricsEls.drift.textContent=data.drift+'ms'}function updateBuild(data){if(data.version)buildEls.version.textContent='build:'+data.version;if(data.commit)buildEls.commit.textContent='commit: '+data.commit;if(data.built)buildEls.time.textContent='built: '+data.built;if(data.region)buildEls.region.textContent='region: '+data.region;if(data.signature)buildEls.sig.textContent='sig: '+data.signature}function enableRedirects(){redirectBtns.forEach(btn=>btn.classList.add('active'))}function updateProgress(){const pct=Math.min(100,(healthChecksComplete/totalChecks)*100);progressFill.style.width=pct+'%';if(pct>=100)enableRedirects()}function withTimeout(ms){return typeof AbortSignal!=='undefined'&&AbortSignal.timeout?AbortSignal.timeout(ms):undefined}async function safeJson(url,ms){const options={headers:{'Cache-Control':'no-cache'}};const signal=withTimeout(ms);if(signal)options.signal=signal;const res=await fetch(url,options);if(!res.ok)throw new Error(url+' '+res.status);return res.json()}async function fetchTelemetry(){try{const[gatesRes,metricsRes,buildRes]=await Promise.allSettled([safeJson(GATE_API,4000),safeJson(METRICS_API,3000),safeJson(BUILD_API,3000)]);const gates=gatesRes.status==='fulfilled'?gatesRes.value:{};const metrics=metricsRes.status==='fulfilled'?metricsRes.value:{};const build=buildRes.status==='fulfilled'?buildRes.value:{};healthChecksComplete=0;const gateKeys=['keygen','network','contract','oracle','frost','webhook','reconcile','datadog','tests','security'];const gateStatus=gates.status||{};gateKeys.forEach((key,i)=>{const status=gateStatus[key]||'pending';const msg=gateStatus[key+'Msg']||(normalizeStatus(status)==='done'?'online':status);updateCheckItem(i,status,msg);if(normalizeStatus(status)==='done')healthChecksComplete++});updateStatusPanel('api',gates.api||'pending');updateStatusPanel('polygon',gates.polygon||'pending');updateStatusPanel('canton',gates.canton||'pending');updateStatusPanel('circuit',gates.circuit||'pending');updateAntDots(gates.proofbridge||'pending',gates.queue||'pending',gates.signer||'pending',gates.polygon||'pending');updateIncidentBanner(gates.incident||'normal',gates.incidentMsg||'');updateMetrics(metrics);updateBuild(build);updateProgress()}catch(e){console.warn('[VVU Gateway] Telemetry fetch failed:',e);healthChecksComplete=0;checkItems.forEach((item,i)=>updateCheckItem(i,'pending','checking...'));Object.keys(statusDots).forEach(key=>updateStatusPanel(key,'pending','PENDING'));updateAntDots('pending','pending','pending','pending');updateIncidentBanner('normal','Initializing...');updateProgress()}}document.addEventListener('keydown',function(e){if(e.key==='1'&&document.getElementById('btnGateA')?.classList.contains('active'))document.getElementById('btnGateA').click();if(e.key==='2'&&document.getElementById('btnGateC')?.classList.contains('active'))document.getElementById('btnGateC').click();if(e.key==='3'&&document.getElementById('btnGateF')?.classList.contains('active'))document.getElementById('btnGateF').click();if(e.key==='r'||e.key==='R'){healthChecksComplete=0;checkItems.forEach((item,i)=>updateCheckItem(i,'pending','checking...'));progressFill.style.width='0%';fetchTelemetry()}});console.log('%c🐜 VVU GATEWAY %cv2.1.0 %c· EARTH-TECH CONSOLE','color:#CC7722;font-weight:bold;font-size:16px;','color:#8A9A5B;font-weight:bold;','color:#5A5A55;');console.log('%c[1] Gate A · [2] Gate C · [3] Gate F · [R] Refresh','color:rgba(255,255,255,.2);font-size:10px;');checkItems.forEach((item,i)=>updateCheckItem(i,'pending','checking...'));Object.keys(statusDots).forEach(key=>updateStatusPanel(key,'pending','PENDING'));updateAntDots('pending','pending','pending','pending');updateIncidentBanner('normal','Initializing...');setTimeout(fetchTelemetry,300);setInterval(fetchTelemetry,POLL_INTERVAL)})();
   </script>
 </body>
 </html>
