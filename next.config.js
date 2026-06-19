@@ -1,31 +1,26 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Use src directory for app and pages
-  dir: {
-    src: './src',
+  reactStrictMode: true,
+  swcMinify: true,
+  images: {
+    domains: [
+      'vvu.earth-tech.ai',
+      'api.vvu.earth-tech.ai'
+    ],
   },
-  // Disable static-only mode to allow dynamic content serving
-  staticPageGenerationTimeout: 120,
   async rewrites() {
     return [
-      // Match /vvv/... paths and serve them as static assets
-      { source: '/vvv/:path*', destination: '/vvv/:path*' },
-      // Route-specific mappings
-      { source: '/pools', destination: '/vvv/pools.html' },
-      { source: '/pools/onboarding', destination: '/vvv/pools-onboarding.html' },
-      { source: '/pools/trust', destination: '/vvv/pools-trust.html' },
-      { source: '/pools/ledger', destination: '/vvv/pools-ledger.html' },
-      { source: '/pools/governance', destination: '/vvv/pools-governance.html' },
-      { source: '/pools/learning', destination: '/vvv/pools-learning.html' },
-      { source: '/pools/profile', destination: '/vvv/pools-profile.html' },
-      { source: '/pools/compliance', destination: '/vvv/pools-compliance.html' },
-      { source: '/admin/pools', destination: '/vvv/admin-pools.html' },
       { source: '/proofbridge', destination: '/vvv/proofbridge.html' },
-      { source: '/gate-1', destination: '/vvv/gate-1.html' },
-      { source: '/submission', destination: '/vvv/submission.html' },
-      { source: '/demo/:path*', destination: '/demo/:path*' },
-    ];
+      { source: '/dlt',         destination: '/vvv/dlt.html' },
+      { source: '/gate-1',      destination: '/vvv/gate-1.html' },
+      { source: '/gate-2',      destination: '/vvv/gate-2.html' },
+      { source: '/gate-3',      destination: '/vvv/gate-3.html' },
+      { source: '/gate-4',      destination: '/vvv/gate-4.html' },
+      { source: '/gate-5',      destination: '/vvv/gate-5.html' },
+      { source: '/gate-6',      destination: '/vvv/gate-6.html' },
+      { source: '/gates',       destination: '/vvv/index.html' },
+    ]
   },
-};
+}
 
-export default nextConfig;
+module.exports = nextConfig
