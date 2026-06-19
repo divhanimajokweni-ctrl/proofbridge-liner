@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>VVU Gateway · Venture Vision Ubuntu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================================
+           VVU EARTH-TECH DESIGN TOKENS
+           ============================================================ */
+        :root {
+            --sage: #8A9A5B;
+            --sage-light: #b8c98a;
+            --sage-dark: #5c6b38;
+            --ochre: #CC7722;
+            --ochre-light: #e09a52;
+            --charcoal: #1E1E1C;
+            --paper: #F4F5F0;
+            --stone: #E2E3DB;
+            --gravel: #5A5A55;
+            --color-text-primary: rgba(255, 255, 255, 0.92);
+            --color-text-secondary: rgba(255, 255, 255, 0.62);
+            --color-border-tertiary: rgba(255, 255, 255, 0.08);
+            --font-sans: 'Syne', system-ui, sans-serif;
+            --font-mono: 'DM Mono', monospace;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--charcoal);
+            font-family: var(--font-sans);
+            color: var(--color-text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(232, 160, 32, 0.018) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(232, 160, 32, 0.018) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .gateway-wrapper {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 720px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+            padding: 20px;
+        }
+
+        /* ─── LOGO ────────────────────────────────────── */
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            text-decoration: none;
+            animation: fadeInUp 0.6s ease both 0.1s;
+        }
+
+        .logo-mark {
+            width: 56px;
+            height: 56px;
+            flex-shrink: 0;
+        }
+
+        .logo-text h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            color: white;
+        }
+
+        .logo-text p {
+            font-size: 0.65rem;
+            font-family: var(--font-mono);
+            color: var(--sage);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* ─── INCIDENT BANNER ─────────────────────────── */
+        .incident-banner {
+            width: 100%;
+            padding: 10px 18px;
+            border-radius: 12px;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            transition: all 0.4s ease;
+            animation: fadeInUp 0.6s ease both 0.15s;
+        }
+
+        .incident-banner .status-icon { font-size: 14px; }
+        .incident-banner .status-label { font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+        .incident-banner .status-message { color: var(--color-text-secondary); font-size: 0.55rem; }
+        .incident-banner .status-time { color: var(--gravel); font-size: 0.5rem; }
+
+        .incident-banner.normal {
+            background: rgba(138, 154, 91, 0.1);
+            border: 1px solid rgba(138, 154, 91, 0.2);
+        }
+        .incident-banner.normal .status-label { color: var(--sage); }
+
+        /* ─── ANT COLONY LOADER ───────────────────────── */
+        .ant-loader {
+            width: 100%;
+            background: #0C0C0A;
+            border: 1px solid var(--color-border-tertiary);
+            border-radius: 20px;
+            padding: 24px 20px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease both 0.2s;
+        }
+
+        .ant-loader::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--sage) 0%, var(--ochre) 55%, var(--sage-dark) 100%);
+        }
+
+        /* Terminal Header */
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--color-border-tertiary);
+            margin-bottom: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .terminal-dots { display: flex; gap: 5px; }
+        .dot { width: 9px; height: 9px; border-radius: 50%; background: #5A5A55; }
+        .dot.red { background: #FF5F56; }
+        .dot.yellow { background: #FFBD2E; }
+        .dot.green { background: #27C93F; }
+
+        .terminal-title {
+            font-family: var(--font-mono);
+            font-size: 0.55rem;
+            color: var(--gravel);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .terminal-version {
+            font-family: var(--font-mono);
+            font-size: 0.5rem;
+            color: var(--ochre);
+        }
+
+        /* Pipeline */
+        .pipeline {
+            height: 38px;
+            background: #0A0A08;
+            border: 1px dashed var(--color-border-tertiary);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 14px;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .ant-worker {
+            position: absolute;
+            font-size: 13px;
+            animation: antMarch var(--march-duration, 4s) infinite linear;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            white-space: nowrap;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--color-text-secondary);
+        }
+
+        .ant-worker .emoji { font-size: 14px; }
+        .ant-worker .label { font-size: 7.5px; color: var(--sage-light); letter-spacing: 0.5px; }
+        .ant-worker .status-dot {
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            margin-left: 3px;
+        }
+        .ant-worker .status-dot.online { background: var(--sage); }
+        .ant-worker .status-dot.pending { background: var(--ochre); animation: pulse-dot 1.5s infinite; }
+
+        @keyframes antMarch {
+            0% { transform: translateX(-100px); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateX(calc(100% + 100px)); opacity: 0; }
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Progress */
+        .progress-wrap {
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 12px;
+            z-index: 1;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--sage), var(--ochre));
+            width: 0%;
+            transition: width 0.8s ease;
+            border-radius: 2px;
+        }
+
+        /* Checklist */
+        .checklist {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 20px;
+            z-index: 1;
+            position: relative;
+            margin-bottom: 4px;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.5rem;
+            color: var(--color-text-secondary);
+            opacity: 0.4;
+            transition: opacity 0.4s ease, color 0.4s ease;
+            padding: 2px 0;
+        }
+
+        .check-item.done { opacity: 1; color: var(--color-text-primary); }
+        .check-item .icon { font-size: 0.55rem; width: 14px; text-align: center; }
+        .check-item .status-text { font-size: 0.45rem; color: var(--gravel); margin-left: auto; }
+        .check-item.done .status-text { color: var(--sage); }
+
+        /* ─── PRODUCT CARDS ────────────────────────────── */
+        .products {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            width: 100%;
+            animation: fadeInUp 0.6s ease both 0.35s;
+        }
+
+        .product-card {
+            background: #0C0C0A;
+            border-radius: 16px;
+            padding: 20px 16px;
+            text-decoration: none;
+            color: white;
+            text-align: center;
+            border: 1px solid var(--color-border-tertiary);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .product-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--ochre);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .product-card .icon { font-size: 28px; display: block; margin-bottom: 6px; }
+        .product-card .name {
+            font-family: var(--font-sans);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            display: block;
+        }
+        .product-card .sub {
+            font-family: var(--font-mono);
+            font-size: 0.45rem;
+            color: var(--gravel);
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            margin-top: 2px;
+            display: block;
+        }
+        .product-card .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.4rem;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            margin-top: 6px;
+            text-transform: uppercase;
+        }
+
+        .product-card.pools .badge { background: var(--sage); color: var(--charcoal); }
+        .product-card.pools:hover { border-color: var(--sage); }
+
+        .product-card.proofbridge .badge { background: var(--ochre); color: var(--charcoal); }
+        .product-card.proofbridge:hover { border-color: var(--ochre); }
+
+        /* ─── BUILD PROVENANCE ────────────────────────── */
+        .build-provenance {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-mono);
+            font-size: 0.4rem;
+            color: var(--gravel);
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            padding: 4px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+            animation: fadeInUp 0.6s ease both 0.45s;
+        }
+        .build-provenance .sep { color: var(--color-border-tertiary); }
+        .build-provenance code { color: var(--ochre); font-family: var(--font-mono); }
+
+        /* ─── FOOTER ──────────────────────────────────── */
+        .gateway-footer {
+            font-family: var(--font-mono);
+            font-size: 0.45rem;
+            color: var(--gravel);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            text-align: center;
+            width: 100%;
+            padding: 10px 0 0;
+            border-top: 1px solid var(--color-border-tertiary);
+            animation: fadeInUp 0.6s ease both 0.5s;
+        }
+        .gateway-footer .tagline { color: var(--sage-light); letter-spacing: 1.5px; }
+
+        /* ─── ANIMATIONS ───────────────────────────────── */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ─── RESPONSIVE ──────────────────────────────── */
+        @media (max-width: 550px) {
+            .products { grid-template-columns: 1fr; }
+            .checklist { grid-template-columns: 1fr; }
+            body { padding: 12px; }
+            .ant-loader { padding: 14px 12px; }
+            .logo-text h1 { font-size: 1.1rem; }
+            .incident-banner { font-size: 0.5rem; padding: 6px 12px; }
+            .build-provenance { font-size: 0.35rem; gap: 6px; }
+        }
+
+        @media (max-width: 400px) {
+            .ant-loader { padding: 10px 8px; }
+            .product-card { padding: 14px 10px; }
+            .product-card .icon { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="gateway-wrapper">
+
+        <!-- ─── LOGO ────────────────────────────────────── -->
+        <a href="/" class="logo-group">
+            <svg class="logo-mark" width="56" height="56" viewBox="0 0 100 100" fill="none">
+                <circle cx="35" cy="40" r="16" stroke="#8A9A5B" stroke-width="5"/>
+                <circle cx="65" cy="40" r="16" stroke="#CC7722" stroke-width="5"/>
+                <circle cx="50" cy="64" r="16" stroke="#E2E3DB" stroke-width="5"/>
+            </svg>
+            <div class="logo-text">
+                <h1>VENTURE VISION<br>UBUNTU</h1>
+                <p>EARTH-TECH GATEWAY</p>
+            </div>
+        </a>
+
+        <!-- ─── INCIDENT BANNER ────────────────────────── -->
+        <div class="incident-banner normal" id="incidentBanner">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span class="status-icon" id="incidentIcon">◉</span>
+                <span class="status-label" id="incidentLabel">ALL SYSTEMS OPERATIONAL</span>
+                <span class="status-message" id="incidentMessage">No active incidents</span>
+            </div>
+            <span class="status-time" id="incidentTime">Updated: --</span>
+        </div>
+
+        <!-- ─── ANT COLONY LOADER ──────────────────────── -->
+        <div class="ant-loader" role="status" aria-label="System telemetry">
+
+            <!-- Terminal Header -->
+            <div class="terminal-header">
+                <div class="terminal-dots">
+                    <div class="dot red"></div>
+                    <div class="dot yellow"></div>
+                    <div class="dot green"></div>
+                </div>
+                <div class="terminal-title">VVU KERNEL // CONDUCTOR v2.1</div>
+                <div class="terminal-version" id="buildVersion">build:prod</div>
+            </div>
+
+            <!-- Pipeline -->
+            <div class="pipeline" id="antPipeline" aria-hidden="true">
+                <div class="ant-worker" style="animation-delay:0s; left:5%;">
+                    <span class="emoji">🐜</span>
+                    <span class="label">VERIFY</span>
+                    <span class="status-dot online" id="antVerify"></span>
+                </div>
+                <div class="ant-worker" style="animation-delay:0.8s; left:5%;">
+                    <span class="emoji">🐜</span>
+                    <span class="label">QUEUE</span>
+                    <span class="status-dot online" id="antQueue"></span>
+                </div>
+                <div class="ant-worker" style="animation-delay:1.6s; left:5%;">
+                    <span class="emoji">🐜</span>
+                    <span class="label">SIGN</span>
+                    <span class="status-dot pending" id="antSign"></span>
+                </div>
+                <div class="ant-worker" style="animation-delay:2.4s; left:5%;">
+                    <span class="emoji">🐜</span>
+                    <span class="label">COMMIT</span>
+                    <span class="status-dot pending" id="antCommit"></span>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="progress-wrap" aria-hidden="true">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <!-- Checklist -->
+            <div class="checklist" id="checklist" role="list">
+                <div class="check-item" data-key="keygen" role="listitem">
+                    <span class="icon">◌</span><span>ED25519 Keypair</span><span class="status-text">pending</span>
+                </div>
+                <div class="check-item" data-key="network" role="listitem">
+                    <span class="icon">◌</span><span>Polygon Amoy RPC</span><span class="status-text">pending</span>
+                </div>
+                <div class="check-item" data-key="contract" role="listitem">
+                    <span class="icon">◌</span><span>CircuitBreaker.sol</span><span class="status-text">pending</span>
+                </div>
+                <div class="check-item" data-key="oracle" role="listitem">
+                    <span class="icon">◌</span><span>Health Oracle</span><span class="status-text">pending</span>
+                </div>
+                <div class="check-item" data-key="frost" role="listitem">
+                    <span class="icon">◌</span><span>FROST 3-of-5</span><span class="status-text">pending</span>
+                </div>
+                <div class="check-item" data-key="webhook" role="listitem">
+                    <span class="icon">◌</span><span>Webhook Verify</span><span class="status-text">pending</span>
+                </div>
+                <div class="check-item" data-key="reconcile" role="listitem">
+                    <span class="icon">◌</span><span>Reconciler</span><span class="status-text">pending</span>
+                </div>
+                <div class="check-item" data-key="datadog" role="listitem">
+                    <span class="icon">◌</span><span>Datadog APM</span><span class="status-text">pending</span>
+                </div>
+                <div class="check-item" data-key="tests" role="listitem">
+                    <span class="icon">◌</span><span>Gate Tests</span><span class="status-text">0/14</span>
+                </div>
+                <div class="check-item" data-key="security" role="listitem">
+                    <span class="icon">◌</span><span>Security Audit</span><span class="status-text">pending</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ─── PRODUCT CARDS ───────────────────────────── -->
+        <div class="products">
+            <a href="/pools" class="product-card pools">
+                <span class="icon">🏘️</span>
+                <span class="name">Ubuntu Pools</span>
+                <span class="sub">Village OS · ROSCA Engine</span>
+                <span class="badge">🐜 Ant Telemetry</span>
+            </a>
+            <a href="/proofbridge" class="product-card proofbridge">
+                <span class="icon">🔗</span>
+                <span class="name">ProofBridge Liner</span>
+                <span class="sub">Cryptographic Receipts</span>
+                <span class="badge">🌐 3D Globe</span>
+            </a>
+        </div>
+
+        <!-- ─── BUILD PROVENANCE ────────────────────────── -->
+        <div class="build-provenance" id="buildProvenance">
+            <span id="buildCommit">commit: f4b82102</span>
+            <span class="sep">|</span>
+            <span id="buildTime">built: 2026-06-18</span>
+            <span class="sep">|</span>
+            <span id="buildRegion">region: af-south-1</span>
+            <span class="sep">|</span>
+            <span id="buildSig">sig: software-attested</span>
+        </div>
+
+        <!-- ─── FOOTER ──────────────────────────────────── -->
+        <div class="gateway-footer">
+            <span class="tagline">"Umuntu ngumuntu ngabantu"</span>
+            <span style="margin:0 6px;">·</span>
+            <span>Gqeberha · Eastern Cape</span>
+            <span style="margin:0 6px;">·</span>
+            <span>© 2026 VVU Foundation</span>
+        </div>
+
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ─── INCIDENT BANNER ──────────────────────────────
+            const incidentBanner = document.getElementById('incidentBanner');
+            const incidentIcon = document.getElementById('incidentIcon');
+            const incidentLabel = document.getElementById('incidentLabel');
+            const incidentMessage = document.getElementById('incidentMessage');
+            const incidentTime = document.getElementById('incidentTime');
+
+            function updateIncidentBanner(status, message) {
+                const statusMap = {
+                    'normal': { icon: '◉', label: 'ALL SYSTEMS OPERATIONAL', cls: 'normal' },
+                    'degraded': { icon: '◌', label: 'DEGRADED PERFORMANCE', cls: 'degraded' },
+                    'incident': { icon: '✕', label: 'INCIDENT ACTIVE', cls: 'incident' },
+                    'maintenance': { icon: '◐', label: 'MAINTENANCE MODE', cls: 'maintenance' },
+                };
+                const s = statusMap[status] || statusMap.normal;
+                incidentBanner.className = 'incident-banner ' + s.cls;
+                incidentIcon.textContent = s.icon;
+                incidentLabel.textContent = s.label;
+                incidentMessage.textContent = message || 'No active incidents';
+                incidentTime.textContent = 'Updated: ' + new Date().toLocaleTimeString('en-ZA', { hour12: false });
+            }
+
+            // ─── CHECKLIST ─────────────────────────────────────
+            const checkItems = document.querySelectorAll('.check-item');
+            const progressFill = document.getElementById('progressFill');
+
+            function updateCheckItem(index, status, message) {
+                const item = checkItems[index];
+                if (!item) return;
+                const icon = item.querySelector('.icon');
+                const statusText = item.querySelector('.status-text');
+
+                if (status === 'done') {
+                    item.classList.add('done');
+                    icon.textContent = '✓';
+                    statusText.textContent = message || 'online';
+                } else if (status === 'error') {
+                    icon.textContent = '✗';
+                    statusText.textContent = message || 'offline';
+                    item.style.opacity = '0.6';
+                } else {
+                    icon.textContent = '◌';
+                    statusText.textContent = message || 'pending';
+                }
+            }
+
+            function updateProgress() {
+                const total = checkItems.length;
+                let done = 0;
+                checkItems.forEach(item => {
+                    if (item.classList.contains('done')) done++;
+                });
+                const pct = Math.min(100, (done / total) * 100);
+                progressFill.style.width = pct + '%';
+
+                // Update march speed
+                let speed;
+                if (pct < 25) speed = '5.0s';
+                else if (pct < 50) speed = '3.5s';
+                else if (pct < 75) speed = '2.0s';
+                else if (pct < 90) speed = '1.2s';
+                else speed = '0.7s';
+                document.documentElement.style.setProperty('--march-duration', speed);
+
+                // Update ant dots
+                const antVerify = document.getElementById('antVerify');
+                const antQueue = document.getElementById('antQueue');
+                const antSign = document.getElementById('antSign');
+                const antCommit = document.getElementById('antCommit');
+
+                if (pct > 20) { antVerify.className = 'status-dot online'; }
+                if (pct > 40) { antQueue.className = 'status-dot online'; }
+                if (pct > 60) { antSign.className = 'status-dot online'; }
+                if (pct > 80) { antCommit.className = 'status-dot online'; }
+
+                return pct;
+            }
+
+            // ─── SIMULATE LOADING ──────────────────────────────
+            let completed = 0;
+            const total = checkItems.length;
+
+            function simulateCheck(index) {
+                setTimeout(() => {
+                    const success = Math.random() > 0.15;
+                    updateCheckItem(index, success ? 'done' : 'error', success ? 'online' : 'offline');
+                    completed++;
+                    const pct = updateProgress();
+
+                    // Update incident banner based on progress
+                    if (completed === total) {
+                        if (pct === 100) {
+                            updateIncidentBanner('normal', 'All systems operational');
+                        } else {
+                            updateIncidentBanner('degraded', 'Some systems offline');
+                        }
+                    }
+                }, 300 + index * 300 + Math.random() * 300);
+            }
+
+            // ─── START ─────────────────────────────────────────
+            // Initial state
+            checkItems.forEach((_, i) => {
+                updateCheckItem(i, 'pending', 'checking...');
+            });
+            updateIncidentBanner('normal', 'Initializing...');
+
+            // Run checks
+            for (let i = 0; i < total; i++) {
+                simulateCheck(i);
+            }
+
+            // ─── BUILD PROVENANCE ──────────────────────────────
+            const buildVersion = document.getElementById('buildVersion');
+            const buildCommit = document.getElementById('buildCommit');
+            const buildTime = document.getElementById('buildTime');
+            const buildRegion = document.getElementById('buildRegion');
+            const buildSig = document.getElementById('buildSig');
+
+            // ─── KEYBOARD SHORTCUTS ────────────────────────────
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '1') document.querySelector('.product-card.pools')?.click();
+                if (e.key === '2') document.querySelector('.product-card.proofbridge')?.click();
+                if (e.key === 'r' || e.key === 'R') {
+                    // Refresh
+                    completed = 0;
+                    checkItems.forEach((_, i) => {
+                        updateCheckItem(i, 'pending', 'checking...');
+                    });
+                    progressFill.style.width = '0%';
+                    for (let i = 0; i < total; i++) {
+                        simulateCheck(i);
+                    }
+                }
+            });
+
+            console.log('%c🐜 VVU GATEWAY %cv2.1.0 %c· EARTH-TECH CONSOLE',
+                'color:#CC7722;font-weight:bold;font-size:16px;',
+                'color:#8A9A5B;font-weight:bold;',
+                'color:#5A5A55;'
+            );
+            console.log('%c[1] Ubuntu Pools · [2] ProofBridge · [R] Refresh',
+                'color:rgba(255,255,255,0.2);font-size:10px;'
+            );
+
+        })();
+    </script>
+
+</body>
+</html>

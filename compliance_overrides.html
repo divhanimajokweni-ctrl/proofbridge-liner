@@ -1,0 +1,119 @@
+<!-- ═══════════════════════════════════════════════════════════
+     Client Hot-Patch — VVU Compliance Overrides
+     HEAD: f4b82102 | Updated: 2026-06-18T20:47:17Z
+     ═══════════════════════════════════════════════════════════ -->
+
+<!-- ─── FOOTER COPYRIGHT UPDATE ────────────────────────── -->
+<footer>
+    <div class="footer-content">
+        <span class="tagline">“Umuntu ngumuntu ngabantu”</span>
+        <span class="sep">·</span>
+        <span>Gqeberha · Eastern Cape</span>
+        <span class="sep">·</span>
+        <span>© 2026 VVU Foundation</span>
+        <span class="sep">·</span>
+        <span id="teeStatus" class="tee-software">TEE: Software Attested</span>
+        <span class="sep">·</span>
+        <span id="demoMode" class="demo-badge">DEMO MODE</span>
+    </div>
+    <div class="compliance-footer">
+        <span>POPIA §18 Compliant</span>
+        <span class="sep">·</span>
+        <span>Data Minimisation Active</span>
+        <span class="sep">·</span>
+        <span>FSCA JS2 Assurance Pending</span>
+    </div>
+</footer>
+
+<!-- ─── CSS OVERRIDES ────────────────────────────────────── -->
+<style>
+    .footer-content {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 4px 12px;
+        font-family: var(--font-mono);
+        font-size: 0.5rem;
+        color: var(--gravel);
+        padding: 8px 0;
+    }
+
+    .demo-badge {
+        background: rgba(204, 119, 34, 0.15);
+        color: var(--ochre);
+        padding: 2px 10px;
+        border-radius: 20px;
+        border: 1px solid rgba(204, 119, 34, 0.25);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        font-size: 0.45rem;
+    }
+
+    .tee-software {
+        color: var(--ochre);
+        font-weight: 500;
+    }
+
+    .compliance-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 4px 12px;
+        font-family: var(--font-mono);
+        font-size: 0.4rem;
+        color: var(--gravel);
+        opacity: 0.6;
+        padding: 4px 0 12px;
+        border-top: 1px solid var(--color-border-tertiary);
+        margin-top: 4px;
+    }
+
+    .compliance-footer .sep {
+        color: var(--color-border-tertiary);
+    }
+</style>
+
+<!-- ─── JAVASCRIPT OVERRIDES ────────────────────────────── -->
+<script>
+    // ─── COMPLIANCE STATE ──────────────────────────────────
+    const COMPLIANCE_STATE = {
+        teeMode: 'software-attested',
+        hardwarePending: true,
+        demoMode: true,
+        popiaCompliant: true,
+        retentionDays: 1825,
+        anonymizeDays: 1095,
+        build: {
+            commit: 'f4b82102',
+            version: '2.1.0',
+            region: 'af-south-1',
+            built: '2026-06-18T14:32:07Z'
+        }
+    };
+
+    // ─── UPDATE UI ──────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        const teeEl = document.getElementById('teeStatus');
+        if (teeEl) {
+            teeEl.textContent = COMPLIANCE_STATE.hardwarePending
+                ? 'TEE: Software Attested · Hardware Pending'
+                : 'TEE: Hardware Attested';
+        }
+
+        const demoEl = document.getElementById('demoMode');
+        if (demoEl && COMPLIANCE_STATE.demoMode) {
+            demoEl.style.display = 'inline-block';
+        }
+
+        // Log compliance state
+        console.log('[VVU Compliance]', {
+            tee: COMPLIANCE_STATE.teeMode,
+            popia: COMPLIANCE_STATE.popiaCompliant,
+            retention: COMPLIANCE_STATE.retentionDays + ' days',
+            build: COMPLIANCE_STATE.build.commit
+        });
+    });
+</script>

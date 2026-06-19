@@ -1,0 +1,124 @@
+name: antstack
+version: '0.1.0'
+summary: Ant Stack — Colony vs Anteater tactical survival
+description: |
+  Realtime asymmetric multiplayer game optimized for Ubuntu Pools.
+  Defend your colony or devour as the anteater. Server-authoritative
+  matches with LAN discovery via mDNS.
+
+grade: stable
+confinement: strict
+base: core22
+
+apps:
+  antstack:
+    command: desktop-launch $SNAP/usr/bin/antstack
+    desktop: usr/share/applications/antstack.desktop
+    plugs:
+      - network
+      - network-bind
+      - pulseaudio
+      - home
+      - wayland
+      - x11
+      - avahi-observe
+      - avahi-control
+    environment:
+      NODE_ENV: production
+      DISABLE_WAYLAND: 0
+
+  antstack-server:
+    command: bin/server
+    daemon: simple
+    plugs:
+      - network
+      - network-bind
+      - home
+    environment:
+      PORT: 8080
+      REDIS_URL: redis://localhost:6379
+      DATABASE_URL: sqlite:///var/snap/antstack/common/match.db
+      NODE_ENV: production
+
+  antstack-worker:
+    command: bin/worker
+    daemon: simple
+    plugs:
+      - network
+      - network-bind
+      - home
+    environment:
+      REDIS_URL: redis://localhost:6379
+      DATABASE_URL: sqlite:///var/snap/antstack/common/match.db
+
+hooks:
+  configure:
+    command: hooks/configure.sh
+
+parts:
+  electron-app:
+    plugin: npm
+    source: client/
+    node-engine: 18.16.0
+    build-packages:
+      - nodejs
+      - npm
+    stage-packages:
+      - libnss3
+      - libx11-6
+      - libgtk-3-0
+      - libnotify4
+      - libxss1
+      - libxtst6
+      - xdg-utils
+      - libavahi-common3
+      - libavahi-client3
+    npm-run:
+      - ci
+      - run build
+    organize:
+      dist/electron: usr/lib/antstack/
+    prime:
+      - -usr/lib/antstack/node_modules
+
+  server:
+    plugin: npm
+    source: server/
+    node-engine: 18.16.0
+    npm-run:
+      - ci
+      - run build
+    stage-packages:
+      - redis-server
+      - sqlite3
+    prime:
+      - -node_modules
+
+  desktop:
+    plugin: dump
+    source: snap/local/
+    organize:
+      antstack.desktop: usr/share/applications/antstack.desktop
+      antstack.svg: usr/share/icons/hicolor/scalable/apps/antstack.svg
+    stage:
+      - usr/share/applications/antstack.desktop
+      - usr/share/icons/hicolor/scalable/apps/antstack.svg
+
+  hooks:
+    plugin: dump
+    source: snap/hooks/
+    organize:
+      '*': hooks/
+    stage:
+      - hooks/
+
+assumes:
+  - pulseaudio
+  - snapd2.50
+  - common-data
+
+layout:
+  /usr/share/antstack:
+    bind: $SNAP/usr/share/antstack
+  /var/snap/antstack/common:
+    bind: $SNAP_COMMON
