@@ -1,18 +1,10 @@
 modules = ["nodejs-20"]
 [agent]
 expertMode = true
+stack = "BEST_EFFORT_FALLBACK"
 
-[[ports]]
-localPort = 3000
-externalPort = 80
-
-[[ports]]
-localPort = 3001
-externalPort = 3001
-
-[[ports]]
-localPort = 5000
-externalPort = 80
+[nix]
+channel = "stable-25_05"
 
 [workflows]
 runButton = "Project"
@@ -32,11 +24,23 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev -- -p 5000"
+args = "npm run start"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["node", "dashboard/server.js"]
 
 [objectStorage]
 defaultBucketID = "replit-objstore-8504f30e-887d-4b7b-bc2e-62c84aa93e60"

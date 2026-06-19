@@ -1,0 +1,52 @@
+version: "1.0"
+products:
+  - product: QDJ
+    # JetBrains Qodana for JavaScript/TypeScript
+    # Docs: https://qodana.cloud/latest/docs/configure
+inspections:
+  - group: "Security"
+    enabled: true
+  - group: "Code Smells"
+    enabled: true
+  - group: "Duplication"
+    enabled: true
+  - group: "Potential Bugs"
+    enabled: true
+  - group: "Unused Code"
+    enabled: true
+  - group: "Complexity"
+    enabled: true
+exclude:
+  - name: "**/node_modules/**"
+  - name: "**/out/**"
+  - name: "**/lib/**"
+  - name: "**/cache/**"
+  - name: "**/.next/**"
+  - name: "**/dist/**"
+  - name: "**/build/**"
+  - name: "**/.vercel/**"
+  - name: "**/archive/**"
+  - name: "**/deprecated/**"
+  - name: "**/proofbridge-liner/**"
+  - name: "**/alchemy-demo/**"
+  - name: "**/contracts/**"
+  - name: "**/test/**"
+  - name: "**/tests/**"
+  - name: "**/*.test.*"
+  - name: "**/*.spec.*"
+  - name: "**/scripts/**"
+  - name: "**/docs/**"
+  - name: "**/proofs/**"
+  - name: "**/signer-nodes/**"
+  - name: "**/vvv/**"
+  - name: "**/demo/**"
+  - name: "**/broadcast/**"
+  - name: "**/artifacts/**"
+  - name: "**/cache/**"
+  - name: "**/.local/**"
+  - name: "**/.vvllc/**"
+  - name: "**/attached_assets/**"
+  - name: "**/.kilo/**"
+  - name: "**/.claude/**"
+  - name: "**/.junie/**"
+  - name: "**/.agents/**"

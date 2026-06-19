@@ -1,0 +1,64 @@
+name: Deploy ProofBridge Liner
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - api/**
+      - dashboard/**
+      - vvv/**
+      - demo/**
+      - vercel.json
+      - package.json
+      - package-lock.json
+      - .github/workflows/deploy-vercel.yml
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.PROOFBRIDGE_LINER_VERCEL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ secrets.GH_PAT }}
+          submodules: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Syntax-check API files
+        run: cd api && node --check verify.js && node --check kernel.js
+
+      - name: Validate Vercel Secrets
+        run: |
+          [ -n "$VERCEL_TOKEN" ] || { echo "ERROR: VERCEL_TOKEN (PROOFBRIDGE_LINER_VERCEL) is missing"; exit 1; }
+          [ -n "$VERCEL_ORG_ID" ] || { echo "ERROR: VERCEL_ORG_ID secret is missing"; exit 1; }
+          [ -n "$VERCEL_PROJECT_ID" ] || { echo "ERROR: VERCEL_PROJECT_ID secret is missing"; exit 1; }
+
+      - name: Bind to configured Vercel project
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          cat .vercel/project.json
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel Environment
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build Production
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy Production
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
