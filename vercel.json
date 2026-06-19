@@ -1,12 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/reconcile-gate-f",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/polygon-listener",
-      "schedule": "* * * * *"
-    }
-  ]
+  "framework": "nextjs",
+  "outputDirectory": ".next"
 }

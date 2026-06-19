@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ubuntu Pools · Ant Telemetry</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --sage: #8A9A5B;
+            --sage-light: #b8c98a;
+            --sage-dark: #5c6b38;
+            --ochre: #CC7722;
+            --ochre-light: #e09a52;
+            --charcoal: #1E1E1C;
+            --paper: #F4F5F0;
+            --stone: #E2E3DB;
+            --gravel: #5A5A55;
+        }
+
+        body {
+            background: var(--paper);
+            font-family: 'DM Sans', sans-serif;
+            color: var(--charcoal);
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* ─── HEADER ─────────────────────────────────────────── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-left a {
+            color: var(--sage);
+            text-decoration: none;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .header-left h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        .header-left .badge {
+            background: var(--sage);
+            color: white;
+            padding: 0.2rem 0.75rem;
+            border-radius: 20px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .telemetry-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--gravel);
+        }
+
+        .telemetry-indicator .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--sage);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* ─── ANT TELEMETRY LOADER ────────────────────────────── */
+        .ant-loader {
+            background: var(--charcoal);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ant-loader::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--sage) 0%, var(--ochre) 55%, var(--sage-dark) 100%);
+        }
+
+        .loader-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .loader-header .title {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.6rem;
+            color: var(--gravel);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .loader-header .version {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.5rem;
+            color: var(--ochre);
+        }
+
+        /* Pipeline */
+        .pipeline {
+            height: 48px;
+            background: #0A0A08;
+            border: 1px dashed rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .ant-worker {
+            position: absolute;
+            font-size: 14px;
+            animation: antMarch var(--march-speed, 3.5s) infinite linear;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            font-family: 'DM Mono', monospace;
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.6);
+            white-space: nowrap;
+        }
+
+        .ant-worker .emoji {
+            font-size: 16px;
+        }
+        .ant-worker .label {
+            color: var(--sage-light);
+            font-size: 8px;
+            letter-spacing: 0.5px;
+        }
+        .ant-worker .status-dot {
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            margin-left: 3px;
+        }
+        .ant-worker .status-dot.online {
+            background: var(--sage);
+        }
+        .ant-worker .status-dot.pending {
+            background: var(--ochre);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes antMarch {
+            0% {
+                transform: translateX(-80px);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(calc(100% + 80px));
+                opacity: 0;
+            }
+        }
+
+        /* Progress */
+        .progress-wrap {
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--sage), var(--ochre));
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 4px;
+        }
+
+        /* Tasks */
+        .tasks {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 2rem;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.55rem;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 2px 0;
+            transition: all 0.3s ease;
+        }
+
+        .task-item.done {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .task-item.done .icon {
+            color: var(--sage);
+        }
+
+        .task-item .icon {
+            font-size: 0.6rem;
+            width: 16px;
+            text-align: center;
+        }
+
+        .task-item .status {
+            font-size: 0.45rem;
+            color: var(--gravel);
+            margin-left: auto;
+        }
+
+        .task-item.done .status {
+            color: var(--sage);
+        }
+
+        /* ─── GRID ────────────────────────────────────────────── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid #E9E2D6;
+            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.04);
+        }
+
+        .card h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .card p {
+            font-size: 0.85rem;
+            color: rgba(0, 0, 0, 0.5);
+            margin-bottom: 1rem;
+        }
+
+        /* Score Ring */
+        .score-ring {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1rem;
+            position: relative;
+        }
+
+        .score-ring svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .score-ring .bg {
+            stroke: #EDE7DC;
+        }
+
+        .score-ring .fg {
+            stroke: var(--ochre);
+            stroke-dasharray: 351.86;
+            stroke-dashoffset: 105;
+            transition: stroke-dashoffset 0.6s ease;
+            filter: drop-shadow(0 0 8px rgba(204, 119, 34, 0.3));
+        }
+
+        .score-ring .center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .score-ring .center .num {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .score-ring .center .label {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.55rem;
+            color: rgba(0, 0, 0, 0.4);
+        }
+
+        /* ─── FOOTER ───────────────────────────────────────────── */
+        .footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #E9E2D6;
+            text-align: center;
+            font-size: 0.65rem;
+            color: rgba(0, 0, 0, 0.3);
+            font-family: 'DM Mono', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .footer .tag {
+            color: var(--sage);
+        }
+
+        @media (max-width: 600px) {
+            .tasks {
+                grid-template-columns: 1fr;
+            }
+            body {
+                padding: 1rem;
+            }
+            .ant-loader {
+                padding: 1.25rem;
+            }
+            .header-left h1 {
+                font-size: 1.3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- ─── HEADER ─────────────────────────────────────────── -->
+        <div class="header">
+            <div class="header-left">
+                <a href="index.html">← Back</a>
+                <h1>🏘️ Ubuntu Pools</h1>
+                <span class="badge">VILLAGE OS</span>
+            </div>
+            <div class="telemetry-indicator">
+                <span class="dot"></span>
+                <span>ANT TELEMETRY · LIVE</span>
+            </div>
+        </div>
+
+        <!-- ─── ANT TELEMETRY LOADER ──────────────────────────── -->
+        <div class="ant-loader">
+            <div class="loader-header">
+                <div class="title">🐜 ANT TELEMETRY // COLONY CONVERGENCE</div>
+                <div class="version">v2.1.0</div>
+            </div>
+
+            <div class="pipeline">
+                <div class="ant-worker" style="animation-delay:0s; left:5%;">
+                    <span class="emoji">🐜</span>
+                    <span class="label">VERIFY</span>
+                    <span class="status-dot online"></span>
+                </div>
+                <div class="ant-worker" style="animation-delay:0.8s; left:5%;">
+                    <span class="emoji">🐜</span>
+                    <span class="label">QUEUE</span>
+                    <span class="status-dot online"></span>
+                </div>
+                <div class="ant-worker" style="animation-delay:1.6s; left:5%;">
+                    <span class="emoji">🐜</span>
+                    <span class="label">SIGN</span>
+                    <span class="status-dot pending"></span>
+                </div>
+                <div class="ant-worker" style="animation-delay:2.4s; left:5%;">
+                    <span class="emoji">🐜</span>
+                    <span class="label">COMMIT</span>
+                    <span class="status-dot pending"></span>
+                </div>
+            </div>
+
+            <div class="progress-wrap">
+                <div class="progress-fill" id="progressFill" style="width:0%;"></div>
+            </div>
+
+            <div class="tasks" id="taskList">
+                <div class="task-item" data-task="0">
+                    <span class="icon">◌</span>
+                    <span>Gateway API</span>
+                    <span class="status">checking...</span>
+                </div>
+                <div class="task-item" data-task="1">
+                    <span class="icon">◌</span>
+                    <span>Ubuntu Pools API</span>
+                    <span class="status">checking...</span>
+                </div>
+                <div class="task-item" data-task="2">
+                    <span class="icon">◌</span>
+                    <span>ProofBridge API</span>
+                    <span class="status">checking...</span>
+                </div>
+                <div class="task-item" data-task="3">
+                    <span class="icon">◌</span>
+                    <span>Polygon RPC</span>
+                    <span class="status">checking...</span>
+                </div>
+                <div class="task-item" data-task="4">
+                    <span class="icon">◌</span>
+                    <span>Webhook Queue</span>
+                    <span class="status">checking...</span>
+                </div>
+                <div class="task-item" data-task="5">
+                    <span class="icon">◌</span>
+                    <span>Signer</span>
+                    <span class="status">checking...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── GRID ───────────────────────────────────────────── -->
+        <div class="grid">
+
+            <!-- Score Simulator -->
+            <div class="card">
+                <h3>Ubuntu Score Simulator</h3>
+                <p>Your reputation is your stake. 5 signals, weighted by the village.</p>
+                <div class="score-ring">
+                    <svg viewBox="0 0 140 140">
+                        <circle cx="70" cy="70" r="56" class="bg" fill="none" stroke-width="12"/>
+                        <circle cx="70" cy="70" r="56" class="fg" fill="none" stroke-width="12" stroke-linecap="round"/>
+                    </svg>
+                    <div class="center">
+                        <div class="num" id="scoreNum">68</div>
+                        <div class="label">/ 100</div>
+                    </div>
+                </div>
+                <div style="text-align:center;font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--sage);">
+                    Authority: <span id="authLevel">Steward</span>
+                </div>
+            </div>
+
+            <!-- Ant Stack Embedded -->
+            <div class="card">
+                <h3>🐜 Ant Stack</h3>
+                <p>Colony vs Anteater — embedded tactical survival</p>
+                <div style="background:var(--charcoal);border-radius:12px;padding:1rem;color:white;font-family:'DM Mono',monospace;font-size:0.7rem;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+                        <span>🐜 VERIFY</span>
+                        <span style="color:var(--sage);">ONLINE</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+                        <span>⚡ QUEUE</span>
+                        <span style="color:var(--sage);">ONLINE</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:0.5rem;">
+                        <span>🔐 SIGN</span>
+                        <span style="color:var(--ochre);">PENDING</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span>💾 COMMIT</span>
+                        <span style="color:var(--ochre);">PENDING</span>
+                    </div>
+                    <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid rgba(255,255,255,0.06);color:var(--gravel);font-size:0.55rem;">
+                        ▶ 3 active matches · 12 players
+                    </div>
+                </div>
+                <a href="https://ant-stack.vercel.app" target="_blank" style="display:inline-block;margin-top:1rem;padding:0.5rem 1rem;background:var(--charcoal);color:white;border-radius:8px;text-decoration:none;font-size:0.8rem;">
+                    Launch Ant Stack →
+                </a>
+            </div>
+
+            <!-- Pool Creator -->
+            <div class="card">
+                <h3>Create Pool</h3>
+                <p>ROSCA in 30 seconds. Anchored to ProofBridge.</p>
+                <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem;">
+                    <input placeholder="Pool Name" style="padding:0.6rem;border-radius:8px;border:1px solid #E9E2D6;background:var(--paper);font-size:0.85rem;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+                        <input placeholder="R" style="padding:0.6rem;border-radius:8px;border:1px solid #E9E2D6;background:var(--paper);font-size:0.85rem;">
+                        <input placeholder="Members" style="padding:0.6rem;border-radius:8px;border:1px solid #E9E2D6;background:var(--paper);font-size:0.85rem;">
+                    </div>
+                    <button style="padding:0.6rem;background:var(--sage);color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
+                        Create Pool & Anchor
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ─── FOOTER ──────────────────────────────────────────── -->
+        <div class="footer">
+            <span class="tag">"Umuntu ngumuntu ngabantu"</span>
+            <span style="margin:0 8px;">·</span>
+            Ubuntu Pools (Pty) Ltd · Gqeberha
+            <span style="margin:0 8px;">·</span>
+            © 2026 VVU Foundation
+        </div>
+
+    </div>
+
+    <script>
+        // ─── ANT TELEMETRY LOADER ──────────────────────────────
+        (function() {
+            const tasks = document.querySelectorAll('.task-item');
+            const progressFill = document.getElementById('progressFill');
+            const tasksList = [
+                'Gateway API',
+                'Ubuntu Pools API',
+                'ProofBridge API',
+                'Polygon RPC',
+                'Webhook Queue',
+                'Signer'
+            ];
+
+            let completed = 0;
+            const total = tasks.length;
+
+            function updateTask(index, status, message) {
+                const task = tasks[index];
+                if (!task) return;
+                const icon = task.querySelector('.icon');
+                const statusEl = task.querySelector('.status');
+
+                if (status === 'done') {
+                    task.classList.add('done');
+                    icon.textContent = '✓';
+                    statusEl.textContent = message || 'online';
+                } else if (status === 'error') {
+                    icon.textContent = '✗';
+                    statusEl.textContent = message || 'offline';
+                    task.style.opacity = '0.6';
+                } else {
+                    icon.textContent = '◌';
+                    statusEl.textContent = message || 'checking...';
+                }
+            }
+
+            function updateProgress() {
+                const pct = Math.min(100, (completed / total) * 100);
+                progressFill.style.width = pct + '%';
+            }
+
+            // Simulate health checks
+            const checks = [
+                { index: 0, delay: 300, status: 'done', msg: 'online' },
+                { index: 1, delay: 600, status: 'done', msg: 'online' },
+                { index: 2, delay: 900, status: 'done', msg: 'online' },
+                { index: 3, delay: 1200, status: 'done', msg: 'online' },
+                { index: 4, delay: 1500, status: 'done', msg: 'online' },
+                { index: 5, delay: 1800, status: 'done', msg: 'online' },
+            ];
+
+            checks.forEach(check => {
+                setTimeout(() => {
+                    updateTask(check.index, check.status, check.msg);
+                    completed++;
+                    updateProgress();
+
+                    // Update march speed based on progress
+                    let speed;
+                    const pct = (completed / total) * 100;
+                    if (pct < 30) speed = '5.0s';
+                    else if (pct < 60) speed = '3.5s';
+                    else if (pct < 85) speed = '2.0s';
+                    else speed = '0.9s';
+
+                    document.documentElement.style.setProperty('--march-speed', speed);
+                }, check.delay);
+            });
+
+            // ─── UBUNTU SCORE SIMULATOR ──────────────────────────
+            const scoreNum = document.getElementById('scoreNum');
+            const authLevel = document.getElementById('authLevel');
+
+            // Simulate score changes
+            let score = 68;
+            setInterval(() => {
+                score += Math.floor(Math.random() * 6) - 2;
+                score = Math.max(0, Math.min(100, score));
+                scoreNum.textContent = score;
+
+                let level = '';
+                if (score < 20) level = 'Novice';
+                else if (score < 40) level = 'Contributor';
+                else if (score < 60) level = 'Steward';
+                else if (score < 80) level = 'Guardian';
+                else level = 'Archivist';
+                authLevel.textContent = level;
+
+                // Update ring
+                const ring = document.querySelector('.score-ring .fg');
+                const circ = 351.86;
+                ring.style.strokeDashoffset = circ * (1 - score / 100);
+            }, 4000);
+
+        })();
+    </script>
+
+</body>
+</html>

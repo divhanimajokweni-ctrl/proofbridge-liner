@@ -1,1023 +1,294 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ProofBridge Liner · Safety Kernel V2.5</title>
-<meta name="description" content="Hardware-enforced circuit breaker for tokenised real-world assets. ED25519-signed on-chain receipts for every Ubuntu Pool transaction. No trust required — the chain is the auditor." />
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
-<script defer src="/_vercel/speed-insights/script.js"></script>
-<style>
-  :root {
-    --gold: #F5A623;
-    --green: #00FF88;
-    --red: #FF4444;
-    --orange-dim: #C47A1A;
-    --bg: #0A0A0A;
-    --surface: #111111;
-    --surface2: #181818;
-    --border: #222222;
-    --text: #E8E8E8;
-    --muted: #666666;
-    --mono: 'Space Mono', monospace;
-    --sans: 'Syne', sans-serif;
-    --body: 'Inter', sans-serif;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--body);
-    font-size: 14px;
-    line-height: 1.6;
-    overflow-x: hidden;
-  }
-
-  /* ── NAV ── */
-  nav {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    background: rgba(10,10,10,0.92);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 12px;
-    padding: 0 20px; height: 56px;
-  }
-  .nav-logo {
-    display: flex; align-items: center; gap: 10px;
-    font-family: var(--mono); font-size: 13px; font-weight: 700;
-    color: var(--text); text-decoration: none;
-  }
-  .nav-logo-box {
-    width: 28px; height: 28px; border: 2px solid var(--gold);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 10px; color: var(--gold); font-weight: 700;
-  }
-  .nav-kernel {
-    font-family: var(--mono); font-size: 10px; color: var(--green);
-    line-height: 1.3; margin-left: 4px;
-  }
-  .nav-spacer { flex: 1; }
-  .nav-links {
-    display: flex; align-items: center; gap: 4px;
-  }
-  .nav-link {
-    font-family: var(--mono); font-size: 10px; color: var(--muted);
-    text-decoration: none; padding: 6px 10px;
-    border: 1px solid transparent;
-    transition: all 0.15s; letter-spacing: 0.08em;
-  }
-  .nav-link:hover { color: var(--gold); border-color: var(--border); }
-  .nav-stat {
-    font-family: var(--mono); font-size: 10px; color: var(--muted);
-    display: flex; align-items: center; gap: 6px;
-  }
-  .nav-stat .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
-  .nav-btn {
-    padding: 7px 14px; font-family: var(--mono); font-size: 11px;
-    cursor: pointer; border: none; transition: all 0.15s;
-  }
-  .nav-btn-primary { background: var(--gold); color: #000; font-weight: 700; }
-  .nav-btn-primary:hover { background: #e0941a; }
-  .nav-btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
-  .nav-btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  /* ── HERO ── */
-  .hero {
-    min-height: 100vh; padding-top: 56px;
-    display: flex; flex-direction: column; justify-content: center;
-    padding-left: 24px; padding-right: 24px;
-    position: relative; overflow: hidden;
-  }
-  .hero-label {
-    font-family: var(--mono); font-size: 10px; color: var(--gold);
-    letter-spacing: 0.15em; margin-bottom: 20px;
-  }
-  .hero-h1 {
-    font-family: var(--sans); font-size: clamp(36px, 8vw, 72px);
-    font-weight: 800; line-height: 1.0;
-    margin-bottom: 24px;
-  }
-  .hero-h1 span { color: var(--gold); }
-  .hero-sub {
-    font-family: var(--body); font-size: 16px; color: #AAA;
-    max-width: 480px; line-height: 1.7; margin-bottom: 32px;
-  }
-  .hero-badges {
-    display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 36px;
-  }
-  .badge {
-    font-family: var(--mono); font-size: 10px;
-    padding: 4px 10px; border: 1px solid var(--border);
-    display: flex; align-items: center; gap: 6px; color: var(--muted);
-  }
-  .badge .dot { width: 5px; height: 5px; border-radius: 50%; }
-  .badge.live .dot { background: var(--green); }
-  .badge.warn .dot { background: var(--gold); }
-  .hero-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 48px; }
-  .cta-primary {
-    padding: 14px 28px; background: var(--gold); color: #000;
-    font-family: var(--mono); font-size: 12px; font-weight: 700;
-    cursor: pointer; border: none; transition: all 0.15s;
-    text-decoration: none; display: inline-flex; align-items: center;
-  }
-  .cta-primary:hover { background: #e0941a; transform: translateY(-1px); }
-  .cta-ghost {
-    padding: 14px 28px; background: transparent; color: var(--text);
-    font-family: var(--mono); font-size: 12px;
-    cursor: pointer; border: 1px solid var(--border); transition: all 0.15s;
-    text-decoration: none; display: inline-flex; align-items: center;
-  }
-  .cta-ghost:hover { border-color: var(--gold); color: var(--gold); }
-
-  /* ── TERMINAL ── */
-  .terminal {
-    background: #0D0D0D; border: 1px solid #222;
-    font-family: var(--mono); font-size: 12px;
-    max-width: 600px;
-  }
-  .terminal-bar {
-    background: #1A1A1A; padding: 8px 14px;
-    display: flex; align-items: center; gap: 6px;
-    border-bottom: 1px solid #222;
-  }
-  .t-dot { width: 10px; height: 10px; border-radius: 50%; }
-  .t-red { background: #FF5F57; }
-  .t-yellow { background: #FFBD2E; }
-  .t-green { background: #28C840; }
-  .terminal-label {
-    margin-left: auto; font-size: 10px; color: var(--muted);
-    letter-spacing: 0.1em;
-  }
-  .terminal-body { padding: 16px; line-height: 2; }
-  .t-prompt { color: var(--green); }
-  .t-cmd { color: var(--text); }
-  .t-arrow { color: var(--gold); }
-  .t-val { color: var(--green); }
-  .t-dim { color: var(--muted); }
-  .t-hash { color: #88AAFF; }
-  .t-cursor {
-    display: inline-block; width: 8px; height: 14px;
-    background: var(--green); animation: blink 1s step-end infinite;
-    vertical-align: middle;
-  }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-
-  /* ── STATS BAR ── */
-  .stats-bar {
-    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    margin: 0 24px;
-  }
-  .stat-cell {
-    padding: 20px 24px;
-    border-right: 1px solid var(--border);
-  }
-  .stat-cell:last-child { border-right: none; }
-  .stat-label { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 0.12em; margin-bottom: 6px; }
-  .stat-val { font-family: var(--sans); font-size: 28px; font-weight: 800; color: var(--gold); }
-  .stat-unit { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
-
-  /* ── SECTION ── */
-  section { padding: 60px 24px; }
-  .section-label {
-    font-family: var(--mono); font-size: 10px; color: var(--gold);
-    letter-spacing: 0.15em; margin-bottom: 16px;
-  }
-  .section-h2 {
-    font-family: var(--sans); font-size: clamp(24px, 5vw, 40px);
-    font-weight: 800; line-height: 1.1; margin-bottom: 32px;
-  }
-
-  /* ── PHASES ── */
-  .phases { display: flex; flex-direction: column; gap: 2px; }
-  .phase-row {
-    display: flex; align-items: center; gap: 16px;
-    padding: 14px 16px; border: 1px solid var(--border);
-    background: var(--surface);
-  }
-  .phase-num {
-    font-family: var(--mono); font-size: 10px; color: var(--muted);
-    width: 24px; flex-shrink: 0;
-  }
-  .phase-name { font-family: var(--body); font-size: 13px; flex: 1; }
-  .phase-track {
-    width: 120px; height: 4px; background: #222; flex-shrink: 0; overflow: hidden;
-  }
-  .phase-fill { height: 100%; transition: width 1s ease; }
-  .phase-fill.complete { background: var(--green); }
-  .phase-fill.partial { background: var(--gold); }
-  .phase-pct { font-family: var(--mono); font-size: 11px; width: 36px; text-align: right; }
-  .phase-pct.complete { color: var(--green); }
-  .phase-pct.partial { color: var(--gold); }
-
-  /* ── TEST SUITE ── */
-  .test-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
-    margin-bottom: 2px;
-    font-family: var(--mono); font-size: 11px;
-  }
-  .pass-badge {
-    background: var(--green); color: #000; padding: 3px 10px;
-    font-weight: 700; font-size: 10px;
-  }
-  .test-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 16px; border: 1px solid var(--border);
-    border-top: none; font-family: var(--mono); font-size: 11px;
-  }
-  .test-name { color: var(--muted); flex: 1; }
-  .test-gas { color: #88AAFF; margin: 0 16px; }
-  .test-check { color: var(--green); }
-
-  /* ── CONTRACT BOX ── */
-  .contract-box {
-    background: var(--surface); border: 1px solid var(--border);
-    padding: 20px; font-family: var(--mono); font-size: 12px;
-    margin-bottom: 24px; line-height: 2;
-  }
-  .cb-label { color: var(--muted); font-size: 10px; letter-spacing: 0.1em; }
-  .cb-val { color: var(--green); }
-  .cb-row { display: flex; gap: 12px; flex-wrap: wrap; }
-
-  /* ── INTEGRATIONS GRID ── */
-  .int-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 2px;
-  }
-  .int-card {
-    background: var(--surface); border: 1px solid var(--border);
-    padding: 20px;
-  }
-  .int-name { font-family: var(--sans); font-size: 14px; font-weight: 700; margin-bottom: 8px; }
-  .int-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
-  .int-status {
-    font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .int-status .dot { width: 5px; height: 5px; border-radius: 50%; }
-  .status-live .dot { background: var(--green); }
-  .status-live { color: var(--green); }
-  .status-beta .dot { background: var(--gold); }
-  .status-beta { color: var(--gold); }
-  .status-proved .dot { background: #88AAFF; }
-  .status-proved { color: #88AAFF; }
-
-  /* ── TRUST INDICATORS ── */
-  .trust-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 24px;
-  }
-  .trust-item {
-    padding: 12px 16px; border: 1px solid var(--border);
-    font-family: var(--mono); font-size: 10px;
-    display: flex; align-items: center; gap: 10px; color: var(--muted);
-  }
-  .trust-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
-  .trust-item.warn .dot { background: var(--gold); }
-
-  /* ── ONBOARDING MODAL ── */
-  .modal-overlay {
-    position: fixed; inset: 0; z-index: 200;
-    background: rgba(0,0,0,0.85); backdrop-filter: blur(8px);
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px;
-    opacity: 0; pointer-events: none; transition: opacity 0.2s;
-  }
-  .modal-overlay.open { opacity: 1; pointer-events: all; }
-  .modal {
-    background: var(--surface); border: 1px solid var(--border);
-    width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
-    position: relative;
-  }
-  .modal-header {
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: flex-start; justify-content: space-between;
-  }
-  .modal-title { font-family: var(--sans); font-size: 20px; font-weight: 800; }
-  .modal-subtitle { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
-  .modal-close {
-    background: none; border: none; color: var(--muted); font-size: 18px;
-    cursor: pointer; padding: 4px; line-height: 1;
-  }
-  .modal-close:hover { color: var(--text); }
-  .modal-body { padding: 24px; }
-  .modal-steps {
-    display: flex; gap: 0; margin-bottom: 28px;
-  }
-  .modal-step {
-    flex: 1; display: flex; flex-direction: column; align-items: center;
-    position: relative;
-  }
-  .modal-step::after {
-    content: ''; position: absolute;
-    top: 12px; left: 50%; right: -50%;
-    height: 1px; background: var(--border);
-    z-index: 0;
-  }
-  .modal-step:last-child::after { display: none; }
-  .step-circle {
-    width: 24px; height: 24px; border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    font-family: var(--mono); font-size: 10px; z-index: 1;
-    background: var(--surface); transition: all 0.2s;
-  }
-  .step-circle.active { border-color: var(--gold); color: var(--gold); }
-  .step-circle.done { background: var(--green); border-color: var(--green); color: #000; font-weight: 700; }
-  .step-lbl { font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 6px; text-align: center; }
-  .step-lbl.active { color: var(--gold); }
-
-  /* Form fields */
-  .field { margin-bottom: 20px; }
-  .field label { display: block; font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 8px; }
-  .field input, .field select {
-    width: 100%; background: var(--bg); border: 1px solid var(--border);
-    color: var(--text); padding: 10px 14px;
-    font-family: var(--mono); font-size: 12px;
-    outline: none; transition: border-color 0.15s;
-  }
-  .field input:focus, .field select:focus { border-color: var(--gold); }
-  .field input::placeholder { color: #444; }
-  .field-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
-
-  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-  .config-toggle {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 14px; background: var(--bg); border: 1px solid var(--border);
-    margin-bottom: 10px; cursor: pointer;
-  }
-  .config-toggle-label { font-family: var(--mono); font-size: 11px; }
-  .config-toggle-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .toggle-switch {
-    width: 36px; height: 20px; background: #333; border-radius: 10px;
-    position: relative; transition: background 0.2s; flex-shrink: 0;
-  }
-  .toggle-switch.on { background: var(--gold); }
-  .toggle-switch::after {
-    content: ''; position: absolute; top: 3px; left: 3px;
-    width: 14px; height: 14px; border-radius: 50%; background: white;
-    transition: left 0.2s;
-  }
-  .toggle-switch.on::after { left: 19px; }
-
-  .modal-footer {
-    padding: 16px 24px; border-top: 1px solid var(--border);
-    display: flex; gap: 10px; justify-content: flex-end;
-  }
-  .btn-back {
-    padding: 10px 20px; background: transparent; color: var(--muted);
-    border: 1px solid var(--border); font-family: var(--mono); font-size: 11px;
-    cursor: pointer;
-  }
-  .btn-next {
-    padding: 10px 24px; background: var(--gold); color: #000;
-    border: none; font-family: var(--mono); font-size: 11px; font-weight: 700;
-    cursor: pointer; transition: background 0.15s;
-  }
-  .btn-next:hover { background: #e0941a; }
-  .btn-next:disabled { background: #333; color: var(--muted); cursor: not-allowed; }
-
-  /* Success state */
-  .success-box {
-    text-align: center; padding: 32px 0;
-  }
-  .success-icon {
-    width: 56px; height: 56px; border: 2px solid var(--green);
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 24px; margin: 0 auto 20px; color: var(--green);
-  }
-  .success-title { font-family: var(--sans); font-size: 22px; font-weight: 800; margin-bottom: 12px; }
-  .success-code {
-    background: var(--bg); border: 1px solid var(--border);
-    padding: 12px 16px; font-family: var(--mono); font-size: 11px;
-    color: var(--green); word-break: break-all; text-align: left;
-    margin: 16px 0;
-  }
-  .success-meta { font-size: 12px; color: var(--muted); line-height: 1.8; }
-
-  /* ── FOOTER ── */
-  footer {
-    border-top: 1px solid var(--border); padding: 40px 24px 32px;
-  }
-  .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 32px; }
-  .footer-brand { grid-column: 1 / -1; }
-  .footer-brand-name { font-family: var(--sans); font-size: 18px; font-weight: 800; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
-  .footer-tagline { font-size: 12px; color: var(--muted); max-width: 320px; line-height: 1.7; }
-  .footer-col-title { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 0.12em; margin-bottom: 12px; }
-  .footer-links { list-style: none; }
-  .footer-links li { margin-bottom: 8px; }
-  .footer-links a { font-size: 13px; color: var(--muted); text-decoration: none; transition: color 0.15s; }
-  .footer-links a:hover { color: var(--gold); }
-  .footer-bottom {
-    border-top: 1px solid var(--border); padding-top: 20px;
-    display: flex; justify-content: space-between; align-items: center;
-    flex-wrap: wrap; gap: 10px;
-  }
-  .footer-copy { font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 1.8; }
-  .footer-legal { display: flex; gap: 16px; }
-  .footer-legal a { font-family: var(--mono); font-size: 10px; color: var(--muted); text-decoration: none; }
-  .footer-legal a:hover { color: var(--gold); }
-
-  /* ── ANIMATION UTILITY ── */
-  .fade-in { animation: fadeIn 0.4s ease both; }
-  @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-
-  /* scrollbar */
-  ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: #333; }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 768px) {
-    .nav-links { display: none; }
-    .stats-bar { grid-template-columns: 1fr; margin: 0; }
-    .stat-cell { border-right: none; border-bottom: 1px solid var(--border); }
-    .int-grid { grid-template-columns: 1fr; }
-    .trust-grid { grid-template-columns: 1fr; }
-    .footer-grid { grid-template-columns: 1fr; }
-    .footer-brand { grid-column: auto; }
-  }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ProofBridge · Venture Vision Ubuntu — Cryptographic ROSCA Protocol</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ========== VVU EARTH-TECH DESIGN TOKENS ========== */
+        :root {
+            --sage: #8A9A5B;
+            --sage-light: #b8c98a;
+            --sage-dark: #5c6b38;
+            --ochre: #CC7722;
+            --ochre-light: #e09a52;
+            --charcoal: #1E1E1C;
+            --paper: #F4F5F0;
+            --stone: #E2E3DB;
+            --gravel: #5A5A55;
+            
+            --color-text-primary: rgba(255, 255, 255, 0.92);
+            --color-text-secondary: rgba(255, 255, 255, 0.62);
+            --color-border-tertiary: rgba(255, 255, 255, 0.08);
+            --color-background-primary: var(--charcoal);
+            --color-background-secondary: #262624;
+            
+            --font-sans: 'Syne', system-ui, sans-serif;
+            --font-mono: 'DM Mono', monospace;
+            --radius-md: 12px;
+            --radius-pill: 40px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: var(--charcoal);
+            font-family: var(--font-sans);
+            color: var(--color-text-primary);
+            line-height: 1.5;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(232, 160, 32, 0.018) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(232, 160, 32, 0.018) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .vvu-wrapper { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 0 24px; }
+        
+        .ticker {
+            background: #11110F;
+            border-bottom: 1px solid var(--color-border-tertiary);
+            padding: 8px 0;
+            overflow: hidden;
+            font-family: var(--font-mono);
+            font-size: 10px;
+        }
+        .ticker-inner {
+            display: flex;
+            gap: 40px;
+            white-space: nowrap;
+            animation: tickerScroll 42s linear infinite;
+            width: max-content;
+        }
+        .ticker-item { display: flex; align-items: center; gap: 8px; }
+        .ticker-label { color: var(--sage-light); letter-spacing: 0.04em; }
+        .ticker-val { color: var(--ochre); }
+        .ticker-up { color: var(--sage); }
+        
+        @keyframes tickerScroll {
+            from { transform: translateX(0); }
+            to { transform: translateX(-50%); }
+        }
+        
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 0;
+            border-bottom: 1px solid var(--color-border-tertiary);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-mark {
+            width: 44px;
+            height: 44px;
+        }
+        .logo-text h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+        .logo-text p { font-size: 0.7rem; font-family: var(--font-mono); color: var(--sage); letter-spacing: 2px; }
+        .nav-links { display: flex; gap: 32px; list-style: none; }
+        .nav-links a { font-family: var(--font-mono); font-size: 0.7rem; text-decoration: none; color: var(--color-text-secondary); letter-spacing: 1px; transition: var(--transition); }
+        .nav-links a:hover { color: var(--ochre); }
+        .btn-terminal-sm { background: transparent; border: 1px solid var(--ochre); padding: 6px 14px; border-radius: 40px; font-family: var(--font-mono); font-size: 0.7rem; color: var(--ochre); cursor: pointer; transition: var(--transition); }
+        .btn-terminal-sm:hover { background: rgba(204,119,34,0.12); }
+        
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 48px;
+            padding: 48px 0 64px;
+            align-items: center;
+        }
+        .hero-eyebrow { font-family: var(--font-mono); font-size: 0.7rem; color: var(--sage); letter-spacing: 4px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .hero-eyebrow::before { content: '//'; color: var(--ochre); }
+        .hero-title { font-size: 3.2rem; font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; margin-bottom: 20px; }
+        .hero-title .accent { color: var(--ochre); }
+        .hero-sub { color: var(--color-text-secondary); font-size: 1rem; max-width: 480px; margin-bottom: 32px; line-height: 1.6; }
+        .hero-actions { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 36px; }
+        .btn-primary { background: var(--sage); border: none; padding: 12px 28px; border-radius: 40px; font-weight: 700; font-family: var(--font-sans); color: #0c0c0a; cursor: pointer; transition: var(--transition); }
+        .btn-primary:hover { background: var(--sage-dark); transform: translateY(-2px); }
+        .btn-outline-light { background: transparent; border: 1px solid var(--color-border-tertiary); padding: 12px 28px; border-radius: 40px; font-weight: 600; color: white; cursor: pointer; transition: var(--transition); }
+        .btn-outline-light:hover { border-color: var(--ochre); color: var(--ochre); }
+        
+        .terminal-widget {
+            background: #11110F;
+            border: 1px solid var(--color-border-tertiary);
+            border-radius: 16px;
+            overflow: hidden;
+            font-family: var(--font-mono);
+            box-shadow: 0 24px 48px -12px rgba(0,0,0,0.5);
+        }
+        .terminal-header { display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--color-border-tertiary); background: #0A0A08; }
+        .terminal-dots { display: flex; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #5A5A55; }
+        .dot.red { background: #FF5F56; }
+        .dot.yellow { background: #FFBD2E; }
+        .dot.green { background: #27C93F; }
+        .terminal-title { font-size: 0.7rem; color: var(--gravel); letter-spacing: 0.5px; }
+        .terminal-body { padding: 18px; min-height: 220px; }
+        .t-line { font-size: 0.7rem; line-height: 2; display: flex; gap: 8px; flex-wrap: wrap; }
+        .prompt { color: var(--ochre); }
+        .output { color: var(--sage); }
+        .cursor-blink { display: inline-block; width: 8px; height: 12px; background: var(--ochre); animation: blink 1s infinite; vertical-align: middle; }
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+        .data-strip { display: grid; grid-template-columns: repeat(3,1fr); border-top: 1px solid var(--color-border-tertiary); }
+        .data-cell { padding: 12px 16px; border-right: 1px solid var(--color-border-tertiary); }
+        .data-cell:last-child { border-right: none; }
+        .data-label { font-size: 0.6rem; color: var(--gravel); letter-spacing: 1px; text-transform: uppercase; }
+        .data-value { font-size: 1.4rem; font-weight: 700; color: var(--ochre); }
+        
+        .proof-feed { margin-top: 18px; background: #11110F; border-radius: 16px; border: 1px solid var(--color-border-tertiary); overflow: hidden; }
+        .proof-feed-header { padding: 10px 16px; border-bottom: 1px solid var(--color-border-tertiary); font-family: var(--font-mono); font-size: 0.65rem; display: flex; justify-content: space-between; }
+        .live-dot { display: inline-block; width: 6px; height: 6px; background: var(--sage); border-radius: 50%; margin-right: 6px; animation: pulse 2s infinite; }
+        .proof-event { padding: 10px 16px; border-bottom: 1px solid var(--color-border-tertiary); display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.7rem; }
+        .event-type { color: var(--ochre); font-weight: 500; }
+        .event-hash { color: var(--color-text-secondary); }
+        .status-ok { color: var(--sage); }
+        .status-pending { color: var(--ochre-light); animation: pulseText 1.5s infinite; }
+        
+        .stats-band {
+            display: grid;
+            grid-template-columns: repeat(5,1fr);
+            border-top: 1px solid var(--color-border-tertiary);
+            border-bottom: 1px solid var(--color-border-tertiary);
+            margin: 32px 0;
+            background: #11110F;
+        }
+        .stat-item { padding: 28px 12px; text-align: center; border-right: 1px solid var(--color-border-tertiary); }
+        .stat-number { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--ochre); }
+        .stat-label { font-family: var(--font-mono); font-size: 0.65rem; color: var(--gravel); text-transform: uppercase; }
+        
+        .section { margin: 72px 0; }
+        .section-tag { font-family: var(--font-mono); font-size: 0.7rem; color: var(--sage); letter-spacing: 3px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .section-title { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px; }
+        .section-sub { color: var(--color-text-secondary); max-width: 560px; margin-bottom: 40px; }
+        
+        .steps-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--color-border-tertiary); border-radius: 16px; overflow: hidden; }
+        .step-card { background: #11110F; padding: 32px 24px; transition: var(--transition); }
+        .step-card:hover { background: #1A1A18; }
+        .step-badge { font-family: var(--font-mono); font-size: 0.6rem; border: 1px solid var(--ochre); display: inline-block; padding: 4px 12px; border-radius: 40px; color: var(--ochre); margin-bottom: 24px; }
+        .step-title { font-size: 1.3rem; font-weight: 700; margin-bottom: 12px; }
+        .step-preview { background: #0A0A08; margin-top: 20px; padding: 12px; border-radius: 8px; font-family: var(--font-mono); font-size: 0.7rem; }
+        
+        .kernel-section { background: #0C0C0A; border-radius: 24px; padding: 48px 40px; margin: 48px 0; border: 1px solid var(--color-border-tertiary); }
+        .kernel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+        .phase-list { display: flex; flex-direction: column; gap: 8px; }
+        .phase-row { display: flex; align-items: center; gap: 12px; background: #1A1A18; padding: 12px 16px; border-radius: 12px; }
+        .phase-name { flex: 1; font-size: 0.8rem; font-weight: 600; }
+        .phase-bar { width: 100px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+        .phase-fill { height: 100%; background: var(--ochre); width: 0%; transition: width 0.8s ease; }
+        .phase-percent { font-family: var(--font-mono); font-size: 0.7rem; min-width: 45px; text-align: right; }
+        .test-panel { background: #11110F; border-radius: 16px; padding: 20px; border: 1px solid var(--color-border-tertiary); }
+        .trust-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--color-border-tertiary); border-radius: 20px; overflow: hidden; margin: 32px 0; }
+        .trust-card { background: #11110F; padding: 28px; }
+        
+        .integrations-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--color-border-tertiary); border-radius: 20px; overflow: hidden; margin: 32px 0; }
+        .int-card { background: #11110F; padding: 20px; }
+        
+        .methodology-section { background: #11110F; border-radius: 20px; padding: 32px; margin: 32px 0; border: 1px solid var(--color-border-tertiary); }
+        
+        footer { border-top: 1px solid var(--color-border-tertiary); padding: 48px 0 32px; margin-top: 48px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 24px; }
+        
+        @media (max-width: 900px) {
+            .hero-grid, .kernel-grid { grid-template-columns: 1fr; }
+            .stats-band { grid-template-columns: repeat(2,1fr); }
+            .steps-row, .trust-grid, .integrations-grid { grid-template-columns: 1fr; }
+            .vvu-wrapper { padding: 0 20px; }
+            .hero-title { font-size: 2.2rem; }
+        }
+        @media (max-width: 600px) {
+            .stats-band { grid-template-columns: 1fr; }
+            .logo-text h1 { font-size: 1rem; }
+            .nav-links { display: none; }
+        }
+        .scroll-top { position: fixed; bottom: 28px; right: 28px; background: var(--ochre); width: 40px; height: 40px; border-radius: 60px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: var(--transition); pointer-events: none; border: none; color: #111; font-weight: bold; }
+        .scroll-top.visible { opacity: 0.8; pointer-events: auto; }
+    </style>
 </head>
 <body>
+<div class="ticker"><div class="ticker-inner" id="tickerInner"><span class="ticker-item"><span class="ticker-label">PROOFBRIDGE</span><span class="ticker-up">⨀ v2.1</span></span><span class="ticker-item"><span class="ticker-label">NETWORK</span><span class="ticker-up">Polygon Amoy</span></span><span class="ticker-item"><span class="ticker-label">UPTIME</span><span class="ticker-up" id="uptimeDisplay">99.8%</span></span><span class="ticker-item"><span class="ticker-label">TESTS</span><span class="ticker-up">14/14</span></span><span class="ticker-item"><span class="ticker-label">QUORUM</span><span class="ticker-up">3-of-5</span></span><span class="ticker-item"><span class="ticker-label">VAULTED</span><span class="ticker-up">R127.5K</span></span><span class="ticker-item"><span class="ticker-label">TX COUNT</span><span class="ticker-up" id="tickerTx">342</span></span><span class="ticker-item"><span class="ticker-label">CIRCUIT</span><span class="ticker-up">ARMED</span></span></div></div>
 
-<!-- NAV -->
-<nav>
-  <a class="nav-logo" href="/">
-    <div class="nav-logo-box">PB</div>
-    ProofBridge
-  </a>
-  <div class="nav-kernel">KERNEL<br>ONLINE<br>// V2.5</div>
-  <div class="nav-spacer"></div>
-  <div class="nav-links">
-    <a class="nav-link" href="/dlt">DLT Layer</a>
-    <a class="nav-link" href="/gate-1">Gate-1</a>
-    <a class="nav-link" href="/pools">Ubuntu Pools</a>
-    <a class="nav-link" href="/submission">Demo</a>
-  </div>
-  <button class="nav-btn nav-btn-ghost" onclick="openTerminalModal()">$ terminal</button>
-  <button class="nav-btn nav-btn-primary" onclick="openOnboard()">Connect wallet</button>
-</nav>
+<div class="vvu-wrapper">
+    <nav>
+        <div class="logo-group">
+            <svg class="logo-mark" width="44" height="44" viewBox="0 0 100 100" fill="none"><circle cx="35" cy="40" r="16" stroke="#8A9A5B" stroke-width="5"/><circle cx="65" cy="40" r="16" stroke="#CC7722" stroke-width="5"/><circle cx="50" cy="64" r="16" stroke="#E2E3DB" stroke-width="5"/></svg>
+            <div class="logo-text"><h1>VENTURE VISION<br>UBUNTU</h1><p>PROOFBRIDGE LINER</p></div>
+        </div>
+        <ul class="nav-links"><li><a href="#protocol">Protocol</a></li><li><a href="#methodology">Methodology</a></li><li><a href="#integrations">Integrations</a></li></ul>
+        <div><button class="btn-terminal-sm" id="connectWalletMock">⚡ Connect Wallet</button></div>
+    </nav>
 
-<!-- HERO -->
-<section class="hero">
-  <p class="hero-label">// PROOFBRIDGE LINER · AMOY TESTNET · SAFETY KERNEL V2.5</p>
-  <h1 class="hero-h1">Every rand,<br><span>cryptographically</span><br>proven.</h1>
-  <p class="hero-sub">ProofBridge mints an ED25519-signed on-chain receipt for every financial transaction flowing through Ubuntu Pools. No trust required — the chain is the auditor.</p>
-  <div class="hero-badges">
-    <div class="badge live"><span class="dot"></span>ED25519 SIGNED</div>
-    <div class="badge live"><span class="dot"></span>3-OF-5 QUORUM</div>
-    <div class="badge live"><span class="dot"></span><span id="heroTests">14/14</span> TESTS PASS</div>
-    <div class="badge live"><span class="dot"></span>STITCH INTEGRATED</div>
-  </div>
-  <div class="hero-ctas">
-    <button class="cta-primary" onclick="openOnboard()">Start minting receipts</button>
-    <button class="cta-ghost" onclick="openTerminalModal()">$ launch terminal</button>
-  </div>
-
-  <div class="terminal" id="heroTerminal">
-    <div class="terminal-bar">
-      <div class="t-dot t-red"></div>
-      <div class="t-dot t-yellow"></div>
-      <div class="t-dot t-green"></div>
-      <span class="terminal-label">PROOFBRIDGE LINER // SAFETY KERNEL &nbsp;&nbsp; v2.1.0</span>
+    <div class="hero-grid">
+        <div><div class="hero-eyebrow">ROSCA VILLAGE PROTOCOL · GQEBERHA</div><h1 class="hero-title">Every rand, <span class="accent">cryptographically</span> proven.</h1><p class="hero-sub">ProofBridge mints ED25519-signed on-chain receipts for every Ubuntu Pool transaction. The chain is the auditor.</p><div class="hero-actions"><button class="btn-primary" onclick="alert('Onboarding flow → connect Stitch')">Start minting →</button><button class="btn-outline-light" onclick="document.getElementById('terminal-widget').scrollIntoView({behavior:'smooth'})">$ launch terminal</button></div><div class="hero-proof-strip" style="display:flex; gap:20px; font-family:var(--font-mono); font-size:0.7rem;"><span>✓ ED25519</span><span>✓ 3-of-5 QUORUM</span><span>✓ 14/14 TESTS</span></div></div>
+        <div id="terminal-widget"><div class="terminal-widget"><div class="terminal-header"><div class="terminal-dots"><div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div></div><div class="terminal-title">PROOFBRIDGE SHELL // VVU v2.1</div></div><div class="terminal-body" id="termBody"><div class="t-line"><span class="prompt">$</span> proofbridge --status</div><div class="t-line"><span class="output">▶ Kernel ONLINE · uptime <span id="termUptime">47s</span></span></div><div class="t-line"><span class="output">▶ Network: Polygon Amoy (80002)</span></div><div class="t-line"><span class="prompt">$</span> proofbridge mint --amount 500 --pool CYCLE-03</div><div class="t-line"><span class="output">▶ Receipt minted: 0xa3f8c9...d721</span></div><div class="t-line"><span class="output">▶ On-chain tx: 0x7b2e1f...4a89 [44,241 gas]</span></div><div class="t-line"><span class="prompt">$</span> proofbridge verify 0xa3f8c9...d721</div><div class="t-line"><span class="output">✓ ED25519 signature valid</span></div><div class="t-line"><span class="prompt">$</span><span class="cursor-blink"></span></div></div><div class="data-strip"><div class="data-cell"><div class="data-label">Total Vaulted</div><div class="data-value" id="vaultedVal">R127.5K</div></div><div class="data-cell"><div class="data-label">Verified Txs</div><div class="data-value" id="txCountVal">342</div></div><div class="data-cell"><div class="data-label">Test Pass</div><div class="data-value">14/14</div></div></div></div><div class="proof-feed"><div class="proof-feed-header"><span>LIVE PROOF FEED</span><span><span class="live-dot"></span>WEBSOCKET</span></div><div id="proofFeedList"><div class="proof-event"><span class="event-type">MINT</span><span class="event-hash">0xa3f8c9...d721 · R500 · PILOT-C2</span><span class="status-ok">VERIFIED</span></div><div class="proof-event"><span class="event-type">PAYOUT</span><span class="event-hash">0x7b2e1f...8c4d · R15,000 · Thabo S.</span><span class="status-ok">CONFIRMED</span></div><div class="proof-event"><span class="event-type">MINT</span><span class="event-hash">0xc9d4e7...2b1a · R500 · Lerato K.</span><span class="status-pending">PENDING</span></div></div></div></div>
     </div>
-    <div class="terminal-body">
-      <div><span class="t-prompt">$</span> <span class="t-cmd">proofbridge --status</span></div>
-      <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Kernel: <span class="t-val">ONLINE</span> · Uptime: <span class="t-val" id="termUptime">0s</span></div>
-      <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Network: <span class="t-val">Polygon Amoy (chainId 80002)</span></div>
-      <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Trust Model: <span class="t-val">Single oracle → 3-of-5 quorum</span></div>
-      <div><span class="t-prompt">$</span> <span class="t-cmd">proofbridge mint --amount 500 --pool PILOT-C2</span></div>
-      <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Signing with <span class="t-val">ED25519...</span></div>
-      <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Receipt minted: <span class="t-hash">0xa3f8c9...d721</span></div>
-      <div>&nbsp;&nbsp;<span class="t-arrow">►</span> On-chain: tx <span class="t-hash">0x7b2e1f...4a89</span> [44,241 gas]</div>
-      <div><span class="t-prompt">$</span> <span class="t-cmd">proofbridge verify 0xa3f8c9...d721</span></div>
-      <div>&nbsp;&nbsp;<span class="t-arrow">►</span> <span class="t-val">VERIFIED ✓</span> · ED25519 signature valid</div>
-      <div><span class="t-prompt">$</span> <span class="t-cursor"></span></div>
-    </div>
-  </div>
-</section>
 
-<!-- STATS BAR -->
-<div class="stats-bar">
-  <div class="stat-cell">
-    <div class="stat-label">TOTAL VAULTED</div>
-    <div class="stat-val" id="statVaulted">R 127.5K</div>
-    <div class="stat-unit">ZAR · live pool balance</div>
-  </div>
-  <div class="stat-cell">
-    <div class="stat-label">VERIFIED TXS</div>
-    <div class="stat-val" id="statTxs">342</div>
-    <div class="stat-unit">on-chain receipts minted</div>
-  </div>
-  <div class="stat-cell">
-    <div class="stat-label">TEST SUITE</div>
-    <div class="stat-val" id="statTests">14/14</div>
-    <div class="stat-unit">hardhat passing</div>
-  </div>
+    <div class="stats-band"><div class="stat-item"><div class="stat-number">14/14</div><div class="stat-label">Tests Passing</div></div><div class="stat-item"><div class="stat-number">R127K</div><div class="stat-label">Vaulted</div></div><div class="stat-item"><div class="stat-number" id="statTxNum">342</div><div class="stat-label">Verified Txs</div></div><div class="stat-item"><div class="stat-number">0</div><div class="stat-label">Disputes</div></div><div class="stat-item"><div class="stat-number">3-of-5</div><div class="stat-label">Oracle Quorum</div></div></div>
+
+    <section id="protocol"><div class="section-tag">// VVU ROSCA + CRYPTO</div><h2 class="section-title">How ProofBridge secures every transaction.</h2><p class="section-sub">Three-layer cryptographic attestation. Every contribution, every payout — immutable, auditable.</p><div class="methodology-section">Under VVU's methodology: (1) Stitch Webhook-secured transactions are receipted in-store with ED25519 keys; (2) CircuitBreaker.sol enforces 3-of-5 oracle quorum on-chain; (3) ANT Telemetry runs Bayesian anomaly detection across log evidence; (4) Reconciliation anchors SHA-256 hashes to Polygon Amoy; (5) FROST threshold signatures provide TEE-backed key custody; (6) All proof objects undergo StableStringify canonicalization before storage. <a href="#integrations" style="color:var(--sage);">View integrations →</a></div><div class="steps-row"><div class="step-card"><div class="step-badge">Stitch Webhook</div><div class="step-title">1. Contribution triggers</div><p style="color:var(--color-text-secondary); margin-bottom:16px;">When a member pays via Stitch, signed webhook fires to listener. Payment amount + member ID queued.</p><div class="step-preview"><span class="output">POST /api/stitch/payment-link → queued</span></div></div><div class="step-card"><div class="step-badge">ED25519 / On-Chain</div><div class="step-title">2. Receipt minted</div><p style="color:var(--color-text-secondary); margin-bottom:16px;">Kernel signs record with ED25519, mints receipt on Polygon Amoy. Publicly verifiable signature.</p><div class="step-preview"><span class="output">MINT 0xa3f8c9...d721 · gas 44,241</span></div></div><div class="step-card"><div class="step-badge">WebSocket / Live</div><div class="step-title">3. Real-time broadcast</div><p style="color:var(--color-text-secondary); margin-bottom:16px;">Receipt hash broadcasts to pool members. Circuit breaker monitors anomalies.</p><div class="step-preview"><span class="output">WS → RECEIPT_MINTED · members notified: 8</span></div></div></div></section>
+
+    <section id="integrations"><div class="section-tag">ECOSYSTEM</div><h2 class="section-title">Full stack, auditable end-to-end.</h2><p class="section-sub">Every component in the VVU stack is auditable, tested, and purpose-built.</p><div class="integrations-grid"><div class="int-card"><div class="step-title">Stitch</div><p>Instant EFT, webhook-driven receipts</p></div><div class="int-card"><div class="step-title">Ubuntu Pools</div><p>ROSCA + ProofBridge attestation</p></div><div class="int-card"><div class="step-title">ANT Telemetry</div><p>Bayesian model, real-time anomaly</p></div><div class="int-card"><div class="step-title">SafeKrypte HSM</div><p>Key custody, 3-of-5 SSS</p></div><div class="int-card"><div class="step-title">Polygon Amoy</div><p>Testnet receipts, mainnet soon</p></div><div class="int-card"><div class="step-title">Coq/TLA+</div><p>Formal verification proofs</p></div></div></section>
+
+    <footer><div><span style="font-weight:800">VENTURE VISION UBUNTU</span><br><span style="font-family:var(--font-mono); font-size:0.7rem;">ProofBridge Liner · ROSCA + EVM</span></div><div style="font-family:var(--font-mono); font-size:0.7rem;">© 2026 VVU Foundation · Gqeberha · FSCA JS2</div></footer>
 </div>
-
-<!-- CIRCUIT BREAKER + PHASES -->
-<section>
-  <p class="section-label">// CIRCUITBREAKER CONTRACT</p>
-  <h2 class="section-h2">Build progress,<br>phase by phase.</h2>
-
-  <div class="contract-box" id="contractBox">
-    <div class="cb-row" style="margin-bottom:8px;">
-      <span class="cb-label">ADDRESS</span> <span class="cb-val" id="cbAddress">deploying...</span>
-    </div>
-    <div class="cb-row" style="margin-bottom:8px;">
-      <span class="cb-label">ORACLE</span> <span class="cb-val">3-of-5 quorum</span>
-      &nbsp;&nbsp;<span class="cb-label">NETWORK</span> <span class="cb-val">Polygon Amoy (80002)</span>
-    </div>
-    <div class="cb-row">
-      <span class="cb-label">TRUST MODEL</span> <span class="cb-val">Single oracle → 3-of-5</span>
-    </div>
-  </div>
-
-  <div class="phases" id="phasesContainer">
-    <!-- populated by JS -->
-  </div>
-</section>
-
-<!-- TEST SUITE -->
-<section style="padding-top:0;">
-  <p class="section-label">// HARDHAT TEST SUITE</p>
-  <div class="test-header">
-    <span>TEST SUITE // HARDHAT</span>
-    <span class="pass-badge" id="testBadge">14/14 PASS</span>
-  </div>
-  <div id="testRows">
-    <!-- populated by JS -->
-  </div>
-</section>
-
-<!-- INTEGRATIONS -->
-<section>
-  <p class="section-label">// INTEGRATIONS</p>
-  <h2 class="section-h2">The full stack,<br>auditable end-to-end.</h2>
-  <div class="int-grid" id="intGrid">
-    <!-- populated by JS -->
-  </div>
-</section>
-
-<!-- TRUST INDICATORS -->
-<section style="padding-top:0;">
-  <div class="trust-grid">
-    <div class="trust-item"><span class="dot"></span>ED25519 VERIFIED</div>
-    <div class="trust-item"><span class="dot"></span>POLYGON AMOY TESTNET</div>
-    <div class="trust-item"><span class="dot"></span>14/14 TESTS PASSING</div>
-    <div class="trust-item"><span class="dot"></span>FSCA JS2 ASSURANCE</div>
-    <div class="trust-item"><span class="dot"></span>3-OF-5 ORACLE QUORUM</div>
-    <div class="trust-item"><span class="dot"></span>COQ + TLA+ PROVED</div>
-    <div class="trust-item"><span class="dot"></span>ANT TELEMETRY ACTIVE</div>
-    <div class="trust-item warn"><span class="dot"></span>0 DISPUTED PAYOUTS</div>
-  </div>
-</section>
-
-<!-- FOOTER -->
-<footer>
-  <div class="footer-grid">
-    <div class="footer-brand">
-      <div class="footer-brand-name">
-        <div class="nav-logo-box" style="width:24px;height:24px;font-size:9px;">PB</div>
-        ProofBridge Liner
-      </div>
-      <p class="footer-tagline">Cryptographic financial truth. A Vaguely Vanity LLC product. Every transaction signed. Every vault auditable. Every claim proven.</p>
-    </div>
-    <div>
-      <p class="footer-col-title">PROTOCOL</p>
-      <ul class="footer-links">
-        <li><a href="/dlt">DLT Layer</a></li>
-        <li><a href="/gate-1">Safety Kernel</a></li>
-        <li><a href="/submission">Demo</a></li>
-        <li><a href="/gate-1">CircuitBreaker</a></li>
-        <li><a href="/proofs">Formal Proofs</a></li>
-      </ul>
-    </div>
-    <div>
-      <p class="footer-col-title">INTEGRATIONS</p>
-      <ul class="footer-links">
-        <li><a href="/submission">Stitch</a></li>
-        <li><a href="/pools">Ubuntu Pools</a></li>
-        <li><a href="/dlt">SafeKrypte</a></li>
-        <li><a href="/dlt">ANT Telemetry</a></li>
-        <li><a href="/submission">API Demo</a></li>
-      </ul>
-    </div>
-    <div>
-      <p class="footer-col-title">LEGAL</p>
-      <ul class="footer-links">
-        <li><a href="/pools/compliance">FSCA Disclosure</a></li>
-        <li><a href="/pools/compliance">POPIA Policy</a></li>
-        <li><a href="/pools/trust">Terms</a></li>
-        <li><a href="/gate-1">Audit Reports</a></li>
-        <li><a href="mailto:hello@venturevisionubuntu.co.za">Contact</a></li>
-      </ul>
-    </div>
-  </div>
-  <div class="footer-bottom">
-    <div class="footer-copy">
-      © 2026 Vaguely Vanity LLC · Gqeberha, Eastern Cape · venturevisualubuntu.co.za
-    </div>
-    <div class="footer-legal">
-      <a href="/pools/compliance">Privacy</a>
-      <a href="/pools/trust">Terms</a>
-      <a href="/pools/compliance">FSCA</a>
-    </div>
-  </div>
-</footer>
-
-<!-- ══ ONBOARDING MODAL ══ -->
-<div class="modal-overlay" id="onboardOverlay">
-  <div class="modal" id="onboardModal">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title" id="modalTitle">Connect &amp; Configure</div>
-        <div class="modal-subtitle" id="modalSubtitle">PROOFBRIDGE LINER · ONBOARDING</div>
-      </div>
-      <button class="modal-close" onclick="closeOnboard()">✕</button>
-    </div>
-
-    <!-- Step indicators -->
-    <div style="padding:16px 24px 0;">
-      <div class="modal-steps">
-        <div class="modal-step">
-          <div class="step-circle active" id="stepDot0">1</div>
-          <div class="step-lbl active" id="stepLbl0">IDENTITY</div>
-        </div>
-        <div class="modal-step">
-          <div class="step-circle" id="stepDot1">2</div>
-          <div class="step-lbl" id="stepLbl1">POOL CONFIG</div>
-        </div>
-        <div class="modal-step">
-          <div class="step-circle" id="stepDot2">3</div>
-          <div class="step-lbl" id="stepLbl2">ACTIVATE</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal-body" id="modalBody">
-      <!-- Step content injected by JS -->
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn-back" id="btnBack" onclick="prevStep()" style="display:none">← Back</button>
-      <button class="btn-next" id="btnNext" onclick="nextStep()">Continue →</button>
-    </div>
-  </div>
-</div>
-
-<!-- ══ TERMINAL MODAL ══ -->
-<div class="modal-overlay" id="terminalOverlay">
-  <div class="modal" style="max-width:580px;">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title">$ proofbridge terminal</div>
-        <div class="modal-subtitle">SAFETY KERNEL V2.5 · READ-ONLY EXPLORER</div>
-      </div>
-      <button class="modal-close" onclick="closeTerminal()">✕</button>
-    </div>
-    <div style="padding:20px;">
-      <div class="terminal" style="max-width:100%;">
-        <div class="terminal-bar">
-          <div class="t-dot t-red"></div>
-          <div class="t-dot t-yellow"></div>
-          <div class="t-dot t-green"></div>
-          <span class="terminal-label">LIVE KERNEL INTERFACE</span>
-        </div>
-        <div class="terminal-body" id="terminalOutput" style="min-height:200px; max-height:320px; overflow-y:auto;">
-          <div><span class="t-prompt">$</span> <span class="t-cmd">proofbridge --status</span></div>
-          <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Kernel: <span class="t-val">ONLINE</span></div>
-          <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Network: <span class="t-val">Polygon Amoy (80002)</span></div>
-          <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Oracle: <span class="t-val">3-of-5 quorum · active</span></div>
-          <div>&nbsp;&nbsp;<span class="t-arrow">►</span> Tests: <span class="t-val">14/14 PASS</span></div>
-          <div>&nbsp;&nbsp;<span class="t-arrow">►</span> TEE: <span style="color:var(--gold);">PHASE-5 · 75%</span></div>
-          <div><span class="t-prompt">$</span> <span class="t-cursor"></span></div>
-        </div>
-      </div>
-      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn-back" style="font-size:10px;padding:8px 12px;" onclick="termCmd('status')">--status</button>
-        <button class="btn-back" style="font-size:10px;padding:8px 12px;" onclick="termCmd('tests')">--tests</button>
-        <button class="btn-back" style="font-size:10px;padding:8px 12px;" onclick="termCmd('contracts')">--contracts</button>
-        <button class="btn-back" style="font-size:10px;padding:8px 12px;" onclick="termCmd('quorum')">--quorum</button>
-      </div>
-    </div>
-  </div>
-</div>
+<button class="scroll-top" id="scrollTopBtn">↑</button>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────
-const PHASES = [
-  { num:'00', name:'Env scaffold',              pct:100, phase:'PHASE-0' },
-  { num:'01', name:'Write & test CircuitBreaker', pct:100, phase:'PHASE-1' },
-  { num:'02', name:'Deploy to Polygon Amoy',    pct:100, phase:'PHASE-2' },
-  { num:'04', name:'Mock 3-node quorum (Docker)', pct:100, phase:'PHASE-4' },
-  { num:'05', name:'TEE + Registry',            pct:75,  phase:'PHASE-5' },
-  { num:'06', name:'Coq + TLA+ formal proofs',  pct:100, phase:'PHASE-6' },
-];
-
-const TESTS = [
-  { name:'testInitializeSetsOwnerAndOracle',   gas:'14,321' },
-  { name:'testInitializeRevertsOnSecondCall',  gas:'13,902' },
-  { name:'testUpdateProofByOracle',            gas:'44,241' },
-  { name:'testUpdateProofEmitsEvent',          gas:'45,177' },
-  { name:'testUpdateProofRevertsIfNotOracle',  gas:'13,738' },
-];
-
-const INTEGRATIONS = [
-  { name:'Stitch',         desc:'Instant EFT payment rail. Webhook-driven contribution reconciliation with signed receipts.',      status:'live',   label:'LIVE' },
-  { name:'Ubuntu Pools',   desc:'Primary integration target. ROSCA pool management with full ProofBridge attestation layer.',      status:'live',   label:'LIVE' },
-  { name:'ANT Telemetry',  desc:'Real-time anomaly monitoring. Bayesian pressure model triggers kernel halt automatically.',       status:'live',   label:'LIVE' },
-  { name:'SafeKrypte',     desc:'HSM-backed key custody. 3-of-5 internal SSS for all ED25519 signing operations.',                status:'beta',   label:'BETA' },
-  { name:'Polygon Amoy',   desc:'Testnet deployment. All receipts minted on-chain with public verification. Mainnet after Phase-7.', status:'live', label:'LIVE (TESTNET)' },
-  { name:'Gate-1',         desc:'Flow evaluation. All payout requests reviewed against pool state before CircuitBreaker release.', status:'live',   label:'LIVE' },
-  { name:'Coq / TLA+',     desc:'Formal verification of CircuitBreaker state machine. Mathematical proof of correctness under adversarial conditions.', status:'proved', label:'PROVED (PHASE-6)' },
-  { name:'FSCA Audit Export', desc:'JS2-aligned audit trail exports. Every transaction, every proof, every oracle vote — exportable for regulatory review.', status:'beta', label:'BETA' },
-];
-
-// ── RENDER ────────────────────────────────────────────────────
-function renderPhases() {
-  const c = document.getElementById('phasesContainer');
-  c.innerHTML = PHASES.map(p => {
-    const cls = p.pct === 100 ? 'complete' : 'partial';
-    return `<div class="phase-row">
-      <span class="phase-num">${p.num}</span>
-      <span class="phase-name">${p.name}<br><span style="font-size:9px;color:var(--muted);font-family:var(--mono)">${p.phase}</span></span>
-      <div class="phase-track"><div class="phase-fill ${cls}" style="width:${p.pct}%"></div></div>
-      <span class="phase-pct ${cls}">${p.pct}%</span>
-    </div>`;
-  }).join('');
-}
-
-function renderTests() {
-  const c = document.getElementById('testRows');
-  c.innerHTML = TESTS.map(t => `
-    <div class="test-row">
-      <span class="test-name">${t.name}</span>
-      <span class="test-gas">${t.gas} gas</span>
-      <span class="test-check">✓</span>
-    </div>`).join('');
-}
-
-function renderIntegrations() {
-  const c = document.getElementById('intGrid');
-  c.innerHTML = INTEGRATIONS.map(i => `
-    <div class="int-card">
-      <div class="int-name">${i.name}</div>
-      <div class="int-desc">${i.desc}</div>
-      <div class="int-status status-${i.status}">
-        <span class="dot"></span>${i.label}
-      </div>
-    </div>`).join('');
-}
-
-// ── UPTIME COUNTER ────────────────────────────────────────────
-let uptimeStart = Date.now();
-setInterval(() => {
-  const s = Math.floor((Date.now() - uptimeStart) / 1000);
-  const m = Math.floor(s / 60), ss = s % 60;
-  const str = m > 0 ? `${m}m ${ss}s` : `${ss}s`;
-  const el = document.getElementById('termUptime');
-  if (el) el.textContent = str;
-}, 1000);
-
-// ── ONBOARDING MODAL ──────────────────────────────────────────
-let currentStep = 0;
-const STEPS = ['IDENTITY', 'POOL CONFIG', 'ACTIVATE'];
-
-function openOnboard() {
-  currentStep = 0;
-  renderStep();
-  document.getElementById('onboardOverlay').classList.add('open');
-}
-function closeOnboard() {
-  document.getElementById('onboardOverlay').classList.remove('open');
-}
-
-function updateStepIndicators() {
-  STEPS.forEach((_, i) => {
-    const dot = document.getElementById(`stepDot${i}`);
-    const lbl = document.getElementById(`stepLbl${i}`);
-    dot.className = 'step-circle' + (i < currentStep ? ' done' : i === currentStep ? ' active' : '');
-    dot.textContent = i < currentStep ? '✓' : (i + 1);
-    lbl.className = 'step-lbl' + (i === currentStep ? ' active' : '');
-  });
-}
-
-const STEP_CONTENT = [
-  // Step 0: Identity
-  () => `
-    <div class="fade-in">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Connect your wallet and verify your identity to start minting receipts on Polygon Amoy.</p>
-      <div class="field">
-        <label>WALLET ADDRESS</label>
-        <input id="f_wallet" type="text" placeholder="0x..." />
-        <p class="field-hint">MetaMask, WalletConnect, or any EIP-4361 wallet</p>
-      </div>
-      <div class="field">
-        <label>DISPLAY NAME</label>
-        <input id="f_name" type="text" placeholder="Mino / Pool Guardian / Institution name" />
-      </div>
-      <div class="field">
-        <label>ROLE</label>
-        <select id="f_role">
-          <option value="">— Select role —</option>
-          <option value="pool_member">Pool Member</option>
-          <option value="pool_guardian">Pool Guardian</option>
-          <option value="institution">Institution / API</option>
-          <option value="observer">Observer (read-only)</option>
-        </select>
-      </div>
-    </div>`,
-
-  // Step 1: Pool Config
-  () => `
-    <div class="fade-in">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Configure your pool parameters and attestation settings.</p>
-      <div class="field">
-        <label>POOL ID OR NAME</label>
-        <input id="f_pool" type="text" placeholder="PILOT-C2 or Ubuntu Pool Gqeberha 001" />
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label>CONTRIBUTION (ZAR)</label>
-          <input id="f_amount" type="number" placeholder="500" />
-        </div>
-        <div class="field">
-          <label>CYCLE MONTHS</label>
-          <input id="f_cycles" type="number" placeholder="6" />
-        </div>
-      </div>
-      <div class="config-toggle" onclick="toggleOpt(this)">
-        <div>
-          <div class="config-toggle-label">Enable ProofBridge Attestation</div>
-          <div class="config-toggle-sub">Every transaction gets an ED25519-signed on-chain receipt</div>
-        </div>
-        <div class="toggle-switch on" id="tog_attestation"></div>
-      </div>
-      <div class="config-toggle" onclick="toggleOpt(this)">
-        <div>
-          <div class="config-toggle-label">SafeKrypte HSM Signing</div>
-          <div class="config-toggle-sub">Hardware-backed key custody for signing operations (BETA)</div>
-        </div>
-        <div class="toggle-switch" id="tog_safekrypte"></div>
-      </div>
-      <div class="config-toggle" onclick="toggleOpt(this)">
-        <div>
-          <div class="config-toggle-label">FSCA Audit Export</div>
-          <div class="config-toggle-sub">Auto-generate JS2-aligned audit trail exports</div>
-        </div>
-        <div class="toggle-switch on" id="tog_fsca"></div>
-      </div>
-    </div>`,
-
-  // Step 2: Activate
-  () => {
-    const name = document.getElementById('f_name')?.value || 'User';
-    const pool = document.getElementById('f_pool')?.value || 'PILOT-C2';
-    const amount = document.getElementById('f_amount')?.value || '500';
-    const receipt = '0x' + Math.random().toString(16).slice(2,10) + '...' + Math.random().toString(16).slice(2,6);
-    return `
-    <div class="fade-in">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Review your configuration and activate the kernel for your pool.</p>
-      <div class="contract-box" style="margin-bottom:20px;font-size:11px;line-height:2.2;">
-        <div><span class="cb-label">IDENTITY &nbsp;&nbsp;</span> <span class="cb-val">${name}</span></div>
-        <div><span class="cb-label">POOL &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> <span class="cb-val">${pool}</span></div>
-        <div><span class="cb-label">AMOUNT &nbsp;&nbsp;&nbsp;</span> <span class="cb-val">R${amount} / cycle</span></div>
-        <div><span class="cb-label">NETWORK &nbsp;&nbsp;</span> <span class="cb-val">Polygon Amoy (80002)</span></div>
-        <div><span class="cb-label">ATTESTATION</span> <span class="cb-val">ED25519 · ON</span></div>
-        <div><span class="cb-label">ORACLE &nbsp;&nbsp;&nbsp;</span> <span class="cb-val">3-of-5 quorum</span></div>
-      </div>
-      <p style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:16px;">Clicking "Activate Kernel" will:
-        <br>1. Bind your wallet to the SafeKrypte signing quorum
-        <br>2. Register your pool in the CircuitBreaker oracle
-        <br>3. Mint your first attestation receipt on-chain
-      </p>
-      <button class="cta-primary" style="width:100%;justify-content:center;" onclick="activateKernel('${receipt}', '${pool}')">
-        Activate Kernel →
-      </button>
-    </div>`;}
-];
-
-function renderStep() {
-  document.getElementById('modalTitle').textContent = `Step ${currentStep + 1}: ${STEPS[currentStep]}`;
-  document.getElementById('modalBody').innerHTML = STEP_CONTENT[currentStep]();
-  document.getElementById('btnBack').style.display = currentStep > 0 ? 'block' : 'none';
-  document.getElementById('btnNext').style.display = currentStep < 2 ? 'block' : 'none';
-  updateStepIndicators();
-}
-
-function nextStep() {
-  if (currentStep < 2) { currentStep++; renderStep(); }
-}
-function prevStep() {
-  if (currentStep > 0) { currentStep--; renderStep(); }
-}
-
-function toggleOpt(el) {
-  const sw = el.querySelector('.toggle-switch');
-  sw.classList.toggle('on');
-}
-
-function activateKernel(receipt, pool) {
-  document.getElementById('modalBody').innerHTML = `
-    <div class="success-box fade-in">
-      <div class="success-icon">✓</div>
-      <div class="success-title">Kernel Activated</div>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Your pool is now live on Polygon Amoy with full ProofBridge attestation.</p>
-      <div class="success-code">
-        ► Receipt minted: ${receipt}<br>
-        ► Pool: ${pool} · Oracle: 3-of-5 ACTIVE<br>
-        ► ED25519 signature: VERIFIED ✓
-      </div>
-      <div class="success-meta">
-        Every transaction in <strong>${pool}</strong> will now<br>
-        generate an immutable on-chain proof.<br>
-        The chain is your auditor.
-      </div>
-    </div>`;
-  document.getElementById('btnNext').style.display = 'none';
-  document.getElementById('btnBack').style.display = 'none';
-  document.getElementById('modalTitle').textContent = 'Connected & Active';
-  STEPS.forEach((_, i) => {
-    document.getElementById(`stepDot${i}`).className = 'step-circle done';
-    document.getElementById(`stepDot${i}`).textContent = '✓';
-  });
-}
-
-// ── TERMINAL MODAL ────────────────────────────────────────────
-function openTerminalModal() {
-  document.getElementById('terminalOverlay').classList.add('open');
-}
-function closeTerminal() {
-  document.getElementById('terminalOverlay').classList.remove('open');
-}
-
-const TERM_OUTPUTS = {
-  status: [
-    '$ proofbridge --status',
-    '  ► Kernel: ONLINE · Network: Polygon Amoy',
-    '  ► Trust Model: Single oracle → 3-of-5 quorum',
-    '  ► ED25519: ACTIVE · Stitch: CONNECTED',
-    '  ► CircuitBreaker: DEPLOYED · TEE: 75%',
-  ],
-  tests: [
-    '$ proofbridge --tests',
-    '  ► testInitializeSetsOwnerAndOracle    14,321 gas ✓',
-    '  ► testInitializeRevertsOnSecondCall   13,902 gas ✓',
-    '  ► testUpdateProofByOracle             44,241 gas ✓',
-    '  ► testUpdateProofEmitsEvent           45,177 gas ✓',
-    '  ► testUpdateProofRevertsIfNotOracle   13,738 gas ✓',
-    '  ► RESULT: 14/14 PASS',
-  ],
-  contracts: [
-    '$ proofbridge --contracts',
-    '  ► CircuitBreaker:  deploying... (Phase-5)',
-    '  ► AssetRegistry:   — not yet deployed —',
-    '  ► TEEVerifier:     — not yet deployed —',
-    '  ► Enclave key:     pending TEE Phase',
-    '  ► Deploy script:   script/DeployFull.s.sol',
-  ],
-  quorum: [
-    '$ proofbridge --quorum',
-    '  ► Oracle type: 3-of-5 quorum',
-    '  ► Node 1/3: DOCKER · mock · active',
-    '  ► Node 2/3: DOCKER · mock · active',
-    '  ► Node 3/3: DOCKER · mock · active',
-    '  ► TEE nodes: pending Phase-5 completion (75%)',
-    '  ► 0 disputed payouts',
-  ],
-};
-
-function termCmd(cmd) {
-  const out = document.getElementById('terminalOutput');
-  const lines = TERM_OUTPUTS[cmd] || ['Unknown command'];
-  out.innerHTML = lines.map((l,i) =>
-    i === 0
-      ? `<div><span class="t-prompt">$</span> <span class="t-cmd">${l.replace('$ ','')}</span></div>`
-      : `<div><span style="color:var(--green)">${l}</span></div>`
-  ).join('') + `<div><span class="t-prompt">$</span> <span class="t-cursor"></span></div>`;
-}
-
-// ── CLOSE ON BACKDROP ─────────────────────────────────────────
-document.getElementById('onboardOverlay').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeOnboard();
-});
-document.getElementById('terminalOverlay').addEventListener('click', e => {
-  if (e.target === e.currentTarget) closeTerminal();
-});
-
-// ── INIT ──────────────────────────────────────────────────────
-renderPhases();
-renderTests();
-renderIntegrations();
+    (function(){
+        let uptimeSecs = 47;
+        const termUptime = document.getElementById('termUptime');
+        const uptimeDisplay = document.getElementById('uptimeDisplay');
+        setInterval(()=>{ uptimeSecs++; const mins=Math.floor(uptimeSecs/60); const sec=uptimeSecs%60; termUptime.innerText = mins>0?`${mins}m ${sec}s`:`${sec}s`; if(uptimeDisplay && uptimeSecs%30===0) uptimeDisplay.innerText = (99.5+Math.random()*0.5).toFixed(1)+'%'; },1000);
+        
+        let txCount = 342;
+        const txElements = [document.getElementById('txCountVal'), document.getElementById('statTxNum'), document.getElementById('tickerTx')];
+        function updateTxCount(){ if(Math.random()<0.25){ txCount++; txElements.forEach(el=>{ if(el) el.innerText = txCount; }); } }
+        setInterval(updateTxCount, 11000);
+        
+        const feedEvents = [
+            {type:'MINT', hash:'0xfa32b1...dd45 · R500 · CYCLE-03',status:'VERIFIED',cls:'status-ok'},
+            {type:'VOTE', hash:'0xc83d91...2e78 · oracle approval',status:'CONFIRMED',cls:'status-ok'},
+            {type:'MINT', hash:'0x19a4c8...f3b1 · R500 · Naledi M.',status:'VERIFIED',cls:'status-ok'},
+        ];
+        let idx = 0;
+        const feedContainer = document.getElementById('proofFeedList');
+        if(feedContainer){
+            setInterval(()=>{
+                const ev = feedEvents[idx%feedEvents.length];
+                const newDiv = document.createElement('div'); newDiv.className='proof-event';
+                newDiv.innerHTML = `<span class="event-type">${ev.type}</span><span class="event-hash">${ev.hash}</span><span class="${ev.cls}">${ev.status}</span>`;
+                feedContainer.insertBefore(newDiv, feedContainer.firstChild);
+                if(feedContainer.children.length>4) feedContainer.removeChild(feedContainer.lastChild);
+                idx++;
+            }, 3800);
+        }
+        
+        let vaultBase = 127500;
+        const vaultEl = document.getElementById('vaultedVal');
+        setInterval(()=>{ let delta = Math.floor((Math.random()-0.5)*1200); vaultBase = Math.max(124000, Math.min(131000, vaultBase+delta)); if(vaultEl) vaultEl.innerText = 'R'+(vaultBase/1000).toFixed(1)+'K'; }, 18000);
+        
+        const scrollBtn = document.getElementById('scrollTopBtn');
+        window.addEventListener('scroll',()=>{ if(window.scrollY>500) scrollBtn.classList.add('visible'); else scrollBtn.classList.remove('visible'); });
+        scrollBtn.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+        
+        document.getElementById('connectWalletMock')?.addEventListener('click',()=>alert('🔐 Wallet connection: Polygon Amoy testnet · ProofBridge ready'));
+    })();
 </script>
 </body>
 </html>

@@ -1,113 +1,73 @@
-# VVU Platform - Embedded Watchdog + Gate A Integration
+# VVU Gateway — Ubuntu Pools / ProofBridge
 
-A production-grade implementation of the VVU Platform featuring:
-- Embedded Watchdog system for operational observability
-- Gate A Authentication & Identity Infrastructure integration
-- Pre-registered Gate B Contribution Rail Infrastructure hooks
-- Schema v2.1 compliant
+Next.js 14 App Router UI for the Venture Vision Ubuntu (VVU) Gateway — Phase 1 surface focused on Ubuntu Pools, ProofBridge on-chain receipting, Village OS dashboards, and the minimal dark VVU Gateway aesthetic for authenticated tooling.
 
-## Architecture Overview
+## What’s in this build
 
-This implementation combines systemic observability with a Next.js/Supabase auth stack, featuring:
+- Public marketing flow (warm Ubuntu Pools theme): `/(marketing)/`
+  - `/` — ProofBridge / Ubuntu Pools landing
+  - `/about` — VVU background + Phase 1 / Phase 2 toggle
+  - `/faqs` — POPIA, KYC, Stitch, ProofBridge Q&A
+  - `/ubuntu-pools` — pool types + how-it-works
 
-### Core Components
-1. **Watchdog System** (`src/lib/watchdog/`)
-   - HeartbeatSchema: Operational tags, incident contracts, fault classification
-   - HeartbeatBus: Distributed event bus using IndexedDB and BroadcastChannel
-   - WatchdogProbes: Operational probe classes for direct error boundary instrumentation
-   - OrchestratorEngine: Priority-sorted diagnostic engine running on eternal clock loop
+- Authenticated platform (minimal dark VVU Gateway theme): `/(app)/`
+  - `/dashboard` — Village OS dashboard (Ubuntu Score, Pool Creator, Architecture Visualizer, Lindiwe AI)
+  - `/dashboard/ledger` — transaction records
+  - `/dashboard/village` — village node/operations
+  - `/dashboard/wallet` — financial operations
+  - `/compliance` — KYC/POPIA/AML
+  - `/governance` — proposals + voting
+  - `/trust` — security/audit overview
 
-2. **Gate A: Auth & Identity Infrastructure**
-   - Remediated cookies() invocation in route handlers
-   - Loop protection middleware with redirect counting
-   - RLS compliance with explicit UUID type casting
-   - Health monitoring with infrastructure degradation detection
+- Developer portals: `/(developer)/`
+  - `/docs` — API/SDK documentation hub
+  - `/api` — developer token dashboard
+  - `/integrations/b2b` — B2B partner portal
+  - `/integrations/terminal` — POS/hardware integrations
 
-3. **Gate B: Contribution Rail Infrastructure (Pre-Registered)**
-   - Pre-registered fault tags for future integration
-   - Stubbed E2E tests for zero-friction activation
+- Admin tools: `/(admin)/`
+  - `/admin/monitoring` — systems health
+  - `/onboarding/whatsapp` — WhatsApp onboarding
 
-## Infrastructure & Monitoring
+- Backend route handlers: `app/api/` (metrics, gates, mint, verify, webhooks, admin circuit breaker)
 
-The VVUP platform is designed for a **globally distributed Vercel deployment** with a strict observability stack:
+## Tech
 
-- **Datadog & PagerDuty:** Production monitors for P99 latency (250ms ceiling) and security deflection spikes. Linked directly to `@pagerduty-VVUP-Core-OnCall`.
-- **Infrastructure as Code:** Managed via Terraform in `src/lib/main.tf`.
-- **Performance Benchmarking:** Automated **Autocannon** telemetry integrated into the CI/CD pipeline.
-- **Regional Routing:** Multi-region Redis mesh routing via Upstash (US-East, EU-West).
+- Next.js 14 App Router + Route Groups
+- Inline styles + CSS custom properties (no Tailwind install required)
+- AntColonyLoader FX + AdvancedGlobeTelemetry on the root FX dashboard
+- Supabase auth middleware for protected route groups
 
-## Getting Started
+## Local setup
 
-### Prerequisites
-- Node.js 20+ 
-- Supabase CLI
-- Terraform 1.5.7+
-- Playwright browsers (for E2E testing)
-
-### Installation
 ```bash
+cp .env.example .env.local
 npm install
-```
-
-### Performance Benchmarking
-Execute a local performance telemetry run and stream metrics to Datadog:
-```bash
-# Requires VERCEL_URL and DATADOG_API_KEY
-npm run benchmark
-```
-
-### Environment Setup
-Create a `.env.local` file with:
-```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-### Database Migrations
-```bash
-npx supabase db migrate
-```
-
-### Development
-```bash
 npm run dev
 ```
 
-### Testing
+Open `http://localhost:3000` for the marketing landing; `/dashboard` requires an authenticated session via middleware.
+
+## Scripts
+
+- `npm run dev` — local dev server
+- `npm run build` — production build
+- `npm start` — start compiled app
+- `npm run lint` — ESLint checks
+- `npm run lint:fix` — auto-fix lint issues
+- `npm test` — Jest unit/integration tests
+- `npm run test:e2e` — Playwright E2E
+
+## Deployment
+
 ```bash
-# Unit tests
-npm test
-
-# E2E tests
-npm run test:e2e
+npm run build
+vercel --prod --force
 ```
 
-## Watchdog Usage
+`.vercelignore` excludes cache, build artifacts, large fixtures, and old standalone HTML files.
 
-### Adding Observability to Components
-As part of your development process, initialize components with an explicit tracking boundary:
+## Phase roadmap
 
-```typescript
-// Add this line to your constructors before writing business logic
-private probe = new NullProbe();
-
-// When you hit a production code checkpoint, replace the NullProbe 
-// with the correct typed probe class from WatchdogProbes.ts
-```
-
-### Available Probes
-- **Operational (P01-P06)**: Tab coordination, network sync, cache eviction, etc.
-- **Gate A Infrastructure**: Cookie faults, middleware loops, RLS violations, etc.
-- **Gate B Contribution Pipeline**: Payment webhook failures, ledger mismatches, etc.
-
-## Gate B Integration Roadmap
-
-Once Gate A pipeline is verified, Gate B integration can proceed with:
-
-1. **Webhook Payload Structure** (see below)
-2. **Ledger Reconciliation Engine** 
-3. **FX Oracle Integration**
-4. **Idempotency Key Management**
-
-## License
-MIT
+- Phase 1 (current): Ubuntu Pools + ProofBridge + Village OS + ANT Telemetry + Gate-1
+- Phase 2 (Q1 2027 transition period): SAFEGRID, SAFESTAKES, Parallel Water Economy, ProofBridge-Liner upscale, automated scaling gates

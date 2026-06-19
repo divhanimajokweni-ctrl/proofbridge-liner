@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -e
+
+# antstack configure hook
+CONF_DIR="$SNAP_COMMON/etc"
+mkdir -p "$CONF_DIR"
+
+cat > "$CONF_DIR/antstack.env" <<EOF
+NODE_ENV=production
+PORT=8080
+EOF
+
+exit 0

@@ -1,0 +1,390 @@
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sage:#8A9A5B;--sage-l:#b8c98a;--sage-d:#4a5830;
+  --ochre:#CC7722;--ochre-l:#e09a52;
+  --teal:#1D9E75;--teal-l:#5DCAA5;
+  --border:0.5px solid var(--color-border-tertiary);
+  --border-s:0.5px solid var(--color-border-secondary);
+}
+.root{font-family:'Syne',sans-serif;color:var(--color-text-primary);padding-bottom:2rem}
+.hero{padding:1.75rem 0 1.25rem;border-bottom:var(--border)}
+.hero-tag{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--sage);text-transform:uppercase;margin-bottom:0.4rem}
+.hero-title{font-size:1.5rem;font-weight:800;letter-spacing:-0.025em;line-height:1.1}
+.hero-sub{font-size:0.78rem;color:var(--color-text-secondary);margin-top:0.4rem;line-height:1.6;max-width:560px}
+.doctrine{margin-top:1rem;border-left:3px solid var(--ochre);padding:0.75rem 1rem;background:var(--color-background-secondary);border-radius:0}
+.doctrine-text{font-size:0.85rem;font-weight:600;color:var(--color-text-primary)}
+.doctrine-sub{font-size:0.75rem;color:var(--color-text-secondary);margin-top:0.3rem;line-height:1.5}
+.tab-row{display:flex;gap:0;border-bottom:var(--border);margin-top:0;overflow-x:auto}
+.tab{padding:0.7rem 1rem;font-size:0.72rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;border:none;background:transparent;color:var(--color-text-secondary);border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.15s;font-family:'Syne',sans-serif}
+.tab.on{color:var(--sage);border-bottom-color:var(--sage);background:var(--color-background-secondary)}
+.pane{display:none;padding:1.5rem 0;animation:fi 0.2s ease}
+.pane.on{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.sec{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--sage);text-transform:uppercase;margin-bottom:1rem;padding-bottom:0.5rem;border-bottom:var(--border)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.card{background:var(--color-background-primary);border:var(--border);border-radius:12px;padding:1rem 1.1rem}
+.card-sage{border-color:rgba(138,154,91,0.4);background:rgba(138,154,91,0.05)}
+.card-ochre{border-color:rgba(204,119,34,0.35);background:rgba(204,119,34,0.06)}
+.card-teal{border-color:rgba(29,158,117,0.35);background:rgba(29,158,117,0.05)}
+.card-warn{border-color:var(--color-border-danger);background:var(--color-background-danger)}
+.cl{font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:0.5rem;display:block}
+.cl-sage{color:var(--sage)}.cl-ochre{color:var(--ochre)}.cl-teal{color:var(--teal)}.cl-red{color:var(--color-text-danger)}.cl-gray{color:var(--color-text-secondary)}
+.ct{font-size:0.85rem;font-weight:700;margin-bottom:0.35rem}
+.cd{font-size:0.76rem;color:var(--color-text-secondary);line-height:1.55}
+.tag{display:inline-block;font-family:'DM Mono',monospace;font-size:10px;padding:2px 7px;border-radius:4px;margin:2px 2px 0 0}
+.tag-sage{background:rgba(138,154,91,0.12);color:#3B6D11}
+.tag-ochre{background:rgba(204,119,34,0.12);color:#633806}
+.tag-teal{background:rgba(29,158,117,0.12);color:#085041}
+.met{background:var(--color-background-secondary);border-radius:8px;padding:0.9rem}
+.met-v{font-family:'DM Mono',monospace;font-size:1.3rem;font-weight:500;color:var(--sage)}
+.met-l{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.row-item{display:grid;grid-template-columns:150px 1fr;gap:1rem;padding:0.7rem 0.9rem;background:var(--color-background-secondary);border-radius:8px;margin-bottom:6px;align-items:start}
+.row-key{font-family:'DM Mono',monospace;font-size:11px;color:var(--sage);font-weight:500}
+.row-val{font-size:0.76rem;color:var(--color-text-secondary);line-height:1.5}
+.tier-box{border-radius:12px;padding:1.1rem;margin-bottom:1rem}
+.tier-a{background:var(--color-background-secondary);border:var(--border-s)}
+.tier-b{background:rgba(204,119,34,0.06);border:0.5px solid rgba(204,119,34,0.3)}
+.tier-pct{font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;color:var(--sage)}
+.tier-title{font-size:0.9rem;font-weight:700;margin-bottom:0.4rem}
+.tier-desc{font-size:0.76rem;color:var(--color-text-secondary);line-height:1.55}
+.step-row{display:grid;grid-template-columns:32px 1fr;gap:0.9rem;margin-bottom:0.85rem;align-items:start}
+.step-num{width:32px;height:32px;border-radius:50%;background:rgba(138,154,91,0.12);border:0.5px solid rgba(138,154,91,0.3);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--sage);flex-shrink:0}
+.step-title{font-size:0.83rem;font-weight:700;margin-bottom:2px}
+.step-desc{font-size:0.75rem;color:var(--color-text-secondary);line-height:1.5}
+.bar-wrap{margin:0.5rem 0 1rem}
+.bar-track{height:8px;background:var(--color-background-secondary);border-radius:4px;overflow:hidden;margin-bottom:4px}
+.bar-fill{height:100%;border-radius:4px;transition:width 0.3s}
+.bar-label{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)}
+.calc-row{display:flex;align-items:center;gap:1rem;margin-bottom:0.9rem}
+.calc-label{font-size:0.76rem;color:var(--color-text-secondary);width:170px;flex-shrink:0}
+.calc-val{font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--color-text-primary);min-width:70px;text-align:right}
+.result-box{background:rgba(138,154,91,0.08);border:0.5px solid rgba(138,154,91,0.3);border-radius:10px;padding:1rem 1.1rem;margin-top:1rem}
+.result-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--sage);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.4rem}
+.result-val{font-size:1.4rem;font-weight:700;color:var(--sage);font-family:'DM Mono',monospace}
+.result-sub{font-size:0.74rem;color:var(--color-text-secondary);margin-top:3px}
+.anti-item{display:flex;gap:0.75rem;align-items:flex-start;padding:0.75rem;background:var(--color-background-secondary);border-radius:8px;margin-bottom:6px}
+.anti-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0;margin-top:4px}
+.anti-body{}
+.anti-title{font-size:0.82rem;font-weight:700;margin-bottom:2px}
+.anti-desc{font-size:0.75rem;color:var(--color-text-secondary);line-height:1.5}
+input[type=range]{width:100%;accent-color:var(--sage)}
+</style>
+
+<h2 class="sr-only">NMBM Community Prosperity Water Trust — governance framework and distribution model</h2>
+
+<div class="root">
+
+<div class="hero">
+  <div class="hero-tag">NMBM Community Prosperity Water Trust · Governance Framework</div>
+  <div class="hero-title">15% profit-share · all suburbs · community-controlled</div>
+  <div class="hero-sub">An irrevocably embedded ownership mechanism that transforms a private water enterprise into a community-rooted utility — untouchable because it is useful and financially owned by the people it serves.</div>
+  <div class="doctrine">
+    <div class="doctrine-text">"When the ward councillor threatens you, you ask him: how many grassroots projects will you shut down by stopping me?"</div>
+    <div class="doctrine-sub">This trust converts community members into financial stakeholders. Damaging your infrastructure means stealing from their own suburb's sports field.</div>
+  </div>
+</div>
+
+<div class="tab-row">
+  <button class="tab on" onclick="sw('structure',this)">Structure</button>
+  <button class="tab" onclick="sw('distribution',this)">Distribution</button>
+  <button class="tab" onclick="sw('qco',this)">QCO formation</button>
+  <button class="tab" onclick="sw('anticapture',this)">Anti-capture</button>
+  <button class="tab" onclick="sw('simulator',this)">Simulator</button>
+  <button class="tab" onclick="sw('nextsteps',this)">Next steps</button>
+</div>
+
+<div id="pane-structure" class="pane on">
+  <div class="sec">Legal DNA — engineered for irrevocability</div>
+  <div class="g2" style="margin-bottom:1rem">
+    <div class="card card-sage">
+      <span class="cl cl-sage">Legal entity</span>
+      <div class="ct">Trust under the Trust Property Control Act</div>
+      <div class="cd">Master of the High Court oversight. A Trust is structurally harder to amend than an NPC — making the 15% distribution genuinely irrevocable, not just policy.</div>
+      <div style="margin-top:0.6rem"><span class="tag tag-sage">Trust Property Control Act</span><span class="tag tag-sage">Master of High Court oversight</span></div>
+    </div>
+    <div class="card card-ochre">
+      <span class="cl cl-ochre">Irrevocable link</span>
+      <div class="ct">Embedded in WaterCo's Memorandum of Incorporation</div>
+      <div class="cd">A clause in WaterCo's MOI states, in perpetuity, 15% of net distributable profits flow to the Trust. A golden share held by a reputable civic body (e.g. NMBM Chamber of Commerce) holds veto rights over this clause — it cannot be removed.</div>
+    </div>
+  </div>
+  <div class="g4" style="margin-bottom:1.25rem">
+    <div class="met"><div class="met-v">15%</div><div class="met-l">Net profits to trust — in perpetuity</div></div>
+    <div class="met"><div class="met-v">50/50</div><div class="met-l">Equal dividend vs project fund split</div></div>
+    <div class="met"><div class="met-v">50–100</div><div class="met-l">Target QCOs across NMBM in 18 months</div></div>
+    <div class="met"><div class="met-v">R1,000</div><div class="met-l">Inception grant on QCO registration</div></div>
+  </div>
+  <div class="sec">Full entity stack — how the three layers connect</div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div class="row-item">
+      <div class="row-key">WaterCo (SPV)</div>
+      <div class="row-val">Private operating company. Sells water to commercial/industrial clients. 15% of net distributable profits are contractually and constitutionally obligated to flow to the Trust. No government off-taker.</div>
+    </div>
+    <div class="row-item">
+      <div class="row-key">Community Prosperity Water Trust</div>
+      <div class="row-val">Receives 15% annual profit share. Distributes via two-tier formula to all registered QCOs. Governed by an elected board drawn from QCO representatives. Master of the High Court oversight.</div>
+    </div>
+    <div class="row-item">
+      <div class="row-key">Qualifying Community Organisations (QCOs)</div>
+      <div class="row-val">Independent, apolitical, geography-based groups: sports clubs, ratepayers associations, neighbourhood watch, SGBs, faith outreach, old age committees, garden cooperatives. Each has its own bank account with 3+ signatories.</div>
+    </div>
+    <div class="row-item">
+      <div class="row-key">Golden share holder</div>
+      <div class="row-val">Reputable civic or legal entity (e.g. NMBM Chamber, independent law firm) holding veto rights over any amendment to the 15% clause in WaterCo's MOI. This is the constitutional lock — no single founder or investor can undo it.</div>
+    </div>
+  </div>
+</div>
+
+<div id="pane-distribution" class="pane">
+  <div class="sec">Two-tier distribution — equal floor, needs-based bridge</div>
+  <div class="tier-box tier-a">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem">
+      <div>
+        <div class="tier-title">Tier 1 — the equal dividend</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--sage);letter-spacing:1px">The ground floor · pure mathematics</div>
+      </div>
+      <div class="tier-pct">50%</div>
+    </div>
+    <div class="tier-desc">50% of Trust annual income is divided absolutely equally among all registered QCOs. If there are 60 groups, each gets 1/60th. A sports club in Summerstrand gets the same base grant as a soup kitchen in Zwide. This is collective prosperity: the formula is mathematics, not politics. It is impossible to manipulate because there are no criteria — only the headcount of registered QCOs.</div>
+    <div style="margin-top:0.75rem"><span class="tag tag-sage">One group · one equal share</span><span class="tag tag-sage">Funds basic operating costs or member-decided projects</span></div>
+  </div>
+  <div class="tier-box tier-b">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.75rem">
+      <div>
+        <div class="tier-title">Tier 2 — the bridging project fund</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--ochre);letter-spacing:1px">Scaled infrastructure · needs-based</div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:2rem;font-weight:500;color:var(--ochre)">50%</div>
+    </div>
+    <div class="tier-desc">50% goes into a project fund. QCOs apply with proposals. The Trust board — elected from QCO representatives — scores applications against a transparent criteria matrix. Larger infrastructure allocations flow to highest-need areas first, rapidly closing the divide.</div>
+    <div style="margin-top:0.75rem;display:flex;flex-direction:column;gap:5px">
+      <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)"><span>Severity of water/sanitation backlog</span><span style="color:var(--ochre)">40% weight</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:40%;background:#CC7722"></div></div>
+      <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)"><span>Number of direct beneficiaries</span><span style="color:var(--ochre)">30% weight</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:30%;background:#CC7722"></div></div>
+      <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)"><span>Community co-funding or sweat equity</span><span style="color:var(--ochre)">20% weight</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:20%;background:#CC7722"></div></div>
+      <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)"><span>Divide-bridging potential</span><span style="color:var(--ochre)">10% weight</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:10%;background:#CC7722"></div></div>
+    </div>
+    <div style="margin-top:0.75rem"><span class="tag tag-ochre">R500k rainwater system at rural school</span><span class="tag tag-ochre">R20k borehole pump at suburban club</span><span class="tag tag-ochre">Both get something · gap closes fast</span></div>
+  </div>
+</div>
+
+<div id="pane-qco" class="pane">
+  <div class="sec">Qualifying community organisation formation — bootstrapping civil society</div>
+  <div class="g2" style="margin-bottom:1rem">
+    <div class="card card-sage">
+      <span class="cl cl-sage">What qualifies as a QCO</span>
+      <div class="cd" style="margin-top:0.25rem">Any formally constituted, apolitical, geography-based group within the NMBM boundary. Minimum 5 members. Own bank account. Simple one-page constitution. Annual elected committee.</div>
+      <div style="margin-top:0.7rem;display:flex;flex-direction:column;gap:4px">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)">Sports clubs (rugby, cricket, soccer, netball)</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)">Ratepayers and residents associations</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)">Neighbourhood watch groups</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)">School governing bodies / PTAs</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)">Faith-based community outreach</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)">Old age home committees</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--color-text-secondary)">Community garden cooperatives</div>
+      </div>
+    </div>
+    <div class="card card-teal">
+      <span class="cl cl-teal">The three pilot suburbs</span>
+      <div class="ct">Prove before you scale</div>
+      <div style="margin-top:0.6rem;display:flex;flex-direction:column;gap:8px">
+        <div>
+          <div style="font-size:0.78rem;font-weight:700">Lorraine / Sunridge</div>
+          <div style="font-size:0.73rem;color:var(--color-text-secondary)">Well-organised, historically white — models the sports club format, onboards fast, demonstrates cross-community neutrality</div>
+        </div>
+        <div>
+          <div style="font-size:0.78rem;font-weight:700">Motherwell / KwaNobuhle</div>
+          <div style="font-size:0.73rem;color:var(--color-text-secondary)">Existing community hall and faith networks — map what already exists, identify leaders, onboard proven structures</div>
+        </div>
+        <div>
+          <div style="font-size:0.78rem;font-weight:700">Bethelsdorp / rural outskirts</div>
+          <div style="font-size:0.73rem;color:var(--color-text-secondary)">Weak civil society — test the replication model and Community Water Ambassador formation kit</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="sec">Formation process — remove every bureaucratic hurdle</div>
+  <div class="step-row">
+    <div class="step-num">01</div>
+    <div><div class="step-title">Community Water Ambassadors</div><div class="step-desc">Hire 2–3 young people from target suburbs, paid a modest stipend. Their mandate: go group to group, explain the Trust, say "form a 5-person committee, open a bank account, adopt our one-page constitution — and you will receive an equal annual share of water profits, forever."</div></div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">02</div>
+    <div><div class="step-title">Free formation kit</div><div class="step-desc">Provide a ready-made one-page constitution template and free bank account setup support via a local credit union or digital bank (TymeBank, Capitec). Remove every reason to say it is too hard.</div></div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">03</div>
+    <div><div class="step-title">R1,000 inception grant on registration</div><div class="step-desc">Once a group formally registers and opens an account, the Trust issues a R1,000 inception grant automatically. This is the first tangible proof that the system is not politics — it is real money in their account, conditioned on nothing but their own self-organisation.</div></div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">04</div>
+    <div><div class="step-title">One suburb, one voice — the community forum</div><div class="step-desc">Longer-term target: each recognised suburb or ward has a unified "Community Forum" that selects one representative to the Trust's beneficiary assembly. Start by recognising all existing groups immediately so money flows from day one — consolidate the forum model over 12–18 months.</div></div>
+  </div>
+  <div class="card card-sage" style="margin-top:0.5rem">
+    <span class="cl cl-sage">Funding the formation — your cost, not the community's</span>
+    <div class="cd">Ambassador stipends, formation kit, and inception grants are funded by WaterCo's corporate social investment or marketing budget — not from the 15% profit share. This is your cost of building a social licence. It is cheaper than any legal battle against a community protest.</div>
+  </div>
+</div>
+
+<div id="pane-anticapture" class="pane">
+  <div class="sec">Inoculation against criminal-political capture — design features</div>
+  <div class="anti-item">
+    <div class="anti-dot"></div>
+    <div class="anti-body">
+      <div class="anti-title">Three-signatory bank accounts — no single gatekeeper</div>
+      <div class="anti-desc">Every QCO's grant is paid directly into its own bank account requiring a minimum of three unrelated signatories (chairperson, treasurer, secretary), all residents of that suburb, all elected annually. No single person controls any community's funds.</div>
+    </div>
+  </div>
+  <div class="anti-item">
+    <div class="anti-dot"></div>
+    <div class="anti-body">
+      <div class="anti-title">Rotating representation — no professional trustee kingpins</div>
+      <div class="anti-desc">Trust board members serve 2-year terms with a mandatory 1-term cooling-off period before re-election. This structurally prevents the emergence of entrenched power over the distribution process.</div>
+    </div>
+  </div>
+  <div class="anti-item">
+    <div class="anti-dot"></div>
+    <div class="anti-body">
+      <div class="anti-title">Radical digital transparency — public quarterly reporting</div>
+      <div class="anti-desc">All Trust income, distributions, and project decisions are published on a public website updated quarterly. Any community member with a phone can see exactly what their group received and what every other group received. Transparency is the disinfectant.</div>
+    </div>
+  </div>
+  <div class="anti-item">
+    <div class="anti-dot"></div>
+    <div class="anti-body">
+      <div class="anti-title">Independent annual audit — posted publicly</div>
+      <div class="anti-desc">Books audited annually by a reputable, non-politically-connected mid-tier firm. Audit report posted on the public website. Any material finding triggers automatic notification to the Master of the High Court.</div>
+    </div>
+  </div>
+  <div class="anti-item">
+    <div class="anti-dot"></div>
+    <div class="anti-body">
+      <div class="anti-title">Third-party whistle-blower hotline</div>
+      <div class="anti-desc">A small portion of Trust operating budget funds a confidential, third-party-run hotline for community members to report attempted corruption or intimidation within any QCO or the Trust board. Anonymity guaranteed, managed externally.</div>
+    </div>
+  </div>
+  <div class="anti-item">
+    <div class="anti-dot"></div>
+    <div class="anti-body">
+      <div class="anti-title">Distributed network — impractical to capture</div>
+      <div class="anti-desc">When funds flow equally to 50+ independent groups each with their own bank account and elected committee, there is no single point to corrupt. To capture the income stream, a syndicate would have to infiltrate 50 different clubs simultaneously — operationally and socially impossible.</div>
+    </div>
+  </div>
+  <div class="anti-item">
+    <div class="anti-dot"></div>
+    <div class="anti-body">
+      <div class="anti-title">International arbitration for all major contracts</div>
+      <div class="anti-desc">All WaterCo customer contracts and investor agreements include international arbitration clauses. This places commercial dispute resolution entirely outside local political jurisdiction — a powerful deterrent against state-adjacent interference.</div>
+    </div>
+  </div>
+</div>
+
+<div id="pane-simulator" class="pane">
+  <div class="sec">Distribution simulator — live per-QCO dividend calculator</div>
+  <div class="calc-row">
+    <span class="calc-label">Annual WaterCo net profit (R)</span>
+    <input type="range" min="500000" max="5000000" value="1500000" step="100000" id="sl-profit" oninput="sim()">
+    <span class="calc-val" id="out-profit">R1.5M</span>
+  </div>
+  <div class="calc-row">
+    <span class="calc-label">Number of registered QCOs</span>
+    <input type="range" min="10" max="120" value="50" step="1" id="sl-qco" oninput="sim()">
+    <span class="calc-val" id="out-qco">50 groups</span>
+  </div>
+  <div class="g2">
+    <div class="result-box">
+      <div class="result-label">Total trust income (15%)</div>
+      <div class="result-val" id="res-trust">R225,000</div>
+      <div class="result-sub">Per year, irrevocably from WaterCo</div>
+    </div>
+    <div class="result-box" style="border-color:rgba(204,119,34,0.3);background:rgba(204,119,34,0.06)">
+      <div class="result-label" style="color:var(--ochre)">Tier 1 · per QCO equal dividend</div>
+      <div class="result-val" style="color:var(--ochre)" id="res-per">R2,250</div>
+      <div class="result-sub" id="res-per-sub">50% of trust income ÷ 50 groups</div>
+    </div>
+  </div>
+  <div class="g2" style="margin-top:0.75rem">
+    <div class="met">
+      <div class="met-v" id="res-tier2">R112,500</div>
+      <div class="met-l">Tier 2 bridging project fund (50% of trust)</div>
+    </div>
+    <div class="met">
+      <div class="met-v" id="res-inception">R50,000</div>
+      <div class="met-l">Est. inception grant cost (R1k × QCOs)</div>
+    </div>
+  </div>
+  <div style="margin-top:1rem;font-size:0.75rem;color:var(--color-text-secondary);line-height:1.55;padding:0.75rem;background:var(--color-background-secondary);border-radius:8px">
+    At 100kl/day WaterCo production (R30/kl tariff, R14/kl opex), annual net income is approximately R550,000 — generating R82,500 in Trust income distributed equally to every QCO, plus R41,250 in bridging project grants. At 200kl/day with a second anchor client, the per-QCO dividend becomes genuinely meaningful and the project fund can fund a community water point every quarter.
+  </div>
+  <div style="margin-top:0.75rem">
+    <button onclick="sendPrompt('Build a 5-year Trust income projection assuming WaterCo scales from 100kl/day to 400kl/day across 3 anchor clients — show per-QCO dividend growth and total project fund available each year')" style="font-family:'Syne',sans-serif;font-size:0.76rem;padding:0.5rem 1rem;background:rgba(138,154,91,0.1);border:0.5px solid rgba(138,154,91,0.3);color:#3B6D11;border-radius:6px;cursor:pointer">Project 5-year Trust income ↗</button>
+  </div>
+</div>
+
+<div id="pane-nextsteps" class="pane">
+  <div class="sec">Immediate execution — this week through month 3</div>
+  <div class="step-row">
+    <div class="step-num">W1</div>
+    <div><div class="step-title">Instruct your attorney: Trust Deed + MOI amendment</div><div class="step-desc">Draft the Trust Deed with the two-tier distribution model, the irrevocable MOI link, and the golden share structure. Simultaneously draft the one-page QCO constitution template. These two documents are the legal DNA of the entire venture.</div></div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">W2</div>
+    <div><div class="step-title">Identify the first two pilot QCOs</div><div class="step-desc">One existing sports club (Lorraine/Sunridge profile), one church or community group (Motherwell/KwaNobuhle profile). Offer to help them complete the simple QCO registration. Tell them they will be the first beneficiaries when the Trust receives its first profit distribution.</div></div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">M1</div>
+    <div><div class="step-title">Hire Community Water Ambassadors</div><div class="step-desc">Two young people, one from a historically white suburb, one from a township — paid a monthly stipend funded by WaterCo's CSI budget. Their mandate: map every existing group in their network and begin the QCO registration process using the formation kit.</div></div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">M2</div>
+    <div><div class="step-title">Embed the Trust in your investor pitch</div><div class="step-desc">Tell impact investors: "We have eliminated political and community expropriation risk by embedding the local population as direct financial beneficiaries. Our social licence is built into our share register." The 15% is not a cost — it is your primary risk mitigation instrument and your competitive moat.</div></div>
+  </div>
+  <div class="step-row">
+    <div class="step-num">M3</div>
+    <div><div class="step-title">Launch the public transparency dashboard</div><div class="step-desc">Even before the first distribution, publish the Trust Deed, the QCO register, and the distribution formula publicly. This pre-empts any narrative of secrecy and makes the model visible to every ward councillor, journalist, and community member before any money moves.</div></div>
+  </div>
+  <div class="card card-teal" style="margin-top:0.5rem">
+    <span class="cl cl-teal">The complete positioning statement</span>
+    <div class="ct">You are not a privatiser. You are a community-rooted, profit-sharing utility.</div>
+    <div class="cd" style="margin-top:0.4rem">You do what the municipality cannot: deliver reliable water to business, and in doing so, build a perpetual, self-funding source of community prosperity across every suburb of Gqeberha. The trust is not your philanthropy — it is your architecture.</div>
+  </div>
+  <div style="margin-top:1rem">
+    <button onclick="sendPrompt('Draft the investor pitch section on the NMBM Community Prosperity Water Trust as a risk mitigation instrument — framing the 15% community ownership as political insurance for blended finance')" style="font-family:'Syne',sans-serif;font-size:0.76rem;padding:0.5rem 1rem;background:rgba(29,158,117,0.1);border:0.5px solid rgba(29,158,117,0.3);color:#085041;border-radius:6px;cursor:pointer">Draft investor pitch section ↗</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+function sw(id,el){
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('pane-'+id).classList.add('on');
+  el.classList.add('on');
+}
+function sim(){
+  var profit=+document.getElementById('sl-profit').value;
+  var qco=+document.getElementById('sl-qco').value;
+  document.getElementById('out-profit').textContent='R'+(profit/1000000).toFixed(1)+'M';
+  document.getElementById('out-qco').textContent=qco+' groups';
+  var trust=Math.round(profit*0.15);
+  var tier1=Math.round(trust*0.5);
+  var per=Math.round(tier1/qco);
+  var tier2=Math.round(trust*0.5);
+  var inception=qco*1000;
+  document.getElementById('res-trust').textContent='R'+trust.toLocaleString();
+  document.getElementById('res-per').textContent='R'+per.toLocaleString();
+  document.getElementById('res-per-sub').textContent='50% of trust income ÷ '+qco+' groups';
+  document.getElementById('res-tier2').textContent='R'+tier2.toLocaleString();
+  document.getElementById('res-inception').textContent='R'+inception.toLocaleString();
+}
+sim();
+</script>
