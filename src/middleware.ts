@@ -10,6 +10,9 @@ import type { NextRequest } from 'next/server';
 const PUBLIC_PATHS = [
   '/',
   '/login',
+  '/about',
+  '/faqs',
+  '/ubuntu-pools',
   '/api/health',
   '/api/webhooks',
   '/api/receipts/verify',
