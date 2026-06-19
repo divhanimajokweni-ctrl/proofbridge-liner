@@ -8,13 +8,24 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 contract CircuitBreakerV2 is Initializable, OwnableUpgradeable {
     using ECDSA for bytes32;
 
+    // --- Threshold multisig state ---
     bool public circuitOpen;
     mapping(bytes32 => bytes32) public latestProof;
-
     address[] public signerList;
     mapping(address => bool) public isSigner;
     uint256 public threshold;
 
+    // --- EIP-712 single-verifier state ---
+    bytes32 public constant ALIGNMENT_ASSERTION_TYPEHASH = keccak256(
+        "AlignmentAssertion(uint256 featureId,uint32 criticalScore,uint256 timestamp)"
+    );
+    bytes32 private _domainSeparator;
+    address public authorizedVerifier;
+    uint256 public constant MIN_TRIP_INTERVAL = 1 hours;
+    uint256 public lastTripTimestamp;
+    bool private _paused;
+
+    // --- Threshold multisig events ---
     event CircuitTripped(string reason);
     event CircuitReset();
     event ProofUpdated(bytes32 indexed assetId, bytes32 deedHash);
@@ -22,12 +33,31 @@ contract CircuitBreakerV2 is Initializable, OwnableUpgradeable {
     event SignerRemoved(address indexed signer);
     event ThresholdUpdated(uint256 newThreshold);
 
+    // --- EIP-712 / single-verifier events ---
+    event AlignmentBreachTripped(
+        uint256 indexed featureId,
+        uint32 criticalScore,
+        uint256 indexed timestamp,
+        address indexed verifier
+    );
+    event VerifierRotated(address indexed oldVerifier, address indexed newVerifier);
+    event EmergencyResumed(address indexed executor);
+
     modifier whenOpen() {
         require(circuitOpen, "CircuitBreaker: circuit tripped");
         _;
     }
 
-    function initialize(address[] memory _signers, uint256 _threshold) public initializer {
+    modifier whenNotPaused() {
+        require(!_paused, "CircuitBreaker: paused");
+        _;
+    }
+
+    function initialize(
+        address[] memory _signers,
+        uint256 _threshold,
+        address _authorizedVerifier
+    ) public initializer {
         __Ownable_init();
         require(_signers.length >= _threshold, "Not enough signers");
         require(_threshold > 0, "Threshold must be > 0");
@@ -40,6 +70,26 @@ contract CircuitBreakerV2 is Initializable, OwnableUpgradeable {
         }
         threshold = _threshold;
         circuitOpen = true;
+        _domainSeparator = _buildDomainSeparator();
+        authorizedVerifier = _authorizedVerifier;
+        lastTripTimestamp = block.timestamp - MIN_TRIP_INTERVAL;
+        _paused = false;
+    }
+
+    function _buildDomainSeparator() private view returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(bytes("ProofBridgeLiner")),
+                keccak256(bytes("1.0.0")),
+                block.chainid,
+                address(this)
+            )
+        );
+    }
+
+    function hashTypedDataV4(bytes32 structHash) public view returns (bytes32) {
+        return keccak256(abi.encodePacked("\x19\x01", _domainSeparator, structHash));
     }
 
     function verifyThresholdSignature(
@@ -108,5 +158,50 @@ contract CircuitBreakerV2 is Initializable, OwnableUpgradeable {
         require(_newThreshold <= signerList.length, "Threshold too high");
         threshold = _newThreshold;
         emit ThresholdUpdated(_newThreshold);
+    }
+
+    function assertAlignmentBreach(
+        uint256 featureId,
+        uint32 criticalScore,
+        uint256 timestamp,
+        bytes calldata signature
+    ) external whenNotPaused {
+        require(block.timestamp - lastTripTimestamp >= MIN_TRIP_INTERVAL, "CircuitBreaker: Cooldown active");
+        require(timestamp <= block.timestamp, "Assertion from future");
+        require(block.timestamp - timestamp < 15 minutes, "Stale assertion payload");
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                ALIGNMENT_ASSERTION_TYPEHASH,
+                featureId,
+                criticalScore,
+                timestamp
+            )
+        );
+
+        bytes32 digest = hashTypedDataV4(structHash);
+        address signer = digest.recover(signature);
+
+        require(signer == authorizedVerifier, "Signature validation failed: Unauthorized source");
+
+        lastTripTimestamp = block.timestamp;
+        _paused = true;
+
+        emit AlignmentBreachTripped(featureId, criticalScore, timestamp, signer);
+    }
+
+    function rotateVerifier(address _newVerifier) external onlyOwner {
+        require(_newVerifier != address(0), "Invalid verifier address");
+        emit VerifierRotated(authorizedVerifier, _newVerifier);
+        authorizedVerifier = _newVerifier;
+    }
+
+    function emergencyResume() external onlyOwner {
+        _paused = false;
+        emit EmergencyResumed(msg.sender);
+    }
+
+    function isPaused() external view returns (bool) {
+        return _paused;
     }
 }
