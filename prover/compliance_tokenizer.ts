@@ -122,7 +122,7 @@ export class ProofBridgeComplianceTokenizer {
     };
 
     const signingInput = `${b64urlJson(header)}.${b64urlJson(payload)}`;
-    const signature = crypto.sign("RSA-SHA256", Buffer.from(signingInput), privateKeyPem).toString("base64url");
+    const signature = crypto.sign("RSA-SHA256", new Uint8Array(Buffer.from(signingInput)), privateKeyPem).toString("base64url");
     return `${signingInput}.${signature}`;
   }
 
