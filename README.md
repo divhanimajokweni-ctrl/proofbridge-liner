@@ -47,6 +47,9 @@ Phase 1 delivers the **ProofBridge Liner** safety kernel: a live production syst
 |-----------|--------|--------|
 | **FSCA JS2** | ✅ Automated | Regulatory reporting for South Africa's financial sector. |
 | **FICA SAR** | ✅ Automated | Suspicious activity reporting aligned to FICA requirements. |
+| **FIC Act RMCP v1.0** | ✅ Documented | Risk Management and Compliance Programme per Section 42, covering governance, risk assessment, CDD, TFS, PEP, monitoring, reporting, record-keeping. |
+| **Entity-Wide Risk Assessment** | ✅ Complete | ML/TF/PF business-level risk assessment with inherent/residual ratings and product risk matrix. |
+| **Client Risk Assessment Matrix** | ✅ Implemented | PCC 53-aligned three-tier risk scoring (SDD/NDD/EDD) with documented thresholds. |
 | **POPIA** | ✅ Framework Live | Data subject rights procedure, information officer appointment, privacy impact assessment, records of processing. |
 | **Cybercrimes Act 19 of 2020** | ✅ Forensic Evidence Bundling | Hardware-attested forensic evidence chains for SAPS-compliant prosecution. |
 | **CPA** | ✅ Compliant | Pool terms FSCA-compliant, complaints procedure published. |

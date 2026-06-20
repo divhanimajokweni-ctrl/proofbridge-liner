@@ -260,3 +260,18 @@ For technical details, see the repository documentation:
 - `EXECUTION_REPORT.md` — Board-authorized tactical execution results
 - `DEPLOYMENT.md` — Deployment procedures
 - `SAFETY_KERNEL_CHANGELOG.md` — Smart contract version history
+
+---
+
+## 2026-06-20 — Risk Management and Compliance Programme (RMCP) Finalised
+
+**Summary:** RMCP v1.0 drafted in compliance with Section 42 of the FIC Act for legal practitioner accountable institutions. Entity-wide, product-level, and client-level risk assessments documented. All eight RMCP themes addressed.
+
+**Milestones:**
+- `compliance/rmcp.md` — Complete RMCP covering all eight FIC Act Section 42 requirements (governance, risk assessment, CDD, TFS, PEP controls, account monitoring, reporting, record-keeping).
+- `compliance/risk-assessment-entity-wide.md` — Entity-wide ML/TF/PF risk assessment completed.
+- Product and services risk assessment matrix embedded in RMCP Section 2.2.
+- Client-level risk assessment matrix (aligned with PCC 53) embedded in RMCP Section 2.3 with SDD/NDD/EDD thresholds.
+- Risk indicators for legal practitioners documented per PCC 47A, Guidance Note 4B, PCC 51, PCC 53, PCC 59.
+- SAR/SUR filing protocol via goAML documented (15-day deadline, no tipping-off).
+
