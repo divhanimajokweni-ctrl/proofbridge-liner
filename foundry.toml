@@ -19,4 +19,4 @@ remappings = [
 amoy = "${POLYGON_AMOY_RPC_URL}"
 
 [etherscan]
-amoy = { key = "${POLYGONSCAN_API_KEY}", url = "https://api-amoy.polygonscan.com/api", chain = 80002 }
+amoy = { key = "${ETHERSCAN_API_KEY}", url = "https://api.etherscan.io/v2/api?chainid=80002", chain = 80002 }

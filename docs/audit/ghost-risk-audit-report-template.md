@@ -251,7 +251,7 @@ Required conditions for Class B publication:
 Balance >= 0.05 POL on Polygon Amoy
 PRIVATE_KEY configured in .env
 ORACLE_ADDRESS configured in .env
-POLYGONSCAN_API_KEY configured
+ETHERSCAN_API_KEY configured
 ```
 
 Test wallet (for demonstration):
@@ -306,7 +306,7 @@ After wallet funding and Amoy deployment, the report will be updated with:
 
 1. deployed `CircuitBreaker` address;
 2. deploy transaction hash;
-3. contract verification on PolygonScan;
+3. contract verification on Etherscan Amoy;
 4. live `submitter-attestations.json` digest list;
 5. live `broadcast-receipts.json`;
 6. E2E trip demo transaction (Property #1 mismatch);

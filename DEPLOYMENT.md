@@ -97,14 +97,14 @@ node scripts/deploy.js --target cb
 forge build contracts/CircuitBreaker.sol contracts/IProofHook.sol
 ```
 
-### Verify (Polygonscan)
+### Verify (Etherscan)
+
 ```bash
-forge verify-contract \
-  --chain-id 80002 \
-  --verifier-url https://api-amoy.polygonscan.com/api \
-  --etherscan-api-key $POLYGONSCAN_API_KEY \
-  <address> \
-  contracts/CircuitBreaker.sol:CircuitBreaker
+forge verify-contract --watch --chain amoy 0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD \
+  src/CircuitBreaker.sol:CircuitBreaker \
+  --verifier etherscan \
+  --verifier-url "https://api.etherscan.io/v2/api?chainid=80002" \
+  --etherscan-api-key $ETHERSCAN_API_KEY
 ```
 
 ---

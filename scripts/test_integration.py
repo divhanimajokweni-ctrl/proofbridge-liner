@@ -70,7 +70,7 @@ def test_safety_pipeline():
         try:
             tx_hash = client.assert_breach(result["payload"], result["signature"])
             print(f"  Transaction sent: {tx_hash[:32]}...")
-            print(f"  https://amoy.polygonscan.com/tx/{tx_hash}")
+            print(f"  https://amoy.etherscan.io/tx/{tx_hash}")
         except Exception as e:
             print(f"  Broadcast failed (expected on testnet without contract): {e}")
 
