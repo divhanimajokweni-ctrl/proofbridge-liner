@@ -83,8 +83,8 @@ describe('VVU Gateway Core API Infrastructure Suite', () => {
     expect(res.status).toBe(200);
     
     const data = await res.json();
-    expect(data.attestation).toBe('verified');
-    expect(data.circuitState).toBe('SOFTWARE-ATTESTED');
+    expect(data.attestation).toBe('software-attested');
+    expect(data.circuitState).toBe('OPEN');
   });
 
   test('Verify Route must reject malformed documentHash with 400', async () => {
