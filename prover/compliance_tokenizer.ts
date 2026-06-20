@@ -135,9 +135,9 @@ export class ProofBridgeComplianceTokenizer {
       const signingInput = `${encodedHeader}.${encodedPayload}`;
       const ok = crypto.verify(
         "RSA-SHA256",
-        Buffer.from(signingInput),
+        new Uint8Array(Buffer.from(signingInput)),
         publicKeyPem,
-        Buffer.from(encodedSignature, "base64url")
+        new Uint8Array(Buffer.from(encodedSignature, "base64url"))
       );
       if (!ok) return false;
 
@@ -198,7 +198,7 @@ export class ProofBridgeComplianceTokenizer {
     };
 
     const canonicalPayload = canonicalize(payload);
-    const signature = crypto.sign("RSA-SHA256", Buffer.from(canonicalPayload), privateKeyPem).toString("hex");
+    const signature = crypto.sign("RSA-SHA256", new Uint8Array(Buffer.from(canonicalPayload)), privateKeyPem).toString("hex");
 
     const envelope: ComplianceEnvelope = {
       regulatory_affidavit_payload: payload,
@@ -226,9 +226,9 @@ export class ProofBridgeComplianceTokenizer {
 
       return crypto.verify(
         "RSA-SHA256",
-        Buffer.from(canonicalPayload),
+        new Uint8Array(Buffer.from(canonicalPayload)),
         publicKeyPem,
-        Buffer.from(envelope.attestation_signature_proof, "hex")
+        new Uint8Array(Buffer.from(envelope.attestation_signature_proof, "hex"))
       );
     } catch {
       return false;
