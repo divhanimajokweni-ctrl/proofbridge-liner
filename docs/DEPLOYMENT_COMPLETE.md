@@ -130,7 +130,7 @@ To upgrade to **CircuitBreakerV2** (3-of-5 threshold signatures):
 ## Next Actions
 1. Set production environment (Replit Secrets or `.env`) for Polygon Amoy
 2. Deploy live with real POL from faucet
-3. Verify on amoy.polygonscan.com
+3. Verify on amoy.etherscan.io
 4. Call `AssetRegistry.registerAsset()` for each property deed
 5. Monitor Slack channel for alerts
 6. Consider activating TSS quorum for production threshold security

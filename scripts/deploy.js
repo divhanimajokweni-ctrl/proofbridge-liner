@@ -247,7 +247,7 @@ if (Object.keys(deployed).length) {
       deployed,
     });
   for (const [name, addr] of Object.entries(deployed)) {
-    const scanUrl = `https://amoy.polygonscan.com/address/${addr}`;
+    const scanUrl = `https://amoy.etherscan.io/address/${addr}`;
     console.log(`  ${name.padEnd(18)} ${addr}`);
     console.log(`  ${''.padEnd(18)} ${scanUrl}`);
     console.log('');
