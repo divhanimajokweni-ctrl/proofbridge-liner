@@ -236,14 +236,14 @@ export default function ProofBridgeLanding() {
           <span>NETWORK <b>Polygon Amoy testnet</b></span>
           <span>HARDHAT TESTS <b>14/14 pass</b></span>
           <span>ORACLE QUORUM <b>3-of-5</b></span>
-          <span>API WIRE <b className="warn">CircuitBreaker.sol not yet called from /api/verify</b></span>
-          <span>TEE <b className="warn">software-attested (Phase 5 &middot; 75%)</b></span>
+          <span>API WIRE <b>CircuitBreaker.sol wired to /api/verify</b></span>
+          <span>TEE <b className="warn">software-attested (Phase 5 &middot; 80%)</b></span>
           <span>PROOFBRIDGE <b>v0.9 &middot; pilot</b></span>
           <span>NETWORK <b>Polygon Amoy testnet</b></span>
           <span>HARDHAT TESTS <b>14/14 pass</b></span>
           <span>ORACLE QUORUM <b>3-of-5</b></span>
-          <span>API WIRE <b className="warn">CircuitBreaker.sol not yet called from /api/verify</b></span>
-          <span>TEE <b className="warn">software-attested (Phase 5 &middot; 75%)</b></span>
+          <span>API WIRE <b>CircuitBreaker.sol wired to /api/verify</b></span>
+          <span>TEE <b className="warn">software-attested (Phase 5 &middot; 80%)</b></span>
         </div>
       </div>
 
@@ -279,8 +279,8 @@ export default function ProofBridgeLanding() {
               <span className="pass">&#10003; ED25519 signing</span>
               <span className="pass">&#10003; 14/14 Hardhat tests</span>
               <span className="pass">&#10003; Coq/TLA+ formal proofs</span>
-              <span className="pending">&#9679; CircuitBreaker.sol not yet wired to API</span>
-              <span className="pending">&#9679; TEE: software-attested (75%)</span>
+              <span className="pass">&#10003; CircuitBreaker.sol wired to API</span>
+              <span className="pending">&#9679; TEE: software-attested (80%)</span>
             </div>
           </div>
 
@@ -310,7 +310,7 @@ export default function ProofBridgeLanding() {
           <div className="stat-item"><div className="stat-number">14/14</div><div className="stat-label">Tests passing</div></div>
           <div className="stat-item"><div className="stat-number">0.94</div><div className="stat-label">Illustrative AUC</div></div>
           <div className="stat-item"><div className="stat-number">3-of-5</div><div className="stat-label">Oracle quorum</div></div>
-          <div className="stat-item"><div className="stat-number">75%</div><div className="stat-label">TEE phase</div></div>
+          <div className="stat-item"><div className="stat-number">80%</div><div className="stat-label">TEE phase</div></div>
           <div className="stat-item"><div className="stat-number">0</div><div className="stat-label">Pilot disputes</div></div>
         </div>
         <p className="stat-note">&#42; AUC calibrated on an illustrative 11-row dataset, not a production-scale empirical sample. See whitepaper &sect;6.</p>
@@ -329,7 +329,7 @@ export default function ProofBridgeLanding() {
             <div className="step-card">
               <div className="step-badge">ED25519 &middot; signed</div>
               <div className="step-title">2. Verdict signed</div>
-              <p>The Bayesian kernel runs (&mu; = (&alpha;+1)/(&alpha;+&beta;+2)), HMAC-signs the verdict. On-chain anchoring via CircuitBreaker.sol is built and tested — pending wiring into /api/verify.</p>
+              <p>The Bayesian kernel runs (&mu; = (&alpha;+1)/(&alpha;+&beta;+2)), HMAC-signs the verdict. On-chain anchoring via CircuitBreaker.sol is wired to /api/verify — circuit state checked on every request.</p>
               <div className="step-preview">verdict: SAFE &middot; hmac-sha256:8f2c...</div>
             </div>
             <div className="step-card">
@@ -352,9 +352,9 @@ export default function ProofBridgeLanding() {
                   {name:'Phase 0 &middot; Env scaffold',pct:100,color:'var(--status-live)'},
                   {name:'Phase 1 &middot; CircuitBreaker tests',pct:100,color:'var(--status-live)'},
                   {name:'Phase 2 &middot; Deploy Polygon Amoy',pct:100,color:'var(--status-live)'},
-                  {name:'Phase 3 &middot; Wire API &rarr; contract',pct:0,color:'var(--ochre)'},
+                  {name:'Phase 3 &middot; Wire API &rarr; contract',pct:100,color:'var(--status-live)'},
                   {name:'Phase 4 &middot; Mock 3-node quorum',pct:100,color:'var(--status-live)'},
-                  {name:'Phase 5 &middot; TEE + registry',pct:75,color:'var(--ochre)'},
+                  {name:'Phase 5 &middot; TEE + registry',pct:80,color:'var(--ochre)'},
                   {name:'Phase 6 &middot; Coq + TLA+ formal proofs',pct:100,color:'var(--status-live)'},
                 ].map((ph,i) => (
                   <div className="phase-row" key={i}>
@@ -412,13 +412,13 @@ export default function ProofBridgeLanding() {
             <div className="trust-card">
               <div className="step-badge" style={{marginBottom:'14px'}}>Layer 3 &middot; On-chain</div>
               <div className="step-title">3-of-5 oracle quorum</div>
-              <p>CircuitBreaker.sol deployed and formally verified on Amoy. Not yet called from /api/verify — Sprint 1 deliverable.</p>
+              <p>CircuitBreaker.sol deployed, formally verified, and wired to /api/verify. Server-side attestation with on-chain circuit state checks live.</p>
             </div>
           </div>
         </section>
 
         <div className="honesty-box">
-          <strong>Pilot-stage disclosure.</strong> ProofBridge is pre-production. The Bayesian kernel and ED25519 signing are functional and tested. On-chain anchoring (CircuitBreaker.sol) and hardware TEE attestation are built but not fully wired into the live verify endpoint. All figures on this page reflect actual test results — no simulated production volume is presented.
+          <strong>Pilot-stage disclosure.</strong> ProofBridge is pre-production. The Bayesian kernel, ED25519 signing, and on-chain anchoring (CircuitBreaker.sol) are functional, tested, and wired to the live verify endpoint. Hardware TEE attestation is software-simulated while SGX integration completes. All figures on this page reflect actual test results — no simulated production volume is presented.
         </div>
       </div>
 
