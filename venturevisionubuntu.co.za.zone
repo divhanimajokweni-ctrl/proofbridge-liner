@@ -1,0 +1,34 @@
+$ORIGIN venturevisionubuntu.co.za.
+$TTL 3600
+
+; SOA record
+@   IN SOA ns1.host-ww.net. server-admin.cloud2m.co.za. (
+    2026052032 ; Serial
+    3600       ; Refresh
+    1800       ; Retry
+    1209600    ; Expire
+    86400      ; Minimum TTL
+)
+
+; Nameservers
+@       IN NS    ns1.host-ww.net.
+@       IN NS    ns2.host-ww.net.
+
+; A records (Vercel)
+@       IN A     76.76.21.21
+www     IN A     76.76.21.21
+
+; Resend DKIM (TXT)
+resend._domainkey IN TXT "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDQ3b62Iuki4dHg6QQCo2RamTshVFzUmuGteGidwyopvCgpvxhnUUYiIoJqSJdXHFCspp6dSxjh7qbEn3owZM2av2aIpusd1KqK1tE3MnSs4O3OjuHciA/t6sciBYfatPxd69c7UrrxSaSVYrinIozP2iUi4HSVyeJQduJz6MKnkwIDAQAB"
+
+; Resend sending MX (send subdomain)
+send    IN MX    10 feedback-smtp.eu-west-1.amazonses.com.
+
+; Resend SPF (send subdomain)
+send    IN TXT   "v=spf1 include:amazonses.com ~all"
+
+; DMARC policy
+_dmarc  IN TXT   "v=DMARC1; p=none;"
+
+; Resend inbound MX for receiving (optional — uncomment to enable)
+; send  IN MX    20 inbound-smtp.eu-west-1.amazonaws.com.
