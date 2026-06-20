@@ -126,8 +126,11 @@ if (notifier) {
 
 step('Compiling contracts');
 
+const buildPaths = target === 'cb'
+  ? ['contracts/CircuitBreaker.sol', 'contracts/IProofHook.sol']
+  : [];
 const buildResult = spawnSync(
-  FORGE, ['build', '--silent'],
+  FORGE, ['build', '--silent', ...buildPaths],
   { cwd: ROOT, encoding: 'utf8', env: process.env }
 );
 

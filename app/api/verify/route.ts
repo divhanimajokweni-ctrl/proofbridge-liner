@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
         measurement: teeAttestation.measurement,
         pcrHash: teeAttestation.pcrHash,
         signingKeyFingerprint: teeAttestation.signingKeyFingerprint,
+        timestamp: teeAttestation.timestamp,
       },
       timestamp: Date.now(),
       traceparent: req.headers.get('traceparent') || '00-simulatedtraceid1234567890-00',
