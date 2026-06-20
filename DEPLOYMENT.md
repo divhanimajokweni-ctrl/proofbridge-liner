@@ -1,159 +1,144 @@
-# Deployment Guide
+# Deployment Guide — VVU Gateway (Phase 1)
 
-This document reflects the current production operating state for ProofBridge Liner / Venture Vision Ubuntu.
+**Domain:** https://venturevisionubuntu.co.za  
+**CircuitBreaker (Amoy):** `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD`  
+**Email:** `hello@venturevisionubuntu.co.za`  
+**Updated:** 2026-06-20
 
-## Current Production
+---
 
-- Canonical domain: https://venturevisualubuntu.co.za
-- Vercel production deployment: `proofbridge-liner-qcfdfyoch-divhanimajokweni-1651s-projects.vercel.app`
-- Vercel alias: `venturevisualubuntu.co.za`
-- DNS apex target: `76.76.21.21`
-- Health route: https://venturevisualubuntu.co.za/api/health
+## Current Production State
 
-Do not use `venturevisionubuntu.co.za`; that typo domain was removed from Vercel.
+| Component | Value |
+|-----------|-------|
+| Canonical domain | `venturevisionubuntu.co.za` |
+| Vercel project | `proofbridge-liner` |
+| Vercel production alias | `venturevisionubuntu.co.za` |
+| DNS apex | `76.76.21.21` (A record) |
+| DNS nameservers | `ns1.host-ww.net`, `ns2.host-ww.net` |
+| Health endpoint | `https://venturevisionubuntu.co.za/api/health` → HTTP 200 |
+| Verify endpoint | `https://venturevisionubuntu.co.za/api/verify` (Bearer auth via KERNEL_SECRET) |
+| Send-email endpoint | `https://venturevisionubuntu.co.za/api/send-email` (Bearer auth via KERNEL_SECRET) |
+| CircuitBreaker | `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD` (Polygon Amoy, chain 80002) |
+| Email sender | `hello@venturevisionubuntu.co.za` (Resend verified) |
+| Git canonical branch | `compliance-fabric` |
+| Git backup branch | `backup/local-compliance-fabric` |
+
+---
 
 ## Production Deploy
-
-Deploy from a clean branch/worktree, currently `compliance-fabric` for the compliance fabric PR.
 
 ```bash
 npm install
 npm test
-vercel deploy --prod --yes
+npm run build
+vercel --prod --force
 ```
 
-If the production alias does not move automatically, set it explicitly:
-
+If the production alias does not move automatically:
 ```bash
-vercel alias set <deployment-url> venturevisualubuntu.co.za
+vercel alias set <deployment-url> venturevisionubuntu.co.za
 ```
 
 Verify:
+```bash
+curl -I https://venturevisionubuntu.co.za                     # HTTP 200
+curl -I https://venturevisionubuntu.co.za/api/health           # HTTP 200
+curl -H "Authorization: Bearer $KERNEL_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"documentHash":"0xtest","signals":[]}' \
+  https://venturevisionubuntu.co.za/api/verify                 # HTTP 200
+```
+
+---
+
+## DNS Records
+
+Zone managed at Host Africa via WHM / BIND. Zone file: `venturevisionubuntu.co.za.zone`.
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| A | `@` | `76.76.21.21` | 300 |
+| CNAME | `www` | `cname.vercel-dns.com.` | 300 |
+| MX | `send` | `feedback-smtp.eu-west-1.amazonses.com` (priority 10) | 300 |
+| TXT | `@` | `"v=spf1 a mx include:spf.send.eu-west-1.amazonses.com ~all"` | 300 |
+| TXT | `send` | `"v=spf1 include:amazonses.com ~all"` | 300 |
+| TXT | `resend._domainkey` | `"k=rsa;p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."` | 300 |
+| TXT | `_dmarc` | `"v=DMARC1; p=none; rua=mailto:dmarc@venturevisionubuntu.co.za"` | 300 |
+
+---
+
+## Environment Variables (Vercel Production)
+
+| Variable | Type |
+|----------|------|
+| `KERNEL_SECRET` | Sensitive |
+| `RESEND_API_KEY` | Sensitive |
+| `STITCH_WEBHOOK_SECRET` | Sensitive |
+| `POLYGON_AMOY_RPC_URL` | Sensitive |
+| `ORACLE_ADDRESS` | Sensitive (pending) |
+| `CIRCUIT_BREAKER_ADDRESS` | Plain: `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD` |
+
+---
+
+## CircuitBreaker Contract Management
+
+### Deploy (Foundry)
+```bash
+export PRIVATE_KEY=<deployer-key>
+export ORACLE_ADDRESS=<oracle-address>
+export POLYGON_AMOY_RPC_URL=<rpc-url>
+
+node scripts/deploy.js --target cb
+```
+
+### Compile standalone
+```bash
+forge build contracts/CircuitBreaker.sol contracts/IProofHook.sol
+```
+
+### Verify (Polygonscan)
+```bash
+forge verify-contract \
+  --chain-id 80002 \
+  --verifier-url https://api-amoy.polygonscan.com/api \
+  --etherscan-api-key $POLYGONSCAN_API_KEY \
+  <address> \
+  contracts/CircuitBreaker.sol:CircuitBreaker
+```
+
+---
+
+## Test Suite
 
 ```bash
-curl -I https://venturevisualubuntu.co.za
-curl -I https://venturevisualubuntu.co.za/api/health
+npm test                    # Jest unit/integration (4 tests)
+npm run test:e2e            # Playwright E2E
+forge test                  # Foundry contract tests (14 tests)
 ```
 
-Expected: `HTTP/1.1 200 OK`.
-
-## DNS
-
-The active domain is delegated through third-party nameservers:
-
-```txt
-ns1.host-ww.net
-ns2.host-ww.net
-```
-
-Required apex record for Vercel:
-
-```txt
-Type: A
-Name: @
-Value: 76.76.21.21
-TTL: 300 or provider default
-```
-
-Recommended `www` record:
-
-```txt
-Type: CNAME
-Name: www
-Value: cname.vercel-dns.com.
-TTL: 300 or provider default
-```
-
-The repository zone file at `vvv/dns/zone.corrected.bind` should remain aligned to `venturevisualubuntu.co.za`.
-
-## Vercel Routes
-
-Route behavior is defined in `next.config.js` rewrites. `vercel.json` contains no rewrites.
-
-Important routes:
-
-```txt
-/                 -> /vvv/index.html (rewrite)
-/gate-1           -> /vvv/gate-1.html (rewrite)
-/pools/*          -> Ubuntu Pools static journey pages (rewrite)
-/admin/pools      -> /vvv/admin-pools.html (rewrite)
-/api/verify       -> app/api/verify/route.ts (App Router)
-/api/mint         -> app/api/mint/route.ts (App Router)
-/api/contact      -> app/api/contact/route.ts (App Router)
-```
-
-## Replit Runtime
-
-Replit is configured for autoscale deployment:
-
-```txt
-Node module: nodejs-24
-Workflow: Start application
-Command: npm run start
-Deployment target: autoscale
-Run command: npm run start
-Port: 5000
-```
-
-## Compliance Fabric Verification
-
-The TypeScript compliance fabric is build/test verified with Node.js 24:
-
-```bash
-npm run build
-npm test
-```
-
-The test suite validates:
-
-```txt
-1. isolated memory bounds and syntax parse
-2. asymmetric JWT cryptographic verification
-3. SARB/BOP3/ISO 20022 serialization
-4. tamper rejection and timing-safe digest path
-5. final execution correctness
-```
-
-## Key Material
-
-Generate local RSA keys only for local verification or mock SARB testing:
-
-```bash
-npm run keys
-```
-
-Generated files are intentionally ignored:
-
-```txt
-private_key.pem
-public_key.pem
-```
-
-Never commit private keys, wallet keys, API tokens, Vercel tokens, GitHub tokens, Hugging Face tokens, or RPC secrets.
-
-## Legacy Contract Deployment Notes
-
-The Solidity/Foundry contract stack remains in `contracts/`, `script/`, and `test/`.
-
-Use environment variables for all secrets:
-
-```bash
-POLYGON_AMOY_RPC_URL=<rpc-url>
-PRIVATE_KEY=<deployer-private-key>
-CIRCUIT_BREAKER_ADDRESS=<after-deploy>
-ASSET_REGISTRY_ADDRESS=<after-deploy>
-TEE_VERIFIER_ADDRESS=<after-deploy>
-ORACLE_ADDRESS=<oracle-address>
-POLYGONSCAN_API_KEY=<api-key>
-```
-
-Do not place real private keys in documentation or committed env files.
+---
 
 ## Post-Deploy Checklist
 
-1. Run `npm test` locally or in CI.
-2. Deploy with `vercel deploy --prod --yes`.
-3. Alias the deployment to `venturevisualubuntu.co.za`.
-4. Verify apex HTTPS and `/api/health` return 200.
-5. Confirm Vercel domain list contains `venturevisualubuntu.co.za` and not the typo domain `venturevisionubuntu.co.za`.
-6. Confirm Git remotes are token-free before pushing.
+1. `npm test` passes locally
+2. `npm run build` succeeds
+3. `vercel --prod --force` deploys cleanly
+4. `curl -I https://venturevisionubuntu.co.za` → HTTP 200
+5. `curl -I https://venturevisionubuntu.co.za/api/health` → HTTP 200
+6. `/api/verify` returns attestation with on-chain circuit status
+7. `/api/send-email` delivers email (test with known recipient)
+8. DNS records all propagate (DKIM, SPF, MX, DMARC)
+9. No secrets committed to git
+
+---
+
+## Rollback
+
+Baseline deployment: `dpl_6ZEdEz6pyZSwisgnrttbgnhDdeih`
+
+```bash
+vercel rollback --prod
+```
+
+For CircuitBreaker: circuit break is one-way (trip → requires admin reset). See `contracts/CircuitBreaker.sol` for `reset()` with `onlyAdmin`.

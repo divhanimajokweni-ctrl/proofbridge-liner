@@ -1,76 +1,150 @@
-# Roadmap: Current Status & Next Milestones (May 2026)
+# Roadmap — VVU Gateway Phase 1+
 
-## ✅ Completed Milestones
+**Updated:** 2026-06-20  
+**Current Phase:** Phase 1 — Live ✅
 
-### v1.1.1 Hardened Core (May 2026)
-- [x] **Full regulatory compliance stack**: FSCA JS2, FICA SAR, Cybercrimes Act, POPIA, e-DRS Act
-- [x] **Hardware-attested forensic evidence bundling**: SAPS-compliant under Cybercrimes Act 19 of 2020
-- [x] **Production deployment**: Operational with 99.9% uptime, 50,000+ evaluations processed
-- [x] **AMD MI300X TEE integration**: Hardware-attested scoring with PCR0 verification
-- [x] **Automated regulatory reporting**: Real-time FSCA JS2 and FIC SAR generation
+---
 
-### Institutional Adoption Preparation
-- [x] **Standard Bank OneHub outreach materials**: Targeting scripts, meeting agendas, technical demos
-- [x] **Ready-state manifest**: Comprehensive deployment readiness documentation
-- [x] **Forensic preservation skill**: Agentic workflow for SAPS evidence handling
+## ✅ Phase 1: ProofBridge Liner Safety Kernel (Completed — June 2026)
 
-## 🗺️ Next Milestones (Q3 2026)
+All six gates operational in production.
 
-### 1. Institutional Partner Onboarding
-- **Target**: Standard Bank OneHub integration (Tuesday outreach scheduled)
-- **Scope**: 14-day sandbox pilot with real property data
-- **Timeline**: June 2026
-- **Success Metrics**: Pilot completion, partner feedback, regulatory approval path
+### Gate A — Dashboard & Health Monitoring
+- [x] Health endpoint (`/api/health`) returning HTTP 200
+- [x] 6 gate metric endpoints (`/api/metrics/gate-[a-f]`)
+- [x] Watchdog HeartbeatBus with BroadcastChannel + IndexedDB
+- [x] OrchestratorEngine with race-condition-safe recursive `setTimeout`
+- [x] Rate limiting (30 req/min per IP)
+- [x] 4/4 API integration tests passing
 
-### 2. Multi-Bank Consortium Formation
-- **Objective**: Establish federated fraud intelligence via MPC (bank consortium)
-- **Partners**: Standard Bank, Absa, and additional South African institutions
-- **Technology**: Multi-party computation for shared fraud intelligence without data sharing
-- **Timeline**: Q3 2026
-- **Impact**: Industry-wide trust layer reducing systemic risk
+### Gate B — Webhook Infrastructure
+- [x] Stitch webhook endpoint (`/api/webhooks/stitch`)
+- [x] HMAC-SHA256 signature verification (X-VVU-Signature header)
+- [x] Idempotency store with TTL cleanup (in-memory Map, Supabase-ready)
+- [x] 12+ event type handlers (payment, ledger, FX, compliance, etc.)
+- [x] Payload schema validation with error classification
+- [x] Watchdog probe integration for production monitoring
 
-### 3. Advanced Forensic Analytics
-- **Scope**: Longitudinal anomaly detection and repeat-risk actor identification
-- **Features**: Pattern recognition across property portfolios, predictive fraud scoring
-- **Technology**: Machine learning on hardware-attested evidence chains
-- **Timeline**: Q4 2026
-- **Regulatory Impact**: Enhanced FSCA JS2 compliance with predictive reporting
+### Gate C — Compliance & Regulatory
+- [x] FSCA JS2 automated regulatory reporting
+- [x] FICA SAR suspicious activity reporting
+- [x] POPIA compliance framework (data subject rights, privacy impact, records of processing)
+- [x] Cybercrimes Act 19 of 2020 forensic evidence bundling
+- [x] CPA-compliant pool terms and complaints procedure
+- [x] PAIA manual published
+- [x] FSCA crypto-asset framework analysis
 
-### 4. Global Expansion Preparation
-- **Markets**: Evaluate UK, Singapore, Dubai property markets for ProofBridge adoption
-- **Regulatory Mapping**: Adapt compliance frameworks for international jurisdictions
-- **Technology**: Multi-region TEE deployment and cross-border evidence handling
-- **Timeline**: Q1 2027
-- **Business Impact**: International market expansion beyond South Africa
+### Gate D — CircuitBreaker Contract
+- [x] `CircuitBreaker.sol` compiled via Foundry (`forge build`)
+- [x] Deployed to Polygon Amoy at `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD`
+- [x] Oracle address registered: `0x11af8AdDB671F133F500540fC1Dcc0248Ab62DAF`
+- [x] Gas-optimized: initialize ~45k, tripCircuit ~28k, validate ~15k
+- [x] 14/14 Foundry contract tests passing
+- [x] `scripts/deploy.js` with `--target cb` for CircuitBreaker-only deployment
+- [x] Safety Kernel v1.0 frozen — no further changes to core tripping logic
 
-## 📊 Progress Tracking
-- [x] Deploy contracts and TEE infrastructure (v1.1.1 operational)
-- [x] Complete regulatory compliance stack (FSCA JS2, FICA, Cybercrimes Act)
-- [x] Establish forensic evidence capabilities (hardware-attested bundling)
-- [x] Prepare institutional outreach materials (Standard Bank OneHub targeted)
-- [ ] Execute institutional partner pilot (June 2026 target)
-- [ ] Form multi-bank consortium (Q3 2026 target)
-- [ ] Release advanced forensic analytics (Q4 2026 target)
-- [ ] Prepare global expansion (Q1 2027 target)
+### Gate E — Email & Communications
+- [x] Domain `venturevisionubuntu.co.za` verified in Resend
+- [x] DKIM, SPF, MX, DMARC records all verified
+- [x] Test email sent and confirmed delivered
+- [x] `/api/send-email` endpoint with Bearer auth (KERNEL_SECRET)
+- [x] Sending from `hello@venturevisionubuntu.co.za`
+- [x] Resend SDK with lazy initialization
+- [x] DNS managed at Host Africa with BIND zone file
 
-## 🎯 Current Status (May 2026)
-- **Operational**: Production deployment active with 99.9% uptime
-- **Regulatory Ready**: Full compliance automation for South African financial sector
-- **Forensic Capable**: Hardware-attested evidence bundling for SAPS prosecution
-- **Institution Focused**: Outreach materials prepared for Standard Bank OneHub
-- **Performance Verified**: Sub-1ms latency at 500 TPS on AMD MI300X infrastructure
-- Partnership development team
+### Gate F — TEE Attestation
+- [x] Server-side attestation generation (`generateAttestation()`)
+- [x] SHA-256 measurement + ephemeral RSA key fingerprint
+- [x] Client-side verification (`verifyAttestation()`)
+- [x] Timestamp included in attestation response for freshness checks
+- [x] Software-simulated (hardware SGX/SEV-SNP in Phase 5)
 
-## 📈 Success Metrics
-- All contracts deployed and verified
-- Documentation completeness score >90%
-- Security audit with no critical issues
-- Pilot completion with partner sign-off
-- Whitepaper distributed to 50+ regulatory contacts
+---
 
-## 📅 Timeline Overview
-- **Weeks 1-4**: Contract deployments and documentation
-- **Weeks 5-8**: Security review and pilot preparation
-- **Weeks 9-12**: Pilot execution and whitepaper development
+## 🔜 Phase 2: SAFEGRID & Scaling (Target: Q1 2027)
 
-For questions or adjustments to this roadmap, please contact the project lead.
+| Component | Status | Detail |
+|-----------|--------|--------|
+| SAFEGRID Brain | 🔜 Planning | Bayesian posterior-probability threshold (`τ*`) scoring engine. Featherless.ai latency benchmark approved (P95=157ms). |
+| SAFESTAKES | 🔜 Planning | Staking layer for oracle nodes. |
+| Parallel Water Economy | 🔜 Planning | Tokenized water rights and usage tracking. |
+| Automated Scaling Gates | 🔜 Planning | Auto-scaling circuit breaker infrastructure for high-throughput environments. |
+| ProofBridge-Liner Upscale | 🔜 Planning | Multi-chain support, higher TPS. |
+
+**Pre-Phase 2 approvals:**
+- Featherless.ai cleared for live reasoning (Board: ✅ P95 157ms ≤ 200ms threshold).
+- Haridev888 calibration backtest approved (Board: ✅ 100% recall, 0 violations, monotonic).
+- ProofBridge WebWorld verification passed (Board: ✅ 122 checks, 0 violations).
+
+---
+
+## 🔜 Phase 3: Multi-Bank Consortium (Target: Q2 2027)
+
+| Component | Status | Detail |
+|-----------|--------|--------|
+| Institutional Partner Onboarding | 🔜 Planning | Standard Bank OneHub sandbox pilot (14-day, real property data). Materials prepared. |
+| Multi-Bank Consortium Formation | 🔜 Planning | Federated fraud intelligence via multi-party computation. Partners: Standard Bank, Absa, + SA institutions. |
+| Federated MPC Infrastructure | 🔜 Planning | Shared fraud intelligence without data sharing. |
+
+---
+
+## 🔜 Phase 4: Advanced Forensic Analytics (Target: Q3 2027)
+
+| Component | Status | Detail |
+|-----------|--------|--------|
+| Longitudinal Anomaly Detection | 🔜 Planning | Pattern recognition across property portfolios. |
+| Predictive Fraud Scoring | 🔜 Planning | ML on hardware-attested evidence chains. |
+| Enhanced FSCA JS2 Reporting | 🔜 Planning | Predictive regulatory reporting with confidence intervals. |
+
+---
+
+## 🔜 Phase 5: Hardware TEE & Global Expansion (Target: Q4 2027)
+
+| Component | Status | Detail |
+|-----------|--------|--------|
+| Hardware TEE Integration | 🔜 Planning | SGX/SEV-SNP hardware attestation replacing software simulation. |
+| Global Expansion | 🔜 Planning | UK, Singapore, Dubai property markets. Cross-border evidence handling. |
+| Multi-Region Deployment | 🔜 Planning | TEE deployment across geographic regions. |
+
+---
+
+## Key Performance Targets
+
+| Metric | Current (Phase 1) | Target (Phase 2+) |
+|--------|-------------------|-------------------|
+| Contract gas (tripCircuit) | ~28k | ~25k (optimized) |
+| API verify latency (P95) | ~85ms | ~50ms |
+| IPFS quorum resolution | ~1.2s | ~800ms |
+| Email delivery | ~3s | ~2s |
+| Oracle consensus | 1-of-1 (single) | 3-of-5 (threshold) |
+| TPS (estimated) | ~500 | ~5,000 |
+| Uptime SLA | 99.9% | 99.99% |
+
+---
+
+## Success Metrics
+
+- [x] Phase 1 gates: 6/6 passing
+- [x] Test suite: 100% passing (4 API + 14 contract)
+- [x] Documentation completeness: all files updated for Phase 1
+- [x] Security posture: zero critical issues, no secrets in repo
+- [ ] Phase 2 pilot completion with partner sign-off
+- [ ] Multi-bank consortium operational
+- [ ] Hardware TEE attestation live
+- [ ] International market entry
+
+---
+
+## Timeline
+
+```
+Phase 1 (May-Jun 2026)  ████████████████████████████  ✅ COMPLETE
+Phase 2 (Q1 2027)       ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  🔜 Planning
+Phase 3 (Q2 2027)       ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  🔜 Planning
+Phase 4 (Q3 2027)       ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  🔜 Planning
+Phase 5 (Q4 2027)       ░░░░░░░░░░░░░░░░░░░░░░░░░░░░  🔜 Planning
+```
+
+For questions or adjustments to this roadmap, contact the project lead.
+
+See `PROGRESS_LOG.md` for detailed milestone-by-milestone history.
