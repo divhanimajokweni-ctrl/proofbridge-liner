@@ -73,7 +73,7 @@ User / AI Output
 |---|---|---|
 | 00:28 | Top bar: "PROOFBRIDGE — SAFETY KERNEL // ONLINE" | "The kernel is live." |
 | 00:33 | Section 02 — Test Suite: **14/14 PASSED** | "All deterministic tests pass. Gas under 50k per call." |
-| 00:38 | Section 05 — Deployed Contract (Polygon Amoy, chain 80002) | "CircuitBreaker is live on Polygon Amoy. 0-of-5 quorum enforced." |
+| 00:38 | Section 05 — Deployed Contract (Polygon Amoy, chain 80002) | "CircuitBreaker is live on Polygon Amoy. Hard gate enforced: `/api/verify` checks `circuitOpen()` and calls `updateProof` to anchor deed hashes." |
 | 00:44 | Section 08 — Five-node signer quorum | "Five nodes, three signatures required before any on-chain action." |
 | 00:50 | Last Fetcher Run — result badge | "IPFS hash delivery verified across five gateways." |
 
