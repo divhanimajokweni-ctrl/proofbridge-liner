@@ -145,7 +145,7 @@ The ProofBridge Liner MVP has achieved **publication-grade maturity** with froze
 POLYGON_AMOY_RPC_URL=https://rpc-amoy.polygon.technology
 PRIVATE_KEY=0x...                           # deployer private key
 ORACLE_ADDRESS=0x...                        # oracle wallet address
-POLYGONSCAN_API_KEY=...                     # contract verification
+ETHERSCAN_API_KEY=...                     # contract verification
 CIRCUIT_BREAKER_ADDRESS=0x...               # populated after deploy
 
 # Dashboard settings

@@ -150,7 +150,7 @@ function validate(bytes32 assetId, bytes32 expectedHash) external view returns (
 ```bash
 # Polygon Amoy deployment
 POLYGON_AMOY_RPC_URL=https://rpc-amoy.polygon.technology
-POLYGONSCAN_API_KEY=your_api_key
+ETHERSCAN_API_KEY=your_api_key
 PRIVATE_KEY=0xdeployer_private_key
 
 # Contract roles
