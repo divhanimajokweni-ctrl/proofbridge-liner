@@ -43,7 +43,7 @@ module.exports = {
     },
     etherscan: {
         apiKey: {
-            amoy: process.env.POLYGONSCAN_API_KEY || "",
+            amoy: process.env.ETHERSCAN_API_KEY || "",
             sepolia: process.env.ETHERSCAN_API_KEY || "",
         },
         customChains: [
@@ -51,8 +51,8 @@ module.exports = {
                 network: "amoy",
                 chainId: 80002,
                 urls: {
-                    apiURL: "https://api-amoy.polygonscan.com/api",
-                    browserURL: "https://amoy.polygonscan.com",
+                    apiURL: "https://api.etherscan.io/v2/api?chainid=80002",
+                    browserURL: "https://amoy.etherscan.io",
                 },
             },
         ],

@@ -36,6 +36,52 @@ try {
 const ROOT   = path.resolve(__dirname, '..');
 const FORGE  = path.join(ROOT, '.config', '.foundry', 'bin', 'forge');
 
+// Load env from local files when Replit Secrets are not injected into this shell
+function loadEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  try {
+    const content = fs.readFileSync(filePath, 'utf8');
+    for (const line of content.split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      let value = trimmed.slice(eq + 1).trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      if ((value || '').length > 0 && (!(key in process.env) || process.env[key] === '')) {
+        process.env[key] = value;
+      }
+    }
+  } catch (_) {}
+}
+
+loadEnvFile(path.join(ROOT, '.env.production.local'));
+loadEnvFile(path.join(ROOT, '.vercel', '.env.production.local'));
+loadEnvFile(path.join(ROOT, '.env'));
+loadEnvFile(path.join(ROOT, '.env.local'));
+
+if (process.env.PRIVATE_KEY && !process.env.PRIVATE_KEY.startsWith('0x')) {
+  process.env.PRIVATE_KEY = `0x${process.env.PRIVATE_KEY}`;
+}
+
+if (!process.env.ORACLE_ADDRESS && process.env.PRIVATE_KEY) {
+  try {
+    const pk = process.env.PRIVATE_KEY.startsWith('0x') ? process.env.PRIVATE_KEY : `0x${process.env.PRIVATE_KEY}`;
+    const derived = execSync(`${FORGE} wallet address --private-key ${pk}`, {
+      cwd: ROOT,
+      encoding: 'utf8',
+      env: process.env,
+    }).trim();
+    if (derived.startsWith('0x')) {
+      process.env.ORACLE_ADDRESS = derived;
+      info(`Auto-derived ORACLE_ADDRESS=${derived}`);
+    }
+  } catch (_) {}
+}
+
 const SCRIPTS = {
   cb:   'script/DeployCircuitBreaker.s.sol:DeployCircuitBreaker',
   full: 'script/DeployFull.s.sol:DeployFull',
@@ -247,7 +293,7 @@ if (Object.keys(deployed).length) {
       deployed,
     });
   for (const [name, addr] of Object.entries(deployed)) {
-    const scanUrl = `https://amoy.polygonscan.com/address/${addr}`;
+    const scanUrl = `https://amoy.etherscan.io/address/${addr}`;
     console.log(`  ${name.padEnd(18)} ${addr}`);
     console.log(`  ${''.padEnd(18)} ${scanUrl}`);
     console.log('');

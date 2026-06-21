@@ -78,7 +78,7 @@ def deploy_circuit_breaker():
     contract_address = receipt.contractAddress
 
     print(f"CircuitBreaker deployed to: {contract_address}")
-    print(f"https://amoy.polygonscan.com/address/{contract_address}")
+    print(f"https://amoy.etherscan.io/address/{contract_address}")
 
     deployment_info = {
         "network": "polygon-amoy",

@@ -33,10 +33,15 @@ All six gates operational in production.
 - [x] CPA-compliant pool terms and complaints procedure
 - [x] PAIA manual published
 - [x] FSCA crypto-asset framework analysis
+- [x] RMCP v1.0 (Risk Management and Compliance Programme) finalised per FIC Act Section 42
+- [x] Entity-wide ML/TF/PF risk assessment completed
+- [x] Product/services risk assessment matrix documented
+- [x] Client-level risk assessment matrix (PCC 53 aligned) with SDD/NDD/EDD thresholds
+- [x] SAR/SUR filing protocol via goAML documented (15-day deadline, no tipping-off)
 
 ### Gate D — CircuitBreaker Contract
 - [x] `CircuitBreaker.sol` compiled via Foundry (`forge build`)
-- [x] Deployed to Polygon Amoy at `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD`
+- [x] Deployed to Polygon Amoy at `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`
 - [x] Oracle address registered: `0x11af8AdDB671F133F500540fC1Dcc0248Ab62DAF`
 - [x] Gas-optimized: initialize ~45k, tripCircuit ~28k, validate ~15k
 - [x] 14/14 Foundry contract tests passing

@@ -13,7 +13,7 @@ This log records all milestones, deployments, and significant events throughout 
 **Summary:** Phase 1 is fully operational. CircuitBreaker.sol deployed to Polygon Amoy, email infrastructure verified, all 6 gates passing.
 
 **Milestones:**
-- **CircuitBreaker.sol** deployed at `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD` on Polygon Amoy (chain 80002). Compilation verified via Foundry (`forge build`), dry-run deployment confirmed, real deployment with test key simulated at `0xcD8D6962A1BFe5cD5Ec47196dFACa4Bf12Dc06b8`.
+- **CircuitBreaker.sol** deployed at `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` on Polygon Amoy (chain 80002). Compilation verified via Foundry (`forge build`), dry-run deployment confirmed, real deployment with test key simulated at `0xcD8D6962A1BFe5cD5Ec47196dFACa4Bf12Dc06b8`.
 - **`/api/verify`** endpoint — returns on-chain `circuitOpen()` status, Bayesian posterior probability, TEE attestation with timestamp, and quorum result. Rate-limited to 30 req/min per IP.
 - **`/api/send-email`** — Resend SDK wired, sends from `hello@venturevisionubuntu.co.za` via Bearer auth. Tested successfully to `divhanimajokweni@gmail.com`.
 - **Email domain** `venturevisionubuntu.co.za` fully verified in Resend: DKIM, SPF TXT, SPF MX all confirmed.
@@ -260,3 +260,18 @@ For technical details, see the repository documentation:
 - `EXECUTION_REPORT.md` — Board-authorized tactical execution results
 - `DEPLOYMENT.md` — Deployment procedures
 - `SAFETY_KERNEL_CHANGELOG.md` — Smart contract version history
+
+---
+
+## 2026-06-20 — Risk Management and Compliance Programme (RMCP) Finalised
+
+**Summary:** RMCP v1.0 drafted in compliance with Section 42 of the FIC Act for legal practitioner accountable institutions. Entity-wide, product-level, and client-level risk assessments documented. All eight RMCP themes addressed.
+
+**Milestones:**
+- `compliance/rmcp.md` — Complete RMCP covering all eight FIC Act Section 42 requirements (governance, risk assessment, CDD, TFS, PEP controls, account monitoring, reporting, record-keeping).
+- `compliance/risk-assessment-entity-wide.md` — Entity-wide ML/TF/PF risk assessment completed.
+- Product and services risk assessment matrix embedded in RMCP Section 2.2.
+- Client-level risk assessment matrix (aligned with PCC 53) embedded in RMCP Section 2.3 with SDD/NDD/EDD thresholds.
+- Risk indicators for legal practitioners documented per PCC 47A, Guidance Note 4B, PCC 51, PCC 53, PCC 59.
+- SAR/SUR filing protocol via goAML documented (15-day deadline, no tipping-off).
+

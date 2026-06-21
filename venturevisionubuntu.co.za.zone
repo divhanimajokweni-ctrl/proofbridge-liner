@@ -29,6 +29,6 @@ send    IN TXT   "v=spf1 include:amazonses.com ~all"
 
 ; DMARC policy
 _dmarc  IN TXT   "v=DMARC1; p=none;"
-
+         
 ; Resend inbound MX for receiving (optional — uncomment to enable)
 ; send  IN MX    20 inbound-smtp.eu-west-1.amazonaws.com.
