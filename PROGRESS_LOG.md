@@ -13,7 +13,7 @@ This log records all milestones, deployments, and significant events throughout 
 **Summary:** Phase 1 is fully operational. CircuitBreaker.sol deployed to Polygon Amoy, email infrastructure verified, all 6 gates passing.
 
 **Milestones:**
-- **CircuitBreaker.sol** deployed at `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD` on Polygon Amoy (chain 80002). Compilation verified via Foundry (`forge build`), dry-run deployment confirmed, real deployment with test key simulated at `0xcD8D6962A1BFe5cD5Ec47196dFACa4Bf12Dc06b8`.
+- **CircuitBreaker.sol** deployed at `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` on Polygon Amoy (chain 80002). Compilation verified via Foundry (`forge build`), dry-run deployment confirmed, real deployment with test key simulated at `0xcD8D6962A1BFe5cD5Ec47196dFACa4Bf12Dc06b8`.
 - **`/api/verify`** endpoint — returns on-chain `circuitOpen()` status, Bayesian posterior probability, TEE attestation with timestamp, and quorum result. Rate-limited to 30 req/min per IP.
 - **`/api/send-email`** — Resend SDK wired, sends from `hello@venturevisionubuntu.co.za` via Bearer auth. Tested successfully to `divhanimajokweni@gmail.com`.
 - **Email domain** `venturevisionubuntu.co.za` fully verified in Resend: DKIM, SPF TXT, SPF MX all confirmed.

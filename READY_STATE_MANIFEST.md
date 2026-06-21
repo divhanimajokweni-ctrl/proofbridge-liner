@@ -24,7 +24,7 @@
 ### CircuitBreaker Contract
 
 - [x] `CircuitBreaker.sol` compiled via Foundry (`forge build`).
-- [x] Deployed to Polygon Amoy at `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD`.
+- [x] Deployed to Polygon Amoy at `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`.
 - [x] Oracle address registered: `0x11af8AdDB671F133F500540fC1Dcc0248Ab62DAF`.
 - [x] Single-oracle MVP with `updateProof`, `tripCircuit`, `reset`, `validate` functions.
 - [x] Gas-optimized under 50k per operation.
@@ -116,7 +116,7 @@ DNS A venturevisionubuntu.co.za                          76.76.21.21
 
 | Contract | Address | Network |
 |----------|---------|---------|
-| CircuitBreaker.sol | `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD` | Polygon Amoy (80002) |
+| CircuitBreaker.sol | `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` | Polygon Amoy (80002) |
 | Oracle | `0x11af8AdDB671F133F500540fC1Dcc0248Ab62DAF` | Polygon Amoy (80002) |
 
 ## Pre-Flight Configuration
