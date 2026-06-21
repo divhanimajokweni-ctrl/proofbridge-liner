@@ -39,6 +39,6 @@ To disable observability without redeploying:
 3. Verify HeartbeatBus health and Gate B outbox depth (< 100).
 
 ## Rollback Checklist
-- Gate D contracts: pause CircuitBreaker (halts without undo).
+- Gate D contracts: trip CircuitBreaker via oracle wallet (halts all gated transfers; owner can reset).
 - Gate B worker: redeploy previous container tag (outbox is durable).
 - Vercel (Gate A): instant rollback via dashboard/CLI to `dpl_5HUyMiTS2aBphgKJpQKwTJzLRQyd`.
