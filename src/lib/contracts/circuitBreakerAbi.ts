@@ -23,4 +23,14 @@ export const CIRCUIT_BREAKER_ABI = [
     stateMutability: 'view',
     type: 'function',
   },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'assetId', type: 'bytes32' },
+      { internalType: 'bytes32', name: 'deedHash', type: 'bytes32' },
+    ],
+    name: 'updateProof',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
 ] as const;

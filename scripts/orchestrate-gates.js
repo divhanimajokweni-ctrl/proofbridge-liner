@@ -28,9 +28,20 @@ async function runGates() {
     log('Gate C', 'Verifying Ledger Reconciliation stubs...');
     log('Gate C', 'Accounting boundaries: ESTABLISHED');
 
-    // Gate D: FX Oracle
-    log('Gate D', 'Verifying FX Failover circuits...');
-    log('Gate D', 'Market data fallback: READY');
+    // Gate D: CircuitBreaker Contract
+    log('Gate D', 'Verifying CircuitBreaker on-chain state...');
+    try {
+      const { ethers } = require('ethers');
+      const provider = new ethers.JsonRpcProvider(process.env.POLYGON_AMOY_RPC_URL);
+      const { CIRCUIT_BREAKER_ABI } = require('../src/lib/contracts/circuitBreakerAbi');
+      const cb = new ethers.Contract(process.env.CIRCUIT_BREAKER_ADDRESS, CIRCUIT_BREAKER_ABI, provider);
+      const open = await cb.circuitOpen();
+      log('Gate D', open ? 'Circuit OPEN — normal operations' : 'Circuit TRIPPED — transfers halted');
+      if (!open) throw new Error('Gate D tripped');
+    } catch (e) {
+      log('Gate D', 'Verification failed or circuit tripped', false);
+      throw e;
+    }
 
     // Gate E: Compliance
     log('Gate E', 'Verifying KYC/AML integration points...');

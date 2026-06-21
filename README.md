@@ -141,7 +141,7 @@ Phase 1 delivers the **ProofBridge Liner** safety kernel: a live production syst
 | **Gate A** | Dashboard & Health Monitoring | ✅ PASS | 6 gate metrics endpoints, Watchdog heartbeat bus, Orchestrator engine. All 4 API tests passing. |
 | **Gate B** | Webhook Infrastructure | ✅ PASS | Stitch webhook with HMAC verification, idempotency, 12 event types, Watchdog probe integration. |
 | **Gate C** | Compliance & Regulatory | ✅ PASS | FSCA JS2, FICA SAR, POPIA, Cybercrimes Act, CPA, PAIA — all frameworks live and automated. |
-| **Gate D** | CircuitBreaker Contract | ✅ PASS | Deployed on Polygon Amoy at `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`. On-chain verification live. |
+| **Gate D** | CircuitBreaker Contract | ✅ PASS | Deployed on Polygon Amoy at `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`. Hard gate enforced in `/api/verify` and global middleware. `updateProof` anchors deed hashes on-chain. |
 | **Gate E** | Email & Communications | ✅ PASS | Resend-verified domain, DKIM/SPF/DMARC configured, `/api/send-email` operational. |
 | **Gate F** | TEE Attestation | ✅ PASS (Software) | Server-side attestation generation. Hardware SGX integration in Phase 5. |
 
