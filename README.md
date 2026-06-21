@@ -3,7 +3,7 @@
 **Phase 1 — ProofBridge Liner: On-Chain Trust Infrastructure for Tokenized Real-World Assets**
 
 Production: https://venturevisionubuntu.co.za  
-CircuitBreaker (Amoy): `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD`  
+CircuitBreaker (Amoy): `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`  
 Email: `hello@venturevisionubuntu.co.za`  
 Status: **Phase 1 Operational** — 5/5 core gates passing
 
@@ -23,7 +23,7 @@ Phase 1 delivers the **ProofBridge Liner** safety kernel: a live production syst
 
 | Component | Status | Detail |
 |-----------|--------|--------|
-| **CircuitBreaker.sol** | ✅ Deployed | `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD` on Polygon Amoy (chain 80002). Single-oracle MVP with `updateProof`, `tripCircuit`, `reset`, and `validate` view functions. Gas-optimized under 50k per operation. |
+| **CircuitBreaker.sol** | ✅ Deployed | `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` on Polygon Amoy (chain 80002). |
 | **`/api/verify`** | ✅ Operational | Bearer auth via `KERNEL_SECRET`. Accepts `documentHash` + signals, returns on-chain `circuitOpen()` status, Bayesian posterior probability, TEE attestation, and quorum result. |
 | **`/api/mint`** | ✅ Operational | HMAC-signed minting endpoint with `STITCH_WEBHOOK_SECRET`. |
 | **`/api/send-email`** | ✅ Operational | Resend SDK via `hello@venturevisionubuntu.co.za`. Bearer auth via `KERNEL_SECRET`. |
@@ -70,7 +70,7 @@ Phase 1 delivers the **ProofBridge Liner** safety kernel: a live production syst
 
 | Address | Role | Network |
 |---------|------|---------|
-| `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD` | CircuitBreaker.sol | Polygon Amoy |
+| `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` | CircuitBreaker.sol | Polygon Amoy |
 | `0x11af8AdDB671F133F500540fC1Dcc0248Ab62DAF` | Oracle Address | Polygon Amoy |
 
 ---
@@ -141,7 +141,7 @@ Phase 1 delivers the **ProofBridge Liner** safety kernel: a live production syst
 | **Gate A** | Dashboard & Health Monitoring | ✅ PASS | 6 gate metrics endpoints, Watchdog heartbeat bus, Orchestrator engine. All 4 API tests passing. |
 | **Gate B** | Webhook Infrastructure | ✅ PASS | Stitch webhook with HMAC verification, idempotency, 12 event types, Watchdog probe integration. |
 | **Gate C** | Compliance & Regulatory | ✅ PASS | FSCA JS2, FICA SAR, POPIA, Cybercrimes Act, CPA, PAIA — all frameworks live and automated. |
-| **Gate D** | CircuitBreaker Contract | ✅ PASS | Deployed on Polygon Amoy at `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD`. On-chain verification live. |
+| **Gate D** | CircuitBreaker Contract | ✅ PASS | Deployed on Polygon Amoy at `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`. On-chain verification live. |
 | **Gate E** | Email & Communications | ✅ PASS | Resend-verified domain, DKIM/SPF/DMARC configured, `/api/send-email` operational. |
 | **Gate F** | TEE Attestation | ✅ PASS (Software) | Server-side attestation generation. Hardware SGX integration in Phase 5. |
 

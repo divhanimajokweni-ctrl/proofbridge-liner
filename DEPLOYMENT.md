@@ -1,7 +1,7 @@
 # Deployment Guide — VVU Gateway (Phase 1)
 
 **Domain:** https://venturevisionubuntu.co.za  
-**CircuitBreaker (Amoy):** `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD`  
+**CircuitBreaker (Amoy):** `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`  
 **Email:** `hello@venturevisionubuntu.co.za`  
 **Updated:** 2026-06-20
 
@@ -19,7 +19,7 @@
 | Health endpoint | `https://venturevisionubuntu.co.za/api/health` → HTTP 200 |
 | Verify endpoint | `https://venturevisionubuntu.co.za/api/verify` (Bearer auth via KERNEL_SECRET) |
 | Send-email endpoint | `https://venturevisionubuntu.co.za/api/send-email` (Bearer auth via KERNEL_SECRET) |
-| CircuitBreaker | `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD` (Polygon Amoy, chain 80002) |
+| CircuitBreaker | `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` (Polygon Amoy, chain 80002) |
 | Email sender | `hello@venturevisionubuntu.co.za` (Resend verified) |
 | Git canonical branch | `compliance-fabric` |
 | Git backup branch | `backup/local-compliance-fabric` |
@@ -77,7 +77,7 @@ Zone managed at Host Africa via WHM / BIND. Zone file: `venturevisionubuntu.co.z
 | `STITCH_WEBHOOK_SECRET` | Sensitive |
 | `POLYGON_AMOY_RPC_URL` | Sensitive |
 | `ORACLE_ADDRESS` | Sensitive (pending) |
-| `CIRCUIT_BREAKER_ADDRESS` | Plain: `0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD` |
+| `CIRCUIT_BREAKER_ADDRESS` | Plain: `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` |
 
 ---
 
@@ -100,7 +100,7 @@ forge build contracts/CircuitBreaker.sol contracts/IProofHook.sol
 ### Verify (Etherscan)
 
 ```bash
-forge verify-contract --watch --chain amoy 0x58760F29F01421D7fcA4b3C8A100FD80A7E1c2bD \
+forge verify-contract --watch --chain amoy 0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67 \
   src/CircuitBreaker.sol:CircuitBreaker \
   --verifier etherscan \
   --verifier-url "https://api.etherscan.io/v2/api?chainid=80002" \
