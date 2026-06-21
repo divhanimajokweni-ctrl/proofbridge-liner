@@ -47,6 +47,10 @@ All six gates operational in production.
 - [x] 14/14 Foundry contract tests passing
 - [x] `scripts/deploy.js` with `--target cb` for CircuitBreaker-only deployment
 - [x] Safety Kernel v1.0 frozen — no further changes to core tripping logic
+- [x] `/api/verify` enforces `circuitOpen()` as hard gate — `TRIPPED` returns HTTP 423
+- [x] `/api/verify` calls `updateProof(assetId, deedHash)` to anchor hashes on-chain
+- [x] Global middleware enforces Gate D on all routes (fail-closed on trip)
+- [x] TEE attestation produces persistent RSA-SHA256 signature (server-side verifiable)
 
 ### Gate E — Email & Communications
 - [x] Domain `venturevisionubuntu.co.za` verified in Resend
