@@ -1,6 +1,8 @@
 /deer-flow/
 /.env*
 .env*.local
+.wwebjs_auth/
+whatsapp-bridge/.env
 *.log
 .next/
 node_modules/
@@ -15,3 +17,12 @@ broadcast/
 cache/
 lib/
 .env.deployed
+local/share/com.vercel.cli/auth.json
+local/share/com.vercel.cli/config.json
+.env.vercel
+.env.production.local
+.env.production
+.vscode/mcp.json
+.config/gh/hosts.yml
+.config/
+.local/
