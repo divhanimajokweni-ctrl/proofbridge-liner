@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import { createHash, createHmac } from 'node:crypto'
 
-const SECRET = process.env.PROOFBRIDGE_HMAC_SECRET ?? 'dev-secret'
+const proofbridgeHmacSecret = process.env.PROOFBRIDGE_HMAC_SECRET
+if (!proofbridgeHmacSecret) throw new Error('PROOFBRIDGE_HMAC_SECRET required')
+const SECRET = proofbridgeHmacSecret
 
 function randHex(n: number) { return createHash('sha256').update(String(Math.random())).digest('hex').slice(0, n) }
 function betaMean(a: number, b: number) { return (a + 1) / (a + b + 2) }
