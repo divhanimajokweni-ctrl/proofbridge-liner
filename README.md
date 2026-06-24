@@ -1,12 +1,12 @@
-# 🏗️ ProofBridge-Liner
+# 🏗️ ProofBridge-Liner Compliance OS
 
-![Production Ready](https://img.shields.io/badge/status-production%20hardening-blue)
+![Production Ready](https://img.shields.io/badge/status-production-green)
 ![Version](https://img.shields.io/badge/version-2.1.0-informational)
 ![Next.js](https://img.shields.io/badge/Next.js-14.0.4-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
 ![License](https://img.shields.io/badge/license-proprietary-red)
 
-> **Production-grade deterministic verification and compliance runtime for the VVU ecosystem.**
+> **Production-grade deterministic regulatory compliance operating system for the VVU ecosystem.**
 
 ProofBridge-Liner is the execution and evidence layer that transforms state transitions into cryptographically verifiable receipts, enabling replayability, auditability, and compliance across Ubuntu Pools and future financial infrastructure.
 
