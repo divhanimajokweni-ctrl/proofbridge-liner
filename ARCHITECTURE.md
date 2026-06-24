@@ -76,17 +76,12 @@ ProofBridge Liner is a decentralized security system for tokenized real-world as
   - Transaction monitoring
 - **Security**: TSS quorum verification
 
-### Supporting Systems
-
-#### TSS Quorum
-- **Nodes**: 5 independent signers
-- **Threshold**: 3-of-5 for oracle operations
-- **Implementation**: Docker-based for local testing
-
-#### Dashboard (`dashboard/server.js`)
-- **Purpose**: Real-time monitoring interface
-- **Features**: Asset health visualization, circuit status, audit logs
-- **Tech**: Express.js + WebSocket for live updates
+### Integration/Observability (`src/lib/integration/Broadcaster.ts`)
+- **Responsibilities**:
+  - Proactive notification dispatch
+  - Integration with external observability tools (e.g., Google Chat)
+  - Async webhook management
+- **Data Flow**: `Fetcher` -> `Validator` -> `Scorer` -> `Hive` -> `Queen` -> `Broadcaster`
 
 ## Technical Innovations
 
