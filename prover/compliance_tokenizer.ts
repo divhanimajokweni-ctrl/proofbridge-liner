@@ -77,10 +77,10 @@ function timingSafeEqualText(a: string, b: string): boolean {
   const ab = Buffer.from(a);
   const bb = Buffer.from(b);
   if (ab.length !== bb.length) {
-    crypto.timingSafeEqual(Buffer.alloc(32), Buffer.alloc(32));
+    crypto.timingSafeEqual(new Uint8Array(Buffer.alloc(32)), new Uint8Array(Buffer.alloc(32)));
     return false;
   }
-  return crypto.timingSafeEqual(ab, bb);
+  return crypto.timingSafeEqual(new Uint8Array(ab), new Uint8Array(bb));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -120,7 +120,7 @@ export class ProofBridgeComplianceTokenizer {
     };
 
     const signingInput = `${b64urlJson(header)}.${b64urlJson(payload)}`;
-    const signature = crypto.sign("RSA-SHA256", Buffer.from(signingInput), privateKeyPem).toString("base64url");
+    const signature = crypto.sign("RSA-SHA256", new Uint8Array(Buffer.from(signingInput)), privateKeyPem).toString("base64url");
     return `${signingInput}.${signature}`;
   }
 
@@ -133,9 +133,9 @@ export class ProofBridgeComplianceTokenizer {
       const signingInput = `${encodedHeader}.${encodedPayload}`;
       const ok = crypto.verify(
         "RSA-SHA256",
-        Buffer.from(signingInput),
+        new Uint8Array(Buffer.from(signingInput)),
         publicKeyPem,
-        Buffer.from(encodedSignature, "base64url")
+        new Uint8Array(Buffer.from(encodedSignature, "base64url"))
       );
       if (!ok) return false;
 
@@ -196,7 +196,7 @@ export class ProofBridgeComplianceTokenizer {
     };
 
     const canonicalPayload = canonicalize(payload);
-    const signature = crypto.sign("RSA-SHA256", Buffer.from(canonicalPayload), privateKeyPem).toString("hex");
+    const signature = crypto.sign("RSA-SHA256", new Uint8Array(Buffer.from(canonicalPayload)), privateKeyPem).toString("hex");
 
     const envelope: ComplianceEnvelope = {
       regulatory_affidavit_payload: payload,
@@ -224,9 +224,9 @@ export class ProofBridgeComplianceTokenizer {
 
       return crypto.verify(
         "RSA-SHA256",
-        Buffer.from(canonicalPayload),
+        new Uint8Array(Buffer.from(canonicalPayload)),
         publicKeyPem,
-        Buffer.from(envelope.attestation_signature_proof, "hex")
+        new Uint8Array(Buffer.from(envelope.attestation_signature_proof, "hex"))
       );
     } catch {
       return false;
