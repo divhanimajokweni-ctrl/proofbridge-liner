@@ -4,11 +4,11 @@
   "crons": [
     {
       "path": "/api/cron/reconcile-gate-f",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/polygon-listener",
-      "schedule": "* * * * *"
+      "schedule": "0 1 * * *"
     }
   ]
 }
