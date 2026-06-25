@@ -1,230 +1,301 @@
-# VVU Gateway — Venture Vision Ubuntu
+# 🏗️ ProofBridge-Liner Compliance OS
 
-**Phase 1 — ProofBridge Liner: On-Chain Trust Infrastructure for Tokenized Real-World Assets**
+![Production Ready](https://img.shields.io/badge/status-production-green)
+![Version](https://img.shields.io/badge/version-2.1.0-informational)
+![Next.js](https://img.shields.io/badge/Next.js-14.0.4-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
+![License](https://img.shields.io/badge/license-proprietary-red)
 
-Production: https://venturevisionubuntu.co.za  
-CircuitBreaker (Amoy): `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`  
-Email: `hello@venturevisionubuntu.co.za`  
-Status: **Phase 1 Operational** — 5/5 core gates passing
+> **Production-grade deterministic regulatory compliance operating system for the VVU ecosystem.**
 
----
-
-## Overview
-
-VVU Gateway is a regulatory-compliant trust infrastructure layer for tokenized real-world assets (RWAs). It combines on-chain circuit-breaker guarantees with off-chain forensic evidence bundling, Bayesian risk scoring, and hardware-attestation-ready telemetry — purpose-built for South Africa's financial regulatory environment (FSCA, FICA, POPIA, Cybercrimes Act 19 of 2020).
-
-Phase 1 delivers the **ProofBridge Liner** safety kernel: a live production system that anchors document hashes on Polygon Amoy, verifies them through a quorum of decentralized IPFS gateways, and exposes a cryptographically attested `/api/verify` endpoint secured by KERNEL_SECRET bearer authentication.
+ProofBridge-Liner is the execution and evidence layer that transforms state transitions into cryptographically verifiable receipts, enabling replayability, auditability, and compliance across Ubuntu Pools and future financial infrastructure.
 
 ---
 
-## Phase 1 — What's Live
+## 🎯 Current Status
 
-### Core Infrastructure
+| Attribute | Value |
+|-----------|-------|
+| **Phase** | 🔧 Production Hardening |
+| **Runtime** | Next.js 14 · Node.js 20 |
+| **Architecture** | App Router · Supabase · Terraform |
+| **Compliance** | SOC 2 · SAFE/TRIP · Deterministic Replay |
 
-| Component | Status | Detail |
-|-----------|--------|--------|
-| **CircuitBreaker.sol** | ✅ Deployed | `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` on Polygon Amoy (chain 80002). |
-| **`/api/verify`** | ✅ Operational | Bearer auth via `KERNEL_SECRET`. Accepts `documentHash` + signals, returns on-chain `circuitOpen()` status, Bayesian posterior probability, TEE attestation, and quorum result. |
-| **`/api/mint`** | ✅ Operational | HMAC-signed minting endpoint with `STITCH_WEBHOOK_SECRET`. |
-| **`/api/send-email`** | ✅ Operational | Resend SDK via `hello@venturevisionubuntu.co.za`. Bearer auth via `KERNEL_SECRET`. |
-| **`/api/health`** | ✅ Operational | System-wide health check returning status of all subsystems. |
-| **`/api/webhooks/stitch`** | ✅ Operational | HMAC-verified Stitch webhook handler with 12+ event types, idempotency, and Watchdog probe integration. |
-| **Gate A Dashboard Metrics** | ✅ Operational | 6 gate-specific metric endpoints (`/api/metrics/gate-[a-f]`) with inline HMAC self-signing. |
+Core architectural foundations are in place and the project is transitioning from a functional prototype toward a production-grade deterministic runtime.
 
-### Security & Auth
-
-| Component | Status | Detail |
-|-----------|--------|--------|
-| **KERNEL_SECRET** | ✅ Set in Vercel Production | Bearer token for `/api/verify` and `/api/send-email`. Tested end-to-end. |
-| **RESEND_API_KEY** | ✅ Set in Vercel Production | Resend email delivery via AWS SES (eu-west-1). |
-| **STITCH_WEBHOOK_SECRET** | ✅ Set in Vercel Production | HMAC-SHA256 webhook verification. |
-| **TEE Attestation** | ✅ Server-Side (Software-Simulated) | SHA-256 measurement + ephemeral RSA key fingerprint. Hardware SGX integration in Phase 5. |
-| **Rate Limiting** | ✅ Per-IP sliding window | 30 req/min on `/api/verify`, 30 req/min on `/api/send-email`. |
-
-### Compliance & Regulatory
-
-| Component | Status | Detail |
-|-----------|--------|--------|
-| **FSCA JS2** | ✅ Automated | Regulatory reporting for South Africa's financial sector. |
-| **FICA SAR** | ✅ Automated | Suspicious activity reporting aligned to FICA requirements. |
-| **FIC Act RMCP v1.0** | ✅ Documented | Risk Management and Compliance Programme per Section 42, covering governance, risk assessment, CDD, TFS, PEP, monitoring, reporting, record-keeping. |
-| **Entity-Wide Risk Assessment** | ✅ Complete | ML/TF/PF business-level risk assessment with inherent/residual ratings and product risk matrix. |
-| **Client Risk Assessment Matrix** | ✅ Implemented | PCC 53-aligned three-tier risk scoring (SDD/NDD/EDD) with documented thresholds. |
-| **POPIA** | ✅ Framework Live | Data subject rights procedure, information officer appointment, privacy impact assessment, records of processing. |
-| **Cybercrimes Act 19 of 2020** | ✅ Forensic Evidence Bundling | Hardware-attested forensic evidence chains for SAPS-compliant prosecution. |
-| **CPA** | ✅ Compliant | Pool terms FSCA-compliant, complaints procedure published. |
-| **PAIA** | ✅ Manual Published | Promotion of Access to Information Act manual on file. |
-
-### Email Infrastructure
-
-| Component | Status | Detail |
-|-----------|--------|--------|
-| **Domain** | ✅ Verified | `venturevisionubuntu.co.za` verified in Resend. |
-| **Sending Address** | ✅ Live | `hello@venturevisionubuntu.co.za`. |
-| **DKIM** | ✅ Verified | `resend._domainkey` TXT record confirmed. |
-| **SPF** | ✅ Verified | `send` subdomain SPF + MX records live. |
-| **DMARC** | ✅ Live | `p=none` policy (upgrading to `p=quarantine` after sending verified clean). |
-| **DNS Provider** | ✅ Host Africa | WHM-managed BIND zone with all email + web records. |
-
-### Wallet & Deployer
-
-| Address | Role | Network |
-|---------|------|---------|
-| `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` | CircuitBreaker.sol | Polygon Amoy |
-| `0x11af8AdDB671F133F500540fC1Dcc0248Ab62DAF` | Oracle Address | Polygon Amoy |
+**Current focus:**
+- 🛡️ Compliance Fabric completion
+- 📄 Transition Receipt stability
+- ⚡ Circuit Breaker enforcement
+- 🔗 Distributed trace continuity
+- 🔒 Immutable evidence generation
+- 🔁 End-to-end deterministic replay
+- 🌍 Ubuntu Pools production readiness
 
 ---
 
-## Architecture
+## 🧭 North Star
 
-```
-┌─────────────┐     ┌──────────────────┐     ┌──────────────────────┐
-│   Client    │────▶│  /api/verify     │────▶│  CircuitBreaker.sol  │
-│ (Bearer     │     │  KERNEL_SECRET   │     │  circuitOpen()       │
-│  KERNEL_    │     │  auth + rate     │     │  on-chain check      │
-│  SECRET)    │     │  limiting        │     │                      │
-└─────────────┘     └──────────────────┘     └──────────────────────┘
-                           │
-                           ▼
-                    ┌──────────────────┐
-                    │  TEE Attestation │
-                    │  generateAttest- │
-                    │  ation(payload)  │
-                    └──────────────────┘
-                           │
-                           ▼
-                    ┌──────────────────┐
-                    │  Bayesian Scorer │
-                    │  posterior prob  │
-                    │  verdict: SAFE / │
-                    │  TRIP            │
-                    └──────────────────┘
+The primary objective remains unchanged:
 
-┌─────────────┐     ┌──────────────────┐     ┌──────────────────────┐
-│   Client    │────▶│  /api/send-email │────▶│  Resend API          │
-│ (Bearer     │     │  Resend SDK      │     │  hello@venturevision │
-│  KERNEL_    │     │  validates to/   │     │  ubuntu.co.za        │
-│  SECRET)    │     │  subject/html    │     │                      │
-└─────────────┘     └──────────────────┘     └──────────────────────┘
+> Ubuntu Pools operating with real members, real money, and real contribution cycles.
 
-┌─────────────┐     ┌──────────────────┐     ┌──────────────────────┐
-│   Stitch    │────▶│  /api/webhooks/  │────▶│  Watchdog Probes     │
-│   Webhook   │     │  stitch          │     │  + Gate B            │
-│             │     │  HMAC verified   │     │  instrumentation     │
-└─────────────┘     └──────────────────┘     └──────────────────────┘
+Everything else in the repository exists to make that event **cryptographically provable**, **operationally observable**, and **independently auditable**.
+
+---
+
+## 🏛️ Core Architecture
+
+```text
+                 👤 User Action
+                      │
+                      ▼
+             📥 State Transition Request
+                      │
+                      ▼
+              ⚙️ Deterministic Evaluation
+                      │
+                      ▼
+               🛡️ Compliance Fabric
+                      │
+          ┌───────────┴────────────┐
+          │                        │
+          ▼                        ▼
+     📄 Transition Receipt      ⚡ Circuit Breaker
+          │                        │
+          └───────────┬────────────┘
+                      │
+                      ▼
+             🔐 Cryptographic Evidence
+                      │
+                      ▼
+              📚 Immutable Audit Trail
+                      │
+                      ▼
+                 🌍 Ubuntu Pools
 ```
 
 ---
 
-## Tech Stack
+## 🧩 Major Components
+
+### 🛤️ ProofBridge
+Deterministic execution layer responsible for:
+- canonical state transitions
+- reproducible evaluation
+- evidence generation
+- replayability
+- cryptographic integrity
+
+### 🛡️ Compliance Fabric
+Compliance runtime responsible for:
+- deterministic canonicalization
+- payload validation
+- compliance tokenization
+- cryptographic signing
+- signature verification
+- telemetry verification
+- SAFE/TRIP evaluation
+
+**Target properties:**
+- deterministic
+- independently verifiable
+- regulator-friendly
+- replayable
+
+### 📄 Transition Receipts
+Every accepted state transition produces a canonical receipt describing:
+- previous state
+- next state
+- transition hash
+- pipeline hash
+- state hash
+- compliance evidence
+- timestamps
+- trace identifiers
+
+Receipts represent the **authoritative historical record**.
+
+### ⚡ Circuit Breaker Layer
+Protective runtime responsible for:
+- unsafe state interruption
+- policy enforcement
+- deterministic fail-safe behaviour
+- evaluation halting
+- infrastructure degradation response
+
+Circuit breaker outputs become part of the **permanent evidence chain**.
+
+### 💓 Embedded Watchdog
+Operational observability subsystem.
+
+**Includes:**
+- HeartbeatSchema
+- HeartbeatBus
+- WatchdogProbes
+- OrchestratorEngine
+
+**Responsibilities:**
+- operational diagnostics
+- distributed heartbeat monitoring
+- fault classification
+- incident reporting
+- runtime instrumentation
+
+### 🔐 Gate A Infrastructure
+Identity and authentication infrastructure.
+
+**Includes:**
+- Supabase integration
+- cookie remediation
+- redirect loop protection
+- UUID-safe RLS operations
+- authentication health monitoring
+
+### 💳 Gate B Infrastructure
+Pre-registered contribution rail integration.
+
+**Foundation includes:**
+- webhook contracts
+- contribution fault taxonomy
+- ledger integration points
+- reconciliation hooks
+- idempotency support
+
+**Future integrations:**
+- payment providers
+- FX oracle
+- settlement verification
+- contribution lifecycle management
+
+---
+
+## ✅ Production Capabilities
+
+**Implemented:**
+- [x] deterministic canonicalization
+- [x] payload hashing
+- [x] cryptographic signatures
+- [x] telemetry validation
+- [x] internal consistency verification
+- [x] compliance token generation
+- [x] watchdog infrastructure
+- [x] Gate A authentication infrastructure
+- [x] Gate B registration hooks
+- [x] schema v2.1 compatibility
+
+---
+
+## 🚧 Production Hardening Remaining
+
+Before production release:
+
+### Compliance
+- [ ] replay protection
+- [ ] trust infrastructure
+- [ ] key rotation
+- [ ] certificate governance
+- [ ] versioned compliance envelopes
+
+### Evidence
+- [ ] immutable append-only audit chain
+- [ ] historical replay verification
+- [ ] deterministic replay testing
+
+### Runtime
+- [ ] middleware hardening
+- [ ] distributed trace continuity
+- [ ] state transition verification
+- [ ] production telemetry validation
+
+### Operations
+- [ ] production monitoring validation
+- [ ] regional failover verification
+- [ ] infrastructure resilience testing
+
+---
+
+## 🏗️ Infrastructure Stack
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | Next.js 14 App Router, Inline CSS custom properties, AntColonyLoader FX, AdvancedGlobeTelemetry |
-| **Smart Contracts** | Solidity 0.8.20, Foundry (forge), OpenZeppelin |
-| **Blockchain** | Polygon Amoy (chain 80002) |
-| **Auth** | KERNEL_SECRET (Bearer), STITCH_WEBHOOK_SECRET (HMAC-SHA256) |
-| **Email** | Resend SDK → AWS SES (eu-west-1) |
-| **DNS** | Host Africa WHM / BIND |
-| **Deployment** | Vercel (production), Nix (environment) |
-| **Database** | Supabase (PostgreSQL) |
-| **Observability** | OpenTelemetry, Vercel Analytics, Datadog, CloudWatch |
-| **Testing** | Jest, Playwright (E2E) |
-| **Compliance** | FSCA JS2, FICA SAR, POPIA, Cybercrimes Act, CPA, PAIA |
+| **Frontend** | Next.js 14 · React 18 |
+| **Backend** | Next.js API Routes · Supabase |
+| **Database** | Supabase PostgreSQL · RLS |
+| **Auth** | Supabase Auth Helpers |
+| **IaC** | Terraform |
+| **Monitoring** | Datadog · PagerDuty |
+| **Cache** | Upstash Redis |
+| **Testing** | Playwright · Jest · Autocannon |
+| **Deployment** | Vercel |
+
+**Target deployment characteristics:**
+- 🌐 globally distributed
+- ⚡ deterministic
+- 👁️ observable
+- 🔐 cryptographically verifiable
 
 ---
 
-## Phase 1 Gates
+## 🚀 Development
 
-| Gate | Component | Status | Detail |
-|------|-----------|--------|--------|
-| **Gate A** | Dashboard & Health Monitoring | ✅ PASS | 6 gate metrics endpoints, Watchdog heartbeat bus, Orchestrator engine. All 4 API tests passing. |
-| **Gate B** | Webhook Infrastructure | ✅ PASS | Stitch webhook with HMAC verification, idempotency, 12 event types, Watchdog probe integration. |
-| **Gate C** | Compliance & Regulatory | ✅ PASS | FSCA JS2, FICA SAR, POPIA, Cybercrimes Act, CPA, PAIA — all frameworks live and automated. |
-| **Gate D** | CircuitBreaker Contract | ✅ PASS | Deployed on Polygon Amoy at `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`. Hard gate enforced in `/api/verify` and global middleware. `updateProof` anchors deed hashes on-chain. |
-| **Gate E** | Email & Communications | ✅ PASS | Resend-verified domain, DKIM/SPF/DMARC configured, `/api/send-email` operational. |
-| **Gate F** | TEE Attestation | ✅ PASS (Software) | Server-side attestation generation. Hardware SGX integration in Phase 5. |
+### Prerequisites
+- Node.js 20+
+- npm 9+
+- Supabase account
 
----
-
-## Scripts
-
-| Script | Purpose |
-|--------|---------|
-| `npm run dev` | Local dev server |
-| `npm run build` | Production build |
-| `npm start` | Start compiled app |
-| `npm run lint` | ESLint checks |
-| `npm run lint:fix` | Auto-fix lint issues |
-| `npm test` | Jest unit/integration tests |
-| `npm run test:e2e` | Playwright E2E |
-| `npm run keys` | Generate local RSA key pair for SARB mock testing |
-| `node scripts/deploy.js --target cb` | Deploy CircuitBreaker to Polygon Amoy |
-
----
-
-## Local Setup
-
+### Development
 ```bash
-cp .env.example .env.local
-# Set KERNEL_SECRET, RESEND_API_KEY, etc.
-npm install
 npm run dev
 ```
 
-Open `http://localhost:3000` for the marketing landing; `/dashboard` requires an authenticated session.
+### Tests
+```bash
+npm test
+npm run test:e2e
+```
 
----
+### Database
+```bash
+npx supabase db migrate
+```
 
-## Deployment
-
+### Build & Deploy
 ```bash
 npm run build
 vercel --prod --force
 ```
 
-Environment variables are managed via `vercel env add` (sensitive values) and `.env.production` (non-sensitive defaults).
+---
+
+## 📋 Deployment Pipeline
+
+| Stage | Command | Description |
+|-------|---------|-------------|
+| **Typecheck** | `npm run typecheck` | TypeScript validation |
+| **Lint** | `npm run lint` | ESLint checks |
+| **Build** | `npm run build` | Production bundle |
+| **Test** | `npm test` | Unit tests |
+| **E2E** | `npm run test:e2e` | Playwright tests |
+| **Deploy** | `vercel --prod` | Vercel production |
 
 ---
 
-## Phase Roadmap
+## 🎯 Mission
 
-| Phase | Timeline | Scope | Status |
-|-------|----------|-------|--------|
-| **Phase 1** | Current | Ubuntu Pools + ProofBridge + Village OS + ANT Telemetry + Gate A-F | ✅ **Live** |
-| **Phase 2** | Q1 2027 | SAFEGRID, SAFESTAKES, Parallel Water Economy, ProofBridge-Liner upscale, automated scaling gates | 🔜 Planning |
-| **Phase 3** | Q2 2027 | Multi-bank consortium (Standard Bank, Absa), federated fraud intelligence via MPC | 🔜 Planning |
-| **Phase 4** | Q3 2027 | Advanced forensic analytics, longitudinal anomaly detection, predictive fraud scoring | 🔜 Planning |
-| **Phase 5** | Q4 2027 | Hardware TEE (SGX/SEV-SNP) integration, global expansion (UK, Singapore, Dubai) | 🔜 Planning |
+ProofBridge-Liner exists to make critical financial and governance state transitions:
 
----
-
-## Investor Overview
-
-VVU Gateway addresses a **USD 16 trillion+ addressable market** in tokenized real-world assets by solving the fundamental trust problem: how do you know the asset backing a token is authentic and unaltered?
-
-**Key differentiators:**
-1. **On-chain circuit breaker** — not just an oracle, but an enforceable smart contract that halts transfers when document tampering is detected
-2. **Regulatory-first design** — built from day one for South Africa's FSCA, FICA, and POPIA frameworks, with automated reporting
-3. **Forensic-grade evidence** — hardware-attested evidence chains admissible in criminal prosecution (Cybercrimes Act 19 of 2020)
-4. **Multi-gateway quorum** — no single point of failure in IPFS document resolution; 5-gateway diversity with cryptographic hash verification
-5. **Bayesian risk scoring** — posterior-probability threshold model calibrated to historical failure data (100% recall on test set)
-6. **Production live** — not a whitepaper. Deployed contracts, live API endpoints, verified email, operational monitoring
-
-**Current traction:**
-- CircuitBreaker deployed on Polygon Amoy (testnet, mainnet-ready)
-- 5/5 Phase 1 gates passing
-- 4/4 API integration tests passing
-- Email delivery verified via Resend + AWS SES
-- Full regulatory compliance stack operational
-- Standard Bank OneHub outreach materials prepared
-- Board-authorized tactical execution completed (3/3 moves cleared)
+- 🔐 **independently verifiable**
+- 🛡️ **cryptographically provable**
+- 👁️ **operationally observable**
+- 🔁 **deterministically reproducible**
 
 ---
 
-## License
+## 📞 Contact
 
-ProofBridge Liner — Safety Kernel  
-Copyright © 2026 Venture Vision Ubuntu. All rights reserved.
+For inquiries related to production readiness, compliance integration, or partnership discussions, please reach out through the VVU ecosystem channels.
 
-See `RELEASE.md` for the Safety Kernel v1.0 announcement and `SAFETY_KERNEL_CHANGELOG.md` for version history.
+---
+
+*Built with ❤️ for the Ubuntu Pools ecosystem*

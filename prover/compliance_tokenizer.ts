@@ -76,13 +76,11 @@ function sha256Hex(data: string): string {
 function timingSafeEqualText(a: string, b: string): boolean {
   const ab = Buffer.from(a);
   const bb = Buffer.from(b);
-    if (ab.length !== bb.length) {
-      // Use a local alias to avoid the global crypto overload on Node 20 / TS strictness.
-      const timingSafeEqual = crypto.timingSafeEqual.bind(crypto);
-      timingSafeEqual(new Uint8Array(Buffer.alloc(32)), new Uint8Array(Buffer.alloc(32)));
-      return false;
-    }
-    return crypto.timingSafeEqual(new Uint8Array(ab), new Uint8Array(bb));
+  if (ab.length !== bb.length) {
+    crypto.timingSafeEqual(new Uint8Array(Buffer.alloc(32)), new Uint8Array(Buffer.alloc(32)));
+    return false;
+  }
+  return crypto.timingSafeEqual(new Uint8Array(ab), new Uint8Array(bb));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
