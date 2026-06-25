@@ -16,7 +16,8 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "prepare": "bash scripts/install-hooks.sh",
     "precommit": "node scripts/secret-scan-precommit.js",
-    "benchmark": "node scripts/benchmark-mint.js"
+    "benchmark": "node scripts/benchmark-mint.js",
+    "benchmark:noir": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/benchmark-noir.ts"
   },
   "dependencies": {
     "@kilocode/cli": "^7.3.0",
@@ -29,11 +30,14 @@
     "ethers": "^6.13.0",
     "express": "^4.19.2",
     "next": "14.0.4",
+    "poseidon-lite": "^0.3.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@noir-lang/backend_barretenberg": "^0.36.0",
+    "@noir-lang/noir_js": "^0.36.0",
     "@playwright/test": "^1.39.0",
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^14.0.0",

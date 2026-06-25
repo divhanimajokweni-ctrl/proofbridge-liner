@@ -36,7 +36,7 @@ export default function AdminPoolsPage() {
           Signed in as {user.email}
         </p>
         <div style={{ background: '#0F0F0F', border: '1px solid rgba(255,255,255,0.14)', padding: 24, fontFamily: "'IBM Plex Mono',monospace", fontSize: 11 }}>
-          <div style={{ color: '#00C853', marginBottom: 16 }}>// Gate A session active</div>
+          <div style={{ color: '#00C853', marginBottom: 16 }}>{/* Gate A session active */}</div>
           <div style={{ color: 'rgba(255,255,255,0.45)', lineHeight: 2 }}>
             auth.uid(): <span style={{ color: 'rgba(255,255,255,0.88)' }}>{user.id}</span><br />
             email: <span style={{ color: 'rgba(255,255,255,0.88)' }}>{user.email}</span><br />
