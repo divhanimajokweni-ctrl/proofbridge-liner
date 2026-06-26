@@ -1,0 +1,46 @@
+#!/usr/bin/env npx ts-node
+const { BarretenbergBackend } = require('@noir-lang/backend_barretenberg');
+const fs = require('fs');
+const path = require('path');
+
+async function verifyComplianceArtifact() {
+  const artifactPath = process.argv[2];
+  if (!artifactPath) {
+    console.error("❌ Error: Please specify a compliance artifact JSON file path.");
+    process.exit(1);
+  }
+
+  try {
+    const rawData = fs.readFileSync(path.resolve(artifactPath), 'utf8');
+    const artifact = JSON.parse(rawData);
+
+    // Extract structure properties
+    const { proof, publicInputs, circuitJson } = artifact;
+
+    // Instantiate isolated backend for proof cross-checking
+    const backend = new BarretenbergBackend(circuitJson);
+    const rawProofUint8 = Uint8Array.from(Buffer.from(proof, 'hex'));
+
+    console.log("🔍 Verifying proof integrity...");
+    const isStatutorilyValid = await backend.verifyProof({
+      proof: rawProofUint8,
+      publicInputs: publicInputs
+    });
+
+    if (isStatutorilyValid) {
+      console.log("\n=========================================================");
+      console.log("✅ CRITICAL AUDIT STATUS: VERIFIED STATUTORY COMPLIANTATION");
+      console.log(`Anchor State Root: ${publicInputs[0]}`);
+      console.log("=========================================================\n");
+      process.exit(0);
+    } else {
+      console.error("\n❌ CRITICAL CRASH: EVIDENCE MISMATCH OR MANIPULATED PROOF STRUCTURE.");
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error(`❌ System Read Failure: ${err.message}`);
+    process.exit(1);
+  }
+}
+
+verifyComplianceArtifact();

@@ -2,7 +2,10 @@
  * File: src/app/api/health/route.ts
  * Description: Remediated asynchronous cookie invocation wrapper and health reporter.
  */
-import { NextResponse } from 'next/server';import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';import { cookies } from 'next/headers';import { GateACookieFaultProbe, GateAHealthDegradedProbe } from '@/lib/watchdog/WatchdogProbes';
+import { NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { GateACookieFaultProbe, GateAHealthDegradedProbe } from '@/lib/watchdog/WatchdogProbes';
 export async function GET() {
   const checks: Record<string, boolean> = { database: false, auth: false };
   let cookieStore;
@@ -15,7 +18,26 @@ export async function GET() {
     return NextResponse.json({ status: 'DEGRADED', reason: 'ASYNC_COOKIE_FAULT' }, { status: 500 });
   }
 
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            )
+          } catch {
+            // ignored - Server Component context
+          }
+        },
+      },
+    }
+  )
 
   try {
     const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
