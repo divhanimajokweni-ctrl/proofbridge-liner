@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   '/about',
   '/faqs',
   '/ubuntu-pools',
+  '/gateway',
   '/api/health',
   '/api/webhooks',
   '/api/receipts/verify',
