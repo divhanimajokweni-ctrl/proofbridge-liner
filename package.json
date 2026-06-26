@@ -14,7 +14,7 @@
     "supabase:migrate": "supabase db migrate",
     "verify": "node scripts/verify-setup.js",
     "orchestrate": "node scripts/orchestrate-gates.js",
-    "prepare": "bash scripts/install-hooks.sh",
+    "prepare": "bash scripts/install-hooks.sh 2>/dev/null || echo 'hooks skipped in CI'",
     "precommit": "node scripts/secret-scan-precommit.js",
     "benchmark": "node scripts/benchmark-mint.js",
     "benchmark:noir": "npx ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/benchmark-noir.ts"
