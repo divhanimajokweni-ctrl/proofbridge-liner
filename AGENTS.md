@@ -3,9 +3,9 @@
 ## Critical Files
 These files MUST exist and be valid before any deployment or build proceeds:
 
-- `app/api/verify/route.ts` — Run `test -f app/api/verify/route.ts` (expected: OK)
-- `app/api/mint/route.ts` — Run `test -f app/api/mint/route.ts` (expected: OK)
-- `middleware.ts` — Run `test -f middleware.ts` (expected: OK)
+- `src/app/api/verify/route.ts` — Run `test -f src/app/api/verify/route.ts` (expected: OK)
+- `src/app/api/mint/route.ts` — Run `test -f src/app/api/mint/route.ts` (expected: OK)
+- `src/middleware.ts` — Run `test -f src/middleware.ts` (expected: OK)
 - `AGENTS.md` — Run `test -f AGENTS.md` (expected: OK)
 
 ## Pre-Flight Blocking Policy
