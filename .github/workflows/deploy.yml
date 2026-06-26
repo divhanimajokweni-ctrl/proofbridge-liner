@@ -1,0 +1,36 @@
+name: Chaos Test Gate
+
+on:
+  push:
+    branches: [main, compliance-fabric]
+  workflow_dispatch:
+
+jobs:
+  chaos-test:
+    name: Run Chaos Scenario
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: "--max-old-space-size=6144"
+      GITHUB_TOKEN_OVERRIDE_MODE: "enabled"
+      MAX_TOKEN_LENGTH_LIMIT: "520"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Chaos Injection
+        run: |
+          # Randomly select a scenario for staging chaos
+          SCENARIOS=("worker-crash" "redis-down" "db-failure")
+          SCENARIO=${SCENARIOS[$RANDOM % ${#SCENARIOS[@]}]}
+          echo "Running chaos scenario: $SCENARIO"
+          node scripts/chaos/injector.js --scenario $SCENARIO
+
+      - name: Smoke Test
+        run: ./tests/smoke-test.sh
+
+      - name: Rollback on Failure
+        if: failure()
+        continue-on-error: true
+        run: |
+          echo "[Chaos] System did not recover, rolling back..."
+          helm rollback proofbridge 1 -n proofbridge

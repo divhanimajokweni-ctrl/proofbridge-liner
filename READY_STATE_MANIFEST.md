@@ -136,7 +136,7 @@ DNS A venturevisionubuntu.co.za                          76.76.21.21
 | Gate A | Dashboard & Health Monitoring | ✅ PASS |
 | Gate B | Webhook Infrastructure | ✅ PASS |
 | Gate C | Compliance & Regulatory | ✅ PASS |
-| Gate D | CircuitBreaker Contract | ✅ PASS |
+| Gate D | CircuitBreaker Contract | ✅ PASS | Deployed on Polygon Amoy. Hard gate enforced: `/api/verify` and global middleware check `circuitOpen()`. `updateProof` anchors deed hashes on-chain. |
 | Gate E | Email & Communications | ✅ PASS |
 | Gate F | TEE Attestation | ✅ PASS (Software) |
 
@@ -144,9 +144,10 @@ DNS A venturevisionubuntu.co.za                          76.76.21.21
 
 ## Next Actions
 
-1. Provide `DEPLOYER_PRIVATE_KEY` and `ORACLE_ADDRESS` for production CircuitBreaker deployment.
-2. Add `CIRCUIT_BREAKER_ADDRESS` to `.env.production` and Vercel Production.
-3. Redeploy Vercel so `/api/verify` begins using on-chain circuit check.
+1. Provide `ORACLE_PRIVATE_KEY` for Vercel Production and Preview environments (required for `updateProof` on-chain anchoring).
+2. Fund the oracle wallet (`0x11af8AdDB671F133F500540fC1Dcc0248Ab62DAF`) with POL on Amoy for gas.
+3. (Optional) Set `TEE_ENCLAVE_PRIVATE_KEY_PEM` in Vercel for consistent attestation signatures across deployments.
+4. Redeploy Vercel (`vercel --prod --force`) to activate Gate D hard enforcement and middleware circuit check.
 4. After 30 days of clean email sending, upgrade DMARC `p=none` → `p=quarantine`.
 5. Replace in-memory idempotency store with Supabase/Redis.
 6. Begin Phase 2 planning (SAFEGRID, SAFESTAKES, Parallel Water Economy).

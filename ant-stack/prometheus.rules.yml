@@ -1,0 +1,21 @@
+groups:
+- name: zk_alerts
+  rules:
+  - alert: ZKWorkerZeroActivity
+    expr: rate(proof_queue_active_workers[2m]) == 0
+    for: 2m
+    labels:
+      severity: critical
+      tier: infrastructure
+    annotations:
+      summary: "No ZK workers actively processing jobs"
+      description: "Worker pool is idle despite system uptime. Possible crash or queue disconnect."
+  
+  - alert: ZKWorkerMemoryCritical
+    expr: nodejs_heap_size_total_bytes / nodejs_heap_size_limit_bytes > 0.9
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Node.js memory nearing limit"
+      description: "Worker approaching OOM threshold"
