@@ -64,11 +64,4 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -var="vvu_env=production"
-        working-directory: ./src/lib # Assuming terraform files are in src/libservices:
-          tfc-agent:
-            image: hashicorp/tfc-agent:latest
-            container_name: tfc-agent
-            restart: always
-            platform: linux/amd64
-            env_file: .env
-        
+        working-directory: ./src/lib # Assuming terraform files are in src/lib

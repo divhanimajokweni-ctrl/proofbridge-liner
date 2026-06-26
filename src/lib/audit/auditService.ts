@@ -1,5 +1,13 @@
 export type AuditSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export interface AuditChainEntry {
+  id: string;
+  prevHash: string | null;
+  payload: Record<string, unknown>;
+  timestamp: number;
+  chainHash?: string;
+}
+
 export interface AuditEvent {
   id: string
   timestamp: string

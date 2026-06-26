@@ -2,7 +2,7 @@
  * File: src/middleware.ts
  * Description: Loop protection middleware with isolated routes and internal header tracing.
  */
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   '/about',
   '/faqs',
   '/ubuntu-pools',
+  '/gateway',
   '/api/health',
   '/api/webhooks',
   '/api/receipts/verify',
@@ -29,8 +30,26 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient({ req, res });
+  let supabaseResponse = NextResponse.next({ request: req });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request: req })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
   const { data } = await supabase.auth.getSession();
   const session = data?.session;
 
@@ -51,7 +70,7 @@ export async function middleware(req: NextRequest) {
     return loopedResponse;
   }
 
-  return res;
+  return supabaseResponse;
 }
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']

@@ -140,6 +140,12 @@ jobs:
           DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ env.VERCEL_TOKEN }})
           echo "VERCEL_URL=$DEPLOY_URL" >> $GITHUB_ENV
 
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "[CI-CD] Deployment failed, rolling back..."
+          vercel rollback --yes --token=${{ env.VERCEL_TOKEN }}
+
       - name: Run Performance Benchmark
         run: node scripts/benchmark-mint.js
         env:

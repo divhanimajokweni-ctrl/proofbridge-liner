@@ -1,4 +1,14 @@
 {
   "framework": "nextjs",
-  "outputDirectory": ".next"
+  "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/cron/reconcile-gate-f",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/polygon-listener",
+      "schedule": "0 1 * * *"
+    }
+  ]
 }

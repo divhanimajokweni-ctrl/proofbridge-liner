@@ -6,8 +6,19 @@ ProofBridge Liner is a decentralized security system for tokenized real-world as
 
 ## Core Components
 
-### Smart Contracts
+### API Gateway (`src/gateway/`)
+- **Purpose**: Centralized API entry point for prover services and internal/external request routing.
+- **Key Modules**:
+  - `main.py`: FastAPI entry point.
+  - Prover services: `fetcher.js`, `scorer.js`, `validator.js`.
+- **Function**: Standardized API interface and prover service management.
 
+### IPFS Gateways (Node Endpoints)
+- **Purpose**: Document resolution and storage retrieval infrastructure.
+- **Diversity**: 5+ nodes (Protocol Labs, Cloudflare, etc.) to prevent single-point failures.
+
+### Smart Contracts
+...
 #### CircuitBreaker.sol
 - **Purpose**: Oracle-controlled circuit breaker for ERC-20 transfer gating
 - **Key Functions**:
@@ -27,12 +38,12 @@ ProofBridge Liner is a decentralized security system for tokenized real-world as
 
 #### Fetcher (`prover/fetcher.js`)
 - **Responsibilities**:
-  - Multi-gateway IPFS resolution (5+ nodes)
+  - Multi-IPFS Gateway resolution (5+ nodes)
   - SHA-256 hash computation
   - Evidence collection and health scoring
   - Exponential backoff for failures
 - **Output**: Asset status (fresh/mismatch/unreachable)
-
+...
 #### Validator (`prover/validator.js`)
 - **Responsibilities**:
   - Deterministic deed structure validation
@@ -76,17 +87,12 @@ ProofBridge Liner is a decentralized security system for tokenized real-world as
   - Transaction monitoring
 - **Security**: TSS quorum verification
 
-### Supporting Systems
-
-#### TSS Quorum
-- **Nodes**: 5 independent signers
-- **Threshold**: 3-of-5 for oracle operations
-- **Implementation**: Docker-based for local testing
-
-#### Dashboard (`dashboard/server.js`)
-- **Purpose**: Real-time monitoring interface
-- **Features**: Asset health visualization, circuit status, audit logs
-- **Tech**: Express.js + WebSocket for live updates
+### Integration/Observability (`src/lib/integration/Broadcaster.ts`)
+- **Responsibilities**:
+  - Proactive notification dispatch
+  - Integration with external observability tools (e.g., Google Chat)
+  - Async webhook management
+- **Data Flow**: `Fetcher` -> `Validator` -> `Scorer` -> `Hive` -> `Queen` -> `Broadcaster`
 
 ## Technical Innovations
 
