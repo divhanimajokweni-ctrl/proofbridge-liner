@@ -6,7 +6,8 @@
       "dom.iterable",
       "esnext"
     ],
-    "allowJs": false,
+    "allowJs": true,
+    "checkJs": false,
     "skipLibCheck": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
@@ -26,6 +27,15 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@/components/*": [
+        "./components/*"
+      ],
+      "@/utils/*": [
+        "./utils/*"
+      ],
+      "@/prover/*": [
+        "./prover/*"
       ]
     }
   },
@@ -45,6 +55,7 @@
     "**/*.test.ts",
     "**/*.spec.ts",
     "jest.setup.ts",
-    "e2e"
+    "e2e",
+    "scripts/verify-frost.ts"
   ]
 }

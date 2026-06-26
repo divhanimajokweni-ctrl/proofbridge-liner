@@ -3,9 +3,9 @@
 ## Critical Files
 These files MUST exist and be valid before any deployment or build proceeds:
 
-- `app/api/verify/route.ts` — Run `test -f app/api/verify/route.ts` (expected: OK)
-- `app/api/mint/route.ts` — Run `test -f app/api/mint/route.ts` (expected: OK)
-- `middleware.ts` — Run `test -f middleware.ts` (expected: OK)
+- `src/app/api/verify/route.ts` — Run `test -f src/app/api/verify/route.ts` (expected: OK)
+- `src/app/api/mint/route.ts` — Run `test -f src/app/api/mint/route.ts` (expected: OK)
+- `src/middleware.ts` — Run `test -f src/middleware.ts` (expected: OK)
 - `AGENTS.md` — Run `test -f AGENTS.md` (expected: OK)
 
 ## Pre-Flight Blocking Policy
@@ -31,7 +31,7 @@ If any critical file is missing:
 - `scripts/observability.py` — Observability suite (OTel/vendor integrations; runtime-only, excluded from Vercel build)
 
 ## Rollback Checklist
-Use the current live deployment `dpl_6ZEdEz6pyZSwisgnrttbgnhDdeih` as the baseline.
+Use the current live deployment `dpl_HaB2jdXuZM7H7i4wevjSnPgTFgCJ` as the baseline.
 Reserve 3-strike rollback for critical components only (Gate D contracts, SafeKrypte HSM tiers).
 
 If a rollback is required:
@@ -39,7 +39,7 @@ If a rollback is required:
 2. Revert the specific config/toggle for the affected component:
    - Gate D contracts: pause CircuitBreaker (halts without undo).
    - Gate B worker: redeploy previous container tag (outbox is durable).
-   - Vercel (Gate A): instant rollback via dashboard/CLI to `dpl_6ZEdEz6pyZSwisgnrttbgnhDdeih`.
+   - Vercel (Gate A): instant rollback via dashboard/CLI to `dpl_HaB2jdXuZM7H7i4wevjSnPgTFgCJ`.
 3. Verify HeartbeatBus health, Gate B outbox depth (< 100), and CircuitBreaker logs.
 4. Document the incident and root cause before re-enabling forward progress.
 

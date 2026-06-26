@@ -50,8 +50,8 @@ export async function POST(req: NextRequest) {
 
     const assetId = hexToBytes32(effectiveDocHash);
     let circuitOpen = true;
-    let onChainVerified = false;
     let circuitBreakerAddress: string | null = null;
+    let anchorTxHash: string | null = null;
 
     const rpcUrl = process.env.POLYGON_AMOY_RPC_URL;
     const cbAddress = process.env.CIRCUIT_BREAKER_ADDRESS;
@@ -63,11 +63,37 @@ export async function POST(req: NextRequest) {
         const { CIRCUIT_BREAKER_ABI } = await import('@/lib/contracts/circuitBreakerAbi');
         const contract = new ethers.Contract(cbAddress, CIRCUIT_BREAKER_ABI, provider);
         circuitOpen = await contract.circuitOpen();
-        onChainVerified = circuitOpen;
         circuitBreakerAddress = cbAddress;
-      } catch {
-        circuitOpen = true;
-        onChainVerified = false;
+
+        // Gate D hard enforcement: if circuit is tripped, halt immediately
+        if (!circuitOpen) {
+          return NextResponse.json({
+            ok: false,
+            error: 'GATE_D_TRIPPED',
+            detail: 'CircuitBreaker is tripped. No attestation or proof update issued.',
+            circuitState: 'TRIPPED',
+            circuitBreakerAddress,
+          }, { status: 423 });
+        }
+
+        // Anchor deed hash on-chain via updateProof (oracle-gated on contract)
+        const deedHashBytes32 = hexToBytes32(effectiveDocHash);
+        const wallet = new ethers.Wallet(process.env.ORACLE_PRIVATE_KEY!, provider);
+        const contractWithSigner = contract.connect(wallet);
+        const tx = await (contractWithSigner as any).updateProof(assetId, deedHashBytes32);
+        const receipt = await tx.wait();
+        anchorTxHash = receipt.hash;
+      } catch (e) {
+        // In environments without on-chain config, fail closed rather than soft-attest
+        if (rpcUrl && cbAddress) {
+          return NextResponse.json({
+            ok: false,
+            error: 'CIRCUIT_BREAKER_UNREACHABLE',
+            detail: 'On-chain verification configured but call failed.',
+          }, { status: 502 });
+        }
+        // If no env configured at all, proceed with software-attest but mark degraded
+        circuitBreakerAddress = null;
       }
     }
 
@@ -79,17 +105,29 @@ export async function POST(req: NextRequest) {
     const margin = posterior - t;
     const verdict = margin > 0 ? 'SAFE' : 'TRIP';
 
+    // If Bayesian kernel itself trips, halt regardless of circuit state
+    if (verdict === 'TRIP') {
+      return NextResponse.json({
+        ok: false,
+        error: 'BAYESIAN_TRIP',
+        detail: 'Posterior below threshold. Attestation withheld.',
+        posterior: Number(posterior.toFixed(6)),
+        threshold: t,
+        margin: Number(margin.toFixed(6)),
+      }, { status: 423 });
+    }
+
     const teeAttestation = generateAttestation(effectiveDocHash);
 
     return NextResponse.json({
       ok: true,
-      attestation: onChainVerified ? 'verified' : 'software-attested',
+      attestation: circuitBreakerAddress ? 'on-chain-verified' : 'software-attested',
       documentHash: effectiveDocHash,
       deed_hash: effectiveDocHash,
-      circuitState: circuitOpen ? 'OPEN' : 'TRIPPED',
-      circuitBreakerStatus: onChainVerified ? 'ON-CHAIN' : 'SOFTWARE-ATTESTED',
-      quorumResult: '3-of-5-ORACLES-PASSED',
+      circuitState: 'OPEN',
+      circuitBreakerStatus: circuitBreakerAddress ? 'ON-CHAIN' : 'SOFTWARE-ATTESTED',
       circuitBreakerAddress,
+      anchorTxHash,
       posterior: Number(posterior.toFixed(6)),
       threshold: t,
       verdict,
