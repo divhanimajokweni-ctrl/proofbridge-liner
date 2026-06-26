@@ -1,14 +1,14 @@
-# 🏗️ ProofBridge-Liner Compliance OS
+# 🏗️ VVU Gateway OS · ProofBridge-Liner
 
 ![Production Ready](https://img.shields.io/badge/status-production-green)
-![Version](https://img.shields.io/badge/version-2.1.0-informational)
+![Version](https://img.shields.io/badge/version-2.2.0-informational)
 ![Next.js](https://img.shields.io/badge/Next.js-14.0.4-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
 ![License](https://img.shields.io/badge/license-proprietary-red)
 
 > **Production-grade deterministic regulatory compliance operating system for the VVU ecosystem.**
 
-ProofBridge-Liner is the execution and evidence layer that transforms state transitions into cryptographically verifiable receipts, enabling replayability, auditability, and compliance across Ubuntu Pools and future financial infrastructure.
+VVU Gateway OS is the restricted operational dashboard and the execution/evidence layer that transforms state transitions into cryptographically verifiable receipts, enabling replayability, auditability, and compliance across Ubuntu Pools and future financial infrastructure.
 
 ---
 
@@ -20,10 +20,13 @@ ProofBridge-Liner is the execution and evidence layer that transforms state tran
 | **Runtime** | Next.js 14 · Node.js 20 |
 | **Architecture** | App Router · Supabase · Terraform |
 | **Compliance** | SOC 2 · SAFE/TRIP · Deterministic Replay |
+| **Gateway OS** | VVU Gateway OS · 6-entity dashboard · PIN-gate auth |
+| **Live** | https://venturevisionubuntu.co.za/gateway |
 
 Core architectural foundations are in place and the project is transitioning from a functional prototype toward a production-grade deterministic runtime.
 
 **Current focus:**
+- 🖥️ VVU Gateway OS — operational dashboard live
 - 🛡️ Compliance Fabric completion
 - 📄 Transition Receipt stability
 - ⚡ Circuit Breaker enforcement
@@ -78,6 +81,19 @@ Everything else in the repository exists to make that event **cryptographically 
 ---
 
 ## 🧩 Major Components
+
+### 🖥️ VVU Gateway OS (`/gateway`)
+Restricted operational dashboard for the VVU ecosystem. Single-page application with:
+- PIN-gate authentication (4-digit entry verified client-side)
+- 6-entity portfolio overview (Ubuntu Pools, ProofBridge Liner, SafeKrypte, SafeGrid, Ekasi, Lindiwe AI)
+- Live countdown to ProofBridge production release target
+- Entity detail views with metrics and event logs
+- Governance Architecture view (VCT, Deployment Gates A–H, Shareholder Register)
+- Systems Infrastructure view (NATS JetStream, ZK Circuits, Git Protocol, Compliance Gates)
+- Live SAST clock, system pulse bar visualization, health ring
+- Brand design: crimson/gold/void with Syne, IBM Plex Mono, DM Sans type system
+
+**Built from first principles:** brand tokens extracted from VVU brand identity images. No component library — every pixel is hand-authored as a design constant, producing zero visual inconsistency.
 
 ### 🛤️ ProofBridge
 Deterministic execution layer responsible for:
@@ -193,6 +209,7 @@ Pre-registered contribution rail integration.
 ## ✅ Production Capabilities
 
 **Implemented:**
+- [x] VVU Gateway OS — operational dashboard deployed to production
 - [x] deterministic canonicalization
 - [x] payload hashing
 - [x] cryptographic signatures
@@ -240,9 +257,10 @@ Before production release:
 | Layer | Technology |
 |-------|-----------|
 | **Frontend** | Next.js 14 · React 18 |
+| **Gateway OS** | VVU Gateway OS (standalone SPA at /gateway) |
 | **Backend** | Next.js API Routes · Supabase |
 | **Database** | Supabase PostgreSQL · RLS |
-| **Auth** | Supabase Auth Helpers |
+| **Auth** | Supabase Auth Helpers · PIN-gate (client-side) |
 | **IaC** | Terraform |
 | **Monitoring** | Datadog · PagerDuty |
 | **Cache** | Upstash Redis |
@@ -279,6 +297,9 @@ npm run test:e2e
 ```bash
 npx supabase db migrate
 ```
+
+### Gateway OS
+Access at `/gateway` on the deployed application. PIN-authenticated single-page operational dashboard for portfolio monitoring, governance, and systems infrastructure views.
 
 ### Build & Deploy
 ```bash
