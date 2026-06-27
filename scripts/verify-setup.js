@@ -68,7 +68,7 @@ try {
   // Check package.json has required dependencies
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   const requiredDeps = [
-    '@supabase/auth-helpers-nextjs',
+    '@supabase/ssr',
     '@supabase/supabase-js',
     'next',
     'react',
