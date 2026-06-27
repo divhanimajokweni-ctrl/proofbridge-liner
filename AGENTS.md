@@ -31,7 +31,7 @@ If any critical file is missing:
 - `scripts/observability.py` — Observability suite (OTel/vendor integrations; runtime-only, excluded from Vercel build)
 
 ## Rollback Checklist
-Use the current live deployment `dpl_CMSV3hxkyhfRxvG4ftP3mVaC5qX6` as the baseline.
+Use the current live deployment `dpl_DcHSpWbP694GipxsUdKGWQRdYW9d` as the baseline.
 Reserve 3-strike rollback for critical components only (Gate D contracts, SafeKrypte HSM tiers).
 
 If a rollback is required:
