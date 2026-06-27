@@ -6,6 +6,23 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const CIRCUIT_BREAKER_ADDRESS = process.env.CIRCUIT_BREAKER_ADDRESS;
+const POLYGON_AMOY_RPC_URL = process.env.POLYGON_AMOY_RPC_URL;
+
+async function isCircuitTripped(): Promise<boolean> {
+  if (!CIRCUIT_BREAKER_ADDRESS || !POLYGON_AMOY_RPC_URL) return false;
+  try {
+    const { ethers } = await import('ethers');
+    const provider = new ethers.JsonRpcProvider(POLYGON_AMOY_RPC_URL);
+    const { CIRCUIT_BREAKER_ABI } = await import('@/lib/contracts/circuitBreakerAbi');
+    const contract = new ethers.Contract(CIRCUIT_BREAKER_ADDRESS, CIRCUIT_BREAKER_ABI, provider);
+    const open = await contract.circuitOpen();
+    return !open;
+  } catch {
+    return false; // fail open on RPC error to avoid self-inflicted outage
+  }
+}
+
 // Gate A Remediation: Explicit isolation of routing endpoints to prevent loops
 const PUBLIC_PATHS = [
   '/',
@@ -24,6 +41,14 @@ const PUBLIC_PATHS = [
 ];
 const MAX_REDIRECTS = 5;
 export async function middleware(req: NextRequest) {
+  const tripped = await isCircuitTripped();
+  if (tripped) {
+    return NextResponse.json(
+      { error: 'GATE_D_TRIPPED', detail: 'Global circuit breaker is active. Service halted.' },
+      { status: 423 }
+    );
+  }
+
   const { pathname } = req.nextUrl;
 
   if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
