@@ -697,7 +697,7 @@ function GovernanceView() {
           SHAREHOLDER REGISTER
         </div>
         {[
-          {name:"Mihle Iviwe Majokweni (Mino)", role:"Founder · Absolute Veto", pct:"75%", vc:C.gold},
+          {name:"Mihle Iviwe 'Divhani' Majokweni", role:"Founder & Chief Architect", pct:"75%", vc:C.gold},
           {name:"Mila",                          role:"Shareholder",              pct:"5%",  vc:C.t1},
           {name:"Enoch",                         role:"Shareholder",              pct:"5%",  vc:C.t1},
           {name:"Employee Fund",                 role:"Charter Mandate",          pct:"15%", vc:C.t2},
