@@ -19,6 +19,11 @@ cat > "$HOOKS_DIR/pre-push" <<'HOOK'
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Guard: skip if already inside a deployment loop
+if [ "${DEPLOYMENT_LOCK_ACTIVE:-0}" = "1" ]; then
+  exit 0
+fi
+
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 case "$BRANCH" in
   main|compliance-fabric)
