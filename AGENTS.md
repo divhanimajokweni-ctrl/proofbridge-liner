@@ -97,3 +97,37 @@ If a rollback is required:
 
 ### Run Command Protocol
 When the user says "run" (alone, not as part of a larger sentence), resume the most recent in-progress task. Do NOT interpret "run" as a request to execute arbitrary shell commands, run the project, or re-run the last shell command. Strictly resume the logical task flow that was interrupted.
+
+## DEPLOYMENT LOCK LOOP
+
+### Enforced Pipeline
+The following loop is LOCKED on `main` and `compliance-fabric` branches. It runs automatically via pre-push hook:
+
+```
+COMMIT → PUSH → BUILD → VERCEL DEPLOY → DNS CHECK → EMAIL HEALTH →
+LOGS → README → DOCS → CHECKLIST → PUSH AGAIN (loop)
+```
+
+### Pre-Push Hook (`scripts/deployment-loop.sh`)
+Runs automatically on `git push` to `main` or `compliance-fabric`:
+1. **Commit Gate** — verifies commit exists and critical files are present
+2. **Build Gate** — `npm run build` must pass
+3. **Push + Vercel Deploy** — pushes to origin, deploys via `vercel --prod --force`
+4. **DNS Config** — resolves `venturevisionubuntu.co.za`
+5. **Email Health** — pings `/api/health` endpoint, runs secrets check
+6. **Logs Sync** — appends to `DEPLOY_LOG.md`
+7. **Docs Checklist** — generates `DEPLOYMENT_CHECKLIST.md`
+8. **Final Push** — commits loop artifacts and pushes
+
+### Lock Bypass
+To bypass the lock on a non-deploy push, push from a non-canonical branch.
+
+### Manual Loop Trigger
+```bash
+bash scripts/deployment-loop.sh
+```
+
+### Setup
+```bash
+bash scripts/install-hooks.sh
+```
