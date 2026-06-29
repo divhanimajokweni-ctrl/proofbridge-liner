@@ -135,7 +135,7 @@ forge test                  # Foundry contract tests (14 tests)
 
 ## Rollback
 
-Baseline deployment: `dpl_6ZEdEz6pyZSwisgnrttbgnhDdeih`
+Baseline deployment: `dpl_NBqotyxk4Rz4ikaNHwhnHroGuA97`
 
 ```bash
 vercel rollback --prod
