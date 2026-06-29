@@ -6,6 +6,9 @@
 # =============================================================================
 set -euo pipefail
 
+# Prevent recursive hook invocation
+export DEPLOYMENT_LOCK_ACTIVE=1
+
 LOCK_FILE=".deploy-lock"
 LOOP_LOG="deploy-loop.log"
 RED='\033[0;31m'
