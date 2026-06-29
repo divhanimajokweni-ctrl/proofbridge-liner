@@ -24,9 +24,12 @@
     },
     "slack": {
       "enabled": true,
+      "mode": "socket",
       "accounts": {
         "default": {
-          "enabled": true
+          "enabled": true,
+          "appToken": { "source": "env", "provider": "default", "id": "SLACK_APP_TOKEN" },
+          "botToken": { "source": "env", "provider": "default", "id": "SLACK_BOT_TOKEN" }
         }
       }
     },
@@ -47,8 +50,11 @@
   "mcp": {
     "servers": {
       "gcp": {
-        "type": "mcp",
-        "config": "./mcp/gcp-server.yaml",
+      "command": "node",
+      "args": ["/home/runner/workspace/mcp/gcp-server.js"],
+      "env": {
+        "GCP_PROJECT_ID": "vvu-prod-2026"
+      },
         "allow_tools": [
           "gcloud_exec",
           "terraform_exec",
