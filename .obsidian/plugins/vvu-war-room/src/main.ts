@@ -65,6 +65,8 @@ export default class VvuWarRoomPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
 
+    this.loadStyles();
+
     // Register War Room view
     this.registerView(
       WAR_ROOM_VIEW_TYPE,
@@ -109,15 +111,16 @@ export default class VvuWarRoomPlugin extends Plugin {
       callback: () => this.searchCompliance(),
     });
 
-    // Command: Trigger gateway event
+    // Command: Ping gateway health
     this.addCommand({
-      id: "trigger-gateway-event",
-      name: "Send test event to OpenClaw gateway",
-      callback: () => this.sendGatewayEvent(),
+      id: "ping-gateway",
+      name: "Ping OpenClaw gateway",
+      callback: () => this.pingGateway(),
     });
 
     // Status bar
     this.statusBarItem = this.addStatusBarItem();
+    this.statusBarItem.addClass("vvu-status-bar");
     this.updateStatusBar();
 
     // Settings tab
@@ -126,6 +129,15 @@ export default class VvuWarRoomPlugin extends Plugin {
 
   onunload() {
     // views are disposed automatically
+  }
+
+  private loadStyles() {
+    const style = document.createElement("style");
+    style.textContent = `
+      .vvu-status-bar { color: #8b949e; }
+      .vvu-status-live { color: #3fb950; }
+    `;
+    document.head.appendChild(style);
   }
 
   // ─── Views ────────────────────────────────────────────────────────────────
@@ -234,36 +246,37 @@ export default class VvuWarRoomPlugin extends Plugin {
   }
 
   // ─── OpenClaw Gateway Integration ──────────────────────────────────────────
-  private async sendGatewayEvent() {
+  private async pingGateway() {
     if (!this.settings.openclawEnabled) {
       new Notice("OpenClaw integration disabled in settings");
       return;
     }
 
-    const url = `${this.settings.gatewayUrl}/api/event`;
+    const url = `${this.settings.gatewayUrl}/health`;
     try {
       const res = await fetch(url, {
-        method: "POST",
+        method: "GET",
         headers: {
-          "Content-Type": "application/json",
           ...(this.settings.gatewayToken
             ? { Authorization: `Bearer ${this.settings.gatewayToken}` }
             : {}),
         },
-        body: JSON.stringify({
-          source: "vvu-war-room-plugin",
-          type: "manual-test",
-          timestamp: new Date().toISOString(),
-        }),
       });
 
-      if (res.ok) {
-        new Notice("Gateway event sent successfully");
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        new Notice("Gateway is live ✓");
+        this.statusBarItem.setText(`VVU | OpenClaw: LIVE`);
+        this.statusBarItem.addClass("vvu-status-live");
       } else {
         new Notice(`Gateway responded ${res.status}`);
+        this.statusBarItem.setText(`VVU | OpenClaw: ${res.status}`);
+        this.statusBarItem.removeClass("vvu-status-live");
       }
     } catch (e) {
-      new Notice(`Gateway error: ${(e as Error).message}`);
+      new Notice(`Gateway unreachable: ${(e as Error).message}`);
+      this.statusBarItem.setText(`VVU | OpenClaw: DOWN`);
+      this.statusBarItem.removeClass("vvu-status-live");
     }
   }
 
