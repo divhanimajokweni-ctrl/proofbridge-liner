@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createHash, createHmac } from 'node:crypto'
 
-const proofbridgeHmacSecret = process.env.PROOFBRIDGE_HMAC_SECRET
-if (!proofbridgeHmacSecret) throw new Error('PROOFBRIDGE_HMAC_SECRET required')
-const SECRET = proofbridgeHmacSecret
+export const dynamic = 'force-dynamic'
+
+function getSecret() {
+  const s = process.env.PROOFBRIDGE_HMAC_SECRET
+  if (!s) throw new Error('PROOFBRIDGE_HMAC_SECRET required')
+  return s
+}
 
 function randHex(n: number) { return createHash('sha256').update(String(Math.random())).digest('hex').slice(0, n) }
 function betaMean(a: number, b: number) { return (a + 1) / (a + b + 2) }
@@ -26,7 +30,7 @@ export async function GET() {
     return `${String(d.getHours()).padStart(2,'0')}:00`
   })
 
-  const hmac = createHmac('sha256', SECRET).update(JSON.stringify({ avgMu, rejectRate, ts: now })).digest('hex')
+  const hmac = createHmac('sha256', getSecret()).update(JSON.stringify({ avgMu, rejectRate, ts: now })).digest('hex')
 
   return NextResponse.json({
     statusLabel: 'ACTIVE',

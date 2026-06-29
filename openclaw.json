@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/OpenClaw/OpenClaw/main/config.schema.json",
+  "meta": {
+    "lastTouchedVersion": "2026.6.10",
+    "lastTouchedAt": "2026-06-28T21:52:42.968Z"
+  },
+  "gateway": {
+    "mode": "local",
+    "port": 18789,
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": "vvu-war-room-2026-local"
+    }
+  },
+  "channels": {
+    "whatsapp": {
+      "enabled": true,
+      "accounts": {
+        "default": {
+          "enabled": true
+        }
+      }
+    },
+    "slack": {
+      "enabled": true,
+      "accounts": {
+        "default": {
+          "enabled": true
+        }
+      }
+    },
+    "googlechat": {
+      "enabled": true,
+      "accounts": {
+        "default": {
+          "enabled": true
+        }
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "workspace": "/home/runner/.openclaw/workspace"
+    }
+  },
+  "mcp": {
+    "servers": {
+      "gcp": {
+        "type": "mcp",
+        "config": "./mcp/gcp-server.yaml",
+        "allow_tools": [
+          "gcloud_exec",
+          "terraform_exec",
+          "gemini_cli",
+          "datadog_alert"
+        ],
+        "rbac": [
+          "+276203506594",
+          "core"
+        ]
+      }
+    }
+  },
+  "env": {
+    "vars": {
+      "WHATSAPP_BRIDGE_PORT": "3456",
+      "WHATSAPP_EXISTING_BRIDGE": "whatsapp-bridge/server.js",
+      "GCP_PROJECT_ID": "vvu-prod-2026"
+    }
+  },
+  "plugins": {
+    "entries": {
+      "googlechat": {
+        "enabled": true
+      }
+    }
+  }
+}

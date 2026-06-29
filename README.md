@@ -1,33 +1,53 @@
-# 🏗️ ProofBridge-Liner Compliance OS
+# VVU · Venture Vision Ubuntu
 
-![Production Ready](https://img.shields.io/badge/status-production-green)
-![Version](https://img.shields.io/badge/version-2.1.0-informational)
+> **If you're Mino (the founder), start here → [`FOUNDERS_VIEW.md`](./FOUNDERS_VIEW.md)**  
+> Quick progress → [`PROGRESS_LOG.md`](./PROGRESS_LOG.md)
+
+![Status](https://img.shields.io/badge/status-production-green)
 ![Next.js](https://img.shields.io/badge/Next.js-14.0.4-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
-![License](https://img.shields.io/badge/license-proprietary-red)
 
-> **Production-grade deterministic regulatory compliance operating system for the VVU ecosystem.**
-
-ProofBridge-Liner is the execution and evidence layer that transforms state transitions into cryptographically verifiable receipts, enabling replayability, auditability, and compliance across Ubuntu Pools and future financial infrastructure.
+**ProofBridge-Liner** — the compliance and verification layer for Ubuntu Pools and VVU's financial infrastructure.
 
 ---
 
-## 🎯 Current Status
+## Quick Navigation
+
+| For | Go to |
+|----|-------|
+| Founder dashboard (10-second status) | [`FOUNDERS_VIEW.md`](./FOUNDERS_VIEW.md) |
+| Weekly progress | [`PROGRESS_LOG.md`](./PROGRESS_LOG.md) |
+| Daily founder checklist | [`FOUNDERS_VIEW.md#daily-founder-checklist`](./FOUNDERS_VIEW.md#daily-founder-checklist) |
+| Daily agent startup checklist | [`FOUNDERS_VIEW.md#daily-agent-checklist`](./FOUNDERS_VIEW.md#daily-agent-checklist) |
+| AI agent rules | [`AGENTS.md`](./AGENTS.md) |
+| System architecture | [`docs/architecture/`](./docs/architecture/) |
+| Research & whitepapers | [`docs/research/`](./docs/research/) |
+| Deployment & operations | [`docs/operations/`](./docs/operations/) |
+| Past reports & chronicles | [`docs/progress/`](./docs/progress/) |
+| Social / outreach drafts | [`docs/social/`](./docs/social/) |
+| Governance & company | [`docs/governance/`](./docs/governance/) |
+| Legal & compliance | [`docs/legal/`](./docs/legal/) |
+
+---
+
+## What This Project Does
+
+- **Ubuntu Pools** — community savings circles with automated contribution tracking
+- **ProofBridge** — cryptographic verification for every transaction (ZK proofs, smart contracts, audit trail)
+- **WhatsApp bridge** — members interact via WhatsApp
+- **Compliance OS** — SOC 2 aligned, all state transitions cryptographically verifiable
+
+---
+
+## Current Status
 
 | Attribute | Value |
 |-----------|-------|
-| **Phase** | 🔧 Production Hardening |
+| **Phase** | Production Hardening |
 | **Runtime** | Next.js 14 · Node.js 20 |
-| **Architecture** | App Router · Supabase · Terraform |
-| **Compliance** | SOC 2 · SAFE/TRIP · Deterministic Replay |
-
-Core architectural foundations are in place and the project is transitioning from a functional prototype toward a production-grade deterministic runtime.
-
-**Current focus:**
-- 🛡️ Compliance Fabric completion
-- 📄 Transition Receipt stability
-- ⚡ Circuit Breaker enforcement
-- 🔗 Distributed trace continuity
+| **Main branch** | `compliance-fabric` |
+| **Next release** | 2026-07-30 |
+| **DNS** | venturevisionubuntu.co.za (Vercel + Resend) |
+| **Email** | hello@venturevisionubuntu.co.za (Resend) |
 - 🔒 Immutable evidence generation
 - 🔁 End-to-end deterministic replay
 - 🌍 Ubuntu Pools production readiness
@@ -41,6 +61,59 @@ The primary objective remains unchanged:
 > Ubuntu Pools operating with real members, real money, and real contribution cycles.
 
 Everything else in the repository exists to make that event **cryptographically provable**, **operationally observable**, and **independently auditable**.
+
+---
+
+## 🗺️ Repository Map
+
+```
+📁 root (77 entries — everything relevant, nothing more)
+│
+├── 📄 README.md              ← Entry point (this file)
+├── 📄 FOUNDERS_VIEW.md       ← 10-second founder dashboard
+├── 📄 PROGRESS_LOG.md        ← Weekly progress log
+│
+├── 📄 AGENTS.md              ← SDD orchestration manifest (loaded by AI)
+├── 📄 CLAUDE.md              ← Lindiwe agent grounding rules
+├── 📄 MEMORY.md              ← Working set index
+│
+├── 📁 app/                   ← Next.js app — pages, API routes, UI
+├── 📁 src/                   ← Core logic — middleware, watchdog, compliance
+├── 📁 components/            ← Shared React components
+├── 📁 public/                ← Static assets (HTML gates, images)
+│   └── 📁 vvv/               ← VVV landing pages (proofbridge, index, gate-1)
+│
+├── 📁 docs/                  ← All documentation
+│   ├── 📁 architecture/      ← ADRs, system design
+│   ├── 📁 governance/        ← Company structure, shareholder agreements
+│   ├── 📁 legal/             ← POPIA, FICA, FSCA, CPA compliance docs
+│   ├── 📁 operations/        ← Deployment, runbooks, security
+│   ├── 📁 progress/          ← Archived reports, chronicles
+│   ├── 📁 research/          ← Whitepapers, papers, analysis
+│   └── 📁 social/            ← Outreach drafts, strategy
+│
+├── 📁 infra/                 ← Docker, cloud-init, droplet scripts
+├── 📁 scripts/               ← Build, test, audit utility scripts
+├── 📁 config/                ← JSON configs (maturity-gates, manifest, skills-lock)
+│
+├── 📁 whatsapp-bridge/       ← WhatsApp bot (whatsapp-web.js, port 3456)
+├── 📁 openclaw.json          ← Gateway + channel config (port 18789)
+├── 📁 mcp/                   ← MCP server config (GCP brain)
+│
+├── 📁 contracts/             ← Solidity smart contracts (SafetyKernel, TEEVerifier)
+├── 📁 circuits/              ← ZK circuit artifacts
+├── 📁 proofs/                ← Proof outputs
+├── 📁 prover/                ← Prover logic (scorer, fetcher, validator)
+│
+├── 📁 .kilo/                 ← Kilo CLI config (agents, commands, skills)
+├── 📁 .agents/               ← Shared agent skills (SDD, compliance, architecture)
+│
+├── 📁 supabase/              ← Database migrations, seed files
+├── 📁 auth/                  ← Auth-related files
+│
+├── 📁 archive/               ← Dead/experimental code (kept for reference)
+└── 📁 active/                ← SDD workflow files (INVESTIGATION.md, PLAN.md, etc.)
+```
 
 ---
 

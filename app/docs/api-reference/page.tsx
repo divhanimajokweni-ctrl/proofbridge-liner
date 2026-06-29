@@ -48,6 +48,49 @@ x-stitch-signature: sha256=<64-char-hex>
 }`}
         </pre>
 
+        <h2>POST /api/agent/converse</h2>
+        <p>Agent conversation loop — send a message and receive an AI response</p>
+        <pre className="bg-gray-800 p-4 rounded-lg text-sm">
+{`POST /api/agent/converse
+Authorization: Bearer <KERNEL_SECRET>
+x-internal-request: true  (skip auth for gateway internal use)
+
+{
+  "message": "What is the status of Gate D?",
+  "threadId": "optional-thread-id-for-continuing",
+  "to": "optional@email.com (sends response via email)"
+}
+
+{
+  "ok": true,
+  "threadId": "thread_1712345678901",
+  "content": "Gate D (GovernanceAnchor.sol) is deployed on Polygon Amoy...",
+  "model": "mistral-small-latest",
+  "usage": { ... }
+}`}
+        </pre>
+
+        <h2>GET /api/agent/converse</h2>
+        <p>List conversation threads or retrieve a specific thread</p>
+        <pre className="bg-gray-800 p-4 rounded-lg text-sm">
+{`GET /api/agent/converse?threadId=<id>
+Authorization: Bearer <KERNEL_SECRET>
+
+{
+  "ok": true,
+  "conversation": {
+    "threadId": "thread_...",
+    "to": "user@email.com",
+    "messages": [
+      { "role": "user", "content": "...", "timestamp": 123 },
+      { "role": "assistant", "content": "...", "timestamp": 124 }
+    ],
+    "createdAt": 123,
+    "updatedAt": 124
+  }
+}`}
+        </pre>
+
         <h2>GET /api/health</h2>
         <p>System health check</p>
         <pre className="bg-gray-800 p-4 rounded-lg text-sm">
@@ -58,6 +101,7 @@ x-stitch-signature: sha256=<64-char-hex>
   "version": "2.1.0",
   "services": {
     "gateway": "online",
+    "agent": "online",
     "pools": "online",
     "proofbridge": "online"
   }

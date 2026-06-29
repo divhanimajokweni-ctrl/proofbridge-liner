@@ -13,6 +13,12 @@
 - ProofBridge (receipting + anchoring simulation)
 - ANT Telemetry tickers + health indicators
 - Gate-1 flow evaluation placeholder UI
+- Agent Loop — conversational AI interface via Mistral with email response loop
+  - `app/api/agent/converse/route.ts` — conversation API with thread persistence
+  - `src/lib/agent/conversation-store.ts` — file-backed conversation store
+  - Gateway OS "AGENT LOOP" view with chat UI
+  - Email response delivery via Resend
+  - Full conversation history with Mistral LLM context window
 
 ### Phase 2 (Q1 2027 overview — oncoming federal transition period)
 - SAFEGRID

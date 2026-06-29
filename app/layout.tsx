@@ -3,7 +3,7 @@ import Disclaimer from "./components/Disclaimer";
 
 export const metadata: Metadata = {
   title: "VVU Gateway · Venture Vision Ubuntu",
-  description: "Cryptographic Attestation & Sovereign ROSCA Infrastructure",
+  description: "Agent Loop · Cryptographic Attestation & Sovereign ROSCA Infrastructure",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

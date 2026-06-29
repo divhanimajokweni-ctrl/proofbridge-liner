@@ -130,6 +130,15 @@ button { font:inherit; cursor:pointer; }
             <span className="pilot-tag">Pilot demo</span>
           </Link>
         </div>
+        <div style={{marginTop:14}}>
+          <Link href="/gateway" className="redirect-card bridge" style={{display:"flex", alignItems:"center", justifyContent:"space-between"}}>
+            <div>
+              <div className="name">VVU Gateway OS</div>
+              <div className="desc">Agent loop &middot; Dashboard &middot; Compliance gates</div>
+            </div>
+            <span className="pilot-tag">Agent loop</span>
+          </Link>
+        </div>
 
         <div className="gateway-footer">
           <span className="tagline">&ldquo;Umuntu ngumuntu ngabantu&rdquo;</span>
