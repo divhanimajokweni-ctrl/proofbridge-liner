@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const C = {
   void:     "#07090C",
@@ -165,6 +165,7 @@ const NAV = [
   {id:"sg",       label:"SAFEGRID",     icon:"≋", sep:false},
   {id:"ekasi",    label:"EKASI",        icon:"◈", sep:false},
   {id:"lindiwe",  label:"LINDIWE AI",   icon:"◆", sep:true },
+  {id:"agent",    label:"AGENT LOOP",   icon:"↻", sep:false},
   {id:"gov",      label:"GOVERNANCE",   icon:"⚑", sep:false},
   {id:"systems",  label:"SYSTEMS",      icon:"≡", sep:false},
 ];
@@ -793,6 +794,91 @@ function SystemsView() {
   );
 }
 
+function AgentConversationView() {
+  const [msgs, setMsgs] = useState<{role:string;content:string}[]>([]);
+  const [inp, setInp] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [tid, setTid] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [msgs]);
+
+  const send = async () => {
+    if (!inp.trim() || busy) return;
+    const txt = inp.trim();
+    setInp(""); setMsgs(p => [...p, {role:"user", content:txt}]); setBusy(true);
+    try {
+      const r = await fetch("/api/agent/converse", {
+        method:"POST", headers:{"Content-Type":"application/json","x-internal-request":"true"},
+        body:JSON.stringify({ message:txt, threadId:tid || undefined }),
+      });
+      const d = await r.json();
+      if (d.threadId) setTid(d.threadId);
+      setMsgs(p => [...p, {role:"assistant", content:d.content||"(no response)"}]);
+    } catch { setMsgs(p => [...p, {role:"assistant", content:"Error: Agent unreachable."}]); }
+    setBusy(false);
+  };
+
+  const handleKey = (e: React.KeyboardEvent) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", padding:0 }}>
+      <div style={{ padding:"16px 20px 8px", borderBottom:`1px solid ${C.border}` }}>
+        <div style={{ fontFamily:MONO, fontWeight:600, fontSize:12, color:C.gold, letterSpacing:2, marginBottom:4 }}>
+          AGENT LOOP — CONVERSATION
+        </div>
+        <div style={{ fontFamily:MONO, fontSize:8.5, color:C.t3, letterSpacing:1 }}>
+          {tid ? `Thread: ${tid.slice(0,12)}...` : 'New conversation'} {busy && <span style={{color:C.gold}}>· processing</span>}
+        </div>
+      </div>
+      <div style={{ flex:1, overflowY:"auto", padding:"12px 16px" }}>
+        {msgs.length === 0 && (
+          <div style={{ textAlign:"center", padding:48, fontFamily:MONO, fontSize:9.5, color:C.t3, letterSpacing:1 }}>
+            Send a message to start the agent conversation loop.
+          </div>
+        )}
+        {msgs.map((m, i) => (
+          <div key={i} style={{
+            display:"flex", marginBottom:12,
+            justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+          }}>
+            <div style={{
+              maxWidth:"75%", padding:"10px 14px", borderRadius:8,
+              background: m.role === 'user' ? `${C.gold}18` : C.surf,
+              border:`1px solid ${m.role === 'user' ? `${C.gold}35` : C.border}`,
+              fontFamily:MONO, fontSize:9.5, lineHeight:1.6, color:C.t1, whiteSpace:"pre-wrap",
+            }}>{m.content}</div>
+          </div>
+        ))}
+        <div ref={endRef} />
+      </div>
+      <div style={{ padding:"10px 16px 14px", borderTop:`1px solid ${C.border}`, display:"flex", gap:8, alignItems:"flex-end" }}>
+        <textarea value={inp} onChange={e => setInp(e.target.value)} onKeyDown={handleKey}
+          placeholder="Type your message..."
+          disabled={busy}
+          rows={2}
+          style={{
+            flex:1, resize:"none", padding:"10px 12px", borderRadius:6,
+            background:C.bg, border:`1px solid ${busy ? C.t3 : C.border}`,
+            color:C.t1, fontFamily:MONO, fontSize:9.5, lineHeight:1.5,
+            outline:"none",
+          }}
+        />
+        <button onClick={send} disabled={busy || !inp.trim()}
+          className="pb-btn"
+          style={{
+            padding:"10px 18px", borderRadius:6, fontFamily:MONO, fontSize:9,
+            background: busy || !inp.trim() ? C.border : `${C.gold}22`,
+            border:`1px solid ${busy || !inp.trim() ? C.border : `${C.gold}55`}`,
+            color: busy || !inp.trim() ? C.t3 : C.goldBr,
+            cursor: busy || !inp.trim() ? "default" : "pointer",
+          }}
+        >{busy ? '...' : 'SEND'}</button>
+      </div>
+    </div>
+  );
+}
+
 export default function VVUGatewayOS() {
   const [auth, setAuth] = useState(false);
   const [view, setView] = useState("command");
@@ -812,6 +898,7 @@ export default function VVUGatewayOS() {
     if (view === "command")  return <CommandView cd={cd} />;
     if (view === "gov")      return <GovernanceView />;
     if (view === "systems")  return <SystemsView />;
+    if (view === "agent")    return <AgentConversationView />;
     if (entity)              return <EntityDetail e={entity} />;
     return <CommandView cd={cd} />;
   };

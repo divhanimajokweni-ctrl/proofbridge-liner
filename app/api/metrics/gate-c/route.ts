@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createHmac } from 'node:crypto'
 
-const proofbridgeHmacSecret = process.env.PROOFBRIDGE_HMAC_SECRET
-if (!proofbridgeHmacSecret) throw new Error('PROOFBRIDGE_HMAC_SECRET required')
-const SECRET = proofbridgeHmacSecret
+export const dynamic = 'force-dynamic'
+
+function getSecret() {
+  const s = process.env.PROOFBRIDGE_HMAC_SECRET
+  if (!s) throw new Error('PROOFBRIDGE_HMAC_SECRET required')
+  return s
+}
 
 function betaMean(a: number, b: number) { return (a + 1) / (a + b + 2) }
 
@@ -16,7 +20,7 @@ export async function GET() {
 
   const chainPayload = JSON.stringify({ alpha, beta, posterior, ts: now })
   const hmacValid = Math.random() > 0.02
-  const chainHmac = createHmac('sha256', SECRET).update(chainPayload).digest('hex')
+  const chainHmac = createHmac('sha256', getSecret()).update(chainPayload).digest('hex')
 
   const mcTests = [
     { name: 'monte_carlo_mu_gt_tau_5k',    pValue: +(Math.random() * 0.03 + 0.001).toFixed(4) },

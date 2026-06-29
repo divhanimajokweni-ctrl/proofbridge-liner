@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const express = require('express');
 const qrcode = require('qrcode-terminal');
+const QR = require('qrcode');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -109,12 +110,13 @@ app.get('/qr', (req, res) => {
 
 app.get('/qr/image', (req, res) => {
   if (!latestQr) return res.status(404).send('No QR code available yet');
-  const prefix = latestQr.includes(';base64,') ? '' : 'data:image/png;base64,';
-  res.setHeader('Content-Type', 'image/png');
-  // Send the raw base64 bytes (browsers can render data URI, but for actual PNG response we'd need to decode)
-  // Return as text so client can render via <img src="...">
-  res.setHeader('Content-Type', 'text/plain');
-  res.send(`${prefix}${latestQr}`);
+  QR.toBuffer(latestQr, { type: 'png', width: 400, margin: 2, color: { dark: '#000', light: '#fff' } })
+    .then(buf => {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Content-Length', buf.length);
+      res.send(buf);
+    })
+    .catch(() => res.status(500).send('Failed to generate QR image'));
 });
 
 app.get('/qr/export', (req, res) => {
