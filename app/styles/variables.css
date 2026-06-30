@@ -1,0 +1,17 @@
+:root {
+  --color-bg: #07090C;
+  --color-surface: #121925;
+  --color-card: #16202E;
+  --color-border: #1C2A38;
+  --color-text-primary: #DCE2EA;
+  --color-text-secondary: #6A8099;
+  --color-text-muted: #334658;
+  --font-display: 'Syne', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-body: 'DM Sans', sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: 0.2s var(--ease);
+}
