@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAttestation } from '@/lib/tee/attestation';
+import { VerifyPayloadSchema } from '../schemas/gateway';
 
 const rateLimitCache = new Map<string, number[]>();
 const LIMIT_WINDOW_MS = 60000;
@@ -36,7 +37,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const payload = await req.json();
-    const { documentHash, signals, deed_hash, alpha, beta, gamma, threshold } = payload;
+
+    // ── Zod schema gate ────────────────────────────────────────────
+    const validation = VerifyPayloadSchema.safeParse(payload);
+    if (!validation.success) {
+      return NextResponse.json({
+        ok: false,
+        error: 'SCHEMA_VALIDATION_ERROR',
+        errors: validation.error.flatten().fieldErrors,
+      }, { status: 400 });
+    }
+
+    const { documentHash, deed_hash, alpha, beta, gamma, threshold } = validation.data;
 
     const effectiveDocHash = documentHash || deed_hash;
 
@@ -77,7 +89,6 @@ export async function POST(req: NextRequest) {
         }
 
         // Anchor deed hash on-chain via updateProof (oracle-gated on contract)
-        const assetId = hexToBytes32(effectiveDocHash);
         const deedHashBytes32 = hexToBytes32(effectiveDocHash);
         const wallet = new ethers.Wallet(process.env.ORACLE_PRIVATE_KEY!, provider);
         const contractWithSigner = contract.connect(wallet);

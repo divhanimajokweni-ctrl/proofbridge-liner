@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
+import { MintPayloadSchema } from '../schemas/gateway'
 
 function verifyHmac(payload: unknown, signature: string, secret: string): boolean {
   if (!secret || !signature) return false
@@ -30,7 +31,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
   }
 
-  const { payload, signature } = body
+  // ── Zod schema gate ────────────────────────────────────────────────
+  const validation = MintPayloadSchema.safeParse(body)
+  if (!validation.success) {
+    return NextResponse.json({
+      error: 'MINT_SCHEMA_ERROR',
+      details: validation.error.flatten().fieldErrors,
+    }, { status: 400 })
+  }
+
+  const { payload, signature } = validation.data
   if (!payload || !signature) {
     return NextResponse.json({ error: 'Missing payload or signature' }, { status: 400 })
   }

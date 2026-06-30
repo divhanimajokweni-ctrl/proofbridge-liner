@@ -2,16 +2,16 @@ import { z } from 'zod';
 
 /**
  * /api/verify expects any of: documentHash, deed_hash, alpha, beta, gamma, threshold, signals
- * These are all optional — the route has fallback defaults.
+ * All optional fields carry sensible defaults matching the route's existing fallback logic.
  */
 export const VerifyPayloadSchema = z.object({
   documentHash: z.string().length(66).optional(),
   deed_hash: z.string().length(66).optional(),
   signals: z.unknown().optional(),
-  alpha: z.number().min(0).optional(),
-  beta: z.number().min(0).optional(),
-  gamma: z.number().min(0).optional(),
-  threshold: z.number().min(0).max(1).optional(),
+  alpha: z.number().min(0).default(24),
+  beta: z.number().min(0).default(8),
+  gamma: z.number().min(0).default(1.0),
+  threshold: z.number().min(0).max(1).default(0.55),
 });
 
 /**
