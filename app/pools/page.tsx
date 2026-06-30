@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-
 export default function UbuntuPoolsLanding() {
   const [status, setStatus] = useState('INGESTING QUEUES...');
   const [progress, setProgress] = useState(0);
@@ -136,7 +135,7 @@ export default function UbuntuPoolsLanding() {
   }, []);
 
   return (
-    <div className="pools-page">
+    <div className="pools-page" style={{animation:"vvu-fade-up 0.5s var(--ease-out)"}}>
       <style>{`
 .pools-page {
   --sage:#8A9A5B; --sage-light:#B8C98A; --sage-dark:#5C6B38;
@@ -150,8 +149,8 @@ export default function UbuntuPoolsLanding() {
   --font-display:'Syne',system-ui,sans-serif;
   --font-mono:'IBM Plex Mono',monospace;
   --font-body:'DM Sans',system-ui,sans-serif;
-  --radius-sm:8px; --radius-md:12px; --radius-lg:20px; --radius-pill:40px;
-  --ease:cubic-bezier(0.4,0,0.2,1); --transition:0.2s var(--ease);
+  --radius-sm:var(--radius-sm); --radius-md:var(--radius-md); --radius-lg:var(--radius-lg); --radius-pill:40px;
+  --ease:var(--ease-out); --transition:var(--transition);
 }
 @media (prefers-reduced-motion:reduce) {
   .pools-page *, .pools-page *::before, .pools-page *::after { animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
@@ -162,6 +161,12 @@ export default function UbuntuPoolsLanding() {
 .pools-page button { font:inherit; cursor:pointer; }
 .pools-page :focus-visible { outline:2px solid var(--ochre); outline-offset:2px; }
 .pools-page ::selection { background:var(--ochre); color:white; }
+.pools-page::before {
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:linear-gradient(rgba(138,154,91,0.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(138,154,91,0.025) 1px,transparent 1px);
+  background-size:48px 48px;
+}
 
 .wrap { max-width:1280px; margin:0 auto; padding:0 32px; }
 
@@ -324,22 +329,9 @@ input[type="range"]::-moz-range-thumb { width:15px; height:15px; border-radius:5
         </div>
       </div>
 
-      <nav className="vvu-nav">
-        <Link href="/" className="vvu-logo">
-          <svg className="vvu-logo-mark" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-            <circle cx="35" cy="40" r="16" stroke="#8A9A5B" strokeWidth="5"/>
-            <circle cx="65" cy="40" r="16" stroke="#CC7722" strokeWidth="5"/>
-            <circle cx="50" cy="64" r="16" stroke="#2F2F2F" strokeWidth="5"/>
-          </svg>
-          <div className="vvu-logo-text"><h1>UBUNTU POOLS</h1><p>Village savings OS</p></div>
-        </Link>
-        <ul className="vvu-nav-links">
-          <li><a href="#score">Ubuntu Score</a></li>
-          <li><a href="#creator">Create pool</a></li>
-          <li><Link href="/proofbridge">ProofBridge</Link></li>
-        </ul>
-        <span className="pilot-tag">Pilot demo</span>
-      </nav>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 32px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', borderBottom: '1px solid var(--light-border)' }}>
+        <Link href="/gateway" style={{ color: 'var(--ochre)', textDecoration: 'none', letterSpacing: '0.08em' }}>Gateway OS &rarr;</Link>
+      </div>
 
       <main className="wrap">
 
@@ -576,11 +568,6 @@ input[type="range"]::-moz-range-thumb { width:15px; height:15px; border-radius:5
         </div>
 
       </main>
-
-      <footer className="vvu-footer">
-        <div>Ubuntu Pools &middot; a Vaguely Vanity LLC (CIPC 2026/259053/07) product &middot; Gqeberha, Eastern Cape, South Africa</div>
-        <div>&copy; 2026 Vaguely Vanity LLC &middot; <em>&ldquo;Umuntu ngumuntu ngabantu&rdquo;</em></div>
-      </footer>
     </div>
   );
 }

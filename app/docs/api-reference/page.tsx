@@ -1,13 +1,13 @@
 export default function ApiReferencePage() {
   return (
-    <main className="max-w-4xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold mb-6 font-syne">API Reference</h1>
-      
-      <div className="prose prose-invert">
-        <h2>POST /api/verify</h2>
-        <p>Verify a proof and anchor to CircuitBreaker.sol</p>
-        <pre className="bg-gray-800 p-4 rounded-lg text-sm">
-{`POST /api/verify
+    <main className="vvu-docs">
+      <div className="vvu-docs-container">
+        <h1 className="vvu-docs-h1">API Reference</h1>
+        
+        <div className="vvu-docs-body">
+          <h2 className="vvu-docs-h2">POST /api/verify</h2>
+          <p className="vvu-docs-p">Verify a proof and anchor to CircuitBreaker.sol</p>
+          <pre className="vvu-docs-pre">{`POST /api/verify
 Authorization: Bearer <KERNEL_SECRET>
 
 {
@@ -15,13 +15,11 @@ Authorization: Bearer <KERNEL_SECRET>
   "verdict": "PASS" | "HOLD" | "BLOCK",
   "confidenceScore": 0.95,
   "documentHash": "string"
-}`}
-        </pre>
+}`}</pre>
 
-        <h2>POST /api/webhooks/stitch</h2>
-        <p>Receive Stitch payment webhooks</p>
-        <pre className="bg-gray-800 p-4 rounded-lg text-sm">
-{`POST /api/webhooks/stitch
+          <h2 className="vvu-docs-h2">POST /api/webhooks/stitch</h2>
+          <p className="vvu-docs-p">Receive Stitch payment webhooks</p>
+          <pre className="vvu-docs-pre">{`POST /api/webhooks/stitch
 x-stitch-signature: sha256=<64-char-hex>
 
 {
@@ -34,24 +32,20 @@ x-stitch-signature: sha256=<64-char-hex>
       "metadata": { "poolId": "pool_001" }
     }
   }
-}`}
-        </pre>
+}`}</pre>
 
-        <h2>POST /api/consent</h2>
-        <p>Record POPIA consent</p>
-        <pre className="bg-gray-800 p-4 rounded-lg text-sm">
-{`POST /api/consent
+          <h2 className="vvu-docs-h2">POST /api/consent</h2>
+          <p className="vvu-docs-p">Record POPIA consent</p>
+          <pre className="vvu-docs-pre">{`POST /api/consent
 
 {
   "playerId": "uuid",
   "consentType": "marketing" | "analytics" | "retention"
-}`}
-        </pre>
+}`}</pre>
 
-        <h2>POST /api/agent/converse</h2>
-        <p>Agent conversation loop — send a message and receive an AI response</p>
-        <pre className="bg-gray-800 p-4 rounded-lg text-sm">
-{`POST /api/agent/converse
+          <h2 className="vvu-docs-h2">POST /api/agent/converse</h2>
+          <p className="vvu-docs-p">Agent conversation loop — send a message and receive an AI response</p>
+          <pre className="vvu-docs-pre">{`POST /api/agent/converse
 Authorization: Bearer <KERNEL_SECRET>
 x-internal-request: true  (skip auth for gateway internal use)
 
@@ -67,13 +61,11 @@ x-internal-request: true  (skip auth for gateway internal use)
   "content": "Gate D (GovernanceAnchor.sol) is deployed on Polygon Amoy...",
   "model": "mistral-small-latest",
   "usage": { ... }
-}`}
-        </pre>
+}`}</pre>
 
-        <h2>GET /api/agent/converse</h2>
-        <p>List conversation threads or retrieve a specific thread</p>
-        <pre className="bg-gray-800 p-4 rounded-lg text-sm">
-{`GET /api/agent/converse?threadId=<id>
+          <h2 className="vvu-docs-h2">GET /api/agent/converse</h2>
+          <p className="vvu-docs-p">List conversation threads or retrieve a specific thread</p>
+          <pre className="vvu-docs-pre">{`GET /api/agent/converse?threadId=<id>
 Authorization: Bearer <KERNEL_SECRET>
 
 {
@@ -88,13 +80,11 @@ Authorization: Bearer <KERNEL_SECRET>
     "createdAt": 123,
     "updatedAt": 124
   }
-}`}
-        </pre>
+}`}</pre>
 
-        <h2>GET /api/health</h2>
-        <p>System health check</p>
-        <pre className="bg-gray-800 p-4 rounded-lg text-sm">
-{`GET /api/health
+          <h2 className="vvu-docs-h2">GET /api/health</h2>
+          <p className="vvu-docs-p">System health check</p>
+          <pre className="vvu-docs-pre">{`GET /api/health
 
 {
   "status": "healthy",
@@ -105,8 +95,8 @@ Authorization: Bearer <KERNEL_SECRET>
     "pools": "online",
     "proofbridge": "online"
   }
-}`}
-        </pre>
+}`}</pre>
+        </div>
       </div>
     </main>
   );

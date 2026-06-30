@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-
 export default function ProofBridgeLanding() {
   const [termUptime, setTermUptime] = useState('0s');
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -87,11 +86,11 @@ export default function ProofBridgeLanding() {
   }, []);
 
   return (
-    <div className="proofbridge-page">
+    <div className="proofbridge-page" style={{animation:"vvu-fade-up 0.5s var(--ease-out)"}}>
       <style>{`
 .proofbridge-page {
-  --sage:#8A9A5B; --sage-light:#B8C98A; --sage-dark:#5C6B38;
-  --ochre:#CC7722; --ochre-dim:rgba(204,119,34,0.6);
+  --sage:var(--color-green); --sage-light:#B8C98A; --sage-dark:#5C6B38;
+  --ochre:var(--color-gold); --ochre-dim:rgba(200,168,74,0.28);
   --charcoal:#1E1E1C; --charcoal-deep:#141412;
   --gravel:#5A5A55; --stone:#E2E3DB; --paper:#F4F5F0;
   --dark-bg:#1E1E1C; --dark-panel:#11110F; --dark-panel-raised:#1A1A18;
@@ -102,8 +101,8 @@ export default function ProofBridgeLanding() {
   --font-display:'Syne',system-ui,sans-serif;
   --font-mono:'IBM Plex Mono',monospace;
   --font-body:'IBM Plex Sans',system-ui,sans-serif;
-  --radius-sm:8px; --radius-md:12px; --radius-lg:20px; --radius-pill:40px;
-  --ease:cubic-bezier(0.4,0,0.2,1); --transition:0.2s var(--ease);
+  --radius-sm:var(--radius-sm); --radius-md:var(--radius-md); --radius-lg:var(--radius-lg); --radius-pill:40px;
+  --ease:var(--ease-out); --transition:var(--transition);
 }
 @media (prefers-reduced-motion:reduce) {
   .proofbridge-page *, .proofbridge-page *::before, .proofbridge-page *::after { animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
@@ -260,23 +259,12 @@ export default function ProofBridgeLanding() {
         </div>
       </div>
 
-      <nav className="vvu-nav">
-        <Link href="/" className="vvu-logo">
-          <svg className="vvu-logo-mark" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-            <circle cx="35" cy="40" r="16" stroke="#8A9A5B" strokeWidth="5"/>
-            <circle cx="65" cy="40" r="16" stroke="#CC7722" strokeWidth="5"/>
-            <circle cx="50" cy="64" r="16" stroke="#E2E3DB" strokeWidth="5"/>
-          </svg>
-          <div className="vvu-logo-text"><h1>VENTURE VISION UBUNTU</h1><p>ProofBridge Liner</p></div>
-        </Link>
-        <ul className="vvu-nav-links">
-          <li><a href="#protocol">Protocol</a></li>
-          <li><a href="#kernel">Safety Kernel</a></li>
-          <li><a href="#trust">Trust Model</a></li>
-          <li><Link href="/pools">Ubuntu Pools</Link></li>
-        </ul>
-        <button className="btn-sm" onClick={() => alert('Wallet connection: Polygon Amoy testnet (chainId 80002). Pilot mode.')}>Connect wallet</button>
-      </nav>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 32px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '0.6rem', borderBottom: '1px solid var(--dark-border)' }}>
+        <a href="#protocol" style={{ color: 'var(--dark-text-muted)', textDecoration: 'none', marginRight: '16px', letterSpacing: '0.05em' }}>Protocol</a>
+        <a href="#kernel" style={{ color: 'var(--dark-text-muted)', textDecoration: 'none', marginRight: '16px', letterSpacing: '0.05em' }}>Kernel</a>
+        <a href="#trust" style={{ color: 'var(--dark-text-muted)', textDecoration: 'none', marginRight: '16px', letterSpacing: '0.05em' }}>Trust</a>
+        <Link href="/gateway" style={{ color: 'var(--ochre)', textDecoration: 'none', letterSpacing: '0.08em' }}>Gateway OS &rarr;</Link>
+      </div>
 
       <div className="wrap">
         <div className="hero-grid">
@@ -437,11 +425,6 @@ export default function ProofBridgeLanding() {
           <strong>Operational status.</strong> ProofBridge v1.0 is live on Polygon Amoy. The Bayesian kernel, ED25519 signing, and on-chain CircuitBreaker are functional, tested, and verified. Hardware TEE attestation is active in software-attested mode while SGX integration proceeds. All figures on this page reflect actual test and deployment results.
         </div>
       </div>
-
-      <footer className="vvu-footer">
-        <div><span className="brand-line">VENTURE VISION UBUNTU</span><br />ProofBridge Liner &middot; Bayesian Safety Kernel &middot; v1.0 operational</div>
-        <div>&copy; 2026 Vaguely Vanity LLC (CIPC 2026/259053/07) &middot; Gqeberha &middot; FSCA JS2 sandbox engagement in progress</div>
-      </footer>
 
       <button className="scroll-top" id="scrollTopBtn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} onScroll={() => {}}>&uarr;</button>
     </div>

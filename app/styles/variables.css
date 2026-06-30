@@ -1,17 +1,261 @@
 :root {
-  --color-bg: #07090C;
-  --color-surface: #121925;
-  --color-card: #16202E;
-  --color-border: #1C2A38;
-  --color-text-primary: #DCE2EA;
-  --color-text-secondary: #6A8099;
-  --color-text-muted: #334658;
-  --font-display: 'Syne', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
-  --font-body: 'DM Sans', sans-serif;
+  /* ── VVU Design Tokens ──────────────────────────────────── */
+  /* Backgrounds */
+  --color-void:          #07090C;
+  --color-bg:            #0D1117;
+  --color-surface:       #121925;
+  --color-card:          #16202E;
+  --color-border:        #1C2A38;
+  --color-border-hover:  #243546;
+
+  /* Accent — Gold (primary brand) */
+  --color-gold:          #C8A84A;
+  --color-gold-bright:   #E4C86A;
+  --color-gold-dim:      rgba(200,168,74,0.11);
+  --color-gold-border:   rgba(200,168,74,0.28);
+  --color-glow-gold:     0 0 14px rgba(200,168,74,0.2);
+
+  /* Accent — Cyan (tech/terminal) */
+  --color-cyan:          #00E5FF;
+  --color-cyan-dim:      rgba(0,229,255,0.08);
+  --color-cyan-border:   rgba(0,229,255,0.2);
+
+  /* Accent — Green (live/healthy) */
+  --color-green:         #3ECF8E;
+  --color-green-live:    #3FB950;
+  --color-green-dim:     rgba(62,207,142,0.12);
+  --color-green-border:  rgba(62,207,142,0.3);
+  --color-ring-green:    0 0 0 0 rgba(28,175,112,0.5);
+
+  /* Accent — Crimson (alert/error) */
+  --color-crimson:       #8C1A3E;
+  --color-crimson-bright:#C4254F;
+  --color-crimson-dim:   rgba(140,26,62,0.12);
+  --color-crimson-border:rgba(140,26,62,0.32);
+
+  /* Accent — Orange (warning) */
+  --color-orange:        #D07E18;
+  --color-orange-dim:    rgba(208,126,24,0.12);
+
+  /* Accent — Blue (info) */
+  --color-blue:          #4A9EE8;
+  --color-blue-dim:      rgba(74,158,232,0.12);
+
+  /* Accent — Purple */
+  --color-purple:        #8B5DE5;
+  --color-purple-dim:    rgba(139,93,229,0.12);
+
+  /* Text */
+  --color-text-primary:  #DCE2EA;
+  --color-text-secondary:#6A8099;
+  --color-text-muted:    #334658;
+
+  /* Typography */
+  --font-display:        'Syne', sans-serif;
+  --font-mono:           'IBM Plex Mono', monospace;
+  --font-body:           'DM Sans', sans-serif;
+  --font-mono-alt:       'DM Mono', monospace;
+
+  /* Spacing & Radius */
+  --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
-  --ease: cubic-bezier(0.4, 0, 0.2, 1);
-  --transition: 0.2s var(--ease);
+
+  /* Motion */
+  --ease-out:            cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-out:         cubic-bezier(0.65, 0, 0.35, 1);
+  --transition-fast:     150ms var(--ease-out);
+  --transition:          200ms var(--ease-out);
+  --transition-slow:     350ms var(--ease-out);
+}
+
+/* ── VVU Keyframes ──────────────────────────────────────── */
+@keyframes vvu-fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes vvu-glow {
+  0%, 100% { opacity: 0.88; text-shadow: var(--color-glow-gold); }
+  50%      { opacity: 1;    text-shadow: 0 0 28px rgba(200,168,74,0.5); }
+}
+
+@keyframes vvu-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(28,175,112,0.5); }
+  50%      { box-shadow: 0 0 0 5px rgba(28,175,112,0); }
+}
+
+@keyframes vvu-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
+@keyframes vvu-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes vvu-pin-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-7px); }
+  40%, 80% { transform: translateX(7px); }
+}
+
+@keyframes vvu-scanline {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 100px; }
+}
+
+@keyframes vvu-breathing-border {
+  0%, 100% { border-color: var(--color-gold-border); }
+  50%      { border-color: var(--color-gold); }
+}
+
+@keyframes vvu-data-flow {
+  0%   { width: 0; opacity: 1; }
+  100% { width: 100%; opacity: 0; }
+}
+
+/* ── Utility Classes ──────────────────────────────────────── */
+.vvu-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition);
+}
+.vvu-card:hover {
+  border-color: var(--color-border-hover);
+  transform: translateY(-1px);
+}
+
+.vvu-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-green);
+  animation: vvu-ring 2.4s infinite;
+}
+
+.vvu-mono { font-family: var(--font-mono); }
+.vvu-display { font-family: var(--font-display); }
+.vvu-body { font-family: var(--font-body); }
+
+/* Scrollbar */
+.vvu-scroll::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+.vvu-scroll::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+.vvu-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 2px;
+}
+.vvu-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold);
+}
+
+/* ── VVU Docs ──────────────────────────────────────────── */
+.vvu-docs {
+  background: var(--color-void);
+  color: var(--color-text-primary);
+  min-height: 100vh;
+  font-family: var(--font-body);
+  padding: 48px 24px;
+  line-height: 1.7;
+  animation: vvu-fade-up 0.4s var(--ease-out);
+}
+.vvu-docs-container {
+  max-width: 780px;
+  margin: 0 auto;
+}
+.vvu-docs-back-link {
+  margin-bottom: 24px;
+}
+.vvu-docs-h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 1rem;
+  color: var(--color-text-primary);
+}
+.vvu-docs-h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  letter-spacing: -0.01em;
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-gold);
+}
+.vvu-docs-h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 1.5rem 0 0.5rem;
+  color: var(--color-text-primary);
+}
+.vvu-docs-p {
+  font-size: 0.92rem;
+  color: var(--color-text-secondary);
+  margin: 0 0 1rem;
+}
+.vvu-docs-ul {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  padding-left: 1.25rem;
+  margin: 0 0 1.25rem;
+  list-style: none;
+}
+.vvu-docs-ul li {
+  position: relative;
+  padding: 0.25rem 0;
+  padding-left: 0.5rem;
+}
+.vvu-docs-ul li::before {
+  content: '→';
+  position: absolute;
+  left: -1rem;
+  color: var(--color-gold);
+  opacity: 0.8;
+}
+.vvu-docs-code {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  padding: 1px 6px;
+  color: var(--color-cyan);
+}
+.vvu-docs-pre {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+  margin: 0 0 1.5rem;
+  overflow-x: auto;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+  white-space: pre;
+}
+.vvu-docs-accent-card {
+  background: var(--color-card);
+  border-left: 4px solid var(--color-gold);
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 1.5rem 0;
+  color: var(--color-text-primary);
+}
+.vvu-docs strong {
+  color: var(--color-text-primary);
+  font-weight: 600;
 }
