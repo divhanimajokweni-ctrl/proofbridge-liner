@@ -1,51 +1,112 @@
-# VVU War Room Setup
+# VVU War Room — Operational Setup
 
-## Step 2 — Gateway Connect
+> **Status:** LIVE — Gateway verified, plugin configured, all 15 checks pass.
 
-| Field | Value |
-|-------|-------|
-| Gateway URL (local) | `http://127.0.0.1:18789` |
-| Gateway URL (Tailscale) | Set up via `tailscale serve --bg 18789` |
-| Auth Token | `vvu-war-room-2026-local` |
-| Gateway Status | `{"ok":true,"status":"live"}` |
+---
 
-## Step 3 — Obsidian Vault
+## Gateway
+
+| Field | Value | Verified |
+|-------|-------|----------|
+| Local URL | `http://127.0.0.1:18789` | ✅ `{"ok":true,"status":"live"}` |
+| Control UI | `http://127.0.0.1:18789` | ✅ Serves OpenClaw Control UI |
+| Auth Token | `vvu-war-room-2026-local` | ✅ Extracted from `openclaw.json` |
+| Config Path | `~/.openclaw/openclaw.json` | ✅ Synced |
+| PID | `737` | ✅ Running |
+
+### Startup
+
+```bash
+# Start the gateway (syncs config, waits for health check)
+bash scripts/start-war-room.sh
+
+# Expose via Tailscale (run after gateway is live)
+tailscale serve --bg 18789
+```
+
+### Verification
+
+```bash
+# Run the full verification suite (15 checks)
+bash scripts/verify-war-room.sh
+```
+
+---
+
+## Obsidian Plugin
 
 The VVU War Room plugin is installed at:
+
 ```
 .obsidian/plugins/vvu-war-room/
+├── manifest.json      # id: vvu-war-room, v1.0.0
+├── main.js            # Compiled plugin code (11 KB)
+├── src/main.ts        # TypeScript source (385 lines)
+├── data.json          # Pre-configured gateway settings
+├── esbuild.config.mjs
+├── tsconfig.json
+└── package.json
 ```
 
-**Plugin files:**
-- `manifest.json` — plugin metadata (id: `vvu-war-room`, v1.0.0)
-- `main.js` — compiled plugin code (11 KB)
-- `src/main.ts` — TypeScript source (385 lines)
-- `data.json` — pre-configured with gateway URL + token
-- `esbuild.config.mjs`, `tsconfig.json`, `package.json`
+### To activate in Obsidian
 
-**Obsidian config:**
-- `.obsidian/community-plugins.json` — auto-enables `vvu-war-room`
-- `.obsidian/app.json` — daily notes enabled, community plugins on
+1. Restart Obsidian (or reload via Ctrl/Cmd+P → "Reload app without saving")
+2. Settings → **Community Plugins** → Click **"Turn on community plugins"** (one-time gate)
+3. Under **Installed Plugins**, toggle **VVU War Room** on
 
-**Vault folders created:**
-- `daily/` — daily note storage
-- `compliance/` — compliance document storage
+### Plugin features
 
-### If plugin doesn't appear in Obsidian:
+| Trigger | Action |
+|---------|--------|
+| Ribbon icon (shield) | Open War Room dashboard view |
+| Ribbon icon (calendar) | Create daily note |
+| Status bar | Shows `VVU | OpenClaw: LIVE` or `VVU | OpenClaw: DOWN` |
+| Cmd/Ctrl+P → "Open VVU War Room" | Dashboard view |
+| Cmd/Ctrl+P → "Create VVU daily note" | New daily note in `daily/` folder |
+| Cmd/Ctrl+P → "Insert compliance link" | Browse `compliance/` folder |
+| Cmd/Ctrl+P → "Search vault for compliance" | Full vault compliance search |
+| Cmd/Ctrl+P → "Ping OpenClaw gateway" | Manual health check |
 
-1. Restart Obsidian completely
-2. Settings → Community Plugins → **Turn on community plugins** (one-time gate)
-3. Toggle **VVU War Room** on under Installed Plugins
+---
 
-## Plugin Features
+## Vault Structure
 
-| Feature | Description |
-|---------|-------------|
-| Ribbon icon (shield) | Opens War Room dashboard |
-| Ribbon icon (calendar) | Creates daily note |
-| Status bar | Shows OpenClaw connection status |
-| Commands (Cmd/Ctrl+P) | Open War Room, New daily note, Insert compliance link, Search compliance, Ping gateway |
+```
+daily/           # Daily standup notes (created by plugin)
+compliance/      # Compliance documents (FSCA, POPIA, SAR/STR)
+.obsidian/
+├── app.json               # Community plugins enabled, daily notes on
+├── community-plugins.json # Auto-enables vvu-war-room
+└── plugins/vvu-war-room/  # Plugin files
+```
+
+---
+
+## Critical Files (AGENTS.md)
+
+| File | Status |
+|------|--------|
+| `app/api/verify/route.ts` | ✅ Present |
+| `app/api/mint/route.ts` | ✅ Present |
+| `src/middleware.ts` | ✅ Present (circuit breaker active) |
+| `AGENTS.md` | ✅ Present |
+
+---
 
 ## Branch
 
-All setup committed to `compliance-fabric` (canonical branch).
+```
+compliance-fabric  ← canonical branch (all work here)
+```
+
+All commits:
+
+| Commit | Description |
+|--------|-------------|
+| `708eced` | Wire up OpenClaw GCP MCP server with headless auth |
+| `5f5c8f7` | Add VVU War Room Obsidian plugin |
+| `a1f72ff` | Update War Room plugin: gateway health ping + status bar |
+| `4cf5ab8` | Enable VVU War Room plugin in Obsidian community plugins |
+| `d2367ee` | Configure VVU War Room plugin: gateway URL + token + enable |
+| `10656a4` | docs: add VVU War Room setup guide with gateway config |
+| `10879ce` | War Room: operational scripts + verification suite |
