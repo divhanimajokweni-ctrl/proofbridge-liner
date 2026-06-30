@@ -1,34 +1,37 @@
-$ORIGIN venturevisionubuntu.co.za.
-$TTL 3600
+; ─────────────────────────────────────────────────────────────────────
+; BIND zone file — venturevisionubuntu.co.za
+; Target: Vercel DNS (ns1.vercel-dns.com / ns2.vercel-dns.com)
+; Generated: 2026-07-30
+; ─────────────────────────────────────────────────────────────────────
+$TTL    3600
+@       IN      SOA     ns1.vercel-dns.com.     hostmaster.vercel-dns.com. (
+                        2026073001      ; serial
+                        3600            ; refresh
+                        900             ; retry
+                        1209600         ; expire
+                        300             ; minimum TTL
+                        )
 
-; SOA record
-@   IN SOA ns1.host-ww.net. server-admin.cloud2m.co.za. (
-    2026052032 ; Serial
-    3600       ; Refresh
-    1800       ; Retry
-    1209600    ; Expire
-    86400      ; Minimum TTL
-)
+; Nameservers — Vercel
+@       IN      NS      ns1.vercel-dns.com.
+@       IN      NS      ns2.vercel-dns.com.
 
-; Nameservers
-@       IN NS    ns1.host-ww.net.
-@       IN NS    ns2.host-ww.net.
+; CAA — authorised certificate issuers
+@       IN      CAA     0 issue "letsencrypt.org"
+@       IN      CAA     0 issue "sectigo.com"
+@       IN      CAA     0 issue "pki.goog"
+@       IN      CAA     0 iodef "mailto:hostmaster@venturevisionubuntu.co.za"
 
-; A records (Vercel)
-@       IN A     76.76.21.21
-www     IN A     76.76.21.21
+; Apex — ALIAS resolves to Vercel edge IPs
+@       IN      ALIAS   cname.vercel-dns.com.
 
-; Resend DKIM (TXT)
-resend._domainkey IN TXT "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDQ3b62Iuki4dHg6QQCo2RamTshVFzUmuGteGidwyopvCgpvxhnUUYiIoJqSJdXHFCspp6dSxjh7qbEn3owZM2av2aIpusd1KqK1tE3MnSs4O3OjuHciA/t6sciBYfatPxd69c7UrrxSaSVYrinIozP2iUi4HSVyeJQduJz6MKnkwIDAQAB"
+; www subdomain
+www     IN      CNAME   cname.vercel-dns.com.
 
-; Resend sending MX (send subdomain)
-send    IN MX    10 feedback-smtp.eu-west-1.amazonses.com.
+; Wildcard subdomain — route all subdomains to Vercel
+*       IN      ALIAS   cname.vercel-dns-017.com.
 
-; Resend SPF (send subdomain)
-send    IN TXT   "v=spf1 include:amazonses.com ~all"
-
-; DMARC policy
-_dmarc  IN TXT   "v=DMARC1; p=none;"
-         
-; Resend inbound MX for receiving (optional — uncomment to enable)
-; send  IN MX    20 inbound-smtp.eu-west-1.amazonaws.com.
+; ─────────────────────────────────────────────────────────────────────
+; Email (MX) — optional, configure if you use custom email hosting
+; @       IN      MX      10      mail.venturevisionubuntu.co.za.
+; ─────────────────────────────────────────────────────────────────────
