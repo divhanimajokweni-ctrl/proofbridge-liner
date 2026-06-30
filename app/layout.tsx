@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Disclaimer from "./components/Disclaimer";
+import GlobalSidebar from "./components/Sidebar";
+import "./styles/variables.css";
 
 export const metadata: Metadata = {
   title: "VVU Gateway · Venture Vision Ubuntu",
@@ -8,15 +9,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-ZA">
+    <html lang="en-ZA" className="h-full bg-slate-950">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body style={{ margin: 0, padding: 0, WebkitFontSmoothing: "antialiased" }}>
-        {children}
-        <Disclaimer />
+      <body className="h-full antialiased text-slate-100 flex selection:bg-cyan-500/30" style={{ margin: 0, padding: 0 }}>
+        <GlobalSidebar />
+        <main className="flex-1 min-w-0 flex flex-col min-h-screen overflow-y-auto">
+          {children}
+        </main>
       </body>
     </html>
   );
