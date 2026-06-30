@@ -10,3 +10,9 @@
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
 
+## 2026-06-30T17:14:11Z
+- **Commit**: `9f8e4cf`
+- **Message**: Wire sidebar into layout and extracted panels into gateway SPA
+- **Status**: Deployed
+- **Domain**: https://venturevisionubuntu.co.za
+
