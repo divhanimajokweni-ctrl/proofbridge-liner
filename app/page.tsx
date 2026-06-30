@@ -1,165 +1,292 @@
 'use client';
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ENTITIES } from './lib/entities';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
-export default function VVUBrandHub() {
-  const [convPct, setConvPct] = useState('0%');
+interface ProjectNode {
+  name: string;
+  type: string;
+  status: 'ACTIVE' | 'DEV' | 'PRE-PROD' | 'PILOT';
+  description: string;
+  metricLabel: string;
+  metricValue: string;
+}
+
+export default function PolishedGatewayMatrix() {
+  const [trustSignal, setTrustSignal] = useState(0);
+  const [activeView, setActiveView] = useState<'all' | 'pilot' | 'dev'>('all');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    let pct = 0;
-    const timer = setInterval(() => {
-      pct = Math.min(100, pct + Math.ceil(Math.random() * 9) + 3);
-      setConvPct(pct >= 100 ? 'Ready' : pct + '%');
-      if (pct >= 100) clearInterval(timer);
-    }, 110);
-    return () => clearInterval(timer);
+    const trustInterval = setInterval(() => {
+      setTrustSignal((prev) => {
+        if (prev >= 100) return 100;
+        const tick = Math.floor(Math.random() * 8) + 4;
+        return Math.min(prev + tick, 100);
+      });
+    }, 1200);
+    return () => clearInterval(trustInterval);
   }, []);
 
+  const menuItems = [
+    { id: 'all', label: '🚨 Gateway Deck', count: 6 },
+    { id: 'pilot', label: '🤖 Agent Terminal / Pilots', count: 3 },
+    { id: 'dev', label: '🔒 Sandbox Labs (DEV)', count: 3 },
+  ];
+
+  const projectNodes: ProjectNode[] = [
+    {
+      name: 'Ubuntu Pools',
+      type: 'ROSCA / STOKVEL',
+      status: 'PILOT',
+      description: 'Decentralized mutual financial pooling structures configured around regional community affinity parameters.',
+      metricLabel: 'Active Pool Containers',
+      metricValue: '12 Pools Locked',
+    },
+    {
+      name: 'ProofBridge Liner',
+      type: 'ZK / COMPLIANCE',
+      status: 'PILOT',
+      description: 'Zero-knowledge circuit generation validation array running isolated compliance computations.',
+      metricLabel: 'Release Pipeline Countdown',
+      metricValue: 'T-34 DAYS',
+    },
+    {
+      name: 'SafeKrypte',
+      type: 'HSM-AS-A-SERVICE',
+      status: 'DEV',
+      description: 'Hardware Security Module integration matrices isolating administrative root identity assertions.',
+      metricLabel: 'Enclave Lifecycle Status',
+      metricValue: 'PROVISIONING',
+    },
+    {
+      name: 'SafeGrid',
+      type: 'WATER / NMBM',
+      status: 'DEV',
+      description: 'Utility access network integration infrastructure mapping live Nelson Mandela Bay Municipality data loops.',
+      metricLabel: 'Telemetry Sensor Array',
+      metricValue: '98.4% STABLE',
+    },
+    {
+      name: 'Ekasi',
+      type: 'UBUNTU GAMES / RPG',
+      status: 'PRE-PROD',
+      description: 'Hyper-localized gamified learning state machine architecture utilizing decentralized token rewards.',
+      metricLabel: 'Build Environment Matrix',
+      metricValue: 'v0.9.8-BETA',
+    },
+    {
+      name: 'Lindiwe AI',
+      type: 'INTERNAL INTELLIGENCE',
+      status: 'ACTIVE',
+      description: 'Localized model framework evaluating internal operations metrics, compliance parameters, and audit assertions.',
+      metricLabel: 'Agent Cluster Pulse Rate',
+      metricValue: '42ms LATENCY',
+    },
+  ];
+
+  const filteredNodes = projectNodes.filter((node) => {
+    if (activeView === 'pilot') return node.status === 'PILOT' || node.status === 'ACTIVE';
+    if (activeView === 'dev') return node.status === 'DEV' || node.status === 'PRE-PROD';
+    return true;
+  });
+
+  const statusStyles: Record<string, string> = {
+    ACTIVE: 'bg-emerald-950/60 text-emerald-400 border-emerald-900/50',
+    'PRE-PROD': 'bg-indigo-950/60 text-indigo-400 border-indigo-900/50',
+    PILOT: 'bg-cyan-950/60 text-cyan-400 border-cyan-900/50',
+    DEV: 'bg-amber-950/60 text-amber-400 border-amber-900/50',
+  };
+
   return (
-    <div className="vvu-brand-hub">
-      <style>{`
-.vvu-brand-hub {
-  --sage: #8A9A5B; --sage-light: #B8C98A; --sage-dark: #5C6B38;
-  --ochre: #CC7722; --ochre-dim: rgba(204,119,34,0.6);
-  background: var(--color-void);
-  color: var(--color-text-primary);
-  font-family: var(--font-display);
-  min-height: 100vh; overflow-x: hidden;
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-  animation: vvu-fade-up 0.5s var(--ease-out);
-}
-.vvu-brand-hub::before {
-  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
-  background-image:
-    linear-gradient(rgba(200,168,74,0.025) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(200,168,74,0.025) 1px,transparent 1px);
-  background-size:48px 48px;
-}
-.vvu-brand-hub a { color:inherit; text-decoration:none; }
-.vvu-brand-hub button { font:inherit; cursor:pointer; }
-.vvu-brand-hub :focus-visible { outline:2px solid var(--color-gold); outline-offset:2px; }
-
-.vvu-pilot-tag {
-  display:inline-flex; align-items:center; gap:5px;
-  font-family:var(--font-mono); font-size:9px; letter-spacing:0.08em; text-transform:uppercase;
-  color:var(--ochre); border:1px solid var(--ochre-dim); background:rgba(204,119,34,0.08);
-  padding:2px 8px; border-radius:40px; white-space:nowrap;
-}
-.vvu-pilot-tag::before { content:''; width:5px; height:5px; border-radius:50%; background:var(--ochre); }
-
-.vvu-brand { width:100%; max-width:640px; position:relative; z-index:1; }
-.vvu-brand-logo { display:flex; flex-direction:column; align-items:center; text-align:center; gap:14px; margin-bottom:36px; }
-.vvu-brand-mark { width:64px; height:64px; }
-.vvu-brand-logo h1 { font-size:1.35rem; font-weight:800; letter-spacing:-0.01em; line-height:1.1; color:var(--color-text-primary); }
-.vvu-brand-logo p { font-family:var(--font-mono); font-size:0.6rem; color:var(--sage); letter-spacing:0.22em; text-transform:uppercase; }
-
-.vvu-convergence {
-  width:100%; aspect-ratio:16/9;
-  background:var(--color-surface); border:1px solid var(--color-border);
-  border-radius:var(--radius-lg); margin-bottom:28px;
-  position:relative; overflow:hidden;
-  display:flex; align-items:center; justify-content:center;
-}
-.vvu-convergence svg { width:58%; height:58%; }
-.vvu-conv-ring { fill:none; stroke-width:3; stroke-dasharray:220; stroke-dashoffset:220; animation:vvu-trace-ring 1.6s var(--ease-out) forwards; }
-.vvu-conv-ring.r1 { stroke:var(--sage); animation-delay:0.1s; }
-.vvu-conv-ring.r2 { stroke:var(--ochre); animation-delay:0.4s; }
-.vvu-conv-ring.r3 { stroke:var(--color-text-secondary); animation-delay:0.7s; }
-@keyframes vvu-trace-ring { to { stroke-dashoffset:0; } }
-.vvu-conv-label { position:absolute; bottom:14px; left:18px; right:18px; display:flex; justify-content:space-between; align-items:baseline; font-family:var(--font-mono); }
-.vvu-conv-status { font-size:0.65rem; color:var(--color-text-secondary); }
-.vvu-conv-status .verb { color:var(--ochre); }
-.vvu-conv-pct { font-size:0.75rem; color:var(--sage); font-weight:500; }
-
-.vvu-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
-.vvu-card {
-  background:var(--color-surface); border:1px solid var(--color-border);
-  border-radius:var(--radius-md); padding:22px 18px;
-  color:var(--color-text-primary); transition:all var(--transition);
-  position:relative; overflow:hidden; text-decoration:none; display:block;
-}
-.vvu-card::after {
-  content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
-  transform:scaleX(0); transform-origin:left;
-  transition:transform 0.25s var(--ease-out);
-}
-.vvu-card::before {
-  content:''; position:absolute; top:0; left:0; right:0; height:1px;
-  background:linear-gradient(90deg, transparent, currentColor, transparent);
-  opacity:0;
-  transition:opacity var(--transition);
-}
-.vvu-card.pools::after { background:var(--sage); }
-.vvu-card.bridge::after { background:var(--ochre); }
-.vvu-card.safekrypte::after { background:var(--color-green); }
-.vvu-card.safegrid::after { background:var(--color-blue); }
-.vvu-card.ekasi::after { background:var(--color-purple); }
-.vvu-card.lindiwe::after { background:var(--color-orange); }
-.vvu-card:hover { transform:translateY(-3px); border-color:var(--color-border-hover); }
-.vvu-card:hover::after { transform:scaleX(1); }
-.vvu-card:hover::before { opacity:0.5; }
-.vvu-card .name { font-weight:700; font-size:0.95rem; margin-bottom:4px; }
-.vvu-card .desc { font-family:var(--font-mono); font-size:0.68rem; color:var(--color-text-secondary); line-height:1.5; margin-bottom:14px; }
-.vvu-gateway-row { margin-top:14px; }
-.vvu-footer { margin-top:28px; text-align:center; font-family:var(--font-mono); font-size:0.58rem; color:var(--color-text-muted); letter-spacing:0.04em; }
-.vvu-footer .tagline { color:var(--sage-light); font-style:italic; }
-@media (max-width:820px) { .vvu-grid { grid-template-columns:repeat(2,1fr); } }
-@media (max-width:520px) { .vvu-grid { grid-template-columns:1fr; } }
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-mono text-xs flex overflow-hidden relative selection:bg-cyan-500/30">
+      <style jsx global>{`
+        body > aside { display: none !important; }
+        body > main { margin: 0 !important; }
+        .vvu-sidebar-clip {
+          clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+        }
+        .vvu-card-border {
+          position: relative;
+        }
+        .vvu-card-border::before {
+          content: '';
+          position: absolute;
+          top: 0; left: 0;
+          width: 6px; height: 6px;
+          border-top: 1px solid #06b6d4;
+          border-left: 1px solid #06b6d4;
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
       `}</style>
 
-      <div className="vvu-brand">
-        <div className="vvu-brand-logo">
-          <svg className="vvu-brand-mark" viewBox="0 0 100 100" fill="none" aria-hidden="true">
-            <circle cx="35" cy="40" r="16" stroke="#8A9A5B" strokeWidth="5"/>
-            <circle cx="65" cy="40" r="16" stroke="#CC7722" strokeWidth="5"/>
-            <circle cx="50" cy="64" r="16" stroke="#6A8099" strokeWidth="5"/>
-          </svg>
-          <div>
-            <h1>VENTURE VISION UBUNTU</h1>
-            <p>Gqeberha &middot; Eastern Cape &middot; Est. 2026</p>
-          </div>
-        </div>
+      {/* Cybernetic scanline overlay */}
+      <div className="pointer-events-none fixed inset-0 z-50 bg-[linear-gradient(to_bottom,rgba(255,255,255,0),rgba(255,255,255,0)_50%,rgba(0,0,0,0.25)_50%,rgba(0,0,0,0.25))] bg-[length:100%_4px] opacity-15" />
 
-        <div className="vvu-convergence" aria-hidden="true">
-          <svg viewBox="0 0 100 100">
-            <circle className="vvu-conv-ring r1" cx="35" cy="40" r="16"/>
-            <circle className="vvu-conv-ring r2" cx="65" cy="40" r="16"/>
-            <circle className="vvu-conv-ring r3" cx="50" cy="64" r="16"/>
-          </svg>
-          <div className="vvu-conv-label">
-            <span className="vvu-conv-status"><span className="verb">Resolving</span> trust signals</span>
-            <span className="vvu-conv-pct">{convPct}</span>
-          </div>
-        </div>
-
-        <div className="vvu-grid">
-          {ENTITIES.map((e) => (
-            <Link key={e.id} href={e.ctaHref} className={`vvu-card ${e.id}`}
-              style={{ color: e.accentColor }}
+      {/* ─── SIDEBAR ────────────────────────────────────────── */}
+      <motion.aside
+        animate={{ width: sidebarOpen ? 260 : 64 }}
+        className="h-screen bg-slate-900/60 border-r border-slate-800/80 p-4 flex flex-col justify-between shrink-0 relative backdrop-blur-md z-40"
+      >
+        <div className="space-y-6">
+          {/* Brand header */}
+          <div className="flex items-center justify-between border-b border-slate-800/80 pb-4 h-12">
+            <AnimatePresence>
+              {sidebarOpen && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="font-bold tracking-widest text-white font-mono text-sm"
+                >
+                  VVU-BRAIN OS
+                </motion.span>
+              )}
+            </AnimatePresence>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-1 hover:bg-slate-800 rounded border border-slate-800 text-slate-400 hover:text-white shrink-0"
             >
-              <div className="name">{e.icon} {e.name}</div>
-              <div className="desc">{e.tag}</div>
-              <span className="vvu-pilot-tag">{e.status}</span>
-            </Link>
-          ))}
+              {sidebarOpen ? '◀' : '▶'}
+            </button>
+          </div>
+
+          {/* Nav items */}
+          <nav className="space-y-2">
+            {menuItems.map((item) => {
+              const isSelected = activeView === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveView(item.id as typeof activeView)}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded transition-all border ${
+                    isSelected
+                      ? 'bg-cyan-950/40 border-cyan-800 text-cyan-400 font-bold shadow-[inset_0_0_12px_rgba(6,182,212,0.15)]'
+                      : 'border-transparent text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                  }`}
+                >
+                  <span className="truncate text-xs">
+                    {sidebarOpen ? item.label : item.label.split(' ')[0]}
+                  </span>
+                  {sidebarOpen && (
+                    <span
+                      className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                        isSelected ? 'bg-cyan-900 text-cyan-300' : 'bg-slate-800 text-slate-500'
+                      }`}
+                    >
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <div className="vvu-gateway-row">
-          <Link href="/gateway" className="vvu-card bridge" style={{display:"flex", alignItems:"center", justifyContent:"space-between", color: 'var(--ochre)'}}>
-            <div>
-              <div className="name">VVU Gateway OS</div>
-              <div className="desc">Agent loop &middot; Dashboard &middot; Compliance gates</div>
+        <div className="border-t border-slate-800/80 pt-3 text-[10px] text-slate-500 tracking-tight font-mono">
+          {sidebarOpen ? 'Gate Target: 2026-07-30' : '2026'}
+        </div>
+      </motion.aside>
+
+      {/* ─── MAIN CANVAS ────────────────────────────────────── */}
+      <div className="flex-1 h-screen overflow-y-auto p-6 space-y-6 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/30 via-slate-950 to-slate-950">
+        {/* Header */}
+        <header className="vvu-sidebar-clip border border-slate-800 bg-slate-900/30 backdrop-blur-sm p-6 rounded relative flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="space-y-1">
+            <h1 className="text-xl font-black tracking-widest text-white flex items-center gap-2">
+              VENTURE VISION UBUNTU
+              <span className="text-[10px] font-mono font-normal tracking-normal text-cyan-500 bg-cyan-950/40 border border-cyan-900/60 px-2 py-0.5 rounded">
+                v2.0-STABLE
+              </span>
+            </h1>
+            <p className="text-[11px] text-slate-400 font-sans font-medium">
+              Gqeberha, Eastern Cape &middot; Workspace Management Subsystem
+              <span className="block italic font-mono text-cyan-400 mt-1">
+                &ldquo;Umuntu ngumuntu ngabantu&rdquo;
+              </span>
+            </p>
+          </div>
+
+          {/* Trust signal progress */}
+          <div className="w-full md:w-64 bg-black/40 border border-slate-800/80 p-3 rounded space-y-1.5">
+            <div className="flex justify-between text-[10px] tracking-wider font-bold">
+              <span className="text-slate-500 uppercase">Trust Signals Resolution</span>
+              <span
+                className={
+                  trustSignal === 100 ? 'text-emerald-400 animate-pulse' : 'text-cyan-400'
+                }
+              >
+                {trustSignal}% {trustSignal === 100 ? 'LOCKED' : 'SYNCING'}
+              </span>
             </div>
-            <span className="vvu-pilot-tag">Agent loop</span>
-          </Link>
-        </div>
+            <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-900">
+              <motion.div
+                className="bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-400 h-full shadow-[0_0_10px_rgba(6,182,212,0.4)]"
+                animate={{ width: `${trustSignal}%` }}
+                transition={{ type: 'spring', stiffness: 45 }}
+              />
+            </div>
+          </div>
+        </header>
 
-        <div className="vvu-footer">
-          <span className="tagline">&ldquo;Umuntu ngumuntu ngabantu&rdquo;</span>
-          &nbsp;&middot;&nbsp; &copy; 2026 Vaguely Vanity LLC (CIPC 2026/259053/07)
-        </div>
+        {/* Project grid */}
+        <motion.main layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <AnimatePresence mode="popLayout">
+            {filteredNodes.map((node) => (
+              <motion.div
+                layout
+                key={node.name}
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: -10 }}
+                transition={{ duration: 0.22, ease: 'easeInOut' }}
+                className="vvu-card-border border border-slate-800/70 bg-slate-900/10 hover:bg-slate-900/30 hover:border-slate-700 rounded p-5 flex flex-col justify-between space-y-4 transition-colors group"
+              >
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider font-mono">
+                      {node.type}
+                    </span>
+                    <span
+                      className={`text-[9px] px-2 py-0.5 rounded font-black tracking-widest border ${
+                        statusStyles[node.status] || ''
+                      }`}
+                    >
+                      {node.status}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-white tracking-tight group-hover:text-cyan-400 transition-colors">
+                    ⬡ {node.name}
+                  </h3>
+                  <p className="text-slate-400 text-[11px] leading-relaxed font-sans font-medium h-12 overflow-hidden text-ellipsis">
+                    {node.description}
+                  </p>
+                </div>
+                <div className="pt-3 border-t border-slate-800/80 flex justify-between items-center text-[10px] font-mono">
+                  <span className="text-slate-500">{node.metricLabel}:</span>
+                  <span className="text-white font-bold tracking-wide">{node.metricValue}</span>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.main>
+
+        {/* Footer */}
+        <footer className="border border-slate-800 bg-black/20 p-4 rounded text-[10px] text-slate-500 font-mono flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex flex-wrap gap-4 justify-center">
+            <span>
+              NETWORK CORRIDOR: <span className="text-emerald-400 font-bold">ACTIVE</span>
+            </span>
+            <span className="hidden sm:inline">&bull;</span>
+            <span>
+              DIAGNOSTICS: <span className="text-cyan-400 font-bold">STABLE</span>
+            </span>
+          </div>
+          <div className="text-center sm:text-right text-[9px] tracking-wider text-slate-600">
+            &copy; 2026 Vaguely Vanity LLC (CIPC 2026/259053/07)
+          </div>
+        </footer>
       </div>
     </div>
   );
