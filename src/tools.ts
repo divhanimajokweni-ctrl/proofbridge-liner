@@ -29,6 +29,17 @@ export const VVU_TOOLS: VvuToolDef[] = [
     },
   },
   {
+    name: 'query_safeline',
+    description: 'Look up a SafeLiner credential by credential_id or verify a credential.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        credential_id: { type: 'string' },
+        action: { type: 'string', enum: ['status', 'verify'] },
+      },
+    },
+  },
+  {
     name: 'query_governance',
     description:
       'Read GovernanceAnchor vote status, check vetoes, or fetch Ubuntu-Ctrl Fund balance.',
@@ -75,6 +86,118 @@ export const VVU_TOOLS: VvuToolDef[] = [
   },
 ];
 
+// ─── SERVICE CLIENTS ──────────────────────────────────────────────────────
+
+const SAFEKRIPTE_LITE_URL = process.env.SAFEKRIPTE_LITE_URL ?? 'http://127.0.0.1:5096';
+const SAFELINER_LITE_URL = process.env.SAFELINER_LITE_URL ?? 'http://127.0.0.1:5097';
+const OPERATUS_URL = process.env.OPERATUS_URL ?? 'http://127.0.0.1:4096';
+const FETCH_TIMEOUT_MS = Number(process.env.TOOL_FETCH_TIMEOUT_MS ?? 3000);
+
+async function fetchJSON(url: string, timeoutMs: number = FETCH_TIMEOUT_MS): Promise<Record<string, unknown>> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json() as Record<string, unknown>;
+  } catch (err) {
+    clearTimeout(timeout);
+    throw err;
+  }
+}
+
+async function querySafeKrypte(input: Record<string, unknown>): Promise<string> {
+  try {
+    const { attestation_id, content_hash, creator_id } = input;
+
+    // If looking up a specific attestation
+    if (attestation_id) {
+      const data = await fetchJSON(`${SAFEKRIPTE_LITE_URL}/commons/v1/verify/${attestation_id}`);
+      return JSON.stringify({ ok: true, data: { service: 'safekrypte-lite', attestation: data } });
+    }
+
+    // If creating a new attestation
+    if (content_hash && creator_id) {
+      const res = await fetch(`${SAFEKRIPTE_LITE_URL}/commons/v1/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content_hash, creator_id }),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (!res.ok) throw new Error(`SafeKrypte sign HTTP ${res.status}`);
+      const data = await res.json() as Record<string, unknown>;
+      return JSON.stringify({ ok: true, data: { service: 'safekrypte-lite', result: data } });
+    }
+
+    // Default: return stats
+    const stats = await fetchJSON(`${SAFEKRIPTE_LITE_URL}/commons/v1/stats`);
+    return JSON.stringify({ ok: true, data: { service: 'safekrypte-lite', stats } });
+  } catch (err) {
+    return JSON.stringify({
+      ok: false,
+      error: `SafeKrypte query failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      data: { service: 'safekrypte-lite', hint: 'SafeKrypte Lite may be offline. Try http://127.0.0.1:5096/health' },
+    });
+  }
+}
+
+async function querySafeLine(input: Record<string, unknown>): Promise<string> {
+  try {
+    const { credential_id, action } = input as { credential_id?: string; action?: string };
+
+    if (credential_id && action === 'verify') {
+      const data = await fetchJSON(`${SAFELINER_LITE_URL}/commons/v1/credential/${credential_id}`);
+      return JSON.stringify({ ok: true, data: { service: 'safeline-lite', credential: data } });
+    }
+
+    // Default: return stats
+    const stats = await fetchJSON(`${SAFELINER_LITE_URL}/commons/v1/stats`);
+    return JSON.stringify({ ok: true, data: { service: 'safeline-lite', stats } });
+  } catch (err) {
+    return JSON.stringify({
+      ok: false,
+      error: `SafeLiner query failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      data: { service: 'safeline-lite', hint: 'SafeLiner Lite may be offline. Try http://127.0.0.1:5097/health' },
+    });
+  }
+}
+
+async function queryOperatus(command: string, args?: Record<string, unknown>): Promise<string> {
+  try {
+    const res = await fetch(`${OPERATUS_URL}/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: 'kernel', command, args }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`Operatus HTTP ${res.status}`);
+    const data = await res.json() as Record<string, unknown>;
+    return JSON.stringify({ ok: true, data: { service: 'operatus', result: data } });
+  } catch (err) {
+    return JSON.stringify({
+      ok: false,
+      error: `Operatus query failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+      data: { service: 'operatus', hint: 'VVU Operatus may be offline. Try http://127.0.0.1:4096/health' },
+    });
+  }
+}
+
+/**
+ * Generic stub for services not yet deployed.
+ */
+function stubService(serviceName: string, input: Record<string, unknown>): string {
+  return JSON.stringify({
+    ok: true,
+    data: {
+      service: serviceName,
+      status: 'stub',
+      message: `${serviceName} service is not yet deployed. This is a placeholder response.`,
+      input,
+    },
+  });
+}
+
 /**
  * Dispatch a tool call by name with the given input.
  * Returns a JSON string result or an error message.
@@ -84,18 +207,20 @@ export async function dispatch_tool(
   input: Record<string, unknown>,
 ): Promise<string> {
   switch (name) {
-    case 'query_ubuntu_pools':
-      return JSON.stringify({ ok: true, data: `Ubuntu Pools query: ${JSON.stringify(input)}` });
     case 'query_safekrypte':
-      return JSON.stringify({ ok: true, data: `SafeKrypte query: ${JSON.stringify(input)}` });
+      return querySafeKrypte(input);
+    case 'query_safeline':
+      return querySafeLine(input);
+    case 'query_ubuntu_pools':
+      return queryOperatus('status', input);
     case 'query_governance':
-      return JSON.stringify({ ok: true, data: `Governance query: ${JSON.stringify(input)}` });
+      return stubService('governance', input);
     case 'query_ekasi':
-      return JSON.stringify({ ok: true, data: `Ekasi query: ${JSON.stringify(input)}` });
+      return stubService('ekasi', input);
     case 'query_proofbridge':
-      return JSON.stringify({ ok: true, data: `ProofBridge query: ${JSON.stringify(input)}` });
+      return stubService('proofbridge', input);
     case 'query_safegrid':
-      return JSON.stringify({ ok: true, data: `SafeGrid query: ${JSON.stringify(input)}` });
+      return stubService('safegrid', input);
     default:
       return JSON.stringify({ ok: false, error: `Unknown tool: ${name}` });
   }

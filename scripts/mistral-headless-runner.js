@@ -1,98 +1,93 @@
-require('dotenv').config();
+#!/usr/bin/env node
+/**
+ * Mistral Headless Runner
+ *
+ * A minimal Mistral-powered headless agent that processes a single prompt
+ * and returns a structured response. Used by agent-dispatcher.mjs for
+ * general-purpose LLM reasoning.
+ *
+ * Usage:
+ *   node scripts/mistral-headless-runner.js "your prompt here"
+ *   node scripts/mistral-headless-runner.js --json "your prompt here"
+ *
+ * Env:
+ *   MISTRAL_API_KEY         Required
+ *   MISTRAL_MODEL           Default: mistral-small-latest
+ *   MISTRAL_ENDPOINT        Default: https://api.mistral.ai/v1/chat/completions
+ */
 
-const DEFAULT_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest';
-const API_URL = 'https://api.mistral.ai/v1/chat/completions';
+const MISTRAL_ENDPOINT = process.env.MISTRAL_ENDPOINT || 'https://api.mistral.ai/v1/chat/completions';
+const MISTRAL_MODEL = process.env.MISTRAL_MODEL || 'mistral-small-latest';
+const SYSTEM_PROMPT = process.env.MISTRAL_SYSTEM_PROMPT || `You are Lindiwe, the internal intelligence layer of VVU OS.
+You have access to system tools via the agent dispatcher.
+Respond concisely and accurately. Use South African vernacular naturally where appropriate.
+Ground every operational claim in tool data. Never speculate.`;
 
-async function runHeadlessAgent({ prompt, model = DEFAULT_MODEL, temperature = 0.2, maxTokens = 2048 } = {}) {
+async function run(prompt) {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) {
-    throw new Error('MISTRAL_API_KEY is not set');
+    throw new Error('MISTRAL_API_KEY environment variable is required');
   }
 
-  const system = [
-    'You are a headless workspace agent.',
-    'Operate strictly within the provided context.',
-    'Return structured, action-ready output. No filler.',
-    'Do not ask for confirmation unless absolutely required.',
-  ].join(' ');
-
-  const body = {
-    model,
-    temperature,
-    max_tokens: maxTokens,
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: prompt },
-    ],
-  };
-
-  const res = await fetch(API_URL, {
+  const response = await fetch(MISTRAL_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      model: MISTRAL_MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: 1024,
+      temperature: 0.3,
+    }),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Mistral API error ${res.status}: ${text}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Mistral API error ${response.status}: ${text}`);
   }
 
-  const data = await res.json();
-  const content = data.choices?.[0]?.message?.content ?? '';
-  return {
-    content,
-    usage: data.usage ?? null,
-    model: data.model ?? model,
-  };
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content || '';
+  return content.trim();
 }
 
-async function main() {
-  const argv = process.argv.slice(2);
-  if (argv.length === 0 || argv.includes('--help') || argv.includes('-h')) {
-    console.log(`Usage:
-  node mistral-headless-runner.js "your task prompt"
-  node mistral-headless-runner.js --model mistral-large-latest --max-tokens 4096 "complex task"
+// CLI entry point
+const args = process.argv.slice(2);
+let asJson = false;
+let prompt = '';
 
-Env:
-  MISTRAL_API_KEY   Required
-  MISTRAL_MODEL     Optional, default: ${DEFAULT_MODEL}`);
-    process.exit(argv.includes('--help') || argv.includes('-h') ? 0 : 1);
+for (const arg of args) {
+  if (arg === '--json') {
+    asJson = true;
+  } else {
+    prompt = (prompt ? prompt + ' ' : '') + arg;
   }
+}
 
-  let model = process.env.MISTRAL_MODEL || DEFAULT_MODEL;
-  let maxTokens = 2048;
-  const promptParts = [];
+if (!prompt) {
+  console.error('Usage: node mistral-headless-runner.js [--json] "<prompt>"');
+  process.exit(1);
+}
 
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    if (arg === '--model' && argv[i + 1]) {
-      model = argv[++i];
-      continue;
+run(prompt)
+  .then((result) => {
+    if (asJson) {
+      console.log(JSON.stringify({ ok: true, output: result }));
+    } else {
+      console.log(result);
     }
-    if (arg === '--max-tokens' && argv[i + 1]) {
-      maxTokens = parseInt(argv[++i], 10);
-      continue;
-    }
-    promptParts.push(arg);
-  }
-
-  const prompt = promptParts.join(' ').trim();
-  if (!prompt) {
-    console.error('Error: prompt is required');
-    process.exit(1);
-  }
-
-  try {
-    const out = await runHeadlessAgent({ prompt, model, maxTokens });
-    console.log(JSON.stringify({ model: out.model, usage: out.usage, content: out.content }, null, 2));
     process.exit(0);
-  } catch (err) {
-    console.error(`Headless agent error: ${err.message}`);
+  })
+  .catch((err) => {
+    if (asJson) {
+      console.log(JSON.stringify({ ok: false, error: err.message }));
+    } else {
+      console.error(`Error: ${err.message}`);
+    }
     process.exit(1);
-  }
-}
-
-main();
+  });

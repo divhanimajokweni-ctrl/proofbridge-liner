@@ -1,3 +1,12 @@
+/**
+ * @deprecated This module is deprecated. Use `src/lib/agents/conversation-store.ts` instead.
+ *
+ * UnifiedConversationStore provides state-machine-backed conversation storage.
+ * Import from '@/lib/agents/conversation-store' going forward.
+ *
+ * This file is retained for backward compatibility and will be removed in a future sprint.
+ */
+
 import fs from 'fs';
 import path from 'path';
 
