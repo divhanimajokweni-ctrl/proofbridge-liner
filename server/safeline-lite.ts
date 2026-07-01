@@ -40,9 +40,9 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown): void
 
 function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
+    const chunks: Uint8Array[] = [];
     let totalBytes = 0;
-    req.on('data', (c: Buffer) => {
+    req.on('data', (c: Uint8Array) => {
       totalBytes += c.length;
       if (totalBytes > MAX_BODY_BYTES) {
         req.destroy(new Error('Request body too large'));

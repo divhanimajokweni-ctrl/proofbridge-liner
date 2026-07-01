@@ -64,7 +64,7 @@ interface Attestation {
 async function initKey(): Promise<void> {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   litePrivateKey = privateKey;
-  litePublicKeyPem = publicKey.export({ type: 'spki', format: 'pem' });
+  litePublicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }) as string;
   keyGeneratedAt = Date.now();
   keyRotationCount++;
 }
@@ -102,9 +102,9 @@ function sendPem(res: http.ServerResponse, pem: string): void {
 
 function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
-    const chunks: Buffer[] = [];
+    const chunks: Uint8Array[] = [];
     let totalBytes = 0;
-    req.on('data', (c: Buffer) => {
+    req.on('data', (c: Uint8Array) => {
       totalBytes += c.length;
       if (totalBytes > MAX_BODY_BYTES) {
         req.destroy(new Error('Request body too large'));
@@ -190,7 +190,7 @@ async function route(
 
     if (!litePrivateKey) throw new Error('Key pair not initialized');
 
-    const signature = crypto.sign(null, Buffer.from(contentHash, 'hex'), litePrivateKey);
+    const signature = crypto.sign(null, new Uint8Array(Buffer.from(contentHash, 'hex')), litePrivateKey);
     const attId = generateId();
     const timestamp = new Date().toISOString();
 
@@ -245,8 +245,8 @@ async function route(
 
     // Generate ED25519 key pair bound to this email
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
-    const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' });
-    const privateKeyBuffer = privateKey.export({ type: 'pkcs8', format: 'der' });
+    const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }) as string;
+    const privateKeyBuffer = privateKey.export({ type: 'pkcs8', format: 'der' }) as Buffer;
     const keyId = `email_sk_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const createdAt = new Date().toISOString();
 
@@ -308,7 +308,7 @@ async function route(
     }
 
     const privateKey = crypto.createPrivateKey({ key: keyEntry.privateKey, format: 'der', type: 'pkcs8' });
-    const signature = crypto.sign(null, Buffer.from(contentHash, 'hex'), privateKey);
+    const signature = crypto.sign(null, new Uint8Array(Buffer.from(contentHash, 'hex')), privateKey);
 
     sendJson(res, 200, {
       ok: true,

@@ -34,12 +34,64 @@ const PUBLIC_PATHS = [
   '/api/health',
   '/api/webhooks',
   '/api/receipts/verify',
+  '/api/gateway',
   '/favicon.ico',
   '/_next/static',
   '/_next/image',
   '/auth/callback'
 ];
+
+// Routes protected by VVU Gateway session (not Supabase)
+const VVU_GUARDED_PATHS = [
+  '/dashboard',
+  '/gateway-deck',
+  '/agent-terminal',
+];
+
 const MAX_REDIRECTS = 5;
+
+/**
+ * Validate VVU session cookie (HMAC-signed, HttpOnly).
+ * Returns session data if valid, null otherwise.
+ */
+function validateVVUSession(cookieHeader: string): { userId: string; tier: string } | null {
+  try {
+    const cookies: Record<string, string> = {};
+    cookieHeader.split(';').forEach(pair => {
+      const [key, ...rest] = pair.split('=');
+      if (key) cookies[key.trim()] = decodeURIComponent(rest.join('=').trim());
+    });
+
+    const sessionValue = cookies['vvu_session'];
+    if (!sessionValue) return null;
+
+    const parts = sessionValue.split('.');
+    if (parts.length !== 2) return null;
+
+    const [payload, signature] = parts;
+    const crypto = require('crypto');
+    const secret = process.env.VVU_SESSION_SECRET || '';
+
+    const expectedSig = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('base64url');
+
+    const sigBuf = Buffer.from(signature, 'base64url');
+    const expBuf = Buffer.from(expectedSig, 'base64url');
+
+    if (sigBuf.length !== expBuf.length) return null;
+    if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
+
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (Date.now() > data.expiresAt) return null;
+
+    return { userId: data.userId, tier: data.tier };
+  } catch {
+    return null;
+  }
+}
+
 export async function middleware(req: NextRequest) {
   const tripped = await isCircuitTripped();
   if (tripped) {
@@ -53,6 +105,21 @@ export async function middleware(req: NextRequest) {
 
   if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
     return NextResponse.next();
+  }
+
+  // VVU Gateway session guard for /dashboard, /gateway-deck, /agent-terminal
+  if (VVU_GUARDED_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
+    const session = validateVVUSession(req.headers.get('cookie') || '');
+    if (!session) {
+      const redirectUrl = new URL('/gateway', req.url);
+      redirectUrl.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(redirectUrl);
+    }
+    // Attach session info to headers for downstream use
+    const response = NextResponse.next();
+    response.headers.set('x-vvu-user-id', session.userId);
+    response.headers.set('x-vvu-tier', session.tier);
+    return response;
   }
 
   let supabaseResponse = NextResponse.next({ request: req });

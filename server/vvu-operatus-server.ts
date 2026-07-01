@@ -66,7 +66,7 @@ async function routeRequest(method: string, url: URL): Promise<{ status: number;
     if (!body || !body.target || !body.command) {
       return { status: 400, body: { success: false, error: 'Missing required fields: target, command' } };
     }
-    const result = await Operatus.execute({ target: body.target, command: body.command, args: body.args });
+    const result = await Operatus.execute({ target: body.target as string, command: body.command as string, args: body.args as Record<string, unknown> | undefined });
     return { status: 200, body: { success: result.success, data: result } };
   }
 
