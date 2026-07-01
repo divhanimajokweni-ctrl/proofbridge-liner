@@ -26,6 +26,12 @@ auth/
 # AI Gateway (auxiliary utility)
 ai-gateway/
 
+# Kilo/OpenCode local config (not needed for frontend)
+.kilo/
+
+# Next.js build trace exclusions
+scripts/customer-360/node_modules/
+
 # Legacy root-level API (superseded by App Router)
 api/verify.js
 

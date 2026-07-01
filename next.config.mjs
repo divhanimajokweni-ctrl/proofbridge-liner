@@ -15,6 +15,16 @@ const nextConfig = {
       'api.vvu.earth-tech.ai',
     ],
   },
+  experimental: {
+    outputFileTracingExcludes: {
+      '**/*': [
+        'scripts/customer-360/node_modules/**',
+        'contracts/lib/**',
+        '.kilo/**',
+        '.config/**',
+      ],
+    },
+  },
   webpack: (config) => {
     config.resolve.alias['ethers'] = path.resolve(__dirname, 'node_modules/ethers/lib.commonjs/index.js');
     config.resolve.alias['@/prover'] = path.resolve(__dirname, 'prover');
