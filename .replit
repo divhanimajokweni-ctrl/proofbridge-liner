@@ -59,6 +59,10 @@ localPort = 18789
 externalPort = 3003
 exposeLocalhost = true
 
+[[ports]]
+localPort = 31999
+externalPort = 5000
+
 [deployment]
 deploymentTarget = "autoscale"
 run = ["node", "dashboard/server.js"]

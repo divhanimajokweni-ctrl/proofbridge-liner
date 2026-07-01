@@ -12,6 +12,11 @@ interface InfraNode {
 
 export default function InfrastructureView() {
   const [nodes] = useState<InfraNode[]>([
+    { id: 'VVU-OPERATUS-MICROKERNEL', type: 'Headless Server · Port 4096', ip: '127.0.0.1', health: 'STABLE', cpuLoad: 12 },
+    { id: 'VVU-SAFEKRIPTE-LITE', type: 'ED25519 Signing · Port 5096', ip: '127.0.0.1', health: 'STABLE', cpuLoad: 8 },
+    { id: 'VVU-SAFELINER-LITE', type: 'Credential Issuance · Port 5097', ip: '127.0.0.1', health: 'STABLE', cpuLoad: 5 },
+    { id: 'VVU-OPENCLAW-GATEWAY', type: 'Chat Gateway · Port 18789', ip: '127.0.0.1', health: 'STABLE', cpuLoad: 34 },
+    { id: 'VVU-LINDIWE-AGENT', type: 'WhatsApp Agent Kernel', ip: '127.0.0.1', health: 'STABLE', cpuLoad: 42 },
     { id: 'VVU-CORE-GATE-01', type: 'Production Node', ip: '10.144.12.4', health: 'STABLE', cpuLoad: 24 },
     { id: 'VVU-SANDBOX-04', type: 'Isolated Agent Loop', ip: '10.144.99.11', health: 'DEGRADED', cpuLoad: 92 },
     { id: 'VVU-BACKEND-DB', type: 'Data Storage Array', ip: '10.144.12.8', health: 'STABLE', cpuLoad: 14 },
