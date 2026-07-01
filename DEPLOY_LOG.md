@@ -94,3 +94,9 @@
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
 
+## 2026-07-01T17:21:30Z
+- **Commit**: `6541cdf`
+- **Message**: hardening: server timeouts, body limits, input validation, rate-limited UI, PID tracking, uncaughtException handlers, plugin allowlist, python3-free CLI
+- **Status**: Deployed
+- **Domain**: https://venturevisionubuntu.co.za
+
