@@ -4,11 +4,14 @@
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
 
-## 2026-06-30T16:56:45Z
-- **Commit**: `e03ea5a`
-- **Message**: Inject VVU-Brain OS architecture: state machine, unified store, Zod schemas, converse route, gateway panels, sidebar
+## 2026-07-01T18:43:53Z
+- **Commit**: `1efd463`
+- **Message**: feat: Dashboard MVP — WebSocket telemetry pipeline + modern CSS + routed dashboard views
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
+- **Deploy ID**: dpl_FYV7JRRvFZ4uaSRmW7frx1KXxVHz
+- **Routes verified**: `/dashboard` (200, 39KB), `/dashboard/infra` (200, 21KB), `/dashboard/telemetry` (200, 26KB), `/api/health` (200)
+
 
 ## 2026-06-30T17:14:11Z
 - **Commit**: `9f8e4cf`
