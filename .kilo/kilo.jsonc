@@ -1,5 +1,6 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
+  "default_agent": "orchestrator",
   "indexing": {
     "vectorStore": "lancedb"
   },
@@ -9,10 +10,49 @@
     ]
   },
   "snapshot": false,
-  "default_agent": "headless",
   "server": {
     "port": 4096,
     "hostname": "127.0.0.1",
     "mdns": false
+  },
+  "mcp": {
+    "openclaw-gateway": {
+      "type": "local",
+      "command": ["npx", "openclaw", "gateway", "run", "--force"],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "safekrypte-lite": {
+      "type": "local",
+      "command": ["npx", "tsx", "server/safekrypte-lite.ts"],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "safeline-lite": {
+      "type": "local",
+      "command": ["npx", "tsx", "server/safeline-lite.ts"],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "vvu-operatus": {
+      "type": "local",
+      "command": ["npx", "tsx", "server/vvu-operatus-server.ts"],
+      "enabled": true,
+      "timeout": 30000
+    }
+  },
+  "permission": {
+    "bash": "allow",
+    "read": "allow",
+    "edit": {
+      "src/**": "allow",
+      "server/**": "allow",
+      "scripts/**": "allow",
+      ".kilo/**": "allow",
+      "*": "ask"
+    },
+    "glob": "allow",
+    "grep": "allow",
+    "webfetch": "allow"
   }
 }
