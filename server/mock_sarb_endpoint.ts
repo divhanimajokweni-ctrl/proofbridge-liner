@@ -16,7 +16,7 @@ const server = http.createServer((req, res) => {
   }
 
   let size = 0;
-  const chunks: Buffer[] = [];
+  const chunks: Uint8Array[] = [];
   let rejected = false;
 
   req.on("data", chunk => {
