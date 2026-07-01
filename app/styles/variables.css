@@ -259,3 +259,224 @@
   color: var(--color-text-primary);
   font-weight: 600;
 }
+
+/* ── Modern CSS Features ────────────────────────────────────────────── */
+
+/* light-dark() color scheme support */
+:root,
+.light {
+  --color-bg-canvas:    #F5F7FA;
+  --color-surface-card: #FFFFFF;
+  --color-text-body:    #1A202C;
+  --color-text-dim:     #718096;
+}
+
+.dark {
+  --color-bg-canvas:    #07090C;
+  --color-surface-card: #121925;
+  --color-text-body:    #DCE2EA;
+  --color-text-dim:     #6A8099;
+}
+
+/* Auto light/dark using light-dark() where supported */
+:root {
+  color-scheme: dark;
+}
+
+/* Container query support — apply to parent containers */
+.vvu-container {
+  container-type: inline-size;
+  container-name: vvu-layout;
+}
+
+/* ── :has() State Selectors ──────────────────────────────────────────── */
+
+/* Card with active state indicator */
+.vvu-card:has(.vvu-active-indicator) {
+  border-color: var(--color-gold-border);
+  box-shadow: var(--color-glow-gold);
+}
+
+/* Widget with error state */
+.vvu-widget:has(.vvu-error) {
+  border-color: var(--color-crimson-border);
+}
+
+/* Widget with live data */
+.vvu-widget:has(.vvu-live-dot) {
+  border-top-color: var(--color-green);
+}
+
+/* Row that is hovered or selected */
+.vvu-process-row:has(+ .vvu-process-row:hover),
+.vvu-process-row:hover {
+  background: var(--color-card);
+}
+
+/* ── content-visibility + contain (DOM virtualization perf) ──────────── */
+
+.vvu-virtualize {
+  content-visibility: auto;
+  contain: layout style paint;
+  contain-intrinsic-size: 200px;
+}
+
+.vvu-virtualize-row {
+  content-visibility: auto;
+  contain: strict;
+  contain-intrinsic-size: 36px;
+}
+
+.vvu-offscreen {
+  content-visibility: hidden;
+  contain: layout style paint;
+}
+
+/* ── Clamp fluid typography scale ────────────────────────────────────── */
+
+.vvu-text-xs  { font-size: clamp(0.4rem, 0.6vw, 0.5rem); }
+.vvu-text-sm  { font-size: clamp(0.5rem, 0.8vw, 0.6rem); }
+.vvu-text-base { font-size: clamp(0.6rem, 1vw, 0.75rem); }
+.vvu-text-lg  { font-size: clamp(0.75rem, 1.4vw, 1rem); }
+.vvu-text-xl  { font-size: clamp(1rem, 2.5vw, 1.4rem); }
+.vvu-text-2xl { font-size: clamp(1.3rem, 3.5vw, 2rem); }
+
+.vvu-fluid-space {
+  padding: clamp(8px, 2vw, 20px);
+  gap: clamp(6px, 1.2vw, 16px);
+}
+
+/* ── Dashboard Widget Styles ─────────────────────────────────────────── */
+
+.vvu-widget {
+  container-type: inline-size;
+  container-name: vvu-widget;
+  transition: border-color 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+}
+
+.vvu-widget:hover {
+  border-color: var(--color-border-hover);
+}
+
+/* Widget body @container query — adapts to available width */
+@container vvu-widget (max-width: 300px) {
+  .vvu-widget__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .vvu-widget__title {
+    font-size: clamp(0.55rem, 1.5vw, 0.7rem);
+  }
+  .vvu-widget__body {
+    padding: 10px;
+  }
+}
+
+@container vvu-widget (min-width: 500px) {
+  .vvu-widget__body {
+    padding: 20px;
+  }
+}
+
+/* ── Metric Card ─────────────────────────────────────────────────────── */
+
+@container widget-body (max-width: 200px) {
+  .vvu-metric-card__value {
+    font-size: clamp(0.9rem, 4vw, 1.2rem);
+  }
+  .vvu-metric-card__spark {
+    display: none;
+  }
+}
+
+@container widget-body (min-width: 350px) {
+  .vvu-metric-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+}
+
+/* ── Status pills ────────────────────────────────────────────────────── */
+
+.vvu-pill {
+  font-family: var(--font-mono);
+  font-size: clamp(0.4rem, 0.6vw, 0.5rem);
+  padding: 3px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.04em;
+}
+
+/* ── Dashboard layout containers ─────────────────────────────────────── */
+
+.vvu-dashboard-main {
+  container-type: inline-size;
+  container-name: vvu-dashboard;
+}
+
+@container vvu-dashboard (max-width: 700px) {
+  .vvu-dashboard-main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vvu-dashboard-header {
+  container-type: inline-size;
+  container-name: vvu-dashboard-header;
+}
+
+/* ── VVU Navigation ──────────────────────────────────────────────────── */
+
+.vvu-nav {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px;
+  background: var(--color-void);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: clamp(0.45rem, 0.7vw, 0.55rem);
+  overflow-x: auto;
+}
+
+.vvu-nav a,
+.vvu-nav button {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  padding: 6px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  transition: all 0.15s var(--ease-out);
+  white-space: nowrap;
+  font-family: inherit;
+  font-size: inherit;
+  background: transparent;
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vvu-nav a:hover,
+.vvu-nav button:hover {
+  color: var(--color-cyan);
+  border-color: var(--color-cyan-border);
+  background: var(--color-cyan-dim);
+}
+
+.vvu-nav a.active,
+.vvu-nav button.active {
+  color: var(--color-cyan);
+  border-color: var(--color-cyan-border);
+  background: var(--color-cyan-dim);
+  font-weight: 700;
+}

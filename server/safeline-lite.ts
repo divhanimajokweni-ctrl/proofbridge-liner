@@ -200,6 +200,80 @@ async function route(
     return { handled: true };
   }
 
+  if (path === '/commons/v1/email-credential' && method === 'POST') {
+    if (credentialCount >= LITE_TIER_MAX) {
+      sendJson(res, 403, { ok: false, error: 'Free tier exhausted (1000/1000). Upgrade to SafeLiner Full.', tier: 'exhausted' });
+      return { handled: true };
+    }
+
+    const body = await readBody(req);
+    const email = String(body?.email ?? '').trim().toLowerCase();
+    const displayName = String(body?.display_name ?? email).trim();
+    const publicKey = String(body?.public_key ?? '').trim();
+
+    if (!email || !email.includes('@')) {
+      sendJson(res, 400, { ok: false, error: 'Valid email required' });
+      return { handled: true };
+    }
+    if (!publicKey) {
+      sendJson(res, 400, { ok: false, error: 'public_key required — register via SafeKrypte /commons/v1/keygen first' });
+      return { handled: true };
+    }
+
+    const credId = generateId();
+    const timestamp = new Date().toISOString();
+    const contentHash = crypto.createHash('sha256').update(`email:${email}:${publicKey}:${timestamp}`).digest('hex');
+
+    let signature = '';
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), SK_SIGN_TIMEOUT);
+      const skRes = await fetch(`${SAFEKRIPTE_LITE_URL}/commons/v1/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content_hash: contentHash, creator_id: `safeline:email:${email}` }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      if (skRes.ok) {
+        const skData = await skRes.json();
+        signature = skData?.data?.signedAttestation?.signature ?? '';
+      }
+    } catch {
+      signature = crypto.createHash('sha256').update(contentHash).digest('hex');
+    }
+    if (!signature) {
+      signature = crypto.createHash('sha256').update(contentHash).digest('hex');
+    }
+
+    const credential: Credential = {
+      id: credId,
+      holderId: `email:${email}`,
+      holderName: displayName,
+      credentialType: 'email-identity',
+      issuer: 'VVU SafeLiner Lite',
+      issuedAt: timestamp,
+      contentHash,
+      signature,
+      liteTier: true,
+    };
+
+    credentials.set(credId, credential);
+    credentialCount++;
+
+    sendJson(res, 200, {
+      ok: true,
+      data: {
+        credential,
+        verifyUrl: `/commons/v1/credential/${credId}`,
+        liteTier: true,
+        credentialsUsed: credentialCount,
+        credentialsRemaining: LITE_TIER_MAX - credentialCount,
+      },
+    });
+    return { handled: true };
+  }
+
   if (path === '/commons/v1/stats' && method === 'GET') {
     sendJson(res, 200, {
       ok: true,
@@ -231,6 +305,7 @@ server.listen(PORT, HOST, () => {
     endpoints: [
       'GET  /health',
       'POST /commons/v1/issue',
+      'POST /commons/v1/email-credential',
       'GET  /commons/v1/credential/:id',
       'GET  /commons/v1/credential/:id/qr',
       'GET  /commons/v1/stats',

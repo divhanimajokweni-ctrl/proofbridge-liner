@@ -411,9 +411,11 @@ class VVUOperatusImpl {
 // Export singleton instance
 export const Operatus = new VVUOperatusImpl();
 
-// Auto-init on import (non-blocking, in background)
-if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
-  Operatus.init().catch(err => {
-    console.error('[OPERATUS] Initialization error:', err);
-  });
-}
+// NOTE: Auto-init on import is DISABLED to prevent side-effects in Next.js routes.
+// Call `await Operatus.init()` explicitly at your application entrypoint.
+// To re-enable auto-init, uncomment the block below:
+// if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
+//   Operatus.init().catch(err => {
+//     console.error('[OPERATUS] Initialization error:', err);
+//   });
+// }
