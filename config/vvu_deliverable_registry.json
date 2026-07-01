@@ -1,0 +1,155 @@
+{
+  "$schema": "https://vvu.africa/deliverable-registry.schema.json",
+  "version": "1.0.0",
+  "updatedAt": "2026-07-01T17:02:32Z",
+  "phases": {
+    "phase1": {
+      "label": "Foundation & Community Adoption",
+      "timeframe": "2026-07-16 to 2026-12-31",
+      "deliverables": [
+        {
+          "id": "D1",
+          "name": "SafeKrypte Lite Implementation",
+          "deadline": "2026-07-31",
+          "status": "in_progress",
+          "owner": "Backend Dev + DevOps",
+          "subtasks": [
+            { "name": "SafeKrypte Lite Backend", "deadline": "2026-07-25", "status": "completed", "evidence": "server/safekrypte-lite.ts deployed" },
+            { "name": "SafeKrypte Lite DevOps", "deadline": "2026-07-25", "status": "in_progress", "evidence": "Public key endpoint at /.well-known/safekrypte-lite-pubkey.pem" },
+            { "name": "UbuntuDJ Integration", "deadline": "2026-07-31", "status": "pending", "evidence": "" },
+            { "name": "UbuntuLearn Integration", "deadline": "2026-07-31", "status": "pending", "evidence": "" },
+            { "name": "Unit/Integration Tests", "deadline": "2026-07-31", "status": "pending", "evidence": "" },
+            { "name": "Load Tests", "deadline": "2026-08-15", "status": "pending", "evidence": "" },
+            { "name": "Internal Docs", "deadline": "2026-07-31", "status": "pending", "evidence": "" }
+          ]
+        },
+        {
+          "id": "D2",
+          "name": "Lindiwe Agent Kernel Production Deployment",
+          "deadline": "2026-08-15",
+          "status": "in_progress",
+          "owner": "SafeGames Team + DevOps",
+          "subtasks": [
+            { "name": "Lindiwe Agent Kernel Backend", "deadline": "2026-08-01", "status": "completed", "evidence": "src/lib/kernel/*.ts present" },
+            { "name": "Lindiwe DevOps Deployment", "deadline": "2026-08-10", "status": "pending", "evidence": "" },
+            { "name": "Unit/Integration Tests", "deadline": "2026-08-15", "status": "pending", "evidence": "" },
+            { "name": "Load Tests", "deadline": "2026-08-30", "status": "pending", "evidence": "" },
+            { "name": "Internal Docs", "deadline": "2026-08-15", "status": "pending", "evidence": "" }
+          ]
+        },
+        {
+          "id": "D3",
+          "name": "War Room Appliance CLI v1.0",
+          "deadline": "2026-08-31",
+          "status": "completed",
+          "owner": "War Room Team",
+          "subtasks": [
+            { "name": "War Room CLI", "deadline": "2026-08-15", "status": "completed", "evidence": "scripts/vvu-cli.sh v1.0.0" },
+            { "name": "Gateway (openclaw.json)", "deadline": "2026-08-20", "status": "completed", "evidence": "openclaw.json configured" },
+            { "name": "Dashboard", "deadline": "2026-08-31", "status": "completed", "evidence": "app/gateway/panels/DashboardView.tsx" },
+            { "name": "Unit/Integration Tests", "deadline": "2026-08-31", "status": "pending", "evidence": "" },
+            { "name": "User Testing", "deadline": "2026-09-15", "status": "pending", "evidence": "" }
+          ]
+        },
+        {
+          "id": "D4",
+          "name": "SafeGames Commons Phase 1 Launch",
+          "deadline": "2026-09-30",
+          "status": "pending",
+          "owner": "SafeGames Team",
+          "subtasks": [
+            { "name": "UbuntuDJ Launch", "deadline": "2026-08-15", "status": "pending", "evidence": "" },
+            { "name": "UbuntuLearn Launch", "deadline": "2026-08-30", "status": "pending", "evidence": "" },
+            { "name": "Ubuntu Studio Launch", "deadline": "2026-09-15", "status": "pending", "evidence": "" },
+            { "name": "Creator Onboarding (10,000+)", "deadline": "2026-09-30", "status": "pending", "evidence": "" },
+            { "name": "Monetization Flows", "deadline": "2026-09-30", "status": "pending", "evidence": "" },
+            { "name": "Unit/Integration Tests", "deadline": "2026-09-30", "status": "pending", "evidence": "" }
+          ]
+        }
+      ]
+    },
+    "phase2": {
+      "label": "Scaling & Enterprise Expansion",
+      "timeframe": "2027-01-01 to 2027-12-31",
+      "deliverables": [
+        {
+          "id": "D5",
+          "name": "SafeKrypte Full + SafeLiner Full",
+          "deadline": "2027-06-30",
+          "status": "pending",
+          "owner": "Security Team",
+          "subtasks": [
+            { "name": "Threshold Signing (3-of-5)", "deadline": "2027-03-31", "status": "pending", "evidence": "" },
+            { "name": "On-Chain Commitments", "deadline": "2027-03-31", "status": "pending", "evidence": "" },
+            { "name": "ZK Proof for Classification", "deadline": "2027-06-30", "status": "pending", "evidence": "" },
+            { "name": "On-Chain Verifier", "deadline": "2027-06-30", "status": "pending", "evidence": "" },
+            { "name": "Upgrade Path Testing", "deadline": "2027-06-30", "status": "pending", "evidence": "" }
+          ]
+        },
+        {
+          "id": "D6",
+          "name": "NATS JetStream Migration",
+          "deadline": "2027-03-31",
+          "status": "pending",
+          "owner": "DevOps Team",
+          "subtasks": [
+            { "name": "NATS JetStream Migration", "deadline": "2027-03-31", "status": "pending", "evidence": "" },
+            { "name": "Unit/Integration Tests", "deadline": "2027-03-31", "status": "pending", "evidence": "" },
+            { "name": "Load Tests (100K+/sec)", "deadline": "2027-04-30", "status": "pending", "evidence": "" }
+          ]
+        }
+      ]
+    },
+    "phase3": {
+      "label": "Ecosystem Dominance & Global Expansion",
+      "timeframe": "2028-01-01 to 2028-12-31",
+      "deliverables": [
+        {
+          "id": "D7",
+          "name": "Multi-Region NATS JetStream",
+          "deadline": "2028-06-30",
+          "status": "pending",
+          "subtasks": [
+            { "name": "Multi-Region Deployment", "deadline": "2028-06-30", "status": "pending", "evidence": "" },
+            { "name": "Unit/Integration Tests", "deadline": "2028-06-30", "status": "pending", "evidence": "" },
+            { "name": "Load Tests (1M+/sec)", "deadline": "2028-07-31", "status": "pending", "evidence": "" }
+          ]
+        }
+      ]
+    },
+    "crossPhase": {
+      "label": "Cross-Phase Deliverables",
+      "deliverables": [
+        {
+          "id": "D8",
+          "name": "Ubuntu Data Bus Namespace Registry",
+          "deadline": "2026-07-15",
+          "status": "pending",
+          "owner": "TBD",
+          "subtasks": [
+            { "name": "Assign Namespace Registry Owner", "deadline": "2026-07-10", "status": "blocked", "evidence": "" },
+            { "name": "PR Review Process", "deadline": "2026-07-15", "status": "pending", "evidence": "" },
+            { "name": "Documentation Links", "deadline": "2026-07-20", "status": "pending", "evidence": "" }
+          ]
+        },
+        {
+          "id": "D9",
+          "name": "30-Second Claim Test Audit (Pitch Deck)",
+          "deadline": "2026-07-10",
+          "status": "blocked",
+          "owner": "Marketing Team",
+          "subtasks": [
+            { "name": "Pitch Deck Audit", "deadline": "2026-07-10", "status": "blocked", "evidence": "" },
+            { "name": "Claim Validation", "deadline": "2026-07-15", "status": "pending", "evidence": "" },
+            { "name": "Updated Pitch Deck", "deadline": "2026-07-20", "status": "pending", "evidence": "" }
+          ]
+        }
+      ]
+    }
+  },
+  "blockers": [
+    { "issue": "Assign Namespace Registry Owner", "owner": "You", "deadline": "2026-07-10", "impact": "Registry drifts without owner" },
+    { "issue": "Assign SafeKrypte Lite Backend Dev", "owner": "You", "deadline": "2026-07-10", "impact": "Phase 1 launch delayed" },
+    { "issue": "Pitch Deck Audit", "owner": "Marketing Team", "deadline": "2026-07-10", "impact": "Investor meetings at risk" }
+  ]
+}

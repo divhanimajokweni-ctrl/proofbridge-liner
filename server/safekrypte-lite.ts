@@ -4,11 +4,15 @@ import crypto from 'node:crypto';
 const PORT = Number(process.env.SAFEKRIPTE_LITE_PORT ?? 5096);
 const HOST = process.env.HOST ?? '127.0.0.1';
 const LITE_TIER_MAX = 1000;
+const KEY_ROTATION_MS = Number(process.env.KEY_ROTATION_MS ?? 0);
+const DATA_BUS_URL = process.env.DATA_BUS_URL ?? '';
 
 let creatorCount = 0;
+let keyRotationCount = 0;
 const attestations = new Map<string, Attestation>();
 let litePrivateKey: crypto.KeyObject | null = null;
 let litePublicKeyPem = '';
+let keyGeneratedAt = 0;
 
 interface Attestation {
   id: string;
@@ -24,6 +28,24 @@ async function initKey(): Promise<void> {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   litePrivateKey = privateKey;
   litePublicKeyPem = publicKey.export({ type: 'spki', format: 'pem' });
+  keyGeneratedAt = Date.now();
+  keyRotationCount++;
+}
+
+async function maybeRotateKey(): Promise<void> {
+  if (KEY_ROTATION_MS > 0 && Date.now() - keyGeneratedAt > KEY_ROTATION_MS) {
+    await initKey();
+  }
+}
+
+async function emitDataBusEvent(eventType: string, payload: Record<string, unknown>): Promise<void> {
+  if (!DATA_BUS_URL) return;
+  try {
+    const body = JSON.stringify({ eventType, payload, source: 'safekrypte-lite', timestamp: new Date().toISOString() });
+    await fetch(DATA_BUS_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+  } catch {
+    // Data bus unavailable — non-blocking
+  }
 }
 
 function generateId(): string {
@@ -87,7 +109,7 @@ async function route(
     return { handled: true };
   }
 
-  if (path === '/.well-known/safekrypte-lite-pubkey.pem' && method === 'GET') {
+  if ((path === '/.well-known/safekrypte-lite-pubkey.pem' || path === '/pk') && method === 'GET') {
     sendPem(res, litePublicKeyPem);
     return { handled: true };
   }
@@ -105,6 +127,8 @@ async function route(
       sendJson(res, 403, { ok: false, error: 'Free tier exhausted (1000/1000). Upgrade to SafeKrypte Full.', tier: 'exhausted' });
       return { handled: true };
     }
+
+    await maybeRotateKey();
 
     const body = await readBody(req);
     const contentHash = String(body?.content_hash ?? '');
@@ -127,12 +151,19 @@ async function route(
       creatorId,
       signature: signature.toString('base64'),
       timestamp,
-      vvuKeyId: 'sk_lite_v1',
+      vvuKeyId: `sk_lite_v1_k${keyRotationCount}`,
       liteTier: true,
     };
 
     attestations.set(attId, attestation);
     creatorCount++;
+
+    emitDataBusEvent('safekrypte.ip.hash_registered', {
+      attestationId: attId,
+      contentHash,
+      creatorId,
+      tier: 'lite',
+    });
 
     sendJson(res, 200, {
       ok: true,
@@ -178,10 +209,11 @@ server.listen(PORT, HOST, async () => {
     algorithm: 'ED25519',
     endpoints: [
       'GET  /health',
-      'GET  /.well-known/safekrypte-lite-pubkey.pem',
-      'POST /commons/v1/sign',
-      'GET  /commons/v1/verify/:id',
-      'GET  /commons/v1/stats',
+    'GET  /.well-known/safekrypte-lite-pubkey.pem',
+    'GET  /pk',
+    'POST /commons/v1/sign',
+    'GET  /commons/v1/verify/:id',
+    'GET  /commons/v1/stats',
     ],
   }));
 });

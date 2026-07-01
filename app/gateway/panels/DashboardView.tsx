@@ -19,10 +19,10 @@ export default function DashboardView() {
   }, []);
 
   const metrics: MetricCard[] = [
-    { label: 'PRODUCTION IN',  value: 'T-34 DAYS', sub: 'ProofBridge · 2026-07-30', color: '#C8A84A' },
-    { label: 'ENTITIES',       value: '6',         sub: 'Portfolio Active',          color: '#E4C86A' },
-    { label: 'OPEN FINDINGS',  value: '18',        sub: '5 Hard Failures',           color: '#C4254F' },
-    { label: 'RELEASE GATES',  value: '16',        sub: 'Blocking',                  color: '#D07E18' },
+    { label: 'PRODUCTION IN',  value: 'T-34 DAYS',    sub: 'ProofBridge · 2026-07-30',             color: '#C8A84A' },
+    { label: 'SAFEKRIPTE LITE', value: '1000 FREE',   sub: 'ED25519 · /commons/v1/sign',           color: '#00E5FF' },
+    { label: 'SAFELINER LITE', value: 'ACTIVE',       sub: 'Credentials · /commons/v1/issue',      color: '#3ECF8E' },
+    { label: 'OPERATUS KERNEL', value: '4 OPERATORS', sub: 'SafeLiner · SafeKrypte · HAL · Audit', color: '#E4C86A' },
   ];
 
   return (

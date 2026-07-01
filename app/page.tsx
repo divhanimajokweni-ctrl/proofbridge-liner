@@ -232,6 +232,138 @@ function Sparkline({ data }: { data: number[] }) {
   );
 }
 
+// ─── AGENT CHAT ─────────────────────────────────────────
+function AgentChat() {
+  const [messages, setMessages] = useState<{ id: string; role: string; content: string }[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [threadId, setThreadId] = useState('');
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
+    const text = input;
+    setInput('');
+    setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content: text }]);
+    setLoading(true);
+    try {
+      const res = await fetch('/api/agent/converse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-request': 'true' },
+        body: JSON.stringify({ message: text, threadId: threadId || undefined }),
+      });
+      const data = await res.json();
+      if (data.threadId && !threadId) setThreadId(data.threadId);
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: data.content || data.reply || '(no response)' }]);
+    } catch {
+      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'system', content: 'Connection failed — check agent API status.' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const roleColors: Record<string, { bg: string; border: string; dot: string; label: string }> = {
+    user: { bg: `${C.void}`, border: C.border, dot: C.cyan, label: 'YOU' },
+    assistant: { bg: `${C.surface}`, border: C.borderHover, dot: C.gold, label: 'AGENT' },
+    system: { bg: `${C.void}`, border: C.crimson, dot: C.crimson, label: 'SYSTEM' },
+  };
+
+  return (
+    <div className="flex flex-col" style={{
+      border: `1px solid ${C.border}`, borderRadius: '10px', overflow: 'hidden',
+      background: C.void, minHeight: '520px', height: 'calc(100vh - 220px)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '8px 16px', borderBottom: `1px solid ${C.border}`, background: C.surface,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: C.cyan, boxShadow: `0 0 10px ${C.cyan}` }} />
+          <span style={{ fontFamily: '"Syne",sans-serif', fontWeight: 700, fontSize: '0.8rem', color: '#fff' }}>CORE AGENT</span>
+          <span style={{ fontSize: '0.45rem', color: C.textMuted, background: `${C.card}`, padding: '2px 8px', borderRadius: '4px', fontFamily: '"IBM Plex Mono",monospace' }}>
+            {threadId ? threadId.slice(0, 8) : 'NEW SESSION'}
+          </span>
+        </div>
+        {messages.length > 0 && (
+          <button onClick={() => { setMessages([]); setThreadId(''); }}
+            style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.textMuted, borderRadius: '4px', padding: '4px 10px', fontSize: '0.5rem', fontFamily: '"IBM Plex Mono",monospace', cursor: 'pointer' }}>
+            CLEAR
+          </button>
+        )}
+      </div>
+
+      <div className="vvu-scrollbar" style={{
+        flex: 1, padding: '14px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px',
+      }}>
+        {messages.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', color: C.textMuted, fontSize: '0.6rem', fontFamily: '"IBM Plex Mono",monospace' }}>
+            <div style={{ fontSize: '2rem', opacity: 0.2 }}>⬡</div>
+            <div>Agent ready — type a message to begin</div>
+            <div style={{ color: C.border, fontSize: '0.5rem' }}>powered by VVU Operatus · SafeKrypte Lite · SafeLiner Lite</div>
+          </div>
+        )}
+        {messages.map(m => {
+          const rc = roleColors[m.role] || roleColors.system;
+          return (
+            <div key={m.id} style={{ display: 'flex', flexDirection: 'column', alignItems: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+              <div style={{
+                maxWidth: '85%', padding: '10px 14px', borderRadius: '8px',
+                background: rc.bg, border: `1px solid ${rc.border}`,
+                position: 'relative',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: rc.dot, boxShadow: `0 0 6px ${rc.dot}` }} />
+                  <span style={{ fontSize: '0.45rem', color: rc.dot, fontWeight: 700, letterSpacing: '0.1em', fontFamily: '"IBM Plex Mono",monospace' }}>
+                    {rc.label}
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.7rem', color: C.text, lineHeight: '1.6', fontFamily: '"DM Sans",sans-serif', whiteSpace: 'pre-wrap' }}>
+                  {m.content}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+        {loading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', color: C.gold, fontSize: '0.55rem', fontFamily: '"IBM Plex Mono",monospace' }}>
+            <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: C.gold, animation: 'pulse 1s infinite' }} />
+            Agent processing...
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <form onSubmit={sendMessage} style={{
+        display: 'flex', borderTop: `1px solid ${C.border}`, padding: '10px',
+        background: C.surface, gap: '8px',
+      }}>
+        <input value={input} onChange={e => setInput(e.target.value)}
+          placeholder="Message the VVU core agent..."
+          disabled={loading}
+          style={{
+            flex: 1, background: C.void, border: `1px solid ${C.border}`, borderRadius: '6px',
+            color: C.text, fontFamily: '"IBM Plex Mono",monospace', fontSize: '0.65rem',
+            padding: '8px 12px', outline: 'none',
+          }} />
+        <button type="submit" disabled={loading || !input.trim()}
+          style={{
+            background: loading ? C.card : C.gold, border: 'none', borderRadius: '6px',
+            color: loading ? C.textMuted : C.void, fontWeight: 700,
+            fontFamily: '"IBM Plex Mono",monospace', fontSize: '0.6rem', cursor: loading ? 'default' : 'pointer',
+            padding: '8px 18px', letterSpacing: '0.05em',
+          }}>
+          {loading ? '...' : 'SEND'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 // ─── MAIN COMPONENT ─────────────────────────────────────
 export default function VVUEliteGateway() {
   const [activeTab, setActiveTab] = useState<ViewTab>('deck');
@@ -278,24 +410,30 @@ export default function VVUEliteGateway() {
   }, [handleKeyDown]);
 
   const nodes: ProjectNode[] = [
+    { name: 'SafeKrypte Lite', type: 'ED25519 SIGNING', status: 'ACTIVE',
+      description: 'Free-tier ED25519 signing service for first 1000 creators. POST /commons/v1/sign — content_hash + creator_id → signed attestation + timestamp.',
+      metricLabel: 'Free Tier Remaining', metricValue: '1000 CREATORS' },
+    { name: 'SafeLiner Lite', type: 'CREDENTIAL ISSUANCE', status: 'ACTIVE',
+      description: 'Free-tier credential issuance with QR verification. POST /commons/v1/issue — holder verification + credential type → verifiable credential.',
+      metricLabel: 'Credentials Issued', metricValue: '0 / 1000 FREE' },
+    { name: 'VVU Operatus', type: 'MICROKERNEL RUNTIME', status: 'ACTIVE',
+      description: 'Headless microkernel running SafeLiner + SafeKrypte operators with Round-Robin and Priority-Preemptive scheduling.',
+      metricLabel: 'Kernel Operators', metricValue: '4 ONLINE' },
+    { name: 'Lindiwe Agent Kernel', type: 'INTERNAL INTELLIGENCE', status: 'ACTIVE',
+      description: 'Localized model framework evaluating internal operations, compliance parameters, and audit assertions via WhatsApp transport.',
+      metricLabel: 'Agent Cluster Pulse Rate', metricValue: '42ms LATENCY' },
     { name: 'Ubuntu Pools', type: 'ROSCA / STOKVEL', status: 'PILOT',
       description: 'Decentralized mutual financial pooling structures configured around regional community affinity parameters.',
       metricLabel: 'Active Pool Containers', metricValue: '12 Pools Locked' },
     { name: 'ProofBridge Liner', type: 'ZK / COMPLIANCE', status: 'PILOT',
       description: 'Zero-knowledge circuit generation validation array running isolated compliance computations.',
       metricLabel: 'Release Pipeline Countdown', metricValue: 'T-34 DAYS' },
-    { name: 'SafeKrypte', type: 'HSM-AS-A-SERVICE', status: 'DEV',
-      description: 'Hardware Security Module integration matrices isolating administrative root identity assertions.',
-      metricLabel: 'Enclave Lifecycle Status', metricValue: 'PROVISIONING' },
     { name: 'SafeGrid', type: 'WATER / NMBM', status: 'DEV',
       description: 'Utility access network integration infrastructure mapping live Nelson Mandela Bay Municipality.',
       metricLabel: 'Telemetry Sensor Array', metricValue: '98.4% STABLE' },
     { name: 'Ekasi', type: 'UBUNTU GAMES / RPG', status: 'PRE-PROD',
       description: 'Hyper-localized gamified learning state machine utilizing decentralized token rewards.',
       metricLabel: 'Build Environment Matrix', metricValue: 'v0.9.8-BETA' },
-    { name: 'Lindiwe AI', type: 'INTERNAL INTELLIGENCE', status: 'ACTIVE',
-      description: 'Localized model framework evaluating internal operations, compliance parameters, and audit assertions.',
-      metricLabel: 'Agent Cluster Pulse Rate', metricValue: '42ms LATENCY' },
   ];
 
   const navItems = [
@@ -450,7 +588,7 @@ export default function VVUEliteGateway() {
                 color: C.gold, background: `${C.gold}18`,
                 border: `1px solid ${C.gold}44`, padding: '2px 10px',
                 borderRadius: '20px', letterSpacing: '0.1em',
-              }}>v2.0-STABLE</span>
+               }}>v2.1-ORCHESTRATOR</span>
             </div>
             <p style={{
               fontSize: '0.65rem', color: C.textSecondary,
@@ -588,66 +726,7 @@ export default function VVUEliteGateway() {
         )}
 
         {/* ═══ TAB: TERMINAL ══════════════════════════════ */}
-        {activeTab === 'terminal' && (
-          <div style={{
-            border: `1px solid ${C.border}`, borderRadius: '10px', overflow: 'hidden',
-            background: C.void, flex: 1, display: 'flex', flexDirection: 'column',
-            minHeight: '480px',
-          }}>
-            {/* Terminal header */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '10px 16px', borderBottom: `1px solid ${C.border}`,
-              background: C.surface,
-            }}>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {['#FF5F56','#FFBD2E','#27C93F'].map(c => (
-                  <div key={c} style={{ width: '8px', height: '8px', borderRadius: '50%', background: c }} />
-                ))}
-              </div>
-              <span style={{ fontSize: '0.5rem', color: C.textMuted, letterSpacing: '0.08em' }}>
-                VVU AGENT SHELL v2.0
-              </span>
-            </div>
-            {/* Terminal body */}
-            <div style={{
-              flex: 1, padding: '16px', fontFamily: '"IBM Plex Mono",monospace',
-              fontSize: '0.65rem', lineHeight: '1.8', overflowY: 'auto',
-              color: C.cyan,
-            }}>
-              <div>$ vvu-agent --status</div>
-              <div style={{ color: C.emerald }}>  ▸ Kernel ONLINE · Gate Target: 2026-07-30</div>
-              <div style={{ color: C.gold }}>  ▸ 6/6 Nodes reachable</div>
-              <div style={{ color: C.textSecondary }}>  ▸ Trust Signal: {trustSignal}% resolved</div>
-              <div style={{ marginTop: '8px' }}>$ vvu-agent --scan</div>
-              {cpuHistory.prod01.slice(-5).reverse().map((v, i) => (
-                <div key={i} style={{ color: C.textSecondary }}>
-                  {'  '}▸ Pool cpu${i}.prod01: ${v}% load {v > 80 ? '⚠' : '✓'}
-                </div>
-              ))}
-              <div style={{ marginTop: '8px', color: C.textMuted }}>
-                $ <span style={{ animation: 'blink 1s step-end infinite' }}>_</span>
-              </div>
-            </div>
-            {/* Terminal input */}
-            <form onSubmit={e => e.preventDefault()} style={{
-              display: 'flex', borderTop: `1px solid ${C.border}`,
-            }}>
-              <span style={{
-                padding: '10px 12px', color: C.gold, fontFamily: '"IBM Plex Mono",monospace',
-                fontSize: '0.65rem', background: C.surface,
-              }}>$</span>
-              <input
-                placeholder="Enter command..."
-                style={{
-                  flex: 1, border: 'none', background: C.surface, color: C.text,
-                  fontFamily: '"IBM Plex Mono",monospace', fontSize: '0.65rem',
-                  padding: '10px 8px', outline: 'none',
-                }}
-              />
-            </form>
-          </div>
-        )}
+        {activeTab === 'terminal' && <AgentChat />}
 
         {/* ═══ TAB: INFRASTRUCTURE ═════════════════════─── */}
         {activeTab === 'infra' && (

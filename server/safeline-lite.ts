@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 const PORT = Number(process.env.SAFELINER_LITE_PORT ?? 5097);
 const HOST = process.env.HOST ?? '127.0.0.1';
 const LITE_TIER_MAX = 1000;
+const SAFEKRIPTE_LITE_URL = process.env.SAFEKRIPTE_LITE_URL ?? 'http://127.0.0.1:5096';
 
 let credentialCount = 0;
 const credentials = new Map<string, Credential>();
@@ -127,7 +128,24 @@ async function route(
     const credId = generateId();
     const timestamp = new Date().toISOString();
     const contentHash = crypto.createHash('sha256').update(`${holderId}:${credentialType}:${timestamp}`).digest('hex');
-    const signature = crypto.createHash('sha256').update(contentHash).digest('hex');
+
+    let signature = '';
+    try {
+      const skRes = await fetch(`${SAFEKRIPTE_LITE_URL}/commons/v1/sign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content_hash: contentHash, creator_id: `safeline:${holderId}` }),
+      });
+      if (skRes.ok) {
+        const skData = await skRes.json();
+        signature = skData?.data?.signedAttestation?.signature ?? '';
+      }
+    } catch {
+      // SafeKrypte Lite unreachable — use local fallback hash (dev mode)
+    }
+    if (!signature) {
+      signature = crypto.createHash('sha256').update(contentHash).digest('hex');
+    }
 
     const credential: Credential = {
       id: credId,

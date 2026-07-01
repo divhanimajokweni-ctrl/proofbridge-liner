@@ -91,9 +91,17 @@ case "$COMMAND" in
     check_file "SafeKrypte Operator" "$WORKSPACE/src/lib/kernel/operators/safekrypte.ts"
     check_file "SafeLiner Operator" "$WORKSPACE/src/lib/kernel/operators/safeline.ts"
     check_file "VVU Operatus Runtime" "$WORKSPACE/src/lib/kernel/vvu-operatus.ts"
+
+    echo ""
+    echo "► key rotation check..."
+    if [ -n "${KEY_ROTATION_MS:-}" ]; then
+      echo "  [INFO] KEY_ROTATION_MS=$KEY_ROTATION_MS (rotation enabled)"
+    else
+      echo "  [INFO] KEY_ROTATION_MS not set (manual rotation only)"
+    fi
     ;;
 
-  status)
+  logs)
     print_banner
     echo "► fetching live dashboard summary..."
 
@@ -148,6 +156,7 @@ else:
     echo "  install   Deploy VVU OS components and prepare data directories"
     echo "  deploy    Start all VVU OS services (SafeKrypte Lite, SafeLiner Lite, Operatus, OpenClaw)"
     echo "  doctor    Run system health diagnostics on all services and critical files"
+    echo "  logs      Tail service logs (safekrypte/safeliner/operatus/openclaw)"
     echo "  status    Fetch live dashboard summary from all running services"
     exit 1
     ;;
