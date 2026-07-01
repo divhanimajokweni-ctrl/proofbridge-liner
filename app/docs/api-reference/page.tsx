@@ -82,6 +82,24 @@ Authorization: Bearer <KERNEL_SECRET>
   }
 }`}</pre>
 
+          <h2 className="vvu-docs-h2">VVU Operatus API (Headless Server :4096)</h2>
+          <p className="vvu-docs-p">Standalone headless server at <code className="vvu-docs-code">http://127.0.0.1:4096</code></p>
+          <pre className="vvu-docs-pre">{`GET  /health              System health
+GET  /status              Operator status (SafeLiner + SafeKrypte)
+POST /safeline/evaluate   Evaluate MAC policy
+POST /safeline/enforce    Enforce MAC decision
+POST /safeline/log        Query SafeLiner audit log
+POST /safekrypte/generate Generate new key pair
+POST /safekrypte/sign     Sign a payload
+POST /safekrypte/verify   Verify a signature
+POST /safekrypte/escrow   Escrow a key share
+GET  /safekrypte/status   Key vault status
+POST /operatus/kernel/panic   Trigger kernel panic
+POST /operatus/kernel/reboot  Reboot the kernel
+POST /operatus/kernel/tick    Advance kernel tick
+GET  /operatus/audit/log      Full audit log
+GET  /operatus/audit/events   Recent audit events`}</pre>
+
           <h2 className="vvu-docs-h2">GET /api/health</h2>
           <p className="vvu-docs-p">System health check</p>
           <pre className="vvu-docs-pre">{`GET /api/health

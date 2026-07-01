@@ -5,7 +5,7 @@
 ; ─────────────────────────────────────────────────────────────────────
 $TTL    3600
 @       IN      SOA     ns1.vercel-dns.com.     hostmaster.vercel-dns.com. (
-                        2026070101      ; serial (bumped 2026-07-01 — nameserver delegation change)
+                        2026070102      ; serial (bumped 2026-07-01 — deployment loop + merge compliance-fabric)
                         3600            ; refresh
                         900             ; retry
                         1209600         ; expire
