@@ -1,11 +1,15 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 
-const PORT = Number(process.env.SAFEKRIPTE_LITE_PORT ?? 5096);
+const PORT = Math.max(1024, Math.min(65535, Number(process.env.SAFEKRIPTE_LITE_PORT ?? 5096)));
 const HOST = process.env.HOST ?? '127.0.0.1';
 const LITE_TIER_MAX = 1000;
-const KEY_ROTATION_MS = Number(process.env.KEY_ROTATION_MS ?? 0);
+const KEY_ROTATION_MS = Math.max(0, Number(process.env.KEY_ROTATION_MS ?? 0));
 const DATA_BUS_URL = process.env.DATA_BUS_URL ?? '';
+const MAX_BODY_BYTES = Number(process.env.MAX_BODY_BYTES ?? 10240);
+
+const HEX_RE = /^[0-9a-fA-F]+$/;
+const ID_RE = /^[\w@.\-:+]+$/;
 
 let creatorCount = 0;
 let keyRotationCount = 0;
@@ -13,6 +17,10 @@ const attestations = new Map<string, Attestation>();
 let litePrivateKey: crypto.KeyObject | null = null;
 let litePublicKeyPem = '';
 let keyGeneratedAt = 0;
+
+process.on('uncaughtException', (err) => {
+  console.error(JSON.stringify({ event: 'VU_SAFEKRIPTE_CRASH', error: err.message }));
+});
 
 interface Attestation {
   id: string;
@@ -66,7 +74,15 @@ function sendPem(res: http.ServerResponse, pem: string): void {
 function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (c: Buffer) => chunks.push(c));
+    let totalBytes = 0;
+    req.on('data', (c: Buffer) => {
+      totalBytes += c.length;
+      if (totalBytes > MAX_BODY_BYTES) {
+        req.destroy(new Error('Request body too large'));
+        reject(new Error('Request body too large'));
+      }
+      chunks.push(c);
+    });
     req.on('end', () => {
       try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
       catch { reject(new Error('Invalid JSON body')); }
@@ -131,11 +147,15 @@ async function route(
     await maybeRotateKey();
 
     const body = await readBody(req);
-    const contentHash = String(body?.content_hash ?? '');
-    const creatorId = String(body?.creator_id ?? '');
+    const contentHash = String(body?.content_hash ?? '').trim();
+    const creatorId = String(body?.creator_id ?? '').trim();
 
-    if (!contentHash || !creatorId) {
-      sendJson(res, 400, { ok: false, error: 'content_hash and creator_id required' });
+    if (!contentHash || !HEX_RE.test(contentHash)) {
+      sendJson(res, 400, { ok: false, error: 'content_hash required and must be hex-encoded' });
+      return { handled: true };
+    }
+    if (!creatorId || !ID_RE.test(creatorId)) {
+      sendJson(res, 400, { ok: false, error: 'creator_id required (alphanumeric, @, ., -, :, +)' });
       return { handled: true };
     }
 
@@ -198,6 +218,9 @@ async function route(
 }
 
 const server = http.createServer(handleRequest);
+server.headersTimeout = 8000;
+server.requestTimeout = 15000;
+server.timeout = 20000;
 
 server.listen(PORT, HOST, async () => {
   await initKey();

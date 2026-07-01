@@ -1,13 +1,21 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 
-const PORT = Number(process.env.SAFELINER_LITE_PORT ?? 5097);
+const PORT = Math.max(1024, Math.min(65535, Number(process.env.SAFELINER_LITE_PORT ?? 5097)));
 const HOST = process.env.HOST ?? '127.0.0.1';
 const LITE_TIER_MAX = 1000;
 const SAFEKRIPTE_LITE_URL = process.env.SAFEKRIPTE_LITE_URL ?? 'http://127.0.0.1:5096';
+const MAX_BODY_BYTES = Number(process.env.MAX_BODY_BYTES ?? 10240);
+const SK_SIGN_TIMEOUT = Number(process.env.SK_SIGN_TIMEOUT ?? 5000);
+
+const ID_RE = /^[\w@.\-:+]+$/;
 
 let credentialCount = 0;
 const credentials = new Map<string, Credential>();
+
+process.on('uncaughtException', (err) => {
+  console.error(JSON.stringify({ event: 'VU_SAFELINER_CRASH', error: err.message }));
+});
 
 interface Credential {
   id: string;
@@ -33,7 +41,15 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown): void
 function readBody(req: http.IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (c: Buffer) => chunks.push(c));
+    let totalBytes = 0;
+    req.on('data', (c: Buffer) => {
+      totalBytes += c.length;
+      if (totalBytes > MAX_BODY_BYTES) {
+        req.destroy(new Error('Request body too large'));
+        reject(new Error('Request body too large'));
+      }
+      chunks.push(c);
+    });
     req.on('end', () => {
       try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
       catch { reject(new Error('Invalid JSON body')); }
@@ -116,12 +132,16 @@ async function route(
     }
 
     const body = await readBody(req);
-    const holderId = String(body?.holder_id ?? '');
-    const holderName = String(body?.holder_name ?? '');
-    const credentialType = String(body?.credential_type ?? 'completion');
+    const holderId = String(body?.holder_id ?? '').trim();
+    const holderName = String(body?.holder_name ?? '').trim();
+    const credentialType = String(body?.credential_type ?? 'completion').trim();
 
-    if (!holderId || !holderName) {
-      sendJson(res, 400, { ok: false, error: 'holder_id and holder_name required' });
+    if (!holderId || !ID_RE.test(holderId)) {
+      sendJson(res, 400, { ok: false, error: 'holder_id required (alphanumeric, @, ., -, :, +)' });
+      return { handled: true };
+    }
+    if (!holderName || holderName.length > 200) {
+      sendJson(res, 400, { ok: false, error: 'holder_name required (max 200 chars)' });
       return { handled: true };
     }
 
@@ -131,17 +151,21 @@ async function route(
 
     let signature = '';
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), SK_SIGN_TIMEOUT);
       const skRes = await fetch(`${SAFEKRIPTE_LITE_URL}/commons/v1/sign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content_hash: contentHash, creator_id: `safeline:${holderId}` }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       if (skRes.ok) {
         const skData = await skRes.json();
         signature = skData?.data?.signedAttestation?.signature ?? '';
       }
     } catch {
-      // SafeKrypte Lite unreachable — use local fallback hash (dev mode)
+      signature = crypto.createHash('sha256').update(contentHash).digest('hex');
     }
     if (!signature) {
       signature = crypto.createHash('sha256').update(contentHash).digest('hex');
@@ -194,6 +218,9 @@ async function route(
 }
 
 const server = http.createServer(handleRequest);
+server.headersTimeout = 8000;
+server.requestTimeout = 15000;
+server.timeout = 20000;
 
 server.listen(PORT, HOST, () => {
   console.log(JSON.stringify({
