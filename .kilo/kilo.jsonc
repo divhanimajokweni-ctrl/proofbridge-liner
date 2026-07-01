@@ -8,5 +8,11 @@
       ".agents/skills"
     ]
   },
-  "snapshot": false
+  "snapshot": false,
+  "default_agent": "headless",
+  "server": {
+    "port": 4096,
+    "hostname": "127.0.0.1",
+    "mdns": false
+  }
 }
