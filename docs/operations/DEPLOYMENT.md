@@ -14,8 +14,9 @@
 | Canonical domain | `venturevisionubuntu.co.za` |
 | Vercel project | `proofbridge-liner` |
 | Vercel production alias | `venturevisionubuntu.co.za` |
-| DNS apex | `76.76.21.21` (A record) |
-| DNS nameservers | `ns1.host-ww.net`, `ns2.host-ww.net` |
+| DNS apex | `76.76.21.21` (A record — served by Host Africa until NS delegation changes) |
+| DNS nameservers | Current: `ns1.host-ww.net`, `ns2.host-ww.net` (Host Africa) |
+| DNS nameservers | Target: `ns1.vercel-dns.com`, `ns2.vercel-dns.com` (Vercel DNS) |
 | Health endpoint | `https://venturevisionubuntu.co.za/api/health` → HTTP 200 |
 | Verify endpoint | `https://venturevisionubuntu.co.za/api/verify` (Bearer auth via KERNEL_SECRET) |
 | Send-email endpoint | `https://venturevisionubuntu.co.za/api/send-email` (Bearer auth via KERNEL_SECRET) |
