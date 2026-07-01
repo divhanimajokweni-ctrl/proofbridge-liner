@@ -20,10 +20,12 @@
 | Health endpoint | `https://venturevisionubuntu.co.za/api/health` → HTTP 200 |
 | Verify endpoint | `https://venturevisionubuntu.co.za/api/verify` (Bearer auth via KERNEL_SECRET) |
 | Send-email endpoint | `https://venturevisionubuntu.co.za/api/send-email` (Bearer auth via KERNEL_SECRET) |
+| Operatus headless server | `http://127.0.0.1:4096` (standalone, non-Next.js) |
 | CircuitBreaker | `0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67` (Polygon Amoy, chain 80002) |
 | Email sender | `hello@venturevisionubuntu.co.za` (Resend verified) |
 | Git canonical branch | `compliance-fabric` |
 | Git backup branch | `backup/local-compliance-fabric` |
+| OpenClaw gateway | `http://127.0.0.1:18789` (War Room, channels: WhatsApp, Slack, Google Chat) |
 
 ---
 

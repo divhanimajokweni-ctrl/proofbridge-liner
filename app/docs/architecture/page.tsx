@@ -12,6 +12,13 @@ export default function ArchitectureDocsPage() {
             infrastructure (Ubuntu Pools).
           </p>
 
+          <h3 className="vvu-docs-h3">Runtime — VVU Operatus</h3>
+          <ul className="vvu-docs-ul">
+            <li><strong>VVU Operatus</strong> — Microkernel runtime with Round-Robin & Priority-Preemptive scheduling</li>
+            <li><strong>SafeLiner</strong> — MAC enforcement operator (access control, policy evaluation)</li>
+            <li><strong>SafeKrypte</strong> — Key management operator (key generation, threshold escrow)</li>
+            <li><strong>Headless Server</strong> — Standalone REST API on port 4096 for non-Next.js deployments</li>
+          </ul>
           <h3 className="vvu-docs-h3">Core Components</h3>
           <ul className="vvu-docs-ul">
             <li><strong>ProofBridge Liner</strong> — ED25519-signed on-chain receipts</li>
