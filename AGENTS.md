@@ -82,6 +82,16 @@ If any critical file is missing:
 - `scripts/verify-setup.js` — Setup verification
 - `scripts/observability.py` — Observability suite (OTel/vendor integrations; runtime-only, excluded from Vercel build)
 
+### MCP Server Inventory (OpenClaw Gateway — 3 servers, 10 tools)
+| Server | Tools | Purpose |
+|--------|-------|---------|
+| **gcp** | `gcloud_exec`, `terraform_exec`, `gemini_cli`, `datadog_alert` | GCP infrastructure + Gemini reasoning |
+| **fetch** | `fetch_url`, `fetch_json` | HTTP/web content fetching |
+| **workspace** | `list_scripts`, `run_script`, `read_config`, `codebase_search` | Local workspace operations |
+
+All MCP servers are RBAC-gated to `+276203506594` (admin) and `core` role.
+Agents load MCP tools on their next runtime build after `openclaw mcp reload`.
+
 ### Rollback Checklist
 Use the current live deployment `dpl_NBqotyxk4Rz4ikaNHwhnHroGuA97` as the baseline.
 Reserve 3-strike rollback for critical components only (Gate D contracts, SafeKrypte HSM tiers).

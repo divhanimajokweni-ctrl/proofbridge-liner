@@ -1,45 +1,75 @@
-# VVU VALIDATION — 2026-07-01
-## Component: Dashboard MVP (Telemetry + Modern CSS + Route Extraction)
-## PR Branch: compliance-fabric
-## Plan Reference: active/PLAN.md approved 2026-06-30
+# VVU VALIDATION — 2026-07-01 (Session Remediation + Agent Ammo)
+## Component: War Room Slack Auth + MCP Server Inventory
 
 ### Hard Failure Status
-- HF-1 TEE:          **OPEN** — not affected by dashboard change (no TEE interaction)
-- HF-2 ZK:           **OPEN** — not affected by dashboard change (no ZK interaction)
-- HF-3 Anchor:       **OPEN** — not affected by dashboard change (no contract interaction)
-- HF-4 HMAC:         **OPEN** — not affected by dashboard change (no HMAC key derivation)
-- HF-5 Calibration:  **OPEN** — not affected by dashboard change (no Bayesian calibration)
+- HF-1 TEE:         **OPEN** — not affected
+- HF-2 ZK:          **OPEN** — not affected
+- HF-3 Anchor:      **OPEN** — not affected
+- HF-4 HMAC:        **OPEN** — not affected
+- HF-5 Calibration: **OPEN** — not affected
 
-### Gates
+### Acceptance Criteria Verification
 
-- **Branch gate**:             **PASS** — current: `compliance-fabric`, required: `compliance-fabric`
-- **Behavioral coverage**:     **PASS** — flows exercised in real environment:
-  - WebSocket telemetry server started and broadcasting on port 3001 (verified live output: CPU 22.39%, Mem 73.16%, 49 processes)
-  - `/proc` collector reading real kernel metrics from the Replit container (CPU, memory, load, process table)
-  - Docker stats collector handling absence gracefully (daemon not running, returns `[]` without crash)
-  - Frontend build: all 3 dashboard routes compile to static pages (`/dashboard`, `/dashboard/infra`, `/dashboard/telemetry`)
-  - CSS modern features verified at build time: container queries, light-dark(), `:has()` selectors, `content-visibility`, `clamp()` fluid scale
-- **Trace chain**:             **COMPLETE** — missing link: N/A
-  - `active/INVESTIGATION.md` → `active/PLAN.md` (Mino-approved) → Implementation (server/ + app/ + app/styles/) → `active/VALIDATION.md`
+| # | Criterion | Status | Evidence |
+|---|---|---|---|
+| AC-1 | `.env` has workspace User OAuth Token (xoxp-) | ✅ PASS | `SLACK_USER_TOKEN=xoxp-...` set in `.env` |
+| AC-2 | Slack config has `userToken` SecretRef | ✅ PASS | `"userToken": {"source":"env","id":"SLACK_USER_TOKEN"}` in `openclaw.json` |
+| AC-3 | Slack plugin enabled in `plugins.entries` | ✅ PASS | `"slack": {"enabled": true}` in `plugins.entries` |
+| AC-4 | Slack Socket Mode connected | ✅ PASS | Gateway log: `[slack] socket mode connected`; status: `running=true, connected=true, healthState=healthy` |
+| AC-5 | MCP servers `fetch` + `workspace` created | ✅ PASS | Files exist at `mcp/fetch-server.js` and `mcp/workspace-server.js` |
+| AC-6 | MCP servers registered in config | ✅ PASS | `npx openclaw mcp list --json` shows all 3 servers (gcp, fetch, workspace) |
+| AC-7 | War Room verification passes 15/15 | ✅ PASS | `bash scripts/verify-war-room.sh` → 15 passed, 0 failed |
+| AC-8 | `daily/` folder created | ✅ PASS | `test -d daily/` → exists |
 
-### Files Changed (summary)
-| File | Purpose |
-|---|---|
-| `server/lib/telemetry-types.ts` | Shared types for telemetry pipeline |
-| `server/lib/proc-collector.ts` | `/proc` filesystem collector (CPU, mem, load, processes) |
-| `server/lib/docker-collector.ts` | Docker daemon socket collector |
-| `server/telemetry-server.ts` | WebSocket server on port 3001 broadcasting live telemetry |
-| `app/styles/variables.css` | Added light-dark(), `:has()`, container queries, `content-visibility`, `clamp()` scale, dashboard widget styles, nav styles |
-| `app/components/DashboardWidget.tsx` | Reusable container-query-aware widget card |
-| `app/components/MetricCard.tsx` | Single-metric display with sparkline, trend, clamp typography |
-| `app/components/ProcessTable.tsx` | Virtual-scrolled process table (DOM windowing) |
-| `app/components/SystemStatusBar.tsx` | Live status bar with WebSocket fallback |
-| `app/dashboard/layout.tsx` | Dashboard layout with navigation |
-| `app/dashboard/DashboardNav.tsx` | Dashboard navigation bar |
-| `app/dashboard/page.tsx` | Main Operational Deck — project grid, live metrics, Antony Queue |
-| `app/dashboard/infra/page.tsx` | Infrastructure view — process table, Docker stats, Velocity chart |
-| `app/dashboard/telemetry/page.tsx` | Telemetry Globe — 3D node visualization, streaming CPU/memory sparkline |
+### Behavioral Coverage — Real Environment Flows
+
+- ✅ **Slack Socket Mode**: Gateway log shows `socket mode connected` — no auth errors. Status API shows `connected=true, healthState=healthy, botTokenStatus=available, appTokenStatus=available, userTokenStatus=available`.
+- ✅ **Config validation**: `openclaw doctor --fix` repaired plugin entries. Config synced to runtime + last-good. Gateway starts cleanly.
+- ✅ **MCP server probe**: Both `fetch-server.js` and `workspace-server.js` start without errors. Tools listed successfully.
+- ✅ **Plugin trust**: `plugins.entries.slack.enabled=true` and `plugins.allow` configured to prevent autoload warnings.
+- ✅ **Gateway health**: `curl /health` returns `{"ok":true,"status":"live"}`. WebSocket connections accepted.
+- ✅ **Build integrity**: `npm run build` passes (verified from previous session).
+
+### Trace Chain
+- `active/INVESTIGATION.md` (Phase 1) → `active/PLAN.md` (Phase 2) → Implementation → `active/VALIDATION.md` (Phase 4)
+
+### Gateway Log Excerpt (Slack connection)
+```
+[slack] [default] starting provider
+socket-mode:socket-mode Socket Mode is not turned on.
+[slack] socket mode connected
+```
+
+### MCP Server Inventory
+```
+gcp       — gcloud_exec, terraform_exec, gemini_cli, datadog_alert
+fetch     — fetch_url, fetch_json
+workspace — list_scripts, run_script, read_config, codebase_search
+```
+
+### Channel Summary
+| Channel | Status |
+|---------|--------|
+| Slack   | ✅ LIVE — Socket Mode, healthy, 3/3 tokens available |
+| WhatsApp | ❌ Blocked — missing libglib (Replit limitation) |
+| Google Chat | ❌ Blocked — missing `auth/gcp.json` |
+
+### Files Changed or Created
+
+| File | Action |
+|------|--------|
+| `.env` | Updated `SLACK_USER_TOKEN` |
+| `openclaw.json` | Added `userToken`, `plugins.entries.slack`, `mcp.servers.fetch`, `mcp.servers.workspace` |
+| `openclaw.json.last-good` | Synced |
+| `mcp/fetch-server.js` | **Created** |
+| `mcp/workspace-server.js` | **Created** |
+| `daily/` | **Created** |
+| `active/INVESTIGATION.md` | Updated |
+| `active/PLAN.md` | Updated |
+| `active/VALIDATION.md` | Current file |
 
 ## RESULT: PASS
 
-## BLOCK REASON: N/A — all gates pass; hard failures are pre-existing and unaffected by this change.
+All 8 acceptance criteria met. Slack channel is now operational via Socket Mode with all tokens available. Core agent has 3 MCP servers (gcp, fetch, workspace) providing 10 tools total. Hard failures unaffected.
+
+**BLOCK REASON**: N/A
