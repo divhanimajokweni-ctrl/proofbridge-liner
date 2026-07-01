@@ -1,8 +1,22 @@
 import { z } from 'zod';
+import {
+  SubsystemType,
+  RESERVED_PROCESSES,
+  RESERVED_PROCESSES_BY_NAME,
+  PID_RANGES,
+  PRIORITY_TIERS,
+  MEMORY_REGIONS,
+  resolvePidRange,
+  resolvePriorityTier,
+  lookupReservation,
+  OS_PILLARS,
+  SECURITY_POLICIES,
+  DEVICE_DRIVERS,
+} from './vvu-registry';
 
 // ─── TYPE DEFINITIONS ──────────────────────────────────────────────────────
 export type ProcessStatus = 'READY' | 'RUNNING' | 'BLOCKED' | 'TERMINATED';
-export type SubsystemType = 'HARDWARE' | 'EXECUTION' | 'UI' | 'SECURITY';
+export type { SubsystemType };
 
 // ─── IPC MESSAGE ENVELOPE ──────────────────────────────────────────────────
 export const IPCMessageSchema = z.object({
@@ -21,7 +35,7 @@ export interface ProcessControlBlock {
   name: string;
   subsystem: SubsystemType;
   status: ProcessStatus;
-  priority: number; // 1 (Lowest) to 5 (Highest / Core Critical)
+  priority: number;
   cpuCyclesRemaining: number;
   memoryAllocationMB: number;
   mailbox: IPCMessage[];
@@ -30,8 +44,8 @@ export interface ProcessControlBlock {
 // ─── MICROKERNEL V2 ENGINE ─────────────────────────────────────────────────
 export class VVUMicrokernelV2 {
   private activeProcesses: ProcessControlBlock[] = [];
-  private pidCounter = 200;
-  private totalSystemMemory = 16384; // 16GB RAM Buffer limit
+  private pidCounter: Record<string, number> = {};
+  private totalSystemMemory = 16384;
   private allocatedMemory = 0;
   private isPanicked = false;
   private panicReason = '';
@@ -45,11 +59,35 @@ export class VVUMicrokernelV2 {
     this.allocatedMemory = 0;
     this.activeProcesses = [];
 
-    // Provision Core Operating System Subsystem Anchors
-    this.spawnProcess('HAL-CORE', 'HARDWARE', 5, 80, 512);      // Priority 5 (Kernel Space)
-    this.spawnProcess('SECURITY-GATE', 'SECURITY', 5, 60, 1024); // Priority 5 (Kernel Space)
-    this.spawnProcess('CLI-RUNTIME', 'UI', 3, 40, 256);         // Priority 3 (User Space)
-    this.spawnProcess('MISTRAL-CONTAINER', 'EXECUTION', 4, 120, 2048); // Priority 4 (System Space)
+    // Initialize PID counters per range from registry
+    for (const [name, range] of Object.entries(PID_RANGES)) {
+      this.pidCounter[name] = range.start;
+    }
+
+    // Boot reserved processes: HARDWARE, SECURITY, UI, EXECUTION
+    for (const reservation of RESERVED_PROCESSES) {
+      this.spawnFromReservation(reservation);
+    }
+  }
+
+  private spawnFromReservation(reservation: typeof RESERVED_PROCESSES[number]): number {
+    if (this.isPanicked) throw new Error('[KERNEL_ERROR] Write instruction blocked: System state set to PANIC.');
+
+    const pid = this.pidCounter[reservation.pidRange]++;
+    const pcb: ProcessControlBlock = {
+      pid,
+      name: reservation.name,
+      subsystem: reservation.subsystem,
+      status: 'READY',
+      priority: reservation.priority,
+      cpuCyclesRemaining: reservation.cycles,
+      memoryAllocationMB: reservation.memoryMB,
+      mailbox: [],
+    };
+
+    this.activeProcesses.push(pcb);
+    this.allocatedMemory += reservation.memoryMB;
+    return pid;
   }
 
   public spawnProcess(name: string, subsystem: SubsystemType, priority: number, cycles: number, memory: number): number {
@@ -60,7 +98,18 @@ export class VVUMicrokernelV2 {
       throw new Error('[KERNEL_PANIC] System state crashed due to catastrophic out-of-memory error.');
     }
 
-    const pid = this.pidCounter++;
+    // Reserved process? Use registry config.
+    const reservation = lookupReservation(name);
+    if (reservation) {
+      return this.spawnFromReservation(reservation);
+    }
+
+    // User-spawned — use USER PID range
+    const rangeKey = 'USER';
+    if (!this.pidCounter[rangeKey]) {
+      this.pidCounter[rangeKey] = PID_RANGES.USER.start;
+    }
+    const pid = this.pidCounter[rangeKey]++;
     const pcb: ProcessControlBlock = {
       pid,
       name,
@@ -69,7 +118,7 @@ export class VVUMicrokernelV2 {
       priority: Math.max(1, Math.min(5, priority)),
       cpuCyclesRemaining: cycles,
       memoryAllocationMB: memory,
-      mailbox: []
+      mailbox: [],
     };
 
     this.activeProcesses.push(pcb);
@@ -95,12 +144,11 @@ export class VVUMicrokernelV2 {
 
       receiver.mailbox.push(validatedEnvelope);
 
-      // Unblock target process automatically if it was idling/waiting for an input block
       if (receiver.status === 'BLOCKED') {
         receiver.status = 'READY';
       }
 
-      return `✉️ [IPC_SUCCESS] Thread ${validatedEnvelope.senderPid} dispatched message payload frame directly to Thread ${validatedEnvelope.receiverPid}.`;
+      return `✉️ [IPC_SUCCESS] Thread ${validatedEnvelope.senderPid} dispatched message to Thread ${validatedEnvelope.receiverPid}.`;
     } catch (err) {
       return `❌ [IPC_VALIDATION_ERROR] Dropped malformed message frame payload.`;
     }
@@ -112,44 +160,63 @@ export class VVUMicrokernelV2 {
 
     const cycleTraceLogs: string[] = [];
 
-    // Sort array queue: Highest Priority (5) first, breaking ties via highest remaining execution load
+    // Sort by priority descending, then by remaining cycles
     this.activeProcesses.sort((a, b) => {
       if (b.priority !== a.priority) return b.priority - a.priority;
       return b.cpuCyclesRemaining - a.cpuCyclesRemaining;
     });
 
     const nextRunnableProcess = this.activeProcesses.find(p => p.status === 'READY');
-
     if (!nextRunnableProcess) {
       return ["[KERNEL_IDLE] Awaiting incoming task blocks or unblocking thread execution signals."];
     }
 
-    // Capture Preemption event trace logs if another thread was running previously
+    // Preemption
     this.activeProcesses.forEach(p => {
       if (p.status === 'RUNNING' && p.pid !== nextRunnableProcess.pid) {
         p.status = 'READY';
-        cycleTraceLogs.push(`⚡ [PREEMPTION] Context Switch triggered! Thread ${p.name} bumped out by higher priority thread ${nextRunnableProcess.name}.`);
+        const preemptedReservation = lookupReservation(p.name);
+        const preemptedInfo = preemptedReservation
+          ? `${p.name} (${OS_PILLARS[p.subsystem].label})`
+          : p.name;
+        const nextReservation = lookupReservation(nextRunnableProcess.name);
+        const nextInfo = nextReservation
+          ? `${nextRunnableProcess.name} (${OS_PILLARS[nextRunnableProcess.subsystem].label})`
+          : nextRunnableProcess.name;
+        cycleTraceLogs.push(
+          `⚡ [PREEMPTION] ${preemptedInfo} preempted by ${nextInfo} (PRIORITY ${nextRunnableProcess.priority} > ${p.priority}).`
+        );
       }
     });
 
-    // Execute active process thread slice
+    // Execute
     nextRunnableProcess.status = 'RUNNING';
-    const executionSlice = Math.min(nextRunnableProcess.cpuCyclesRemaining, 25);
+    const priorityTier = resolvePriorityTier(nextRunnableProcess.priority);
+    const quantum = PRIORITY_TIERS[priorityTier].quantum;
+    const executionSlice = Math.min(nextRunnableProcess.cpuCyclesRemaining, quantum);
     nextRunnableProcess.cpuCyclesRemaining -= executionSlice;
 
-    cycleTraceLogs.push(`⚙️ [EXEC_TICK] PID ${nextRunnableProcess.pid} (${nextRunnableProcess.name}) running at PRIORITY_${nextRunnableProcess.priority} for ${executionSlice} cycles.`);
+    const pidRange = resolvePidRange(nextRunnableProcess.pid);
+    const pillarLabel = OS_PILLARS[nextRunnableProcess.subsystem]?.label ?? nextRunnableProcess.subsystem;
+    cycleTraceLogs.push(
+      `⚙️ [EXEC_TICK] PID ${nextRunnableProcess.pid} (${pidRange}) ${nextRunnableProcess.name} | ${pillarLabel} | PRIORITY_${nextRunnableProcess.priority} (${priorityTier}) | quantum ${executionSlice} cycles.`
+    );
 
-    // Read thread mail frames inside runtime scope block
+    // Read mailbox
     if (nextRunnableProcess.mailbox.length > 0) {
-      const unreadMail = nextRunnableProcess.mailbox.shift();
-      cycleTraceLogs.push(`📩 [IPC_READ] PID ${nextRunnableProcess.pid} read dynamic message frame from PID ${unreadMail?.senderPid}: "${unreadMail?.payload}"`);
+      const unreadMail = nextRunnableProcess.mailbox.shift()!;
+      const senderReservation = this.activeProcesses.find(p => p.pid === unreadMail.senderPid);
+      const senderName = senderReservation?.name ?? `PID ${unreadMail.senderPid}`;
+      cycleTraceLogs.push(`📩 [IPC_READ] ${nextRunnableProcess.name} read message from ${senderName}: "${unreadMail.payload}"`);
     }
 
-    // Handle Thread Lifecycles
+    // Lifecycle
     if (nextRunnableProcess.cpuCyclesRemaining <= 0) {
       nextRunnableProcess.status = 'TERMINATED';
       this.allocatedMemory -= nextRunnableProcess.memoryAllocationMB;
-      cycleTraceLogs.push(`✔ [THREAD_EXIT] PID ${nextRunnableProcess.pid} (${nextRunnableProcess.name}) finished processing. Freed ${nextRunnableProcess.memoryAllocationMB}MB.`);
+      cycleTraceLogs.push(
+        `✔ [THREAD_EXIT] ${nextRunnableProcess.name} (${pillarLabel}) finished. Freed ${nextRunnableProcess.memoryAllocationMB}MB from ${pidRange}.`
+      );
     } else {
       nextRunnableProcess.status = 'READY';
     }
@@ -174,7 +241,26 @@ export class VVUMicrokernelV2 {
       totalMemory: this.totalSystemMemory,
       isPanicked: this.isPanicked,
       panicReason: this.panicReason,
-      processes: [...this.activeProcesses]
+      reservedMemory: RESERVED_PROCESSES.reduce((sum, r) => sum + r.memoryMB, 0),
+      totalReservedProcesses: RESERVED_PROCESSES.length,
+      processes: [...this.activeProcesses],
+      memoryRegions: MEMORY_REGIONS,
+      securityPolicies: SECURITY_POLICIES,
+      deviceDrivers: DEVICE_DRIVERS,
     };
   }
 }
+
+// Re-export registry
+export {
+  OS_PILLARS,
+  PID_RANGES,
+  PRIORITY_TIERS,
+  RESERVED_PROCESSES,
+  MEMORY_REGIONS,
+  SECURITY_POLICIES,
+  DEVICE_DRIVERS,
+  resolvePidRange,
+  resolvePriorityTier,
+  lookupReservation,
+};
