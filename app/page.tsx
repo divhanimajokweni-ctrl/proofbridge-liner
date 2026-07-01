@@ -233,12 +233,17 @@ function Sparkline({ data }: { data: number[] }) {
 }
 
 // ─── AGENT CHAT ─────────────────────────────────────────
+const RATE_LIMIT_MS = 2000;
+const MAX_MESSAGE_LENGTH = 2000;
+
 function AgentChat() {
   const [messages, setMessages] = useState<{ id: string; role: string; content: string }[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [threadId, setThreadId] = useState('');
+  const [error, setError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastSentRef = useRef(0);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -247,22 +252,47 @@ function AgentChat() {
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
-    const text = input;
+    const text = input.trim();
+    const now = Date.now();
+    if (now - lastSentRef.current < RATE_LIMIT_MS) {
+      setError(`Wait ${((RATE_LIMIT_MS - (now - lastSentRef.current)) / 1000).toFixed(1)}s`);
+      setTimeout(() => setError(''), 1500);
+      return;
+    }
+    if (text.length > MAX_MESSAGE_LENGTH) {
+      setError(`Message too long (${text.length}/${MAX_MESSAGE_LENGTH})`);
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+    lastSentRef.current = now;
     setInput('');
+    setError('');
     setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'user', content: text }]);
     setLoading(true);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       const res = await fetch('/api/agent/converse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-request': 'true' },
         body: JSON.stringify({ message: text, threadId: threadId || undefined }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.threadId && !threadId) setThreadId(data.threadId);
       setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'assistant', content: data.content || data.reply || '(no response)' }]);
-    } catch {
-      setMessages(prev => [...prev, { id: crypto.randomUUID(), role: 'system', content: 'Connection failed — check agent API status.' }]);
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'system',
+        content: err instanceof Error && err.name === 'AbortError'
+          ? 'Request timed out (15s) — agent may be overloaded'
+          : 'Connection failed — check agent API status',
+      }]);
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   };
@@ -339,26 +369,36 @@ function AgentChat() {
       </div>
 
       <form onSubmit={sendMessage} style={{
-        display: 'flex', borderTop: `1px solid ${C.border}`, padding: '10px',
-        background: C.surface, gap: '8px',
+        display: 'flex', flexDirection: 'column', borderTop: `1px solid ${C.border}`,
+        background: C.surface,
       }}>
-        <input value={input} onChange={e => setInput(e.target.value)}
-          placeholder="Message the VVU core agent..."
-          disabled={loading}
-          style={{
-            flex: 1, background: C.void, border: `1px solid ${C.border}`, borderRadius: '6px',
-            color: C.text, fontFamily: '"IBM Plex Mono",monospace', fontSize: '0.65rem',
-            padding: '8px 12px', outline: 'none',
-          }} />
-        <button type="submit" disabled={loading || !input.trim()}
-          style={{
-            background: loading ? C.card : C.gold, border: 'none', borderRadius: '6px',
-            color: loading ? C.textMuted : C.void, fontWeight: 700,
-            fontFamily: '"IBM Plex Mono",monospace', fontSize: '0.6rem', cursor: loading ? 'default' : 'pointer',
-            padding: '8px 18px', letterSpacing: '0.05em',
+        {error && (
+          <div style={{
+            padding: '4px 12px', fontSize: '0.5rem', color: C.crimson,
+            fontFamily: '"IBM Plex Mono",monospace', background: `${C.crimson}15`,
           }}>
-          {loading ? '...' : 'SEND'}
-        </button>
+            {error}
+          </div>
+        )}
+        <div style={{ display: 'flex', padding: '10px', gap: '8px' }}>
+          <input value={input} onChange={e => setInput(e.target.value)}
+            placeholder="Message the VVU core agent..."
+            disabled={loading}
+            style={{
+              flex: 1, background: C.void, border: `1px solid ${C.border}`, borderRadius: '6px',
+              color: C.text, fontFamily: '"IBM Plex Mono",monospace', fontSize: '0.65rem',
+              padding: '8px 12px', outline: 'none',
+            }} />
+          <button type="submit" disabled={loading || !input.trim()}
+            style={{
+              background: loading ? C.card : C.gold, border: 'none', borderRadius: '6px',
+              color: loading ? C.textMuted : C.void, fontWeight: 700,
+              fontFamily: '"IBM Plex Mono",monospace', fontSize: '0.6rem', cursor: loading ? 'default' : 'pointer',
+              padding: '8px 18px', letterSpacing: '0.05em',
+            }}>
+            {loading ? '...' : 'SEND'}
+          </button>
+        </div>
       </form>
     </div>
   );
