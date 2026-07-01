@@ -82,3 +82,9 @@
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
 
+## 2026-07-01T16:29:01Z
+- **Commit**: `e445dd1`
+- **Message**: docs: update architecture/API reference for Operatus headless server; bump DNS serial to 2026070102
+- **Status**: Deployed
+- **Domain**: https://venturevisionubuntu.co.za
+
