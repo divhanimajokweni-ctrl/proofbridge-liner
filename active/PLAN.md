@@ -1,120 +1,49 @@
-# PLAN — VVU OS DASHBOARD MVP — 2026-07-01
+# PLAN — SESSION REMEDIATION + CORE AGENT AMMO — 2026-07-01
 
 ## Business Intent
-Transform the current monolithic, mock-data dashboard into a high-performance, real-time system operations interface using modern CSS (container queries, light-dark(), :has(), clamp()), DOM virtualization, and a WebSocket-based telemetry backend that streams live /proc, Docker, and kernel metrics.
+Resolve the Slack authentication blocker from the failed previous session, wire up the War Room with workspace-provided tokens, and add MCP server capabilities for the core agent to operate effectively.
 
-## User Story
-As a VVU OS operator, I need a real-time dashboard that displays live system metrics (CPU, memory, Docker containers, process list) with sub-100ms updates, responsive widget layouts that adapt to any viewport, and virtualized DOM rendering that maintains 60fps even with thousands of data points, so that I can monitor and control the infrastructure without performance degradation.
+## Last Session Autopsy
+**What failed**: Slack channel blocked — Socket Mode required interactive OAuth browser popup that was impossible in headless mode.
+**Root cause**: `SLACK_USER_TOKEN` was enterprise-grid format (xoxe.xoxp-) not standard workspace token (xoxp-). Slack plugin lacked explicit trust in `plugins.entries`.
+**Evidence**: INVESTIGATION.md (line 23), VALIDATION.md (line 73-74), doctor output (`plugins.entries.slack.enabled=true` missing).
 
 ## Acceptance Criteria
-- [ ] **AC-1**: Dashboard uses CSS Grid with `repeat(auto-fit, minmax(...))` for fluid widget layout
-- [ ] **AC-2**: Widgets use `@container` queries instead of media queries for layout adaptation
-- [ ] **AC-3**: Color scheme uses `light-dark()` for automatic OS-level theme switching
-- [ ] **AC-4**: Stateful styling via `:has()` selectors (e.g., card:has(> .active))
-- [ ] **AC-5**: Fluid typography via `clamp()` throughout
-- [ ] **AC-6**: `content-visibility: auto` + `contain: layout style paint` applied to all off-screen widgets
-- [ ] **AC-7**: Process table and metric lists use DOM virtualization (virtual-scroll, max 40 visible rows)
-- [ ] **AC-8**: WebSocket server streams live /proc/stat, /proc/meminfo, Docker stats at 1s interval
-- [ ] **AC-9**: Frontend consumes WebSocket and updates widgets in real time without polling
-- [ ] **AC-10**: Monolithic `page.tsx` is broken into focused route pages (`/dashboard`, `/dashboard/infra`, `/dashboard/telemetry`)
-- [ ] **AC-11**: Old `app/page.tsx` is preserved and routes default to `/dashboard`
-- [ ] **AC-12**: Build passes (`npm run build`), no regressions on existing routes
+- [x] **AC-1**: `.env` updated with workspace User OAuth Token (xoxp-) and existing bot/app tokens retained
+- [x] **AC-2**: `openclaw.json` Slack config includes `userToken` SecretRef to `SLACK_USER_TOKEN`
+- [x] **AC-3**: `plugins.entries.slack.enabled = true` set (plugin trusted)
+- [x] **AC-4**: Gateway restarts with Slack Socket Mode connected: `running=true, connected=true, healthState=healthy`
+- [x] **AC-5**: MCP servers `fetch` and `workspace` created and registered in config
+- [x] **AC-6**: MCP servers probe success (tools listed for each)
+- [x] **AC-7**: War Room verification suite passes 15/15
+- [x] **AC-8**: `daily/` folder created for Obsidian vault
 
-## Compliance Gate Status
-- **Hard failures in scope**: HF-1 (audit trail for dashboard commands), HF-2 (circuit breaker for Docker/process control)
-- **This plan does not touch**: HF-3 (SafeKrypte), HF-4 (SafeLiner), HF-5 (key management)
-- **Risk note**: WebSocket server introduces a new persistent process. Must be monitored in production.
+## MCP Server Tool Inventory
 
-## Architecture
+### fetch (vvu-fetch-mcp v1.0.0)
+| Tool | Description |
+|------|-------------|
+| `fetch_url` | GET a URL, return content as text (30s timeout, 100KB limit) |
+| `fetch_json` | Fetch JSON API, return parsed response |
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        VERCEL (Next.js)                           │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────────────┐ │
-│  │ /dashboard   │  │ /dashboard/  │  │ /dashboard/telemetry     │ │
-│  │ Overview     │  │ infra         │  │ Globe + streaming        │ │
-│  │ (CSS Grid +  │  │ (Docker +     │  │ (WebSocket consumer)    │ │
-│  │  container   │  │  Process)    │  │                          │ │
-│  │  queries)    │  │ Virtualized   │  │                          │ │
-│  └─────────────┘  └──────────────┘  └──────────────────────────┘ │
-│                       │   ▲ WebSocket ▲                           │
-└───────────────────────┼───┼──────────┼───────────────────────────┘
-                        │   │          │
-              ┌─────────▼───┴──────────┴──────────┐
-              │    WebSocket Telemetry Server       │
-              │    (:3001)                           │
-              │                                     │
-              │  ┌─ /proc collector ─────────────┐  │
-              │  │  /proc/stat → CPU%            │  │
-              │  │  /proc/meminfo → Memory       │  │
-              │  │  /proc/loadavg → Load         │  │
-              │  └───────────────────────────────┘  │
-              │  ┌─ Docker collector ────────────┐  │
-              │  │  /var/run/docker.sock → stats │  │
-              │  └───────────────────────────────┘  │
-              │  ┌─ OS collector ────────────────┐  │
-              │  │  os.cpus(), os.freemem(), etc │  │
-              │  └───────────────────────────────┘  │
-              │  ┌─ In-memory time buffer ───────┐  │
-              │  │  Ring buffer: last 300 epochs │  │
-              │  │  (5 min at 1s intervals)      │  │
-              │  └───────────────────────────────┘  │
-              └─────────────────────────────────────┘
-```
+### workspace (vvu-workspace-mcp v1.0.0)
+| Tool | Description |
+|------|-------------|
+| `list_scripts` | List available scripts in `scripts/` |
+| `run_script` | Execute a script (`.js`, `.py`, `.sh`) with args |
+| `read_config` | Read a JSON config file from `config/` |
+| `codebase_search` | Search codebase with ripgrep |
 
-## Affected Files — Track A (Frontend)
-
+## Files Changed
 | File | Change |
-|---|---|
-| `app/globals.css` | Add `@container` support, `light-dark()`, `:has()` utilities, `content-visibility` classes |
-| `app/styles/variables.css` | Add `light-dark()` color tokens, clamp() typography scale, container query breakpoints |
-| `app/layout.tsx` | Add dashboard route segment layout if needed |
-| `app/dashboard/page.tsx` | NEW — Dashboard overview with CSS Grid + container queries |
-| `app/dashboard/infra/page.tsx` | NEW — Infrastructure view with virtualized process table + Docker stats |
-| `app/dashboard/telemetry/page.tsx` | NEW — Telemetry globe + streaming metrics |
-| `app/components/DashboardWidget.tsx` | NEW — Reusable widget shell with container query support |
-| `app/components/ProcessTable.tsx` | NEW — Virtualized process table (40-row window) |
-| `app/components/MetricCard.tsx` | NEW — Single metric card with sparkline |
-| `app/components/SystemStatusBar.tsx` | NEW — Live status bar consuming WebSocket |
-| `app/components/MetricsGrid.tsx` | NEW — CSS Grid with auto-fill for metric cards |
-| `app/page.tsx` | Simplify to redirect to `/dashboard` |
-
-## Affected Files — Track A (Backend)
-
-| File | Change |
-|---|---|
-| `server/telemetry-server.ts` | NEW — WebSocket server + /proc + Docker collectors |
-| `server/lib/proc-collector.ts` | NEW — /proc/stat, /proc/meminfo, /proc/loadavg parser |
-| `server/lib/docker-collector.ts` | NEW — Docker stats from /var/run/docker.sock |
-| `server/lib/telemetry-types.ts` | NEW — TypeScript types for all telemetry messages |
-| `package.json` | Add `ws` dependency (WebSocket library) |
-
-## Test Assertions
-1. `/proc/stat` parsing → returns CPU user/nice/system/idle as numbers
-2. `/proc/meminfo` parsing → returns MemTotal, MemFree, MemAvailable as numbers
-3. WebSocket server starts on port 3001 and accepts connections
-4. WebSocket client receives `telemetry:pulse` events at 1s intervals
-5. Container query renders at different widths → widget layout responds
-6. Virtualized process table with 1000 rows → only 40 DOM nodes rendered
-7. `light-dark()` applies correct colors in light/dark modes
-8. Build passes with `npm run build`
-9. Existing routes `/`, `/api/*`, `/pools`, `/proofbridge` continue to work
+|------|--------|
+| `.env` | `SLACK_USER_TOKEN` updated to workspace token |
+| `openclaw.json` | `userToken` + `plugins.entries.slack.enabled` + new MCP servers `fetch` + `workspace` |
+| `mcp/fetch-server.js` | **New** — HTTP/JSON fetch MCP server |
+| `mcp/workspace-server.js` | **New** — workspace scripts/configs/search MCP server |
+| `daily/` | Created directory |
+| `active/INVESTIGATION.md` | Updated with current state |
+| `active/PLAN.md` | Current file |
 
 ## Branch
 `compliance-fabric`
-
-## Token Budget Estimate
-- Frontend CSS + components: ~50 edits across 10 files
-- WebSocket server + collectors: ~30 edits across 4 new files
-- Route extraction from page.tsx: ~20 edits
-- Validation + debug: ~10 edits
-- Total: ~110 turn budget estimate (high-complexity session)
-
-## Handoff Plan
-If this session is interrupted, preserve:
-1. Running WebSocket server details (port 3001)
-2. The /proc collector parse format and field mapping
-3. CSS container query pattern established in DashboardWidget
-4. Any virtual-scroll implementation decisions
-
-## APPROVED BY: _______________ DATE: _______________

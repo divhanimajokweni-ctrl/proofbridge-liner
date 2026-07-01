@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/OpenClaw/OpenClaw/main/config.schema.json",
   "meta": {
     "lastTouchedVersion": "2026.6.10",
-    "lastTouchedAt": "2026-06-28T21:52:42.968Z"
+    "lastTouchedAt": "2026-07-01T21:30:34.533Z"
   },
   "gateway": {
     "mode": "local",
@@ -24,9 +24,25 @@
     },
     "slack": {
       "enabled": true,
+      "mode": "socket",
       "accounts": {
         "default": {
-          "enabled": true
+          "enabled": true,
+          "appToken": {
+            "source": "env",
+            "provider": "default",
+            "id": "SLACK_APP_TOKEN"
+          },
+          "botToken": {
+            "source": "env",
+            "provider": "default",
+            "id": "SLACK_BOT_TOKEN"
+          },
+          "userToken": {
+            "source": "env",
+            "provider": "default",
+            "id": "SLACK_USER_TOKEN"
+          }
         }
       }
     },
@@ -41,19 +57,85 @@
   },
   "agents": {
     "defaults": {
+      "model": "anthropic/claude-sonnet-4-6",
       "workspace": "/home/runner/.openclaw/workspace"
-    }
+    },
+    "list": [
+      {
+        "id": "main"
+      },
+      {
+        "id": "orchestrator",
+        "name": "orchestrator",
+        "workspace": "/home/runner/.openclaw/workspace/orchestrator",
+        "agentDir": "/home/runner/.openclaw/agents/orchestrator/agent",
+        "model": "anthropic/claude-sonnet-4-6"
+      },
+      {
+        "id": "lindiwe",
+        "name": "lindiwe",
+        "workspace": "/home/runner/.openclaw/workspace/lindiwe",
+        "agentDir": "/home/runner/.openclaw/agents/lindiwe/agent",
+        "model": "anthropic/claude-sonnet-4-6"
+      },
+      {
+        "id": "headless",
+        "name": "headless",
+        "workspace": "/home/runner/.openclaw/workspace/headless",
+        "agentDir": "/home/runner/.openclaw/agents/headless/agent",
+        "model": "anthropic/claude-sonnet-4-6"
+      }
+    ]
   },
   "mcp": {
     "servers": {
       "gcp": {
-        "type": "mcp",
-        "config": "./mcp/gcp-server.yaml",
+        "command": "node",
+        "args": [
+          "/home/runner/workspace/mcp/gcp-server.js"
+        ],
+        "env": {
+          "GCP_PROJECT_ID": "vvu-prod-2026"
+        },
         "allow_tools": [
           "gcloud_exec",
           "terraform_exec",
           "gemini_cli",
           "datadog_alert"
+        ],
+        "rbac": [
+          "+276203506594",
+          "core"
+        ]
+      },
+      "fetch": {
+        "command": "node",
+        "args": [
+          "/home/runner/workspace/mcp/fetch-server.js"
+        ],
+        "env": {},
+        "allow_tools": [
+          "fetch_url",
+          "fetch_json"
+        ],
+        "rbac": [
+          "+276203506594",
+          "core"
+        ]
+      },
+      "workspace": {
+        "command": "node",
+        "args": [
+          "/home/runner/workspace/mcp/workspace-server.js"
+        ],
+        "env": {
+          "VVU_WORKSPACE": "/home/runner/workspace"
+        },
+        "allow_tools": [
+          "list_scripts",
+          "run_script",
+          "read_config",
+          "codebase_search"
         ],
         "rbac": [
           "+276203506594",
@@ -70,10 +152,19 @@
     }
   },
   "plugins": {
+    "allow": [],
     "entries": {
-      "googlechat": {
+      "slack": {
         "enabled": true
       }
+    }
+  },
+  "tools": {
+    "codeMode": {
+      "enabled": true,
+      "timeoutMs": 15000,
+      "memoryLimitBytes": 67108864,
+      "maxOutputBytes": 65536
     }
   }
 }
