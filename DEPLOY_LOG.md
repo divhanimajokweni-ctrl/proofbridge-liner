@@ -64,3 +64,9 @@
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
 
+## 2026-07-01T13:59:32Z
+- **Commit**: `8b55602`
+- **Message**: fix: nameserver amendment — Host Africa → Vercel DNS delegation
+- **Status**: Deployed
+- **Domain**: https://venturevisionubuntu.co.za
+
