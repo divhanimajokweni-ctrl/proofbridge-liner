@@ -76,10 +76,11 @@ export default function GatewayPage() {
         // Session cookie is set by the server
         // Also issue JWT session token for middleware compatibility
         try {
+          const pinHash = await hashPin(pin);
           await fetch('/api/auth', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin }),
+            body: JSON.stringify({ pinHash }),
           });
         } catch {
           // non-blocking; legacy session already set
