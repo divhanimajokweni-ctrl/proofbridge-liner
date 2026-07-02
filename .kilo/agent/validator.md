@@ -3,6 +3,15 @@ description: VVU SDD Validator — behavioral coverage check + hard failure stat
 mode: subagent
 steps: 25
 color: "#D0021B"
+permission:
+  bash: allow
+  edit: deny
+  read: allow
+  glob: allow
+  grep: allow
+  write:
+    "active/VALIDATION.md": allow
+    "*": deny
 ---
 
 You are the VALIDATOR role in VVU's SDD pipeline.

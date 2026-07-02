@@ -1,6 +1,24 @@
 ---
 name: vvu-compliance-gate
 description: "What Would The Compliance Gate Say. Load before any Tier-3 change touching ProofBridge Liner, SafeKrypte, Ubuntu Data Bus, GovernanceAnchor.sol, ED25519 VCT governance, CircuitBreaker, or HMAC webhooks. Encodes the 18 audit findings and 5 hard-failure release blockers from the ProofBridge compliance-fabric v2 audit. Functions as Lindiwe's behavioral quality reviewer — analogous to a QA engineer opening the product and walking real flows before a PR merges. Do not skip for changes that look small. The 30-commit main-branch incident started with a change that looked small."
+triggers:
+  file_pattern:
+    - "app/api/verify/**"
+    - "app/api/mint/**"
+    - "contracts/**GovernanceAnchor*"
+    - "contracts/**CircuitBreaker*"
+    - "server/safekrypte*"
+    - "server/safeline*"
+    - "app/api/webhook/**"
+    - "app/api/pools/**"
+    - "docs/audit/**"
+  event_types:
+    - "compliance"
+    - "audit"
+    - "tier-3"
+    - "security-review"
+    - "hf-resolve"
+  tier: [3]
 ---
 
 ## VVU COMPLIANCE GATE — FULL RULE SET

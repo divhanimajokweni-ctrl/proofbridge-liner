@@ -115,7 +115,16 @@ function mergeEnv(baseEnv, toolEnv) {
 
 async function main() {
   const config = loadConfig();
-  const tools = config.tools || [];
+  let tools = config.tools || [];
+
+  // When not in terraform mode, filter out terraform_exec
+  // Terraform is only available via the dedicated terraform MCP server
+  // (admin-only RBAC in openclaw.json)
+  if (!process.env.TERRAFORM_MODE) {
+    tools = tools.filter((t) => t.name !== "terraform_exec");
+  } else {
+    tools = tools.filter((t) => t.name === "terraform_exec");
+  }
 
   const server = new Server(
     {
@@ -179,10 +188,15 @@ async function main() {
 
     const fullArgs = [...argList.flat(), ...(tool.args?.allow || [])];
 
+    const timeout = tool.name === "terraform_exec"
+      ? 60_000  // Terraform operations may take longer
+      : 12_000; // Standard timeout per ADR-010
+
     return new Promise((resolve) => {
       const child = spawn(command[0], [...command.slice(1), ...fullArgs], {
         env: { ...process.env, ...toolEnv },
         stdio: ["pipe", "pipe", "pipe"],
+        timeout,
       });
 
       let stdout = "";
@@ -191,7 +205,16 @@ async function main() {
       child.stdout.on("data", (d) => { stdout += d.toString(); });
       child.stderr.on("data", (d) => { stderr += d.toString(); });
 
+      const timer = setTimeout(() => {
+        child.kill("SIGTERM");
+        resolve({
+          content: [{ type: "text", text: `Tool timed out after ${timeout}ms` }],
+          isError: true,
+        });
+      }, timeout);
+
       child.on("close", (code) => {
+        clearTimeout(timer);
         resolve({
           content: [{ type: "text", text: stdout || stderr || `Exit code: ${code}` }],
           isError: code !== 0,
@@ -199,6 +222,7 @@ async function main() {
       });
 
       child.on("error", (err) => {
+        clearTimeout(timer);
         resolve({
           content: [{ type: "text", text: `Spawn error: ${err.message}` }],
           isError: true,

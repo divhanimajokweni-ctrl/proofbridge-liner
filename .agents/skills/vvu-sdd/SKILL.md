@@ -1,6 +1,17 @@
 ---
 name: vvu-sdd
 description: "VVU Specification-Driven Development workflow. Load for any Tier-2 or Tier-3 feature work, plan generation, or spec writing. Implements the SDD pattern that eliminates vibe-coding from VVU's core systems: plan before code, spec before plan, approve before build. Without this skill, agent-generated code arrives at review without compliance tracing, behavioral coverage, or architectural alignment — creating quality debt that compounds into shipping anxiety, brittle tests, and customer-found regressions. Load at the start of any non-trivial change. Generates INVESTIGATION.md, PLAN.md, and VALIDATION.md — the three files that make every change traceable from business intent to deployed code."
+triggers:
+  file_pattern:
+    - "active/INVESTIGATION.md"
+    - "active/PLAN.md"
+    - "active/VALIDATION.md"
+  event_types:
+    - "plan"
+    - "spec"
+    - "investigate"
+    - "validate"
+  tier: [2, 3]
 ---
 
 ## VVU SDD WORKFLOW

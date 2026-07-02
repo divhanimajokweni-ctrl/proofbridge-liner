@@ -99,14 +99,34 @@
         },
         "allow_tools": [
           "gcloud_exec",
-          "terraform_exec",
           "gemini_cli",
           "datadog_alert"
+        ],
+        "deny_tools": [
+          "terraform_exec"
         ],
         "rbac": [
           "+276203506594",
           "core"
-        ]
+        ],
+        "timeout": 12000
+      },
+      "terraform": {
+        "command": "node",
+        "args": [
+          "/home/runner/workspace/mcp/gcp-server.js"
+        ],
+        "env": {
+          "GCP_PROJECT_ID": "vvu-prod-2026",
+          "TERRAFORM_MODE": "1"
+        },
+        "allow_tools": [
+          "terraform_exec"
+        ],
+        "rbac": [
+          "+276203506594"
+        ],
+        "timeout": 60000
       },
       "fetch": {
         "command": "node",

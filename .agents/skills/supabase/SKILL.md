@@ -4,6 +4,24 @@ description: "Use when doing ANY task involving Supabase. Triggers: Supabase pro
 metadata:
   author: supabase
   version: "0.1.2"
+triggers:
+  file_pattern:
+    - "supabase/**"
+    - "lib/supabase*"
+    - "lib/db/**"
+    - "**/supabase/**"
+    - "components/auth/**"
+    - "app/auth/**"
+    - "migrations/**"
+  event_types:
+    - "database"
+    - "auth"
+    - "storage"
+    - "realtime"
+    - "edge-functions"
+    - "rls"
+    - "migration"
+  tier: [1, 2, 3]
 ---
 
 # Supabase
