@@ -5,6 +5,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import jwt from 'jsonwebtoken';
 
 const CIRCUIT_BREAKER_ADDRESS = process.env.CIRCUIT_BREAKER_ADDRESS;
 const POLYGON_AMOY_RPC_URL = process.env.POLYGON_AMOY_RPC_URL;
@@ -92,6 +93,28 @@ function validateVVUSession(cookieHeader: string): { userId: string; tier: strin
   }
 }
 
+function validateJwtSession(cookieHeader: string): { userId: string; tier: string } | null {
+  try {
+    const cookies: Record<string, string> = {};
+    cookieHeader.split(';').forEach(pair => {
+      const [key, ...rest] = pair.split('=');
+      if (key) cookies[key.trim()] = decodeURIComponent(rest.join('=').trim());
+    });
+
+    const sessionToken = cookies['vvu_session_token'];
+    if (!sessionToken) return null;
+
+    const secret = process.env.VVU_JWT_SECRET || 'vvu_brain_absolute_cryptographic_signing_key_vector';
+    const decoded = jwt.verify(sessionToken, secret) as { identity: string; permissions: string[] };
+
+    if (!decoded || decoded.identity !== 'WAR_ROOM_OPERATOR') return null;
+
+    return { userId: decoded.identity, tier: 'operator' };
+  } catch {
+    return null;
+  }
+}
+
 export async function middleware(req: NextRequest) {
   const tripped = await isCircuitTripped();
   if (tripped) {
@@ -109,7 +132,9 @@ export async function middleware(req: NextRequest) {
 
   // VVU Gateway session guard for /dashboard, /gateway-deck, /agent-terminal
   if (VVU_GUARDED_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
-    const session = validateVVUSession(req.headers.get('cookie') || '');
+    const session =
+      validateVVUSession(req.headers.get('cookie') || '') ||
+      validateJwtSession(req.headers.get('cookie') || '');
     if (!session) {
       const redirectUrl = new URL('/gateway', req.url);
       redirectUrl.searchParams.set('redirect', pathname);

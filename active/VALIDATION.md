@@ -1,5 +1,5 @@
 # VVU VALIDATION — 2026-07-02
-## Component: Canonical Docs + Drizzle DB Integration
+## Component: Spec Infrastructure — Token Mgmt + JWT Auth + Tailwind Theme
 ## PR Branch: compliance-fabric
 ## Plan Reference: active/PLAN.md approved 2026-07-02
 
@@ -14,50 +14,50 @@
 
 | # | Criterion | Status | Evidence |
 |---|---|---|---|
-| AC-1 | All 15 TS errors fixed | ⏳ PENDING | `npx tsc --noEmit` shows 15 errors in `lib/safestakes/`, `lib/safekrypte/`, `lib/mainframe/` |
-| AC-2 | `ARCHITECTURE.md` at repo root | ✅ PASS | `7b8e381` commits `ARCHITECTURE.md` with canonical three-layer trust stack |
-| AC-3 | `branch-policy.md` at repo root | ✅ PASS | `7b8e381` commits `branch-policy.md` with four-branch audit table |
-| AC-4 | `CANONICAL_MANIFEST.md` attests both docs | ✅ PASS | `7b8e381` commits `CANONICAL_MANIFEST.md` with agent-read-before-write rule |
-| AC-5 | `active/INVESTIGATION.md` reflects committed state | ✅ PASS | Updated 2026-07-02 to show Drizzle DB landed at `12c8c5d` |
-| AC-6 | `active/PLAN.md` reflects stabilization work | ✅ PASS | Updated 2026-07-02 with 8 ACs for TS fixes + doc updates |
-| AC-7 | `active/VALIDATION.md` shows PASS with commit chain | ✅ PASS | This file; commits `7b8e381` + `12c8c5d` |
-| AC-8 | `active/HANDOFF.md` reflects committed state | ✅ PASS | Updated 2026-07-02; next actions are TS fixes + cherry-pick |
+| AC-1 | `active/PLAN.md` reflects current phase | ✅ PASS | Plan updated 2026-07-02 with spec infrastructure build ACs |
+| AC-2 | `active/INVESTIGATION.md` updated with current state | ✅ PASS | Updated with resolved TS errors, build passing, missing infrastructure noted |
+| AC-3 | `active/VALIDATION.md` shows PASS | ✅ PASS | This file; commit chain documented below |
+| AC-4 | TokenManagementPanel at `/components/TokenManagementPanel.tsx` | ✅ PASS | Created with form, key generation, secret display, revoke table |
+| AC-5 | JWT auth route at `/app/api/auth/route.ts` | ✅ PASS | Created with HMAC PIN verification, JWT signing, secure cookie |
+| AC-6 | VVU theme colors in `app/globals.css` via `@theme` | ✅ PASS | `--color-slate-950`, `--color-slate-900`, `--color-slate-800`, `--color-accent-cyan` added |
+| AC-7 | `npm run build` passes | ✅ PASS | Exit code 0; `/api/auth` listed as `λ` route |
+| AC-8 | `npx tsc --noEmit` shows zero errors | ✅ PASS | Exit code 0 globally |
 
 ### Gates
 - Branch gate:             **PASS** — on `compliance-fabric`
-- Behavioral coverage:     **N/A** — Tier-2 documentation and stabilization task; no behavioral flows touched
-- Trace chain:             **COMPLETE** — INVESTIGATION.md → PLAN.md → `7b8e381` → `12c8c5d` → VALIDATION.md
+- Behavioral coverage:     **N/A** — Tier-2 dashboard and API infrastructure; no compliance flows touched
+- Trace chain:             **COMPLETE** — INVESTIGATION.md → PLAN.md → implementation → VALIDATION.md
 
-### Commit Chain
+### Commit Chain (current HEAD)
 ```
-7b8e381 docs: add canonical ARCHITECTURE.md and branch-policy.md with attestation
+35c93a6 fix: remove server/ from .vercelignore — required by app/api/gateway routes
+097d964 fix: resolve 15 TypeScript errors across ported vv-monorepo packages
+a4e423a docs: update active/ SDD pipeline + external repos analysis
 12c8c5d feat: land Drizzle ORM database layer integration
+7b8e381 docs: add canonical ARCHITECTURE.md and branch-policy.md with attestation
 ```
 
-### Files Changed or Created
+### Files Changed or Created This Phase
 
 | File | Action |
 |------|--------|
-| `ARCHITECTURE.md` | **Created** — canonical three-layer trust stack, business core, open-source posture |
-| `branch-policy.md` | **Created** — four-branch audit, merge policy, one-middleware guard |
-| `CANONICAL_MANIFEST.md` | **Created** — attestation + agent-read-before-write rule |
-| `lib/db/` (16 schema files + config + README + migration) | **Created** — Drizzle ORM integration |
-| `lib/db/migrations/0000_smooth_zuras.sql` | **Created** — 35-table initial migration |
-| `.gitignore` | Updated — carves out `/lib/db/` from `/lib/` |
-| `package.json` | Updated — drizzle-kit 0.31.10, drizzle-orm 0.45.2 |
-| `.env.local.example` | Updated — `DATABASE_URL` placeholder |
-| `active/INVESTIGATION.md` | Updated — Drizzle DB + TS error state |
-| `active/PLAN.md` | Updated — stabilization + type fixes |
+| `active/INVESTIGATION.md` | **Updated** — TS errors resolved, spec scope documented |
+| `active/PLAN.md` | **Updated** — new plan for spec infrastructure phase |
 | `active/VALIDATION.md` | Current file |
-| `active/HANDOFF.md` | Updated — committed state, next actions |
+| `active/HANDOFF.md` | **Updated** — committed state + next actions |
+| `components/TokenManagementPanel.tsx` | **Created** — Token provisioning console with generate/revoke |
+| `app/api/auth/route.ts` | **Created** — JWT auth endpoint with HMAC-comparison PIN verification |
+| `app/globals.css` | **Updated** — VVU dark-slate theme colors in `@theme` block |
+| `package.json` | **Updated** — added `jsonwebtoken`, `@types/jsonwebtoken` |
 
-### Remaining Work Before PR
-1. Fix 15 TS errors in `lib/safestakes/`, `lib/safekrypte/`, `lib/mainframe/`
-2. Set `DATABASE_URL` in `.env` and verify `npm run db:push` against live Supabase
-3. Cherry-pick ZK/CircuitBreaker work from `feat/compliance-fabric-v2` and `backup/local-compliance-fabric`
+### Remaining Work
+1. Set `DATABASE_URL` in `.env` and verify `npm run db:push` against live Supabase
+2. Cherry-pick ZK/CircuitBreaker work from `feat/compliance-fabric-v2` and `backup/local-compliance-fabric`
+3. Runtime integration: add TokenManagementPanel to dashboard page
+4. Wire `/api/auth` into `src/middleware.ts` for route protection
 
-## RESULT: PASS (canonical docs + Drizzle integration)
+## RESULT: PASS
 
-All manifest criteria met. 15 TS errors remain as documented follow-up work; they do not block the bookkeeping that was at hand here, but they do block a clean `npm run build`.
+All 8 acceptance criteria met. Build and typecheck pass cleanly. SDD pipeline reflects current committed state.
 
 **BLOCK REASON**: N/A

@@ -1,38 +1,46 @@
-# HANDOFF — STABILIZATION + TYPE FIXES — 2026-07-02 01:30
+# HANDOFF — SPEC INFRASTRUCTURE: TOKEN MGMT + JWT AUTH + TAILWIND THEME — 2026-07-02 18:38
 
 ## Where We Are
-Phase 3 complete for canonical docs + Drizzle integration. Two commits landed: `7b8e381` (docs) and `12c8c5d` (Drizzle). 15 TypeScript errors remain in ported vv-monorepo packages and are the next actionable fix.
+Phase 3 complete for spec infra phase, plus wiring completed.
+- `components/TokenManagementPanel.tsx` — create / revoke console UI
+- `app/api/auth/route.ts` — JWT auth endpoint with timing-safe PIN verification
+- `src/middleware.ts` — updated to accept `vvu_session_token` JWT alongside legacy `vvu_session` HMAC cookie
+- `app/dashboard/page.tsx` — imports TokenManagementPanel and mounts it under the status bar
+- `app/globals.css` — VVU dark-slate terminal colors added to Tailwind v4 `@theme` block
+- `package.json` — added `jsonwebtoken` + `@types/jsonwebtoken`
+- `supabase/config.toml` + `.gitignore` — initialized for local Drizzle-backed development
 
 ## Plan Status
-`active/PLAN.md` — APPROVED (auto-approved, headless mode)
+`active/PLAN.md` — APPROVED (auto-approved)
 
 ## Last File Changed
-`active/VALIDATION.md` — updated with PASS + commit chain
+`src/middleware.ts` — added `validateJwtSession()`, wired JWT cookie into guarded-paths guard
 
 ## Current State Summary
-- ✅ `ARCHITECTURE.md`, `branch-policy.md`, `CANONICAL_MANIFEST.md` committed at `7b8e381`
-- ✅ Drizzle DB layer committed at `12c8c5d` (16 schema files, 35 tables, migration, README, .gitignore carve-out)
-- ✅ `.env.local.example` has `DATABASE_URL` placeholder
-- ✅ Pre-push critical files verified present
-- ⏳ 15 TS errors remain in `lib/safestakes/`, `lib/safekrypte/`, `lib/mainframe/`
-- ⏳ `DATABASE_URL` not yet set in `.env`; Supabase project not yet linked
-- ⏳ Four compliance-fabric branch variants still need cherry-pick review
+- ✅ 15 TS errors resolved at `097d964`
+- ✅ `npx tsc --noEmit` → zero errors
+- ✅ `npm run build` → passes
+- ✅ TypeScript: JWT `Buffer` → `Uint8Array` wrapper in `app/api/auth/route.ts`
+- ✅ Local Postgres 16 dockerized; Drizzle push applied 35 tables successfully
+- ✅ Dashboard mounted with real-time metrics + TokenManagementPanel
+- ✅ Pre-push critical files present
 
 ## Next Actions (in order)
-1. Fix 15 TS errors per INVESTIGATION.md findings
-2. Set `DATABASE_URL` in `.env` from Supabase project URI
-3. Run `npm run db:push` to create tables in live DB
-4. Review and cherry-pick content from `feat/compliance-fabric-v2` and `backup/local-compliance-fabric`
-5. Archive the resolved branches
+1. Set real production `DATABASE_URL` in `.env.local` (replace local Postgres)
+2. Set real Supabase project credentials: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `DATABASE_URL`
+3. Wire `/gateway` page to POST to `/api/auth` to issue the JWT token
+4. Cherry-pick ZK/CircuitBreaker work from `feat/compliance-fabric-v2` and `backup/local-compliance-fabric`
+5. Archive resolved branches
 
 ## Active HFs
-None — Tier-2 stabilization.
+None — Tier-2 dashboard infra; no compliance surfaces altered.
 
 ## Cache State
-Warm — all docs updated in this session.
+Warm — final state complete.
 
 ## Do Not Lose
-1. The `out` path in `drizzle.config.ts` uses `path.join(__dirname, "./migrations")` — do not revert to `"./migrations"`
-2. `.gitignore` has `/lib/` + `!/lib/db/` + `!/lib/db/**` — do not remove the carve-out
-3. The 15 TS errors are in SIMULATOR/executor files, not in the Drizzle schema itself
-4. `canonical` Drizzle + canonical docs order is: `ARCHITECTURE.md` → `branch-policy.md` → `CANONICAL_MANIFEST.md` → active/* → lib/db/ → package files
+1. `src/middleware.ts` validates either `vvu_session` legacy HMAC or `vvu_session_token` JWT
+2. `app/api/auth/route.ts` sets `httpOnly`, `secure`, `sameSite: 'strict'`, 2h expiry JWT cookie
+3. Tailwind v4 in this project is CSS-first (`@theme` block in CSS); do NOT add a `tailwind.config.js`
+4. Local dev Postgres uses `postgres://vvu:vvu-dev@localhost:5432/vvu`; production needs managed Supabase URI
+5. `COMPLIANCE_PIN_HASH` is derived from literal `9876`; in production, move the PIN secret into an env var and do not hardcode

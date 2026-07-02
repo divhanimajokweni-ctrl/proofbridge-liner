@@ -4,6 +4,8 @@ import DashboardWidget from '../components/DashboardWidget';
 import MetricCard from '../components/MetricCard';
 import SystemStatusBar from '../components/SystemStatusBar';
 import dynamic from 'next/dynamic';
+import TokenManagementPanel from '@/components/TokenManagementPanel';
+import '@/app/globals.css';
 
 // Dynamically import AntonyQueueEngine to reduce initial bundle
 const AntonyQueueEngine = dynamic(
@@ -439,6 +441,10 @@ export default function DashboardPage() {
 
       {/* ═══ STATUS BAR ════════════════════════════════ */}
       <SystemStatusBar />
+
+      <section style={{ padding: '0 20px 24px', marginTop: 24 }}>
+        <TokenManagementPanel />
+      </section>
     </div>
   );
 }
