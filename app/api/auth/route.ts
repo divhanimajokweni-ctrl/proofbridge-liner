@@ -13,19 +13,24 @@ const COMPLIANCE_PIN_HASH = crypto
 
 export async function POST(request: Request) {
   try {
-    const { pin } = await request.json();
+    const { pin, pinHash } = await request.json();
 
-    if (!pin) {
+    if (!pin && !pinHash) {
       return NextResponse.json(
-        { error: 'Access PIN parameter required.' },
+        { error: 'pin or pinHash parameter required.' },
         { status: 400 }
       );
     }
 
-    const clientHash = crypto
-      .createHash('sha256')
-      .update(pin)
-      .digest('hex');
+    let clientHash: string;
+    if (pinHash) {
+      clientHash = pinHash;
+    } else {
+      clientHash = crypto
+        .createHash('sha256')
+        .update(pin)
+        .digest('hex');
+    }
 
     const clientBuf = Buffer.from(clientHash, 'hex');
     const pinBuf = Buffer.from(COMPLIANCE_PIN_HASH, 'hex');
