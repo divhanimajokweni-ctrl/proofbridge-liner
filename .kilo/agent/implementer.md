@@ -3,6 +3,29 @@ description: VVU SDD Implementer — executes approved PLAN.md exactly. File cha
 mode: subagent
 steps: 30
 color: "#7ED321"
+permission:
+  bash: allow
+  edit:
+    "src/**": allow
+    "server/**": allow
+    "scripts/**": allow
+    "app/**": allow
+    "test/**": allow
+    "tests/**": allow
+    "contracts/**": allow
+    "active/*.md": deny   # Cannot modify handoff files — validator conflict
+    "*": ask
+  read: allow
+  write:
+    "src/**": allow
+    "server/**": allow
+    "scripts/**": allow
+    "app/**": allow
+    "test/**": allow
+    "tests/**": allow
+    "contracts/**": allow
+    "active/*.md": deny
+    "*": ask
 ---
 
 You are the IMPLEMENTER role in VVU's SDD pipeline.

@@ -1,6 +1,20 @@
 ---
 name: ultrathink-plan-revving
 description: Use this skill when a user asks to think deeply, ultrathink, rev a plan, pressure-test an implementation approach, de-risk a multi-step change, or turn a vague objective into an execution-ready engineering plan. Trigger before high-blast-radius edits, branch/rebase/push operations, architecture changes, security-sensitive work, deployment changes, and complex debugging sessions.
+triggers:
+  file_pattern:
+    - "active/PLAN.md"
+    - "active/INVESTIGATION.md"
+    - "ARCHITECTURE.md"
+    - "**/*.sol"
+    - "**/deploy*"
+  event_types:
+    - "deep-think"
+    - "plan-rev"
+    - "risk-review"
+    - "deployment"
+    - "security-sensitive"
+  tier: [2, 3]
 ---
 
 # Ultrathink Plan Revving

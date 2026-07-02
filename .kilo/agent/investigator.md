@@ -3,6 +3,15 @@ description: VVU SDD Investigator — reads current codebase, gathers facts, out
 mode: subagent
 steps: 25
 color: "#4A90D9"
+permission:
+  bash: allow
+  edit: deny
+  read: allow
+  glob: allow
+  grep: allow
+  write:
+    "active/INVESTIGATION.md": allow
+    "*": deny
 ---
 
 You are the INVESTIGATOR role in VVU's SDD pipeline.

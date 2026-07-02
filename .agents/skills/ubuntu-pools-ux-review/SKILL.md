@@ -1,6 +1,22 @@
 ---
 name: ubuntu-pools-ux-review
 description: Use this skill when reviewing Ubuntu Pools UX, layout structure, product information architecture, dashboard hierarchy, trust/ledger/governance flows, or React/Next.js components related to Ubuntu Pools. Trigger when the user asks to review, audit, restructure, improve, or critique Ubuntu Pools screens, routes, navigation, dashboards, waitlist pages, trust components, ledger views, compliance surfaces, or community-savings user journeys.
+triggers:
+  file_pattern:
+    - "app/pools/**"
+    - "components/pools/**"
+    - "app/village/**"
+    - "app/ledger/**"
+    - "app/waitlist/**"
+    - "components/trust/**"
+    - "components/compliance/**"
+  event_types:
+    - "ux-review"
+    - "ui-audit"
+    - "product-review"
+    - "dashboard"
+    - "onboarding"
+  tier: [1, 2]
 ---
 
 # Ubuntu Pools UX Review

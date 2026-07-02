@@ -1,6 +1,22 @@
 ---
 name: vvu-architecture
 description: "VVU architectural decision records and coding standards. Load when naming a new service or event, choosing between patterns, reviewing code for VVU conventions, or designing a new integration. This is 'What Would The Architecture Review Say' — the encoded standards Mino and the team have established across ProofBridge, SafeKrypte, Ubuntu Pools, SafeGrid, and Ekasi. Load it before naming anything, structuring any API, or choosing any technology pattern. Prevents the quality debt that compounds when each agent-generated PR introduces a different convention."
+triggers:
+  file_pattern:
+    - "**/*.sol"
+    - "**/route.ts"
+    - "**/*-server.ts"
+    - "**/middleware.ts"
+    - "openclaw.json"
+    - "kilo.jsonc"
+    - "docs/**/ADR*"
+  event_types:
+    - "architecture"
+    - "naming"
+    - "new-service"
+    - "new-integration"
+    - "api-design"
+  tier: [1, 2, 3]
 ---
 
 ## VVU ARCHITECTURAL DECISION RECORDS

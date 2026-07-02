@@ -3,6 +3,15 @@ description: VVU SDD Planner — generates PLAN.md from INVESTIGATION.md with fu
 mode: subagent
 steps: 25
 color: "#F5A623"
+permission:
+  bash: allow
+  edit: deny
+  read: allow
+  glob: allow
+  grep: allow
+  write:
+    "active/PLAN.md": allow
+    "*": deny
 ---
 
 You are the PLANNER role in VVU's SDD pipeline.

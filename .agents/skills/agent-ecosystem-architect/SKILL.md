@@ -1,6 +1,25 @@
 ---
 name: agent-ecosystem-architect
 description: Use this skill when designing, auditing, or extending an agent ecosystem: agent roles, skills, MCP servers, tool boundaries, memory conventions, repo automation, handoff protocols, safety checks, and multi-agent workflows. Trigger when the user asks how agents should collaborate, what skills to add, how to wire MCP tools, or how to structure agent operating procedures.
+triggers:
+  file_pattern:
+    - ".kilo/**"
+    - "openclaw.json"
+    - "kilo.jsonc"
+    - "CLAUDE.md"
+    - "AGENTS.md"
+    - "MEMORY.md"
+    - ".agents/skills/**"
+    - "mcp/**"
+    - "scripts/**"
+  event_types:
+    - "ecosystem-design"
+    - "agent-role"
+    - "skill-creation"
+    - "mcp-wiring"
+    - "permission-audit"
+    - "multi-agent"
+  tier: [1, 2, 3]
 ---
 
 # Agent Ecosystem Architect

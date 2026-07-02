@@ -9,6 +9,13 @@ const PATTERNS = [
   { label: 'SendGrid API Key', pattern: /SG\.[a-zA-Z0-9_\-]{10,}\.[a-zA-Z0-9_\-]{10,}/ },
   { label: 'HuggingFace Token', pattern: /hf_[a-zA-Z0-9]{10,}/ },
   { label: 'Slack Webhook URL', pattern: /https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9]+\/[A-Z0-9]+\/[a-zA-Z0-9_\-]+/ },
+  { label: 'GitHub Classic PAT', pattern: /gh[pso]_[A-Za-z0-9]{10,}/ },
+  { label: 'GitHub Fine-Grained PAT', pattern: /github_pat_[A-Za-z0-9]{10,}_[A-Za-z0-9]{10,}/ },
+  { label: 'GitLab Token', pattern: /glpat-[A-Za-z0-9\-_]{10,}/ },
+  { label: 'npm Token', pattern: /npm_[A-Za-z0-9]{10,}/ },
+  { label: 'Stripe/OpenAI Key', pattern: /sk-(live|test|proj)_[A-Za-z0-9]{10,}/ },
+  { label: 'Slack Bot/App Token', pattern: /xox[baprs]-[A-Za-z0-9\-]{10,}/ },
+  { label: 'Embedded Git Remote Token', pattern: /https:\/\/[^:]+:[A-Za-z0-9_\-]{20,}@github\.com/ },
   { label: 'Generic API Key', pattern: /(?:api[_-]?key|apikey|apiSecret|client_secret)\s*[:=]\s*(?:["']?[A-Za-z0-9_\-]{10,}["']?)/i },
   { label: 'Base64 Secret', pattern: /(?:SECRET|PASSWORD|TOKEN|KEY)\s*[:=]\s*(?:["']?[A-Za-z0-9+\/]{40,}={0,2}["']?)/i },
 ];
