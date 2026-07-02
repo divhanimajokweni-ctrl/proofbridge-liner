@@ -14,6 +14,8 @@ export default function DashboardNav() {
     { href: '/dashboard', label: '🚨 Operational Deck' },
     { href: '/dashboard/infra', label: '⚙️ Infrastructure' },
     { href: '/dashboard/telemetry', label: '🌐 Telemetry Globe' },
+    { href: '/proofbridge', label: '🔗 ProofBridge Liner' },
+    { href: '/pools', label: '🏦 Ubuntu Pools' },
   ];
 
   return (
