@@ -1,75 +1,48 @@
-# VVU VALIDATION — 2026-07-01 (Session Remediation + Agent Ammo)
-## Component: War Room Slack Auth + MCP Server Inventory
+# VVU VALIDATION — 2026-07-01
+## Component: Drizzle ORM Database Layer Integration
+## PR Branch: compliance-fabric
+## Plan Reference: active/PLAN.md approved 2026-07-01
 
 ### Hard Failure Status
-- HF-1 TEE:         **OPEN** — not affected
-- HF-2 ZK:          **OPEN** — not affected
-- HF-3 Anchor:      **OPEN** — not affected
-- HF-4 HMAC:        **OPEN** — not affected
-- HF-5 Calibration: **OPEN** — not affected
+- HF-1 TEE:          **OPEN** — not affected (Tier-2 infrastructure)
+- HF-2 ZK:           **OPEN** — not affected
+- HF-3 Anchor:       **OPEN** — not affected
+- HF-4 HMAC:         **OPEN** — not affected
+- HF-5 Calibration:  **OPEN** — not affected
 
 ### Acceptance Criteria Verification
 
 | # | Criterion | Status | Evidence |
 |---|---|---|---|
-| AC-1 | `.env` has workspace User OAuth Token (xoxp-) | ✅ PASS | `SLACK_USER_TOKEN=xoxp-...` set in `.env` |
-| AC-2 | Slack config has `userToken` SecretRef | ✅ PASS | `"userToken": {"source":"env","id":"SLACK_USER_TOKEN"}` in `openclaw.json` |
-| AC-3 | Slack plugin enabled in `plugins.entries` | ✅ PASS | `"slack": {"enabled": true}` in `plugins.entries` |
-| AC-4 | Slack Socket Mode connected | ✅ PASS | Gateway log: `[slack] socket mode connected`; status: `running=true, connected=true, healthState=healthy` |
-| AC-5 | MCP servers `fetch` + `workspace` created | ✅ PASS | Files exist at `mcp/fetch-server.js` and `mcp/workspace-server.js` |
-| AC-6 | MCP servers registered in config | ✅ PASS | `npx openclaw mcp list --json` shows all 3 servers (gcp, fetch, workspace) |
-| AC-7 | War Room verification passes 15/15 | ✅ PASS | `bash scripts/verify-war-room.sh` → 15 passed, 0 failed |
-| AC-8 | `daily/` folder created | ✅ PASS | `test -d daily/` → exists |
+| AC-1 | Drizzle deps declared in package.json | ✅ PASS | `drizzle-kit ^0.31.10`, `drizzle-orm ^0.45.2`, `drizzle-zod ^0.5.1`, `pg ^8.22.0`, `@types/pg ^8.20.0` in devDependencies |
+| AC-2 | Drizzle config points to schema with PG dialect | ✅ PASS | `lib/db/drizzle.config.ts` → schema `./src/schema/index.ts`, dialect `postgresql`, out `./migrations` |
+| AC-3 | `DATABASE_URL` documented in `.env.example` | ✅ PASS | `.env.local.example` now includes DATABASE_URL with connection string format |
+| AC-4 | Initial Drizzle migrations generated | ✅ PASS | `lib/db/migrations/0000_brainy_charles_xavier.sql` — 490 lines, 35 tables |
+| AC-5 | No conflicts with existing Supabase migrations | ✅ PASS | Drizzle tables use `public.` (non-conflicting names), `ubuntu_pools.`, `safestake.` schemas. Supabase migrations manage `pools`, `proposals`, `votes`, `watchdog_incidents`, etc. — zero overlap |
+| AC-6 | Typecheck passes for lib/db/ | ✅ PASS | `npx tsc --noEmit` → zero errors in `lib/db/` files |
+| AC-7 | Migration generation script-accessible | ✅ PASS | `npm run db:push` → calls `drizzle-kit push --config ./lib/db/drizzle.config.ts` |
 
-### Behavioral Coverage — Real Environment Flows
+### Gates
+- Branch gate:             **PASS** — on `compliance-fabric`
+- Behavioral coverage:     **N/A** — Tier-2 database schema integration; no behavioral flows touched
+- Trace chain:             **COMPLETE** — INVESTIGATION.md (Phase 1) → PLAN.md (Phase 2) → Implementation → VALIDATION.md (Phase 3)
 
-- ✅ **Slack Socket Mode**: Gateway log shows `socket mode connected` — no auth errors. Status API shows `connected=true, healthState=healthy, botTokenStatus=available, appTokenStatus=available, userTokenStatus=available`.
-- ✅ **Config validation**: `openclaw doctor --fix` repaired plugin entries. Config synced to runtime + last-good. Gateway starts cleanly.
-- ✅ **MCP server probe**: Both `fetch-server.js` and `workspace-server.js` start without errors. Tools listed successfully.
-- ✅ **Plugin trust**: `plugins.entries.slack.enabled=true` and `plugins.allow` configured to prevent autoload warnings.
-- ✅ **Gateway health**: `curl /health` returns `{"ok":true,"status":"live"}`. WebSocket connections accepted.
-- ✅ **Build integrity**: `npm run build` passes (verified from previous session).
-
-### Trace Chain
-- `active/INVESTIGATION.md` (Phase 1) → `active/PLAN.md` (Phase 2) → Implementation → `active/VALIDATION.md` (Phase 4)
-
-### Gateway Log Excerpt (Slack connection)
-```
-[slack] [default] starting provider
-socket-mode:socket-mode Socket Mode is not turned on.
-[slack] socket mode connected
-```
-
-### MCP Server Inventory
-```
-gcp       — gcloud_exec, terraform_exec, gemini_cli, datadog_alert
-fetch     — fetch_url, fetch_json
-workspace — list_scripts, run_script, read_config, codebase_search
-```
-
-### Channel Summary
-| Channel | Status |
-|---------|--------|
-| Slack   | ✅ LIVE — Socket Mode, healthy, 3/3 tokens available |
-| WhatsApp | ❌ Blocked — missing libglib (Replit limitation) |
-| Google Chat | ❌ Blocked — missing `auth/gcp.json` |
-
-### Files Changed or Created
-
+### Files Changed
 | File | Action |
 |------|--------|
-| `.env` | Updated `SLACK_USER_TOKEN` |
-| `openclaw.json` | Added `userToken`, `plugins.entries.slack`, `mcp.servers.fetch`, `mcp.servers.workspace` |
-| `openclaw.json.last-good` | Synced |
-| `mcp/fetch-server.js` | **Created** |
-| `mcp/workspace-server.js` | **Created** |
-| `daily/` | **Created** |
-| `active/INVESTIGATION.md` | Updated |
-| `active/PLAN.md` | Updated |
+| `package.json` | Updated `drizzle-kit` to `^0.31.10`, `drizzle-orm` to `^0.45.2`; kept `drizzle-zod`, `pg`, `@types/pg` |
+| `package-lock.json` | Updated via `npm install` |
+| `lib/db/drizzle.config.ts` | Fixed `out` path to use `path.join(__dirname, "./migrations")` |
+| `lib/db/migrations/0000_brainy_charles_xavier.sql` | **Created** — initial migration (35 tables) |
+| `lib/db/README.md` | **Created** — schema documentation and usage guide |
+| `.env.local.example` | Added `DATABASE_URL` placeholder for Supabase Postgres connection string |
+| `active/INVESTIGATION.md` | Updated for Drizzle DB task |
+| `active/PLAN.md` | Updated with full SDD trace chain |
 | `active/VALIDATION.md` | Current file |
+| `active/HANDOFF.md` | Written for session continuity |
 
 ## RESULT: PASS
 
-All 8 acceptance criteria met. Slack channel is now operational via Socket Mode with all tokens available. Core agent has 3 MCP servers (gcp, fetch, workspace) providing 10 tools total. Hard failures unaffected.
+All 7 acceptance criteria met. Drizzle ORM schema is migration-ready with 35 tables across 3 schemas. No conflicts with existing Supabase SQL migrations. Zero type errors in the DB layer. Next step: provision Supabase project, set `DATABASE_URL`, run `npm run db:push`.
 
 **BLOCK REASON**: N/A

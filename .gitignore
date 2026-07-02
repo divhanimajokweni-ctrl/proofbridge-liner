@@ -16,6 +16,9 @@ out/
 broadcast/
 cache/
 /lib/
+!/lib/db/
+!/lib/db/**
+
 .env.deployed
 local/share/com.vercel.cli/auth.json
 local/share/com.vercel.cli/config.json
