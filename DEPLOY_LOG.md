@@ -1,3 +1,21 @@
+## 2026-07-03T23:34:54Z
+- **Commit**: `1d782c1` (main) / `f36c085` (compliance-fabric)
+- **Message**: feat(craft+safeliner+nexus): CRAFT infrastructure, SafeLiner DPI proxy, proof API, Village Nexus stack, pools refinements + fix(nav): working compliance OS routes
+- **Status**: Deployed — READY
+- **Domain**: https://venturevisionubuntu.co.za ✅ (200)
+- **Deploy ID**: dpl_6M2Xatq9NdCa1sVTYiSUw7KdrPTE
+- **Vercel URL**: https://proofbridge-liner-8ypeqrf4c-divhanimajokweni-1651s-projects.vercel.app
+- **Routes deployed**: /
+  /gateway /dashboard /dashboard/infra /dashboard/security /dashboard/telemetry
+  /proofbridge /pools /safekrypte /safegrid /ekasi /studio /ubuntu-games
+  /agent/lindiwe /legal/popia /register
+  /api/health /api/verify /api/mint /api/proof/commit
+  /api/webhooks/stitch /api/admin/circuit-breaker + 20+ additional API routes
+- **Fixed**: Sidebar nav — replaced dead /docs/* links with live Compliance OS routes
+- **New assets**: CRAFT infra (Milvus/Lean LSP/IPFS stack), SafeLiner Go DPI proxy, proof commit API, Nexus Docker Compose, nightly vector sync
+- **Behavioral coverage**: 4/5 PASS (VC issuance, Circuit Breaker, Webhook HMAC, Ubuntu Pools)
+- **Branch**: main + compliance-fabric (merged, both pushed)
+
 ## 2026-06-29T01:04:38Z
 - **Commit**: `8d944b6`
 - **Message**: fix: prevent recursive deployment loop on git push
