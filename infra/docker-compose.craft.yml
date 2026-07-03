@@ -1,0 +1,266 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------
+  # CORE 1: DISTRIBUTED METADATA (etcd)
+  # Coordinates state for Milvus cluster operations.
+  # ---------------------------------------------------------
+  craft-etcd:
+    container_name: craft-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    restart: unless-stopped
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - craft-etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls=http://0.0.0.0:2379
+    networks:
+      - craft-net
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ---------------------------------------------------------
+  # CORE 2: OBJECT STORAGE (MinIO)
+  # Stores vector data chunks and blob storage for Milvus.
+  # ---------------------------------------------------------
+  craft-minio:
+    container_name: craft-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    restart: unless-stopped
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - craft-minio:/minio_data
+    command: minio server /minio_data
+    networks:
+      - craft-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ---------------------------------------------------------
+  # CORE 3: VECTOR VAULT (Milvus Standalone)
+  # Stores 512-dim embeddings of mathlib4 theorems for CRAFT.
+  # API accessible on port 19530 (gRPC) and 9091 (Web UI).
+  # ---------------------------------------------------------
+  craft-milvus:
+    container_name: craft-vector-vault
+    image: milvusdb/milvus:v2.3.4
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: craft-etcd:2379
+      MINIO_ADDRESS: craft-minio:9000
+    volumes:
+      - craft-milvus:/var/lib/milvus
+    ports:
+      - "19530:19530"    # gRPC API (ingestion & query)
+      - "9091:9091"      # Milvus Web UI (monitoring)
+    depends_on:
+      craft-etcd:
+        condition: service_healthy
+      craft-minio:
+        condition: service_healthy
+    networks:
+      - craft-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+
+  # ---------------------------------------------------------
+  # CORE 4: LEAN 4 LSP VERIFIER — SafeLiner Edition
+  #
+  # Exposes lean --server via socat → safeliner (Go DPI proxy)
+  # TCP bridge on port 8888.  The SafeLiner proxy implements
+  # Deep Packet Inspection on the LSP byte stream, blocking
+  # unauthorised I/O (#eval IO), recursion bombs, and unsafe
+  # compiler overrides before they reach the Lean process.
+  #
+  # Protection chain:
+  #   socat TCP-LISTEN:8888 → safeliner → lean --server
+  #                              │
+  #                         DPI engine (blocklist match = DROP)
+  #
+  # Audit trail: all BLOCK events are logged to container stderr
+  # with JSON-structured entries (timestamp, method, pattern, uri).
+  # ---------------------------------------------------------
+  craft-lean-lsp:
+    container_name: proofbridge-verifier
+    image: leanprover/lean4:latest
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+
+        echo "[SafeLiner] Installing Go toolchain + socat..."
+        apk add --no-cache go socat curl
+        echo "[SafeLiner] Go $(go version)"
+
+        # Copy the Go proxy source from mounted scripts volume
+        mkdir -p /opt/safeliner
+        cp /scripts/safeliner.go /opt/safeliner/safeliner.go
+
+        # Compile the CircuitBreaker binary (statically linked)
+        echo "[SafeLiner] Compiling safeliner DPI proxy..."
+        cd /opt/safeliner
+        CGO_ENABLED=0 go build -ldflags="-s -w" -o safeliner safeliner.go
+        echo "[SafeLiner] safeliner compiled successfully ($(wc -c < safeliner) bytes)"
+
+        # Start the protected LSP stack
+        echo "[SafeLiner] ═══════════════════════════════════════════"
+        echo "[SafeLiner]  Shield ACTIVE.  Listening on TCP :8888"
+        echo "[SafeLiner]  Blocklist: $(grep -c 'MustCompile' safeliner.go) rules"
+        echo "[SafeLiner] ═══════════════════════════════════════════"
+        echo ""
+
+        # socat forks for each connection; each fork exec's safeliner
+        # which in turn spawns lean --server as a child process.
+        exec socat TCP-LISTEN:8888,fork,reuseaddr EXEC:"/opt/safeliner/safeliner",nofork,stderr
+    ports:
+      - "8888:8888"
+    volumes:
+      - craft-workspace:/workspace
+      - ../scripts:/scripts:ro
+    working_dir: /workspace
+    networks:
+      - craft-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s  # allow time for Go compilation
+
+  # ---------------------------------------------------------
+  # CORE 5: CRAFT INGESTION WORKER (Python ETL)
+  # Watches .lean files, parses via Tree-sitter, embeds via
+  # Sentence-Transformers, upserts to Milvus.
+  # ---------------------------------------------------------
+  craft-ingest:
+    container_name: craft-ingest-worker
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.craft-ingest
+    image: craft-ingest:local
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - MILVUS_HOST=craft-milvus
+      - MILVUS_PORT=19530
+      - WATCH_DIR=/workspace
+      - COLLECTION_NAME=craft_theorems
+      - EMBEDDING_DIM=512
+    volumes:
+      - craft-workspace:/workspace
+    depends_on:
+      craft-milvus:
+        condition: service_healthy
+    networks:
+      - craft-net
+
+  # ---------------------------------------------------------
+  # CORE 6: UBUNTU POOL SYNC (The Federation Layer)
+  #
+  # IPFS node that acts as the "Gossip Network" for the
+  # mathematical consortium.  Verified proof artifacts and
+  # vector embeddings are pinned here and propagated to
+  # peer nodes across the Ubuntu Pool.
+  #
+  # Ports:
+  #   4001 — Libp2p Swarm (peer-to-peer mesh)
+  #   5001 — IPFS API (Lindiwe governance reads/writes here)
+  #   8080 — IPFS Gateway (HTTP access to pinned artifacts)
+  # ---------------------------------------------------------
+  ubuntu-pool:
+    container_name: proofbridge-pool-sync
+    image: ipfs/go-ipfs:v0.18.0
+    restart: unless-stopped
+    environment:
+      - IPFS_PROFILE=server
+    volumes:
+      - pool-staging:/export          # Local staging area for incoming proofs
+      - pool-data:/data/ipfs           # IPFS block store / datastore
+    ports:
+      - "4001:4001"                    # P2P Swarm
+      - "5001:5001"                    # API (for Lindiwe cosign + governance)
+      - "8080:8080"                    # Gateway (HTTP retrieval)
+    command: ["daemon", "--migrate=true", "--enable-gc=true"]
+    networks:
+      - craft-net
+    healthcheck:
+      test: ["CMD", "ipfs", "dag", "stat", "/ipfs/QmUNLLsPdcTPF8UbhPUr28LQsKQZ69C6fWWSBCQ4gFCNZn"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ---------------------------------------------------------
+  # CORE 7: LINDIWE GOVERNANCE (Identity & Consensus)
+  #
+  # The "Ubuntu Oracle" — polls the IPFS swarm for new proof
+  # attestations, validates them against the consortium keyring
+  # via Cosign, ratifies canonical truths, and triggers CRAFT
+  # vector ingestion for ratified proofs.
+  #
+  # Execution chain:
+  #   sign_proof.sh → sha256 hash → cosign sign → IPFS pin → attestation.json
+  #   lindiwe.go   → IPFS PubSub subscribe → cosign verify → RatifyProof → CRAFT trigger
+  # ---------------------------------------------------------
+  lindiwe-governance:
+    container_name: proofbridge-lindiwe
+    image: golang:1.21-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    depends_on:
+      ubuntu-pool:
+        condition: service_healthy
+    volumes:
+      - craft-workspace:/workspace
+      - ../governance:/app:ro
+      - ../scripts/craft:/craft:ro
+    working_dir: /app
+    command:
+      - |
+        set -e
+        echo "[Lindiwe] Installing Cosign, jq, curl..."
+        apk add --no-cache cosign jq curl
+        echo "[Lindiwe] Consensus Oracle starting..."
+        go run lindiwe.go
+    networks:
+      - craft-net
+
+networks:
+  craft-net:
+    driver: bridge
+
+volumes:
+  craft-etcd:
+    driver: local
+  craft-minio:
+    driver: local
+  craft-milvus:
+    driver: local
+  craft-workspace:
+    driver: local
+  pool-staging:
+    driver: local
+  pool-data:
+    driver: local
