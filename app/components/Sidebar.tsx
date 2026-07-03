@@ -9,18 +9,36 @@ export default function GlobalSidebar() {
 
   const groups = [
     {
-      heading: 'Control Surfaces',
+      heading: 'Command Center',
       items: [
         { name: 'Gateway Deck', href: '/gateway', icon: '🚨' },
-        { name: 'Agent Terminal', href: '/gateway', icon: '🤖' },
+        { name: 'Dashboard', href: '/dashboard', icon: '📊' },
+        { name: 'Infrastructure', href: '/dashboard/infra', icon: '⚡' },
       ],
     },
     {
-      heading: 'Docs',
+      heading: 'Compliance OS',
       items: [
-        { name: 'Architecture', href: '/docs/architecture', icon: '📐' },
-        { name: 'API Reference', href: '/docs/api-reference', icon: '⚙️' },
-        { name: 'Cryptography', href: '/docs/cryptography', icon: '🔒' },
+        { name: 'ProofBridge', href: '/proofbridge', icon: '🔗' },
+        { name: 'Ubuntu Pools', href: '/pools', icon: '🏦' },
+        { name: 'SafeKrypte', href: '/safekrypte', icon: '🔐' },
+        { name: 'SafeLiner', href: '/safegrid', icon: '🛡️' },
+      ],
+    },
+    {
+      heading: 'Products',
+      items: [
+        { name: 'Ubuntu Games', href: '/ubuntu-games', icon: '🎮' },
+        { name: 'Ubuntu Studio', href: '/studio', icon: '💻' },
+        { name: 'Ekasi Portal', href: '/ekasi', icon: '🌍' },
+      ],
+    },
+    {
+      heading: 'System',
+      items: [
+        { name: 'Lindiwe AI', href: '/agent/lindiwe', icon: '🤖' },
+        { name: 'Telemetry', href: '/dashboard/telemetry', icon: '📡' },
+        { name: 'POPIA', href: '/legal/popia', icon: '📋' },
       ],
     },
   ];
