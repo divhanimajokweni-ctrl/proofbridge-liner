@@ -109,3 +109,9 @@
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
 
+## 2026-07-03T00:48:43Z
+- **Commit**: `90995db`
+- **Message**: feat(governance): implement cryptographic obligation registry with RFC 2119 transition validation
+- **Status**: Deployed
+- **Domain**: https://venturevisionubuntu.co.za
+
