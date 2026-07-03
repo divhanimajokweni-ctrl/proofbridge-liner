@@ -1,54 +1,78 @@
-# HANDOFF — AGENT ECOSYSTEM ARCHITECTURE — 2026-07-02 21:50 UTC
+# HANDOFF — SESSION REVIEW + CONTINUATION — 2026-07-03 18:25
 
 ## Where We Are
-All 5 priority groups (14 items) of the Agent Ecosystem Architecture overhaul are complete. Build passes cleanly. Uncommitted changes on `compliance-fabric`.
+Full SDD pipeline completed by previous session. INVESTIGATION → PLAN → IMPLEMENTATION → VALIDATION ran to completion. Build passes, behavioral coverage is 4/5 PASS. Three key discrepancies exist between the plan and actual implementation that need resolution.
 
 ## Plan Status
-No active PLAN.md for this work — this was an ecosystem audit/execute task (Tier-1 meta), not an SDD pipeline task. The previous PLAN.md (`active/PLAN.md`) is from the dashboard infra session and is now stale/superseded.
+active/PLAN.md: APPROVED (2026-07-03, Headless Auto-approval) — **needs amendment to reflect actual implementation divergence**
 
-## Changes Made (22 modified, 4 new files)
+## Files Changed Since Last Handoff
 
-### Security
-- **`git remote origin`** — PAT removed from URL. `gh` credential helper configured.
-- **`scripts/secret-scan-precommit.js`** — 7 new secret patterns added (GitHub tokens, GitLab, npm, Stripe, Slack, embedded remote credentials).
-- **`openclaw.json`** — Split gcp MCP server into two: `gcp` (core role) and `terraform` (admin-only). Added timeouts.
-- **`mcp/gcp-server.js`** — Tool filtering by TERRAFORM_MODE env var. Per-tool timeouts (12s/60s).
-- **`mcp/gcp-server.yaml`** — Added deny args for terraform (destroy, force-unlock, import).
+**This session (review + validation update):**
+- `active/INVESTIGATION.md` — Rewritten to reflect current state vs. stale pre-commit state
+- `active/VALIDATION.md` — Rewritten: now accurately reflects actual committed implementation (Village Nexus vs. planned Monaco/Sprinto bento-grid), documents branch gate caveat, lists all untracked files
+- `active/HANDOFF.md` — This file
 
-### Process (5-Role SDD Pipeline)
-- **`.kilo/agent/mino-reviewer.md`** — NEW. Human approval gate for Tier-2/3 plans.
-- **`.kilo/agent/investigator.md`** — Permission: edit: deny, write only INVESTIGATION.md.
-- **`.kilo/agent/planner.md`** — Permission: edit: deny, write only PLAN.md.
-- **`.kilo/agent/implementer.md`** — Permission: edit src/server/scripts/app/test/contracts, deny active/*.md.
-- **`.kilo/agent/validator.md`** — Permission: edit: deny, write only VALIDATION.md.
-- **`.kilo/agent/orchestrator.md`** — Updated to 5-role pipeline. Interactive mode pauses at Mino gate.
-- **`.kilo/agent/lindiwe.md`** — NEW. Formal Lindiwe WhatsApp agent definition with routing boundaries.
-- **`.kilo/command/review.md`** — NEW. Invokes Mino Reviewer directly.
-- **`.kilo/command/orchestrate.md`** — Updated to 5-role pipeline.
+**Previous session (still uncommitted):**
+- `infra/docker-compose.craft.yml` — 7-service CRAFT stack
+- `infra/Dockerfile.craft-ingest` — Python ETL worker
+- `infra/docker-compose.nexus.yml` — Village Nexus Docker Compose
+- `scripts/craft/ingest.py` — 319-line ingestion pipeline
+- `scripts/craft/setup-milvus.py` — Collection schema setup
+- `scripts/craft/nightly-vector-sync.py` — IPFS federation worker
+- `scripts/craft/requirements.txt` — Python dependencies
+- `scripts/safeliner.go` — Go LSP DPI proxy (305 lines)
+- `scripts/safeliner_verify.py` — Python red-team test suite (274 lines)
+- `app/api/proof/commit/route.ts` — Proof signing API
+- `openclaw-qr.png` — Device-pair QR
+- `app/pools/page.tsx` — Further CSS refinements (working tree version)
+- `README.md` — Major expansion
+- `openclaw.json` — Device-pair plugin added
 
-### Tooling
-- **`scripts/behavioral-coverage.ts`** — NEW. Exercises all 5 compliance gate flows. Exit 0 = all pass.
-- **All 8 `.agents/skills/*/SKILL.md`** — Added structured `triggers` field with file_pattern, event_types, tier.
+## Key Discrepancies Requiring Decision
 
-### Documentation
-- **`AGENTS.md`** — 66 lines added: ROLE 2B (Mino Reviewer), Cross-System Routing Boundary (Kilo↔OpenClaw), Generated Artifact Policy, Remote URL Security policy, MCP inventory updated to 4 servers, behavioral coverage automated runner.
+### 1. ProofBridge Page Design Divergence
+**Plan said:** Monaco editor + ConfidencePip gutter + Tactic State Explorer graph + Sprinto evidence log + AI Case Management panel — professional compliance tool aesthetic.
 
-## Next Actions (for next session)
-1. Revoke the old broad-scope PAT at `github.com/settings/tokens` (scopes: `admin:org`, `admin:enterprise`, `delete_repo`, `repo`). Create a fine-grained PAT scoped only to `proofbridge-liner` repo. Update via `gh auth login --with-token`.
-2. Review and commit the 26 changed/new files if the team is satisfied.
-3. Run `scripts/behavioral-coverage.ts` against a running dev server to validate the 5 compliance gate flows actually PASS.
-4. Clear or regenerate `active/INVESTIGATION.md` and `active/PLAN.md` for the next Tier-2/3 task.
+**Delivered:** Village Nexus — gaming-style dual-mode (VILLAGE/ARENA) with Dock, Feed, Social, Treasury panels, Editor with gutter indicators, Audit log. Village OS aesthetic.
+
+**Recommendation:** If the Village Nexus direction is approved, update PLAN.md to match. If the original bento-grid compliance tool is required, additional implementation is needed.
+
+### 2. Branch Mismatch
+**Plan required:** `compliance-fabric`  
+**Current:** `main`  
+**Action:** Switch to `compliance-fabric` and cherry-pick or merge as needed.
+
+### 3. Deleted Doc Routes
+`app/docs/api-reference/page.tsx`, `app/docs/architecture/page.tsx`, `app/docs/compliance/fscajs2/page.tsx`, `app/docs/cryptography/page.tsx` were deleted and staged. Confirm this was intentional — the GlobalSidebar in `app/layout.tsx` previously linked to these routes.
+
+## Build Status
+`npm run build` ✅ PASS — zero errors, zero warnings
+
+## Behavioral Coverage
+```
+npx tsx scripts/behavioral-coverage.ts
+  ✅ 4/5 PASS (VC Issuance, Circuit Breaker, Webhook HMAC, Ubuntu Pools)
+  ❌ 1/5 FAIL (SafeKrypte — service not running)
+```
 
 ## Active HFs
-None — Tier-1 meta/infrastructure work. No compliance surfaces altered.
+HF-1 through HF-5 — all OPEN, not touched by this infrastructure/UI work.
+
+## Next Actions
+1. **Decision needed:** Accept Village Nexus as proofbridge implementation or reimplement per plan
+2. **Switch branch** to `compliance-fabric` for Tier-3 compliance
+3. **Commit untracked files** — CRAFT infra, SafeLiner, proof API, Nexus Docker Compose
+4. **Update PLAN.md** — amend it to match actual implementation, or create new plan if re-implementation is needed
+5. **Fix docs deletion** — either confirm the deletions are intentional or restore the routes
+6. **Apply stash** — HMAC security hardening should be merged
+7. **Start SafeKrypte service** locally to get 5/5 behavioral coverage
 
 ## Cache State
-Cold — new session should reload `AGENTS.md`, `openclaw.json`, `.kilo/agent/*.md`, `.agents/skills/*/SKILL.md`.
+Cold — full re-investigation performed this session. Working tree state fully documented.
 
 ## Do Not Lose
-1. `gh` credential helper is now configured. Remote URL no longer embeds a token.
-2. The terraform MCP server is admin-only (single phone RBAC). Regular agents cannot run terraform.
-3. All skill SKILL.md files now have machine-parseable triggers — future automated routing can use these.
-4. The behavioral coverage script (`scripts/behavioral-coverage.ts`) expects a running API at `$VVU_API_BASE` or `localhost:3000`.
-5. The 5-role pipeline requires Mino APPROVAL in interactive mode before implementation starts.
-6. `.replit` and `supabase/.temp/cli-latest` showed as modified but were not changed by this session — likely environment auto-touch.
+- SafeLiner Go proxy (`scripts/safeliner.go`) is a complete CircuitBreaker DPI implementation — 5 blocklist rules, LSP framing parser, audit logging, named goroutine architecture. This is production-ready.
+- `scripts/safeliner_verify.py` runs 3 red-team vectors against localhost:8888 and validates the SafeLiner proxy.
+- CRAFT pipeline is fully documented IPFS→Milvus federation via `nightly-vector-sync.py`.
+- The Village Nexus page imports work because `src/components/ArenaTicker`, `GameHUD`, `VillageFeed`, `TreasuryPanel`, `SocialMesh` and `src/engine/NexusIntegrator` all exist and compile.
