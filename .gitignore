@@ -19,6 +19,7 @@ cache/
 !/lib/db/
 !/lib/db/**
 !/lib/governance/**
+!/lib/HmacSecurityGuard.js
 
 .env.deployed
 local/share/com.vercel.cli/auth.json
@@ -33,4 +34,5 @@ local/share/com.vercel.cli/config.json
 auth/
 dist/
 data/public-keys/
+supabase/.temp/
 supabase/.temp/
