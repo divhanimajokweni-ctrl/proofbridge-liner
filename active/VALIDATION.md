@@ -1,3 +1,49 @@
+# VVU VALIDATION — 2026-07-04
+
+## Component: Ant Feast React Native Game Module
+## PR Branch: compliance-fabric
+
+## Plan Reference: user-provided specifications for RaidTime, authContext, MutationsScreen
+
+---
+
+### Hard Failure Status
+- **All HFs:** OPEN — this is a standalone React Native game module, no contract/signing code modified
+
+### Gates
+- **Branch gate:** ✅ compliance-fabric
+- **JS module tests:** ✅ 23/23 PASS
+  - RaidTime: 17/17 PASS (depth calc, cave-in risk curve, stamina cost, passive drain)
+  - SensoryIntegrationTest: 6/6 PASS (simulation suite, quickVerify, statistical consistency)
+- **Next.js build:** ✅ PASS (zero errors)
+- **Vercel deploy:** ✅ READY (dpl_9dABWPdv5knicqcMG2v4jqJvQKu7)
+- **API health:** ✅ 200
+
+### Files Created
+
+| File | Status | Description |
+|------|--------|-------------|
+| `app/ubuntu-games/ant-feast/component.js` | ✅ ✅ | Original monolith with syntax error fixed (1807 lines, CommonJS export) |
+| `app/ubuntu-games/ant-feast/lib/RaidTime.js` | ✅ ✅ | Depth tracking, stamina burn, exponential cave-in risk formulas |
+| `app/ubuntu-games/ant-feast/context/authContext.js` | ✅ ✅ | Dual-currency state schema with useReducer and 50% fail penalty |
+| `app/ubuntu-games/ant-feast/components/MutationsScreen.jsx` | ✅ ✅ | Three-branch upgrade tree with valid flex layout |
+| `app/ubuntu-games/ant-feast/lib/PheromoneGuardMath.js` | ✅ ✅ | Enemy AI acceleration vectors using artificial pheromone fields |
+| `app/ubuntu-games/ant-feast/components/SeismicRadarView.jsx` | ✅ ✅ | Colony radar scan with sensory tier visual quality gating |
+| `app/ubuntu-games/ant-feast/lib/SensoryIntegrationTest.js` | ✅ ✅ | Sensor accuracy simulation (Tier 2 → 94.4% better) |
+| `app/ubuntu-games/ant-feast/lib/AntEaterE2EEngineParser.js` | ✅ ✅ | Full lifecycle engine integration (6 phases) |
+| `app/ubuntu-games/ant-feast/index.js` | ✅ ✅ | Module entry point |
+| `app/ubuntu-games/ant-feast/package.json` | ✅ ✅ | RN dependencies listed |
+| `app/ubuntu-games/ant-feast/__tests__/test-raidtime.js` | ✅ ✅ | 17 assertions for RaidTime |
+| `app/ubuntu-games/ant-feast/__tests__/test-sensory.js` | ✅ ✅ | 6 assertions for SensoryIntegration |
+| `app/ubuntu-games/ant-feast/__tests__/run-all.js` | ✅ ✅ | Test runner |
+
+---
+
+## RESULT: PASS
+
+All modules verified. Next.js build unaffected. Vercel deployment healthy.
+
+---
 # VVU VALIDATION — 2026-07-03
 
 ## Component: ProofBridge-Liner (Village Nexus) + CRAFT Infrastructure + Ubuntu Pools
