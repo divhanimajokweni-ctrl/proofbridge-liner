@@ -1,0 +1,24 @@
+{
+  "name": "ant-feast",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ant Feast — A React Native tongue-extension raid game",
+  "main": "index.js",
+  "scripts": {
+    "test": "node __tests__/run-all.js",
+    "test:raidtime": "node __tests__/test-raidtime.js",
+    "test:sensory": "node __tests__/test-sensory.js",
+    "test:e2e": "node -e \"require('./lib/AntEaterE2EEngineParser').executeCompleteLifecycle()\"",
+    "start": "echo 'Use npx react-native or npx expo to run the app'"
+  },
+  "dependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.72.0",
+    "@react-navigation/bottom-tabs": ">=6.0.0",
+    "@react-navigation/stack": ">=6.0.0",
+    "react-native-safe-area-context": ">=4.0.0",
+    "@react-native-vector-icons/ionicons": "*",
+    "@react-native-vector-icons/material-icons": "*",
+    "platform-hooks": "*"
+  }
+}
