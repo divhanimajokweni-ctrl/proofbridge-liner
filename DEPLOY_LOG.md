@@ -1,3 +1,25 @@
+## 2026-07-04T16:52:03Z
+- **Commit**: `181d7cb` → `pending` (compliance-fabric)
+- **Message**: feat(games): add loot tables, migration engine, pheromone canvas, comprehensive test + feat(security): HMAC guard, SafeKrypte mock, behavioral suite orchestrator
+- **Status**: Deployed — READY
+- **Domain**: https://venturevisionubuntu.co.za ✅ (200)
+- **Deploy ID**: dpl_3tW8Jw51c1N2UH32ZVmZvBXLa698
+- **Vercel URL**: https://proofbridge-liner-5ifs3twqz-divhanimajokweni-1651s-projects.vercel.app
+- **New assets (Ant Feast)**:
+  - `lib/QueenLootTableProcessor.js` — Weighted loot drops (6 items, boss tier 1-5 scaling)
+  - `lib/ProfileMigrationEngine.js` — v1→v2 schema migration with validation
+  - `components/LocalPheromoneCanvas.jsx` — RN View-based pheromone field heat map
+  - `lib/ComprehensiveSubsystemTest.js` — 5-phase integration test suite
+  - `__tests__/test-queenloot.js`, `test-migration.js`, `test-comprehensive.js`
+- **New assets (Security)**:
+  - `lib/HmacSecurityGuard.js` — Fall-closed SHA-256 HMAC inter-process guard
+  - `tests/mocks/SafeKrypteServiceMock.js` — HTTP mock for port 5096
+  - `run-behavioral-suite.js` — Behavioral test orchestrator
+- **JS tests**: 203/203 PASS (5 suites)
+- **Behavioral coverage**: ✅ **5/5 PASS** (all 5 flows)
+- **Build**: ✅ npm run build passes
+- **Branch**: `compliance-fabric`
+
 ## 2026-07-04T15:40:40Z
 - **Commit**: `69a9483` (compliance-fabric)
 - **Message**: feat(games): add Ant Feast React Native game module with RaidTime, authContext, MutationScreen, PheromoneGuardMath, SeismicRadarView, E2E integration

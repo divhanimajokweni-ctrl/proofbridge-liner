@@ -300,7 +300,10 @@ The nine entities align to four tiers:
 ### 🧠 LINDIWE — AI Agent Orchestrator
 - 5-role SDD workflow: Investigator → Planner → Mino Reviewer → Implementer → Validator
 - Separation of concerns (Validator cannot approve own implementation)
-- Behavioral coverage: VC issuance, Circuit Breaker, Webhook, SafeKrypte, Ubuntu Pools
+- Behavioral coverage: VC issuance, Circuit Breaker, Webhook, SafeKrypte, Ubuntu Pools — ✅ **5/5 PASS** (2026-07-04)
+- HMAC Security Guard: `lib/HmacSecurityGuard.js` — fall-closed SHA-256 inter-process signing with timing-safe comparison
+- SafeKrypte Mock: `tests/mocks/SafeKrypteServiceMock.js` — local HTTP mock enabling 5/5 behavioral coverage without production HSM
+- Ant Feast: 4 new game modules + 203 passing tests
 - Three handoff files: INVESTIGATION.md, PLAN.md, VALIDATION.md
 
 ---
