@@ -9,6 +9,9 @@ const path = require('path');
 const tests = [
   'test-raidtime.js',
   'test-sensory.js',
+  'test-queenloot.js',
+  'test-migration.js',
+  'test-comprehensive.js',
 ];
 
 let allPassed = true;

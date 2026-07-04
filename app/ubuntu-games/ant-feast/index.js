@@ -30,10 +30,16 @@ const RaidTime = require('./lib/RaidTime');
 const PheromoneGuardMath = require('./lib/PheromoneGuardMath');
 const SensoryIntegrationTest = require('./lib/SensoryIntegrationTest');
 const AntEaterE2EEngineParser = require('./lib/AntEaterE2EEngineParser');
+const QueenLootTableProcessor = require('./lib/QueenLootTableProcessor');
+const ProfileMigrationEngine = require('./lib/ProfileMigrationEngine');
+const ComprehensiveSubsystemTest = require('./lib/ComprehensiveSubsystemTest');
 
 module.exports = {
   RaidTime,
   PheromoneGuardMath,
   SensoryIntegrationTest,
   AntEaterE2EEngineParser,
+  QueenLootTableProcessor,
+  ProfileMigrationEngine,
+  ComprehensiveSubsystemTest,
 };

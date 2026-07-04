@@ -9,6 +9,10 @@
     "test:raidtime": "node __tests__/test-raidtime.js",
     "test:sensory": "node __tests__/test-sensory.js",
     "test:e2e": "node -e \"require('./lib/AntEaterE2EEngineParser').executeCompleteLifecycle()\"",
+    "test:queenloot": "node __tests__/test-queenloot.js",
+    "test:migration": "node __tests__/test-migration.js",
+    "test:comprehensive": "node __tests__/test-comprehensive.js",
+    "test:all": "node __tests__/run-all.js",
     "start": "echo 'Use npx react-native or npx expo to run the app'"
   },
   "dependencies": {
