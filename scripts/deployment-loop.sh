@@ -12,6 +12,10 @@
 set -euo pipefail
 
 # Prevent recursive hook invocation
+if [ "${DEPLOYMENT_LOCK_ACTIVE:-0}" = "1" ]; then
+  echo "DEPLOYMENT_LOCK_ACTIVE detected — skipping recursive hook invocation"
+  exit 0
+fi
 export DEPLOYMENT_LOCK_ACTIVE=1
 
 LOCK_FILE=".deploy-lock"
