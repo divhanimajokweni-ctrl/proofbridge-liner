@@ -298,22 +298,20 @@ phase 8 $total_phases "PUSH GATE — Push to Origin"
 phase 9 $total_phases "DNS CONFIG — Domain Resolution Check"
 {
   DOMAIN="venturevisionubuntu.co.za"
+  RESULT=""
   if command -v dig &>/dev/null; then
     RESULT=$(dig +short "$DOMAIN" 2>/dev/null | head -1)
-    if [ -n "$RESULT" ]; then
-      pass "DNS resolves: $DOMAIN → $RESULT"
-    else
-      fail "DNS did not resolve $DOMAIN — domain configuration issue"
-    fi
   elif command -v nslookup &>/dev/null; then
     RESULT=$(nslookup "$DOMAIN" 2>/dev/null | grep -oP 'Address: \K.*' | head -1)
-    if [ -n "$RESULT" ]; then
-      pass "DNS resolves: $DOMAIN → $RESULT"
-    else
-      fail "DNS did not resolve $DOMAIN — domain configuration issue"
-    fi
+  elif command -v getent &>/dev/null; then
+    RESULT=$(getent hosts "$DOMAIN" 2>/dev/null | awk '{print $1}' | head -1)
+  elif command -v node &>/dev/null; then
+    RESULT=$(node -e "const dns=require('dns');dns.resolve4('$DOMAIN',(e,r)=>{process.stdout.write(e?'':(r||[])[0]||'')})" 2>/dev/null)
+  fi
+  if [ -n "$RESULT" ]; then
+    pass "DNS resolves: $DOMAIN → $RESULT"
   else
-    fail "No DNS lookup tool available — install dig or nslookup"
+    fail "DNS did not resolve $DOMAIN — domain configuration issue"
   fi
 } >&3
 
