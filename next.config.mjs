@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig = {
+  output: 'standalone',
   reactStrictMode: true,
   swcMinify: true,
   eslint: {
@@ -14,6 +15,28 @@ const nextConfig = {
       'vvu.earth-tech.ai',
       'api.vvu.earth-tech.ai',
     ],
+  },
+  experimental: {
+    outputFileTracingExcludes: {
+      '/*': [
+        '_config/**',
+        '.config/**',
+        '.local/**',
+        '.cache/**',
+        '.git/**',
+        'proofbridge-liner/**',
+        'archive/**',
+        'ai-gateway/**',
+        'whatsapp-bridge/**',
+        'extensions/**',
+        'npm/**',
+        '.obsidian/**',
+        '.next/**',
+      ],
+    },
+    outputFileTracingIncludes: {
+      '/*': ['public/**/*'],
+    },
   },
   webpack: (config) => {
     config.resolve.alias['ethers'] = path.resolve(__dirname, 'node_modules/ethers/lib.commonjs/index.js');
