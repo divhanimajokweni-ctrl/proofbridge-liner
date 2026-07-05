@@ -180,3 +180,9 @@
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
 
+## 2026-07-05T23:40:52Z
+- **Commit**: `7fdecc0`
+- **Message**: fix(security): remove hardcoded credential fallbacks, fail closed on missing env vars
+- **Status**: Deployed
+- **Domain**: https://venturevisionubuntu.co.za
+
