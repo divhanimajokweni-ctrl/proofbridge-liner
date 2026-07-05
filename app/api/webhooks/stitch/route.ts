@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ethers } from 'ethers';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { Redis } from '@upstash/redis';
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+});
 
 const CONTRACT_ADDRESS = '0x770342c49e1F4710E0Eed605dCe41e7f3F7600Eb';
 
@@ -151,6 +157,49 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                 BigInt(950000)
             );
 
+            // ── Billing Upgrade — update Upstash Redis client profile ──
+            // Extract clientId from payerReference: expects "PB-client-id"
+            const payerReference = payment.metadata?.payerReference ||
+              `PB-default-client`;
+            const clientId = payerReference.replace('PB-', '');
+
+            try {
+              // Use domain-separated key (billing:) per HF-4
+              await redis.hset(`billing:client:${clientId}`, {
+                tier: 'Enterprise Core',
+                monthlyLimit: '500000',
+                updatedAt: Date.now().toString(),
+                status: 'ACTIVE',
+                paymentProcessor: 'stitch',
+                stitchPaymentId: payment.id,
+              });
+
+              console.log(
+                `[stitch-webhook] Billing upgraded for client: ${clientId}`
+              );
+
+              // Fire optional Slack notification
+              try {
+                const { dispatchSlackNotification } = await import(
+                  '../../../../lib/slack-notifier'
+                );
+                await dispatchSlackNotification({
+                  eventType: 'BILLING_UPGRADE',
+                  clientId,
+                  tierName: 'Enterprise Core',
+                  monthlyLimit: 500000,
+                });
+              } catch {
+                // Slack notifier is optional
+              }
+            } catch (dbErr: any) {
+              console.error(
+                '[stitch-webhook] Billing upgrade failed:',
+                dbErr.message
+              );
+              // Don't fail the webhook — anchoring already succeeded
+            }
+
             return NextResponse.json({
                 received: true,
                 eventId: id,
@@ -161,6 +210,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
                 anchorSeq: result.anchorSeq.toString(),
                 proofHash,
                 status: 'ANCHORED',
+                billingUpgraded: true,
             }, { status: 200 });
         }
 
