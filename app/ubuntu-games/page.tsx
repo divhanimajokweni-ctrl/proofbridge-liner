@@ -14,12 +14,13 @@ import {
   Skull,
   Target,
   Crosshair,
+  Bug,
 } from 'lucide-react';
 import Link from 'next/link';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type GameMode = 'SIEGE' | 'GOLF' | 'CRUSADE';
+type GameMode = 'SIEGE' | 'GOLF' | 'CRUSADE' | 'ANT_FEAST';
 
 interface LiveSession {
   id: string;
@@ -105,9 +106,10 @@ function formatTimeLeft(seconds: number): string {
 }
 
 const MODE_META: Record<GameMode, { icon: typeof Swords; color: string; label: string; href: string }> = {
-  SIEGE:   { icon: Swords,   color: '#EF4444', label: 'Red Siege',        href: '/ubuntu-games/siege' },
-  GOLF:    { icon: Zap,      color: '#3B82F6', label: 'Proof Golf',        href: '/ubuntu-games/golf' },
-  CRUSADE: { icon: Users,    color: '#A855F7', label: 'Crusade Raid',      href: '/ubuntu-games/crusade' },
+  SIEGE:     { icon: Swords,   color: '#EF4444', label: 'Red Siege',        href: '/ubuntu-games/siege' },
+  GOLF:      { icon: Zap,      color: '#3B82F6', label: 'Proof Golf',        href: '/ubuntu-games/golf' },
+  CRUSADE:   { icon: Users,    color: '#A855F7', label: 'Crusade Raid',      href: '/ubuntu-games/crusade' },
+  ANT_FEAST: { icon: Bug as unknown as typeof Swords, color: '#D4A017', label: 'Ant Feast', href: '/ubuntu-games/ant-feast' },
 };
 
 // ─── Main Hub Page ────────────────────────────────────────────────────────────

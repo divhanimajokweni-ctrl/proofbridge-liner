@@ -10,7 +10,7 @@
  */
 import * as crypto from 'node:crypto';
 import { eq, sql } from 'drizzle-orm';
-import { db } from '../../lib/db/src';
+import { getDb } from '../../lib/db/src';
 import { gatewayParticipantsTable } from '../../lib/db/src/schema/gatewayParticipants';
 
 // ─── Configuration ──────────────────────────────────────────────────────
@@ -81,14 +81,14 @@ export interface TenantManifest {
 async function getNextSequence(): Promise<number> {
   // Use a sequence counter stored in gateway_participants meta row
   // Count existing participants + 1
-  const result = await db
+  const result = await getDb()
     .select({ count: sql<number>`count(*)::int` })
     .from(gatewayParticipantsTable);
   return (result[0]?.count ?? 0) + 1;
 }
 
 async function getCurrentCount(): Promise<number> {
-  const result = await db
+  const result = await getDb()
     .select({ count: sql<number>`count(*)::int` })
     .from(gatewayParticipantsTable);
   return result[0]?.count ?? 0;
@@ -135,7 +135,7 @@ export async function createAccount(params: {
   // Persist tenant to database (REPLACES: fs.writeFileSync to data/gateway/tenants/tenant_N.json)
   const participantId = params.participantId ?? crypto.randomUUID();
   try {
-    await db.insert(gatewayParticipantsTable).values({
+    await getDb().insert(gatewayParticipantsTable).values({
       id: participantId,
       email: email.toLowerCase().trim(),
       displayName,
@@ -168,7 +168,7 @@ export async function createAccount(params: {
 
 export async function listTenants(): Promise<TenantManifest[]> {
   try {
-    const rows = await db
+    const rows = await getDb()
       .select()
       .from(gatewayParticipantsTable)
       .orderBy(gatewayParticipantsTable.createdAt);
