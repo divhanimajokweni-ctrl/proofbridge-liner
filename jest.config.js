@@ -11,6 +11,16 @@ const config = {
     '**/__tests__/**/*.[jt]s?(x)',
     '**/?(*.)+(spec|test).[tj]s?(x)'
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/e2e/',
+    '/tests/',
+    '/dist/',
+    '/test/',
+    '/app/ubuntu-games/ant-feast/__tests__/',
+    '/public/vvv/test/',
+    'run-all\\.(js|ts)$'
+  ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',

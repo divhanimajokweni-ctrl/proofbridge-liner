@@ -10,6 +10,18 @@ jest.mock('next/server', () => ({
   },
 }));
 
+// Mock TEE attestation to avoid RSA key generation in test environment
+jest.mock('@/lib/tee/attestation', () => ({
+  generateAttestation: () => ({
+    mode: 'software-attested',
+    measurement: 'mock-measurement',
+    pcrHash: 'mock-pcr-hash',
+    signingKeyFingerprint: 'mock-fingerprint',
+    timestamp: Date.now(),
+    signature: 'mock-signature',
+  }),
+}));
+
 function createRequest(overrides: {
   method?: string;
   headers?: Record<string, string>;
@@ -74,15 +86,14 @@ describe('VVU Gateway Core API Infrastructure Suite', () => {
         'Authorization': 'Bearer secure_test_kernel_token_2026',
       },
       body: JSON.stringify({
-        documentHash: '0x74657374646f63756d656e746861736830303030303030303030303030303032',
+        documentHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
         signals: { complianceValid: 1, amountLimit: 5000 },
       }),
     });
 
     const res = await verifyHandler(req);
-    expect(res.status).toBe(200);
-    
     const data = await res.json();
+    expect(res.status).toBe(200);
     expect(data.attestation).toBe('software-attested');
     expect(data.circuitState).toBe('OPEN');
   });

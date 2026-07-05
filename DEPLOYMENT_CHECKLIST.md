@@ -8,10 +8,9 @@
 - [ ] `npm run build` passes without errors
 - [ ] ESLint warnings reviewed (non-blocking)
 
-## Deploy
-- [ ] Pushed to origin
-- [ ] Vercel production deploy succeeded
-- [ ] Domain alias active
+## Deploy (runs before push)
+- [ ] Vercel production build succeeds (deployed via `vercel deploy --prod --force --wait`)
+- [ ] Only after Vercel success: `git push origin`
 
 ## Verify
 - [ ] DNS resolves correctly

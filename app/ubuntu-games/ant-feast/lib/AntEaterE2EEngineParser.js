@@ -140,11 +140,11 @@ const AntEaterE2EEngineParser = {
       );
     }
 
-    console.log('\n========================================================");
+    console.log('\n========================================================');
     console.log(
       '\uD83C\uDFC1 END-TO-END LIFE CYCLE COMPILATION COMPLETE: ALL SYSTEMS RUNNING'
     );
-    console.log('========================================================");
+    console.log('========================================================');
 
     return systemStorageState;
   },
