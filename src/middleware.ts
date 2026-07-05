@@ -71,7 +71,8 @@ function validateVVUSession(cookieHeader: string): { userId: string; tier: strin
 
     const [payload, signature] = parts;
     const crypto = require('crypto');
-    const secret = process.env.VVU_SESSION_SECRET || '';
+    const secret = process.env.VVU_SESSION_SECRET;
+    if (!secret) return null; // fail closed — no fallback
 
     const expectedSig = crypto
       .createHmac('sha256', secret)
@@ -104,7 +105,8 @@ function validateJwtSession(cookieHeader: string): { userId: string; tier: strin
     const sessionToken = cookies['vvu_session_token'];
     if (!sessionToken) return null;
 
-    const secret = process.env.VVU_JWT_SECRET || 'vvu_brain_absolute_cryptographic_signing_key_vector';
+    const secret = process.env.VVU_JWT_SECRET;
+    if (!secret) return null; // fail closed — no fallback
     const decoded = jwt.verify(sessionToken, secret) as { identity: string; permissions: string[] };
 
     if (!decoded || decoded.identity !== 'WAR_ROOM_OPERATOR') return null;
