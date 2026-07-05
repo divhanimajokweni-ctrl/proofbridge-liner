@@ -20,6 +20,9 @@ cache/
 !/lib/db/**
 !/lib/governance/**
 !/lib/HmacSecurityGuard.js
+!/lib/amd-init.ts
+!/lib/slack-notifier.ts
+!/lib/discord-notifier.ts
 
 .env.deployed
 local/share/com.vercel.cli/auth.json
