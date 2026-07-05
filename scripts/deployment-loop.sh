@@ -200,6 +200,38 @@ phase 5 $total_phases "BUILD GATE — npm run build"
   pass "Build succeeded"
 } >&3
 
+# ----------------------------------------------------------
+# DEV SERVER RESTART (build overwrites .next/ with production chunks)
+# ----------------------------------------------------------
+{
+  info "Restarting dev server after build..."
+  # Kill existing dev server if any
+  if command -v pkill &>/dev/null; then
+    pkill -f "next dev" 2>/dev/null || true
+  fi
+  sleep 1
+  # Remove production build artifacts so dev can re-compile fresh
+  rm -rf .next/ 2>/dev/null || true
+  sleep 1
+  # Restart dev server in background
+  npm run dev &
+  DEV_PID=$!
+  # Wait for health endpoint (up to 60s for cold compile)
+  HEALTH_OK=false
+  for i in $(seq 1 12); do
+    sleep 5
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null | grep -q "200"; then
+      HEALTH_OK=true
+      break
+    fi
+  done
+  if [ "$HEALTH_OK" = true ]; then
+    pass "Dev server restarted and healthy"
+  else
+    fail "Dev server failed to restart after build"
+  fi
+} >&3
+
 # ============================================================
 # PHASE 6: BEHAVIORAL COVERAGE — 5 compliance flows
 # ============================================================
