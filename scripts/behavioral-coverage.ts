@@ -129,6 +129,14 @@ async function testVCIssuance(): Promise<TestResult> {
 
 async function testCircuitBreaker(): Promise<TestResult> {
   try {
+    // Warm-up: trigger lazy compilation so the actual test isn't delayed by cold-start
+    await fetch(`${BASE_URL}/api/admin/circuit-breaker`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "open" }),
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => { /* warmup — ignore failure */ });
+
     // Trigger the circuit breaker
     const cbRes = await fetch(`${BASE_URL}/api/admin/circuit-breaker`, {
       method: "POST",
