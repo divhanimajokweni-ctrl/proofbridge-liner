@@ -11,14 +11,24 @@ import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16' as any,
-});
+function getStripeClient(): Stripe {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error('STRIPE_SECRET_KEY environment variable is not configured');
+  }
+  return new Stripe(key, {
+    apiVersion: '2023-10-16' as any,
+  });
+}
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-});
+function getRedisClient(): Redis {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    throw new Error('Upstash Redis credentials not configured');
+  }
+  return new Redis({ url, token });
+}
 
 // Tier lookup by Stripe price ID
 const TIER_QUOTA_MAP: Record<string, { name: string; limit: number }> = {
@@ -45,6 +55,7 @@ export async function POST(request: Request) {
   let event: Stripe.Event;
 
   try {
+    const stripe = getStripeClient();
     event = stripe.webhooks.constructEvent(payloadText, signature, webhookSecret);
   } catch (err: any) {
     console.error(`[stripe-webhook] Signature validation failed: ${err.message}`);
@@ -73,6 +84,7 @@ export async function POST(request: Request) {
 
     try {
       // Use domain-separated Redis key (billing:) per HF-4
+      const redis = getRedisClient();
       await redis.hset(`billing:client:${clientId}`, {
         tier: tierConfig.name,
         monthlyLimit: tierConfig.limit.toString(),
