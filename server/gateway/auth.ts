@@ -11,7 +11,7 @@
 import * as argon2 from 'argon2';
 import * as crypto from 'node:crypto';
 import { eq, and, lt, sql } from 'drizzle-orm';
-import { db } from '../../lib/db/src';
+import { getDb } from '../../lib/db/src';
 import { pgTable, text, integer, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 // ─── Schema (local — these tables are small and auth-specific) ──────────
@@ -41,7 +41,7 @@ const JAIL_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 export async function isIpJailed(ip: string): Promise<boolean> {
   try {
-    const rows = await db
+    const rows = await getDb()
       .select()
       .from(jailTable)
       .where(eq(jailTable.ip, ip))
@@ -58,8 +58,8 @@ export async function isIpJailed(ip: string): Promise<boolean> {
 
 export async function getJailRemainingMs(ip: string): Promise<number> {
   try {
-    const rows = await db
-      .select()
+    const rows = await getDb().
+      select()
       .from(jailTable)
       .where(eq(jailTable.ip, ip))
       .limit(1);
@@ -74,8 +74,8 @@ export async function getJailRemainingMs(ip: string): Promise<number> {
 
 async function recordFailedAttempt(ip: string): Promise<void> {
   try {
-    const existing = await db
-      .select()
+    const existing = await getDb().
+      select()
       .from(jailTable)
       .where(eq(jailTable.ip, ip))
       .limit(1);
@@ -83,7 +83,7 @@ async function recordFailedAttempt(ip: string): Promise<void> {
     const now = new Date();
 
     if (existing.length === 0) {
-      await db.insert(jailTable).values({
+      await getDb().insert(jailTable).values({
         ip,
         failedAttempts: 1,
         lastAttempt: now,
@@ -92,7 +92,7 @@ async function recordFailedAttempt(ip: string): Promise<void> {
       const newAttempts = existing[0].failedAttempts + 1;
       const shouldJail = newAttempts >= MAX_ATTEMPTS;
 
-      await db
+      await getDb()
         .update(jailTable)
         .set({
           failedAttempts: newAttempts,
@@ -112,8 +112,8 @@ async function recordFailedAttempt(ip: string): Promise<void> {
 
 async function resetFailedAttempts(ip: string): Promise<void> {
   try {
-    await db
-      .update(jailTable)
+    await getDb().
+      update(jailTable)
       .set({
         failedAttempts: 0,
         jailedAt: null,
@@ -133,8 +133,8 @@ export async function registerPin(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     // Check if user already has a PIN
-    const existing = await db
-      .select()
+    const existing = await getDb().
+      select()
       .from(pinStoreTable)
       .where(eq(pinStoreTable.userId, userId))
       .limit(1);
@@ -150,7 +150,7 @@ export async function registerPin(
       parallelism: 4,
     });
 
-    await db.insert(pinStoreTable).values({
+    await getDb().insert(pinStoreTable).values({
       userId,
       pinHash: hash,
     });
@@ -182,8 +182,8 @@ export async function verifyPin(
       };
     }
 
-    const rows = await db
-      .select()
+    const rows = await getDb().
+      select()
       .from(pinStoreTable)
       .where(eq(pinStoreTable.userId, userId))
       .limit(1);
@@ -200,7 +200,7 @@ export async function verifyPin(
       await recordFailedAttempt(clientIp);
 
       // Fetch updated attempt count
-      const jailRows = await db
+      const jailRows = await getDb()
         .select()
         .from(jailTable)
         .where(eq(jailTable.ip, clientIp))
@@ -219,8 +219,8 @@ export async function verifyPin(
 
     // Success — reset jail counter and update last auth
     await resetFailedAttempts(clientIp);
-    await db
-      .update(pinStoreTable)
+    await getDb().
+      update(pinStoreTable)
       .set({ lastAuth: new Date() })
       .where(eq(pinStoreTable.userId, userId));
 
@@ -237,8 +237,8 @@ export async function verifyPin(
 
 export async function setupDefaultPin(userId: string): Promise<{ ok: boolean; pin?: string }> {
   try {
-    const existing = await db
-      .select()
+    const existing = await getDb().
+      select()
       .from(pinStoreTable)
       .where(eq(pinStoreTable.userId, userId))
       .limit(1);
@@ -256,7 +256,7 @@ export async function setupDefaultPin(userId: string): Promise<{ ok: boolean; pi
       parallelism: 4,
     });
 
-    await db.insert(pinStoreTable).values({
+    await getDb().insert(pinStoreTable).values({
       userId,
       pinHash,
     });
@@ -273,8 +273,8 @@ export async function setupDefaultPin(userId: string): Promise<{ ok: boolean; pi
 export async function cleanupJail(): Promise<void> {
   try {
     const cutoff = new Date(Date.now() - JAIL_DURATION_MS);
-    const result = await db
-      .delete(jailTable)
+    const result = await getDb().
+      delete(jailTable)
       .where(
         and(
           sql`jailed_at IS NOT NULL`,

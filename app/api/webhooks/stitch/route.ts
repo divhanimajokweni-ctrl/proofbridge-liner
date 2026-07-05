@@ -3,10 +3,18 @@ import { ethers } from 'ethers';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Redis } from '@upstash/redis';
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-});
+let _redis: Redis | null = null;
+function getRedis(): Redis {
+  if (!_redis) {
+    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!url || !token) {
+      throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set at runtime');
+    }
+    _redis = new Redis({ url, token });
+  }
+  return _redis;
+}
 
 const CONTRACT_ADDRESS = '0x770342c49e1F4710E0Eed605dCe41e7f3F7600Eb';
 
@@ -165,7 +173,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
             try {
               // Use domain-separated key (billing:) per HF-4
-              await redis.hset(`billing:client:${clientId}`, {
+              await getRedis().hset(`billing:client:${clientId}`, {
                 tier: 'Enterprise Core',
                 monthlyLimit: '500000',
                 updatedAt: Date.now().toString(),

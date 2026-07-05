@@ -12,10 +12,18 @@
 import { NextResponse } from 'next/server';
 import { Redis } from '@upstash/redis';
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-});
+let _redis: Redis | null = null;
+function getRedis(): Redis {
+  if (!_redis) {
+    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!url || !token) {
+      throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set at runtime');
+    }
+    _redis = new Redis({ url, token });
+  }
+  return _redis;
+}
 
 export async function POST(request: Request) {
   try {
@@ -38,7 +46,7 @@ export async function POST(request: Request) {
     let responseMessageText = '';
 
     if (actionId === 'deactivate_kill_switch') {
-      await redis.set('billing:global_shutdown', false);
+      await getRedis().set('billing:global_shutdown', false);
       responseMessageText = `✅ *Global circuit breaker deactivated by @${clickerName}.*`;
     } else if (actionId === 'dismiss_agent_flag') {
       const targetChronicleId = action.value || 'unknown';
