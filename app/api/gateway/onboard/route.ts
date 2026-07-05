@@ -26,6 +26,13 @@ function getSupabaseAdmin() {
   if (!url || !key) {
     return null; // Fall through to DB-only mode if Supabase Auth not configured
   }
+  // Validate URL before passing to createClient — prevent "Invalid supabaseUrl" throw
+  // from placeholder values like "<your-project-ref>"
+  try {
+    new URL(url);
+  } catch {
+    return null;
+  }
   return createClient(url, key, { auth: { persistSession: false } });
 }
 

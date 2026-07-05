@@ -7,6 +7,10 @@ function getSupabase() {
     if (!url || !key) {
         throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
     }
+    // Validate URL to prevent "Invalid supabaseUrl" throw from placeholder values
+    try { new URL(url); } catch {
+        throw new Error('SUPABASE_URL is malformed. Check Replit secrets or .env.local');
+    }
     return createClient(url, key);
 }
 
