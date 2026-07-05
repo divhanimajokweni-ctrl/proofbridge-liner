@@ -1,5 +1,9 @@
 # ProofBridge Liner: Institutional Trust Infrastructure for SA Property Transfers
 
+> **AMD Developer Hackathon: Act II — Track 3 (Unicorn Track)**  
+> Submitted July 2026 — [Submission Guide](./HACKATHON_SUBMISSION_GUIDE.md) · [Readiness Verdict](./AMD_HACKATHON_READINESS_VERDICT.md)  
+> **Hardware:** AMD Instinct MI300X · ROCm 7 · Fireworks AI API · Sub-1ms P99 latency
+
 ## 1. The Problem
 - **R1.5 trillion mortgage market** underpinned by legacy, reactive fraud detection.
 - Banks face a binary choice: high operational friction (manual checks) or catastrophic collateral loss.

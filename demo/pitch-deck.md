@@ -1,22 +1,25 @@
 # ProofBridge Liner — Pitch Deck
-**10 Slides · Lablab.ai Hackathon**
+**AMD Developer Hackathon: Act II — Track 3 (Unicorn Track)**
 **Presenter:** Mihle "Divhani" Majokweni · Vaguely Vanity LLC · Gqeberha, South Africa
+**Hardware:** AMD Instinct MI300X · ROCm 7 · Fireworks AI API
+**Deadline:** July 11, 2026 · [Submission Guide](../docs/HACKATHON_SUBMISSION_GUIDE.md)
 
 ---
 
 ## Slide 1 — Title
 
 > **ProofBridge Liner**
-> *The Trust Layer for Verifiable AI*
+> *Hardware-Enforced Trust Infrastructure for SA Financial Markets*
 
 ---
 
 ### What it does
-ProofBridge Liner transforms every AI output into a **provable, adjudicatable statement** — not just another answer, but one you can verify, audit, and enforce on-chain.
+A Bayesian safety kernel, running on **AMD Instinct MI300X GPUs**, that intercepts fraudulent property deed registrations in **under 1 millisecond** — cryptographically attested by AMD TEE, with automated **FSCA, FICA, and Cybercrimes Act** regulatory output. Built for the R1.5T South African property market.
 
 **Name:** Mihle "Divhani" Majokweni  
 **Repository:** github.com / divhanimajokweni / proofbridge-liner  
-**Live:** divhanimajokweni-ctrl.github.io/proofbridge-liner
+**Live:** https://huggingface.co/spaces/lablab-ai-amd-developer-hackathon/proofbridge-liner-safety-kernel  
+**AMD HW:** MI300X · ROCm 7 · 192GB VRAM · P99 0.82ms @ 500 TPS
 
 ---
 

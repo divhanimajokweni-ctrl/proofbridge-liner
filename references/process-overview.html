@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Process Overview — Design Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+  /* ── Design Reference: Warm paper + terracotta accent ──────── */
+  :root {
+    --paper: #f6f4f0;
+    --card-bg: #fffefa;
+    --ink: #2a2520;
+    --muted: #8a8580;
+    --terracotta: #c45d3e;
+    --terracotta-light: #e8c8bc;
+    --border: #e0d8d0;
+    --shadow: rgba(42, 37, 32, 0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.7;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Grain overlay ─────────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── Print ─────────────────────────────────────────────────── */
+  @media print {
+    body { background: white; padding: 0; }
+    body::before { display: none; }
+    .page-break { page-break-before: always; }
+  }
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  .container { max-width: 960px; margin: 0 auto; padding: 80px 40px; }
+
+  /* ── Cover ──────────────────────────────────────────────────── */
+  .cover {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 80px 40px;
+  }
+  .cover .badge {
+    display: inline-block;
+    background: var(--terracotta);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 100px;
+    margin-bottom: 32px;
+  }
+  .cover h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 3.5rem;
+    font-weight: 400;
+    line-height: 1.15;
+    margin-bottom: 16px;
+    color: var(--ink);
+  }
+  .cover .subtitle {
+    font-size: 1.15rem;
+    color: var(--muted);
+    max-width: 540px;
+    margin-bottom: 32px;
+  }
+  .cover .meta {
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+
+  /* ── Section ────────────────────────────────────────────────── */
+  section { padding: 64px 0; position: relative; }
+  .section-number {
+    font-family: 'Instrument Serif', serif;
+    font-size: 6rem;
+    color: var(--terracotta-light);
+    line-height: 1;
+    margin-bottom: -24px;
+    opacity: 0.4;
+  }
+  h2 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 2.2rem;
+    font-weight: 400;
+    margin-bottom: 24px;
+    color: var(--ink);
+  }
+  h3 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--ink);
+  }
+  p { margin-bottom: 16px; color: var(--ink); }
+
+  /* ── Tags ───────────────────────────────────────────────────── */
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  .tag {
+    display: inline-block;
+    background: var(--terracotta-light);
+    color: var(--terracotta);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 100px;
+  }
+
+  /* ── Cards ──────────────────────────────────────────────────── */
+  .card {
+    background: var(--card-bg);
+    border-left: 4px solid var(--terracotta);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px var(--shadow);
+    transition: box-shadow 0.3s ease;
+  }
+  .card:hover { box-shadow: 0 4px 24px var(--shadow); }
+
+  /* ── Flow connector (dashed line) ────────────────────────────── */
+  .flow-connector {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+  }
+  .flow-connector svg { width: 32px; height: 40px; }
+
+  /* ── Color swatches ─────────────────────────────────────────── */
+  .swatches { display: flex; gap: 12px; margin: 16px 0; flex-wrap: wrap; }
+  .swatch {
+    width: 48px; height: 48px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.6rem; color: white; font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+
+  /* ── Table ──────────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+  }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  td:first-child { font-weight: 500; }
+
+  /* ── Responsive ─────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .container { padding: 40px 20px; }
+    .cover h1 { font-size: 2.2rem; }
+    .section-number { font-size: 4rem; }
+    h2 { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+  <article class="container">
+
+    <!-- ══ COVER ═══════════════════════════════════════════════ -->
+    <div class="cover">
+      <span class="badge">Competitive Analysis</span>
+      <h1>Competitive Intelligence Report</h1>
+      <p class="subtitle">A deep analysis of the top competitors in the niche, revealing the patterns that separate the elite from the average, with actionable recommendations for your brand.</p>
+      <p class="meta">Prepared for [Client Name] — July 2026</p>
+    </div>
+
+    <!-- ══ FLOW CONNECTOR ══════════════════════════════════════ -->
+    <div class="flow-connector">
+      <svg viewBox="0 0 32 40" fill="none" stroke="#c45d3e" stroke-width="1.5" stroke-dasharray="4 4">
+        <line x1="16" y1="0" x2="16" y2="36" />
+        <polyline points="10,30 16,36 22,30" fill="none" />
+      </svg>
+    </div>
+
+    <!-- ══ EXECUTIVE SUMMARY ═══════════════════════════════════ -->
+    <section>
+      <div class="section-number">01</div>
+      <h2>Executive Summary</h2>
+      <div class="tags"><span class="tag">Overview</span><span class="tag">Key Findings</span></div>
+      <div class="card">
+        <p>This report analyzes the competitive landscape for [Industry/Niche]. Our research identified 10 key competitors and deep-scraped the top 5 to extract visual identity, content strategy, site architecture, and conversion tactics. The findings reveal 4 clear patterns that distinguish the market leaders: [Pattern 1], [Pattern 2], [Pattern 3], and [Pattern 4]. The recommended design direction is [Direction], informed by gaps in competitor approaches and validated by user experience best practices.</p>
+      </div>
+    </section>
+
+    <div class="flow-connector">
+      <svg viewBox="0 0 32 40" fill="none" stroke="#c45d3e" stroke-width="1.5" stroke-dasharray="4 4">
+        <line x1="16" y1="0" x2="16" y2="36" />
+        <polyline points="10,30 16,36 22,30" fill="none" />
+      </svg>
+    </div>
+
+    <!-- ══ COMPETITOR PROFILES ═════════════════════════════════ -->
+    <section>
+      <div class="section-number">02</div>
+      <h2>Competitor Profiles</h2>
+      <div class="tags"><span class="tag">Top 5</span><span class="tag">Deep Analysis</span></div>
+
+      <div class="card">
+        <h3>Competitor A</h3>
+        <div class="swatches">
+          <div class="swatch" style="background:#1a1a2e;">#1a1a2e</div>
+          <div class="swatch" style="background:#e94560;">#e94560</div>
+          <div class="swatch" style="background:#0f3460;">#0f3460</div>
+        </div>
+        <p><strong>Strength:</strong> Clean modern design, clear value prop above the fold.<br>
+        <strong>Weakness:</strong> No social proof visible on homepage, CTA buried below the fold.</p>
+        <table>
+          <tr><th>Criterion</th><th>Score</th></tr>
+          <tr><td>Search visibility</td><td>8/10</td></tr>
+          <tr><td>Review quality</td><td>6/10</td></tr>
+          <tr><td>Visual design</td><td>9/10</td></tr>
+          <tr><td>Content depth</td><td>7/10</td></tr>
+          <tr><td>CTA strategy</td><td>5/10</td></tr>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>Competitor B</h3>
+        <p><strong>Strength:</strong> ...</p>
+      </div>
+    </section>
+
+    <div class="flow-connector">
+      <svg viewBox="0 0 32 40" fill="none" stroke="#c45d3e" stroke-width="1.5" stroke-dasharray="4 4">
+        <line x1="16" y1="0" x2="16" y2="36" />
+        <polyline points="10,30 16,36 22,30" fill="none" />
+      </svg>
+    </div>
+
+    <!-- ══ COMPARISON TABLE ════════════════════════════════════ -->
+    <section>
+      <div class="section-number">03</div>
+      <h2>Competitive Comparison</h2>
+      <div class="tags"><span class="tag">Side-by-Side</span><span class="tag">Scoring</span></div>
+      <table>
+        <tr><th>Competitor</th><th>Search</th><th>Reviews</th><th>Design</th><th>Mobile</th><th>Content</th><th>Social</th><th>CTA</th><th>Speed</th><th>Total</th></tr>
+        <tr><td>Competitor A</td><td>8</td><td>6</td><td>9</td><td>8</td><td>7</td><td>4</td><td>5</td><td>8</td><td>55</td></tr>
+        <tr><td>Competitor B</td><td>7</td><td>8</td><td>7</td><td>7</td><td>8</td><td>7</td><td>7</td><td>7</td><td>58</td></tr>
+        <tr><td>Competitor C</td><td>9</td><td>5</td><td>6</td><td>6</td><td>5</td><td>8</td><td>8</td><td>6</td><td>53</td></tr>
+        <tr><td>Competitor D</td><td>6</td><td>9</td><td>8</td><td>9</td><td>9</td><td>6</td><td>6</td><td>9</td><td>62</td></tr>
+        <tr><td>Competitor E</td><td>5</td><td>7</td><td>5</td><td>5</td><td>6</td><td>5</td><td>9</td><td>5</td><td>47</td></tr>
+      </table>
+    </section>
+
+    <div class="flow-connector">
+      <svg viewBox="0 0 32 40" fill="none" stroke="#c45d3e" stroke-width="1.5" stroke-dasharray="4 4">
+        <line x1="16" y1="0" x2="16" y2="36" />
+        <polyline points="10,30 16,36 22,30" fill="none" />
+      </svg>
+    </div>
+
+    <!-- ══ SEO LANDSCAPE ═══════════════════════════════════════ -->
+    <section>
+      <div class="section-number">04</div>
+      <h2>SEO Landscape</h2>
+      <div class="tags"><span class="tag">Keywords</span><span class="tag">Opportunities</span></div>
+      <div class="card">
+        <h3>Keywords All Competitors Target</h3>
+        <p>[keyword1], [keyword2], [keyword3]</p>
+        <h3>Gaps (Keywords No One Owns)</h3>
+        <p>[gap1], [gap2], [gap3]</p>
+        <h3>Recommended Focus</h3>
+        <p>Target [gap keywords] where competition is low and intent is high. Build content around [topic cluster].</p>
+      </div>
+    </section>
+
+    <div class="flow-connector">
+      <svg viewBox="0 0 32 40" fill="none" stroke="#c45d3e" stroke-width="1.5" stroke-dasharray="4 4">
+        <line x1="16" y1="0" x2="16" y2="36" />
+        <polyline points="10,30 16,36 22,30" fill="none" />
+      </svg>
+    </div>
+
+    <!-- ══ PATTERNS ═════════════════════════════════════════════ -->
+    <section>
+      <div class="section-number">05</div>
+      <h2>Patterns of the Top 10%</h2>
+      <div class="tags"><span class="tag">Insights</span><span class="tag">Best Practices</span></div>
+      <div class="card">
+        <h3>Pattern 1: Above-the-Fold Clarity</h3>
+        <p>All top-scoring sites communicate their value proposition within the first 3 seconds. The headline + subheadline + CTA triad is complete above the fold, with no scrolling required to understand what they do.</p>
+      </div>
+      <div class="card">
+        <h3>Pattern 2: Social Proof at First Interaction</h3>
+        <p>Top sites place testimonials, client logos, or trust badges within the first viewport. They don't wait for the user to scroll to the bottom.</p>
+      </div>
+      <div class="card">
+        <h3>Pattern 3: Distinctive Visual Identity</h3>
+        <p>Market leaders use a unique color palette and typography system. They don't look like templates — they look branded.</p>
+      </div>
+      <div class="card">
+        <h3>Pattern 4: Clear, Persistent CTA</h3>
+        <p>The primary CTA is always visible (sticky nav or floating button) and uses action-oriented language ("Get my free audit" vs "Submit").</p>
+      </div>
+    </section>
+
+    <div class="flow-connector">
+      <svg viewBox="0 0 32 40" fill="none" stroke="#c45d3e" stroke-width="1.5" stroke-dasharray="4 4">
+        <line x1="16" y1="0" x2="16" y2="36" />
+        <polyline points="10,30 16,36 22,30" fill="none" />
+      </svg>
+    </div>
+
+    <!-- ══ RECOMMENDATIONS ═════════════════════════════════════ -->
+    <section>
+      <div class="section-number">06</div>
+      <h2>Recommended Design Direction</h2>
+      <div class="tags"><span class="tag">Colors</span><span class="tag">Typography</span><span class="tag">Direction</span></div>
+
+      <div class="card">
+        <h3>Color Palette</h3>
+        <div class="swatches">
+          <div class="swatch" style="background:#c45d3e;">#c45d3e</div>
+          <div class="swatch" style="background:#2a2520;">#2a2520</div>
+          <div class="swatch" style="background:#f6f4f0;">#f6f4f0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Typography</h3>
+        <p><strong>Headings:</strong> Instrument Serif — conveys elegance and editorial authority.<br>
+        <strong>Body:</strong> DM Sans — clean, highly readable at small sizes, complements the serif heading.</p>
+      </div>
+
+      <div class="card">
+        <h3>Animation Direction</h3>
+        <p>Scroll-triggered fade-in with subtle upward motion on section entrances. Parallax background on hero section. Staggered card reveals for service listings. Hover state with subtle scale + shadow lift on CTAs.</p>
+      </div>
+    </section>
+
+  </article>
+</body>
+</html>

@@ -1,93 +1,105 @@
-# INVESTIGATION — CURRENT STATE — 2026-07-04
+# INVESTIGATION — ProofBridge Liner Monetization — 2026-07-05
 
-## Branch
-- **Current:** `compliance-fabric` @ `181d7cb` (6 commits ahead of `main`)
-- **Working tree:** Clean (1 auto-generated file: `supabase/.temp/cli-latest`)
-- **Stash:** `stash@{0}` — HMAC security hardening from `main` (fail-closed HMAC, INTERCOM_TOKEN, MCP cleanup)
+## Task
+Review the comprehensive product monetization blueprint (Upstash Redis billing engine, Baileys WhatsApp daemon, Stripe/Stitch payment integration, multi-channel alerting, PiP dashboard) against the existing codebase and generate a phased implementation strategy that moves from planning to a live monetized product.
 
-## Recent Commits (HEAD → base)
+## Current State (as-read from filesystem)
 
-| Commit | Description |
-|--------|-------------|
-| `181d7cb` | feat(games): add loot tables, migration engine, pheromone canvas, comprehensive test |
-| `52a4105` | chore: update deployment log and validation for Ant Feast game module |
-| `69a9483` | feat(games): add Ant Feast React Native game module |
-| `d6dc625` | docs: gateway access guide, deployment table |
-| `f5dc57e` | chore: deployment log + checklist — 2026-07-03 production deploy |
-| `f36c085` | fix(nav): replace broken docs route links |
-| `96deb32` | **BASE** feat(craft+safeliner+nexus): CRAFT infra, SafeLiner DPI proxy, proof API, Village Nexus |
+### Branch: `compliance-fabric` ✓ (Tier-3 correct)
 
-## Deployed State
-| Property | Value |
-|----------|-------|
-| Vercel Production URL | `https://venturevisionubuntu.co.za` |
-| Latest Deploy ID | `dpl_3tW8Jw51c1N2UH32ZVmZvBXLa698` |
-| Deploy Timestamp | 2026-07-04 16:52 UTC |
-| Build Status | ✅ 61/61 static pages, zero errors |
+### Existing API Routes
+| Route | What It Does | Blueprint Overlap |
+|-------|-------------|-------------------|
+| `app/api/chronicle-fetch/route.ts` | File-based chronicle reader (`/opt/vvu/data/chronicle_chain.log` or local `data/` fallback, with mock feed). No Upstash Redis. No billing tier logic. No role-based view mappers. | HIGH — blueprint replaces entirely with Upstash Redis + billing guard + role mappers |
+| `app/api/webhooks/stitch/route.ts` | Stitch webhook already exists. HMAC-validated, anchors decisions to `GovernanceAnchor.sol` on Polygon Amoy (`0x770342c49e1F4710E0Eed605dCe41e7f3F7600Eb`). No billing upgrade logic. | HIGH — blueprint adds billing upgrade to this, but must preserve existing on-chain anchoring |
+| `app/api/health/route.ts` | Returns `{status: "healthy", systems: {gateway, poolsEngine, proofbridgeLiner, stitchAdapter}}`. | LOW — health-check exists; blueprint uses `/api/health-check` for PiP heartbeat |
+| `app/api/whatsapp/handler/` | WhatsApp handler exists but unclear scope without reading deeper. | MEDIUM — separate from Baileys daemon blueprint |
+| No Stripe routes exist | — | HIGH — blueprint requires Stripe checkout + webhook routes |
 
-## File Topology
+### Existing Services
+| File | What It Does |
+|------|-------------|
+| `services/chaos-engine.ts` | Kubernetes-targeted chaos injector (deletes pods, adds netem latency). Not usable without k8s. |
+| `services/injector.ts` | Exec kubectl commands for chaos modes. |
 
-### Game Modules (Ant Feast — `app/ubuntu-games/ant-feast/`)
-| File | Lines | Purpose |
-|------|-------|---------|
-| `component.js` | 1807 | Original RN monolith with 5 tab screens |
-| `lib/RaidTime.js` | 82 | Depth tracking, stamina burn, cave-in risk calculus |
-| `lib/PheromoneGuardMath.js` | 82 | Enemy AI pheromone acceleration vectors |
-| `lib/SensoryIntegrationTest.js` | 124 | Simulation suite comparing Tier 0 vs Tier 2 accuracy |
-| `lib/AntEaterE2EEngineParser.js` | 158 | 6-phase E2E lifecycle integration |
-| `lib/QueenLootTableProcessor.js` | 126 | Weighted loot drop engine (6 items, tier scaling) |
-| `lib/ProfileMigrationEngine.js` | 172 | Versioned schema migration (v1→v2) |
-| `lib/ComprehensiveSubsystemTest.js` | 223 | 5-phase integration test suite |
-| `context/authContext.js` | 132 | Dual-currency useReducer state schema |
-| `components/MutationsScreen.jsx` | 257 | 3-branch upgrade tree layout |
-| `components/SeismicRadarView.jsx` | 178 | Colony radar scan UI |
-| `components/LocalPheromoneCanvas.jsx` | 331 | Pheromone field visualization |
-| `__tests__/` (5 suites) | — | 203 total tests, all passing |
+### Existing WhatsApp Bridge
+- `whatsapp-bridge/` directory is a **separate** Node.js app (`package.json`, `server.js`) using `whatsapp-web.js` (not Baileys).
+- Blueprint uses `@whiskeysockets/baileys` — different tech stack.
+- `@whiskeysockets/baileys` IS already in root `package.json` as dependency (v7.0.0-rc13).
 
-### CRAFT Infrastructure (committed in `96deb32`)
-| File | Purpose |
-|------|---------|
-| `infra/docker-compose.craft.yml` | 7-service stack (etcd, MinIO, Milvus, Lean LSP, CRAFT ingest, IPFS, governance) |
-| `infra/Dockerfile.craft-ingest` | Python ETL worker image |
-| `scripts/craft/ingest.py` | tree-sitter-lean → embeddings → Milvus |
-| `scripts/craft/setup-milvus.py` | IVF_FLAT collection schema |
-| `scripts/craft/nightly-vector-sync.py` | IPFS federation worker |
-| `scripts/craft/requirements.txt` | Python dependencies |
+### Existing Dashboard (`app/dashboard/page.tsx`)
+- **Design**: Cyan/gold/black VVU theme with project status cards (SafeKrypte, SafeLiner, Operatus, Lindiwe, Ubuntu Pools, ProofBridge Liner, SafeGrid, Ekasi).
+- **Live metrics**: WebSocket connection to `ws://localhost:3001` for CPU/memory/load data, with mock fallback.
+- **Components used**: `DashboardWidget`, `MetricCard`, `SystemStatusBar`, `AntonyQueueEngine`, `TokenManagementPanel`.
+- **NO** billing tier selector, NO kill switch, NO PiP, NO role-based view mapper.
+- Blueprint dashboard is a completely different compliance-monitor theme (slate/teal/rose colors, log pipeline view).
 
-### SafeLiner + Proof API (committed in `96deb32`)
-| File | Purpose |
-|------|---------|
-| `scripts/safeliner.go` | Go DPI proxy (5 blocklist rules, LSP framing parser) |
-| `scripts/safeliner_verify.py` | 3-vector red-team penetration test suite |
-| `app/api/proof/commit/route.ts` | Cosign signing + IPFS CID anchoring pipeline |
+### Existing Components (`components/`)
+- 14 components: `AntonyQueueEngine`, `DashboardWidget`, `Disclaimer`, `EntityLanding`, `KernelConsole`, `KernelConsoleV2`, `MetricCard`, `ProcessTable`, `ProjectGrid`, `Sidebar`, `SiteFooter`, `SiteHeader`, `SystemStatusBar`, `VelocityChart`.
+- **NONE** of the blueprint's new components exist: `FloatingOverlayWrapper`, `BillingTierCards`, `CompactTelemetryChart`.
 
-### Village Nexus (committed in `96deb32`)
-| File | Purpose |
-|------|---------|
-| `app/proofbridge/page.tsx` | 590-line Village OS dual-mode (VILLAGE/ARENA) |
-| `app/pools/page.tsx` | Dark bento-grid with score simulator, pool creator, LINDIWE chat |
-| `infra/docker-compose.nexus.yml` | Core app, vault init, stream relay, plugin proxy |
+### Existing Lib (`lib/`)
+- `HmacSecurityGuard.js` — HMAC security helpers exist but may need domain separation (HF-4 concern).
+- No `slack-notifier.ts`, no `discord-notifier.ts`, no Upstash Redis client wrapper.
 
-### Security (this session — uncommitted)
-| File | Purpose |
-|------|---------|
-| `lib/HmacSecurityGuard.js` | Fall-closed HMAC inter-process signing & verification |
-| `tests/mocks/SafeKrypteServiceMock.js` | HTTP mock for SafeKrypte escrow endpoints (port 5096) |
-| `run-behavioral-suite.js` | Orchestrator: starts mock → runs behavioral tests → stops mock |
+### Existing Scripts (`scripts/`)
+- 67 scripts including `verify-setup.js`, `orchestrate-gates.js`, `behavioral-coverage.ts`, `chaos/` dir.
+- No `chaos-burst.js`, no `weekly-reporter.js`, no `test-report.js`.
 
-## Behavioral Coverage
-```
-npx tsx scripts/behavioral-coverage.ts
-  ✅ VC Issuance:     PASS — HMAC gate active
-  ✅ Circuit Breaker:  PASS — toggle acknowledged
-  ✅ Stitch Webhook:   PASS — validation gate active
-  ⚠️ SafeKrypte:      FAIL — timeout (service not running, mock available)
-  ✅ Ubuntu Pools:     PASS — contribution pipeline confirmed
-```
-**Result:** 4/5 PASS, 1/5 FAIL (SafeKrypte mock resolves this)
+### Dependencies Status (package.json)
+| Dependency | Installed? | Needed For |
+|-----------|-----------|------------|
+| `@whiskeysockets/baileys` | ✅ v7.0.0-rc13 | WhatsApp notification daemon |
+| `pino` | ✅ v9.14.0 | Baileys logger |
+| `ethers` | ✅ v6.13.2 | On-chain anchoring |
+| `express` | ✅ v4.19.2 | Standalone health daemon |
+| `dotenv` | ✅ v16.4.5 | Environment loading |
+| `@upstash/redis` | ❌ NOT installed | Billing state store, telemetry pipeline |
+| `stripe` | ❌ NOT installed | Payment checkout, webhook verification |
+| `node-cron` | ❌ NOT installed | Weekly reporter scheduler |
+| `recharts` | ✅ v3.9.1 | Charts (already available) |
+| `lucide-react` | ✅ v1.23.0 | Icons (already available) |
 
-## Current Issues
-1. **Stash not applied** — `stash@{0}` contains HMAC hardening from `main`
-2. **Active/* files stale** — INVESTIGATION.md, PLAN.md, VALIDATION.md, HANDOFF.md from Jul 3
-3. **Behavioral coverage incomplete** — SafeKrypte mock created but not yet verified in CI pipeline
-4. **Gitignore needed** — `supabase/.temp/` should be in `.gitignore`
+### Environment Configuration
+- `.env.example` — has RPC URLs, private key, contract address, kernel secret. No billing secrets.
+- `.env.local` — has DATABASE_URL, Supabase config, JWT secrets. No Stripe/Stitch/Upstash secrets.
+- No `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STITCH_CLIENT_ID`, `STITCH_CLIENT_SECRET` defined anywhere.
+
+### Dockerfile
+- Multi-stage build (deps → builder → runner) for Next.js standalone.
+- Entrypoint runs AMD init check then `node server.js`.
+- No WhatsApp daemon container, no PM2 configuration.
+- No `ecosystem.config.js` exists.
+
+## Relevant Audit Findings (from vvu-compliance-gate)
+- HF-1 TEE Attestation: Not in scope for billing infrastructure
+- HF-2 ZK On-Chain Verification: Not in scope
+- HF-3 GovernanceAnchor Deployment: The existing Stitch webhook already anchors to a deployed contract address (`0x770342c49e1F4710E0Eed605dCe41e7f3F7600Eb`) — verify if this address is registered in the deployment registry
+- HF-4 HMAC Domain Collision: **IN SCOPE** — if we add HMAC key derivation for billing webhooks, we must use domain-separated keys (`billing:` prefix vs `webhook:` vs `vct:`)
+- HF-5 Beta-Binomial Calibration: Not in scope
+
+## Hard Failures In Scope
+HF-4: The Stitch webhook already uses HMAC-SHA256 for verification. If we add Stripe webhook (which uses its own signature scheme via `stripe.webhooks.constructEvent`), no HMAC collision risk there. But if we add any custom HMAC key derivation for billing, must use `billing:` domain prefix.
+
+## Downstream Dependencies
+- Billing data model change will affect: `app/api/chronicle-fetch/`, `app/api/webhooks/stitch/`, new `app/api/webhooks/stripe/`, new `app/api/billing/`, dashboard, notifier libs.
+- WhatsApp daemon is standalone but shares env vars with the main app.
+- Chaos script writes to Upstash Redis which feeds the dashboard.
+
+## Unknowns Before Planning
+1. Does the Stitch webhook secret key exist in production? The existing route references `STITCH_WEBHOOK_SECRET`.
+2. What is the actual Stitch client ID/client secret — are these configured in production env?
+3. Is the existing Baileys auth_store_whatsapp directory initialized anywhere?
+4. Does the existing dashboard need to stay as-is, or should the blueprint's compliance monitor be a new route?
+
+## Stale Context Risk
+Low — all reads are fresh from disk this session.
+
+## Integration Strategy Decision
+Based on codebase investigation, the approach will be:
+1. **Preserve** all existing routes. Add new routes/files alongside.
+2. **Add** Upstash Redis as a complementary data layer — chronicle-fetch will support both file-based and Upstash modes.
+3. **Extend** existing Stitch webhook with billing upgrade, preserving on-chain anchoring.
+4. **Build** billing features as composable libs in `lib/billing/`.
+5. **Create** new dashboard components without breaking the existing VVU Operational Deck.
+6. **Deploy** WhatsApp daemon as a PM2-managed process alongside the Next.js app.

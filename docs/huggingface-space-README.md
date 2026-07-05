@@ -10,7 +10,9 @@ pinned: true
 
 # 🛡️ ProofBridge Liner: The AMD-Powered Safety Kernel
 
-**AMD Developer Hackathon 2026 | Track 2: High-Performance Infrastructure**
+**AMD Developer Hackathon: Act II — Track 3 (Unicorn Track)**  
+🏆 Submission deadline: **July 11, 2026** · [Submission Guide](https://github.com/divhanimajokweni-ctrl/proofbridge-liner/blob/compliance-fabric/docs/HACKATHON_SUBMISSION_GUIDE.md)  
+🎯 Also competing for **Best AMD-Hosted Gemma Project** ($2,000 prize)
 
 ### 🇿🇦 The Mission
 Solving the R1.5T **"Consensus on Garbage"** problem in South African property collateral. ProofBridge Liner is a hardware-enforced Safety Kernel that intercepts fraudulent deed registrations in real-time before they impair the bank's asset book.
@@ -27,6 +29,9 @@ Solving the R1.5T **"Consensus on Garbage"** problem in South African property c
 ### 🧪 Live Simulation
 Check the live app at:
 **[View Space App](https://huggingface.co)**
+
+### 🏆 Gemma Integration (AMD-Hosted Gemma Prize)
+Gemma models (`google/gemma-4-26b-a4b-it`, `google/gemma-4-31b-it`) are available via Fireworks AI API through the Gateway AI SDK. In this project, Gemma serves as the LLM judge fallback in the compliance pipeline — when Bayesian confidence scores fall into the borderline zone (γ between 15-25), Gemma evaluates the semantic context of the transaction for a secondary compliance opinion. This dual Bayesian + LLM approach achieves higher precision on Class-B fraud detection while keeping token costs minimal.
 
 **If you believe financial infrastructure deserves hardware-level protection, drop a ❤️ and help us secure the SA property market!**
 

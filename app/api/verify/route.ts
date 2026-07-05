@@ -115,7 +115,30 @@ export async function POST(req: NextRequest) {
     const t = +threshold || 0.55;
     const posterior = (a + 1) / (a + b + 2);
     const margin = posterior - t;
-    const verdict = margin > 0 ? 'SAFE' : 'TRIP';
+    let verdict = margin > 0 ? 'SAFE' : 'TRIP';
+    let gemmaOpinion: any = null;
+
+    // ── Borderline zone: call Gemma LLM judge for secondary opinion ──
+    if (verdict === 'SAFE' && process.env.FIREWORKS_API_KEY) {
+      const { isBorderline, gemmaJudge } = await import(
+        '../../../lib/compliance/gemma-judge'
+      );
+      if (isBorderline(posterior, t)) {
+        gemmaOpinion = await gemmaJudge({
+          agentId: validation.data.agentId || 'unknown',
+          targetContract: validation.data.targetContract,
+          valueETH: validation.data.valueETH,
+          chronicleId: validation.data.chronicleId,
+          posterior,
+          threshold: t,
+          gamma: g,
+        });
+        // If Gemma flags FRAUD, override Bayesian SAFE to TRIP
+        if (gemmaOpinion.verdict === 'FRAUD') {
+          verdict = 'TRIP';
+        }
+      }
+    }
 
     // If Bayesian kernel itself trips, halt regardless of circuit state
     if (verdict === 'TRIP') {
@@ -126,6 +149,9 @@ export async function POST(req: NextRequest) {
         posterior: Number(posterior.toFixed(6)),
         threshold: t,
         margin: Number(margin.toFixed(6)),
+        gemmaOpinion: gemmaOpinion
+          ? { verdict: gemmaOpinion.verdict, confidence: gemmaOpinion.confidence, modelUsed: gemmaOpinion.modelUsed }
+          : undefined,
       }, { status: 423 });
     }
 
@@ -144,6 +170,15 @@ export async function POST(req: NextRequest) {
       threshold: t,
       verdict,
       margin: Number(margin.toFixed(6)),
+      gemmaOpinion: gemmaOpinion
+        ? {
+            verdict: gemmaOpinion.verdict,
+            confidence: gemmaOpinion.confidence,
+            reasoning: gemmaOpinion.reasoning,
+            modelUsed: gemmaOpinion.modelUsed,
+            latencyMs: gemmaOpinion.latencyMs,
+          }
+        : undefined,
       teeAttestation: {
         mode: teeAttestation.mode,
         measurement: teeAttestation.measurement,
