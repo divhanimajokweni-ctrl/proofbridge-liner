@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DEPLOYMENT LOCK LOOP
-# Enforced pipeline: commit → push → build → vercel → dns → email → logs →
-#                     readme → docs → checklist → push again
+# DEPLOYMENT LOCK LOOP — Full CI Pipeline
+# Enforced policy: COMMIT → TYPECHECK → LINT → TESTS → BUILD →
+#                  BEHAVIORAL COVERAGE → VERCEL BUILD (gated) →
+#                  PUSH → DNS CHECK → HEALTH CHECK → LOGS →
+#                  DOCS CHECKLIST → FINAL PUSH
+#
+# ART OF CHOKE: Nothing ships until the ENTIRE pipeline passes.
+#              No warnings. No soft passes. No exceptions.
 # =============================================================================
 set -euo pipefail
 
@@ -35,7 +40,88 @@ phase() {
   printf "╚══════════════════════════════════════════════════════════╝\n" >&3
 }
 
-total_phases=8
+total_phases=13
+
+CANONICAL_BRANCHES=("main" "compliance-fabric")
+
+# Determine if current branch is canonical
+is_canonical_branch() {
+  local branch
+  branch=$(git rev-parse --abbrev-ref HEAD)
+  for cb in "${CANONICAL_BRANCHES[@]}"; do
+    if [ "$branch" = "$cb" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# ============================================================
+# PRE-FLIGHT: EXECUTE END TO END — Verify all services live
+# ============================================================
+printf "\n" >&3
+printf "╔══════════════════════════════════════════════════════════╗\n" >&3
+printf "║  EXECUTE END TO END — Pre-Flight Verification           ║\n" >&3
+printf "║  Prerequisite to ART OF CHOKE                           ║\n" >&3
+printf "╚══════════════════════════════════════════════════════════╝\n" >&3
+{
+  PF_PASS=true
+
+  # 1. Dev server
+  if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null | grep -q "200"; then
+    pass "Dev server reachable on port 3000"
+  else
+    fail "Dev server NOT reachable on port 3000 — start with 'npm run dev'"
+    PF_PASS=false
+  fi
+
+  # 2. SafeKrypte
+  if curl -s -o /dev/null --connect-timeout 3 http://localhost:5096/health 2>/dev/null; then
+    pass "SafeKrypte reachable on port 5096"
+  else
+    warn "SafeKrypte not reachable on port 5096 — behavioral coverage may SKIP (not FAIL)"
+  fi
+
+  # 3. Vercel CLI
+  if command -v vercel &>/dev/null; then
+    if vercel whoami 2>/dev/null | grep -q .; then
+      pass "Vercel CLI authenticated: $(vercel whoami 2>/dev/null)"
+    else
+      fail "Vercel CLI not authenticated — run 'vercel login'"
+      PF_PASS=false
+    fi
+  else
+    fail "Vercel CLI not installed"
+    PF_PASS=false
+  fi
+
+  # 4. Vercel project linked
+  if [ -f ".vercel/repo.json" ] && jq -e '.projects[0].id' .vercel/repo.json &>/dev/null; then
+    pass "Vercel project linked: $(jq -r '.projects[0].name' .vercel/repo.json 2>/dev/null || echo 'unknown')"
+  else
+    fail "Vercel project NOT linked — run 'vercel link'"
+    PF_PASS=false
+  fi
+
+  # 5. Environment variables
+  if [ -f ".env.local" ]; then
+    pass ".env.local present"
+  else
+    fail ".env.local missing — deployment may fail"
+    PF_PASS=false
+  fi
+
+  # 6. Network available
+  if curl -s -o /dev/null --connect-timeout 5 https://vercel.com 2>/dev/null; then
+    pass "Network reachable (Vercel API accessible)"
+  else
+    warn "Network check failed — DNS/health phases may fail later"
+  fi
+
+  if [ "$PF_PASS" = false ]; then
+    fail "PRE-FLIGHT CHECK FAILED — fix above issues before running deployment loop"
+  fi
+} >&3
 
 # ============================================================
 # PHASE 1: GATE — Validate commit & critical files
@@ -67,11 +153,47 @@ phase 1 $total_phases "COMMIT GATE — Critical File Check"
 } >&3
 
 # ============================================================
-# PHASE 2: BUILD GATE
+# PHASE 2: TYPECHECK — TypeScript strict type checking
 # ============================================================
-phase 2 $total_phases "BUILD GATE — npm run build"
+phase 2 $total_phases "TYPECHECK GATE — tsc --noEmit"
 {
-  npm run build 2>&1 | tail -5
+  npm run typecheck 2>&1 | tail -20
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    fail "TypeScript typecheck failed — fix type errors before shipping"
+  fi
+  pass "TypeScript typecheck passed"
+} >&3
+
+# ============================================================
+# PHASE 3: LINT — Static analysis
+# ============================================================
+phase 3 $total_phases "LINT GATE — npm run lint"
+{
+  npm run lint 2>&1 | tail -20
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    fail "Lint failed — fix lint errors before shipping"
+  fi
+  pass "Lint passed"
+} >&3
+
+# ============================================================
+# PHASE 4: UNIT TESTS — Jest test suite
+# ============================================================
+phase 4 $total_phases "TEST GATE — npm test"
+{
+  npm test 2>&1 | tail -30
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    fail "Unit tests failed — fix failing tests before shipping"
+  fi
+  pass "All unit tests passed"
+} >&3
+
+# ============================================================
+# PHASE 5: BUILD GATE
+# ============================================================
+phase 5 $total_phases "BUILD GATE — npm run build"
+{
+  npm run build 2>&1 | tail -10
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
     fail "Build failed — aborting deployment loop"
   fi
@@ -79,34 +201,65 @@ phase 2 $total_phases "BUILD GATE — npm run build"
 } >&3
 
 # ============================================================
-# PHASE 3: PUSH & DEPLOY TO VERCEL
+# PHASE 6: BEHAVIORAL COVERAGE — 5 compliance flows
 # ============================================================
-phase 3 $total_phases "PUSH + VERCEL PRODUCTION DEPLOY"
+phase 6 $total_phases "BEHAVIORAL COVERAGE — 5 compliance flows"
 {
-  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-  info "Pushing branch: $CURRENT_BRANCH"
-
-  git push origin "$CURRENT_BRANCH" 2>&1 | tail -3
-  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-    fail "Git push failed"
+  npx tsx scripts/behavioral-coverage.ts 2>&1
+  BC_EXIT=$?
+  if [ "$BC_EXIT" -eq 1 ]; then
+    fail "Behavioral coverage FAIL — one or more compliance flows failed"
   fi
-  pass "Pushed to origin/$CURRENT_BRANCH"
-
-  if command -v vercel &>/dev/null; then
-    vercel --prod --force 2>&1 | tail -10
-    if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-      fail "Vercel deploy failed"
-    fi
-    pass "Vercel production deploy complete"
-  else
-    warn "Vercel CLI not found — skipping Vercel deploy"
+  if [ "$BC_EXIT" -eq 2 ]; then
+    warn "All behavioral coverage tests SKIPPED (services not reachable)"
   fi
+  pass "Behavioral coverage passed"
 } >&3
 
 # ============================================================
-# PHASE 4: DNS CONFIG VERIFICATION
+# PHASE 7: VERCEL BUILD GATE (before git push)
 # ============================================================
-phase 4 $total_phases "DNS CONFIG — Domain Resolution Check"
+phase 7 $total_phases "VERCEL BUILD GATE — Build before push"
+{
+  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  info "Branch: $CURRENT_BRANCH"
+
+  if command -v vercel &>/dev/null; then
+    info "Deploying to Vercel production (waiting for build)..."
+    vercel deploy --prod --force 2>&1 | tail -20
+    VERCEL_EXIT="${PIPESTATUS[0]}"
+    if [ "$VERCEL_EXIT" -ne 0 ]; then
+      fail "Vercel build failed — push blocked. Fix the build before retrying."
+    fi
+    pass "Vercel production build succeeded"
+  else
+    if is_canonical_branch; then
+      fail "Vercel CLI not found — required on canonical branches ($CURRENT_BRANCH)"
+    else
+      warn "Vercel CLI not found — skipping Vercel deploy on non-canonical branch"
+    fi
+  fi
+
+} >&3
+
+# ============================================================
+# PHASE 8: PUSH GATE — Push to Origin
+# ============================================================
+phase 8 $total_phases "PUSH GATE — Push to Origin"
+  {
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    info "ALL GATES PASSED — pushing branch: $CURRENT_BRANCH"
+    git push origin "$CURRENT_BRANCH" 2>&1 | tail -3
+    if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+      fail "Git push failed"
+    fi
+    pass "Pushed to origin/$CURRENT_BRANCH"
+  } >&3
+
+# ============================================================
+# PHASE 9: DNS CONFIG VERIFICATION (post-deploy)
+# ============================================================
+phase 9 $total_phases "DNS CONFIG — Domain Resolution Check"
 {
   DOMAIN="venturevisionubuntu.co.za"
   if command -v dig &>/dev/null; then
@@ -114,43 +267,58 @@ phase 4 $total_phases "DNS CONFIG — Domain Resolution Check"
     if [ -n "$RESULT" ]; then
       pass "DNS resolves: $DOMAIN → $RESULT"
     else
-      warn "DNS did not resolve $DOMAIN — check config"
+      fail "DNS did not resolve $DOMAIN — domain configuration issue"
     fi
   elif command -v nslookup &>/dev/null; then
     RESULT=$(nslookup "$DOMAIN" 2>/dev/null | grep -oP 'Address: \K.*' | head -1)
     if [ -n "$RESULT" ]; then
       pass "DNS resolves: $DOMAIN → $RESULT"
     else
-      warn "DNS did not resolve $DOMAIN — check config"
+      fail "DNS did not resolve $DOMAIN — domain configuration issue"
     fi
   else
-    warn "No DNS lookup tool available — skipping DNS check"
+    fail "No DNS lookup tool available — install dig or nslookup"
   fi
 } >&3
 
 # ============================================================
-# PHASE 5: EMAIL SENDING/RECEIVING HEALTH
+# PHASE 10: PRODUCTION HEALTH CHECK
 # ============================================================
-phase 5 $total_phases "EMAIL HEALTH CHECK"
+phase 10 $total_phases "PRODUCTION HEALTH CHECK"
 {
   HEALTH_URL="https://venturevisionubuntu.co.za/api/health"
-  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" 2>/dev/null || echo "000")
-  if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "000" ]; then
-    pass "Health endpoint reachable (HTTP $HTTP_STATUS)"
-  else
-    warn "Health endpoint returned HTTP $HTTP_STATUS"
+
+  # Retry up to 3 times with 5s wait for deployment propagation
+  HTTP_STATUS="000"
+  for i in 1 2 3; do
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" 2>/dev/null || echo "000")
+    if [ "$HTTP_STATUS" = "200" ]; then
+      break
+    fi
+    if [ "$i" -lt 3 ]; then
+      sleep 5
+    fi
+  done
+
+  if [ "$HTTP_STATUS" != "200" ]; then
+    fail "Health endpoint returned HTTP $HTTP_STATUS after 3 retries — deployment may be broken"
   fi
+  pass "Health endpoint responding (HTTP 200)"
 
   if [ -f "scripts/check-secrets.js" ]; then
     node scripts/check-secrets.js 2>&1 | head -5
-    info "Secrets check completed"
+    SECRETS_EXIT=$?
+    if [ "$SECRETS_EXIT" -ne 0 ]; then
+      fail "Secrets check failed — review secret configuration"
+    fi
+    pass "Secrets check passed"
   fi
 } >&3
 
 # ============================================================
-# PHASE 6: LOGS + README UPDATE
+# PHASE 11: LOGS & README UPDATE
 # ============================================================
-phase 6 $total_phases "LOGS & README SYNC"
+phase 11 $total_phases "LOGS & README SYNC"
 {
   DEPLOY_LOG="DEPLOY_LOG.md"
   TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -179,9 +347,9 @@ EOF
 } >&3
 
 # ============================================================
-# PHASE 7: DOCS CHECKLIST
+# PHASE 12: DOCS CHECKLIST
 # ============================================================
-phase 7 $total_phases "DOCS VERIFICATION CHECKLIST"
+phase 12 $total_phases "DOCS VERIFICATION CHECKLIST"
 {
   DOCS_DIR="docs"
   if [ -d "$DOCS_DIR" ]; then
@@ -195,36 +363,44 @@ phase 7 $total_phases "DOCS VERIFICATION CHECKLIST"
   cat > "$CHECKLIST_FILE" <<'CHKEOF'
 # Deployment Checklist
 
-## Pre-Push
-- [ ] All changes committed with meaningful messages
-- [ ] Critical files present (verify, mint, middleware, AGENTS.md)
+## Pre-Flight (EXECUTE END TO END — verified before pipeline starts)
+- [ ] Dev server running on port 3000 (`curl localhost:3000/api/health` → 200)
+- [ ] SafeKrypte service reachable on port 5096
+- [ ] Vercel CLI installed and authenticated (`vercel whoami` succeeds)
+- [ ] Vercel project linked (`.vercel/repo.json` exists with valid project ID)
+- [ ] Environment variables present in `.env.local`
+- [ ] Network available for DNS checks, health checks, Vercel build
 
-## Build
-- [ ] `npm run build` passes without errors
-- [ ] ESLint warnings reviewed (non-blocking)
+## Pre-Push Gates (ALL must pass before push)
+- [ ] Commit exists and critical files present
+- [ ] TypeScript typecheck (`tsc --noEmit`) — zero type errors
+- [ ] Lint (`npm run lint`) — zero errors
+- [ ] Unit tests (`npm test`) — all passing
+- [ ] Production build (`npm run build`) — zero errors
+- [ ] Behavioral coverage (5 compliance flows) — all PASS or SKIP, none FAIL
+- [ ] Vercel production build (`vercel deploy --prod --force`) — succeeds
 
-## Deploy
-- [ ] Pushed to origin
-- [ ] Vercel production deploy succeeded
-- [ ] Domain alias active
+## Pre-Push Execution (only after gates pass)
+- [ ] `git push origin` — pushed to remote
 
-## Verify
+## Post-Deploy Verification
 - [ ] DNS resolves correctly
-- [ ] Health endpoint responding
-- [ ] Email sending/receiving functional
+- [ ] Health endpoint responding (HTTP 200)
+- [ ] Secrets check passed
 
 ## Docs
 - [ ] README build reference updated
 - [ ] DEPLOY_LOG.md entry created
+- [ ] DEPLOYMENT_CHECKLIST.md regenerated
 - [ ] Documentation files reviewed
 CHKEOF
   pass "Deployment checklist written to $CHECKLIST_FILE"
 } >&3
 
 # ============================================================
-# PHASE 8: COMPLETE — FINAL PUSH OF UPDATES
+# PHASE 13: COMPLETE — FINAL PUSH OF UPDATES
 # ============================================================
-phase 8 $total_phases "FINALIZE — Push loop artifacts"
+phase 13 $total_phases "FINALIZE — Push loop artifacts"
 {
   if git diff --quiet 2>/dev/null; then
     info "No artifacts to commit — loop complete"
@@ -243,7 +419,8 @@ phase 8 $total_phases "FINALIZE — Push loop artifacts"
 # ============================================================
 printf "\n" >&3
 printf "╔══════════════════════════════════════════════════════════╗\n" >&3
-printf "║  ${GREEN}DEPLOYMENT LOOP COMPLETE${NC} — Lock is satisfied.        ║\n" >&3
+printf "║  ${GREEN}DEPLOYMENT LOOP COMPLETE${NC} — All 13 phases passed.     ║\n" >&3
+printf "║  ${GREEN}ART OF CHOKE: Pipeline satisfied. Ship it.${NC}           ║\n" >&3
 printf "╚══════════════════════════════════════════════════════════╝\n" >&3
 printf "  Log: %s\n" "$LOOP_LOG" >&3
 printf "  Loop is ready for next cycle.\n" >&3

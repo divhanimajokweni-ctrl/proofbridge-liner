@@ -502,7 +502,7 @@ input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:12px;
                 </div>
                 <div className="chat-main">
                   <div className="chat-log" id="chat-log">
-                    <div className="chat-bubble bot">Molo. I'm LINDIWE, a rule-based guide. I answer questions about pool mechanics, the Ubuntu Score, and governance design. I'm not reading any real account data.</div>
+                    <div className="chat-bubble bot">Molo. I&apos;m LINDIWE, a rule-based guide. I answer questions about pool mechanics, the Ubuntu Score, and governance design. I&apos;m not reading any real account data.</div>
                   </div>
                   <form className="chat-form" onSubmit={(e) => {
                     e.preventDefault();
