@@ -1,0 +1,153 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, compliance-fabric, dev]
+  pull_request:
+    branches: [main, compliance-fabric, dev]
+
+env:
+  NODE_VERSION: '22.x'
+  CI: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run tests
+        run: npm test
+
+  contract-tests:
+    name: Contract Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge tests
+        run: forge test -vvv
+        working-directory: contracts
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Run security audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  gate1-smoke:
+    name: Gate-1 Smoke Test
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PROOFBRIDGE_HMAC_SECRET: ci-gate-1-hmac-secret
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Gate-1 smoke test
+        run: |
+          if [ -f test/gate1-smoke.test.js ]; then
+            PROOFBRIDGE_HMAC_SECRET="${PROOFBRIDGE_HMAC_SECRET}" \
+            npx jest test/gate1-smoke.test.js --runInBand --no-coverage
+          else
+            echo "Skipping Gate-1 smoke test (test file not found)"
+          fi
+
+  deploy-and-benchmark:
+    name: Deploy & Benchmark
+    needs: [build-and-test, contract-tests, security, gate1-smoke]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/compliance-fabric'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+      DATADOG_APP_KEY: ${{ secrets.DATADOG_APP_KEY }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.6
+
+      - name: Terraform Init & Apply
+        run: |
+          terraform init
+          terraform apply -auto-approve
+        working-directory: src/lib
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Deploy to Vercel
+        id: vercel-deploy
+        run: |
+          npm install -g vercel
+          vercel pull --yes --environment=production --token=${{ env.VERCEL_TOKEN }}
+          vercel build --prod --token=${{ env.VERCEL_TOKEN }}
+          DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ env.VERCEL_TOKEN }})
+          echo "VERCEL_URL=$DEPLOY_URL" >> $GITHUB_ENV
+
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          echo "[CI-CD] Deployment failed, rolling back..."
+          vercel rollback --yes --token=${{ env.VERCEL_TOKEN }}
+
+      - name: Run Performance Benchmark
+        run: node scripts/benchmark-mint.js
+        env:
+          VERCEL_URL: ${{ env.VERCEL_URL }}
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
