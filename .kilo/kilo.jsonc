@@ -39,6 +39,12 @@
       "command": ["npx", "tsx", "server/vvu-operatus-server.ts"],
       "enabled": true,
       "timeout": 30000
+    },
+    "firecrawl": {
+      "type": "local",
+      "command": ["npx", "-y", "firecrawl-mcp"],
+      "enabled": true,
+      "timeout": 60000
     }
   },
   "permission": {

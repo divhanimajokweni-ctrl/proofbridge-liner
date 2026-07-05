@@ -14,3 +14,4 @@ export * from "./gamification.schema";
 export * from "./observations";
 export * from "./incidents";
 export * from "./policyRules";
+export * from "./gatewayParticipants";

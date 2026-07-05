@@ -4,10 +4,13 @@
  * PIN verification endpoint with Fail2Ban rate limiting.
  * Accepts client-side Argon2id hash, verifies against stored hash.
  * Returns HTTP-only secure session cookie on success.
+ *
+ * DB-backed (no filesystem): compatible with Vercel serverless.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPin } from '@/server/gateway/auth';
 import { createSession, buildSetCookieHeader } from '@/server/gateway/session';
+import { getTenantByEmail } from '@/server/gateway/onboarding';
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,7 +29,7 @@ export async function POST(req: NextRequest) {
       || req.headers.get('x-real-ip')
       || '127.0.0.1';
 
-    // Verify PIN
+    // Verify PIN (now async DB-backed)
     const result = await verifyPin(userId, pinHash, clientIp);
 
     if (!result.ok) {
@@ -37,9 +40,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create session cookie
-    const { getTenantByEmail } = await import('@/server/gateway/onboarding');
-    const tenant = getTenantByEmail(userId);
+    // Get tenant info for tier (now async DB-backed)
+    const tenant = await getTenantByEmail(userId);
     const tier = tenant?.tierLevel || 'FREE_STANDARD';
 
     const sessionCookie = createSession(userId, tier);

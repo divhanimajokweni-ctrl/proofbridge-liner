@@ -4,16 +4,16 @@
  * Automated account creation and tier provisioning.
  * First 1000 users get SafeLiner + SafeKrypte free.
  * Handles tenant manifest generation and service provisioning.
+ *
+ * ⚠ FILESYSTEM-FREE — uses Postgres via Drizzle ORM for persistence.
+ * Compatible with Vercel serverless (read-only /var/task/ filesystem).
  */
 import * as crypto from 'node:crypto';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import { eq, sql } from 'drizzle-orm';
+import { db } from '../../lib/db/src';
+import { gatewayParticipantsTable } from '../../lib/db/src/schema/gatewayParticipants';
 
 // ─── Configuration ──────────────────────────────────────────────────────
-
-const DATA_DIR = path.join(process.cwd(), 'data', 'gateway');
-const TENANTS_DIR = path.join(DATA_DIR, 'tenants');
-const SEQUENCE_FILE = path.join(DATA_DIR, 'user-sequence.dat');
 
 const FREE_1K_LIMIT = 1000;
 
@@ -76,34 +76,22 @@ export interface TenantManifest {
   createdAt: string;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────
+// ─── Sequence Counter (DB-backed, replaces fs.readFileSync) ─────────────
 
-function ensureDirs() {
-  [DATA_DIR, TENANTS_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  });
+async function getNextSequence(): Promise<number> {
+  // Use a sequence counter stored in gateway_participants meta row
+  // Count existing participants + 1
+  const result = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(gatewayParticipantsTable);
+  return (result[0]?.count ?? 0) + 1;
 }
 
-function getNextSequence(): number {
-  ensureDirs();
-  let seq = 0;
-  try {
-    seq = parseInt(fs.readFileSync(SEQUENCE_FILE, 'utf-8'), 10) || 0;
-  } catch {
-    seq = 0;
-  }
-  seq++;
-  fs.writeFileSync(SEQUENCE_FILE, seq.toString());
-  return seq;
-}
-
-function getCurrentCount(): number {
-  ensureDirs();
-  try {
-    return parseInt(fs.readFileSync(SEQUENCE_FILE, 'utf-8'), 10) || 0;
-  } catch {
-    return 0;
-  }
+async function getCurrentCount(): Promise<number> {
+  const result = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(gatewayParticipantsTable);
+  return result[0]?.count ?? 0;
 }
 
 // ─── Account Creation ───────────────────────────────────────────────────
@@ -112,6 +100,7 @@ export async function createAccount(params: {
   email: string;
   displayName: string;
   password: string;
+  participantId?: string; // Set by route if Supabase Auth user is pre-created
 }): Promise<{ ok: boolean; manifest?: TenantManifest; pin?: string; error?: string }> {
   const { email, displayName, password } = params;
 
@@ -119,13 +108,13 @@ export async function createAccount(params: {
     return { ok: false, error: 'Valid email required' };
   }
 
-  // Check if email already registered
-  const existingTenants = listTenants();
+  // Check if email already registered (DB-backed)
+  const existingTenants = await listTenants();
   if (existingTenants.some(t => t.email === email.toLowerCase())) {
     return { ok: false, error: 'Email already registered' };
   }
 
-  const sequenceId = getNextSequence();
+  const sequenceId = await getNextSequence();
   const isFree1K = sequenceId <= FREE_1K_LIMIT;
 
   const tier: TenantManifest['tierLevel'] = isFree1K ? 'FREE_FIRST_1K' : 'FREE_STANDARD';
@@ -143,9 +132,26 @@ export async function createAccount(params: {
     createdAt: new Date().toISOString(),
   };
 
-  // Persist tenant manifest
-  const manifestPath = path.join(TENANTS_DIR, `tenant_${sequenceId}.json`);
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  // Persist tenant to database (REPLACES: fs.writeFileSync to data/gateway/tenants/tenant_N.json)
+  const participantId = params.participantId ?? crypto.randomUUID();
+  try {
+    await db.insert(gatewayParticipantsTable).values({
+      id: participantId,
+      email: email.toLowerCase().trim(),
+      displayName,
+      onboardingStatus: 'pending_verification',
+      gatewayVersion: '2.0-STABLE',
+      ubuntuScore: '0',
+      participantClass: 'NaturalPerson',
+    });
+  } catch (err: any) {
+    // Handle unique constraint violation
+    if (err?.message?.includes('unique') || err?.code === '23505') {
+      return { ok: false, error: 'Email already registered' };
+    }
+    console.error('[ONBOARDING] DB insert error:', err);
+    return { ok: false, error: 'Account creation failed' };
+  }
 
   console.log(`[ONBOARDING] Tenant #${sequenceId} created — ${tier} — ${email}`);
 
@@ -158,33 +164,41 @@ export async function createAccount(params: {
   return { ok: true, manifest, pin };
 }
 
-// ─── Tenant Lookup ──────────────────────────────────────────────────────
+// ─── Tenant Lookup (DB-backed, replaces fs.readdirSync) ─────────────────
 
-export function listTenants(): TenantManifest[] {
-  ensureDirs();
-  const tenants: TenantManifest[] = [];
-
+export async function listTenants(): Promise<TenantManifest[]> {
   try {
-    const files = fs.readdirSync(TENANTS_DIR).filter(f => f.startsWith('tenant_') && f.endsWith('.json'));
-    for (const file of files) {
-      try {
-        tenants.push(JSON.parse(fs.readFileSync(path.join(TENANTS_DIR, file), 'utf-8')));
-      } catch { continue; }
-    }
-  } catch { /* no tenants yet */ }
+    const rows = await db
+      .select()
+      .from(gatewayParticipantsTable)
+      .orderBy(gatewayParticipantsTable.createdAt);
 
-  return tenants.sort((a, b) => a.tenantId - b.tenantId);
+    return rows.map((row, index) => ({
+      tenantId: index + 1,
+      tierLevel: row.ubuntuScore === '0' ? 'FREE_STANDARD' : 'FREE_FIRST_1K',
+      assignedDomain: `${row.email.split('@')[0]}.vvu.on.za`,
+      email: row.email,
+      displayName: row.displayName,
+      provisionedServices: {
+        ...TIER_DEFAULTS.FREE_STANDARD,
+      },
+      createdAt: row.createdAt?.toISOString() ?? new Date().toISOString(),
+    }));
+  } catch (err) {
+    console.error('[ONBOARDING] DB read error:', err);
+    return [];
+  }
 }
 
-export function getTenantByEmail(email: string): TenantManifest | null {
-  const tenants = listTenants();
+export async function getTenantByEmail(email: string): Promise<TenantManifest | null> {
+  const tenants = await listTenants();
   return tenants.find(t => t.email === email.toLowerCase()) || null;
 }
 
 // ─── Stats ──────────────────────────────────────────────────────────────
 
-export function getOnboardingStats() {
-  const count = getCurrentCount();
+export async function getOnboardingStats() {
+  const count = await getCurrentCount();
   return {
     totalRegistered: count,
     free1kRemaining: Math.max(0, FREE_1K_LIMIT - count),
