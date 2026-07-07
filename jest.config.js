@@ -11,8 +11,14 @@ const config = {
     '**/__tests__/**/*.[jt]s?(x)',
     '**/?(*.)+(spec|test).[tj]s?(x)'
   ],
+  modulePathIgnorePatterns: [
+    '/\\.cache/',
+    '/\\.local/'
+  ],
   testPathIgnorePatterns: [
     '/node_modules/',
+    '/\\.cache/',
+    '/\\.local/',
     '/e2e/',
     '/tests/',
     '/dist/',
