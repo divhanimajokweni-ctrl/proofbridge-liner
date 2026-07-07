@@ -1,33 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { Resend } from 'resend';
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 const SAFEKRIPTE_LITE_URL = process.env.SAFEKRIPTE_LITE_URL ?? 'http://127.0.0.1:5096';
 const SAFELINER_LITE_URL = process.env.SAFELINER_LITE_URL ?? 'http://127.0.0.1:5097';
 const FETCH_TIMEOUT = Number(process.env.TOOL_FETCH_TIMEOUT_MS ?? 3000);
 
-const rateLimitCache = new Map<string, number[]>();
-const LIMIT_WINDOW_MS = 60000;
-const MAX_REQUESTS = 20;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  if (!rateLimitCache.has(ip)) {
-    rateLimitCache.set(ip, [now]);
-    return false;
-  }
-  const timestamps = rateLimitCache.get(ip)!.filter(t => now - t < LIMIT_WINDOW_MS);
-  if (timestamps.length >= MAX_REQUESTS) return true;
-  timestamps.push(now);
-  rateLimitCache.set(ip, timestamps);
-  return false;
-}
-
 export async function POST(req: NextRequest) {
-  const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown-client';
-  if (isRateLimited(ip)) {
-    return NextResponse.json({ error: 'Too Many Requests' }, { status: 429 });
-  }
+  const rateLimitResponse = await checkRateLimit(req, { maxRequests: 20 });
+  if (rateLimitResponse) return rateLimitResponse;
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader || authHeader !== `Bearer ${process.env.KERNEL_SECRET}`) {
