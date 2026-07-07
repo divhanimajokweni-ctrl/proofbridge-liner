@@ -7,7 +7,7 @@ export interface IWatchdogProbe {
   fire(summary: string, detail: string): void;
 }
 export class NullProbe implements IWatchdogProbe {
-  public fire(summary: string, detail: string): void {}
+  public fire(_summary: string, _detail: string): void {}
 }
 abstract class BaseProbe implements IWatchdogProbe {
   protected constructor(protected opTag: OpTag) {}

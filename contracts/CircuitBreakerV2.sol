@@ -72,7 +72,7 @@ contract CircuitBreakerV2 is Initializable, OwnableUpgradeable {
         circuitOpen = true;
         _domainSeparator = _buildDomainSeparator();
         authorizedVerifier = _authorizedVerifier;
-        lastTripTimestamp = block.timestamp - MIN_TRIP_INTERVAL;
+        lastTripTimestamp = block.timestamp >= MIN_TRIP_INTERVAL ? block.timestamp - MIN_TRIP_INTERVAL : 0;
         _paused = false;
     }
 

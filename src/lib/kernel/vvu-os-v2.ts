@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   SubsystemType,
   RESERVED_PROCESSES,
-  RESERVED_PROCESSES_BY_NAME,
   PID_RANGES,
   PRIORITY_TIERS,
   MEMORY_REGIONS,
