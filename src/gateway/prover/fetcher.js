@@ -36,12 +36,6 @@ const { scoreAsset } = require('./scorer');
 
 const POLL_MS = Number(process.env.FETCHER_POLL_MS || 5 * 60 * 1000);
 
-// Exponential backoff
-function backoff(attempt, baseMs = 1000) {
-  const delay = baseMs * Math.pow(2, attempt);
-  return new Promise(resolve => setTimeout(resolve, delay));
-}
-
 // Structured logger
 function logEvent(level, message, meta = {}) {
   const entry = { timestamp: new Date().toISOString(), level, message, ...meta };
