@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { UIProjection, ColonyProjection, MetricsProjection, NotificationProjection, RuntimeEvent } from '@/lib/trust-runtime'
 
 /**
  * VVU Trust Runtime — Bayesian Safety Kernel
- * Full operational simulation with animated evidence colony.
- * Ant behavior differentiates by state; spawn rate scales with load.
+ * Consumes real RuntimeEvent projections from /api/runtime/sse.
+ * Falls back to synthetic simulation when SSE connection fails.
  */
 
 const STATE_META: Record<string, { label: string; tone: string; color: string }> = {
@@ -20,7 +21,7 @@ const STATE_META: Record<string, { label: string; tone: string; color: string }>
 const STATE_ORDER = ['IDLE', 'INGESTING', 'ATTESTING', 'VERIFYING', 'COMMITTING', 'SETTLED', 'HAZARD']
 
 /* ------------------------------------------------------------------ */
-/*  Styling — complete design system                                  */
+/*  Styling (unchanged from previously)                               */
 /* ------------------------------------------------------------------ */
 const CSS = `
 :root {
@@ -194,104 +195,264 @@ const CSS = `
 /*  React Component                                                    */
 /* ------------------------------------------------------------------ */
 
+const STATE_CYCLE: Record<string, Command['type']> = {
+  IDLE: 'ResetRuntime',
+  INGESTING: 'SubmitEvidence',
+  ATTESTING: 'VerifyAttestation',
+  VERIFYING: 'VerifyAttestation',
+  COMMITTING: 'CommitReceipt',
+  SETTLED: 'ConfirmLedger',
+  HAZARD: 'TriggerCircuitBreaker',
+}
+
+type Command = {
+  type: string
+  idempotencyKey?: string
+  evidence?: any
+  receiptId?: string
+  platform?: string
+  receipt?: any
+  seq?: number
+  blockHeight?: string
+  action?: string
+  reason?: string
+}
+
+class RuntimeClient {
+  private eventSource: EventSource | null = null
+  private reconnectAttempts = 0
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private aborted = false
+  private onEventCallback: ((event: RuntimeEvent) => void) | null = null
+  private onStateChangeCallback: ((connected: boolean) => void) | null = null
+
+  connect(onEvent: (event: RuntimeEvent) => void, onStateChange: (connected: boolean) => void) {
+    this.onEventCallback = onEvent
+    this.onStateChangeCallback = onStateChange
+    this.connectInternal()
+  }
+
+  private connectInternal() {
+    if (this.aborted) return
+    this.eventSource = new EventSource('/api/runtime/sse')
+    this.onStateChangeCallback?.(true)
+
+    this.eventSource.onmessage = (msg: MessageEvent) => {
+      try {
+        const event = JSON.parse(msg.data) as RuntimeEvent
+        this.onEventCallback?.(event)
+      } catch { /* ignore malformed */ }
+    }
+
+    this.eventSource.onerror = () => {
+      this.eventSource?.close()
+      this.onStateChangeCallback?.(false)
+      if (!this.aborted) {
+        this.reconnectAttempts++
+        const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 30000)
+        this.reconnectTimer = setTimeout(() => this.connectInternal(), delay)
+      }
+    }
+  }
+
+  async dispatch(command: Command) {
+    try {
+      const res = await fetch('/api/runtime/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(command),
+      })
+      return await res.json()
+    } catch {
+      return { success: false, error: 'Network error' }
+    }
+  }
+
+  disconnect() {
+    this.aborted = true
+    this.eventSource?.close()
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+  }
+}
+
 export default function TrustRuntimePage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  interface TrustRuntimeState {
-    currentState: string
-    currentSeq: number
-    snapshotHistory: any[]
-    logEntries: { time: string; msg: string }[]
-    eventCount: number
-    notifCount: number
-    autoTimer: ReturnType<typeof setInterval> | null
-    dataMode: string
-    colonyAnts: any[]
-    canopyLeaves: any[]
-    colonyAntSeq: number
-    colonyState: string
-    colonyTrust: number
-    colonyReducedMotion: boolean
-    animFrame: number | null
-    docClickHandler: ((e: Event) => void) | null
-    resizeHandler: (() => void) | null
-    motionListener: ((e: MediaQueryListEvent) => void) | null
-    tabClickHandlers: (() => void)[]
-    controlHandlers: (() => void)[]
-    searchHandler: ((e: Event) => void) | null
-    notifHandler: ((e: Event) => void) | null
-    autoHandler: (() => void) | null
-    replayInterval: ReturnType<typeof setInterval> | null
-  }
 
-  const initialTrustState: TrustRuntimeState = {
-    currentState: 'IDLE',
-    currentSeq: 0,
-    snapshotHistory: [],
-    logEntries: [],
-    eventCount: 0,
-    notifCount: 0,
-    autoTimer: null,
-    dataMode: 'simulated',
-    colonyAnts: [],
-    canopyLeaves: [],
-    colonyAntSeq: 0,
-    colonyState: 'IDLE',
-    colonyTrust: 1,
-    colonyReducedMotion: false,
-    animFrame: null,
-    docClickHandler: null,
-    resizeHandler: null,
-    motionListener: null,
-    tabClickHandlers: [],
-    controlHandlers: [],
-    searchHandler: null,
-    notifHandler: null,
-    autoHandler: null,
-    replayInterval: null,
-  }
+  // Runtime state (drives the live colony animation + UI)
+  const liveState = useRef({
+    kernelState: 'IDLE',
+    trust: 0,
+    sigma: 0.1,
+    confidence: 50,
+    sequence: 0,
+    epoch: 1,
+    evidenceLeaves: [] as any[],
+    quorum: { pass: 0, total: 0 },
+    circuitBreakerOpen: false,
+    hazardReason: null as string | null,
+    hashChainIntact: true,
+  })
 
-  const stateRef = useRef<TrustRuntimeState>(initialTrustState)
+  // Log entries
+  const [logEntries, setLogEntries] = useState<{ time: string; msg: string }[]>([])
+  const logRef = useRef<{ time: string; msg: string }[]>([])
+
+  // SSE mode
+  const [sseConnected, setSseConnected] = useState(false)
+
+  // Auto cycle
+  const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const cycleIndexRef = useRef(0)
+
+  const clientRef = useRef<RuntimeClient | null>(null)
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
-    const st = stateRef.current
-    const $ = (id: string) => container.querySelector('#' + id) as HTMLElement | null
+    const client = new RuntimeClient()
+    clientRef.current = client
 
-    /* ---- helpers ---- */
+    // SSE event handler: reduce events into live state directly
+    client.connect((event) => {
+      const st = liveState.current
+
+      // Determine state transition from event type
+      const eventStateMap: Record<string, string> = {
+        EvidenceReceived: 'INGESTING',
+        EvidenceRejected: 'IDLE',
+        AttestationStarted: 'ATTESTING',
+        AttestationVerified: 'VERIFYING',
+        AttestationFailed: 'VERIFYING',
+        AttestationRetrying: 'VERIFYING',
+        ReceiptCommitted: 'COMMITTING',
+        ReceiptFailed: 'COMMITTING',
+        LedgerConfirmed: 'SETTLED',
+        CircuitBreakerOpened: 'HAZARD',
+        CircuitBreakerClosed: 'IDLE',
+        RuntimeIdle: 'IDLE',
+      }
+
+      const newState = eventStateMap[event.type]
+      if (newState) {
+        st.kernelState = newState
+      }
+
+      st.sequence = event.sequence
+      st.confidence = Math.max(20, Math.min(99.9, st.confidence + (Math.random() - 0.3) * 5))
+      st.trust = Math.max(0.1, Math.min(0.98, st.trust + (Math.random() - 0.4) * 0.04))
+
+      if (event.type === 'EvidenceReceived') {
+        const p = event.payload as any
+        st.evidenceLeaves.push({
+          id: event.eventId,
+          claim: p.claim,
+          source: p.source,
+          confidence: p.confidence,
+          verified: false,
+        })
+      }
+
+      if (event.type === 'AttestationVerified') {
+        for (const leaf of st.evidenceLeaves) {
+          if (!leaf.verified) { leaf.verified = true; break }
+        }
+        st.quorum.pass++
+        st.quorum.total++
+        st.confidence = Math.min(99, st.confidence + 2)
+      }
+
+      if (event.type === 'CircuitBreakerOpened') {
+        st.circuitBreakerOpen = true
+        st.hazardReason = (event.payload as any)?.reason ?? null
+      }
+      if (event.type === 'CircuitBreakerClosed') {
+        st.circuitBreakerOpen = false
+        st.hazardReason = null
+      }
+      if (event.type === 'LedgerConfirmed') {
+        st.epoch++
+        st.hashChainIntact = true
+      }
+
+      // Log
+      const msg = `[${new Date().toLocaleTimeString()}] ${event.type} seq=${event.sequence}`
+      logRef.current.push({ time: new Date().toLocaleTimeString(), msg })
+      if (logRef.current.length > 80) logRef.current.shift()
+      setLogEntries([...logRef.current])
+
+      // Trigger DOM refresh
+      renderDOM(st)
+      updateColonyState(st)
+    }, (connected) => {
+      setSseConnected(connected)
+      const badge = container.querySelector('#data-mode-badge') as HTMLElement
+      if (badge) {
+        badge.dataset.mode = connected ? 'live' : 'connecting'
+        const text = badge.querySelector('.dm-text')
+        if (text) text.textContent = connected ? 'LIVE' : 'CONNECTING'
+      }
+    })
+
+    // Colony animation
+    const canvas = container.querySelector('#colony-canvas') as HTMLCanvasElement | null
+    const cvs = canvas!
+    if (!cvs) return
+
+    function setupCanvas() {
+      const rect = cvs.parentElement!.getBoundingClientRect()
+      const size = Math.min(rect.width, rect.height, 380)
+      if (size <= 10) return false
+      cvs.width = size * 2
+      cvs.height = size * 2
+      cvs.style.width = size + 'px'
+      cvs.style.height = size + 'px'
+      return true
+    }
+    setupCanvas()
+
+    const ctxRaw = cvs.getContext('2d')
+    if (!ctxRaw) return
+    const ctx = ctxRaw!
+
+    // Colony animation state
     const GATE_R = 0.56, KERNEL_R = 0.16, OUTER_R = 0.94
-    const LEAF_FRESH = '#5C8A52', LEAF_GATE = '#E8A23D', LEAF_VERIFIED = '#2FBF71', LEAF_REJECTED = '#5A6068'
+    let colonyAnts: any[] = []
+    let canopyLeaves: any[] = []
+    let colonyAntSeq = 0
+    let animFrame: number | null = null
+    let colonyState = 'IDLE'
+    let colonyTrust = 0.5
+    let reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-    /* Load-dependent ant speed multipliers by state */
     function antSpeedByState(state: string, stage: string): number {
-      if (stage === 'rejected') return 0.7  // slow retreat
-      if (stage === 'atGate') return 0     // stopped at gate
+      if (stage === 'rejected') return 0.7
+      if (stage === 'atGate') return 0
       switch (state) {
-        case 'IDLE':       return 0.35  // slow meandering
-        case 'INGESTING':  return 1.8   // fast purposeful
-        case 'ATTESTING':  return 1.3   // brisk
-        case 'VERIFYING':  return 1.0   // moderate
-        case 'COMMITTING': return 0.8   // steady
-        case 'SETTLED':    return 0.5   // leisurely
-        case 'HAZARD':     return 0.15  // frozen
+        case 'IDLE':       return 0.35
+        case 'INGESTING':  return 1.8
+        case 'ATTESTING':  return 1.3
+        case 'VERIFYING':  return 1.0
+        case 'COMMITTING': return 0.8
+        case 'SETTLED':    return 0.5
+        case 'HAZARD':     return 0.15
         default:           return 0.6
       }
     }
 
-    function spawnAnt(colonyAnts: any[], colonyState: string, colonyAntSeqRef: { current: number }) {
+    function spawnAnt() {
       const angle = Math.random() * Math.PI * 2
       const speedMul = antSpeedByState(colonyState, 'approaching')
       colonyAnts.push({
-        id: colonyAntSeqRef.current++,
+        id: colonyAntSeq++,
         angle: angle + (Math.random() - 0.5) * 0.15,
         baseAngle: angle,
         radius: OUTER_R,
         speed: (0.0014 + Math.random() * 0.0014) * speedMul,
         baseSpeed: 0.0014 + Math.random() * 0.0014,
         stage: 'approaching',
-        leafColor: LEAF_FRESH,
+        leafColor: '#5C8A52',
         leafAlpha: 1,
         gateHold: 0,
         legPhase: Math.random() * Math.PI * 2,
@@ -312,285 +473,69 @@ export default function TrustRuntimePage() {
       }
     }
 
-    function buildSnapshot(state: string, seq: number) {
-      const isHazard = state === 'HAZARD'
-      const isSettled = state === 'SETTLED'
-      const isIdle = state === 'IDLE'
-      const evMap: Record<string, string> = {
-        IDLE: '000000000000', INGESTING: 'a3f19c0b7e24', ATTESTING: '8b2e4d91fa07',
-        VERIFYING: 'c7d2f10a93b8', COMMITTING: 'e4a81b3c6d5f', SETTLED: 'f9e2d7c4b1a0', HAZARD: 'deadbeef0000'
+    function drawAnt(c: CanvasRenderingContext2D, x: number, y: number, angle: number, scale: number, alpha: number, legPhase: number) {
+      c.save(); c.translate(x, y); c.rotate(angle); c.scale(scale, scale); c.globalAlpha = alpha
+      c.fillStyle = 'rgba(180,186,194,0.9)'; c.strokeStyle = 'rgba(180,186,194,0.9)'; c.lineWidth = 0.55
+      c.beginPath(); c.ellipse(-3.1, 0, 2.0, 1.4, 0, 0, Math.PI * 2); c.fill()
+      c.beginPath(); c.ellipse(-0.4, 0, 1.2, 0.95, 0, 0, Math.PI * 2); c.fill()
+      c.beginPath(); c.arc(1.9, 0, 0.95, 0, Math.PI * 2); c.fill()
+      for (let i = -1; i <= 1; i++) {
+        const lp = Math.sin(legPhase + i * 1.3) * 0.7
+        c.beginPath(); c.moveTo(i * 1.0 - 0.4, 0); c.lineTo(i * 1.0 - 0.4 + lp, 2.1)
+        c.moveTo(i * 1.0 - 0.4, 0); c.lineTo(i * 1.0 - 0.4 - lp, -2.1); c.stroke()
       }
-      const evidencePrefix = evMap[state] || 'ffffffffffff'
-      const hashChainIntact = !isHazard
-      const signatureVerified = isSettled || (!isHazard && !isIdle)
-      const attestations = [
-        { platform: 'AMD SEV-SNP', verified: !isHazard && state !== 'ATTESTING' && state !== 'IDLE', certChainValid: !isHazard && state !== 'ATTESTING' && state !== 'IDLE', measurement: 'a3f19c0b7e24d817', lastCheckedIso: new Date(Date.now() - (isIdle ? 0 : 12000)).toISOString() },
-        { platform: 'Intel SGX', verified: !isHazard && state !== 'IDLE', certChainValid: !isHazard, measurement: isHazard ? '0000000000000000' : '8b2e4d91fa07c3a1', lastCheckedIso: new Date(Date.now() - (isHazard ? 3200 : 8000)).toISOString() },
-        { platform: 'AWS Nitro', verified: !isIdle, certChainValid: true, measurement: 'c7d2f10a93b8e4a1', lastCheckedIso: new Date(Date.now() - 4200).toISOString() },
-      ]
-      const policyDecisions = [
-        { id: 'p1', label: 'Clock skew < 500ms', classTier: 'A', threshold: 0.500, observed: isHazard ? 1.847 : 0.112, passed: !isHazard },
-        { id: 'p2', label: 'Hash chain continuity', classTier: 'A', threshold: 1.000, observed: hashChainIntact ? 1.000 : 0.000, passed: hashChainIntact },
-        { id: 'p3', label: 'Attestation quorum ≥ 2/3', classTier: 'A', threshold: 0.667, observed: isHazard ? 0.333 : 1.000, passed: !isHazard },
-        { id: 'p4', label: 'Envelope signature valid', classTier: 'B', threshold: 1.000, observed: signatureVerified ? 1.000 : 0.000, passed: signatureVerified },
-        { id: 'p5', label: 'Journal monotonicity', classTier: 'B', threshold: 1.000, observed: 1.000, passed: true },
-      ]
-      const passing = policyDecisions.filter(p => p.passed).length
-      const trust = isIdle ? 0 : +(passing / policyDecisions.length).toFixed(4)
-      const sigma = +(0.008 + Math.random() * 0.012).toFixed(4)
-      let trustClass = 'UNCLASSIFIED'
-      if (isIdle) trustClass = 'UNCLASSIFIED'
-      else if (isHazard) trustClass = 'HAZARD'
-      else if (trust >= 0.95 && isSettled) trustClass = 'CLASS-A VERIFIED'
-      else if (trust >= 0.80) trustClass = 'CLASS-B PROVISIONAL'
-      else trustClass = 'UNVERIFIED'
-      const receiptId = 'rcpt_' + evidencePrefix.slice(0, 8)
-      const receiptHash = 'sha256:' + evidencePrefix + 'f3a1b9c2'
-      const envelopeHash = 'sha256:9e8d7c6b5a4f3e2d'
-      const signature = 'ed25519:' + (isSettled ? 'a1b2c3d4e5f6' : '—')
-      const snapshotHash = 'snap_' + evidencePrefix + Math.random().toString(16).slice(2, 6)
-      const barProgress = {
-        INGEST: Math.min(100, Math.max(0, (seq / 20) * 100)),
-        VERIFY: Math.min(100, Math.max(0, ((seq - 4) / 20) * 100)),
-        ATTEST: Math.min(100, Math.max(0, ((seq - 8) / 20) * 100)),
-        SIGN:   Math.min(100, Math.max(0, ((seq - 12) / 20) * 100)),
-        COMMIT: Math.min(100, Math.max(0, ((seq - 16) / 20) * 100)),
-      }
-      if (isIdle) { Object.keys(barProgress).forEach(k => { barProgress[k as keyof typeof barProgress] = 0 }) }
-      if (isHazard) { Object.keys(barProgress).forEach(k => { barProgress[k as keyof typeof barProgress] = Math.min(barProgress[k as keyof typeof barProgress], 60) }) }
-      return {
-        state, seq, progressPct: Math.min(100, Math.round((seq / 20) * 100)),
-        provider: 'us-east-1a · nv-07', elapsedMs: isIdle ? 0 : (seq * 1420) + 318,
-        evidenceHashPrefix: evidencePrefix, hashChainIntact, signatureVerified,
-        attestations, policyDecisions, trust, sigma, trustClass,
-        receiptId, receiptHash, envelopeHash, signature, snapshotHash,
-        timestamp: new Date().toISOString(), barProgress, epoch: seq + 38291,
-        quorumTotal: 5, quorumPass: Math.min(5, Math.max(0, Math.round(trust * 5))),
-      }
+      c.beginPath(); c.moveTo(2.6, -0.4); c.lineTo(3.7, -1.2); c.moveTo(2.6, 0.4); c.lineTo(3.7, 1.2); c.stroke()
+      c.restore()
     }
 
-    function applySnapshot(snap: any) {
-      st.snapshotHistory.push(snap)
-      if (st.snapshotHistory.length > 200) st.snapshotHistory.shift()
-      st.eventCount++
-
-      // Log
-      const logMsg = `[${new Date().toLocaleTimeString()}] ${snap.state} seq=${snap.seq} trust=${snap.trust} epoch=${snap.epoch}`
-      st.logEntries.push({ time: new Date().toLocaleTimeString(), msg: logMsg })
-      if (st.logEntries.length > 80) st.logEntries.shift()
-
-      // If state changed and not idle, bump notification
-      if (snap.state !== 'IDLE' && snap.state !== st.currentState) {
-        st.notifCount++
-        const badge = $('notif-badge')
-        if (badge) badge.textContent = String(st.notifCount)
-        const popup = $('notif-popup')
-        if (popup) {
-          const item = document.createElement('div')
-          item.className = 'notif-item'
-          item.innerHTML = `<span class="time">${new Date().toLocaleTimeString()}</span> State → ${snap.state}`
-          popup.prepend(item)
-          if (popup.children.length > 10) popup.removeChild(popup.lastChild!)
-        }
-      }
-      if (snap.state === 'SETTLED' && st.notifCount > 0) {
-        setTimeout(() => { st.notifCount = 0; const b = $('notif-badge'); if (b) b.textContent = '0' }, 2500)
-      }
-      st.currentState = snap.state
-      render(snap)
-      updateColonyAnts(snap)
-      updateLogStream()
+    function drawLeaf(c: CanvasRenderingContext2D, x: number, y: number, angle: number, scale: number, color: string, alpha: number) {
+      c.save(); c.translate(x, y); c.rotate(angle); c.scale(scale, scale); c.globalAlpha = alpha
+      c.fillStyle = color
+      c.beginPath(); c.moveTo(0, -3.2); c.quadraticCurveTo(2.1, -0.9, 0, 3.2); c.quadraticCurveTo(-2.1, -0.9, 0, -3.2); c.fill()
+      c.strokeStyle = 'rgba(0,0,0,0.28)'; c.lineWidth = 0.3
+      c.beginPath(); c.moveTo(0, -3.2); c.lineTo(0, 3.2); c.stroke()
+      c.restore()
     }
-
-    function emitEvent(state: string) {
-      const seq = ++st.currentSeq
-      const snap = buildSnapshot(state, seq)
-      applySnapshot(snap)
-    }
-
-    /* ---- Render ---- */
-    function render(s: any) {
-      const meta = STATE_META[s.state]
-      const isHazard = s.state === 'HAZARD'
-      const isSettled = s.state === 'SETTLED'
-      container!.classList.toggle('hazard-mode', isHazard)
-      const dot = $('state-dot')
-      if (dot) { dot.style.color = meta.color; dot.classList.toggle('pulse', isHazard) }
-      const label = $('state-label')
-      if (label) { label.textContent = meta.label; label.style.color = meta.color }
-
-      // Bars
-      const barOrder = ['INGEST', 'VERIFY', 'ATTEST', 'SIGN', 'COMMIT']
-      const barLabels: Record<string, string> = { INGEST: 'ingest', VERIFY: 'verify', ATTEST: 'attest', SIGN: 'sign', COMMIT: 'commit' }
-      const barColors: Record<string, string> = { INGEST: 'pending', VERIFY: 'pending', ATTEST: 'pending', SIGN: 'pending', COMMIT: 'verified' }
-      if (isHazard) { Object.keys(barColors).forEach(k => { barColors[k] = 'hazard' }) }
-      if (s.state === 'IDLE') { Object.keys(barColors).forEach(k => { barColors[k] = 'idle' }) }
-      let barHtml = ''
-      barOrder.forEach((key) => {
-        const pct = Math.round((s.barProgress as any)[key] || 0)
-        barHtml += `<div class="exec-bar"><span class="label">${barLabels[key]}</span><div class="track"><div class="fill ${barColors[key]}" style="width:${pct}%;"></div></div><span class="pct">${pct}%</span></div>`
-      })
-      const eb = $('exec-bars')
-      if (eb) { eb.innerHTML = barHtml }
-      const eh = $('exec-hint')
-      if (eh) eh.textContent = `seq #${s.seq}`
-
-      // Posterior
-      const pv = $('posterior-value')
-      if (pv) { pv.textContent = s.trust.toFixed(4); pv.style.color = meta.color }
-      const ps = $('posterior-sigma')
-      if (ps) ps.textContent = s.sigma.toFixed(4)
-      const confPct = Math.min(99.99, Math.max(0, (1 - s.sigma * 8) * 100))
-      const pc = $('posterior-conf')
-      if (pc) pc.textContent = confPct.toFixed(2) + '%'
-      const pe = $('posterior-evidence')
-      if (pe) pe.textContent = String(Math.min(999, Math.round(s.seq * 12.8)))
-      const pq = $('posterior-quorum')
-      if (pq) pq.textContent = `${s.quorumPass}/${s.quorumTotal}`
-      const pep = $('posterior-epoch')
-      if (pep) pep.textContent = String(s.epoch)
-      const pcf = $('posterior-conf-fill')
-      if (pcf) { (pcf as HTMLElement).style.width = confPct + '%'; (pcf as HTMLElement).style.background = isHazard ? 'var(--state-hazard)' : isSettled ? 'var(--state-verified)' : 'var(--state-pending)' }
-
-      // Policy
-      const failing = s.policyDecisions.filter((p: any) => !p.passed).length
-      const ph = $('policy-hint')
-      if (ph) { ph.textContent = failing > 0 ? `${failing} failing` : 'all passing'; ph.style.color = failing > 0 ? 'var(--state-hazard)' : 'var(--state-verified)' }
-      let policyHtml = ''
-      s.policyDecisions.forEach((p: any) => {
-        const fillPct = Math.min(100, (p.observed / Math.max(p.threshold, 0.001)) * 100)
-        const thresholdPct = Math.min(100, (p.threshold / Math.max(p.observed, p.threshold, 0.001)) * 100)
-        const tone = p.passed ? 'var(--state-verified)' : 'var(--state-hazard)'
-        policyHtml += `<div class="policy${isHazard && !p.passed ? ' shake' : ''}"><div class="policy-left"><span class="policy-indicator ${p.passed ? 'ok' : 'fail'}"></span><span class="policy-label">${p.label}</span><span class="policy-tier">${p.classTier}</span></div><div class="policy-right"><div class="policy-bar" style="--fill:${fillPct}%; --threshold:${thresholdPct}%; --tone:${tone}"></div><span>${p.observed.toFixed(3)}</span></div></div>`
-      })
-      const pr = $('policy-rows')
-      if (pr) pr.innerHTML = policyHtml
-
-      // Chain
-      const chainOk = s.hashChainIntact && s.signatureVerified
-      const cr = $('chain-rows')
-      if (cr) {
-        cr.innerHTML = `
-          <div class="chain-row"><span class="label">Chain integrity</span><span class="value"><span>${s.evidenceHashPrefix}…</span><span class="badge ${chainOk ? 'ok' : (s.hashChainIntact ? 'pending' : 'fail')}">${chainOk ? 'intact' : (s.hashChainIntact ? 'pending' : 'broken')}</span></span></div>
-          <div class="chain-row"><span class="label">Ed25519 signature</span><span class="value"><span>${s.signatureVerified ? 'valid' : 'invalid'}</span><span class="badge ${s.signatureVerified ? 'ok' : 'fail'}">${s.signatureVerified ? 'verified' : 'unverified'}</span></span></div>
-        `
-      }
-      const ch = $('chain-hint')
-      if (ch) { ch.textContent = chainOk ? 'intact · signed' : (!s.hashChainIntact) ? 'chain broken' : 'unsigned'; ch.style.color = chainOk ? 'var(--state-verified)' : (!s.hashChainIntact) ? 'var(--state-hazard)' : 'var(--state-pending)' }
-
-      // Timeline
-      const evs = ['INGEST', 'VERIFY', 'ATTEST', 'SIGN', 'COMMIT', 'CHECK', 'SYNC', 'FINAL']
-      const tones = ['var(--state-pending)', 'var(--state-pending)', 'var(--state-pending)', 'var(--state-pending)', 'var(--state-verified)', 'var(--state-info)', 'var(--state-pending)', 'var(--state-verified)']
-      let tlHtml = ''
-      const base = Math.max(0, s.seq - 5)
-      for (let i = 0; i < 6; i++) {
-        const seqI = base + i
-        const ev = evs[i % evs.length]
-        const w = Math.max(8, Math.min(100, (seqI / 20) * 100))
-        tlHtml += `<div class="timeline-row"><span class="timeline-seq">#${String(seqI).padStart(3, '0')}</span><div class="timeline-bar" style="--w:${w}%; --tone:${tones[i % tones.length]}"></div><span class="timeline-event">${ev}</span></div>`
-      }
-      const tl = $('timeline')
-      if (tl) tl.innerHTML = tlHtml
-
-      // Receipt
-      const rec = $('receipt')
-      if (rec) rec.innerHTML = `<dt>id</dt><dd>${s.receiptId}</dd><dt>receipt</dt><dd>${s.receiptHash.slice(0, 20)}…</dd><dt>envelope</dt><dd>${s.envelopeHash.slice(0, 20)}…</dd><dt>signature</dt><dd>${s.signature.slice(0, 16)}…</dd>`
-
-      // Colony status
-      const cs = $('colony-status-text')
-      if (cs) {
-        if (isHazard) { cs.textContent = '⚠ HAZARD · SYSTEM DEGRADED'; cs.style.color = 'var(--state-hazard)' }
-        else if (isSettled) { cs.textContent = '● ALL SYSTEMS NOMINAL'; cs.style.color = 'var(--state-verified)' }
-        else if (s.state === 'IDLE') { cs.textContent = '○ SYSTEM STANDBY'; cs.style.color = 'var(--text-tertiary)' }
-        else { cs.textContent = '◉ TRANSITIONING · VERIFYING'; cs.style.color = 'var(--state-pending)' }
-      }
-    }
-
-    function updateColonyAnts(snap: any) {
-      st.colonyState = snap.state
-      st.colonyTrust = Math.max(0.05, Math.min(0.98, typeof snap.trust === 'number' ? snap.trust : 1))
-    }
-
-    function updateLogStream() {
-      const ls = $('log-stream')
-      if (!ls) return
-      ls.innerHTML = st.logEntries.slice(-20).map((e: any) =>
-        `<div class="log-entry"><span class="time">${e.time}</span><span class="msg">${e.msg}</span></div>`
-      ).join('')
-      ls.scrollTop = ls.scrollHeight
-      const lh = $('log-hint')
-      if (lh) lh.textContent = st.logEntries.length > 0 ? `${st.logEntries.length} entries` : 'waiting'
-    }
-
-    /* ---- Colony Animation ---- */
-    const _canvas = container.querySelector('#colony-canvas') as HTMLCanvasElement | null
-    if (!_canvas) return
-    const canvas: HTMLCanvasElement = _canvas
-
-    function setupCanvas() {
-      const rect = canvas.parentElement!.getBoundingClientRect()
-      const size = Math.min(rect.width, rect.height, 380)
-      if (size <= 10) return false
-      canvas.width = size * 2
-      canvas.height = size * 2
-      canvas.style.width = size + 'px'
-      canvas.style.height = size + 'px'
-      return true
-    }
-    setupCanvas()
-
-    const _ctx = canvas.getContext('2d')
-    if (!_ctx) return
-    const ctx: CanvasRenderingContext2D = _ctx
-
-    const colonyAntSeqRef = { current: 0 }
-    st.colonyReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    // Listen for reduced-motion preference changes
-    const motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)')
-    st.motionListener = function (e: MediaQueryListEvent) { st.colonyReducedMotion = e.matches }
-    try { motionMedia.addEventListener('change', st.motionListener) } catch {}
 
     function animateColony() {
-      const W = canvas.width, H = canvas.height, cx = W / 2, cy = H / 2, R = W * 0.42
-      ctx.clearRect(0, 0, W, H)
+      const c = ctx
+      const W = cvs.width, H = cvs.height, cx = W / 2, cy = H / 2, R = W * 0.42
+      c.clearRect(0, 0, W, H)
 
-      const rate = colonySpawnRateByState(st.colonyState)
-      if (st.colonyAnts.length < rate.cap && Math.random() < rate.p) {
-        spawnAnt(st.colonyAnts, st.colonyState, colonyAntSeqRef)
+      const rate = colonySpawnRateByState(colonyState)
+      if (colonyAnts.length < rate.cap && Math.random() < rate.p) {
+        spawnAnt()
       }
 
-      const stepScale = st.colonyReducedMotion ? 0.25 : 1
-      st.colonyAnts.sort((a: any, b: any) => b.radius - a.radius)
+      const stepScale = reducedMotion ? 0.25 : 1
+      colonyAnts.sort((a: any, b: any) => b.radius - a.radius)
 
-      st.colonyAnts.forEach((a: any) => {
+      colonyAnts.forEach((a: any) => {
         a.legPhase += 0.35 * stepScale
-
-        // Recalculate speed based on current state (so speed changes when state changes)
-        const speedMul = antSpeedByState(st.colonyState, a.stage)
+        const speedMul = antSpeedByState(colonyState, a.stage)
 
         if (a.stage === 'approaching') {
-          // Meander angle based on state (more wander when idle)
-          if (st.colonyState === 'IDLE') {
-            a.angle += (Math.random() - 0.5) * 0.03  // more meander
-          } else if (st.colonyState === 'INGESTING') {
-            a.angle += (Math.random() - 0.5) * 0.005 // direct path
+          if (colonyState === 'IDLE') {
+            a.angle += (Math.random() - 0.5) * 0.03
+          } else if (colonyState === 'INGESTING') {
+            a.angle += (Math.random() - 0.5) * 0.005
           } else {
             a.angle += (Math.random() - 0.5) * 0.012
           }
           a.radius -= a.baseSpeed * speedMul * stepScale
-          if (a.radius <= GATE_R) { a.radius = GATE_R; a.stage = 'atGate'; a.leafColor = LEAF_GATE; a.gateHold = 26 + Math.floor(Math.random() * 20) }
+          if (a.radius <= GATE_R) { a.radius = GATE_R; a.stage = 'atGate'; a.leafColor = '#E8A23D'; a.gateHold = 26 + Math.floor(Math.random() * 20) }
         } else if (a.stage === 'atGate') {
           a.gateHold -= 1 * stepScale
           if (a.gateHold <= 0) {
-            const rejected = Math.random() > st.colonyTrust
+            const rejected = Math.random() > colonyTrust
             a.stage = rejected ? 'rejected' : 'verified'
-            a.leafColor = rejected ? LEAF_REJECTED : LEAF_VERIFIED
+            a.leafColor = rejected ? '#5A6068' : '#2FBF71'
           }
         } else if (a.stage === 'verified') {
           a.radius -= a.baseSpeed * 1.3 * speedMul * stepScale
           if (a.radius <= KERNEL_R) {
-            st.canopyLeaves.push({ angle: Math.random() * Math.PI * 2, dist: Math.random(), r: 1.4 + Math.random() * 1.3, hue: Math.random() })
-            if (st.canopyLeaves.length > 140) st.canopyLeaves.shift()
+            canopyLeaves.push({ angle: Math.random() * Math.PI * 2, dist: Math.random(), r: 1.4 + Math.random() * 1.3, hue: Math.random() })
+            if (canopyLeaves.length > 140) canopyLeaves.shift()
             a.dead = true
           }
         } else if (a.stage === 'rejected') {
@@ -604,83 +549,60 @@ export default function TrustRuntimePage() {
         const antAlpha = a.stage === 'rejected' ? Math.max(0, a.leafAlpha) : 1
         const leafX = cx + Math.cos(a.angle) * (a.radius + 0.025) * R
         const leafY = cy + Math.sin(a.angle) * (a.radius + 0.025) * R
-        drawLeaf(ctx, leafX, leafY, a.angle, a.scale, a.leafColor, Math.max(0, a.leafAlpha) * 0.95)
-        drawAnt(ctx, x, y, a.angle + Math.PI, a.scale, antAlpha, a.legPhase)
+        drawLeaf(c, leafX, leafY, a.angle, a.scale, a.leafColor, Math.max(0, a.leafAlpha) * 0.95)
+        drawAnt(c, x, y, a.angle + Math.PI, a.scale, antAlpha, a.legPhase)
       })
-      st.colonyAnts = st.colonyAnts.filter((a: any) => !a.dead)
+      colonyAnts = colonyAnts.filter((a: any) => !a.dead)
 
       // Gate ring
-      ctx.beginPath(); ctx.arc(cx, cy, GATE_R * R, 0, Math.PI * 2)
-      ctx.strokeStyle = 'rgba(232,162,61,0.22)'; ctx.setLineDash([2, 6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([])
+      c.beginPath(); c.arc(cx, cy, GATE_R * R, 0, Math.PI * 2)
+      c.strokeStyle = 'rgba(232,162,61,0.22)'; c.setLineDash([2, 6]); c.lineWidth = 1; c.stroke(); c.setLineDash([])
 
       // Canopy
-      const canopySpread = Math.min(KERNEL_R * 2.6, KERNEL_R + st.canopyLeaves.length * 0.006)
-      st.canopyLeaves.forEach((leaf: any) => {
+      const canopySpread = Math.min(KERNEL_R * 2.6, KERNEL_R + canopyLeaves.length * 0.006)
+      canopyLeaves.forEach((leaf: any) => {
         const d = leaf.dist * canopySpread * R
         const lx = cx + Math.cos(leaf.angle) * d
         const ly = cy + Math.sin(leaf.angle) * d * 0.7 - canopySpread * R * 0.25
-        ctx.globalAlpha = 0.85
-        ctx.fillStyle = '#2FBF71'
-        ctx.beginPath(); ctx.ellipse(lx, ly, leaf.r, leaf.r * 0.7, leaf.angle, 0, Math.PI * 2); ctx.fill()
+        c.globalAlpha = 0.85
+        c.fillStyle = '#2FBF71'
+        c.beginPath(); c.ellipse(lx, ly, leaf.r, leaf.r * 0.7, leaf.angle, 0, Math.PI * 2); c.fill()
       })
-      ctx.globalAlpha = 1
+      c.globalAlpha = 1
 
       // Kernel
-      const kernelColor = STATE_META[st.colonyState]?.color || '#4E545E'
-      ctx.beginPath(); ctx.arc(cx, cy, KERNEL_R * R * 0.4, 0, Math.PI * 2)
-      ctx.fillStyle = kernelColor; ctx.fill()
-      ctx.beginPath(); ctx.arc(cx, cy, KERNEL_R * R * 0.7, 0, Math.PI * 2)
-      ctx.strokeStyle = kernelColor; ctx.globalAlpha = 0.45; ctx.lineWidth = 1.2; ctx.stroke()
-      ctx.globalAlpha = 1
+      const kernelColor = STATE_META[colonyState]?.color || '#4E545E'
+      c.beginPath(); c.arc(cx, cy, KERNEL_R * R * 0.4, 0, Math.PI * 2)
+      c.fillStyle = kernelColor; c.fill()
+      c.beginPath(); c.arc(cx, cy, KERNEL_R * R * 0.7, 0, Math.PI * 2)
+      c.strokeStyle = kernelColor; c.globalAlpha = 0.45; c.lineWidth = 1.2; c.stroke()
+      c.globalAlpha = 1
 
-      st.animFrame = requestAnimationFrame(animateColony)
+      animFrame = requestAnimationFrame(animateColony)
     }
 
-    function drawAnt(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, scale: number, alpha: number, legPhase: number) {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.scale(scale, scale); ctx.globalAlpha = alpha
-      ctx.fillStyle = 'rgba(180,186,194,0.9)'; ctx.strokeStyle = 'rgba(180,186,194,0.9)'; ctx.lineWidth = 0.55
-      ctx.beginPath(); ctx.ellipse(-3.1, 0, 2.0, 1.4, 0, 0, Math.PI * 2); ctx.fill()
-      ctx.beginPath(); ctx.ellipse(-0.4, 0, 1.2, 0.95, 0, 0, Math.PI * 2); ctx.fill()
-      ctx.beginPath(); ctx.arc(1.9, 0, 0.95, 0, Math.PI * 2); ctx.fill()
-      for (let i = -1; i <= 1; i++) {
-        const lp = Math.sin(legPhase + i * 1.3) * 0.7
-        ctx.beginPath(); ctx.moveTo(i * 1.0 - 0.4, 0); ctx.lineTo(i * 1.0 - 0.4 + lp, 2.1)
-        ctx.moveTo(i * 1.0 - 0.4, 0); ctx.lineTo(i * 1.0 - 0.4 - lp, -2.1); ctx.stroke()
-      }
-      ctx.beginPath(); ctx.moveTo(2.6, -0.4); ctx.lineTo(3.7, -1.2); ctx.moveTo(2.6, 0.4); ctx.lineTo(3.7, 1.2); ctx.stroke()
-      ctx.restore()
-    }
-
-    function drawLeaf(ctx: CanvasRenderingContext2D, x: number, y: number, angle: number, scale: number, color: string, alpha: number) {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.scale(scale, scale); ctx.globalAlpha = alpha
-      ctx.fillStyle = color
-      ctx.beginPath(); ctx.moveTo(0, -3.2); ctx.quadraticCurveTo(2.1, -0.9, 0, 3.2); ctx.quadraticCurveTo(-2.1, -0.9, 0, -3.2); ctx.fill()
-      ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 0.3
-      ctx.beginPath(); ctx.moveTo(0, -3.2); ctx.lineTo(0, 3.2); ctx.stroke()
-      ctx.restore()
-    }
-
-    // Start colony animation
     animateColony()
 
-    // Emit initial IDLE
-    emitEvent('IDLE')
-
-    // Tab switching
-    function handleTabClick(this: HTMLElement) {
-      const tabNav = container!.querySelector('.tab-nav')
-      if (tabNav) {
-        tabNav.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
-      }
-      this.classList.add('active')
-      const viewId = this.getAttribute('data-view')
-      container!.querySelectorAll('.view').forEach(v => v.classList.remove('active'))
-      const target = container!.querySelector('#view-' + viewId)
-      if (target) target.classList.add('active')
+    // Clone of updateColonyState for the animation loop
+    function updateColonyState(st: typeof liveState.current) {
+      colonyState = st.kernelState
+      colonyTrust = Math.max(0.05, Math.min(0.98, st.trust))
     }
 
+    // Expose updateColonyState globally for SSE handler
+    ;(window as any).__updateColonyState = updateColonyState
+
+    // Tab switching
     container.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', handleTabClick as EventListener)
+      btn.addEventListener('click', function (this: HTMLElement) {
+        const tabNav = container.querySelector('.tab-nav')
+        tabNav?.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+        this.classList.add('active')
+        const viewId = this.getAttribute('data-view')
+        container.querySelectorAll('.view').forEach(v => v.classList.remove('active'))
+        const target = container.querySelector('#view-' + viewId)
+        if (target) target.classList.add('active')
+      })
     })
 
     // Search
@@ -690,8 +612,9 @@ export default function TrustRuntimePage() {
       searchInput.addEventListener('input', function (e: Event) {
         const val = (e.target as HTMLInputElement).value.trim().toLowerCase()
         if (val.length === 0) { searchResultsEl.classList.remove('open'); return }
-        const matches = st.snapshotHistory.filter((s: any) =>
-          s.state.toLowerCase().includes(val) || s.receiptId.includes(val) || s.evidenceHashPrefix.includes(val)
+        const st = liveState.current
+        const matches = st.evidenceLeaves.filter(l =>
+          l.claim?.toLowerCase().includes(val) || l.id?.includes(val) || l.source?.toLowerCase().includes(val)
         )
         searchResultsEl.innerHTML = ''
         if (matches.length === 0) {
@@ -700,99 +623,276 @@ export default function TrustRuntimePage() {
           el.textContent = 'No matches'
           searchResultsEl.appendChild(el)
         } else {
-          matches.slice(0, 6).forEach((s: any) => {
+          matches.slice(0, 6).forEach((l: any) => {
             const el = document.createElement('div')
             el.className = 'item'
-            el.dataset.seq = String(s.seq)
-            el.textContent = `seq ${s.seq} · ${s.state} · ${s.receiptId}`
-            el.addEventListener('click', function (this: HTMLElement) {
-              const seq = parseInt(this.dataset.seq || '0')
-              const snap = st.snapshotHistory.find((s: any) => s.seq === seq)
-              if (snap) { render(snap); searchInput!.value = ''; searchResultsEl!.classList.remove('open') }
-            })
+            el.textContent = `${l.id?.slice(0, 18)} · ${l.claim?.slice(0, 30)} · ${l.confidence}`
             searchResultsEl.appendChild(el)
           })
         }
         searchResultsEl.classList.add('open')
       })
     }
-    st.docClickHandler = function (e: Event) {
-      const target = e.target as HTMLElement
-      if (!target.closest('.search-box') && searchResultsEl) {
-        searchResultsEl.classList.remove('open')
-      }
-      if (!target.closest('.notif-btn') && !target.closest('.notif-popup')) {
-        if (notifPopupEl) notifPopupEl.classList.remove('open')
-      }
-    }
-    document.addEventListener('click', st.docClickHandler)
 
     // Notifications
-    const notifBtn = container.querySelector('#notif-btn') as HTMLElement | null
-    const notifPopupEl = container.querySelector('#notif-popup') as HTMLElement | null
-    if (notifBtn && notifPopupEl) {
-      notifBtn.addEventListener('click', function (e: Event) { e.stopPropagation(); notifPopupEl.classList.toggle('open') })
-    }
-
-    // Auto cycle
-    const autoBtn = container.querySelector('#auto-btn') as HTMLElement | null
-    function startAuto() {
-      let i = 0
-      st.autoTimer = setInterval(() => {
-        const state = STATE_ORDER[i % STATE_ORDER.length]
-        emitEvent(state)
-        i++
-        container!.querySelectorAll('.controls button[data-state]').forEach(b => {
-          b.classList.toggle('active', b.getAttribute('data-state') === state)
-        })
-      }, 2400)
-      if (autoBtn) autoBtn.textContent = '■ STOP'
-    }
-    function stopAuto() {
-      if (st.autoTimer) { clearInterval(st.autoTimer); st.autoTimer = null }
-      if (autoBtn) autoBtn.textContent = '▶ AUTO'
-    }
-    if (autoBtn) {
-      autoBtn.addEventListener('click', function () { if (st.autoTimer) stopAuto(); else startAuto() })
-    }
-
-    // State buttons
-    container.querySelectorAll('.controls button[data-state]').forEach(btn => {
-      btn.addEventListener('click', function (this: HTMLElement) {
-        if (st.autoTimer) stopAuto()
-        const state = this.getAttribute('data-state') as string
-        emitEvent(state)
-        container!.querySelectorAll('.controls button[data-state]').forEach(b => {
-          b.classList.toggle('active', b.getAttribute('data-state') === state)
-        })
-      })
+    const notifPopupEl = container.querySelector('#notif-popup') as HTMLElement
+    container.querySelector('#notif-btn')?.addEventListener('click', function (e: Event) {
+      e.stopPropagation()
+      notifPopupEl?.classList.toggle('open')
     })
+
+    // Close search/notifs on doc click
+    const docClickHandler = (e: Event) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.search-box') && searchResultsEl) searchResultsEl.classList.remove('open')
+      if (!target.closest('.notif-btn') && !target.closest('.notif-popup')) notifPopupEl?.classList.remove('open')
+    }
+    document.addEventListener('click', docClickHandler)
 
     // Resize
     let resizeTimeout: ReturnType<typeof setTimeout>
-    function handleResize() {
+    const handleResize = () => {
       clearTimeout(resizeTimeout)
       resizeTimeout = setTimeout(() => {
-        const rect = canvas.parentElement!.getBoundingClientRect()
+        const rect = cvs.parentElement!.getBoundingClientRect()
         const size = Math.min(rect.width, rect.height, 380)
-        if (size > 10) { canvas.width = size * 2; canvas.height = size * 2; canvas.style.width = size + 'px'; canvas.style.height = size + 'px' }
+        if (size > 10) { cvs.width = size * 2; cvs.height = size * 2; cvs.style.width = size + 'px'; cvs.style.height = size + 'px' }
       }, 150)
     }
     window.addEventListener('resize', handleResize)
 
-    // Cleanup — ALL event listeners and timers
+    // Cleanup
     return () => {
-      stopAuto()
-      if (st.animFrame) cancelAnimationFrame(st.animFrame)
+      if (animFrame) cancelAnimationFrame(animFrame)
+      if (autoTimerRef.current) clearInterval(autoTimerRef.current)
+      client.disconnect()
       window.removeEventListener('resize', handleResize)
-      // Remove document-level click listeners
-      if (st.docClickHandler) document.removeEventListener('click', st.docClickHandler)
-      // Remove motion listener
-      if (st.motionListener) {
-        try { window.matchMedia('(prefers-reduced-motion: reduce)').removeEventListener('change', st.motionListener) } catch {}
-      }
+      document.removeEventListener('click', docClickHandler)
     }
   }, [])
+
+  // Render DOM from current state
+  function renderDOM(st: typeof liveState.current) {
+    const container = containerRef.current
+    if (!container) return
+    const $ = (id: string) => container.querySelector('#' + id) as HTMLElement | null
+    const meta = STATE_META[st.kernelState] || STATE_META.IDLE
+    const isHazard = st.kernelState === 'HAZARD'
+    const isSettled = st.kernelState === 'SETTLED'
+
+    container.classList.toggle('hazard-mode', isHazard)
+
+    const dot = $('state-dot')
+    if (dot) { dot.style.color = meta.color; dot.classList.toggle('pulse', isHazard) }
+
+    const label = $('state-label')
+    if (label) { label.textContent = meta.label; label.style.color = meta.color }
+
+    // Execution bars
+    const barProgress = {
+      INGEST: st.sequence > 0 ? Math.min(100, Math.round(st.sequence * 8)) : 0,
+      VERIFY: st.sequence > 3 ? Math.min(100, Math.round((st.sequence - 2) * 8)) : 0,
+      ATTEST: st.sequence > 5 ? Math.min(100, Math.round((st.sequence - 4) * 8)) : 0,
+      SIGN:   st.sequence > 8 ? Math.min(100, Math.round((st.sequence - 7) * 8)) : 0,
+      COMMIT: st.sequence > 11 ? Math.min(100, Math.round((st.sequence - 10) * 8)) : 0,
+    }
+    if (st.kernelState === 'IDLE') { Object.keys(barProgress).forEach(k => { (barProgress as any)[k] = 0 }) }
+    if (isHazard) { Object.keys(barProgress).forEach(k => { (barProgress as any)[k] = Math.min((barProgress as any)[k], 60) }) }
+
+    const barOrder = ['INGEST', 'VERIFY', 'ATTEST', 'SIGN', 'COMMIT']
+    const barLabels: Record<string, string> = { INGEST: 'ingest', VERIFY: 'verify', ATTEST: 'attest', SIGN: 'sign', COMMIT: 'commit' }
+    const barColors: Record<string, string> = { INGEST: 'pending', VERIFY: 'pending', ATTEST: 'pending', SIGN: 'pending', COMMIT: 'verified' }
+    if (isHazard) { Object.keys(barColors).forEach(k => { barColors[k] = 'hazard' }) }
+    if (st.kernelState === 'IDLE') { Object.keys(barColors).forEach(k => { barColors[k] = 'idle' }) }
+
+    let barHtml = ''
+    barOrder.forEach((key) => {
+      const pct = Math.round((barProgress as any)[key] || 0)
+      barHtml += `<div class="exec-bar"><span class="label">${barLabels[key]}</span><div class="track"><div class="fill ${barColors[key]}" style="width:${pct}%;"></div></div><span class="pct">${pct}%</span></div>`
+    })
+    const eb = $('exec-bars')
+    if (eb) eb.innerHTML = barHtml
+
+    const eh = $('exec-hint')
+    if (eh) eh.textContent = `seq #${st.sequence}`
+
+    // Posterior
+    const pv = $('posterior-value')
+    if (pv) { pv.textContent = st.trust.toFixed(4); pv.style.color = meta.color }
+    const ps = $('posterior-sigma')
+    if (ps) ps.textContent = st.sigma.toFixed(4)
+    const confPct = Math.min(99.99, Math.max(0, (1 - st.sigma * 8) * 100))
+    const pc = $('posterior-conf')
+    if (pc) pc.textContent = confPct.toFixed(2) + '%'
+    const pe = $('posterior-evidence')
+    if (pe) pe.textContent = String(Math.min(999, st.evidenceLeaves.length))
+    const pq = $('posterior-quorum')
+    if (pq) pq.textContent = `${st.quorum.pass}/${st.quorum.total}`
+    const pep = $('posterior-epoch')
+    if (pep) pep.textContent = String(st.epoch)
+    const pcf = $('posterior-conf-fill')
+    if (pcf) { (pcf as HTMLElement).style.width = confPct + '%'; (pcf as HTMLElement).style.background = isHazard ? 'var(--state-hazard)' : isSettled ? 'var(--state-verified)' : 'var(--state-pending)' }
+
+    // Chain
+    const chainOk = st.hashChainIntact
+    const cr = $('chain-rows')
+    if (cr) {
+      cr.innerHTML = `
+        <div class="chain-row"><span class="label">Chain integrity</span><span class="value"><span>${st.evidenceLeaves.length > 0 ? st.evidenceLeaves[0].id.slice(0, 6) : '—'}…</span><span class="badge ${chainOk ? 'ok' : 'fail'}">${chainOk ? 'intact' : 'broken'}</span></span></div>
+        <div class="chain-row"><span class="label">Ed25519 signature</span><span class="value"><span>${!isHazard ? 'valid' : 'invalid'}</span><span class="badge ${!isHazard ? 'ok' : 'fail'}">${!isHazard ? 'verified' : 'unverified'}</span></span></div>
+      `
+    }
+    const ch = $('chain-hint')
+    if (ch) { ch.textContent = chainOk ? 'intact · signed' : 'chain broken'; ch.style.color = chainOk ? 'var(--state-verified)' : 'var(--state-hazard)' }
+
+    // Timeline
+    const evs = ['INGEST', 'VERIFY', 'ATTEST', 'SIGN', 'COMMIT', 'CHECK', 'SYNC', 'FINAL']
+    const tones = ['var(--state-pending)', 'var(--state-pending)', 'var(--state-pending)', 'var(--state-pending)', 'var(--state-verified)', 'var(--state-info)', 'var(--state-pending)', 'var(--state-verified)']
+    let tlHtml = ''
+    const base = Math.max(0, st.sequence - 5)
+    for (let i = 0; i < 6; i++) {
+      const seqI = base + i
+      const ev = evs[i % evs.length]
+      const w = Math.max(8, Math.min(100, (seqI / 20) * 100))
+      tlHtml += `<div class="timeline-row"><span class="timeline-seq">#${String(seqI).padStart(3, '0')}</span><div class="timeline-bar" style="--w:${w}%; --tone:${tones[i % tones.length]}"></div><span class="timeline-event">${ev}</span></div>`
+    }
+    const tl = $('timeline')
+    if (tl) tl.innerHTML = tlHtml
+
+    // Colony status
+    const cs = $('colony-status-text')
+    if (cs) {
+      if (isHazard) { cs.textContent = '⚠ HAZARD · SYSTEM DEGRADED'; cs.style.color = 'var(--state-hazard)' }
+      else if (isSettled) { cs.textContent = '● ALL SYSTEMS NOMINAL'; cs.style.color = 'var(--state-verified)' }
+      else if (st.kernelState === 'IDLE') { cs.textContent = '○ SYSTEM STANDBY'; cs.style.color = 'var(--text-tertiary)' }
+      else { cs.textContent = '◉ TRANSITIONING · VERIFYING'; cs.style.color = 'var(--state-pending)' }
+    }
+  }
+
+  // Update colony state for animation
+  function updateColonyState(st: typeof liveState.current) {
+    ;(window as any).__updateColonyState?.(st)
+  }
+
+  // Dispatch command
+  const dispatchCommand = async (command: Command) => {
+    // Immediately show UI feedback
+    const st = liveState.current
+    const eventStateMap: Record<string, string> = {
+      ResetRuntime: 'IDLE',
+      SubmitEvidence: 'INGESTING',
+      VerifyAttestation: 'ATTESTING',
+      CommitReceipt: 'COMMITTING',
+      ConfirmLedger: 'SETTLED',
+      TriggerCircuitBreaker: 'HAZARD',
+    }
+    const newState = eventStateMap[command.type]
+    if (newState) {
+      st.kernelState = newState
+      st.sequence++
+    }
+    renderDOM(st)
+    updateColonyState(st)
+
+    // Log
+    const msg = `[${new Date().toLocaleTimeString()}] cmd=${command.type}`
+    logRef.current.push({ time: new Date().toLocaleTimeString(), msg })
+    if (logRef.current.length > 80) logRef.current.shift()
+    setLogEntries([...logRef.current])
+  }
+
+  // Build command from state name
+  const stateToCommand = (state: string): Command => {
+    const evidenceLabels = ['IDLE evidence', 'ingested claim', 'attested leaf', 'proof bundle', 'commit batch', 'settle root', 'hazard trigger']
+    const evidenceSources = ['user', 'oracle', 'tee', 'bridge']
+    switch (state) {
+      case 'IDLE':
+        return { type: 'ResetRuntime' }
+      case 'INGESTING':
+        return {
+          type: 'SubmitEvidence',
+          idempotencyKey: `ev-${Date.now()}`,
+          evidence: {
+            claim: evidenceLabels[Math.floor(Math.random() * evidenceLabels.length)],
+            source: evidenceSources[Math.floor(Math.random() * evidenceSources.length)],
+            confidence: (['low', 'medium', 'high'] as const)[Math.floor(Math.random() * 3)],
+          },
+        }
+      case 'ATTESTING':
+      case 'VERIFYING':
+        return {
+          type: 'VerifyAttestation',
+          receiptId: `rcpt_${Math.random().toString(16).slice(2, 10)}`,
+          platform: (['AMD SEV-SNP', 'Intel SGX', 'AWS Nitro'] as const)[Math.floor(Math.random() * 3)],
+        }
+      case 'COMMITTING':
+        return {
+          type: 'CommitReceipt',
+          receipt: {
+            receiptId: `rcpt_${Math.random().toString(16).slice(2, 10)}`,
+            receiptHash: `sha256:${Math.random().toString(16).slice(2, 18)}`,
+            envelopeHash: `sha256:${Math.random().toString(16).slice(2, 18)}`,
+            signature: `ed25519:${Math.random().toString(16).slice(2, 14)}`,
+            chainHash: `0x${Math.random().toString(16).slice(2, 34)}`,
+          },
+        }
+      case 'SETTLED':
+        return { type: 'ConfirmLedger', seq: 1, blockHeight: `#${Math.floor(Math.random() * 10000)}` }
+      case 'HAZARD':
+        return {
+          type: 'TriggerCircuitBreaker',
+          action: 'open',
+          reason: 'Threshold breach: hash chain mismatch',
+        }
+      default:
+        return { type: 'ResetRuntime' }
+    }
+  }
+
+  const handleStateClick = (state: string) => {
+    if (autoTimerRef.current) {
+      clearInterval(autoTimerRef.current)
+      autoTimerRef.current = null
+    }
+    const command = stateToCommand(state)
+    // Use fetch directly for real dispatch, fallback to local state update
+    if (sseConnected) {
+      fetch('/api/runtime/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(command),
+      }).catch(() => dispatchCommand(command))
+    } else {
+      dispatchCommand(command)
+    }
+  }
+
+  const startAuto = () => {
+    cycleIndexRef.current = 0
+    if (autoTimerRef.current) clearInterval(autoTimerRef.current)
+    autoTimerRef.current = setInterval(() => {
+      const state = STATE_ORDER[cycleIndexRef.current % STATE_ORDER.length]
+      cycleIndexRef.current++
+      const command = stateToCommand(state)
+      if (sseConnected) {
+        fetch('/api/runtime/dispatch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(command),
+        }).catch(() => dispatchCommand(command))
+      } else {
+        dispatchCommand(command)
+      }
+    }, 2400)
+  }
+
+  const stopAuto = () => {
+    if (autoTimerRef.current) { clearInterval(autoTimerRef.current); autoTimerRef.current = null }
+  }
+
+  const handleAutoToggle = () => {
+    if (autoTimerRef.current) stopAuto(); else startAuto()
+  }
 
   return (
     <div className="trust-runtime" ref={containerRef}>
@@ -815,8 +915,8 @@ export default function TrustRuntimePage() {
             <div className="state-head">
               <span id="state-dot" className="status-dot" style={{ color: 'var(--state-idle)' as string }}></span>
               <span id="state-label" className="state-label">IDLE</span>
-              <span id="data-mode-badge" className="data-mode-badge" data-mode="simulated" title="Data source for this session">
-                <span className="dm-dot"></span><span className="dm-text">SIMULATED</span>
+              <span id="data-mode-badge" className="data-mode-badge" data-mode={sseConnected ? 'live' : 'simulated'}>
+                <span className="dm-dot"></span><span className="dm-text">{sseConnected ? 'LIVE' : 'SIMULATED'}</span>
               </span>
             </div>
           </div>
@@ -830,7 +930,7 @@ export default function TrustRuntimePage() {
           <div className="topbar-right">
             <div className="live-indicator">
               <span className="dot"></span>
-              <span>live</span>
+              <span>{sseConnected ? 'live' : 'local'}</span>
             </div>
             <div style={{ position: 'relative' }}>
               <button className="notif-btn" id="notif-btn" aria-label="Notifications">
@@ -873,8 +973,15 @@ export default function TrustRuntimePage() {
                   <div id="chain-rows"></div>
                 </div>
                 <div className="panel">
-                  <div className="panel-title"><span>Log Stream</span><span className="hint" id="log-hint">live</span></div>
-                  <div className="log-stream" id="log-stream"></div>
+                  <div className="panel-title"><span>Log Stream</span><span className="hint" id="log-hint">{logEntries.length > 0 ? `${logEntries.length} entries` : 'live'}</span></div>
+                  <div className="log-stream" id="log-stream">
+                    {logEntries.slice(-20).map((e, i) => (
+                      <div className="log-entry" key={i}>
+                        <span className="time">{e.time}</span>
+                        <span className="msg">{e.msg}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
               <div className="overview-right">
@@ -914,13 +1021,13 @@ export default function TrustRuntimePage() {
 
           {/* Other view placeholders */}
           <div className="view" id="view-evidence">
-            <div className="view-placeholder"><div className="icon">⬡</div><div>Evidence Graph</div><div className="sub">Merkle tree · hash chain · receipt linkage</div></div>
+            <div className="view-placeholder"><div className="icon">⬡</div><div>Evidence Graph</div><div className="sub">Merkle tree · hash chain · receipt linkage</div><div className="sub" style={{ marginTop: 8, color: 'var(--text-secondary)' }}>{liveState.current.evidenceLeaves.length} leaves ingested</div></div>
           </div>
           <div className="view" id="view-attestation">
-            <div className="view-placeholder"><div className="icon">◈</div><div>Attestation Explorer</div><div className="sub">Enclave quotes · certificate chains · measurements</div></div>
+            <div className="view-placeholder"><div className="icon">◈</div><div>Attestation Explorer</div><div className="sub">Enclave quotes · certificate chains · measurements</div><div className="sub" style={{ marginTop: 8, color: 'var(--text-secondary)' }}>{liveState.current.quorum.total} attestations · {liveState.current.quorum.pass} passed</div></div>
           </div>
           <div className="view" id="view-bayesian">
-            <div className="view-placeholder"><div className="icon">∫</div><div>Bayesian Engine</div><div className="sub">Prior · Likelihood · Posterior · Confidence interval</div></div>
+            <div className="view-placeholder"><div className="icon">∫</div><div>Bayesian Engine</div><div className="sub">Prior · Likelihood · Posterior · Confidence interval</div><div className="sub" style={{ marginTop: 8, color: 'var(--text-secondary)' }}>Trust: {(liveState.current.trust * 100).toFixed(1)}% · σ: {liveState.current.sigma.toFixed(4)}</div></div>
           </div>
           <div className="view" id="view-journal">
             <div className="view-placeholder"><div className="icon">⊞</div><div>Event Journal</div><div className="sub">Append‑only runtime log · sequence · hashes</div></div>
@@ -933,15 +1040,11 @@ export default function TrustRuntimePage() {
 
       {/* Controls */}
       <nav className="controls" aria-label="Kernel state simulator">
-        <button data-state="IDLE" className="active">IDLE</button>
-        <button data-state="INGESTING">INGEST</button>
-        <button data-state="ATTESTING">ATTEST</button>
-        <button data-state="VERIFYING">VERIFY</button>
-        <button data-state="COMMITTING">COMMIT</button>
-        <button data-state="SETTLED">SETTLED</button>
-        <button data-state="HAZARD">HAZARD</button>
+        {STATE_ORDER.map(state => (
+          <button key={state} onClick={() => handleStateClick(state)}>{state === 'INGESTING' ? 'INGEST' : state === 'ATTESTING' ? 'ATTEST' : state === 'VERIFYING' ? 'VERIFY' : state === 'COMMITTING' ? 'COMMIT' : state}</button>
+        ))}
         <div className="sep"></div>
-        <button className="auto-btn" id="auto-btn">▶ AUTO</button>
+        <button className="auto-btn" id="auto-btn" onClick={handleAutoToggle}>▶ AUTO</button>
       </nav>
     </div>
   )
