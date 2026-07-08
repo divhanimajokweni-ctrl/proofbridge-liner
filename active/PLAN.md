@@ -1,78 +1,171 @@
-# PLAN — Phase 1-6 Codebase Analysis + Hardening — 2026-07-07
+# PLAN — RC1 Repository Purity Freeze — 2026-07-07
 
 ## Business Intent
-Complete a comprehensive 6-phase codebase analysis and hardening initiative: resolve TypeScript path mapping debt, build an enterprise-grade control plane dashboard, audit all production capabilities against compliance requirements, verify trust boundaries, validate runtime compatibility, and collect production deployment evidence.
+ProofBridge-Liner is a single product: deterministic trust infrastructure. The repository must contain only that product. Removing unrelated code, restructuring to a canonical layout, and rebuilding the UI around a single institutional narrative are prerequisites for RC1 release.
 
 ## User Story
-As a **platform operator**, I need the codebase to be **fully analyzed for quality debt, hardened against TypeScript import failures, accessible to screen readers, and documented with verified runtime/production evidence** so that **production deployments are reliable, auditable, and accessible**.
+As a **CTO evaluating ProofBridge-Liner for a regulated enterprise (bank, insurer, government)**, I need the repository and website to communicate a single coherent product with cryptographic trust enforcement at its center, so that I can evaluate fit for purpose without confusion from unrelated VVU ecosystem content.
 
 ## Acceptance Criteria
-- [x] **AC1**: `tsconfig.json` path mapping fixed — no `@/lib/*` hijack, `npm run build` → 0 errors
-- [x] **AC2**: Rate limiting extracted to shared `src/lib/rate-limiter.ts` with Upstash Redis support + in-memory fallback
-- [x] **AC3**: Enterprise Control Plane dashboard replaces old page.tsx with role-based access, simulated metrics, a11y compliance
-- [x] **AC4**: 9 production capabilities audited with evidence (Proof Envelope, SafeKrypte, Compliance Fabric, Governance, Auth, AI Router, Circuit Breaker, Supabase, TEE Verifier)
-- [x] **AC5**: 9 trust boundaries verified with fail-closed confirmation + identified gaps
-- [x] **AC6**: 4 runtimes validated (Node.js, Bun, Docker, Vercel) — build, boot, smoke test
-- [x] **AC7**: Production lifecycle evidence collected (build → deploy → smoke → health → telemetry → proof gen → proof verify → audit)
-- [x] **AC8**: CircuitBreakerV2.sol underflow bug fixed (`lastTripTimestamp` initialization)
-- [x] **AC9**: CircuitBreakerV2 tests fixed (proper key management, event emission, cooldown warp)
-- [x] **AC10**: TypeScript lint warnings fixed (unused imports, unused params)
-- [x] **AC11**: Dockerfile fixed (nonexistent CMD, missing build stage)
-- [x] **AC12**: Behavioral coverage passes (4/4 applicable flows, 1 SKIP for SafeKrypte)
+- [ ] **AC1**: All exclusion targets (Ubuntu Studio, Ekasi, Gateway, Ubuntu Games, Ubuntu Pools, SafeGrid, Lindiwe Agent UI, WhatsApp, AI Gateway, Billing, Email, Onboarding, Auth, Arena, Converse, Agent APIs, Contact, Feed, Library, Consent, Chronicle, GitHub, Tools) are removed from `app/` tree
+- [ ] **AC2**: All exclusion target root directories (`whatsapp-bridge/`, `ai-gateway/`, `demo/`, `examples/`, `extensions/`, `governance/` duplicate, `GOVERNANCE/` duplicate, `research/`, `services/`, `site/`, `archive/`, `mcp/`, `agent/`, `auth/`) are removed
+- [ ] **AC3**: `public/` cleaned — only ProofBridge-Liner assets remain
+- [ ] **AC4**: Repository structure matches canonical layout:
+        ```
+        apps/web/         (Next.js app)
+        packages/trust-kernel/
+        packages/compliance-fabric/
+        packages/safekrypte/
+        packages/compute-fabric/
+        packages/enterprise-control-plane/
+        packages/shared/
+        contracts/
+        infrastructure/
+        validation/
+        tests/
+        docs/
+        README.md
+        ```
+- [ ] **AC5**: UI rebuilt as single product narrative with pages: Hero → Trust Narrative → Interactive Trust Pipeline → Enterprise Control Plane → Validation Evidence → Technical Architecture → Documentation → FAQ → CTA
+- [ ] **AC6**: GlobeTelemetry (`components/ui/globe-telemetry.tsx`) and AntLoader (`components/ui/ant-loader.tsx`) exist as headless props-driven components
+- [ ] **AC7**: All dead branches cleaned up (local + remote)
+- [ ] **AC8**: `README.md` rewritten — only ProofBridge-Liner content
+- [ ] **AC9**: `npm run build` succeeds (0 errors)
+- [ ] **AC10**: `npm test` passes
+- [ ] **AC11**: Behavioral coverage passes (4 PASS / 1 SKIP minimum)
+- [ ] **AC12**: Vercel deploy succeeds
 
 ## Compliance Gate Status
-Hard failures in scope : None (no billing/HMAC/crypto changes beyond existing patterns)
-This plan touches       : HF-4 adjacent (rate-limiter uses existing HMAC patterns)
-This plan does not touch: HF-1, HF-2, HF-3, HF-5
+Hard failures in scope: HF-1 (Repository Purity), HF-2 (UI Consistency)
+This plan resolves HF-1 — removal of all non-ProofBridge-Liner assets
+This plan resolves HF-2 — single-product UI narrative
+This plan does not touch: existing Gate B/C/D/E/F logic, contract bytecode, SafeKrypte HSM
 
-SDD Trace Chain:
-Business Intent → User Story → Acceptance Criteria → File Changes → Test Assertions → Compliance Gate
+## Affected Files
 
-## Files Changed
+### Phase 1 — Remove Exclusion Targets (~100 files)
+```
+DELETE app/pools/page.tsx
+DELETE app/studio/page.tsx
+DELETE app/safegrid/page.tsx
+DELETE app/ekasi/page.tsx
+DELETE app/gateway/page.tsx
+DELETE app/gateway/layout.tsx
+DELETE app/gateway/panels/
+DELETE app/agent/lindiwe/page.tsx
+DELETE app/ubuntu-games/  (entire tree)
+DELETE app/api/gateway/  (entire tree)
+DELETE app/api/arena/route.ts
+DELETE app/api/whatsapp/handler/route.ts
+DELETE app/api/converse/route.ts
+DELETE app/api/agent/  (entire tree)
+DELETE app/api/ubuntulibrary/route.ts
+DELETE app/api/consent/route.ts
+DELETE app/api/feed/route.ts
+DELETE app/api/contact/route.ts
+DELETE app/api/billing/  (entire tree)
+DELETE app/api/email/  (entire tree)
+DELETE app/api/send-email/route.ts
+DELETE app/api/onboarding/  (entire tree)
+DELETE app/api/auth/route.ts
+DELETE app/api/tools/customer-360/route.ts
+DELETE app/api/chronicle-fetch/route.ts
+DELETE app/api/github/token/route.ts
+DELETE app/api/webhooks/stitch/route.ts
+DELETE app/api/webhooks/stripe/route.ts
+DELETE app/api/webhooks/slack-interactivity/route.ts
+DELETE app/api/schemas/gateway.ts
+DELETE whatsapp-bridge/  (entire tree)
+DELETE ai-gateway/  (entire tree)
+DELETE agent/
+DELETE auth/
+DELETE demo/
+DELETE examples/
+DELETE extensions/
+DELETE governance/  (duplicate — keep docs/governance/)
+DELETE GOVERNANCE/
+DELETE research/  (duplicate — keep docs/research/)
+DELETE services/
+DELETE site/
+DELETE archive/
+DELETE mcp/
+DELETE public/vvv/  (Ubuntu Pools static pages)
+```
 
-### NEW FILES (8 files)
-| File | Purpose | AC |
-|------|---------|----|
-| `src/lib/rate-limiter.ts` | Upstash Redis + in-memory rate limiter | AC2 |
-| `ai-gateway/router.ts` | AiGatewayRouter — 5 intents, 3 providers, auto-fallback | AC4 |
-| `scripts/a11y-check.mjs` | DOM-level WCAG 2.1 AA checker | AC3 |
-| `scripts/accessibility-audit.mjs` | Playwright-based accessibility audit | AC3 |
-| `active/CAPABILITY_MATRIX.md` | Phase 3 capability audit | AC4 |
-| `active/TRUST_BOUNDARY_MATRIX.md` | Phase 4 trust boundary verification | AC5 |
-| `active/RUNTIME_MATRIX.md` | Phase 5 runtime validation | AC6 |
-| `active/PRODUCTION_EVIDENCE.md` | Phase 6 production evidence | AC7 |
+### Phase 2 — Restructure to Canonical Layout
+```
+MOVE app/ → apps/web/
+MOVE app/api/ → apps/web/app/api/  (keepers only)
+MOVE src/ → packages/  (split into trust-kernel, compliance-fabric, safekrypte, compute-fabric)
+MOVE contracts/ → contracts/ (already correct)
+MOVE infra/ → infrastructure/
+MOVE scripts/validation* → validation/scripts/
+MOVE test/ → tests/
+MOVE docs/ → docs/ (already correct)
+CREATE packages/enterprise-control-plane/
+CREATE packages/shared/
+```
 
-### MODIFIED FILES (13 files)
-| File | Change | AC |
-|------|--------|----|
-| `app/page.tsx` | Rewrite to Enterprise Control Plane (189 lines) | AC3 |
-| `app/api/verify/route.ts` | Use shared rate limiter | AC2 |
-| `app/api/send-email/route.ts` | Use shared rate limiter | AC2 |
-| `app/api/email/send-encrypted/route.ts` | Use shared rate limiter | AC2 |
-| `contracts/CircuitBreakerV2.sol` | Underflow fix in `lastTripTimestamp` | AC8 |
-| `test/CircuitBreakerV2.t.sol` | Fixed key mgmt, events, cooldown | AC9 |
-| `src/lib/kernel/vvu-operatus.ts` | Remove unused imports, fix param name | AC10 |
-| `src/lib/kernel/vvu-os-v2.ts` | Remove unused import | AC10 |
-| `src/lib/watchdog/WatchdogProbes.ts` | Prefix unused params with `_` | AC10 |
-| `Dockerfile` | Fix CMD, add build stage | AC11 |
-| `.dockerignore` | Add ignore patterns (`.next`, `dist`, etc.) | AC11 |
-| `next.config.mjs` | Add webpack aliases for `@/server` and `@` | AC1 |
-| `jest.config.js` | Add ignore patterns for `.cache/`, `.local/` | AC1 |
-| `tsconfig.json` | Remove incorrect `@/lib/*` → `./lib/*` mapping | AC1 |
-| `.htmlvalidate.json` | HTML validation config | AC3 |
+### Phase 3 — Rebuild UI
+```
+REWRITE apps/web/app/page.tsx  → Single product narrative homepage
+CREATE apps/web/app/layouts/   → Root layout with institutional styling
+CREATE apps/web/components/sections/Hero.tsx
+CREATE apps/web/components/sections/TrustNarrative.tsx
+CREATE apps/web/components/sections/TrustPipeline.tsx
+CREATE apps/web/components/sections/EnterpriseControlPlane.tsx
+CREATE apps/web/components/sections/ValidationEvidence.tsx
+CREATE apps/web/components/sections/TechnicalArchitecture.tsx
+CREATE apps/web/components/sections/Documentation.tsx
+CREATE apps/web/components/sections/FAQ.tsx
+CREATE apps/web/components/sections/CTA.tsx
+UPDATE apps/web/app/globals.css  → RC1 color palette, typography
+```
+
+### Phase 4 — Add GlobeTelemetry + AntLoader
+```
+CREATE apps/web/components/ui/globe-telemetry.tsx  (headless, props-driven)
+CREATE apps/web/components/ui/ant-loader.tsx  (headless, props-driven)
+UPDATE apps/web/app/globals.css  → ant-loader keyframes
+```
+
+### Phase 5 — Cleanup
+```
+DELETE dead local branches: fix/agent-ecosystem-architecture, replit-agent,
+       integration/rc1-v2, vvu-osc-production-hardening
+DELETE dead remote branches: codex/*, cursor/*, draft/*, trae/*, v0/*,
+       vercel/*, help, hackathon-submission, lablab.ai-hackathon,
+       supabase-client-errors, fix-deployment, debug-failed-deployment
+REWRITE README.md  → ProofBridge-Liner only
+REWRITE vercel.json → route to apps/web/
+UPDATE package.json → point to apps/web/
+```
 
 ## Test Assertions
-1. `tsc --noEmit` → 0 type errors
-2. `npm test` → 12/12 pass
-3. `npm run build` → 0 errors, 67 pages
-4. Behavioral coverage → no FAIL (SKIP allowed for SafeKrypte)
-5. Health endpoint → 200 OK
+| Flow | Expected Outcome |
+|------|-----------------|
+| `npm run build` (from root or apps/web) | 0 errors, ProofBridge-Liner only pages |
+| `npm test` | All 12 tests pass |
+| `curl localhost:3000/api/health` | HTTP 200, JSON `{"status":"healthy"}` |
+| `curl localhost:3000/api/verify` | HMAC verification working |
+| `curl localhost:3000/ubuntu-games` | 404 (route removed) |
+| `curl localhost:3000/studio` | 404 (route removed) |
+| `curl localhost:3000/ekasi` | 404 (route removed) |
+| `git branch -a` | Only canonical branches remain |
+| Behavioral coverage | 4 PASS, 1 SKIP minimum |
+| Vercel deploy | READY status |
 
 ## Branch
-`integration/rc1-v2` — feature/analysis branch (will merge to `compliance-fabric`)
+`compliance-fabric` (canonical branch for RC1)
 
-## Implementation Status
-✅ **ALL PHASES COMPLETE** — Code changes verified, documentation written, behavioral coverage passed.
+## Token Budget Estimate
+~25-35 turns — very large working set due to mass deletions and UI rewrite
 
-## APPROVED BY: Mino (interactive review)
-## DATE: 2026-07-07
+## Handoff Plan
+Write HANDOFF.md with:
+- Phase completed (1-5)
+- Any files that could not be removed (with reason)
+- Next session: run validation gates and deploy
+
+---
+## APPROVED BY: _______________ DATE: _______________
