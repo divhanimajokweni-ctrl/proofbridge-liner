@@ -340,8 +340,6 @@ export default function TrustRuntimePage() {
       }
 
       st.sequence = event.sequence
-      st.confidence = Math.max(20, Math.min(99.9, st.confidence + (Math.random() - 0.3) * 5))
-      st.trust = Math.max(0.1, Math.min(0.98, st.trust + (Math.random() - 0.4) * 0.04))
 
       if (event.type === 'EvidenceReceived') {
         const p = event.payload as any
@@ -774,10 +772,47 @@ export default function TrustRuntimePage() {
     ;(window as any).__updateColonyState?.(st)
   }
 
-  // Dispatch command
+  // Dispatch command — uses server projections when possible
   const dispatchCommand = async (command: Command) => {
-    // Immediately show UI feedback
     const st = liveState.current
+
+    try {
+      const res = await fetch('/api/runtime/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(command),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.projections) {
+          const p = data.projections
+          // Apply server-derived UI projection (authoritative)
+          st.kernelState = p.ui.kernelState
+          st.trust = p.ui.trust
+          st.sigma = p.ui.sigma
+          st.confidence = p.ui.confidence
+          st.sequence = p.ui.sequence
+          st.epoch = p.ui.epoch
+          st.quorum = p.ui.quorum
+          st.circuitBreakerOpen = p.ui.circuitBreakerOpen
+          st.hazardReason = p.ui.hazardReason
+          st.hashChainIntact = p.ui.hashChainIntact
+          st.evidenceLeaves = p.ui.evidenceLeaves
+          // receipt data is in p.ui.receipts
+          renderDOM(st)
+          updateColonyState(st)
+          const msg = `[${new Date().toLocaleTimeString()}] cmd=${command.type} seq=${p.ui.sequence}`
+          logRef.current.push({ time: new Date().toLocaleTimeString(), msg })
+          if (logRef.current.length > 80) logRef.current.shift()
+          setLogEntries([...logRef.current])
+          return
+        }
+      }
+    } catch {
+      // Fetch failed; fall through to local estimate
+    }
+
+    // Fallback: local state estimate (no server available)
     const eventStateMap: Record<string, string> = {
       ResetRuntime: 'IDLE',
       SubmitEvidence: 'INGESTING',
@@ -793,9 +828,7 @@ export default function TrustRuntimePage() {
     }
     renderDOM(st)
     updateColonyState(st)
-
-    // Log
-    const msg = `[${new Date().toLocaleTimeString()}] cmd=${command.type}`
+    const msg = `[${new Date().toLocaleTimeString()}] cmd=${command.type} (local)`
     logRef.current.push({ time: new Date().toLocaleTimeString(), msg })
     if (logRef.current.length > 80) logRef.current.shift()
     setLogEntries([...logRef.current])
@@ -855,16 +888,7 @@ export default function TrustRuntimePage() {
       autoTimerRef.current = null
     }
     const command = stateToCommand(state)
-    // Use fetch directly for real dispatch, fallback to local state update
-    if (sseConnected) {
-      fetch('/api/runtime/dispatch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(command),
-      }).catch(() => dispatchCommand(command))
-    } else {
-      dispatchCommand(command)
-    }
+    dispatchCommand(command)
   }
 
   const startAuto = () => {
@@ -874,15 +898,7 @@ export default function TrustRuntimePage() {
       const state = STATE_ORDER[cycleIndexRef.current % STATE_ORDER.length]
       cycleIndexRef.current++
       const command = stateToCommand(state)
-      if (sseConnected) {
-        fetch('/api/runtime/dispatch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(command),
-        }).catch(() => dispatchCommand(command))
-      } else {
-        dispatchCommand(command)
-      }
+      dispatchCommand(command)
     }, 2400)
   }
 
