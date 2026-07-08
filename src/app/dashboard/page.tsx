@@ -2,9 +2,23 @@
 
 import { useEffect, useState } from 'react'
 
+interface Receipt {
+  id: string
+  chain_hash: string
+  receipt_hash: string
+  payload?: {
+    explanation?: {
+      summary?: string
+      root_cause?: string
+      impact?: string
+      recommended_action?: string
+    }
+  }
+}
+
 export default function Dashboard() {
-  const [receipts, setReceipts] = useState<any[]>([])
-  const [selectedEvent, setSelectedEvent] = useState<any | null>(null)
+  const [receipts, setReceipts] = useState<Receipt[]>([])
+  const [selectedEvent, setSelectedEvent] = useState<Receipt | null>(null)
 
   useEffect(() => {
     fetch('/api/receipts')
@@ -29,10 +43,10 @@ export default function Dashboard() {
           <h2 className="font-bold text-xl">AI Compliance Analysis</h2>
           <p><b>Transaction:</b> {selectedEvent.id}</p>
           <div className="bg-gray-50 p-4 rounded">
-            <p><b>Summary:</b> {selectedEvent.payload.explanation?.summary || 'N/A'}</p>
-            <p><b>Root Cause:</b> {selectedEvent.payload.explanation?.root_cause || 'N/A'}</p>
-            <p><b>Impact:</b> {selectedEvent.payload.explanation?.impact || 'N/A'}</p>
-            <p><b>Recommended Action:</b> {selectedEvent.payload.explanation?.recommended_action || 'N/A'}</p>
+            <p><b>Summary:</b> {selectedEvent.payload?.explanation?.summary || 'N/A'}</p>
+            <p><b>Root Cause:</b> {selectedEvent.payload?.explanation?.root_cause || 'N/A'}</p>
+            <p><b>Impact:</b> {selectedEvent.payload?.explanation?.impact || 'N/A'}</p>
+            <p><b>Recommended Action:</b> {selectedEvent.payload?.explanation?.recommended_action || 'N/A'}</p>
           </div>
         </div>
       )}
