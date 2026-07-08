@@ -197,7 +197,7 @@ const CSS = `
 export default function TrustRuntimePage() {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const stateRef = useRef<{
+  interface TrustRuntimeState {
     currentState: string
     currentSeq: number
     snapshotHistory: any[]
@@ -213,7 +213,18 @@ export default function TrustRuntimePage() {
     colonyTrust: number
     colonyReducedMotion: boolean
     animFrame: number | null
-  }>({
+    docClickHandler: ((e: Event) => void) | null
+    resizeHandler: (() => void) | null
+    motionListener: ((e: MediaQueryListEvent) => void) | null
+    tabClickHandlers: (() => void)[]
+    controlHandlers: (() => void)[]
+    searchHandler: ((e: Event) => void) | null
+    notifHandler: ((e: Event) => void) | null
+    autoHandler: (() => void) | null
+    replayInterval: ReturnType<typeof setInterval> | null
+  }
+
+  const initialTrustState: TrustRuntimeState = {
     currentState: 'IDLE',
     currentSeq: 0,
     snapshotHistory: [],
@@ -229,7 +240,18 @@ export default function TrustRuntimePage() {
     colonyTrust: 1,
     colonyReducedMotion: false,
     animFrame: null,
-  })
+    docClickHandler: null,
+    resizeHandler: null,
+    motionListener: null,
+    tabClickHandlers: [],
+    controlHandlers: [],
+    searchHandler: null,
+    notifHandler: null,
+    autoHandler: null,
+    replayInterval: null,
+  }
+
+  const stateRef = useRef<TrustRuntimeState>(initialTrustState)
 
   useEffect(() => {
     const container = containerRef.current
@@ -523,6 +545,10 @@ export default function TrustRuntimePage() {
 
     const colonyAntSeqRef = { current: 0 }
     st.colonyReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    // Listen for reduced-motion preference changes
+    const motionMedia = window.matchMedia('(prefers-reduced-motion: reduce)')
+    st.motionListener = function (e: MediaQueryListEvent) { st.colonyReducedMotion = e.matches }
+    try { motionMedia.addEventListener('change', st.motionListener) } catch {}
 
     function animateColony() {
       const W = canvas.width, H = canvas.height, cx = W / 2, cy = H / 2, R = W * 0.42
@@ -667,28 +693,39 @@ export default function TrustRuntimePage() {
         const matches = st.snapshotHistory.filter((s: any) =>
           s.state.toLowerCase().includes(val) || s.receiptId.includes(val) || s.evidenceHashPrefix.includes(val)
         )
+        searchResultsEl.innerHTML = ''
         if (matches.length === 0) {
-          searchResultsEl.innerHTML = '<div style="padding:4px;color:var(--text-tertiary);font-size:10px;">No matches</div>'
+          const el = document.createElement('div')
+          el.style.cssText = 'padding:4px;color:var(--text-tertiary);font-size:10px;'
+          el.textContent = 'No matches'
+          searchResultsEl.appendChild(el)
         } else {
-          searchResultsEl.innerHTML = matches.slice(0, 6).map((s: any) =>
-            `<div class="item" data-seq="${s.seq}">seq ${s.seq} · ${s.state} · ${s.receiptId}</div>`
-          ).join('')
-          searchResultsEl.querySelectorAll('.item').forEach(el => {
+          matches.slice(0, 6).forEach((s: any) => {
+            const el = document.createElement('div')
+            el.className = 'item'
+            el.dataset.seq = String(s.seq)
+            el.textContent = `seq ${s.seq} · ${s.state} · ${s.receiptId}`
             el.addEventListener('click', function (this: HTMLElement) {
               const seq = parseInt(this.dataset.seq || '0')
               const snap = st.snapshotHistory.find((s: any) => s.seq === seq)
-              if (snap) { render(snap); searchInput.value = ''; searchResultsEl.classList.remove('open') }
+              if (snap) { render(snap); searchInput!.value = ''; searchResultsEl!.classList.remove('open') }
             })
+            searchResultsEl.appendChild(el)
           })
         }
         searchResultsEl.classList.add('open')
       })
     }
-    document.addEventListener('click', function (e: Event) {
-      if (!(e.target as HTMLElement).closest('.search-box') && searchResultsEl) {
+    st.docClickHandler = function (e: Event) {
+      const target = e.target as HTMLElement
+      if (!target.closest('.search-box') && searchResultsEl) {
         searchResultsEl.classList.remove('open')
       }
-    })
+      if (!target.closest('.notif-btn') && !target.closest('.notif-popup')) {
+        if (notifPopupEl) notifPopupEl.classList.remove('open')
+      }
+    }
+    document.addEventListener('click', st.docClickHandler)
 
     // Notifications
     const notifBtn = container.querySelector('#notif-btn') as HTMLElement | null
@@ -696,11 +733,6 @@ export default function TrustRuntimePage() {
     if (notifBtn && notifPopupEl) {
       notifBtn.addEventListener('click', function (e: Event) { e.stopPropagation(); notifPopupEl.classList.toggle('open') })
     }
-    document.addEventListener('click', function (e: Event) {
-      if (!(e.target as HTMLElement).closest('.notif-btn') && !(e.target as HTMLElement).closest('.notif-popup')) {
-        if (notifPopupEl) notifPopupEl.classList.remove('open')
-      }
-    })
 
     // Auto cycle
     const autoBtn = container.querySelector('#auto-btn') as HTMLElement | null
@@ -748,15 +780,17 @@ export default function TrustRuntimePage() {
     }
     window.addEventListener('resize', handleResize)
 
-    // Start auto after 800ms
-    const autoTimeout = setTimeout(() => { startAuto() }, 800)
-
-    // Cleanup
+    // Cleanup — ALL event listeners and timers
     return () => {
-      clearTimeout(autoTimeout)
       stopAuto()
       if (st.animFrame) cancelAnimationFrame(st.animFrame)
       window.removeEventListener('resize', handleResize)
+      // Remove document-level click listeners
+      if (st.docClickHandler) document.removeEventListener('click', st.docClickHandler)
+      // Remove motion listener
+      if (st.motionListener) {
+        try { window.matchMedia('(prefers-reduced-motion: reduce)').removeEventListener('change', st.motionListener) } catch {}
+      }
     }
   }, [])
 
