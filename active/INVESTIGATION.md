@@ -1,91 +1,107 @@
-# INVESTIGATION — Phase 1-6 Codebase Analysis + Enterprise Control Plane — 2026-07-07
+# INVESTIGATION — RC1 Repository Purity Freeze — 2026-07-07
 
 ## Task
-Multi-phase codebase analysis and hardening: resolve TypeScript path mapping debt, implement Enterprise Control Plane dashboard, audit 9 production capabilities, verify 9 trust boundaries, validate 4 runtimes, and collect production evidence.
+Implement RC1 Directive 001: strip all non-ProofBridge-Liner content from the repository, restructure to canonical mono-repo layout, and rebuild the UI as a single-product institutional narrative with GlobeTelemetry and AntLoader.
 
 ## Current State (as-read from filesystem)
 
-### Branch: `integration/rc1-v2` ✓ (same HEAD as `compliance-fabric`)
+### Branch: `compliance-fabric` ✓
 
-### Phase 1 — Repository Debt Resolution
-**Root cause:** `tsconfig.json` had `@/lib/*` → `./lib/*` path mapping that hijacked all `@/lib/` imports away from `./src/lib/` where actual files lived.
-**Fix:** Removed incorrect mapping, relying on `@/*` → `./src/*` catch-all.
-- **15 affected modules** all resolved (conversation-store, vvu-operatus, tee/attestation, circuitBreakerAbi, vvu-os, vvu-os-v2, soc2_exporter, auditService, WatchdogProbes, LindiweCognitiveHandler, LindiweVoiceEngine, LindiweReasoningEngine, supabase, utils)
-- **Build verification:** `npm run build` → 0 errors, 67 pages
-- **Created:** `src/lib/rate-limiter.ts` — Upstash Redis-based rate limiter with in-memory fallback, replaces inline Map-based rate limiting in 3 API routes
+### Repository Topology
+- 130 root-level entries (including gitignored)
+- 23 `app/` page.tsx files (12 are exclusion targets)
+- 48 `app/api/` route.ts files (31 are exclusion targets)
+- 28 `src/app/` files (3 are exclusion targets)
+- 14 `app/components/` files
+- 20+ `components/` root-level React components
+- 6 local branches, 39 remote branches (most are dead)
+- 26 `public/` assets (many are Ubuntu Pools pages)
 
-### Phase 2 — Enterprise Control Plane
-- **New `app/page.tsx`**: 189-line Enterprise Control Plane with role-based access (guest/operator/admin/compliance), simulated live metrics, canvas-based animated pipeline, search, FAQ, CTA
-- **Accessibility:** Proper ARIA attributes, keyboard navigation, semantic HTML, WCAG 2.1 AA compliance
-- **Metrics:** 3 simulated cards (throughput, latency, success rate) with explicit `(simulated)` labels
-- **Scripts:** `scripts/a11y-check.mjs` (DOM-level WCAG checker), `scripts/accessibility-audit.mjs` (Playwright-based aXe audit)
+### Explicit Exclusion Inventory
 
-### Phase 3 — Capability Matrix (9 capabilities verified)
-| # | Capability | Status | Evidence |
-|---|-----------|--------|----------|
-| 1 | Proof Envelope | PASS | `prover/compliance_tokenizer.ts`, `app/api/proof/commit/`, `app/api/verify/` |
-| 2 | SafeKrypte | PASS | `server/safekrypte-lite.ts` (9 endpoints), kernel operator |
-| 3 | Compliance Fabric | PASS | `prover/compliance_tokenizer.ts`, RMCP, Safeliner, audit bus |
-| 4 | Governance | PASS | Go oracle, Cosign, Lean referee, Supabase governance schema |
-| 5 | Authentication | PASS | Supabase SSR, HMAC sessions, Argon2id PIN, Fail2Ban |
-| 6 | AI Router | PASS | `ai-gateway/router.ts` (5 intents, 3 providers, auto-fallback) |
-| 7 | Circuit Breaker | PASS | `CircuitBreakerV2.sol` (EIP-712 multisig), middleware, Gate D |
-| 8 | Supabase | PASS | 8 migrations, RLS, Drizzle ORM |
-| 9 | TEE Verifier | PASS | `TEEVerifier.sol` (EIP-191), software attestation |
-| **Gaps:** | G-01 | SafeKrypte no dedicated tests | Medium |
-| | G-02 | AI Router no unit tests | Medium |
-| | G-03 | Supabase no DB integration test | Low |
-| | G-04 | verification_loop.test.ts not in Jest config | Low |
-| | G-05 | Go governance no CI test runner | Medium |
+| Category | Paths | Files Count |
+|----------|-------|-------------|
+| Ubuntu Studio | `app/studio/page.tsx` | 1 page + deps |
+| Ubuntu Games | `app/ubuntu-games/*` | 7 page files + ant-feast components |
+| Ubuntu Pools | `app/pools/page.tsx`, `public/vvv/pools-*.html`, `app/api/webhooks/stitch/route.ts` (borderline) | 8+ files |
+| Ekasi | `app/ekasi/page.tsx` | 1 page |
+| Gateway | `app/gateway/`, `app/api/gateway/*` | 5 files |
+| SafeGrid | `app/safegrid/page.tsx` | 1 page |
+| Lindiwe Agent UI | `app/agent/lindiwe/page.tsx` | 1 page |
+| WhatsApp | `app/api/whatsapp/handler/route.ts`, `whatsapp-bridge/` | 2 files + entire bridge |
+| AI Gateway | `ai-gateway/` | Entire directory |
+| Billing | `app/api/billing/*`, `app/api/webhooks/stripe/route.ts` | 3 files |
+| Email | `app/api/email/*`, `app/api/send-email/route.ts` | 6 files |
+| Onboarding | `app/api/onboarding/*`, `app/register/page.tsx` | 3 files |
+| Remaining API | `app/api/auth/`, `app/api/arena/`, `app/api/converse/`, `app/api/agent/`, `app/api/contact/`, `app/api/feed/`, `app/api/ubuntulibrary/`, `app/api/consent/`, `app/api/chronicle-fetch/`, `app/api/github/`, `app/api/tools/` | 12 files |
+| Root dirs | `whatsapp-bridge/`, `ai-gateway/`, `agent/`, `auth/`, `demo/`, `examples/`, `extensions/`, `governance/` (dupe), `GOVERNANCE/` (dupe), `research/`, `services/`, `site/`, `archive/`, `mcp/`, `logs/` | 15 directories |
+| Apps dir | `ai-gateway/` (also under `apps/`), `apps/` may need cleanup | |
 
-### Phase 4 — Trust Boundary Verification (9 boundaries)
-| # | Boundary | Status | Fail-Closed? | Gaps |
-|---|----------|--------|-------------|------|
-| 1 | Envelope Signing | PASS | ✅ Throws on missing key | Keyring in-memory only |
-| 2 | Envelope Verification | PASS | ✅ Returns false/reverts | SafeKrypteOperator stub |
-| 3 | Replay Protection | PASS | ✅ Cooldown reverts, 429, stale | TEEVerifier no nonce |
-| 4 | Key Derivation | PASS | ✅ Ed25519 | No DKG ceremony |
-| 5 | Key Rotation | PASS | ✅ Zero-address guards, threshold check | No addSigner test |
-| 6 | Hardware Attestation | PASS | ✅ Reverts on failure, false on stale | Software TEE |
-| 7 | Policy Evaluation | PASS | ✅ Halts/trips/reverts | No formal DSL |
-| 8 | Circuit Breaker | PASS | ✅ Contract revert, 423/502, SafeERC20 | No event-stream trip |
-| 9 | Audit Evidence | PASS | ✅ Events on all transitions | In-memory, /tmp |
+### Core Infrastructure (KEEP)
 
-### Phase 5 — Runtime Validation
-| Runtime | Build | Boot | Smoke | Notes |
-|---------|-------|------|-------|-------|
-| Node.js v22.22.0 | PASS | PASS | PASS | 67 pages, 0 errors, 12/12 tests |
-| Bun v1.3.6 | PASS | PASS | PASS | Same output as Node |
-| Docker | PASS | PASS | PASS | .dockerignore reduced from 5GB→2.3GB |
-| Vercel | PASS | PASS | PASS | Production Ready (8s build) |
-| **Fix:** Dockerfile CMD changed from nonexistent `services/standalone-daemon.js` to `npm start` |
+| Category | Paths |
+|----------|-------|
+| Trust Kernel | `src/lib/kernel/`, `src/lib/security/`, `src/lib/tee/`, `src/lib/watchdog/` |
+| Compliance Fabric | `src/lib/contracts/`, `compliance/`, `src/app/api/audit/`, `src/app/api/replay/` |
+| SafeKrypte | `circuits/`, `prover/`, `src/lib/tee/` |
+| Compute Fabric | `src/engine/`, `src/gateway/` (core router, not product gateway) |
+| Enterprise Control Plane | `app/page.tsx` (needs rewrite), `app/dashboard/` (partially) |
+| Contracts | `contracts/` (CircuitBreakerV2.sol, GovernanceAnchor.sol, etc.) |
+| Health/Metrics | `app/api/health/`, `app/api/metrics/*`, `app/api/operatus/*` |
+| Security | `app/api/security/*` |
+| Admin | `app/api/admin/*` |
+| Webhooks (core) | `src/app/api/webhooks/route.ts` (Gate B) |
+| Proof | `app/api/proof/`, `app/api/verify/`, `app/api/mint/` |
 
-### Phase 6 — Production Evidence
-Full lifecycle verified: Build → Deploy → Smoke → Health → Telemetry → Proof Gen → Proof Verify → Audit Storage
+### $src/app vs app/ Duality
+Two Next.js App Router hierarchies exist: `app/` and `src/app/`. The canonical routes appear to be in `app/` (the production build compiles from `app/`). `src/app/` contains additional routes that overlap (health, webhooks). This duality must be resolved during restructuring.
 
-### Current Code Changes (uncommitted in working tree)
+### UI Current State
+- Hero section contains VVU Trust OS branding mixed with Ubuntu Studio references
+- Multiple product tiles (Ubuntu Pools, Ubuntu Games, Ekasi, Studio, Gateway)
+- Dashboard mixes ProofBridge metrics with Ubuntu Pools content
+- No GlobeTelemetry or AntLoader components exist yet
+- Current styling uses gradients, glowing effects, card-based layouts
 
-**Bug fixes:**
-- `contracts/CircuitBreakerV2.sol`: Underflow protection in `lastTripTimestamp` initialization (`block.timestamp >= MIN_TRIP_INTERVAL` check)
-- `test/CircuitBreakerV2.t.sol`: Fixed key management (use `vm.addr`/`vm.sign` with private keys), added `vm.warp(2 hours)` to avoid cooldown, event duplicate for `vm.expectEmit`
+### Verification Gates Status (from prior work)
+- `tsc --noEmit`: 0 errors ✓
+- `npm test`: 12/12 pass ✓
+- `npm run build`: 0 errors, 67 pages ✓
+- Behavioral coverage: 4 PASS, 1 SKIP ✓
+- Vercel deploy: READY ✓
 
-**Refactoring:**
-- `src/lib/rate-limiter.ts`: New shared rate limiter using Upstash Redis + in-memory fallback
-- 3 API routes (`verify`, `send-email`, `send-encrypted`): Inline rate limiting → shared module
+## Relevant Audit Findings
+- HF-1: Repository scope dilution — multiple products in one repo (NEW finding from RC1 Directive)
+- HF-2: UI coherence — homepage does not communicate single product narrative (NEW)
+- HF-3: Route sprawl — 48 API routes, many serving non-core products
 
-**TypeScript lint fixes:**
-- `vvu-operatus.ts`: Removed unused imports (`resolvePidRange`, `OS_PILLARS`, `crypto`), fixed `args` → `_args`
-- `vvu-os-v2.ts`: Removed unused import (`RESERVED_PROCESSES_BY_NAME`)
-- `WatchdogProbes.ts`: Prefix unused params with `_`
+## Hard Failures In Scope
+- HF-1 (Repository Purity): Non-ProofBridge-Liner content exists in the repo
+- HF-2 (UI Consistency): Homepage and product pages mix unrelated products
 
-**AI Gateway:**
-- `ai-gateway/router.ts`: 221-line `AiGatewayRouter` class with 5 intents, 3 providers (Mistral/Claude/Fireworks), auto-fallback
+## Current Branch
+`compliance-fabric` (HEAD: 107f222)
 
-## Verification Summary
-| Check | Result |
-|-------|--------|
-| `tsc --noEmit` | ✅ PASS (0 errors) |
-| `npm test` | ✅ 12/12 PASS |
-| `npm run build` | ✅ 0 errors, 67 pages |
-| Behavioral Coverage | ✅ 4 PASS, 1 SKIP (SafeKrypte not running) |
-| Health endpoint | ✅ 200 OK |
+## Required Branch
+`compliance-fabric` (this is Tier-3 compliance work)
+
+## Downstream Dependencies
+- `src/app/api/webhooks/route.ts` — Gate B webhook handler
+- `app/api/metrics/*` — Telemetry pipelines
+- `app/api/operatus/*` — Operatus engine
+- `contracts/CircuitBreakerV2.sol` — Circuit breaker
+- `src/middleware.ts` — Request middleware
+
+## Unknowns Before Planning
+1. **Stitch webhook**: Is `app/api/webhooks/stitch/route.ts` core Gate B infrastructure or Ubuntu Pools billing? Current assessment: it's a webhook endpoint that handles Stitch payments — Ubuntu Pools specific → REMOVE.
+2. **`src/app/` vs `app/`**: Which is canonical? The build compiles from `app/` (Next.js app router root). `src/app/` appears to be a secondary/legacy hierarchy. KEEP what's unique in `src/app/`.
+3. **`supabase/` directory**: Contains migrations. Keep as infrastructure.
+4. **`lib/` root directory**: Contains `HmacSecurityGuard.js`, `rate-limiter.ts`, `amd-init.ts` — core shared libraries. KEEP.
+5. **`server/`**: Node.js server code — need to check if core or experimental.
+6. **`components/` root dir**: Separate from `app/components/` — contains `BillingTierCards.tsx`, `FloatingOverlayWrapper.tsx`, `GovernanceService.ts`. Need to audit.
+
+## Stale Context Risk
+- INVESTIGATION.md was written for different task — completely replaced
+- README.md references Phase 1-6 work, Ubuntu Pools prominently
+- Multiple dead branches (39 remote) increase mental overhead
+- `archive/` directory contains old code that shouldn't influence decisions

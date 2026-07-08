@@ -1,0 +1,2001 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VVU · Trust Runtime</title>
+    <meta name="description" content="Venture Vision Ubuntu — Trust Runtime Operating System. Deterministic projection of the Bayesian Safety Kernel." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=IBM+Plex+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        /* ------------------------------------------------------------------
+           VVU Trust Runtime — Design System
+           ------------------------------------------------------------------ */
+        :root {
+            --bg-base: #07080A;
+            --bg-raised: #0C0D10;
+            --bg-overlay: #121418;
+            --bg-inset: #030405;
+            --border-hairline: #1A1C22;
+            --border-focus: #3A404A;
+            --text-primary: #E8EAED;
+            --text-secondary: #8E949E;
+            --text-tertiary: #4E545E;
+            --text-disabled: #2A2E36;
+            --state-verified: #2FBF71;
+            --state-pending: #E8A23D;
+            --state-hazard: #E5484D;
+            --state-idle: #4E545E;
+            --state-info: #4C8CF5;
+            --font-display: 'Fragment Mono', 'JetBrains Mono', monospace;
+            --font-body: 'Inter Tight', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+            --s-1: 4px;
+            --s-2: 8px;
+            --s-3: 12px;
+            --s-4: 16px;
+            --s-5: 24px;
+            --s-6: 32px;
+            --s-7: 48px;
+            --s-8: 64px;
+            --r-sm: 3px;
+            --r-md: 5px;
+            --r-lg: 8px;
+            --r-pill: 999px;
+            --dur-micro: 80ms;
+            --dur-state: 300ms;
+            --dur-hazard: 500ms;
+            --ease-state: cubic-bezier(0.2, 0.9, 0.3, 1);
+            --ease-hazard: cubic-bezier(0.4, 0, 0.6, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html,
+        body {
+            height: 100%;
+            background: var(--bg-base);
+        }
+        body {
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 12.5px;
+            font-weight: 400;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ------------------------------------------------------------------
+           Layout
+           ------------------------------------------------------------------ */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Top bar */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px var(--s-4);
+            border-bottom: 1px solid var(--border-hairline);
+            background: var(--bg-base);
+            flex-shrink: 0;
+            gap: var(--s-3);
+            flex-wrap: nowrap;
+            z-index: 10;
+        }
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: var(--s-3);
+            flex-shrink: 0;
+        }
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .brand-logo svg {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+        .brand-mark {
+            font-family: var(--font-display);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .brand-mark .sep {
+            color: var(--text-tertiary);
+        }
+        .brand-mark .sub {
+            color: var(--text-tertiary);
+            font-size: 10px;
+            font-weight: 400;
+        }
+        .state-head {
+            display: flex;
+            align-items: center;
+            gap: var(--s-2);
+            margin-left: var(--s-3);
+            padding-left: var(--s-3);
+            border-left: 1px solid var(--border-hairline);
+        }
+        .status-dot {
+            position: relative;
+            display: inline-flex;
+            width: 8px;
+            height: 8px;
+            flex-shrink: 0;
+        }
+        .status-dot::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: var(--r-pill);
+            background: currentColor;
+            display: block;
+            transition: background var(--dur-state) var(--ease-state);
+        }
+        .status-dot.pulse::after {
+            content: "";
+            position: absolute;
+            inset: -2px;
+            border-radius: var(--r-pill);
+            background: currentColor;
+            animation: pulse-ring var(--dur-hazard) var(--ease-hazard) infinite;
+        }
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(2.4);
+                opacity: 0;
+            }
+        }
+        .state-label {
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            transition: color var(--dur-state) var(--ease-state);
+        }
+        .topbar-center {
+            display: flex;
+            align-items: center;
+            gap: var(--s-2);
+            flex: 1;
+            max-width: 420px;
+            min-width: 120px;
+        }
+        .search-box {
+            background: var(--bg-inset);
+            border: 1px solid var(--border-hairline);
+            border-radius: var(--r-pill);
+            padding: 2px 10px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+            position: relative;
+        }
+        .search-box input {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 11px;
+            width: 100%;
+            outline: none;
+            padding: 4px 0;
+        }
+        .search-box input::placeholder {
+            color: var(--text-tertiary);
+        }
+        .search-box svg {
+            width: 12px;
+            height: 12px;
+            stroke: var(--text-tertiary);
+            fill: none;
+            stroke-width: 1.75;
+            flex-shrink: 0;
+        }
+        .search-results {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-overlay);
+            border: 1px solid var(--border-hairline);
+            border-radius: var(--r-lg);
+            padding: var(--s-2);
+            max-height: 180px;
+            overflow-y: auto;
+            z-index: 100;
+            margin-top: 2px;
+        }
+        .search-results.open {
+            display: block;
+        }
+        .search-results .item {
+            padding: 4px 6px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: var(--r-sm);
+            transition: background var(--dur-micro) ease;
+        }
+        .search-results .item:hover {
+            background: var(--bg-raised);
+            color: var(--text-primary);
+        }
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: var(--s-2);
+            flex-shrink: 0;
+        }
+        .notif-btn {
+            position: relative;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: var(--r-sm);
+            transition: color var(--dur-micro) ease;
+            display: flex;
+            align-items: center;
+        }
+        .notif-btn:hover {
+            color: var(--text-primary);
+        }
+        .notif-btn .badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: var(--state-hazard);
+            color: var(--bg-base);
+            font-family: var(--font-mono);
+            font-size: 8px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        .notif-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 1.75;
+        }
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--state-verified);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .live-indicator .dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--state-verified);
+            animation: pulse-dot 1.4s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.2;
+                transform: scale(0.6);
+            }
+        }
+        .notif-popup {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-overlay);
+            border: 1px solid var(--border-hairline);
+            border-radius: var(--r-lg);
+            padding: var(--s-3);
+            width: 260px;
+            max-height: 260px;
+            overflow-y: auto;
+            z-index: 100;
+            margin-top: 2px;
+        }
+        .notif-popup.open {
+            display: block;
+        }
+        .notif-popup .notif-item {
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border-hairline);
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+        .notif-popup .notif-item .time {
+            color: var(--text-tertiary);
+            font-family: var(--font-mono);
+            font-size: 9px;
+        }
+
+        /* Tab navigation */
+        .tab-nav {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            padding: 0 var(--s-4);
+            border-bottom: 1px solid var(--border-hairline);
+            background: var(--bg-base);
+            flex-shrink: 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .tab-nav::-webkit-scrollbar {
+            display: none;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+            font-family: var(--font-body);
+            font-size: 11px;
+            font-weight: 500;
+            padding: 8px 14px;
+            cursor: pointer;
+            transition: color var(--dur-micro) ease, border-color var(--dur-micro) ease;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+        .tab-btn:hover {
+            color: var(--text-secondary);
+        }
+        .tab-btn.active {
+            color: var(--text-primary);
+            border-bottom-color: var(--state-verified);
+        }
+
+        /* Main content */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Views */
+        .view {
+            display: none;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+        .view.active {
+            display: flex;
+        }
+
+        /* ------------------------------------------------------------------
+           RUNTIME OVERVIEW VIEW
+           ------------------------------------------------------------------ */
+        .overview-layout {
+            display: flex;
+            height: 100%;
+            width: 100%;
+            gap: 0;
+            background: var(--bg-base);
+        }
+        .overview-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: var(--s-4);
+            gap: var(--s-3);
+            overflow-y: auto;
+            min-width: 0;
+        }
+        .overview-right {
+            width: 380px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            padding: var(--s-4);
+            gap: var(--s-3);
+            overflow-y: auto;
+            border-left: 1px solid var(--border-hairline);
+            background: var(--bg-raised);
+        }
+        @media (max-width: 900px) {
+            .overview-layout {
+                flex-direction: column;
+            }
+            .overview-right {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid var(--border-hairline);
+                max-height: 50vh;
+            }
+        }
+
+        .panel {
+            background: var(--bg-raised);
+            border: 1px solid var(--border-hairline);
+            border-radius: var(--r-lg);
+            padding: var(--s-3);
+        }
+        .panel-title {
+            font-family: var(--font-body);
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-tertiary);
+            margin-bottom: var(--s-2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .panel-title .hint {
+            font-weight: 400;
+            letter-spacing: 0.02em;
+            text-transform: none;
+            font-size: 10px;
+        }
+
+        /* Progress bars - deterministic execution */
+        .execution-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .exec-bar {
+            display: flex;
+            align-items: center;
+            gap: var(--s-2);
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--text-tertiary);
+        }
+        .exec-bar .label {
+            width: 44px;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 500;
+        }
+        .exec-bar .track {
+            flex: 1;
+            height: 4px;
+            background: var(--bg-inset);
+            border-radius: var(--r-pill);
+            overflow: hidden;
+            position: relative;
+        }
+        .exec-bar .track .fill {
+            height: 100%;
+            border-radius: var(--r-pill);
+            transition: width var(--dur-state) var(--ease-state);
+            width: 0%;
+        }
+        .exec-bar .track .fill.verified {
+            background: var(--state-verified);
+        }
+        .exec-bar .track .fill.pending {
+            background: var(--state-pending);
+        }
+        .exec-bar .track .fill.hazard {
+            background: var(--state-hazard);
+        }
+        .exec-bar .pct {
+            width: 28px;
+            flex-shrink: 0;
+            text-align: right;
+            font-size: 9px;
+            color: var(--text-tertiary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Trust / Posterior */
+        .posterior-display {
+            display: flex;
+            flex-direction: column;
+            gap: var(--s-1);
+        }
+        .posterior-main {
+            display: flex;
+            align-items: baseline;
+            gap: var(--s-3);
+        }
+        .posterior-value {
+            font-family: var(--font-display);
+            font-size: 32px;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+            line-height: 1;
+            transition: color var(--dur-state) var(--ease-state);
+        }
+        .posterior-unit {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-tertiary);
+        }
+        .posterior-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--s-3);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-tertiary);
+            margin-top: var(--s-1);
+        }
+        .posterior-meta .item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .posterior-meta .item .val {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .posterior-meta .item .label {
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            font-size: 8px;
+            letter-spacing: 0.04em;
+        }
+        .posterior-confidence {
+            height: 3px;
+            background: var(--bg-inset);
+            border-radius: var(--r-pill);
+            overflow: hidden;
+            margin-top: var(--s-1);
+        }
+        .posterior-confidence .fill {
+            height: 100%;
+            border-radius: var(--r-pill);
+            transition: width var(--dur-state) var(--ease-state), background var(--dur-state) var(--ease-state);
+            width: 0%;
+        }
+
+        /* Policy rows */
+        .policy {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border-hairline);
+            gap: var(--s-2);
+        }
+        .policy:last-child {
+            border-bottom: 0;
+        }
+        .policy-left {
+            display: flex;
+            align-items: center;
+            gap: var(--s-2);
+            min-width: 0;
+        }
+        .policy-left svg {
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
+            stroke-width: 1.75;
+            fill: none;
+        }
+        .policy-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+        .policy-tier {
+            font-family: var(--font-mono);
+            font-size: 8px;
+            color: var(--text-tertiary);
+            padding: 0 4px;
+            border: 1px solid var(--border-hairline);
+            border-radius: var(--r-sm);
+        }
+        .policy-right {
+            display: flex;
+            align-items: center;
+            gap: var(--s-2);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-tertiary);
+            flex-shrink: 0;
+        }
+        .policy-bar {
+            width: 50px;
+            height: 2px;
+            background: var(--bg-inset);
+            border-radius: var(--r-pill);
+            overflow: hidden;
+            position: relative;
+        }
+        .policy-bar::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--fill);
+            background: var(--tone, var(--state-verified));
+            transition: width var(--dur-state) var(--ease-state);
+        }
+        .policy-bar::after {
+            content: "";
+            position: absolute;
+            top: -1px;
+            bottom: -1px;
+            left: var(--threshold);
+            width: 1px;
+            background: var(--text-tertiary);
+        }
+        .ok {
+            color: var(--state-verified);
+        }
+        .fail {
+            color: var(--state-hazard);
+        }
+
+        /* Timeline */
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+        .timeline-row {
+            display: grid;
+            grid-template-columns: 36px 1fr auto;
+            align-items: center;
+            gap: var(--s-2);
+            padding: 3px 0;
+            font-family: var(--font-mono);
+            font-size: 9px;
+        }
+        .timeline-seq {
+            color: var(--text-tertiary);
+        }
+        .timeline-bar {
+            height: 2px;
+            background: var(--bg-inset);
+            border-radius: var(--r-pill);
+            position: relative;
+            overflow: hidden;
+        }
+        .timeline-bar::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            width: var(--w, 100%);
+            background: var(--tone, var(--state-verified));
+            transition: width var(--dur-state) var(--ease-state);
+        }
+        .timeline-event {
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 8px;
+        }
+
+        /* Attestation list */
+        .attestation {
+            display: flex;
+            flex-direction: column;
+            gap: var(--s-1);
+            padding: var(--s-2) 0;
+            border-bottom: 1px solid var(--border-hairline);
+        }
+        .attestation:last-child {
+            border-bottom: 0;
+        }
+        .attestation-head {
+            display: flex;
+            align-items: center;
+            gap: var(--s-2);
+        }
+        .attestation-head svg {
+            width: 12px;
+            height: 12px;
+            stroke-width: 1.75;
+            fill: none;
+            flex-shrink: 0;
+        }
+        .attestation-platform {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .attestation-meta {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--text-tertiary);
+            padding-left: 20px;
+            line-height: 1.5;
+        }
+
+        /* Receipt */
+        .receipt {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: var(--s-1) var(--s-2);
+            font-family: var(--font-mono);
+            font-size: 9px;
+        }
+        .receipt dt {
+            color: var(--text-tertiary);
+        }
+        .receipt dd {
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        /* ------------------------------------------------------------------
+           GLOBE (infrastructure topology)
+           ------------------------------------------------------------------ */
+        .globe-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1/1;
+            max-width: 380px;
+            margin: 0 auto;
+            background: radial-gradient(ellipse at center, var(--bg-raised) 0%, var(--bg-base) 100%);
+            border-radius: 50%;
+            overflow: hidden;
+            border: 1px solid var(--border-hairline);
+            flex-shrink: 0;
+        }
+        .globe-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+        .globe-health-label {
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--text-tertiary);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: var(--s-1) 0;
+        }
+        .globe-health-label .status-text {
+            transition: color var(--dur-state) var(--ease-state);
+            font-weight: 500;
+        }
+
+        /* ------------------------------------------------------------------
+           OTHER VIEWS (minimal placeholders for now)
+           ------------------------------------------------------------------ */
+        .view-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: var(--text-tertiary);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: var(--s-7);
+            text-align: center;
+            gap: var(--s-3);
+        }
+        .view-placeholder .icon {
+            font-size: 28px;
+            opacity: 0.3;
+        }
+        .view-placeholder .sub {
+            font-size: 10px;
+            color: var(--text-disabled);
+        }
+
+        /* Hazard mode */
+        .hazard-mode .globe-container {
+            border-color: var(--state-hazard);
+        }
+        .hazard-mode .panel {
+            border-color: var(--state-hazard);
+            opacity: 0.85;
+        }
+        .hazard-mode .state-label {
+            color: var(--state-hazard) !important;
+        }
+        .hazard-mode .posterior-value {
+            color: var(--state-hazard) !important;
+        }
+        .hazard-mode .live-indicator {
+            color: var(--state-hazard);
+        }
+        .hazard-mode .live-indicator .dot {
+            background: var(--state-hazard);
+            animation: pulse-dot-hazard 0.6s ease-in-out infinite;
+        }
+        @keyframes pulse-dot-hazard {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.1;
+                transform: scale(0.4);
+            }
+        }
+
+        /* Shake animation for policy cards in hazard */
+        @keyframes shake-card {
+            0% {
+                transform: translateX(0);
+            }
+            20% {
+                transform: translateX(-4px);
+            }
+            40% {
+                transform: translateX(4px);
+            }
+            60% {
+                transform: translateX(-3px);
+            }
+            80% {
+                transform: translateX(3px);
+            }
+            100% {
+                transform: translateX(0);
+            }
+        }
+        .shake {
+            animation: shake-card 0.4s var(--ease-hazard) 1;
+        }
+
+        /* Smooth counter animation */
+        @keyframes count-up {
+            0% {
+                opacity: 0.6;
+                transform: translateY(1px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .count-up {
+            animation: count-up 0.25s var(--ease-state) 1;
+        }
+
+        /* ------------------------------------------------------------------
+           Scrollbar
+           ------------------------------------------------------------------ */
+        ::-webkit-scrollbar {
+            width: 3px;
+            height: 3px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-inset);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-hairline);
+            border-radius: var(--r-pill);
+        }
+
+        /* ------------------------------------------------------------------
+           Responsive
+           ------------------------------------------------------------------ */
+        @media (max-width: 700px) {
+            .topbar {
+                flex-wrap: wrap;
+                padding: 4px var(--s-3);
+            }
+            .topbar-center {
+                order: 3;
+                flex-basis: 100%;
+                max-width: 100%;
+                margin-top: 2px;
+            }
+            .overview-right {
+                width: 100%;
+                max-height: 40vh;
+            }
+            .globe-container {
+                max-width: 200px;
+            }
+            .tab-btn {
+                font-size: 9px;
+                padding: 6px 10px;
+            }
+        }
+
+        /* ------------------------------------------------------------------
+           Controls (demo)
+           ------------------------------------------------------------------ */
+        .controls {
+            position: fixed;
+            bottom: var(--s-3);
+            right: var(--s-3);
+            background: var(--bg-overlay);
+            border: 1px solid var(--border-hairline);
+            border-radius: var(--r-md);
+            padding: 4px 6px;
+            display: flex;
+            gap: 2px;
+            z-index: 50;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            flex-wrap: wrap;
+            max-width: calc(100vw - var(--s-5));
+        }
+        .controls button {
+            background: transparent;
+            color: var(--text-tertiary);
+            border: 1px solid transparent;
+            padding: 3px 7px;
+            border-radius: var(--r-sm);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: inherit;
+            transition: background var(--dur-micro) ease, color var(--dur-micro) ease;
+        }
+        .controls button:hover {
+            color: var(--text-primary);
+            background: var(--bg-raised);
+        }
+        .controls button.active {
+            color: var(--text-primary);
+            background: var(--bg-raised);
+            border-color: var(--border-hairline);
+        }
+        .controls .sep {
+            width: 1px;
+            background: var(--border-hairline);
+            margin: 2px 2px;
+        }
+        .controls .auto-btn {
+            color: var(--state-info);
+        }
+        .controls .auto-btn:hover {
+            color: var(--state-info);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app" id="app">
+
+        <!-- TOP BAR -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <div class="brand-logo">
+                    <svg viewBox="0 0 100 100" fill="none" aria-hidden="true">
+                        <circle cx="35" cy="40" r="16" stroke="#8A9A5B" stroke-width="5" />
+                        <circle cx="65" cy="40" r="16" stroke="#CC7722" stroke-width="5" />
+                        <circle cx="50" cy="64" r="16" stroke="#E2E3DB" stroke-width="5" />
+                    </svg>
+                    <div class="brand-mark">
+                        VVU<span class="sep">/</span><span class="sub">trust-runtime</span>
+                    </div>
+                </div>
+                <div class="state-head">
+                    <span id="state-dot" class="status-dot" style="color: var(--state-idle)"></span>
+                    <span id="state-label" class="state-label">IDLE</span>
+                </div>
+            </div>
+            <div class="topbar-center">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" placeholder="Search journal, receipts, events…" id="search-input" />
+                    <div class="search-results" id="search-results"></div>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="live-indicator">
+                    <span class="dot"></span>
+                    <span>live</span>
+                </div>
+                <div class="relative">
+                    <button class="notif-btn" id="notif-btn" aria-label="Notifications">
+                        <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                        <span class="badge" id="notif-badge">0</span>
+                    </button>
+                    <div class="notif-popup" id="notif-popup"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- TAB NAV -->
+        <nav class="tab-nav" id="tab-nav">
+            <button class="tab-btn active" data-view="overview">Runtime</button>
+            <button class="tab-btn" data-view="evidence">Evidence</button>
+            <button class="tab-btn" data-view="attestation">Attestation</button>
+            <button class="tab-btn" data-view="bayesian">Bayesian</button>
+            <button class="tab-btn" data-view="journal">Journal</button>
+            <button class="tab-btn" data-view="governance">Governance</button>
+        </nav>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+
+            <!-- VIEW: Runtime Overview -->
+            <div class="view active" id="view-overview">
+                <div class="overview-layout">
+                    <div class="overview-left">
+                        <!-- Globe -->
+                        <div class="globe-container" id="globe-container">
+                            <canvas id="globe-canvas"></canvas>
+                        </div>
+                        <div class="globe-health-label">
+                            <span class="status-text" id="globe-status-text">● ALL SYSTEMS NOMINAL</span>
+                        </div>
+
+                        <!-- Execution Bars -->
+                        <div class="panel">
+                            <div class="panel-title">
+                                <span>Execution</span>
+                                <span class="hint" id="exec-hint">seq #0</span>
+                            </div>
+                            <div class="execution-bars" id="exec-bars"></div>
+                        </div>
+
+                        <!-- Hash Chain & Signature -->
+                        <div class="panel">
+                            <div class="panel-title">
+                                <span>Hash Chain</span>
+                                <span class="hint" id="chain-hint">—</span>
+                            </div>
+                            <div id="chain-rows"></div>
+                        </div>
+                    </div>
+
+                    <div class="overview-right">
+                        <!-- Posterior / Trust -->
+                        <div class="panel">
+                            <div class="panel-title">
+                                <span>Posterior</span>
+                                <span class="hint">Bayesian inference</span>
+                            </div>
+                            <div class="posterior-display">
+                                <div class="posterior-main">
+                                    <span class="posterior-value" id="posterior-value">—</span>
+                                    <span class="posterior-unit">± <span id="posterior-sigma">0.000</span></span>
+                                </div>
+                                <div class="posterior-meta">
+                                    <span class="item"><span class="label">confidence</span> <span class="val" id="posterior-conf">—</span></span>
+                                    <span class="item"><span class="label">evidence</span> <span class="val" id="posterior-evidence">0</span></span>
+                                    <span class="item"><span class="label">quorum</span> <span class="val" id="posterior-quorum">0/0</span></span>
+                                    <span class="item"><span class="label">epoch</span> <span class="val" id="posterior-epoch">0</span></span>
+                                </div>
+                                <div class="posterior-confidence">
+                                    <div class="fill" id="posterior-conf-fill" style="width:0%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Policy Decisions -->
+                        <div class="panel" style="flex:1; overflow-y:auto;">
+                            <div class="panel-title">
+                                <span>Policy Decisions</span>
+                                <span class="hint" id="policy-hint">—</span>
+                            </div>
+                            <div id="policy-rows"></div>
+                        </div>
+
+                        <!-- Timeline -->
+                        <div class="panel">
+                            <div class="panel-title">
+                                <span>Timeline</span>
+                                <span class="hint">last 6</span>
+                            </div>
+                            <div class="timeline" id="timeline"></div>
+                        </div>
+
+                        <!-- Receipt -->
+                        <div class="panel">
+                            <div class="panel-title">
+                                <span>Receipt</span>
+                                <span class="hint">last commit</span>
+                            </div>
+                            <dl class="receipt" id="receipt"></dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: Evidence Graph -->
+            <div class="view" id="view-evidence">
+                <div class="view-placeholder">
+                    <div class="icon">⬡</div>
+                    <div>Evidence Graph</div>
+                    <div class="sub">Merkle tree · hash chain · receipt linkage</div>
+                    <!-- FIXED: removed "coming online" — now transparent about demo state -->
+                </div>
+            </div>
+
+            <!-- VIEW: Attestation Explorer -->
+            <div class="view" id="view-attestation">
+                <div class="view-placeholder">
+                    <div class="icon">◈</div>
+                    <div>Attestation Explorer</div>
+                    <div class="sub">Enclave quotes · certificate chains · measurements</div>
+                    <!-- FIXED: removed "live enclave data streaming" — honest about current state -->
+                </div>
+            </div>
+
+            <!-- VIEW: Bayesian Engine -->
+            <div class="view" id="view-bayesian">
+                <div class="view-placeholder">
+                    <div class="icon">∫</div>
+                    <div>Bayesian Engine</div>
+                    <div class="sub">Prior · Likelihood · Posterior · Confidence interval</div>
+                    <!-- FIXED: removed "inference trace active" — honestly describing backend contract -->
+                </div>
+            </div>
+
+            <!-- VIEW: Event Journal -->
+            <div class="view" id="view-journal">
+                <div class="view-placeholder">
+                    <div class="icon">⊞</div>
+                    <div>Event Journal</div>
+                    <div class="sub">Append‑only runtime log · sequence · hashes</div>
+                    <!-- FIXED: removed "journal entries streaming" -->
+                </div>
+            </div>
+
+            <!-- VIEW: Governance -->
+            <div class="view" id="view-governance">
+                <div class="view-placeholder">
+                    <div class="icon">⚖</div>
+                    <div>Governance</div>
+                    <div class="sub">Policy decisions · thresholds · reasons · signatures</div>
+                    <!-- FIXED: removed "all decisions digitally signed" — accurate to backend state -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Demo controls -->
+    <nav class="controls" aria-label="Kernel state simulator">
+        <button data-state="IDLE" class="active">IDLE</button>
+        <button data-state="INGESTING">INGEST</button>
+        <button data-state="ATTESTING">ATTEST</button>
+        <button data-state="VERIFYING">VERIFY</button>
+        <button data-state="COMMITTING">COMMIT</button>
+        <button data-state="SETTLED">SETTLED</button>
+        <button data-state="HAZARD">HAZARD</button>
+        <div class="sep"></div>
+        <button class="auto-btn" id="auto-btn">▶ AUTO</button>
+    </nav>
+
+    <script>
+        /* ---------------------------------------------------------------------
+           VVU Trust Runtime — Static preview with simulated state transitions
+           --------------------------------------------------------------------- */
+        // NOTE: This is a STATIC PREVIEW of the Trust Runtime interface.
+        // All data shown is simulated client-side to demonstrate the visual
+        // design and state machine. See DEPENDENCY.md for the backend wiring
+        // plan to connect this UI to live services.
+        //
+        // Backend integration status:
+        //   - Telemetry WS (port 3001): EXISTS — system metrics at 1s intervals
+        //   - Bayesian verify API (POST /api/verify): EXISTS — real posterior computation
+        //   - SafeKrypte Lite (port 5096): EXISTS — Ed25519 signing and verification
+        //   - Gate metrics A-F (GET /api/metrics/gate-*): EXISTS — live endpoints
+        //   - Event bus (Python on port 8080): EXISTS — Redis-backed pub/sub
+        //   - Receipts DB (Supabase receipts table): EXISTS — persisted receipts
+        //   - TEE attestation (software mode): EXISTS — src/lib/tee/attestation.ts
+        //   - HSM attestation (AMD SEV-SNP, Intel SGX, AWS Nitro): NOT YET BUILT
+
+        // ---- State metadata ----------------------------
+        const STATE_META = {
+            IDLE: { label: 'IDLE', tone: 'idle', color: '#4E545E' },
+            INGESTING: { label: 'INGESTING', tone: 'pending', color: '#E8A23D' },
+            ATTESTING: { label: 'ATTESTING', tone: 'pending', color: '#E8A23D' },
+            VERIFYING: { label: 'VERIFYING', tone: 'pending', color: '#E8A23D' },
+            COMMITTING: { label: 'COMMITTING', tone: 'pending', color: '#E8A23D' },
+            SETTLED: { label: 'SETTLED', tone: 'verified', color: '#2FBF71' },
+            HAZARD: { label: 'HAZARD', tone: 'hazard', color: '#E5484D' },
+        };
+        const STATE_ORDER = ['IDLE', 'INGESTING', 'ATTESTING', 'VERIFYING', 'COMMITTING', 'SETTLED', 'HAZARD'];
+
+        // ---- Globals -----------------------------------
+        let currentState = 'IDLE';
+        let currentSeq = 0;
+        let eventCount = 0;
+        let snapshotHistory = [];
+        let logEntries = [];
+        let auditLog = [];
+        let notifCount = 0;
+        let autoTimer = null;
+        let isPlaying = false;
+        let playInterval = null;
+
+        // For globe
+        let globeCtx = null;
+        let globeCanvas = null;
+        let globeRotation = 0;
+        let globeNodes = [];
+        let globeEdges = [];
+        let packets = [];
+        let animFrame = null;
+
+        // ---- DOM refs ----------------------------------
+        const $ = id => document.getElementById(id);
+        const stateDot = $('state-dot');
+        const stateLabel = $('state-label');
+        const posteriorValue = $('posterior-value');
+        const posteriorSigma = $('posterior-sigma');
+        const posteriorConf = $('posterior-conf');
+        const posteriorEvidence = $('posterior-evidence');
+        const posteriorQuorum = $('posterior-quorum');
+        const posteriorEpoch = $('posterior-epoch');
+        const posteriorConfFill = $('posterior-conf-fill');
+        const policyRows = $('policy-rows');
+        const policyHint = $('policy-hint');
+        const chainRows = $('chain-rows');
+        const chainHint = $('chain-hint');
+        const timeline = $('timeline');
+        const receipt = $('receipt');
+        const execBars = $('exec-bars');
+        const execHint = $('exec-hint');
+        const globeStatus = $('globe-status-text');
+        const notifBadge = $('notif-badge');
+        const notifPopup = $('notif-popup');
+        const notifBtn = $('notif-btn');
+        const searchInput = $('search-input');
+        const searchResults = $('search-results');
+        const app = $('app');
+
+        // ---- Icons -------------------------------------
+        const ICON = {
+            shieldOk: '<svg viewBox="0 0 24 24" class="ok"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>',
+            shieldFail: '<svg viewBox="0 0 24 24" class="fail"><path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
+            link: '<svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1"/><path d="M14 10a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>',
+            commit: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h6M15 12h6"/></svg>',
+            cpu: '<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>',
+        };
+
+        // ---- Deterministic snapshot --------------------
+        function buildSnapshot(state, seq) {
+            const isHazard = state === 'HAZARD';
+            const isSettled = state === 'SETTLED';
+            const isIdle = state === 'IDLE';
+            const progress = Math.min(100, Math.round((seq / 20) * 100));
+
+            const evMap = {
+                IDLE: '000000000000',
+                INGESTING: 'a3f19c0b7e24',
+                ATTESTING: '8b2e4d91fa07',
+                VERIFYING: 'c7d2f10a93b8',
+                COMMITTING: 'e4a81b3c6d5f',
+                SETTLED: 'f9e2d7c4b1a0',
+                HAZARD: 'deadbeef0000'
+            };
+            const evidencePrefix = evMap[state] || 'ffffffffffff';
+            const hashChainIntact = !isHazard;
+            const signatureVerified = isSettled || (!isHazard && !isIdle);
+
+            const attestations = [{
+                platform: 'AMD SEV-SNP',
+                verified: !isHazard && state !== 'ATTESTING' && state !== 'IDLE',
+                certChainValid: !isHazard && state !== 'ATTESTING' && state !== 'IDLE',
+                measurement: 'a3f19c0b7e24d817',
+                lastCheckedIso: new Date(Date.now() - (isIdle ? 0 : 12000)).toISOString()
+            }, {
+                platform: 'Intel SGX',
+                verified: !isHazard && state !== 'IDLE',
+                certChainValid: !isHazard,
+                measurement: isHazard ? '0000000000000000' : '8b2e4d91fa07c3a1',
+                lastCheckedIso: new Date(Date.now() - (isHazard ? 3200 : 8000)).toISOString()
+            }, {
+                platform: 'AWS Nitro',
+                verified: !isIdle,
+                certChainValid: true,
+                measurement: 'c7d2f10a93b8e4a1',
+                lastCheckedIso: new Date(Date.now() - 4200).toISOString()
+            }, ];
+
+            const policyDecisions = [
+                { id: 'p1', label: 'Clock skew < 500ms', classTier: 'A', threshold: 0.500, observed: isHazard ? 1.847 :
+                        0.112, passed: !isHazard },
+                { id: 'p2', label: 'Hash chain continuity', classTier: 'A', threshold: 1.000, observed: hashChainIntact ?
+                        1.000 : 0.000, passed: hashChainIntact },
+                { id: 'p3', label: 'Attestation quorum ≥ 2/3', classTier: 'A', threshold: 0.667, observed: isHazard ?
+                        0.333 : 1.000, passed: !isHazard },
+                { id: 'p4', label: 'Envelope signature valid', classTier: 'B', threshold: 1.000, observed: signatureVerified ?
+                        1.000 : 0.000, passed: signatureVerified },
+                { id: 'p5', label: 'Journal monotonicity', classTier: 'B', threshold: 1.000, observed: 1.000, passed: true },
+            ];
+
+            const passing = policyDecisions.filter(p => p.passed).length;
+            const trust = isIdle ? 0 : +(passing / policyDecisions.length).toFixed(4);
+            const sigma = +(0.008 + Math.random() * 0.012).toFixed(4);
+
+            let trustClass = 'UNCLASSIFIED';
+            if (isIdle) trustClass = 'UNCLASSIFIED';
+            else if (isHazard) trustClass = 'HAZARD';
+            else if (trust >= 0.95 && isSettled) trustClass = 'CLASS-A VERIFIED';
+            else if (trust >= 0.80) trustClass = 'CLASS-B PROVISIONAL';
+            else trustClass = 'UNVERIFIED';
+
+            const receiptId = 'rcpt_' + evidencePrefix.slice(0, 8);
+            const receiptHash = 'sha256:' + evidencePrefix + 'f3a1b9c2';
+            const envelopeHash = 'sha256:9e8d7c6b5a4f3e2d';
+            const signature = 'ed25519:' + (isSettled ? 'a1b2c3d4e5f6' : '—');
+            const snapshotHash = 'snap_' + evidencePrefix + Math.random().toString(16).slice(2, 6);
+
+            // Execution bars: INGEST, VERIFY, ATTEST, SIGN, COMMIT
+            const barProgress = {
+                INGEST: Math.min(100, Math.max(0, (seq / 20) * 100)),
+                VERIFY: Math.min(100, Math.max(0, ((seq - 4) / 20) * 100)),
+                ATTEST: Math.min(100, Math.max(0, ((seq - 8) / 20) * 100)),
+                SIGN: Math.min(100, Math.max(0, ((seq - 12) / 20) * 100)),
+                COMMIT: Math.min(100, Math.max(0, ((seq - 16) / 20) * 100)),
+            };
+            if (isIdle) { Object.keys(barProgress).forEach(k => barProgress[k] = 0); }
+            if (isHazard) { Object.keys(barProgress).forEach(k => barProgress[k] = Math.min(barProgress[k], 60)); }
+
+            return {
+                state,
+                seq,
+                progressPct: progress,
+                provider: 'us-east-1a · nv-07',
+                elapsedMs: isIdle ? 0 : (seq * 1420) + 318,
+                evidenceHashPrefix: evidencePrefix,
+                hashChainIntact,
+                signatureVerified,
+                attestations,
+                policyDecisions,
+                trust,
+                sigma,
+                trustClass,
+                receiptId,
+                receiptHash,
+                envelopeHash,
+                signature,
+                snapshotHash,
+                timestamp: new Date().toISOString(),
+                barProgress,
+                epoch: seq + 38291,
+                quorumTotal: 5,
+                quorumPass: Math.min(5, Math.max(0, Math.round(trust * 5))),
+            };
+        }
+
+        // ---- Emit event ---------------------------------
+        function emitEvent(state) {
+            const seq = ++currentSeq;
+            const snap = buildSnapshot(state, seq);
+            snapshotHistory.push(snap);
+            if (snapshotHistory.length > 200) snapshotHistory.shift();
+            eventCount++;
+
+            // Log
+            const logMsg =
+                `[${new Date().toLocaleTimeString()}] ${state} seq=${seq} trust=${snap.trust} epoch=${snap.epoch}`;
+            logEntries.push({ time: new Date().toLocaleTimeString(), msg: logMsg });
+            if (logEntries.length > 80) logEntries.shift();
+
+            // Audit
+            auditLog.push({
+                time: new Date().toLocaleTimeString(),
+                event: state,
+                status: state === 'HAZARD' ? 'fail' : (state === 'SETTLED' ? 'ok' : 'pending')
+            });
+            if (auditLog.length > 40) auditLog.shift();
+
+            // Notifications
+            if (state !== 'IDLE' && state !== currentState) {
+                notifCount++;
+                notifBadge.textContent = notifCount;
+                const item = document.createElement('div');
+                item.className = 'notif-item';
+                item.innerHTML = `<span class="time">${new Date().toLocaleTimeString()}</span> State → ${state}`;
+                notifPopup.prepend(item);
+                if (notifPopup.children.length > 10) notifPopup.removeChild(notifPopup.lastChild);
+            }
+            if (state === 'SETTLED' && notifCount > 0) {
+                setTimeout(() => { notifCount = 0;
+                    notifBadge.textContent = '0'; }, 2500);
+            }
+            currentState = state;
+
+            render(snap);
+            updateGlobeNodes(snap);
+            return snap;
+        }
+
+        // ---- Render ------------------------------------
+        function render(s) {
+            const meta = STATE_META[s.state];
+            const isHazard = s.state === 'HAZARD';
+            const isSettled = s.state === 'SETTLED';
+
+            // Hazard mode
+            app.classList.toggle('hazard-mode', isHazard);
+
+            // State dot & label
+            stateDot.style.color = meta.color;
+            stateDot.classList.toggle('pulse', isHazard);
+            stateLabel.textContent = meta.label;
+            stateLabel.style.color = meta.color;
+
+            // Execution bars
+            const barOrder = ['INGEST', 'VERIFY', 'ATTEST', 'SIGN', 'COMMIT'];
+            const barLabels = { INGEST: 'ingest', VERIFY: 'verify', ATTEST: 'attest', SIGN: 'sign', COMMIT: 'commit' };
+            const barColors = {
+                INGEST: 'pending',
+                VERIFY: 'pending',
+                ATTEST: 'pending',
+                SIGN: 'pending',
+                COMMIT: 'verified'
+            };
+            if (isHazard) {
+                barColors.INGEST = 'hazard';
+                barColors.VERIFY = 'hazard';
+                barColors.ATTEST = 'hazard';
+                barColors.SIGN = 'hazard';
+                barColors.COMMIT = 'hazard';
+            }
+            if (s.state === 'IDLE') {
+                barColors.INGEST = 'idle';
+                barColors.VERIFY = 'idle';
+                barColors.ATTEST = 'idle';
+                barColors.SIGN = 'idle';
+                barColors.COMMIT = 'idle';
+            }
+            let barHtml = '';
+            barOrder.forEach(key => {
+                const pct = Math.round(s.barProgress[key] || 0);
+                const cls = barColors[key] || 'pending';
+                barHtml += `
+              <div class="exec-bar">
+                <span class="label">${barLabels[key]}</span>
+                <div class="track">
+                  <div class="fill ${cls}" style="width:${pct}%;"></div>
+                </div>
+                <span class="pct">${pct}%</span>
+              </div>
+            `;
+            });
+            execBars.innerHTML = barHtml;
+            execHint.textContent = `seq #${s.seq}`;
+
+            // Posterior
+            posteriorValue.textContent = s.trust.toFixed(4);
+            posteriorValue.style.color = meta.color;
+            posteriorSigma.textContent = s.sigma.toFixed(4);
+            const confPct = Math.min(99.99, Math.max(0, (1 - s.sigma * 8) * 100));
+            posteriorConf.textContent = confPct.toFixed(2) + '%';
+            posteriorEvidence.textContent = Math.min(999, Math.round(s.seq * 12.8));
+            posteriorQuorum.textContent = `${s.quorumPass}/${s.quorumTotal}`;
+            posteriorEpoch.textContent = s.epoch;
+            posteriorConfFill.style.width = confPct + '%';
+            posteriorConfFill.style.background = isHazard ? 'var(--state-hazard)' :
+                isSettled ? 'var(--state-verified)' : 'var(--state-pending)';
+
+            // Policy
+            const failing = s.policyDecisions.filter(p => !p.passed).length;
+            policyHint.textContent = failing > 0 ? `${failing} failing` : 'all passing';
+            policyHint.style.color = failing > 0 ? 'var(--state-hazard)' : 'var(--state-verified)';
+            let policyHtml = '';
+            s.policyDecisions.forEach(p => {
+                const fillPct = Math.min(100, (p.observed / Math.max(p.threshold, 0.001)) * 100);
+                const thresholdPct = Math.min(100, (p.threshold / Math.max(p.observed, p.threshold, 0.001)) * 100);
+                const tone = p.passed ? 'var(--state-verified)' : 'var(--state-hazard)';
+                const icon = p.passed ? ICON.shieldOk : ICON.shieldFail;
+                const shake = isHazard && !p.passed ? 'shake' : '';
+                policyHtml += `
+              <div class="policy ${shake}">
+                <div class="policy-left">
+                  ${icon}
+                  <span class="policy-label">${p.label}</span>
+                  <span class="policy-tier">${p.classTier}</span>
+                </div>
+                <div class="policy-right">
+                  <div class="policy-bar" style="--fill:${fillPct}%; --threshold:${thresholdPct}%; --tone:${tone}"></div>
+                  <span>${p.observed.toFixed(3)}</span>
+                </div>
+              </div>
+            `;
+            });
+            policyRows.innerHTML = policyHtml;
+
+            // Hash chain
+            chainRows.innerHTML = `
+            <div class="row">
+              <div class="row-left">${ICON.link}<span style="font-size:11px;">Chain integrity</span></div>
+              <div class="row-right">
+                <span>${s.evidenceHashPrefix}…</span>
+                ${s.hashChainIntact ? ICON.shieldOk : ICON.shieldFail}
+              </div>
+            </div>
+            <div class="row">
+              <div class="row-left">${ICON.commit}<span style="font-size:11px;">Ed25519 signature</span></div>
+              <div class="row-right">
+                <span>${s.signatureVerified ? 'verified' : 'unverified'}</span>
+                ${s.signatureVerified ? ICON.shieldOk : ICON.shieldFail}
+              </div>
+            </div>
+          `;
+            chainHint.textContent = (s.hashChainIntact && s.signatureVerified) ? 'intact · signed' :
+                (!s.hashChainIntact) ? 'chain broken' : 'unsigned';
+            chainHint.style.color = (s.hashChainIntact && s.signatureVerified) ? 'var(--state-verified)' :
+                'var(--state-hazard)';
+
+            // Timeline
+            const evs = ['INGEST', 'VERIFY', 'ATTEST', 'SIGN', 'COMMIT', 'CHECK', 'SYNC', 'FINAL'];
+            const tones = ['var(--state-pending)', 'var(--state-pending)', 'var(--state-pending)',
+                'var(--state-pending)', 'var(--state-verified)', 'var(--state-info)', 'var(--state-pending)',
+                'var(--state-verified)'
+            ];
+            let tlHtml = '';
+            const base = Math.max(0, s.seq - 5);
+            for (let i = 0; i < 6; i++) {
+                const seqI = base + i;
+                const ev = evs[i % evs.length];
+                const w = Math.max(8, Math.min(100, (seqI / 20) * 100));
+                const tone = tones[i % tones.length];
+                tlHtml += `
+              <div class="timeline-row">
+                <span class="timeline-seq">#${String(seqI).padStart(3,'0')}</span>
+                <div class="timeline-bar" style="--w:${w}%; --tone:${tone}"></div>
+                <span class="timeline-event">${ev}</span>
+              </div>
+            `;
+            }
+            timeline.innerHTML = tlHtml;
+
+            // Receipt
+            receipt.innerHTML = `
+            <dt>id</dt><dd>${s.receiptId}</dd>
+            <dt>receipt</dt><dd>${s.receiptHash.slice(0,20)}…</dd>
+            <dt>envelope</dt><dd>${s.envelopeHash.slice(0,20)}…</dd>
+            <dt>signature</dt><dd>${s.signature.slice(0,16)}…</dd>
+          `;
+
+            // Globe status
+            if (isHazard) {
+                globeStatus.textContent = '⚠ HAZARD · SYSTEM DEGRADED';
+                globeStatus.style.color = 'var(--state-hazard)';
+            } else if (isSettled) {
+                globeStatus.textContent = '● ALL SYSTEMS NOMINAL';
+                globeStatus.style.color = 'var(--state-verified)';
+            } else if (s.state === 'IDLE') {
+                globeStatus.textContent = '○ SYSTEM STANDBY';
+                globeStatus.style.color = 'var(--text-tertiary)';
+            } else {
+                globeStatus.textContent = '◉ TRANSITIONING · VERIFYING';
+                globeStatus.style.color = 'var(--state-pending)';
+            }
+        }
+
+        // ---- 3D Globe (canvas) -------------------------
+        const NODE_DATA = [
+            { id: 'nyc', label: 'NYC', lat: 40.7, lon: -74.0, region: 'NA' },
+            { id: 'lhr', label: 'LHR', lat: 51.5, lon: -0.1, region: 'EU' },
+            { id: 'fra', label: 'FRA', lat: 50.1, lon: 8.7, region: 'EU' },
+            { id: 'sin', label: 'SIN', lat: 1.3, lon: 103.8, region: 'AP' },
+            { id: 'nrt', label: 'NRT', lat: 35.8, lon: 140.0, region: 'AP' },
+            { id: 'gru', label: 'GRU', lat: -23.4, lon: -46.5, region: 'SA' },
+            { id: 'sfo', label: 'SFO', lat: 37.8, lon: -122.4, region: 'NA' },
+            { id: 'jhb', label: 'JHB', lat: -26.1, lon: 28.2, region: 'SA' },
+            { id: 'dub', label: 'DUB', lat: 25.2, lon: 55.3, region: 'AP' },
+            { id: 'cpt', label: 'CPT', lat: -33.9, lon: 18.4, region: 'SA' },
+        ];
+        const EDGE_DATA = [
+            { from: 'nyc', to: 'lhr' },
+            { from: 'nyc', to: 'sfo' },
+            { from: 'lhr', to: 'fra' },
+            { from: 'lhr', to: 'jhb' },
+            { from: 'fra', to: 'sin' },
+            { from: 'sin', to: 'nrt' },
+            { from: 'sin', to: 'jhb' },
+            { from: 'sfo', to: 'nrt' },
+            { from: 'nrt', to: 'nyc' },
+            { from: 'jhb', to: 'gru' },
+            { from: 'gru', to: 'lhr' },
+            { from: 'fra', to: 'nyc' },
+            { from: 'dub', to: 'sin' },
+            { from: 'cpt', to: 'jhb' },
+            { from: 'cpt', to: 'lhr' },
+        ];
+
+        let globeNodeStatus = {};
+        let packetId = 0;
+
+        function initGlobe() {
+            globeCanvas = $('globe-canvas');
+            const rect = globeCanvas.parentElement.getBoundingClientRect();
+            const size = Math.min(rect.width, rect.height, 380);
+            globeCanvas.width = size * 2;
+            globeCanvas.height = size * 2;
+            globeCanvas.style.width = size + 'px';
+            globeCanvas.style.height = size + 'px';
+            globeCtx = globeCanvas.getContext('2d');
+
+            globeNodes = NODE_DATA.map(n => ({
+                ...n,
+                x: 0,
+                y: 0,
+                z: 0,
+                status: 'inactive'
+            }));
+            globeEdges = EDGE_DATA.map(e => ({
+                ...e,
+                fromNode: globeNodes.find(n => n.id === e.from),
+                toNode: globeNodes.find(n => n.id === e.to),
+                brightness: 0.3,
+            }));
+
+            // Initial status
+            globeNodes.forEach(n => n.status = 'inactive');
+            updateGlobeNodes(buildSnapshot('IDLE', 0));
+            animateGlobe();
+        }
+
+        function updateGlobeNodes(snap) {
+            const isHazard = snap.state === 'HAZARD';
+            const isSettled = snap.state === 'SETTLED';
+            const isIdle = snap.state === 'IDLE';
+
+            globeNodes.forEach((n, i) => {
+                if (isHazard) {
+                    n.status = (i % 3 === 0) ? 'hazard' : (i % 2 === 0) ? 'warning' : 'active';
+                } else if (isSettled) {
+                    n.status = 'active';
+                } else if (isIdle) {
+                    n.status = 'inactive';
+                } else {
+                    n.status = (i % 2 === 0) ? 'active' : 'warning';
+                }
+            });
+
+            // Edge brightness based on latency simulation
+            globeEdges.forEach(e => {
+                const fromS = globeNodes.find(n => n.id === e.from).status;
+                const toS = globeNodes.find(n => n.id === e.to).status;
+                const base = (fromS === 'active' && toS === 'active') ? 0.7 :
+                    (fromS === 'warning' || toS === 'warning') ? 0.4 :
+                    (fromS === 'hazard' || toS === 'hazard') ? 0.1 : 0.2;
+                e.brightness = base + (Math.random() - 0.5) * 0.1;
+                e.brightness = Math.max(0.05, Math.min(0.9, e.brightness));
+            });
+
+            // Spawn packets on active edges
+            if (!isIdle && !isHazard) {
+                if (packets.length < 15 && Math.random() < 0.3) {
+                    const edge = globeEdges[Math.floor(Math.random() * globeEdges.length)];
+                    if (edge.brightness > 0.3) {
+                        packets.push({
+                            id: packetId++,
+                            edge: edge,
+                            progress: 0,
+                            speed: 0.004 + Math.random() * 0.006,
+                            size: 2 + Math.random() * 2,
+                        });
+                    }
+                }
+            }
+            // In hazard, slow packets
+            if (isHazard) {
+                packets.forEach(p => p.speed *= 0.5);
+            }
+        }
+
+        function project(lat, lon, radius) {
+            const phi = (90 - lat) * Math.PI / 180;
+            const theta = (lon + 180) * Math.PI / 180;
+            const x = -radius * Math.sin(phi) * Math.cos(theta);
+            const y = radius * Math.cos(phi);
+            const z = radius * Math.sin(phi) * Math.sin(theta);
+            return { x, y, z };
+        }
+
+        function rotatePoint(p, rot) {
+            const c = Math.cos(rot);
+            const s = Math.sin(rot);
+            return {
+                x: p.x * c - p.z * s,
+                y: p.y,
+                z: p.x * s + p.z * c
+            };
+        }
+
+        function animateGlobe() {
+            const canvas = globeCanvas;
+            const ctx = globeCtx;
+            if (!ctx) return;
+
+            const W = canvas.width;
+            const H = canvas.height;
+            const radius = W * 0.35;
+            const cx = W / 2;
+            const cy = H / 2;
+
+            // Very slow rotation: 360° every 150 seconds
+            globeRotation += 0.00007;
+            if (globeRotation > Math.PI * 2) globeRotation -= Math.PI * 2;
+
+            // Clear
+            ctx.clearRect(0, 0, W, H);
+
+            // Background glow
+            const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.2);
+            grad.addColorStop(0, 'rgba(20,30,50,0.3)');
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, W, H);
+
+            // Project nodes
+            const projected = globeNodes.map(n => {
+                const p = project(n.lat, n.lon, radius);
+                const r = rotatePoint(p, globeRotation);
+                // Perspective
+                const scale = 1 + r.z / (radius * 1.5);
+                const screenX = cx + r.x * scale;
+                const screenY = cy + r.y * scale;
+                const depth = (r.z / radius) + 0.5; // 0..1
+                return { ...n, screenX, screenY, depth, scale, r };
+            });
+
+            // Sort by depth (back to front)
+            projected.sort((a, b) => a.depth - b.depth);
+
+            // Draw edges
+            globeEdges.forEach(edge => {
+                const from = projected.find(n => n.id === edge.from);
+                const to = projected.find(n => n.id === edge.to);
+                if (!from || !to) return;
+                // Only draw if both are on the front hemisphere (depth > 0.3) or edge is active
+                const alpha = edge.brightness * 0.7;
+                ctx.beginPath();
+                ctx.moveTo(from.screenX, from.screenY);
+                ctx.lineTo(to.screenX, to.screenY);
+                ctx.strokeStyle = `rgba(140,180,220,${alpha})`;
+                ctx.lineWidth = 0.8 + edge.brightness * 0.8;
+                ctx.stroke();
+
+                // Draw packet flow
+                packets.forEach(p => {
+                    if (p.edge === edge) {
+                        p.progress += p.speed;
+                        if (p.progress > 1) p.progress = 0;
+                        const px = from.screenX + (to.screenX - from.screenX) * p.progress;
+                        const py = from.screenY + (to.screenY - from.screenY) * p.progress;
+                        ctx.beginPath();
+                        ctx.arc(px, py, p.size, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(180,220,255,${0.5 + 0.5 * Math.sin(p.progress * Math.PI)})`;
+                        ctx.fill();
+                    }
+                });
+            });
+
+            // Draw nodes
+            projected.forEach(n => {
+                const status = n.status || 'inactive';
+                let color = '#4E545E';
+                let radiusNode = 4;
+                if (status === 'active') { color = '#2FBF71';
+                    radiusNode = 5; }
+                if (status === 'warning') { color = '#E8A23D';
+                    radiusNode = 5; }
+                if (status === 'hazard') { color = '#E5484D';
+                    radiusNode = 6; }
+                if (status === 'inactive') { color = '#2A2E36';
+                    radiusNode = 3; }
+
+                // Glow for active
+                if (status === 'active') {
+                    const grd = ctx.createRadialGradient(n.screenX, n.screenY, 0, n.screenX, n.screenY, radiusNode * 3);
+                    grd.addColorStop(0, 'rgba(47,191,113,0.2)');
+                    grd.addColorStop(1, 'rgba(47,191,113,0)');
+                    ctx.fillStyle = grd;
+                    ctx.beginPath();
+                    ctx.arc(n.screenX, n.screenY, radiusNode * 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                if (status === 'hazard') {
+                    const grd = ctx.createRadialGradient(n.screenX, n.screenY, 0, n.screenX, n.screenY, radiusNode * 4);
+                    grd.addColorStop(0, 'rgba(229,72,77,0.25)');
+                    grd.addColorStop(1, 'rgba(229,72,77,0)');
+                    ctx.fillStyle = grd;
+                    ctx.beginPath();
+                    ctx.arc(n.screenX, n.screenY, radiusNode * 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.beginPath();
+                ctx.arc(n.screenX, n.screenY, radiusNode, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+
+                // Label (only for nodes with depth > 0.3)
+                if (n.depth > 0.3) {
+                    ctx.fillStyle = 'rgba(200,210,220,0.6)';
+                    ctx.font = '7px "JetBrains Mono", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(n.label, n.screenX, n.screenY + radiusNode + 10);
+                }
+            });
+
+            // Clean up dead packets
+            packets = packets.filter(p => {
+                const edgeExists = globeEdges.some(e => e === p.edge);
+                if (!edgeExists) return false;
+                return true;
+            });
+            if (packets.length > 30) packets.splice(0, packets.length - 30);
+
+            // Center dot
+            ctx.beginPath();
+            ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(200,210,220,0.3)';
+            ctx.fill();
+
+            animFrame = requestAnimationFrame(animateGlobe);
+        }
+
+        // ---- Tab switching ------------------------------
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const view = this.dataset.view;
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                const target = document.getElementById('view-' + view);
+                if (target) target.classList.add('active');
+            });
+        });
+
+        // ---- Search ------------------------------------
+        searchInput.addEventListener('input', function(e) {
+            const val = e.target.value.trim().toLowerCase();
+            const results = searchResults;
+            if (val.length === 0) { results.classList.remove('open'); return; }
+            const matches = snapshotHistory.filter(s =>
+                s.state.toLowerCase().includes(val) ||
+                s.receiptId.includes(val) ||
+                s.evidenceHashPrefix.includes(val)
+            );
+            if (matches.length === 0) {
+                results.innerHTML = '<div style="padding:4px;color:var(--text-tertiary);font-size:10px;">No matches</div>';
+            } else {
+                results.innerHTML = matches.slice(0, 6).map(s =>
+                    `<div class="item" data-seq="${s.seq}">seq ${s.seq} · ${s.state} · ${s.receiptId}</div>`
+                ).join('');
+                results.querySelectorAll('.item').forEach(el => {
+                    el.addEventListener('click', function() {
+                        const seq = parseInt(this.dataset.seq);
+                        const snap = snapshotHistory.find(s => s.seq === seq);
+                        if (snap) {
+                            render(snap);
+                            searchInput.value = '';
+                            results.classList.remove('open');
+                        }
+                    });
+                });
+            }
+            results.classList.add('open');
+        });
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-box')) {
+                searchResults.classList.remove('open');
+            }
+        });
+
+        // ---- Notifications ------------------------------
+        notifBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            notifPopup.classList.toggle('open');
+        });
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.notif-btn') && !e.target.closest('.notif-popup')) {
+                notifPopup.classList.remove('open');
+            }
+        });
+
+        // ---- Auto state cycle --------------------------
+        function startAuto() {
+            let i = 0;
+            autoTimer = setInterval(() => {
+                const state = STATE_ORDER[i % STATE_ORDER.length];
+                emitEvent(state);
+                i++;
+                document.querySelectorAll('.controls button[data-state]').forEach(b => {
+                    b.classList.toggle('active', b.dataset.state === state);
+                });
+            }, 2400);
+            document.getElementById('auto-btn').textContent = '■ STOP';
+        }
+
+        function stopAuto() {
+            if (autoTimer) { clearInterval(autoTimer);
+                autoTimer = null; }
+            document.getElementById('auto-btn').textContent = '▶ AUTO';
+        }
+
+        document.getElementById('auto-btn').addEventListener('click', function() {
+            if (autoTimer) stopAuto();
+            else startAuto();
+        });
+
+        // ---- Manual state buttons ----------------------
+        document.querySelectorAll('.controls button[data-state]').forEach(b => {
+            b.addEventListener('click', function() {
+                if (autoTimer) stopAuto();
+                const state = this.dataset.state;
+                emitEvent(state);
+                document.querySelectorAll('.controls button[data-state]').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.state === state);
+                });
+            });
+        });
+
+        // ---- Resize globe ------------------------------
+        let resizeTimeout;
+        function resizeGlobe() {
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const canvas = globeCanvas;
+                const rect = canvas.parentElement.getBoundingClientRect();
+                const size = Math.min(rect.width, rect.height, 380);
+                if (size > 10) {
+                    canvas.width = size * 2;
+                    canvas.height = size * 2;
+                    canvas.style.width = size + 'px';
+                    canvas.style.height = size + 'px';
+                }
+            }, 150);
+        }
+        window.addEventListener('resize', resizeGlobe);
+
+        // ---- Init --------------------------------------
+        initGlobe();
+        emitEvent('IDLE');
+        setTimeout(() => {
+            startAuto();
+        }, 800);
+
+        // Also resize after fonts load
+        document.fonts && document.fonts.ready && document.fonts.ready.then(resizeGlobe);
+
+        console.log('VVU Trust Runtime · static preview (simulated backend)');
+    </script>
+</body>
+</html>
