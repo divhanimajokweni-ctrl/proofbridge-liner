@@ -15,3 +15,4 @@ export * from "./observations";
 export * from "./incidents";
 export * from "./policyRules";
 export * from "./gatewayParticipants";
+export * from "./trust-runtime";

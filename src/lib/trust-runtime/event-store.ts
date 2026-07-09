@@ -142,3 +142,83 @@ export class InMemoryEventStore implements EventStore {
     this.seqCounter = 0;
   }
 }
+
+// ---------------------------------------------------------------------------
+// PostgreSQL Event Store (durable implementation)
+// ---------------------------------------------------------------------------
+
+import { EventStoreRepository, DomainEvent, OccConflictError, SnapshotCorruptionError } from "../../../lib/db/src/repositories/event-store.repository";
+
+export class PostgresEventStore implements EventStore {
+  constructor(private readonly repo: EventStoreRepository) {}
+
+  async append(event: RuntimeEvent): Promise<number> {
+    const domainEvent: DomainEvent = {
+      eventId: event.eventId,
+      eventType: event.type,
+      payload: event.payload as Record<string, any>,
+      metadata: {},
+    };
+
+    const result = await this.repo.append(
+      event.tenantId,
+      event.streamId,
+      event.streamVersion - 1, // expectedVersion is 0-indexed
+      [domainEvent]
+    );
+
+    return Number(result.lastSequenceNumber);
+  }
+
+  async read(sequence: number): Promise<RuntimeEvent | null> {
+    // This implementation requires stream context; use readStream instead
+    throw new Error('PostgresEventStore.read() not supported. Use loadStream() instead.');
+  }
+
+  async readRange(fromSequence: number, toSequence: number): Promise<RuntimeEvent[]> {
+    throw new Error('PostgresEventStore.readRange() not supported. Use loadStream() instead.');
+  }
+
+  async readFrom(fromSequence: number): Promise<RuntimeEvent[]> {
+    throw new Error('PostgresEventStore.readFrom() not supported. Use loadStream() instead.');
+  }
+
+  async getCurrentSequence(): Promise<number> {
+    // This requires stream context; use getCurrentVersion() instead
+    throw new Error('PostgresEventStore.getCurrentSequence() not supported. Use repo.getCurrentVersion() instead.');
+  }
+
+  async exists(eventId: string): Promise<boolean> {
+    // Check via repository query
+    throw new Error('PostgresEventStore.exists() not yet implemented');
+  }
+
+  async saveSnapshot<T>(sequence: number, state: T): Promise<void> {
+    // Requires tenantId/streamId context
+    throw new Error('PostgresEventStore.saveSnapshot() not yet implemented');
+  }
+
+  async loadLatestSnapshot<T>(atSequence?: number): Promise<{ sequence: number; state: T } | null> {
+    // Requires tenantId/streamId context
+    throw new Error('PostgresEventStore.loadLatestSnapshot() not yet implemented');
+  }
+
+  async size(): Promise<number> {
+    throw new Error('PostgresEventStore.size() not yet implemented');
+  }
+}
+
+/**
+ * Auto-select event store implementation based on environment.
+ * If DATABASE_URL is present, use PostgreSQL; otherwise fall back to in-memory.
+ */
+export function createEventStore(): EventStore {
+  if (process.env.DATABASE_URL) {
+    const { getDb } = require('../../../lib/db/src/index');
+    const db = getDb();
+    const repo = new EventStoreRepository(db);
+    return new PostgresEventStore(repo);
+  }
+
+  return new InMemoryEventStore();
+}
