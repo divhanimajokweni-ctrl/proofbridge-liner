@@ -100,8 +100,13 @@ printf "╚═══════════════════════
   fi
 
   # 4. Vercel project linked
-  if [ -f ".vercel/repo.json" ] && jq -e '.projects[0].id' .vercel/repo.json &>/dev/null; then
-    pass "Vercel project linked: $(jq -r '.projects[0].name' .vercel/repo.json 2>/dev/null || echo 'unknown')"
+  if [ -f ".vercel/project.json" ] || ([ -f ".vercel/repo.json" ] && jq -e '.projects[0].id' .vercel/repo.json &>/dev/null); then
+    if [ -f ".vercel/project.json" ]; then
+      PROJECT_NAME=$(jq -r '.projectName' .vercel/project.json 2>/dev/null || echo 'unknown')
+    else
+      PROJECT_NAME=$(jq -r '.projects[0].name' .vercel/repo.json 2>/dev/null || echo 'unknown')
+    fi
+    pass "Vercel project linked: ${PROJECT_NAME}"
   else
     fail "Vercel project NOT linked — run 'vercel link'"
     PF_PASS=false
