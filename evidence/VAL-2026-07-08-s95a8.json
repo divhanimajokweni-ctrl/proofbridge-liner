@@ -1,0 +1,26 @@
+{
+  "runId": "VAL-2026-07-08-s95a8",
+  "constitutionVersion": "1.0.0",
+  "commit": "7ecbc74984d751681c8d123b5fca13d42380b3c5",
+  "timestamp": "2026-07-08T23:49:30.943Z",
+  "results": {
+    "HappyPath_AppendAndProject": "PASS",
+    "HappyPath_FullFlow": "PASS",
+    "HappyPath_EnvelopeRoundTrip": "PASS",
+    "HappyPath_DeterministicProjection": "PASS",
+    "Negative_InvalidSignature": "PASS",
+    "Negative_IllegalStateTransition": "PASS",
+    "Negative_DuplicateIdempotency": "PASS",
+    "Negative_EmptyCommand": "PASS",
+    "Replay_DeterministicState": "PASS",
+    "Replay_CircuitBreakerCycle": "PASS",
+    "Crypto_PayloadHashAllowsIntegrityCheckWithoutDecryption": "PASS",
+    "Crypto_DifferentKeysDifferentEnvelopes": "PASS"
+  },
+  "summary": {
+    "passed": 12,
+    "failed": 0,
+    "total": 12
+  },
+  "signature": "fd693626d284939b48431fb7bc26dcea8876c10f3055b223865963176bbbf14fbfda412e50f9f0ecf9de2bd82fd74efe06a9f1861b2b418498a3407fce066e07"
+}
