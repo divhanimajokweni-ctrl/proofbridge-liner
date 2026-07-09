@@ -1,171 +1,160 @@
-# PLAN — RC1 Repository Purity Freeze — 2026-07-07
+# PLAN — Durable Event Store & Transactional Outbox — 2026-07-09
 
 ## Business Intent
-ProofBridge-Liner is a single product: deterministic trust infrastructure. The repository must contain only that product. Removing unrelated code, restructuring to a canonical layout, and rebuilding the UI around a single institutional narrative are prerequisites for RC1 release.
+Transform the Trust Runtime from an in-memory prototype to an institutional-grade, durable event-sourced system. The current `InMemoryEventStore` loses all state on restart, provides no multi-tenant isolation, and cannot guarantee delivery. This plan implements a PostgreSQL-backed event store with OCC, outbox pattern, governance hashes, and property-based verification — making the runtime safe for production use in regulated environments.
 
 ## User Story
-As a **CTO evaluating ProofBridge-Liner for a regulated enterprise (bank, insurer, government)**, I need the repository and website to communicate a single coherent product with cryptographic trust enforcement at its center, so that I can evaluate fit for purpose without confusion from unrelated VVU ecosystem content.
+As a **VVU operator running ProofBridge-Liner in a regulated enterprise**, I need the Trust Runtime to survive restarts, enforce tenant isolation at the database layer, guarantee exactly-once event delivery, and provide mathematically verified integrity guarantees — so that I can trust the runtime for production deployment.
 
 ## Acceptance Criteria
-- [ ] **AC1**: All exclusion targets (Ubuntu Studio, Ekasi, Gateway, Ubuntu Games, Ubuntu Pools, SafeGrid, Lindiwe Agent UI, WhatsApp, AI Gateway, Billing, Email, Onboarding, Auth, Arena, Converse, Agent APIs, Contact, Feed, Library, Consent, Chronicle, GitHub, Tools) are removed from `app/` tree
-- [ ] **AC2**: All exclusion target root directories (`whatsapp-bridge/`, `ai-gateway/`, `demo/`, `examples/`, `extensions/`, `governance/` duplicate, `GOVERNANCE/` duplicate, `research/`, `services/`, `site/`, `archive/`, `mcp/`, `agent/`, `auth/`) are removed
-- [ ] **AC3**: `public/` cleaned — only ProofBridge-Liner assets remain
-- [ ] **AC4**: Repository structure matches canonical layout:
-        ```
-        apps/web/         (Next.js app)
-        packages/trust-kernel/
-        packages/compliance-fabric/
-        packages/safekrypte/
-        packages/compute-fabric/
-        packages/enterprise-control-plane/
-        packages/shared/
-        contracts/
-        infrastructure/
-        validation/
-        tests/
-        docs/
-        README.md
-        ```
-- [ ] **AC5**: UI rebuilt as single product narrative with pages: Hero → Trust Narrative → Interactive Trust Pipeline → Enterprise Control Plane → Validation Evidence → Technical Architecture → Documentation → FAQ → CTA
-- [ ] **AC6**: GlobeTelemetry (`components/ui/globe-telemetry.tsx`) and AntLoader (`components/ui/ant-loader.tsx`) exist as headless props-driven components
-- [ ] **AC7**: All dead branches cleaned up (local + remote)
-- [ ] **AC8**: `README.md` rewritten — only ProofBridge-Liner content
-- [ ] **AC9**: `npm run build` succeeds (0 errors)
-- [ ] **AC10**: `npm test` passes
-- [ ] **AC11**: Behavioral coverage passes (4 PASS / 1 SKIP minimum)
-- [ ] **AC12**: Vercel deploy succeeds
+
+### AC1: Durable Schema
+- [ ] New Drizzle schema `lib/db/src/schema/trust-runtime.ts` defines:
+  - `events` table with PK `(tenantId, streamId, streamVersion)`, unique `eventId`, governance fields (`payloadHash`, `eventHash`, `previousHash`, `schemaVersion`)
+  - `event_outbox` table with worker lease fields (`workerId`, `lockedUntil`, `nextAttempt`, `attemptCount`)
+  - `snapshots` table with `snapshotHash` integrity check
+  - `verification_runs` table for governance audit trail
+- [ ] `drizzle-kit` migration generated and applicable via `npm run db:push`
+
+### AC2: PostgreSQL EventStore Repository
+- [ ] New file `lib/db/src/repositories/event-store.repository.ts` implements existing `EventStore` interface
+- [ ] `append()` accepts domain events, computes canonical hashes internally, executes atomic dual-write (events + outbox)
+- [ ] `append()` throws `OccConflictError` on version mismatch
+- [ ] `saveSnapshot()` stores state with hash; `loadSnapshot()` verifies hash before returning
+- [ ] `loadStream()` returns events ordered by `streamVersion`
+- [ ] `getCurrentVersion()` returns max `streamVersion` for a stream
+
+### AC3: OCC Retry in Command Handler
+- [ ] `src/lib/trust-runtime/command-handler.ts` updated with retry loop (max 5 attempts)
+- [ ] On `OccConflictError`: reload version, recompute events with jittered exponential backoff, retry
+- [ ] Non-OCC errors propagate immediately
+- [ ] Retry loop is bounded and fails closed after max attempts
+
+### AC4: Outbox Worker
+- [ ] New file `src/runtime/outbox-worker.ts` implements `OutboxWorker`
+- [ ] Claims pending messages via `FOR UPDATE SKIP LOCKED`
+- [ ] Publishes to external bus (SSE/WebSocket abstraction)
+- [ ] Marks `COMPLETE` on success, schedules retry on failure, dead-letters after 5 attempts
+- [ ] `recoverStaleLeases()` resets expired `PROCESSING` messages
+- [ ] Worker uses short transactions (no network I/O inside DB transaction)
+
+### AC5: RuntimeEvent Governance Fields
+- [ ] `src/lib/trust-runtime/types.ts` `RuntimeEvent` extended with:
+  - `tenantId: string`
+  - `streamId: string`
+  - `streamVersion: number`
+  - `schemaVersion: number`
+  - `payloadHash: string`
+  - `eventHash: string`
+  - `previousHash: string | null`
+- [ ] All existing event producers updated to include new fields
+- [ ] Backward compatibility: missing fields default to safe values
+
+### AC6: Property-Based Tests
+- [ ] New file `tests/property/event-store.property.test.ts`
+- [ ] Test: Replay from scratch equals replay from snapshot + subsequent events (100 iterations)
+- [ ] Test: Concurrent appends produce exactly 1 success and N-1 conflicts
+- [ ] Test: Hash chain remains continuous under arbitrary valid event sequences
+- [ ] Test: Tenant isolation — events from tenant A are never visible to tenant B
+- [ ] Test: Snapshot corruption detection — tampered snapshot throws `SnapshotCorruptionError`
+- [ ] Test: Outbox recovery after simulated worker crash
+
+### AC7: Migration & Backward Compatibility
+- [ ] `src/lib/trust-runtime/event-store.ts` updated: `InMemoryEventStore` remains as fallback when `DATABASE_URL` is absent
+- [ ] `PostgresEventStore` wraps repository and implements `EventStore` interface
+- [ ] Runtime auto-selects implementation based on `DATABASE_URL` presence
+- [ ] No breaking changes to `reduce()` or existing runtime logic
+
+### AC8: Validation
+- [ ] `npm run typecheck` passes (0 errors)
+- [ ] `npm run lint` passes (0 errors)
+- [ ] `npm test` passes (all existing + new property tests)
+- [ ] `npm run db:push` succeeds against PostgreSQL
+- [ ] Property tests execute 100+ iterations each against real PostgreSQL
 
 ## Compliance Gate Status
-Hard failures in scope: HF-1 (Repository Purity), HF-2 (UI Consistency)
-This plan resolves HF-1 — removal of all non-ProofBridge-Liner assets
-This plan resolves HF-2 — single-product UI narrative
-This plan does not touch: existing Gate B/C/D/E/F logic, contract bytecode, SafeKrypte HSM
+- **Tier:** 3 (core runtime infrastructure, database schema, event sourcing)
+- **Hard Failures in scope:** HF-1 (Repository Purity — no cross-tenant leakage), HF-3 (Circuit Breaker — outbox must not block event production)
+- **Resolutions:**
+  - HF-1: Tenant isolation enforced at PK level `(tenantId, streamId, streamVersion)`
+  - HF-3: Outbox worker uses short transactions; main append path never blocks on external I/O
+
+## Branch
+`compliance-fabric`
+
+## Estimated Token Budget
+- Implementation: ~8,000 tokens
+- Tests: ~3,000 tokens
+- Total: ~11,000 tokens
+
+## SDD Trace Chain
+
+```
+Business Intent
+    ↓
+User Story (VVU operator in regulated enterprise)
+    ↓
+Acceptance Criteria (8 ACs, all behavioral and testable)
+    ↓
+Affected Files (exact paths listed below)
+    ↓
+Compliance Gate (HF-1, HF-3 addressed)
+    ↓
+Branch (compliance-fabric)
+    ↓
+Token Budget (~11k tokens)
+    ↓
+IMPLEMENTATION → VALIDATION
+```
 
 ## Affected Files
 
-### Phase 1 — Remove Exclusion Targets (~100 files)
+### New Files
 ```
-DELETE app/pools/page.tsx
-DELETE app/studio/page.tsx
-DELETE app/safegrid/page.tsx
-DELETE app/ekasi/page.tsx
-DELETE app/gateway/page.tsx
-DELETE app/gateway/layout.tsx
-DELETE app/gateway/panels/
-DELETE app/agent/lindiwe/page.tsx
-DELETE app/ubuntu-games/  (entire tree)
-DELETE app/api/gateway/  (entire tree)
-DELETE app/api/arena/route.ts
-DELETE app/api/whatsapp/handler/route.ts
-DELETE app/api/converse/route.ts
-DELETE app/api/agent/  (entire tree)
-DELETE app/api/ubuntulibrary/route.ts
-DELETE app/api/consent/route.ts
-DELETE app/api/feed/route.ts
-DELETE app/api/contact/route.ts
-DELETE app/api/billing/  (entire tree)
-DELETE app/api/email/  (entire tree)
-DELETE app/api/send-email/route.ts
-DELETE app/api/onboarding/  (entire tree)
-DELETE app/api/auth/route.ts
-DELETE app/api/tools/customer-360/route.ts
-DELETE app/api/chronicle-fetch/route.ts
-DELETE app/api/github/token/route.ts
-DELETE app/api/webhooks/stitch/route.ts
-DELETE app/api/webhooks/stripe/route.ts
-DELETE app/api/webhooks/slack-interactivity/route.ts
-DELETE app/api/schemas/gateway.ts
-DELETE whatsapp-bridge/  (entire tree)
-DELETE ai-gateway/  (entire tree)
-DELETE agent/
-DELETE auth/
-DELETE demo/
-DELETE examples/
-DELETE extensions/
-DELETE governance/  (duplicate — keep docs/governance/)
-DELETE GOVERNANCE/
-DELETE research/  (duplicate — keep docs/research/)
-DELETE services/
-DELETE site/
-DELETE archive/
-DELETE mcp/
-DELETE public/vvv/  (Ubuntu Pools static pages)
+lib/db/src/schema/trust-runtime.ts        # Events, outbox, snapshots, verification_runs
+lib/db/src/repositories/event-store.repository.ts  # PostgreSQL EventStore
+src/runtime/outbox-worker.ts              # Outbox worker with SKIP LOCKED
+tests/property/event-store.property.test.ts  # Property-based tests
 ```
 
-### Phase 2 — Restructure to Canonical Layout
+### Modified Files
 ```
-MOVE app/ → apps/web/
-MOVE app/api/ → apps/web/app/api/  (keepers only)
-MOVE src/ → packages/  (split into trust-kernel, compliance-fabric, safekrypte, compute-fabric)
-MOVE contracts/ → contracts/ (already correct)
-MOVE infra/ → infrastructure/
-MOVE scripts/validation* → validation/scripts/
-MOVE test/ → tests/
-MOVE docs/ → docs/ (already correct)
-CREATE packages/enterprise-control-plane/
-CREATE packages/shared/
+src/lib/trust-runtime/event-store.ts      # Add PostgresEventStore wrapper, auto-select
+src/lib/trust-runtime/command-handler.ts  # Add OCC retry loop
+src/lib/trust-runtime/types.ts            # Add governance fields to RuntimeEvent
+src/lib/trust-runtime/runtime.ts          # Wire PostgresEventStore when DATABASE_URL present
+lib/db/src/schema/index.ts                # Export new trust-runtime schema
+package.json                              # Add fast-check dev dependency
 ```
 
-### Phase 3 — Rebuild UI
+### Migration Files
 ```
-REWRITE apps/web/app/page.tsx  → Single product narrative homepage
-CREATE apps/web/app/layouts/   → Root layout with institutional styling
-CREATE apps/web/components/sections/Hero.tsx
-CREATE apps/web/components/sections/TrustNarrative.tsx
-CREATE apps/web/components/sections/TrustPipeline.tsx
-CREATE apps/web/components/sections/EnterpriseControlPlane.tsx
-CREATE apps/web/components/sections/ValidationEvidence.tsx
-CREATE apps/web/components/sections/TechnicalArchitecture.tsx
-CREATE apps/web/components/sections/Documentation.tsx
-CREATE apps/web/components/sections/FAQ.tsx
-CREATE apps/web/components/sections/CTA.tsx
-UPDATE apps/web/app/globals.css  → RC1 color palette, typography
+lib/db/migrations/0001_trust_runtime.sql  # Generated by drizzle-kit
 ```
 
-### Phase 4 — Add GlobeTelemetry + AntLoader
-```
-CREATE apps/web/components/ui/globe-telemetry.tsx  (headless, props-driven)
-CREATE apps/web/components/ui/ant-loader.tsx  (headless, props-driven)
-UPDATE apps/web/app/globals.css  → ant-loader keyframes
-```
+## Implementation Order
 
-### Phase 5 — Cleanup
-```
-DELETE dead local branches: fix/agent-ecosystem-architecture, replit-agent,
-       integration/rc1-v2, vvu-osc-production-hardening
-DELETE dead remote branches: codex/*, cursor/*, draft/*, trae/*, v0/*,
-       vercel/*, help, hackathon-submission, lablab.ai-hackathon,
-       supabase-client-errors, fix-deployment, debug-failed-deployment
-REWRITE README.md  → ProofBridge-Liner only
-REWRITE vercel.json → route to apps/web/
-UPDATE package.json → point to apps/web/
-```
+1. **Schema First** — `lib/db/src/schema/trust-runtime.ts` with all 4 tables
+2. **Repository** — `lib/db/src/repositories/event-store.repository.ts` implementing `EventStore`
+3. **Types Update** — Extend `RuntimeEvent` with governance fields
+4. **Command Handler** — Add OCC retry loop
+5. **Outbox Worker** — `src/runtime/outbox-worker.ts` with lease recovery
+6. **Wire Up** — `event-store.ts` wrapper selects implementation
+7. **Property Tests** — `tests/property/event-store.property.test.ts`
+8. **Validation** — Typecheck, lint, tests, db:push
 
-## Test Assertions
-| Flow | Expected Outcome |
-|------|-----------------|
-| `npm run build` (from root or apps/web) | 0 errors, ProofBridge-Liner only pages |
-| `npm test` | All 12 tests pass |
-| `curl localhost:3000/api/health` | HTTP 200, JSON `{"status":"healthy"}` |
-| `curl localhost:3000/api/verify` | HMAC verification working |
-| `curl localhost:3000/ubuntu-games` | 404 (route removed) |
-| `curl localhost:3000/studio` | 404 (route removed) |
-| `curl localhost:3000/ekasi` | 404 (route removed) |
-| `git branch -a` | Only canonical branches remain |
-| Behavioral coverage | 4 PASS, 1 SKIP minimum |
-| Vercel deploy | READY status |
+## Risk Mitigations
 
-## Branch
-`compliance-fabric` (canonical branch for RC1)
+| Risk | Mitigation |
+|------|-----------|
+| Breaking existing in-memory tests | `InMemoryEventStore` remains; `PostgresEventStore` is additive |
+| Migration conflicts with existing drizzle schema | New tables in dedicated `trust_runtime` concern; no name collisions |
+| fast-check adds bundle weight | Dev dependency only, excluded from production build |
+| OCC retry masks real errors | Max retry bounded (5); non-OCC errors propagate immediately |
+| Outbox worker resource exhaustion | Poll interval 1s, batch limit 100, lease timeout 60s |
 
-## Token Budget Estimate
-~25-35 turns — very large working set due to mass deletions and UI rewrite
-
-## Handoff Plan
-Write HANDOFF.md with:
-- Phase completed (1-5)
-- Any files that could not be removed (with reason)
-- Next session: run validation gates and deploy
-
----
-## APPROVED BY: _______________ DATE: _______________
+## Rollback Plan
+If PostgreSQL event store causes regressions:
+1. Set `DATABASE_URL=` to revert to `InMemoryEventStore` automatically
+2. No code changes required — runtime selects implementation at startup
+3. New schema tables can be dropped via `drizzle-kit` without affecting existing tables

@@ -76,6 +76,22 @@ export type RuntimeEvent = {
   source: string;
   /** Version-specific payload. */
   payload: RuntimeEventPayload;
+
+  // Governance & Multi-Tenancy Fields
+  /** Tenant identifier for multi-tenant isolation. */
+  tenantId: string;
+  /** Stream identifier for event sourcing. */
+  streamId: string;
+  /** Version within the stream (1-indexed). */
+  streamVersion: number;
+  /** Governance schema version. */
+  schemaVersion: number;
+  /** SHA-256 hash of canonical payload. */
+  payloadHash: string;
+  /** SHA-256 hash of (previousHash:eventId:payloadHash). */
+  eventHash: string;
+  /** Previous event hash in chain (null for genesis). */
+  previousHash: string | null;
 };
 
 // ---------------------------------------------------------------------------
