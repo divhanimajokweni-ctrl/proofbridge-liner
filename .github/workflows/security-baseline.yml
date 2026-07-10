@@ -1,0 +1,228 @@
+# =============================================================================
+# SECURITY BASELINE — Phase 1 drop-in (SAST / secrets / deps / SBOM / IaC)
+# =============================================================================
+# Blocking gates (hard-fail the merge):
+#   - static-analysis  : Semgrep, ERROR severity only
+#   - secrets-scan     : Gitleaks, any finding
+#   - dependency-audit : npm audit, high/critical in production deps
+#
+# Report-only (upload findings to the Security tab, do NOT block yet — these
+# need triage/tuning before they become blocking; see active/PLAN.md):
+#   - solidity-audit   : Slither over contracts/
+#   - iac-audit        : Trivy filesystem + Dockerfile misconfig scan
+#   - sbom             : Syft SBOM artifact
+#
+# Rationale for the split: the three blocking gates are deterministic and
+# low-noise on this repo today. Slither/Trivy require remappings + baseline
+# triage first; promoting them to blocking is a tracked follow-up in the PLAN.
+# =============================================================================
+name: Security Baseline
+
+on:
+  pull_request:
+  push:
+    branches: [main, compliance-fabric]
+
+concurrency:
+  group: security-baseline-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # BLOCKING: Static analysis (Semgrep) — TypeScript/JS/Solidity
+  # ---------------------------------------------------------------------------
+  static-analysis:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Semgrep
+        run: pip install "semgrep==1.86.0"
+      - name: Semgrep scan (SARIF + block on ERROR)
+        run: |
+          semgrep scan \
+            --config p/security-audit \
+            --config p/secrets \
+            --config p/typescript \
+            --config p/react \
+            --sarif --output semgrep.sarif \
+            --error --severity ERROR \
+            --metrics off
+      - name: Upload Semgrep SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  # ---------------------------------------------------------------------------
+  # BLOCKING: Secrets scan (Gitleaks)
+  # ---------------------------------------------------------------------------
+  secrets-scan:
+    name: Secrets (Gitleaks)
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: "8.18.4"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Gitleaks
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+      - name: Gitleaks detect (git history)
+        run: |
+          gitleaks detect \
+            --source . \
+            --redact \
+            --exit-code 1 \
+            --report-format sarif \
+            --report-path gitleaks.sarif
+      - name: Upload Gitleaks SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
+
+  # ---------------------------------------------------------------------------
+  # BLOCKING: Dependency audit (npm) — production deps, high/critical
+  # ---------------------------------------------------------------------------
+  dependency-audit:
+    name: Dependencies (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install (no scripts)
+        run: npm ci --ignore-scripts
+      - name: Audit production dependencies (fail on high/critical)
+        run: npm audit --omit=dev --audit-level=high
+
+  # ---------------------------------------------------------------------------
+  # REPORT-ONLY: Solidity static analysis (Slither)
+  # ---------------------------------------------------------------------------
+  solidity-audit:
+    name: Solidity (Slither)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+      - name: Install Slither
+        run: pip install "slither-analyzer==0.10.4"
+      - name: Slither scan (report-only)
+        continue-on-error: true
+        run: |
+          slither . \
+            --sarif slither.sarif \
+            --fail-none || true
+      - name: Upload Slither SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: slither.sarif
+          category: slither
+
+  # ---------------------------------------------------------------------------
+  # REPORT-ONLY: Filesystem + Dockerfile misconfig (Trivy)
+  # ---------------------------------------------------------------------------
+  iac-audit:
+    name: IaC/FS (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem + config scan (report-only)
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          format: sarif
+          output: trivy.sarif
+          severity: HIGH,CRITICAL
+      - name: Upload Trivy SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+  # ---------------------------------------------------------------------------
+  # REPORT-ONLY: SBOM generation (Syft)
+  # ---------------------------------------------------------------------------
+  sbom:
+    name: SBOM (Syft)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate SBOM (SPDX JSON)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: sbom.spdx.json
+          output-file: sbom.spdx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+  # ---------------------------------------------------------------------------
+  # Gate summary — blocks the merge on any failed job
+  # ---------------------------------------------------------------------------
+  gate-summary:
+    name: Security Baseline Gate
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - static-analysis
+      - secrets-scan
+      - dependency-audit
+      - solidity-audit
+      - iac-audit
+      - sbom
+    steps:
+      - name: Enforce blocking gates
+        env:
+          STATIC: ${{ needs.static-analysis.result }}
+          SECRETS: ${{ needs.secrets-scan.result }}
+          DEPS: ${{ needs.dependency-audit.result }}
+          SOLIDITY: ${{ needs.solidity-audit.result }}
+          IAC: ${{ needs.iac-audit.result }}
+          SBOM: ${{ needs.sbom.result }}
+        run: |
+          echo "static-analysis  : $STATIC"
+          echo "secrets-scan     : $SECRETS"
+          echo "dependency-audit : $DEPS"
+          echo "solidity-audit   : $SOLIDITY (report-only)"
+          echo "iac-audit        : $IAC (report-only)"
+          echo "sbom             : $SBOM (report-only)"
+          fail=0
+          for gate in "$STATIC" "$SECRETS" "$DEPS"; do
+            if [ "$gate" != "success" ]; then fail=1; fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo "❌ Security baseline FAILED — a blocking gate did not pass."
+            exit 1
+          fi
+          echo "✅ Security baseline passed (blocking gates green)."
