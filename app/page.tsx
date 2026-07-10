@@ -1,6 +1,6 @@
 'use client';
 
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs';
+import AuthControl from './AuthControl';
 import { trustRuntimeHtml } from './trustRuntimeLayout';
 
 export default function Home() {
@@ -17,30 +17,7 @@ export default function Home() {
           gap: 10,
         }}
       >
-        <SignedOut>
-          <SignInButton mode="modal">
-            <button
-              style={{
-                cursor: 'pointer',
-                fontFamily: 'IBM Plex Mono, ui-monospace, monospace',
-                fontSize: 12,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: '#e6f1ff',
-                background: 'rgba(9,14,20,0.72)',
-                border: '1px solid rgba(120,170,255,0.35)',
-                borderRadius: 6,
-                padding: '6px 12px',
-                backdropFilter: 'blur(6px)',
-              }}
-            >
-              Sign in
-            </button>
-          </SignInButton>
-        </SignedOut>
-        <SignedIn>
-          <UserButton afterSignOutUrl="/" />
-        </SignedIn>
+        <AuthControl />
       </div>
       <iframe
         title="VVU · Trust Runtime"
