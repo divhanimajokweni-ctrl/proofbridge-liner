@@ -15,10 +15,38 @@
 
 **ProofBridge-Liner** — the compliance and verification layer for Ubuntu Pools and VVU's financial infrastructure. A constitutional promise of cryptographic trust, instantiated as running code across nine entities governed by a single vision.
 
+> **New here? Read [`docs/HOW-IT-WORKS.md`](./docs/HOW-IT-WORKS.md)** — a plain-English, no-jargon walkthrough of every component (written to be understood with zero prior context).
+
+---
+
+## Current Status · Session Log
+
+### 2026-07-10 — User authentication switched to Supabase (Clerk removed)
+
+**What changed and why.** The homepage now ships the VVU Trust Runtime layout, and user sign-in was migrated from **Clerk → Supabase Auth**. Clerk was removed because its `pk_live` key is bound to the custom domain `clerk.venturevisionubuntu.co.za`, which has no DNS records — so its sign-in widget never loaded. Supabase needs no extra DNS and was already provisioned in the repo.
+
+**Achieved this session:**
+- Trust Runtime UI shipped as the site root (`app/page.tsx`), with the time-travel replay upgrade folded in.
+- Removed `@clerk/nextjs`, `ClerkProvider`, `/sign-in`, `/sign-up`.
+- Added Supabase auth: `/login` (email + password sign-up/sign-in), `/session/callback` (email-confirm), `/session/signout`, homepage `Sign in` / email + `Sign out` control, and a root `middleware.ts` guard on `/dashboard` + `/safekrypte`.
+- Verified locally: protected routes redirect to `/login`; account creation returns HTTP 200; sign-in is correctly gated by Supabase's "Confirm email" setting.
+- Fixed the Vercel build break (the `auth/` dir name collided with a broad `auth/` exclude in `.vercelignore`/`.gitignore`; renamed source dirs to `session/`).
+- Restored two build-breaking modules from earlier work: `lib/compliance/gemma-judge.ts` and `lib/db/src/schema/gatewayParticipants.ts`.
+
+**Open items / next session:**
+1. **Supabase env vars** (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) are already set in Vercel Production (stored as *Sensitive*, so they read back empty via CLI but are inlined into the prod build). No action needed unless the project ref changes.
+2. **Decide the "Confirm email" setting** in Supabase (ON = users click an email link before first login; OFF = instant login). See [`docs/HOW-IT-WORKS.md`](./docs/HOW-IT-WORKS.md).
+3. **Rotate the Clerk `sk_live_…` secret** that was pasted in chat during setup.
+4. **Deploy** by merging to `compliance-fabric` / running ART OF CHOKE (does a real `vercel deploy --prod` + live health check). Login will work in prod immediately since the env vars are already set.
+5. **Pre-existing red CI gates** are unrelated to auth and need repo-owner action: Contract Tests (missing Foundry submodules), Qodana token, Commit Attestation workflow.
+
+PR: [#26](https://github.com/divhanimajokweni-ctrl/proofbridge-liner/pull/26) · Auth test report: [`active/test-report-supabase-auth.md`](./active/test-report-supabase-auth.md)
+
 ---
 
 ## Table of Contents
 
+- [Current Status · Session Log](#current-status--session-log)
 - [The Vision](#the-vision--ubuntu-meta-protocol)
 - [The Founder](#the-founder--mihle-iviwe-majokweni)
 - [Why This Architecture](#why-this-architecture)
