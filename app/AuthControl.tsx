@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/auth/client';
+import { createClient } from '@/lib/session/client';
 
 const mono = 'IBM Plex Mono, ui-monospace, monospace';
 
@@ -61,7 +61,7 @@ export default function AuthControl() {
       <span style={{ ...pill, cursor: 'default', textTransform: 'none' }}>
         {email}
       </span>
-      <form action="/auth/signout" method="post" style={{ margin: 0 }}>
+      <form action="/session/signout" method="post" style={{ margin: 0 }}>
         <button type="submit" style={pill}>
           Sign out
         </button>
