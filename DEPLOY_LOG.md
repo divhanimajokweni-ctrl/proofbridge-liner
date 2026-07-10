@@ -10,3 +10,9 @@
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
 
+## 2026-07-10T22:50:23Z
+- **Commit**: `73e235e`
+- **Message**: fix(security): RLS authorize on app_metadata not user_metadata (privilege-escalation fix)
+- **Status**: Deployed
+- **Domain**: https://venturevisionubuntu.co.za
+
