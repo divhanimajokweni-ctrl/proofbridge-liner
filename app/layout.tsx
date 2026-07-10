@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./styles/variables.css";
 
 export const metadata: Metadata = {
-  title: "ProofBridge Liner · VVU",
-  description: "ProofBridge Liner — Deterministic Safety Kernel & Compliance Fabric",
+  title: "VVU · Trust Runtime — Venture Vision Ubuntu",
+  description:
+    "Venture Vision Ubuntu — Trust Runtime Operating System. Deterministic projection of the Bayesian Safety Kernel.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
