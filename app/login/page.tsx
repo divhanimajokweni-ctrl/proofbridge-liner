@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/auth/client';
+import { createClient } from '@/lib/session/client';
 
 const mono = 'IBM Plex Mono, ui-monospace, monospace';
 
@@ -31,7 +31,7 @@ function LoginForm() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
+          emailRedirectTo: `${window.location.origin}/session/callback?redirect=${encodeURIComponent(redirectTo)}`,
         },
       });
       setBusy(false);
