@@ -1,93 +1,81 @@
-# HANDOFF — SESSION CHECKPOINT — 2026-07-08
+# HANDOFF — SESSION CHECKPOINT — 2026-07-10
 
 ## Where We Are
-Complete Immortal Knowledge Engine E2E pipeline infrastructure built, deployed, and validated. Trust Runtime event listener cleanup committed. All CI gates pass.
+Shipped the VVU Trust Runtime layout as the production homepage and **migrated user
+authentication from Clerk → Supabase** (Clerk was blocked by missing DNS for its custom
+domain). Auth is verified working locally. Work is on branch
+`devin/1783716651-trust-runtime-homepage` (PR #26) — **not yet merged** to `compliance-fabric`.
 
 ---
 
-## What Was Built
+## What Was Built / Changed
 
-### Immortal Knowledge Engine (17 files)
+### Homepage
+- `app/page.tsx` — VVU Trust Runtime layout is now the site root (replaced the old
+  "Foundry // ControlPlane" page), with the time-travel replay upgrade folded in.
+
+### Auth: Clerk removed, Supabase added
 | File | Purpose |
 |------|---------|
-| `.kilocode/config.e2e.json` | E2E config with 9 MCP servers (firecrawl, vvu, sqlite, memory, github, git, sequential-thinking, time, filesystem) |
-| `.kilocode/config.json` | Legacy Kilo config |
-| `.kilocode/agents/immortal-engine.json` | Immortal Engine agent (E2E pipeline orchestrator) |
-| `.kilocode/agents/vvu-backend.json` | Backend/runtime architect agent |
-| `.kilocode/agents/vvu-frontend.json` | Frontend architect agent |
-| `.kilocode/agents/vvu-review.json` | Code reviewer agent |
-| `.kilocode/workflows/immortalize-e2e.json` | 8-step E2E workflow (Scrape → Think → Verify → Store → Remember → Visualize → PR → Report) |
-| `.kilocode/workflows/vvu-dev-workflow.json` | Multi-agent dev workflow |
-| `vvu-mcp-server/index.js` | MCP server with 16 tools |
-| `vvu-mcp-server/package.json` | Server dependencies |
-| `colony-model.html` | Living canopy visualization |
-| `run-immortal.sh` | One-command E2E runner script |
-| `vvu-dev.sh` | Dev environment setup |
-| `kilo.json` | Updated with Firecrawl MCP server |
-| `.vvu/knowledge.db` | SQLite persistent knowledge store |
-| `active/VVU-MCP-COLONY-TASK.md` | Colony task documentation |
+| `app/login/page.tsx` | Email + password sign-in / sign-up screen |
+| `src/lib/session/client.ts` | Supabase browser client (`@supabase/ssr`) |
+| `src/lib/session/server.ts` | Supabase server client (cookie-based session) |
+| `middleware.ts` (root) | Session guard for `/dashboard` + `/safekrypte`; **fails open** if env unset |
+| `app/session/callback/route.ts` | Handles email-confirmation link (`exchangeCodeForSession`) |
+| `app/session/signout/route.ts` | POST sign-out handler |
+| `app/AuthControl.tsx` | Homepage control: "Sign in" / user email + "Sign out" |
+| `app/layout.tsx` | Removed `ClerkProvider` |
+| `package.json` | Removed `@clerk/nextjs` |
+| *(deleted)* | `app/sign-in/`, `app/sign-up/` |
 
-### Trust Runtime Fix
-- `app/trust-runtime/page.tsx` — Event listener cleanup (docClickHandler, motionListener, notification popup dismiss)
-- Extracted `TrustRuntimeState` interface to fix TypeScript type safety
-- Proper cleanup of all event listeners in useEffect teardown
+> Dirs are named `session/` (not `auth/`) because `.vercelignore` / `.gitignore` have a
+> broad `auth/` exclude that dropped the files from the Vercel build. Do **not** rename back.
+
+### Build fixes (from earlier in the session)
+- Restored `lib/compliance/gemma-judge.ts` and authored `lib/db/src/schema/gatewayParticipants.ts`
+  (both were referenced but missing → broke `tsc`/`build`).
+
+### Docs
+- `README.md` — added "Current Status · Session Log" section.
+- `docs/HOW-IT-WORKS.md` — new plain-English guide to every component.
+- `active/test-report-supabase-auth.md` — auth test report (with screenshots).
 
 ---
 
-## Build Status
-
+## Build / Test Status (local)
 | Check | Result |
 |-------|--------|
 | `tsc --noEmit` | ✅ 0 errors |
-| `npm run lint` | ✅ 0 errors (warnings only) |
-| `npm test` | ✅ 12/12 PASS |
-| `npm run build` | ✅ 0 errors, 25 pages |
-| `curl /api/health` | ✅ 200 OK |
-| Behavioral Coverage | ✅ 3 PASS, 2 SKIP (test script payload mismatch — endpoints verified working) |
+| `npm run build` | ✅ passes |
+| Homepage `/` | ✅ HTTP 200 |
+| `/login` | ✅ renders |
+| `/dashboard`, `/safekrypte` (signed out) | ✅ 307 → `/login?redirect=…` |
+| Supabase sign-up (REST + UI) | ✅ HTTP 200, account created |
+| Supabase sign-in (unconfirmed) | ✅ correctly returns `email_not_confirmed` |
+
+**Supabase project:** ref `jazbzpoeilaghppxzewy` · `mailer_autoconfirm=false` (Confirm email is ON).
 
 ---
 
-## How To Run Immortal Knowledge Engine
-
-```bash
-# Set API keys
-export FIRECRAWL_API_KEY="your-firecrawl-key"
-export GITHUB_TOKEN="your-github-token"    # optional, for PR creation
-export ANTHROPIC_API_KEY="your-anthropic-key"
-
-# Start the VVU MCP server
-node vvu-mcp-server/index.js &
-
-# Run the immortalizer
-./run-immortal.sh
-# Enter URL when prompted
-```
-
-Or with Kilo directly:
-```bash
-kilocode --config .kilocode/config.e2e.json \
-  --agent immortal-engine \
-  --workflow immortalize-e2e \
-  --param url='https://example.com'
-```
+## Environment / Secrets
+- `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` are saved as permanent Devin
+  secrets AND already present in Vercel Production (stored as *Sensitive* → read back empty
+  via CLI but inlined into the prod build). Local `.env.local` has been populated for testing.
+- ⚠️ The Clerk `sk_live_…` secret was pasted in chat earlier — **rotate it**.
 
 ---
-
-## Current Working Tree
-```
-$ git status --short
- M active/HANDOFF.md
- M active/VALIDATION.md
-```
 
 ## Next Actions
-1. **Push to origin** — `git push origin compliance-fabric` (requires auth)
-2. **Vercel deploy** — `vercel deploy --prod --force` (requires Vercel auth)
-3. **Test Immortal Engine** — Run `./run-immortal.sh` with a real URL and Firecrawl API key
-4. **Install Firecrawl MCP** — `npx firecrawl-mcp@latest` (auto-resolved by Kilo on first use)
-5. **Fix behavioral coverage test script** — Update payload schemas in `scripts/behavioral-coverage.ts` to match actual endpoint schemas
+1. **Decide Supabase "Confirm email"** (ON = email-link step before first login; OFF = instant
+   login). Dashboard → Authentication → Providers → Email. Code handles both.
+2. **Deploy**: merge PR #26 to `compliance-fabric` / run ART OF CHOKE
+   (`bash scripts/deployment-loop.sh`). This does a real `vercel deploy --prod` + live health
+   check. Login will work in prod immediately (env vars already set).
+3. **Rotate the exposed Clerk secret.**
+4. (Optional) Add social login (Google/GitHub) via Supabase.
 
-## Unresolved
-1. **Vercel auth** — Headless environment has no Vercel CLI auth; deploy must be triggered from authenticated terminal
-2. **Firecrawl API key** — Not configured in this environment; needed for E2E pipeline to work
-3. **Behavioral coverage script** — `POST /api/mint` sends `{recipient,amount}` but endpoint expects `{payload,signature}`. `POST /api/admin/circuit-breaker` sends `{action:"halt"}` but endpoint expects `{action:"close"|"open"}`
+## Unresolved / Pre-existing (NOT caused by this session)
+- Red GitHub CI gates unrelated to auth: **Contract Tests** (Foundry submodules never committed),
+  **Qodana** (missing token/config), **Commit Attestation** (reads the auto-merge commit),
+  **Gate-1 Smoke** (missing test file). These need repo-owner action and may block a protected merge.
+- CLAUDE.md R4 hard failures HF-1..5 (mainnet blockers) are unrelated to the homepage/auth deploy.

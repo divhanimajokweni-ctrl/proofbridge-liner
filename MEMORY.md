@@ -9,6 +9,8 @@ Last validation : active/VALIDATION.md
 Last handoff    : active/HANDOFF.md
 
 ## KNOWLEDGE POINTERS (load file, don't inline content)
+Plain-English system guide (ELI5) : docs/HOW-IT-WORKS.md
+Auth (Supabase) test report       : active/test-report-supabase-auth.md
 ProofBridge audit (18 findings)  : docs/audit/proofbridge-findings.md
 Hard failures detail (HF 1-5)    : docs/audit/hard-failures.md
 Ubuntu Pools Stitch config        : docs/ubuntu-pools/stitch-config.md
