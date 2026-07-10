@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./styles/variables.css";
 
 export const metadata: Metadata = {
@@ -9,6 +10,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
+    <ClerkProvider
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      afterSignOutUrl="/"
+    >
     <html lang="en-ZA" className="h-full bg-slate-950">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -21,5 +27,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </main>
       </body>
     </html>
+    </ClerkProvider>
   );
 }
