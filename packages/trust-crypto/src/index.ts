@@ -13,33 +13,24 @@ export * from './merkle';
 // Receipt utilities
 export * from './receipts';
 
-// Re-export key types
+// Export types explicitly to avoid duplicates and ensure they come from the correct source
 export type {
   HashChain,
   HashChainLink,
-  MerkleNode,
-  MerkleProof,
-  MerkleProofStep,
-  BatchMerkleProof,
-  ReceiptType,
-  ReceiptHeader,
-  ReceiptPayload,
-  TrustReceipt,
-  ReceiptGeneratorConfig,
-  ReceiptVerificationResult,
-  ReceiptBatch,
 } from './hash';
+
 export type {
   MerkleNode,
   MerkleProof,
   MerkleProofStep,
   BatchMerkleProof,
 } from './merkle';
+
 export type {
+  TrustReceipt,
   ReceiptType,
   ReceiptHeader,
   ReceiptPayload,
-  TrustReceipt,
   ReceiptGeneratorConfig,
   ReceiptVerificationResult,
   ReceiptBatch,

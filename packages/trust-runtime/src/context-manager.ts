@@ -1,9 +1,3 @@
-// packages/trust-runtime/src/context-manager.ts
-// ───────────────────────────────────────────────────────────────
-// Trust Context Manager
-// Manages Trust Context lifecycle and configuration
-// ───────────────────────────────────────────────────────────────
-
 import type {
   TrustContext,
   TrustContextStatus,
@@ -12,17 +6,30 @@ import type {
   CreateTrustContextRequest,
   CreateTrustContextResponse,
 } from '@proofbridge/trust-types';
-import { EventJournal, createEventJournal } from './event-journal';
+import { EventJournal, createEventJournal, type EventRepository } from './event-journal';
 import { createHashChainManager } from './hash-chain';
 import { v4 as uuidv4 } from 'uuid';
 import { sha256Hex, hashObject } from '@proofbridge/trust-crypto';
 
-// ───────────────────────────────────────────────────────────────
-// Context Manager Types
-// ───────────────────────────────────────────────────────────────
-
 export interface TrustContextManagerConfig {
   signingKey: string;
+  /** Optional PostgreSQL context repository for durable persistence */
+  contextRepository?: ContextRepository;
+  /** Optional PostgreSQL event repository (passed to journals) */
+  eventRepository?: EventRepository;
+  /** Tenant ID for multi-tenant isolation (required when repositories are provided) */
+  tenantId?: string;
+}
+
+/**
+ * Interface for PostgreSQL-backed context persistence.
+ * Implemented by ContextRepository in trust-projections.
+ */
+export interface ContextRepository {
+  saveContext(context: TrustContext): Promise<void>;
+  getContext(contextId: string): Promise<TrustContext | undefined>;
+  updateStatus(contextId: string, status: TrustContextStatus): Promise<void>;
+  getAllContexts(): Promise<TrustContext[]>;
 }
 
 export interface ContextCreationResult {
@@ -31,38 +38,34 @@ export interface ContextCreationResult {
   journal: EventJournal;
 }
 
-// ───────────────────────────────────────────────────────────────
-// Trust Context Manager Class
-// ───────────────────────────────────────────────────────────────
-
 export class TrustContextManager {
   private signingKey: string;
   private contexts: Map<string, TrustContext>;
   private journals: Map<string, EventJournal>;
+  private contextRepository?: ContextRepository;
+  private eventRepository?: EventRepository;
+  private tenantId?: string;
 
   constructor(config: TrustContextManagerConfig) {
     this.signingKey = config.signingKey;
     this.contexts = new Map();
     this.journals = new Map();
+    this.contextRepository = config.contextRepository;
+    this.eventRepository = config.eventRepository;
+    this.tenantId = config.tenantId;
   }
 
-  /**
-   * Create a new Trust Context
-   */
-  createContext(request: CreateTrustContextRequest): ContextCreationResult {
+  async createContext(request: CreateTrustContextRequest): Promise<ContextCreationResult> {
     const contextId = uuidv4();
     const timestamp = Date.now();
 
-    // Compute trust anchor from configuration
     const trustAnchor = this.computeTrustAnchor(request.configuration);
 
-    // Compute configuration receipt
     const configurationReceipt = this.computeConfigurationReceipt(
       request.configuration,
       request.verificationPolicy
     );
 
-    // Compute receipt root
     const receiptRoot = sha256Hex(
       hashObject({
         configurationReceipt,
@@ -71,7 +74,6 @@ export class TrustContextManager {
       })
     );
 
-    // Create the context
     const context: TrustContext = {
       contextId,
       trustAnchor,
@@ -83,7 +85,6 @@ export class TrustContextManager {
       updatedAt: timestamp,
     };
 
-    // Create the response
     const response: CreateTrustContextResponse = {
       contextId,
       trustAnchor,
@@ -92,19 +93,53 @@ export class TrustContextManager {
       receiptRoot,
     };
 
-    // Create the event journal
     const journal = createEventJournal({
       contextId,
       genesisHash: receiptRoot,
+      repository: this.eventRepository,
+      tenantId: this.tenantId,
     });
 
-    // Store the context and journal
     this.contexts.set(contextId, context);
     this.journals.set(contextId, journal);
+
+    // Persist to PostgreSQL if repository is provided
+    if (this.contextRepository) {
+      await this.contextRepository.saveContext(context);
+    }
 
     // Activate the context
     context.status = 'active';
     context.updatedAt = Date.now();
+
+    // Journal the context.created event
+    await journal.journalEvent({
+      contextId,
+      eventType: 'context.created',
+      eventVersion: '1',
+      payload: {
+        type: 'context.created',
+        configuration: request.configuration,
+        verificationPolicy: request.verificationPolicy,
+        trustAnchor,
+        configurationReceipt,
+        receiptRoot,
+      },
+      agentId: 'context-manager',
+    });
+
+    // Journal the context.activated event
+    await journal.journalEvent({
+      contextId,
+      eventType: 'context.activated',
+      eventVersion: '1',
+      payload: {
+        type: 'context.activated',
+        activatedBy: 'context-manager',
+        reason: 'Context created and activated',
+      },
+      agentId: 'context-manager',
+    });
 
     return {
       context,
@@ -113,9 +148,6 @@ export class TrustContextManager {
     };
   }
 
-  /**
-   * Compute trust anchor from configuration
-   */
   private computeTrustAnchor(configuration: TrustConfiguration): string {
     return sha256Hex(
       hashObject({
@@ -127,9 +159,6 @@ export class TrustContextManager {
     );
   }
 
-  /**
-   * Compute configuration receipt
-   */
   private computeConfigurationReceipt(
     configuration: TrustConfiguration,
     verificationPolicy: VerificationPolicy
@@ -143,23 +172,14 @@ export class TrustContextManager {
     );
   }
 
-  /**
-   * Get Trust Context by ID
-   */
   getContext(contextId: string): TrustContext | undefined {
     return this.contexts.get(contextId);
   }
 
-  /**
-   * Get Event Journal for a context
-   */
   getJournal(contextId: string): EventJournal | undefined {
     return this.journals.get(contextId);
   }
 
-  /**
-   * Update context status
-   */
   updateContextStatus(
     contextId: string,
     status: TrustContextStatus
@@ -173,69 +193,104 @@ export class TrustContextManager {
     return context;
   }
 
-  /**
-   * Suspend a Trust Context
-   */
-  suspendContext(contextId: string, reason: string): TrustContext | undefined {
+  async suspendContext(contextId: string, reason: string): Promise<TrustContext | undefined> {
     const context = this.contexts.get(contextId);
     if (!context) return undefined;
 
     context.status = 'suspended';
     context.updatedAt = Date.now();
 
-    // TODO: Journal the suspension event
+    // Persist status change
+    if (this.contextRepository) {
+      await this.contextRepository.updateStatus(contextId, 'suspended');
+    }
+
+    // Journal the suspension event
+    const journal = this.journals.get(contextId);
+    if (journal) {
+      await journal.journalEvent({
+        contextId,
+        eventType: 'context.suspended',
+        eventVersion: '1',
+        payload: {
+          type: 'context.suspended',
+          suspendedBy: 'context-manager',
+          reason,
+        },
+        agentId: 'context-manager',
+      });
+    }
 
     return context;
   }
 
-  /**
-   * Freeze a Trust Context
-   */
-  freezeContext(contextId: string, reason: string): TrustContext | undefined {
+  async freezeContext(contextId: string, reason: string): Promise<TrustContext | undefined> {
     const context = this.contexts.get(contextId);
     if (!context) return undefined;
 
     context.status = 'frozen';
     context.updatedAt = Date.now();
 
-    // TODO: Journal the freeze event
+    if (this.contextRepository) {
+      await this.contextRepository.updateStatus(contextId, 'frozen');
+    }
+
+    const journal = this.journals.get(contextId);
+    if (journal) {
+      await journal.journalEvent({
+        contextId,
+        eventType: 'context.frozen',
+        eventVersion: '1',
+        payload: {
+          type: 'context.frozen',
+          frozenBy: 'context-manager',
+          reason,
+        },
+        agentId: 'context-manager',
+      });
+    }
 
     return context;
   }
 
-  /**
-   * Terminate a Trust Context
-   */
-  terminateContext(contextId: string, reason: string): TrustContext | undefined {
+  async terminateContext(contextId: string, reason: string): Promise<TrustContext | undefined> {
     const context = this.contexts.get(contextId);
     if (!context) return undefined;
 
     context.status = 'terminated';
     context.updatedAt = Date.now();
 
-    // TODO: Journal the termination event
+    if (this.contextRepository) {
+      await this.contextRepository.updateStatus(contextId, 'terminated');
+    }
+
+    const journal = this.journals.get(contextId);
+    if (journal) {
+      await journal.journalEvent({
+        contextId,
+        eventType: 'context.terminated',
+        eventVersion: '1',
+        payload: {
+          type: 'context.terminated',
+          terminatedBy: 'context-manager',
+          reason,
+        },
+        agentId: 'context-manager',
+      });
+    }
 
     return context;
   }
 
-  /**
-   * Get all contexts
-   */
   getAllContexts(): TrustContext[] {
     return Array.from(this.contexts.values());
   }
 
-  /**
-   * Get contexts by status
-   */
   getContextsByStatus(status: TrustContextStatus): TrustContext[] {
     return Array.from(this.contexts.values())
       .filter((c) => c.status === status);
   }
 
-  /**
-   * Verify context configuration
-   */
   verifyContextConfiguration(
     contextId: string,
     configuration: TrustConfiguration
@@ -243,7 +298,6 @@ export class TrustContextManager {
     const context = this.contexts.get(contextId);
     if (!context) return false;
 
-    // Verify the configuration receipt matches
     const expectedReceipt = this.computeConfigurationReceipt(
       configuration,
       context.verificationPolicy
@@ -252,10 +306,6 @@ export class TrustContextManager {
     return context.configurationReceipt === expectedReceipt;
   }
 }
-
-// ───────────────────────────────────────────────────────────────
-// Factory Function
-// ───────────────────────────────────────────────────────────────
 
 export function createTrustContextManager(
   config: TrustContextManagerConfig

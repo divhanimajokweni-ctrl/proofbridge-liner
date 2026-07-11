@@ -1,160 +1,107 @@
-# PLAN — Durable Event Store & Transactional Outbox — 2026-07-09
+# PLAN — RC1 Trust Infrastructure Completion — 2026-07-11
 
 ## Business Intent
-Transform the Trust Runtime from an in-memory prototype to an institutional-grade, durable event-sourced system. The current `InMemoryEventStore` loses all state on restart, provides no multi-tenant isolation, and cannot guarantee delivery. This plan implements a PostgreSQL-backed event store with OCC, outbox pattern, governance hashes, and property-based verification — making the runtime safe for production use in regulated environments.
+Complete the RC1 trust infrastructure so that every component has a defined storage strategy, every state change produces a verifiable hash, and every decision leaves a cryptographic receipt. This makes ProofBridge a real trust infrastructure rather than an in-memory prototype.
 
 ## User Story
-As a **VVU operator running ProofBridge-Liner in a regulated enterprise**, I need the Trust Runtime to survive restarts, enforce tenant isolation at the database layer, guarantee exactly-once event delivery, and provide mathematically verified integrity guarantees — so that I can trust the runtime for production deployment.
+As a **VVU operator running ProofBridge-Liner in production**, I need the trust infrastructure to persist all trust data to PostgreSQL, enforce policy through a single gate function, and provide verifiable hash-chain integrity — so that I can trust the system for regulated enterprise use.
 
 ## Acceptance Criteria
 
-### AC1: Durable Schema
-- [ ] New Drizzle schema `lib/db/src/schema/trust-runtime.ts` defines:
-  - `events` table with PK `(tenantId, streamId, streamVersion)`, unique `eventId`, governance fields (`payloadHash`, `eventHash`, `previousHash`, `schemaVersion`)
-  - `event_outbox` table with worker lease fields (`workerId`, `lockedUntil`, `nextAttempt`, `attemptCount`)
-  - `snapshots` table with `snapshotHash` integrity check
-  - `verification_runs` table for governance audit trail
-- [ ] `drizzle-kit` migration generated and applicable via `npm run db:push`
+### AC1: Missing DB Tables
+- [ ] Add `trust_receipts` table to `contracts/db/trust-runtime.ts` with fields: receiptId, contextId, eventId, receiptType, status, reason, hashChainAnchor, merkleProof (jsonb), timestamp, safetyScore, evidenceRef
+- [ ] Add `trust_attestations` table with fields: attestationId, contextId, eventId, attestor, subject, reportHash, verificationStatus, timestamp
+- [ ] Add `policy_bundles` table with fields: bundleId, contextId, version, policyHash, content (jsonb), signature, signedAt, previousBundleHash
+- [ ] Add `chronicle_entries` table with fields: entryId, contextId, eventId, eventType, summary (jsonb), timestamp — this is a derived read-model projection
+- [ ] `npm run db:push` succeeds
 
-### AC2: PostgreSQL EventStore Repository
-- [ ] New file `lib/db/src/repositories/event-store.repository.ts` implements existing `EventStore` interface
-- [ ] `append()` accepts domain events, computes canonical hashes internally, executes atomic dual-write (events + outbox)
-- [ ] `append()` throws `OccConflictError` on version mismatch
-- [ ] `saveSnapshot()` stores state with hash; `loadSnapshot()` verifies hash before returning
-- [ ] `loadStream()` returns events ordered by `streamVersion`
-- [ ] `getCurrentVersion()` returns max `streamVersion` for a stream
+### AC2: Missing trust-crypto Exports
+- [ ] Add `canonicalHash(obj)` — alias for `hashObject` (deterministic SHA-256 of canonical JSON)
+- [ ] Add `chainHash(previousHash, currentHash)` — alias for `computeHashChainLink`
+- [ ] Add `domainHash(domain, data)` — SHA-256 with domain prefix to prevent cross-context collisions
+- [ ] Add `GENESIS_HASH` constant — `'0x' + '00'.repeat(32)` — anchor for all new Trust Contexts
+- [ ] Fix `verifyHashChain` bug — loop must compare expected vs actual chain hash, return false on mismatch
 
-### AC3: OCC Retry in Command Handler
-- [ ] `src/lib/trust-runtime/command-handler.ts` updated with retry loop (max 5 attempts)
-- [ ] On `OccConflictError`: reload version, recompute events with jittered exponential backoff, retry
-- [ ] Non-OCC errors propagate immediately
-- [ ] Retry loop is bounded and fails closed after max attempts
+### AC3: PostgreSQL-backed EventJournal
+- [ ] `packages/trust-projections/src/event-repository.ts` gains `verifyChainIntegrity(tenantId, streamId)` method that walks the event chain checking previousHash links
+- [ ] `packages/trust-runtime/src/event-journal.ts` gains optional `repository` constructor param — when provided, persists to PostgreSQL via EventRepository; when absent, falls back to in-memory Map
+- [ ] Existing in-memory tests continue to pass unchanged
+- [ ] New integration test: journal event → verify chain integrity from PostgreSQL
 
-### AC4: Outbox Worker
-- [ ] New file `src/runtime/outbox-worker.ts` implements `OutboxWorker`
-- [ ] Claims pending messages via `FOR UPDATE SKIP LOCKED`
-- [ ] Publishes to external bus (SSE/WebSocket abstraction)
-- [ ] Marks `COMPLETE` on success, schedules retry on failure, dead-letters after 5 attempts
-- [ ] `recoverStaleLeases()` resets expired `PROCESSING` messages
-- [ ] Worker uses short transactions (no network I/O inside DB transaction)
+### AC4: PostgreSQL-backed TrustContextManager
+- [ ] `packages/trust-runtime/src/context-manager.ts` gains optional `contextRepository` constructor param — when provided, persists contexts to PostgreSQL via ContextRepository
+- [ ] Lifecycle methods (suspend, freeze, terminate) emit events to the journal (fix TODO comments)
+- [ ] Existing in-memory tests continue to pass unchanged
 
-### AC5: RuntimeEvent Governance Fields
-- [ ] `src/lib/trust-runtime/types.ts` `RuntimeEvent` extended with:
-  - `tenantId: string`
-  - `streamId: string`
-  - `streamVersion: number`
-  - `schemaVersion: number`
-  - `payloadHash: string`
-  - `eventHash: string`
-  - `previousHash: string | null`
-- [ ] All existing event producers updated to include new fields
-- [ ] Backward compatibility: missing fields default to safe values
+### AC5: enforcePolicyGate
+- [ ] New file `packages/trust-api/src/enforce-policy-gate.ts` exports `enforcePolicyGate(request, contextId)` 
+- [ ] Orchestrates: kill-switch check → context resolution → risk evaluation → event journaling → receipt generation
+- [ ] Returns `{ allowed: boolean, receipt?: TrustReceipt, reason?: string }`
+- [ ] This is the single entry point for all consumer applications (Ubuntu Pools, BARTBOT, etc.)
 
-### AC6: Property-Based Tests
-- [ ] New file `tests/property/event-store.property.test.ts`
-- [ ] Test: Replay from scratch equals replay from snapshot + subsequent events (100 iterations)
-- [ ] Test: Concurrent appends produce exactly 1 success and N-1 conflicts
-- [ ] Test: Hash chain remains continuous under arbitrary valid event sequences
-- [ ] Test: Tenant isolation — events from tenant A are never visible to tenant B
-- [ ] Test: Snapshot corruption detection — tampered snapshot throws `SnapshotCorruptionError`
-- [ ] Test: Outbox recovery after simulated worker crash
+### AC6: Kill-Switch Module
+- [ ] New file `packages/trust-api/src/kill-switch.ts` exports `activateKillSwitch(reason)`, `deactivateKillSwitch(reason)`, `isKillSwitchActive()`
+- [ ] State stored in-memory with optional Redis backing (same pattern as EventJournal)
+- [ ] When active, enforcePolicyGate rejects all transactions
+- [ ] Emits kill_switch.activated / kill_switch.deactivated events
 
-### AC7: Migration & Backward Compatibility
-- [ ] `src/lib/trust-runtime/event-store.ts` updated: `InMemoryEventStore` remains as fallback when `DATABASE_URL` is absent
-- [ ] `PostgresEventStore` wraps repository and implements `EventStore` interface
-- [ ] Runtime auto-selects implementation based on `DATABASE_URL` presence
-- [ ] No breaking changes to `reduce()` or existing runtime logic
+### AC7: RiskEngine Rule Checkers
+- [ ] Implement `checkRateLimitRule` — sliding window counter (in-memory, configurable window)
+- [ ] Implement `checkCalldataScanRule` — regex-based threat pattern matching against calldata
+- [ ] Implement `checkIdentityProofRule` — verify proof signature against known attestors
+- [ ] Implement circuit breaker per-minute transaction rate limit (wire up empty body)
+- [ ] Implement circuit breaker kill switch integration (wire up empty body)
 
 ### AC8: Validation
-- [ ] `npm run typecheck` passes (0 errors)
-- [ ] `npm run lint` passes (0 errors)
-- [ ] `npm test` passes (all existing + new property tests)
-- [ ] `npm run db:push` succeeds against PostgreSQL
-- [ ] Property tests execute 100+ iterations each against real PostgreSQL
+- [ ] `npx tsc --noEmit --project packages/trust-crypto/tsconfig.json` passes
+- [ ] `npx tsc --noEmit --project packages/trust-runtime/tsconfig.json` passes
+- [ ] `npx tsc --noEmit --project packages/trust-api/tsconfig.json` passes
+- [ ] `npx tsc --noEmit --project packages/trust-projections/tsconfig.json` passes
+- [ ] `npx tsc --noEmit --project packages/bartbot/tsconfig.json` passes
+- [ ] Existing tests pass (99 tests, 12 suites)
 
 ## Compliance Gate Status
-- **Tier:** 3 (core runtime infrastructure, database schema, event sourcing)
-- **Hard Failures in scope:** HF-1 (Repository Purity — no cross-tenant leakage), HF-3 (Circuit Breaker — outbox must not block event production)
+- **Tier:** 3 (core trust infrastructure)
+- **Hard Failures in scope:** HF-1 (Repository Purity), HF-3 (Circuit Breaker)
 - **Resolutions:**
-  - HF-1: Tenant isolation enforced at PK level `(tenantId, streamId, streamVersion)`
-  - HF-3: Outbox worker uses short transactions; main append path never blocks on external I/O
-
-## Branch
-`compliance-fabric`
-
-## Estimated Token Budget
-- Implementation: ~8,000 tokens
-- Tests: ~3,000 tokens
-- Total: ~11,000 tokens
-
-## SDD Trace Chain
-
-```
-Business Intent
-    ↓
-User Story (VVU operator in regulated enterprise)
-    ↓
-Acceptance Criteria (8 ACs, all behavioral and testable)
-    ↓
-Affected Files (exact paths listed below)
-    ↓
-Compliance Gate (HF-1, HF-3 addressed)
-    ↓
-Branch (compliance-fabric)
-    ↓
-Token Budget (~11k tokens)
-    ↓
-IMPLEMENTATION → VALIDATION
-```
+  - HF-1: PostgreSQL backing ensures multi-tenant isolation at DB layer
+  - HF-3: Real RiskEngine rule checkers + circuit breaker rate limit = functional circuit breaker
 
 ## Affected Files
 
 ### New Files
 ```
-lib/db/src/schema/trust-runtime.ts        # Events, outbox, snapshots, verification_runs
-lib/db/src/repositories/event-store.repository.ts  # PostgreSQL EventStore
-src/runtime/outbox-worker.ts              # Outbox worker with SKIP LOCKED
-tests/property/event-store.property.test.ts  # Property-based tests
+packages/trust-api/src/enforce-policy-gate.ts    # Single enforcement function
+packages/trust-api/src/kill-switch.ts             # Kill-switch module
 ```
 
 ### Modified Files
 ```
-src/lib/trust-runtime/event-store.ts      # Add PostgresEventStore wrapper, auto-select
-src/lib/trust-runtime/command-handler.ts  # Add OCC retry loop
-src/lib/trust-runtime/types.ts            # Add governance fields to RuntimeEvent
-src/lib/trust-runtime/runtime.ts          # Wire PostgresEventStore when DATABASE_URL present
-lib/db/src/schema/index.ts                # Export new trust-runtime schema
-package.json                              # Add fast-check dev dependency
-```
-
-### Migration Files
-```
-lib/db/migrations/0001_trust_runtime.sql  # Generated by drizzle-kit
+contracts/db/trust-runtime.ts                     # Add 4 new tables
+packages/trust-crypto/src/hash.ts                 # Add canonicalHash, chainHash, domainHash, GENESIS_HASH, fix verifyHashChain
+packages/trust-crypto/src/index.ts                # Re-export new functions
+packages/trust-runtime/src/event-journal.ts       # Add optional PostgreSQL backing
+packages/trust-runtime/src/context-manager.ts     # Add optional PostgreSQL backing, fix TODO journaling
+packages/trust-runtime/src/risk-engine.ts         # Implement rule checkers, wire circuit breaker
+packages/trust-api/src/index.ts                   # Re-export enforcePolicyGate, kill-switch
+packages/trust-api/package.json                   # Add trust-projections dependency
+packages/trust-projections/src/event-repository.ts # Add verifyChainIntegrity method
 ```
 
 ## Implementation Order
 
-1. **Schema First** — `lib/db/src/schema/trust-runtime.ts` with all 4 tables
-2. **Repository** — `lib/db/src/repositories/event-store.repository.ts` implementing `EventStore`
-3. **Types Update** — Extend `RuntimeEvent` with governance fields
-4. **Command Handler** — Add OCC retry loop
-5. **Outbox Worker** — `src/runtime/outbox-worker.ts` with lease recovery
-6. **Wire Up** — `event-store.ts` wrapper selects implementation
-7. **Property Tests** — `tests/property/event-store.property.test.ts`
-8. **Validation** — Typecheck, lint, tests, db:push
+1. **Schema first** — Add 4 new tables to contracts/db/trust-runtime.ts
+2. **Crypto fixes** — Add missing exports, fix verifyHashChain bug
+3. **EventJournal PostgreSQL** — Wire optional persistence
+4. **TrustContextManager PostgreSQL** — Wire optional persistence + fix TODO journaling
+5. **RiskEngine stubs** — Implement rule checkers
+6. **Kill-switch module** — New file in trust-api
+7. **enforcePolicyGate** — New file in trust-api, orchestrates everything
+8. **Validation** — Typecheck all packages, run existing tests
 
-## Risk Mitigations
+## Estimated Token Budget
+- Implementation: ~15,000 tokens
+- Tests: ~3,000 tokens
+- Total: ~18,000 tokens
 
-| Risk | Mitigation |
-|------|-----------|
-| Breaking existing in-memory tests | `InMemoryEventStore` remains; `PostgresEventStore` is additive |
-| Migration conflicts with existing drizzle schema | New tables in dedicated `trust_runtime` concern; no name collisions |
-| fast-check adds bundle weight | Dev dependency only, excluded from production build |
-| OCC retry masks real errors | Max retry bounded (5); non-OCC errors propagate immediately |
-| Outbox worker resource exhaustion | Poll interval 1s, batch limit 100, lease timeout 60s |
-
-## Rollback Plan
-If PostgreSQL event store causes regressions:
-1. Set `DATABASE_URL=` to revert to `InMemoryEventStore` automatically
-2. No code changes required — runtime selects implementation at startup
-3. New schema tables can be dropped via `drizzle-kit` without affecting existing tables
+## APPROVED BY: _______________ DATE: _______________

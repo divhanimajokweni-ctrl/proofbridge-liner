@@ -1,5 +1,5 @@
 {
-  "name": "@proofbridge/trust-events",
+  "name": "@proofbridge/trust-projections",
   "version": "1.0.0-rc1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,11 +9,14 @@
   },
   "devDependencies": {
     "typescript": "^5.6.0",
-    "@types/uuid": "^9.0.8"
+    "@types/node": "^22.0.0"
   },
   "dependencies": {
+    "@proofbridge/contracts": "workspace:*",
     "@proofbridge/trust-types": "workspace:*",
+    "@proofbridge/trust-events": "workspace:*",
     "@proofbridge/trust-crypto": "workspace:*",
-    "uuid": "^9.0.1"
+    "drizzle-orm": "^0.33.0",
+    "postgres": "^3.4.4"
   }
 }

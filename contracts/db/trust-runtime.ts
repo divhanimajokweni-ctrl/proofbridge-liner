@@ -105,3 +105,83 @@ export const trustContexts = pgTable('trust_contexts', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * 6. Trust Receipts Table
+ *
+ * Cryptographic receipts for every enforcement decision.
+ * Links to both the Context and the specific Event that triggered it.
+ */
+export const trustReceipts = pgTable('trust_receipts', {
+  receiptId: varchar('receipt_id', { length: 255 }).primaryKey(),
+  contextId: uuid('context_id').notNull().references(() => trustContexts.contextId),
+  eventId: varchar('event_id', { length: 255 }).notNull().references(() => trustEvents.eventId),
+  receiptType: varchar('receipt_type', { length: 50 }).notNull(), // configuration, event_journal, verification, attestation, kill_switch
+  status: varchar('status', { length: 50 }).notNull(), // approved, rejected, halted
+  reason: text('reason'),
+  hashChainAnchor: varchar('hash_chain_anchor', { length: 64 }).notNull(),
+  merkleProof: jsonb('merkle_proof').default([]).notNull(),
+  safetyScore: integer('safety_score').notNull().default(1000), // x1000 for integer precision
+  evidenceRef: text('evidence_ref'),
+  timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
+  latencyMs: integer('latency_ms').default(0).notNull(),
+}, (table) => [
+  unique('uq_trust_receipt_event').on(table.contextId, table.eventId, table.receiptType),
+]);
+
+/**
+ * 7. Trust Attestations Table
+ *
+ * TEE attestation records. Per-action, not per-deploy.
+ * Stores report hashes (SHA-256) and verification status.
+ */
+export const trustAttestations = pgTable('trust_attestations', {
+  attestationId: varchar('attestation_id', { length: 255 }).primaryKey(),
+  contextId: uuid('context_id').notNull().references(() => trustContexts.contextId),
+  eventId: varchar('event_id', { length: 255 }).notNull().references(() => trustEvents.eventId),
+  attestor: varchar('attestor', { length: 255 }).notNull(),
+  subject: varchar('subject', { length: 255 }).notNull(),
+  reportHash: varchar('report_hash', { length: 64 }).notNull(),
+  verificationStatus: varchar('verification_status', { length: 50 }).notNull().default('pending'), // pending, verified, failed
+  signature: text('signature'),
+  claim: jsonb('claim').default({}).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  unique('uq_trust_attestation_event').on(table.contextId, table.eventId),
+]);
+
+/**
+ * 8. Policy Bundles Table
+ *
+ * Signed policy history. Each governance change creates a new bundle,
+ * chain-linked to the previous via previousBundleHash.
+ */
+export const policyBundles = pgTable('policy_bundles', {
+  bundleId: varchar('bundle_id', { length: 255 }).primaryKey(),
+  contextId: uuid('context_id').notNull().references(() => trustContexts.contextId),
+  version: varchar('version', { length: 50 }).notNull(),
+  policyHash: varchar('policy_hash', { length: 64 }).notNull(),
+  content: jsonb('content').notNull(),
+  signature: text('signature').notNull(),
+  signedAt: timestamp('signed_at', { withTimezone: true }).defaultNow().notNull(),
+  previousBundleHash: varchar('previous_bundle_hash', { length: 64 }),
+}, (table) => [
+  unique('uq_policy_bundle_version').on(table.contextId, table.version),
+]);
+
+/**
+ * 9. Chronicle Entries Table
+ *
+ * Read-model projection for dashboards. Derived from trust_events.
+ * If lost, can be rebuilt from the event journal.
+ */
+export const chronicleEntries = pgTable('chronicle_entries', {
+  entryId: varchar('entry_id', { length: 255 }).primaryKey(),
+  contextId: uuid('context_id').notNull().references(() => trustContexts.contextId),
+  eventId: varchar('event_id', { length: 255 }).notNull().references(() => trustEvents.eventId),
+  eventType: varchar('event_type', { length: 255 }).notNull(),
+  summary: jsonb('summary').notNull(),
+  timestamp: timestamp('timestamp', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  unique('uq_chronicle_event').on(table.contextId, table.eventId),
+]);

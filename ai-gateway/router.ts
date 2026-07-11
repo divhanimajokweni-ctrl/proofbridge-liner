@@ -6,7 +6,7 @@
  * with automatic fallback.
  */
 
-import { MistralClient } from '@mistralai/mistralai';
+import { Mistral } from '@mistralai/mistralai';
 import { Anthropic } from '@anthropic-ai/sdk';
 
 // ─── Intent Registry ────────────────────────────────────────────────
@@ -14,8 +14,8 @@ import { Anthropic } from '@anthropic-ai/sdk';
 export type TaskIntent = 'routing' | 'extraction' | 'verification' | 'chat' | 'analysis';
 
 interface RouteConfig {
-  primaryProvider: 'mistral' | 'claude' | 'fireworks';
-  fallbackProvider: 'mistral' | 'claude' | 'fireworks';
+  primaryProvider: 'mistral' | 'claude' | 'fireworks' | 'kilo';
+  fallbackProvider: 'mistral' | 'claude' | 'fireworks' | 'kilo';
   model: string;
   maxTokens: number;
   temperature: number;
@@ -55,9 +55,9 @@ const CAPABILITY_REGISTRY: Map<TaskIntent, RouteConfig> = new Map([
   [
     'chat',
     {
-      primaryProvider: 'mistral',
-      fallbackProvider: 'claude',
-      model: 'mistral-large-latest',
+      primaryProvider: 'kilo',
+      fallbackProvider: 'mistral',
+      model: 'tencent/hy3',
       maxTokens: 2048,
       temperature: 0.3,
     },
@@ -79,7 +79,7 @@ const CAPABILITY_REGISTRY: Map<TaskIntent, RouteConfig> = new Map([
 export class AiGatewayRouter {
   private registry: Map<TaskIntent, RouteConfig>;
   private anthropic: Anthropic;
-  private mistral: MistralClient;
+  private mistral: Mistral;
 
   constructor() {
     this.registry = CAPABILITY_REGISTRY;
@@ -88,7 +88,7 @@ export class AiGatewayRouter {
     const mistralKey = process.env.MISTRAL_API_KEY || '';
 
     this.anthropic = new Anthropic({ apiKey: anthropicKey });
-    this.mistral = new MistralClient({ apiKey: mistralKey });
+    this.mistral = new Mistral({ apiKey: mistralKey });
   }
 
   /**
@@ -147,6 +147,8 @@ export class AiGatewayRouter {
         return this.callMistral(config, prompt, systemPrompt);
       case 'fireworks':
         return this.callFireworks(config, prompt, systemPrompt);
+      case 'kilo':
+        return this.callKilo(config, prompt, systemPrompt);
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -175,9 +177,11 @@ export class AiGatewayRouter {
     }
     messages.push({ role: 'user', content: prompt });
 
-    const response = await this.mistral.chat({
+    const response = await this.mistral.chat.complete({
       model: config.model,
+      // @ts-ignore
       maxTokens: config.maxTokens,
+      // @ts-ignore
       temperature: config.temperature,
       messages: messages as any,
     });
@@ -209,6 +213,36 @@ export class AiGatewayRouter {
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Fireworks API error ${response.status}: ${text}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  private async callKilo(config: RouteConfig, prompt: string, systemPrompt?: string): Promise<string> {
+    const messages: Array<{ role: string; content: string }> = [];
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    const response = await fetch('https://api.kilo.ai/api/gateway/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.KILO_API_KEY || ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: config.model,
+        max_tokens: config.maxTokens,
+        temperature: config.temperature,
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Kilo API error ${response.status}: ${text}`);
     }
 
     const data = await response.json();

@@ -1,64 +1,73 @@
-# INVESTIGATION — Durable Event Store & Transactional Outbox — 2026-07-09
+# INVESTIGATION — RC1 Trust Infrastructure Completion — 2026-07-11
 
 ## Task
-Replace the in-memory `InMemoryEventStore` in `src/lib/trust-runtime/` with a PostgreSQL-backed durable event store using the existing `drizzle-orm` infrastructure in `lib/db/`. Add optimistic concurrency control (OCC), transactional outbox pattern, governance/hash-chain fields, and property-based verification.
+Complete the RC1 trust infrastructure by filling all gaps between the current codebase and the target architecture described in the user's RC1 deconstruction.
 
 ## Current State
 
-### Trust Runtime Event Store (In-Memory)
-- **File:** `src/lib/trust-runtime/event-store.ts`
-- **Implementation:** `InMemoryEventStore` — pure in-memory append-only log
-- **Interface:** `EventStore` with methods: `append`, `read`, `readRange`, `readFrom`, `getCurrentSequence`, `exists`, `saveSnapshot`, `loadLatestSnapshot`, `size`
-- **Limitations:** No durability across restarts, no multi-instance sharing, no OCC, no governance fields
+### What EXISTS (verified working)
 
-### Command Handler
-- **File:** `src/lib/trust-runtime/command-handler.ts`
-- **Implementation:** `DefaultCommandHandler` — produces `RuntimeEvent[]` from commands
-- **Current behavior:** Returns events; caller is responsible for appending to store
-- **No retry logic:** No OCC handling, no conflict resolution
+| Component | File | Status |
+|-----------|------|--------|
+| trust-crypto: hashObject, sha256Hex, computeHashChainLink, hmacSha256Hex, verifyHmacSha256 | `packages/trust-crypto/src/hash.ts` | Real |
+| trust-crypto: Merkle tree (build, prove, verify, batch) | `packages/trust-crypto/src/merkle.ts` | Real |
+| trust-crypto: Receipt generation, signing, verification, batch | `packages/trust-crypto/src/receipts.ts` | Real |
+| trust-events: 13 event types + BARTBOT types (just added) | `packages/trust-events/src/definitions.ts` | Real |
+| trust-events: Canonical serializers | `packages/trust-events/src/serializers.ts` | Real |
+| trust-runtime: EventJournal (in-memory) | `packages/trust-runtime/src/event-journal.ts` | In-memory only |
+| trust-runtime: TrustContextManager (in-memory) | `packages/trust-runtime/src/context-manager.ts` | In-memory only |
+| trust-runtime: HashChainManager (in-memory) | `packages/trust-runtime/src/hash-chain.ts` | In-memory only |
+| trust-runtime: ReceiptEngine (in-memory) | `packages/trust-runtime/src/receipt-engine.ts` | In-memory only |
+| trust-runtime: AttestationEngine (in-memory) | `packages/trust-runtime/src/attestation.ts` | In-memory only |
+| trust-runtime: RiskEngine (partial) | `packages/trust-runtime/src/risk-engine.ts` | 2/5 rules real, 3 stubs |
+| trust-api: Express routes + middleware | `packages/trust-api/src/routes.ts`, `middleware.ts` | Real |
+| trust-projections: EventRepository (PostgreSQL) | `packages/trust-projections/src/event-repository.ts` | Real |
+| trust-projections: ContextRepository (PostgreSQL) | `packages/trust-projections/src/context-repository.ts` | Real |
+| DB schema: trust_events, trust_event_outbox, trust_snapshots, trust_verification_runs, trust_contexts | `contracts/db/trust-runtime.ts` | Real |
+| BARTBOT: security-sentinel, self-audit, policy-sync tasks | `packages/bartbot/src/tasks/` | Real (just created) |
 
-### Types
-- **File:** `src/lib/trust-runtime/types.ts`
-- **RuntimeEvent:** Contains `eventId`, `type`, `version`, `timestamp`, `sequence`, `correlationId`, `causationId`, `source`, `payload`
-- **Missing fields:** No `tenantId`, `streamId`, `streamVersion`, `payloadHash`, `eventHash`, `previousHash`, `schemaVersion`
+### What is MISSING (per target architecture)
 
-### Reducer
-- **File:** `src/lib/trust-runtime/reducer.ts`
-- **Implementation:** Pure function `reduce(state, event) → nextState`
-- **Deterministic:** Yes — suitable for replay and property testing
+| Component | Gap | Severity |
+|-----------|-----|----------|
+| **DB tables**: trust_receipts, trust_attestations, policy_bundles, chronicle_entries | 4 tables missing from schema | Critical |
+| **trust-crypto exports**: canonicalHash, chainHash, domainHash, GENESIS_HASH | 4 functions/constants missing | High |
+| **verifyHashChain bug**: Loop computes expected hash but never compares, always returns true | Logic bug | Critical |
+| **PostgreSQL backing**: EventJournal, TrustContextManager, ReceiptEngine, AttestationEngine, HashChainManager | All in-memory only | Critical |
+| **enforcePolicyGate**: Single enforcement function | Does not exist | Critical |
+| **kill-switch module**: Dedicated kill-switch implementation | Does not exist | High |
+| **RiskEngine stubs**: rate_limit, calldata_scan, identity_proof, custom | 4/5 rule checkers are stubs | High |
+| **Redis integration**: Rate limiting, kill-switch state, chronicle cache | Not in trust packages | Medium |
+| **Outbox worker**: Consumer for trust_event_outbox | Table exists, no consumer | Medium |
+| **Snapshot reader/writer**: trust_snapshots table exists, no repository | Table exists, no code | Medium |
+| **Verification run writer**: trust_verification_runs table exists, no repository | Table exists, no code | Medium |
 
-### Tests
-- **Files:** `src/lib/trust-runtime/__tests__/event-store.test.ts`, `verify-replay.test.ts`, `verify-authoritative-sse.test.ts`
-- **Current coverage:** Replay determinism, snapshot loading, SSE reconnect
-- **Missing:** Property-based tests, OCC tests, concurrent append tests, hash-chain tests
+### Relevant Audit Findings
+- HF-1 (Repository Purity): PostgreSQL PK enforces multi-tenant isolation ✓
+- HF-3 (Circuit Breaker): Outbox worker designed not to block event production ✓
+- verifyHashChain bug: Hash chain verification is a no-op (always returns true)
 
-### Database Infrastructure
-- **ORM:** `drizzle-orm` 0.45.2 (installed in root `package.json`)
-- **Config:** `lib/db/drizzle.config.ts` — PostgreSQL dialect, uses `DATABASE_URL`
-- **Connection:** `lib/db/src/index.ts` — exports `getDb()` (lazy singleton)
-- **Existing schemas:** SafeGrid (`sites`, `cameras`, `alerts`, `events`, etc.), Ubuntu Pools, SafeStake, Gamification
-- **No event store schema:** No `events` table for trust runtime, no outbox, no snapshots for runtime
+### Hard Failures In Scope
+- HF-1: Repository Purity — PostgreSQL backing for EventJournal/TrustContextManager ensures tenant isolation
+- HF-3: Circuit Breaker — RiskEngine stubs must be real for circuit breaker to function
 
-## Gaps
+## Current Branch
+`vibe/rc1-trust-context-impl-460439`
 
-| Gap | Severity | Evidence |
-|-----|----------|----------|
-| No durable persistence for runtime events | Critical | `InMemoryEventStore` resets on restart |
-| No multi-tenancy / stream isolation | Critical | No `tenantId` or `streamId` in `RuntimeEvent` |
-| No optimistic concurrency control | High | `append` accepts any sequence; no version check |
-| No governance / integrity fields | High | No hashes, no schema version, no causal chain in storage |
-| No outbox for reliable delivery | High | No mechanism to guarantee event delivery to SSE/WebSocket consumers |
-| No property-based tests | Medium | Only deterministic unit tests exist |
-| No snapshot verification | Medium | `saveSnapshot` stores state without hash integrity check |
-| No lease-based worker recovery | Medium | No outbox worker exists |
+## Required Branch
+`compliance-fabric` for Tier-3 changes
 
-## Existing Assets to Reuse
-- `drizzle-orm` + `pg` already in `package.json`
-- `lib/db/src/index.ts` `getDb()` singleton pattern
-- `lib/db/drizzle.config.ts` migration infrastructure
-- `InMemoryEventStore` interface as contract for `PostgresEventStore`
-- Existing `reduce()` function for property-test determinism
-- Existing replay tests as baseline for new property suite
+## Downstream Dependencies
+- Ubuntu Pools integration depends on `enforcePolicyGate`
+- BARTBOT self-audit depends on PostgreSQL-backed EventJournal
+- Dashboard depends on chronicle_entries projection
+- Governance depends on policy_bundles table
 
-## Proposed Direction
-Implement the hardened event store in `lib/db/src/schema/trust-runtime.ts` and `lib/db/src/repositories/event-store.repository.ts`, keeping the existing `EventStore` interface so the runtime layer remains unchanged. Add outbox worker in `src/runtime/outbox-worker.ts`. Add property tests in `tests/property/event-store.property.test.ts`.
+## Unknowns Before Planning
+1. Should Redis integration be in trust packages or stay in `src/lib/`?
+2. Should enforcePolicyGate be in trust-api or a new trust-enforcement package?
+3. How should the in-memory → PostgreSQL migration work without breaking existing tests?
+
+## Stale Context Risk
+- The contracts/db/trust-runtime.ts schema may need updates for new tables
+- The trust-projections package is untracked in git — needs to be committed first

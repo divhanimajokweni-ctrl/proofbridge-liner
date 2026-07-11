@@ -46,7 +46,15 @@ export type TrustEventType =
   | 'attestation.issued'
   
   // Receipts
-  | 'receipt.issued';
+  | 'receipt.issued'
+  
+  // Context updates
+  | 'context.updated'
+  
+  // BARTBOT autonomous agent
+  | 'bartbot.enforcement'
+  | 'bartbot.self_audit'
+  | 'bartbot.self_audit_failure';
 
 // ───────────────────────────────────────────────────────────────
 // Event Payload Types
@@ -77,6 +85,7 @@ export type TrustEventPayload =
   | ContextSuspendedPayload
   | ContextFrozenPayload
   | ContextTerminatedPayload
+  | ContextUpdatedPayload
   | EventJournaledPayload
   | TransactionVerifiedPayload
   | TransactionApprovedPayload
@@ -84,7 +93,10 @@ export type TrustEventPayload =
   | KillSwitchActivatedPayload
   | KillSwitchDeactivatedPayload
   | AttestationIssuedPayload
-  | ReceiptIssuedPayload;
+  | ReceiptIssuedPayload
+  | BartbotEnforcementPayload
+  | BartbotSelfAuditPayload
+  | BartbotSelfAuditFailurePayload;
 
 // Context Lifecycle Payloads
 
@@ -193,6 +205,46 @@ export interface AttestationIssuedPayload {
 export interface ReceiptIssuedPayload {
   type: 'receipt.issued';
   receipt: TrustContextReceipt;
+}
+
+// Context Updated Payload
+
+export interface ContextUpdatedPayload {
+  type: 'context.updated';
+  previousVersion: string;
+  newVersion: string;
+  policyHash: string;
+  timestamp: number;
+}
+
+// BARTBOT Payloads
+
+export interface BartbotEnforcementPayload {
+  type: 'bartbot.enforcement';
+  action: string;
+  targetContract: string;
+  calldata?: string;
+  valueETH?: number;
+  riskScore: number;
+  decision: 'approved' | 'rejected';
+  receipt?: TrustContextReceipt;
+}
+
+export interface BartbotSelfAuditPayload {
+  type: 'bartbot.self_audit';
+  auditType: string;
+  result: 'passed' | 'failed';
+  details: Record<string, unknown>;
+  timestamp: number;
+}
+
+export interface BartbotSelfAuditFailurePayload {
+  type: 'bartbot.self_audit_failure';
+  auditType: string;
+  result: 'failed';
+  details: Record<string, unknown>;
+  timestamp: number;
+  alertLevel: 'warning' | 'critical';
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -441,11 +493,13 @@ export function validateTrustEvent(event: TrustEvent): ValidationResult {
   // Validate event type
   const validTypes: TrustEventType[] = [
     'context.created', 'context.activated', 'context.suspended', 'context.frozen', 'context.terminated',
+    'context.updated',
     'event.journaled',
     'transaction.verified', 'transaction.approved', 'transaction.rejected',
     'kill_switch.activated', 'kill_switch.deactivated',
     'attestation.issued',
     'receipt.issued',
+    'bartbot.enforcement', 'bartbot.self_audit', 'bartbot.self_audit_failure',
   ];
   
   if (!validTypes.includes(event.eventType as TrustEventType)) {
@@ -454,7 +508,7 @@ export function validateTrustEvent(event: TrustEvent): ValidationResult {
   
   // Validate payload type matches event type
   if (event.payload && typeof event.payload === 'object') {
-    const payload = event.payload as Record<string, unknown>;
+    const payload = event.payload as any;
     if (payload.type && payload.type !== event.eventType) {
       errors.push(`Payload type mismatch: payload.type=${payload.type}, event.eventType=${event.eventType}`);
     }
