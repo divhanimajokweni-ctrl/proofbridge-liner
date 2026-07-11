@@ -21,6 +21,26 @@
 
 ## Current Status · Session Log
 
+### 2026-07-11 — RC1 Trust Infrastructure: Test Suites + verifyHashChain Fix
+
+**What changed and why.** Added 6 vitest test suites (75 tests, all passing) covering the RC1 trust infrastructure packages (`trust-crypto`, `trust-runtime`, `trust-api`). Fixed a critical bug in `verifyHashChain` that was computing an impossible fixed-point check.
+
+**Achieved this session:**
+- Installed vitest as workspace devDependency; updated `vitest.config.ts` for package-level test discovery.
+- Fixed `verifyHashChain` in `trust-crypto/src/hash.ts` — now computes rolling hash with optional `expectedChainHash` parameter.
+- 6 test suites written:
+  - `trust-crypto/__tests__/hash.test.ts` (26 tests) — canonicalHash, chainHash, domainHash, GENESIS_HASH, verifyHashChain, HMAC
+  - `trust-runtime/__tests__/risk-engine-rules.test.ts` (16 tests) — rate_limit, calldata_scan, identity_proof, circuit breaker, kill-switch
+  - `trust-api/__tests__/kill-switch.test.ts` (8 tests) — activate/deactivate/isActive/listeners
+  - `trust-api/__tests__/enforce-policy-gate.test.ts` (7 tests) — allowed/fail/kill-switch/receipt
+  - `trust-runtime/__tests__/event-journal-async.test.ts` (8 tests) — in-memory journal, repository persistence
+  - `trust-runtime/__tests__/context-manager-async.test.ts` (10 tests) — createContext/suspend/freeze/terminate
+- Fixed missing `await` on async calls in `trust-api/src/routes.ts`.
+- Merged `compliance-fabric` into `main` (fast-forward: Ubuntu Pools + Mint Envelopes wiring, unreachable src/app/ cleanup).
+- Rebased feature branch onto updated `main`; resolved merge conflicts.
+- All 3 trust packages build clean (`trust-crypto`, `trust-runtime`, `trust-api`).
+- PR: [#28](https://github.com/divhanimajokweni-ctrl/proofbridge-liner/pull/28)
+
 ### 2026-07-10 — User authentication switched to Supabase (Clerk removed)
 
 **What changed and why.** The homepage now ships the VVU Trust Runtime layout, and user sign-in was migrated from **Clerk → Supabase Auth**. Clerk was removed because its `pk_live` key is bound to the custom domain `clerk.venturevisionubuntu.co.za`, which has no DNS records — so its sign-in widget never loaded. Supabase needs no extra DNS and was already provisioned in the repo.
@@ -554,7 +574,7 @@ Circuit breaker outputs become part of the **permanent evidence chain**.
 | **Monitoring** | Datadog · PagerDuty |
 | **Cache** | Upstash Redis |
 | **GPU Compute** | AMD MI300X · ROCm 7 (inference roundtrip latency verified at boot via `lib/amd-init.ts`; actual TPS depends on deployment topology) |
-| **Testing** | Playwright · Jest · Autocannon |
+| **Testing** | Vitest · Playwright · Jest · Autocannon |
 | **Deployment** | Vercel |
 | **Formal Verification** | Lean 4 · tree-sitter · Milvus (CRAFT infra) |
 | **Messaging** | WhatsApp Bridge · OpenClaw Gateway |
@@ -807,8 +827,8 @@ For detailed submission steps, see the [AMD Hackathon Submission Guide](./docs/H
 ## Production Hardening Remaining
 
 ### Compliance
+- [x] trust infrastructure (Trust Contexts, Event Journal, Risk Engine — RC1)
 - [ ] replay protection
-- [ ] trust infrastructure
 - [ ] key rotation
 - [ ] certificate governance
 - [ ] versioned compliance envelopes
@@ -844,4 +864,4 @@ ProofBridge-Liner exists to make critical financial and governance state transit
 
 *Built with ❤️ for the Ubuntu Pools ecosystem — from Gqeberha, for the continent.*  
 *Submitted to AMD Developer Hackathon: Act II — Track 3 (Unicorn Track)*  
-build-ref: 73e235e
+build-ref: 899bb61
