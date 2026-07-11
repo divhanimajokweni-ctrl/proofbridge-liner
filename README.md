@@ -8,9 +8,9 @@
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 ![AMD MI300X](https://img.shields.io/badge/AMD-MI300X%20·%20ROCm%207-red)
 
-**ProofBridge-Liner** — the compliance and verification layer for Ubuntu Pools and VVU's financial infrastructure. A constitutional promise of cryptographic trust, instantiated as running code across nine entities governed by a single vision.
+**ProofBridge-Liner** is the trust layer for Ubuntu Pools — South Africa's community savings circles — and the financial infrastructure that serves them. It answers one question: *How do you prove that a financial system is honest, without asking anyone to trust the people who built it?*
 
-> **New here? Read [`docs/HOW-IT-WORKS.md`](./docs/HOW-IT-WORKS.md)** — a plain-English, no-jargon walkthrough of every component (written to be understood with zero prior context).
+> **New here? Read [`docs/HOW-IT-WORKS.md`](./docs/HOW-IT-WORKS.md)** — a plain-English walkthrough of every component, written to be understood with zero prior context.
 
 ---
 
@@ -84,6 +84,8 @@ PR: [#26](https://github.com/divhanimajokweni-ctrl/proofbridge-liner/pull/26) ·
 
 ## The Vision · Ubuntu Meta-Protocol
 
+**In plain English:** Every financial system asks you to trust someone — a bank, a regulator, a platform. VVU OS removes that requirement. It replaces trust in people with trust in mathematics.
+
 Venture Vision Ubuntu OS is **not** an operating system kernel. It is the name over a constitutional promise — the **Ubuntu Meta-Protocol** — instantiated as running code across a network of entities that a single founder governs through AI agents standing in for roles no human has filled yet. What makes this more than branding is that the promise is **enforced in software**, not merely stated in a charter.
 
 The Meta-Protocol is this: **no entity may extract value from a vulnerable node.** Every credential SafeLiner issues, every hash SafeKrypte signs, every trip of the CircuitBreaker smart contract on Polygon exists because this axiom had to become a function signature before it could become a business.
@@ -95,6 +97,8 @@ The answer is a **three-layer trust stack** with a Bayesian safety kernel at its
 ---
 
 ## The Founder · Mihle Iviwe Majokweni
+
+**In plain English:** The person who built this isn't a CEO with a boardroom. She's an engineer who saw a problem — community savings circles can't prove they're honest — and built the software to fix it.
 
 **Mihle "Divhani" Majokweni** is the principal architect and founder of Venture Vision Ubuntu. A Bayesian decision theorist, FSCA JS2 compliance practitioner, and solo founder operating from **Gqeberha, Eastern Cape, South Africa**, Mihle holds 75% equity with a Denomination Share and absolute veto through Vaguely Vanity Unkempt LLC (Pty) Ltd (CIPC: 2026/259053/07).
 
@@ -108,7 +112,7 @@ Mihle's approach is grounded in **Bayesian probability theory** — the Prover P
 
 ## Why This Architecture
 
-The three-layer architecture is not incidental; it is the structural insight the codebase itself demonstrates whether or not it was ever written down before today.
+**In plain English:** Most financial software is a single system that does everything. That creates a single point of failure — if the signing layer has a bug, the whole system is compromised. VVU OS splits trust into three independent layers. Each layer does one job and refuses to do any other. This isn't a design preference — it's a security requirement.
 
 ### Layer Separation Is Non-Negotiable
 
@@ -143,6 +147,8 @@ The nine entities align to four tiers:
 
 ## Canonical Three-Layer Trust Stack
 
+**In plain English:** Think of it like a bank vault with three locks. The first lock (SafeKrypte) only signs — it doesn't know what it's signing. The second lock (SafeLiner) puts that signature into a structured credential — a document anyone can read. The third lock (ProofBridge) decides whether that credential meets compliance rules. No single lock controls the vault. All three must agree.
+
 ```
                         ┌─────────────────────────────────────┐
                         │         ProofBridge Liner            │
@@ -175,6 +181,8 @@ The nine entities align to four tiers:
 ---
 
 ## System Architecture Visual
+
+**In plain English:** When someone saves money through Ubuntu Pools, the system checks whether the transaction is safe using a mathematical formula (not a human decision). If it's safe, a receipt is generated and anchored to the blockchain. If it's unsafe, the circuit breaker trips and everything halts. The whole process is automatic, auditable, and produces evidence that can be verified by anyone.
 
 ```
                           ┌──────────────────────────────────┐
@@ -279,6 +287,8 @@ The nine entities align to four tiers:
 
 ## Component Map
 
+**In plain English:** The system is built in six layers, called "gates." Each gate handles one responsibility — authentication, payments, compliance rules, blockchain enforcement, email, and hardware verification. No gate can interfere with another. This means a bug in email delivery can't compromise payment processing.
+
 ### 🔐 Gate A — Infrastructure (Authentication & Identity)
 - Supabase integration with cookie remediation
 - Redirect loop protection
@@ -331,6 +341,9 @@ The nine entities align to four tiers:
 - Software-simulated (hardware SGX/SEV-SNP in Phase 5)
 
 ### 🛤️ Prover Pipeline
+
+**In plain English:** The Prover Pipeline is the system's brain. When a transaction arrives, it asks three questions: *Is this a mistake? Is this fraud? Is this a system failure?* Each answer has a different response — retry, escalate, or page an engineer.
+
 - Beta-Binomial posterior probability scoring
 - Scenario A/B/C differentiation:
   - **A — Transient mismatch** (network noise, retry)
@@ -339,6 +352,9 @@ The nine entities align to four tiers:
 - Fetcher → Validator → Scorer → Submitter → Broadcaster chain
 
 ### 💓 Embedded Watchdog
+
+**In plain English:** The Watchdog is the system's heartbeat monitor. It watches every component and raises an alarm if anything stops responding — before users notice.
+
 - HeartbeatSchema, HeartbeatBus, WatchdogProbes, OrchestratorEngine
 - Operational diagnostics
 - Distributed heartbeat monitoring
@@ -346,17 +362,21 @@ The nine entities align to four tiers:
 - Runtime instrumentation
 
 ### 🧠 LINDIWE — AI Agent Orchestrator
+
+**In plain English:** LINDIWE is the AI system that writes and reviews code for VVU. It follows a strict five-step process — investigate, plan, have a human review, implement, then validate — so no code ships without approval.
+
 - 5-role SDD workflow: Investigator → Planner → Mino Reviewer → Implementer → Validator
 - Separation of concerns (Validator cannot approve own implementation)
 - Behavioral coverage: VC issuance, Circuit Breaker, Webhook, SafeKrypte, Ubuntu Pools — ✅ **5/5 PASS** (2026-07-04)
 - HMAC Security Guard: `lib/HmacSecurityGuard.js` — fall-closed SHA-256 inter-process signing with timing-safe comparison
 - SafeKrypte Mock: `tests/mocks/SafeKrypteServiceMock.js` — local HTTP mock enabling 5/5 behavioral coverage without production HSM
-- Ant Feast: 4 new game modules + 203 passing tests
 - Three handoff files: INVESTIGATION.md, PLAN.md, VALIDATION.md
 
 ---
 
 ## Phases & Expansion
+
+**In plain English:** VVU is built in phases. Phase 1 — the trust foundation — is complete. Each subsequent phase adds capability on top of that foundation. The timeline is conservative: nothing ships until it passes the same behavioral coverage tests that Phase 1 passed.
 
 ### ✅ Phase 1: ProofBridge Liner Safety Kernel (Complete — June 2026)
 All six gates operational in production. 6/6 gates passing, 4/4 API tests, 14/14 contract tests. Test suite: 100% passing. Zero critical security issues. No secrets in repository.
@@ -427,6 +447,8 @@ Phase 5 (Q4 2027)       ░░░░░░░░░░░░░░░░░░�
 
 ## Ubuntu Pools — The North Star
 
+**In plain English:** Ubuntu Pools is what all of this is for. It's a community savings circle — like a stokvel — where members contribute money, and the system proves that every contribution is recorded honestly, every payout is verifiable, and no one can quietly take more than they're owed. The "Ubuntu" name comes from the African philosophy: *I am because we are.*
+
 > Ubuntu Pools operating with real members, real money, and real contribution cycles.
 
 The primary objective remains unchanged. Every component in this repository exists to make that event **cryptographically provable**, **operationally observable**, and **independently auditable**.
@@ -446,7 +468,7 @@ The eventual Ubuntu Score will be a credit history that exists independent of an
 
 ## Fund & Sponsor
 
-VVU OS is building the trust infrastructure for the next generation of financial systems — starting in South Africa, expanding globally. We are actively seeking mission-aligned funding to accelerate development, hardware TEE integration, and institutional partnerships.
+**In plain English:** VVU is building trust infrastructure for financial systems — starting in South Africa, expanding globally. Funding accelerates hardware integration, institutional partnerships, and the move from prototype to production at scale.
 
 ### Gitcoin Grants
 Support the development of open-source cryptographic trust infrastructure:
@@ -501,6 +523,8 @@ https://github.com/sponsors/divhanimajokweni-ctrl
 ---
 
 ## Detailed Component Reference
+
+**In plain English:** This section is for engineers. It describes what each subsystem does in technical terms.
 
 ### 🛤️ ProofBridge
 
