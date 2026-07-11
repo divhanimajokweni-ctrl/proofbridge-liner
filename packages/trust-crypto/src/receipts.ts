@@ -109,6 +109,7 @@ export function createReceiptGenerator(config: ReceiptGeneratorConfig) {
       return verifyReceiptSignature(receipt, signingKey);
     },
     
+    getSigningKey: () => signingKey,
     getIssuer: () => issuer,
     getVersion: () => version,
   };

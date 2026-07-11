@@ -12,6 +12,8 @@ import {
   createTrustEvent,
   validateTrustEvent,
   type ValidationResult,
+  type TrustEventType,
+  type TrustEventPayload,
 } from '@proofbridge/trust-events';
 import {
   HashChainManager,
@@ -25,6 +27,29 @@ import {
 export interface EventJournalConfig {
   contextId: string;
   genesisHash?: string;
+  /** Optional PostgreSQL repository for durable persistence */
+  repository?: EventRepository;
+  /** Tenant ID for multi-tenant isolation (required when repository is provided) */
+  tenantId?: string;
+}
+
+/**
+ * Interface for PostgreSQL-backed event persistence.
+ * Implemented by EventRepository in trust-projections.
+ */
+export interface EventRepository {
+  appendEvent(
+    event: TrustEvent,
+    tenantId: string,
+    streamId: string,
+    streamVersion: number
+  ): Promise<void>;
+  getEvents(tenantId: string, streamId: string): Promise<TrustEvent[]>;
+  getLatestEvent(tenantId: string, streamId: string): Promise<TrustEvent | undefined>;
+  verifyChainIntegrity(
+    tenantId: string,
+    streamId: string
+  ): Promise<{ valid: boolean; breaks: string[] }>;
 }
 
 export interface EventJournalState {
@@ -36,7 +61,7 @@ export interface EventJournalState {
 
 export interface JournalEventResult {
   event: TrustEvent;
-  chainLink: any; // HashChainLink will be imported from hash-chain
+  chainLink: any;
   validation: ValidationResult;
 }
 
@@ -47,7 +72,10 @@ export interface JournalEventResult {
 export class EventJournal {
   private contextId: string;
   private chainManager: HashChainManager;
-  private events: Map<string, TrustEvent>; // eventId -> event
+  private events: Map<string, TrustEvent>;
+  private repository?: EventRepository;
+  private tenantId?: string;
+  private streamVersion: number;
 
   constructor(config: EventJournalConfig) {
     this.contextId = config.contextId;
@@ -56,17 +84,20 @@ export class EventJournal {
       genesisHash: config.genesisHash,
     });
     this.events = new Map();
+    this.repository = config.repository;
+    this.tenantId = config.tenantId;
+    this.streamVersion = 0;
   }
 
   /**
    * Journal a new event
    */
-  journalEvent(request: JournalEventRequest): JournalEventResult {
+  async journalEvent(request: JournalEventRequest): Promise<JournalEventResult> {
     // Create the event
     const event = createTrustEvent({
       contextId: this.contextId,
-      eventType: request.eventType,
-      payload: request.payload,
+      eventType: request.eventType as TrustEventType,
+      payload: request.payload as TrustEventPayload,
       previousEventHash: this.chainManager.getCurrentHash(),
       metadata: {
         agentId: request.agentId,
@@ -83,8 +114,19 @@ export class EventJournal {
     // Append to hash chain
     const chainLink = this.chainManager.appendEvent(event);
 
-    // Store the event
+    // Store the event in memory
     this.events.set(event.eventId, event);
+
+    // Persist to PostgreSQL if repository is provided
+    if (this.repository && this.tenantId) {
+      this.streamVersion++;
+      await this.repository.appendEvent(
+        event,
+        this.tenantId,
+        this.contextId,
+        this.streamVersion
+      );
+    }
 
     return {
       event,

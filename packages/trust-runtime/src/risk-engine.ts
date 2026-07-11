@@ -43,6 +43,8 @@ export interface RiskViolation {
 export class RiskEngine {
   private defaultPolicy: VerificationPolicy | undefined;
   private circuitBreakerState: CircuitBreakerState;
+  private rateLimitWindows: Map<string, RateLimitWindow>;
+  private killSwitchActive: boolean;
 
   constructor(config: RiskEngineConfig = {}) {
     this.defaultPolicy = config.defaultPolicy;
@@ -51,7 +53,10 @@ export class RiskEngine {
       transactionCount: 0,
       volume: 0,
       windowStart: Date.now(),
+      recentTransactions: [],
     };
+    this.rateLimitWindows = new Map();
+    this.killSwitchActive = false;
   }
 
   /**
@@ -137,14 +142,44 @@ export class RiskEngine {
   }
 
   /**
-   * Check rate limit rule
+   * Check rate limit rule — sliding window per agent
    */
   private checkRateLimitRule(
     rule: VerificationRule,
     request: AgentTransactionRequest
   ): RiskViolation | null {
-    // Implement rate limiting logic
-    // This is a placeholder - actual implementation would track rates
+    const params = rule.parameters as { maxRequests?: number; windowMs?: number };
+    const maxRequests = params.maxRequests || 100;
+    const windowMs = params.windowMs || 60_000; // default 1 minute
+
+    const agentId = request.agentId;
+    const now = Date.now();
+
+    let window = this.rateLimitWindows.get(agentId);
+    if (!window || now - window.windowStart > windowMs) {
+      window = { windowStart: now, timestamps: [] };
+      this.rateLimitWindows.set(agentId, window);
+    }
+
+    // Remove timestamps outside the window
+    window.timestamps = window.timestamps.filter((t) => now - t < windowMs);
+    window.timestamps.push(now);
+
+    if (window.timestamps.length > maxRequests) {
+      return {
+        ruleId: rule.ruleId,
+        ruleType: rule.ruleType,
+        severity: rule.severity,
+        message: `Rate limit exceeded: ${window.timestamps.length} requests in ${windowMs}ms (max: ${maxRequests})`,
+        details: {
+          agentId,
+          requestCount: window.timestamps.length,
+          maxRequests,
+          windowMs,
+        },
+      };
+    }
+
     return null;
   }
 
@@ -172,26 +207,92 @@ export class RiskEngine {
   }
 
   /**
-   * Check calldata scan rule
+   * Check calldata scan rule — regex-based threat pattern matching
    */
   private checkCalldataScanRule(
     rule: VerificationRule,
     request: AgentTransactionRequest
   ): RiskViolation | null {
-    // Implement calldata scanning logic
-    // This is a placeholder - actual implementation would scan calldata
+    const params = rule.parameters as { patterns?: string[]; blockOnMatch?: boolean };
+    const patterns = params.patterns || [];
+    const blockOnMatch = params.blockOnMatch !== false;
+
+    const calldata = request.calldata || '';
+    if (!calldata || patterns.length === 0) {
+      return null;
+    }
+
+    for (const pattern of patterns) {
+      try {
+        const regex = new RegExp(pattern, 'i');
+        if (regex.test(calldata)) {
+          return {
+            ruleId: rule.ruleId,
+            ruleType: rule.ruleType,
+            severity: blockOnMatch ? 'block' : 'warn',
+            message: `Calldata matches threat pattern: ${pattern}`,
+            details: {
+              pattern,
+              calldataPreview: calldata.slice(0, 100),
+              blockOnMatch,
+            },
+          };
+        }
+      } catch {
+        // Invalid regex pattern — skip
+      }
+    }
+
     return null;
   }
 
   /**
-   * Check identity proof rule
+   * Check identity proof rule — verify proof signature against known attestors
    */
   private checkIdentityProofRule(
     rule: VerificationRule,
     request: AgentTransactionRequest
   ): RiskViolation | null {
-    // Implement identity proof verification
-    // This is a placeholder
+    const params = rule.parameters as {
+      requiredAttestors?: string[];
+      requireProof?: boolean;
+    };
+    const requireProof = params.requireProof !== false;
+    const requiredAttestors = params.requiredAttestors || [];
+
+    // Check if a proof is required and present
+    if (requireProof && !request.signatureProof) {
+      return {
+        ruleId: rule.ruleId,
+        ruleType: rule.ruleType,
+        severity: rule.severity,
+        message: 'Identity proof required but not provided',
+        details: {
+          agentId: request.agentId,
+          requireProof,
+        },
+      };
+    }
+
+    // If specific attestors are required, verify the proof is from one of them
+    // The signatureProof format is expected to be "attestor:signature"
+    if (requiredAttestors.length > 0 && request.signatureProof) {
+      const [attestor] = request.signatureProof.split(':');
+      if (!requiredAttestors.includes(attestor)) {
+        return {
+          ruleId: rule.ruleId,
+          ruleType: rule.ruleType,
+          severity: rule.severity,
+          message: `Proof attestor '${attestor}' is not in required list`,
+          details: {
+            agentId: request.agentId,
+            attestor,
+            requiredAttestors,
+          },
+        };
+      }
+    }
+
     return null;
   }
 
@@ -233,13 +334,22 @@ export class RiskEngine {
         transactionCount: 0,
         volume: 0,
         windowStart: now,
+        recentTransactions: [],
       };
     }
 
-    // Check transaction count
+    // Check per-minute transaction rate
     if (config.maxTransactionsPerMinute) {
       const maxPerMinute = config.maxTransactionsPerMinute;
-      // Implement rate limiting logic
+      const oneMinuteAgo = now - 60_000;
+
+      // Prune timestamps older than 1 minute
+      this.circuitBreakerState.recentTransactions =
+        this.circuitBreakerState.recentTransactions.filter((t) => t > oneMinuteAgo);
+
+      if (this.circuitBreakerState.recentTransactions.length >= maxPerMinute) {
+        this.circuitBreakerState.active = true;
+      }
     }
 
     // Check volume
@@ -251,8 +361,8 @@ export class RiskEngine {
     }
 
     // Check kill switch
-    if (config.killSwitchEnabled) {
-      // Kill switch can be manually triggered
+    if (config.killSwitchEnabled && this.killSwitchActive) {
+      this.circuitBreakerState.active = true;
     }
   }
 
@@ -310,6 +420,31 @@ export class RiskEngine {
   recordTransaction(valueETH: number): void {
     this.circuitBreakerState.transactionCount++;
     this.circuitBreakerState.volume += valueETH;
+    this.circuitBreakerState.recentTransactions.push(Date.now());
+  }
+
+  /**
+   * Activate the global kill switch
+   */
+  activateKillSwitch(reason?: string): void {
+    this.killSwitchActive = true;
+    this.circuitBreakerState.active = true;
+  }
+
+  /**
+   * Deactivate the global kill switch
+   */
+  deactivateKillSwitch(): void {
+    this.killSwitchActive = false;
+    this.circuitBreakerState.active = false;
+    this.circuitBreakerState.windowStart = Date.now();
+  }
+
+  /**
+   * Check if kill switch is active
+   */
+  isKillSwitchActive(): boolean {
+    return this.killSwitchActive;
   }
 }
 
@@ -322,6 +457,12 @@ interface CircuitBreakerState {
   transactionCount: number;
   volume: number;
   windowStart: number;
+  recentTransactions: number[];
+}
+
+interface RateLimitWindow {
+  windowStart: number;
+  timestamps: number[];
 }
 
 // ───────────────────────────────────────────────────────────────

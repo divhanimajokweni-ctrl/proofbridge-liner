@@ -85,8 +85,12 @@ export function verifyHashChain(chain: string[]): boolean {
   
   for (let i = 1; i < chain.length; i++) {
     const expected = computeHashChainLink(chain[i - 1], chain[i]);
-    // Note: In a real chain, we'd compare against stored chain hashes
-    // This is a utility for verification
+    // The chain array contains the raw event hashes.
+    // We verify by recomputing the chain hash from consecutive pairs.
+    // If any pair produces a different chain hash, the chain is broken.
+    if (expected !== chain[i]) {
+      return false;
+    }
   }
   return true;
 }
@@ -170,3 +174,34 @@ export function appendToHashChain(chain: HashChain, currentHash: string): HashCh
     length: chain.length + 1,
   };
 }
+
+// ───────────────────────────────────────────────────────────────
+// RC1 Alias Exports
+// ───────────────────────────────────────────────────────────────
+
+/**
+ * Deterministic SHA-256 hash of an object via canonical JSON.
+ * Alias for hashObject — matches the RC1 architecture naming.
+ */
+export const canonicalHash = hashObject;
+
+/**
+ * Compute hash chain link: SHA-256(previousHash + currentHash).
+ * Alias for computeHashChainLink — matches the RC1 architecture naming.
+ */
+export const chainHash = computeHashChainLink;
+
+/**
+ * Domain-prefixed hash to prevent cross-context collisions.
+ * SHA-256(domain + ":" + data) — ensures events from different
+ * Trust Contexts cannot produce the same hash.
+ */
+export function domainHash(domain: string, data: string): string {
+  return sha256Hex(`${domain}:${data}`);
+}
+
+/**
+ * Genesis hash anchor for all new Trust Contexts.
+ * Every new hash chain starts from this value.
+ */
+export const GENESIS_HASH = '0x' + '00'.repeat(32);

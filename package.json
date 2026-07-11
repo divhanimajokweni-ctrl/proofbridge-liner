@@ -2,15 +2,16 @@
   "name": "proofbridge-liner",
   "version": "1.0.0-rc1",
   "private": true,
+  "packageManager": "pnpm@11.11.0",
   "workspaces": [
     "apps/*",
     "packages/*",
     "services/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "test": "turbo run test",
+    "dev": "turbo dev",
+    "build:all": "turbo build",
+    "test": "turbo test",
     "lint": "turbo run lint",
     "chaos": "npx tsx tests/chaos-gate-bench.ts",
     "seed": "npx tsx scripts/seed-trust-context.ts",

@@ -20,6 +20,7 @@ export type {
   ContextSuspendedPayload,
   ContextFrozenPayload,
   ContextTerminatedPayload,
+  ContextUpdatedPayload,
   EventJournaledPayload,
   TransactionVerifiedPayload,
   TransactionApprovedPayload,
@@ -28,5 +29,8 @@ export type {
   KillSwitchDeactivatedPayload,
   AttestationIssuedPayload,
   ReceiptIssuedPayload,
+  BartbotEnforcementPayload,
+  BartbotSelfAuditPayload,
+  BartbotSelfAuditFailurePayload,
   ValidationResult,
 } from './definitions';
