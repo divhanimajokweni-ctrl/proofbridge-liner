@@ -194,7 +194,7 @@ phase 3 $total_phases "LINT GATE — npm run lint"
 # ============================================================
 phase 4 $total_phases "TEST GATE — npm test"
 {
-  npm test 2>&1 | tail -30
+  npx vitest run 2>&1 | tail -30
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
     fail "Unit tests failed — fix failing tests before shipping"
   fi
@@ -204,9 +204,9 @@ phase 4 $total_phases "TEST GATE — npm test"
 # ============================================================
 # PHASE 5: BUILD GATE
 # ============================================================
-phase 5 $total_phases "BUILD GATE — npm run build"
+phase 5 $total_phases "BUILD GATE — next build"
 {
-  npm run build 2>&1 | tail -10
+  npx next build 2>&1 | tail -20
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
     fail "Build failed — aborting deployment loop"
   fi
