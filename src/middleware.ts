@@ -31,22 +31,16 @@ const PUBLIC_PATHS = [
   '/about',
   '/faqs',
   '/ubuntu-pools',
-  '/gateway',
   '/api/health',
   '/api/webhooks',
-  '/api/receipts/verify',
-  '/api/gateway',
   '/favicon.ico',
   '/_next/static',
   '/_next/image',
-  '/auth/callback'
 ];
 
 // Routes protected by VVU Gateway session (not Supabase)
 const VVU_GUARDED_PATHS = [
   '/dashboard',
-  '/gateway-deck',
-  '/agent-terminal',
 ];
 
 const MAX_REDIRECTS = 5;
@@ -138,7 +132,7 @@ export async function middleware(req: NextRequest) {
       validateVVUSession(req.headers.get('cookie') || '') ||
       validateJwtSession(req.headers.get('cookie') || '');
     if (!session) {
-      const redirectUrl = new URL('/gateway', req.url);
+      const redirectUrl = new URL('/login', req.url);
       redirectUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(redirectUrl);
     }

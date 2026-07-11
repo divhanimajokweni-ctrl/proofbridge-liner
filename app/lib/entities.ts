@@ -58,7 +58,7 @@ export const ENTITIES = [
       "compliance-fabric branch protected \u00B7 main is mirror-only",
     ],
     ctaLabel: "View Bridge",
-    ctaHref: "/proofbridge",
+    ctaHref: "/trust-runtime",
   },
   {
     id: "safekrypte",
@@ -79,6 +79,6 @@ export const ENTITIES = [
       "VCT ED25519 cryptographic binding confirmed",
     ],
     ctaLabel: "Explore SafeKrypte",
-    ctaHref: "/gateway",
+    ctaHref: "/safekrypte",
   },
 ];

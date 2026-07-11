@@ -12,10 +12,10 @@ export default function DashboardNav() {
 
   const links = [
     { href: '/dashboard', label: '🚨 Operational Deck' },
-    { href: '/dashboard/infra', label: '⚙️ Infrastructure' },
-    { href: '/dashboard/telemetry', label: '🌐 Telemetry Globe' },
-    { href: '/proofbridge', label: '🔗 ProofBridge Liner' },
     { href: '/pools', label: '🏦 Ubuntu Pools' },
+    { href: '/safekrypte', label: '🔐 SafeKrypte' },
+    { href: '/trust-runtime', label: '🌐 Trust Runtime' },
+    { href: '/dashboard/security', label: '🔑 Security' },
   ];
 
   return (
