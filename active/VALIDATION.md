@@ -56,12 +56,25 @@ scheduler, lindiwe notifier, main entry. Compiles clean.
 | bartbot | PASS |
 | trust-projections | Pre-existing Drizzle ORM type errors (not caused by RC1 changes) |
 
+## Unit Test Coverage (AC9)
+6 test suites, 75 tests, all passing via vitest.
+
+| Suite | File | Tests | Covers |
+|-------|------|-------|--------|
+| hash.test.ts | `packages/trust-crypto/__tests__/` | 26 | canonicalHash, chainHash, domainHash, GENESIS_HASH, verifyHashChain (fixed), sha256Hex, hmac, HashChain |
+| risk-engine-rules.test.ts | `packages/trust-runtime/__tests__/` | 16 | rate_limit, calldata_scan, identity_proof, circuit breaker, kill-switch, no-policy pass |
+| kill-switch.test.ts | `packages/trust-api/__tests__/` | 8 | activate, deactivate, isActive, getKillSwitchState, listeners, unsubscribe, fail-open |
+| enforce-policy-gate.test.ts | `packages/trust-api/__tests__/` | 7 | allowed pass, risk fail, kill-switch block, receipt generation, latencyMs, violations |
+| event-journal-async.test.ts | `packages/trust-runtime/__tests__/` | 8 | in-memory journal, repository persistence, JournalEventResult, repository errors |
+| context-manager-async.test.ts | `packages/trust-runtime/__tests__/` | 10 | createContext, suspend, freeze, terminate, in-memory fallback, status filtering |
+
+Framework: vitest. Config: `vitest.config.ts` updated. All tests self-contained (mocked PostgreSQL repos).
+Bug fix: `verifyHashChain` in `trust-crypto/src/hash.ts` corrected — was computing a fixed-point check (`sha256(prev+curr)===curr`, impossible for real hashes). Now computes rolling hash with optional `expectedChainHash` parameter.
+
 ## Known Limitations
 1. trust-projections Drizzle ORM `PgTableExtraConfig` type mismatch — pre-existing, affects
    `contracts/db/trust-runtime.ts` extra config callbacks. Not blocking for RC1 runtime.
 2. Redis integration not yet implemented in trust packages (planned for RC2).
-3. No unit tests written for new modules yet (rate_limit, calldata_scan, identity_proof,
-   kill-switch, enforcePolicyGate). **Tests are next.**
 
 ## Approval
 VALIDATION: PASS

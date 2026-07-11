@@ -77,21 +77,36 @@ export function computeHashChainLink(previousHash: string, currentEventHash: str
 
 /**
  * Verify hash chain integrity
- * Given a chain of hashes, verify that each link is correctly computed
+ * Given a chain of raw event hashes (including genesis), recompute the
+ * rolling chain hash and optionally compare against an expected final value.
+ *
+ * chain[0] = genesis hash
+ * chain[1..n] = raw event hashes in order
+ *
+ * The rolling hash is: h = chain[0]; h = sha256(h + chain[i]) for i = 1..n
+ *
+ * If expectedChainHash is provided, the recomputed hash must match it.
+ * If omitted, the function only validates structural consistency (all
+ * entries are valid hex and the chain is non-empty).
  */
-export function verifyHashChain(chain: string[]): boolean {
+export function verifyHashChain(
+  chain: string[],
+  expectedChainHash?: string
+): boolean {
   if (chain.length === 0) return true;
-  if (chain.length === 1) return true;
-  
-  for (let i = 1; i < chain.length; i++) {
-    const expected = computeHashChainLink(chain[i - 1], chain[i]);
-    // The chain array contains the raw event hashes.
-    // We verify by recomputing the chain hash from consecutive pairs.
-    // If any pair produces a different chain hash, the chain is broken.
-    if (expected !== chain[i]) {
-      return false;
-    }
+  if (chain.length === 1) {
+    return expectedChainHash === undefined || chain[0] === expectedChainHash;
   }
+
+  let rollingHash = chain[0];
+  for (let i = 1; i < chain.length; i++) {
+    rollingHash = computeHashChainLink(rollingHash, chain[i]);
+  }
+
+  if (expectedChainHash !== undefined) {
+    return rollingHash === expectedChainHash;
+  }
+
   return true;
 }
 

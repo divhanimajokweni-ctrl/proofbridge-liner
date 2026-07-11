@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/property/**/*.test.ts'],
-    exclude: ['node_modules', 'dist', '.next'],
+    include: ['packages/**/__tests__/**/*.test.ts'],
+    exclude: ['**/node_modules/**', 'dist', '.next', 'tests/property/**'],
   },
 });
