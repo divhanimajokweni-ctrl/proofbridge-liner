@@ -25,4 +25,12 @@ export type {
   AgentTransactionRequest,
   KillSwitchState,
   ChronicleEntry,
+  AgentIdentity,
+  TaskSpec,
+  DiffManifest,
+  ExecutionEvidence,
+  ExecutionReceipt,
+  ExecutionContractResult,
+  VerificationAttestation,
+  FounderBrief,
 } from '@proofbridge/contracts/api/types';

@@ -54,7 +54,14 @@ export type TrustEventType =
   // BARTBOT autonomous agent
   | 'bartbot.enforcement'
   | 'bartbot.self_audit'
-  | 'bartbot.self_audit_failure';
+  | 'bartbot.self_audit_failure'
+  
+  // Agent Execution Contract
+  | 'execution.task_accepted'
+  | 'execution.completed'
+  | 'execution.verified'
+  | 'execution.rejected'
+  | 'execution.merged';
 
 // ───────────────────────────────────────────────────────────────
 // Event Payload Types
@@ -96,7 +103,12 @@ export type TrustEventPayload =
   | ReceiptIssuedPayload
   | BartbotEnforcementPayload
   | BartbotSelfAuditPayload
-  | BartbotSelfAuditFailurePayload;
+  | BartbotSelfAuditFailurePayload
+  | ExecutionTaskAcceptedPayload
+  | ExecutionCompletedPayload
+  | ExecutionVerifiedPayload
+  | ExecutionRejectedPayload
+  | ExecutionMergedPayload;
 
 // Context Lifecycle Payloads
 
@@ -245,6 +257,52 @@ export interface BartbotSelfAuditFailurePayload {
   details: Record<string, unknown>;
   timestamp: number;
   alertLevel: 'warning' | 'critical';
+}
+
+// Agent Execution Contract Payloads
+
+export interface ExecutionTaskAcceptedPayload {
+  type: 'execution.task_accepted';
+  agentId: string;
+  taskId: string;
+  taskSpecHash: string;
+  timestamp: number;
+}
+
+export interface ExecutionCompletedPayload {
+  type: 'execution.completed';
+  agentId: string;
+  taskId: string;
+  receiptId: string;
+  evidence: Record<string, unknown>;
+  diffManifest: Record<string, unknown>;
+  timestamp: number;
+}
+
+export interface ExecutionVerifiedPayload {
+  type: 'execution.verified';
+  receiptId: string;
+  verifiedBy: string;
+  status: 'verified';
+  timestamp: number;
+}
+
+export interface ExecutionRejectedPayload {
+  type: 'execution.rejected';
+  receiptId: string;
+  verifiedBy: string;
+  status: 'rejected';
+  reason: string;
+  timestamp: number;
+}
+
+export interface ExecutionMergedPayload {
+  type: 'execution.merged';
+  receiptId: string;
+  taskId: string;
+  agentId: string;
+  headCommit: string;
+  timestamp: number;
 }
 
 // ───────────────────────────────────────────────────────────────
@@ -500,6 +558,7 @@ export function validateTrustEvent(event: TrustEvent): ValidationResult {
     'attestation.issued',
     'receipt.issued',
     'bartbot.enforcement', 'bartbot.self_audit', 'bartbot.self_audit_failure',
+    'execution.task_accepted', 'execution.completed', 'execution.verified', 'execution.rejected', 'execution.merged',
   ];
   
   if (!validTypes.includes(event.eventType as TrustEventType)) {
