@@ -10,9 +10,11 @@
   ],
   "scripts": {
     "dev": "turbo dev",
+    "build": "turbo build",
     "build:all": "turbo build",
     "test": "turbo test",
     "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
     "chaos": "npx tsx tests/chaos-gate-bench.ts",
     "seed": "npx tsx scripts/seed-trust-context.ts",
     "kernel": "npx tsx scripts/mock-lindiwe-kernel.ts",
