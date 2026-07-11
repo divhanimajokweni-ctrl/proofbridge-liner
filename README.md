@@ -3,15 +3,10 @@
 > **If you're Mino (the founder), start here → [`FOUNDERS_VIEW.md`](./FOUNDERS_VIEW.md)**  
 > Quick progress → [`PROGRESS_LOG.md`](./PROGRESS_LOG.md)
 
-![AMD Hackathon](https://img.shields.io/badge/AMD%20Hackathon-Act%20II%20Track%203-purple)
 ![Status](https://img.shields.io/badge/status-production-green)
 ![Next.js](https://img.shields.io/badge/Next.js-14.0.4-black)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
 ![AMD MI300X](https://img.shields.io/badge/AMD-MI300X%20·%20ROCm%207-red)
-
-> **🏆 AMD Developer Hackathon: Act II — Track 3 (Unicorn Track)**  
-> Submission deadline: **July 11, 2026, 15:00 UTC** · [Hackathon Submission Guide](./docs/HACKATHON_SUBMISSION_GUIDE.md)  
-> HuggingFace Space: [proofbridge-liner-safety-kernel](https://huggingface.co/spaces/lablab-ai-amd-developer-hackathon/proofbridge-liner-safety-kernel)
 
 **ProofBridge-Liner** — the compliance and verification layer for Ubuntu Pools and VVU's financial infrastructure. A constitutional promise of cryptographic trust, instantiated as running code across nine entities governed by a single vision.
 
@@ -478,7 +473,7 @@ https://github.com/sponsors/divhanimajokweni-ctrl
 - 40% — Engineering: Hardware TEE integration, multi-chain support, scaling
 - 25% — Compliance & Legal: FSCA, FICA, POPIA, Cybercrimes Act, international regulatory
 - 20% — Operations: GPU compute (AMD MI300X), IPFS infrastructure, monitoring
-- 15% — Community & Adoption: Ubuntu Pools member onboarding, hackathons, outreach
+- 15% — Community & Adoption: Ubuntu Pools member onboarding, outreach
 
 ---
 
@@ -627,8 +622,8 @@ AMD_STRICT=1 npx tsx lib/amd-init.ts
 
 ### Docker
 ```bash
-docker build -t proofbridge-liner:hackathon .
-docker run --rm -p 3000:3000 -e AMD_STRICT=0 proofbridge-liner:hackathon
+docker build -t proofbridge-liner .
+docker run --rm -p 3000:3000 -e AMD_STRICT=0 proofbridge-liner
 ```
 
 ### Build & Deploy
@@ -751,56 +746,6 @@ vercel --prod --force
 
 ---
 
-## AMD Hackathon Track 3 — Unicorn Track Submission
-
-**Project:** ProofBridge Liner — Hardware-Enforced Trust Infrastructure for SA Financial Markets  
-**Track:** Track 3 — Unicorn Track (all levels, any tech stack)  
-**Deadline:** July 11, 2026, 15:00 UTC  
-**HuggingFace Space:** [proofbridge-liner-safety-kernel](https://huggingface.co/spaces/lablab-ai-amd-developer-hackathon/proofbridge-liner-safety-kernel)  
-**Referral link:** [lablab.ai referral dashboard](https://lablab.ai/ai-hackathons/amd-developer-hackathon-act-ii)
-
-### Judging Criteria — How We Map
-
-| Criterion | Weight | Our Position |
-|-----------|--------|-------------|
-| **Creativity & Originality** | 25% | Bayesian safety kernel for real-world asset compliance — novel application of Bayes' theorem to property fraud detection, no comparable product exists |
-| **Product/Market Potential** | 25% | R1.5T SA mortgage market, FSCA JS2 mandate, Ubuntu Pools 500M unbanked — 3 addressable markets converging on a single trust layer |
-| **Completeness** | 25% | ✅ 50K+ transactions processed, ✅ 23 fraud blocks, ✅ FSCA/FICA/POPIA/CPA compliance docs, ✅ containerized, ✅ Docker + CI/CD pipeline |
-| **Use of AMD Platforms** | 25% | ✅ AMD MI300X via ROCm 7 (192GB VRAM), ✅ Fireworks AI API inference, ✅ `lib/amd-init.ts` HW probe, ✅ sub-1ms P99 latency |
-
-### Technical Differentiators
-
-- **3-Layer Trust Stack** — SafeKrypte (signing) → SafeLiner (credentials) → ProofBridge (compliance) — cryptographic separation of concerns
-- **Bayesian Beta-Binomial Kernel** — live γ=20 risk threshold with hardware-attested scoring outputs
-- **TEE-Attested Reasoning Chain** — every decision cryptographically bound to AMD TEE PCR0 hash
-- **Automated Regulatory Pipeline** — FSCA JS2 reports, FICA SAR goAML XML, Cybercrimes Act forensic bundles
-- **Stripe + Stitch Billing** — dual-currency (USD/ZAR) subscription monetization for SA market
-- **Baileys WhatsApp Daemon** — multi-file auth, interactive admin commands, Express health server
-- **Advanced PiP Dashboard** — Document Picture-in-Picture with heartbeat, auto-close, compact telemetry chart
-
-### For Best AMD-Hosted Gemma Project Prize ($2,000)
-Gemma models are available via Fireworks AI API. To compete for this prize:
-1. Use Gemma as the LLM judge for compliance scoring fallback
-2. The Gateway AI SDK already supports `google/gemma-4-26b-a4b-it` — integration is configured in `ai-gateway/`
-3. Submit with a tag and description referencing Gemma usage
-
-### Quick Start (Containerized — for judging)
-```bash
-# Build the container
-docker build -t proofbridge-liner:hackathon .
-
-# Run on any AMD-supported instance (or with AMD_STRICT=0 for local testing)
-docker run --rm -p 3000:3000 -e AMD_STRICT=0 proofbridge-liner:hackathon
-
-# With AMD hardware verification
-docker run --rm -p 3000:3000 --device=/dev/kfd --device=/dev/dri \
-  -e AMD_STRICT=1 proofbridge-liner:hackathon
-```
-
-For detailed submission steps, see the [AMD Hackathon Submission Guide](./docs/HACKATHON_SUBMISSION_GUIDE.md).
-
----
-
 ## Production Capabilities
 
 **Implemented:**
@@ -863,5 +808,4 @@ ProofBridge-Liner exists to make critical financial and governance state transit
 ---
 
 *Built with ❤️ for the Ubuntu Pools ecosystem — from Gqeberha, for the continent.*  
-*Submitted to AMD Developer Hackathon: Act II — Track 3 (Unicorn Track)*  
 build-ref: 899bb61
