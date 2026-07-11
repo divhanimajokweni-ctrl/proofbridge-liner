@@ -1,0 +1,16 @@
+{
+  "name": "@proofbridge/trust-types",
+  "version": "1.0.0-rc1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "@proofbridge/contracts": "workspace:*"
+  }
+}
