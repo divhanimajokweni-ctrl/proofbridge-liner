@@ -53,8 +53,9 @@ scheduler, lindiwe notifier, main entry. Compiles clean.
 | trust-events | PASS |
 | trust-runtime | PASS |
 | trust-api | PASS |
+| trust-projections | PASS |
 | bartbot | PASS |
-| trust-projections | Pre-existing Drizzle ORM type errors (not caused by RC1 changes) |
+| trust-projections | PASS (Drizzle `PgTableExtraConfig` arrays→objects fix applied 2026-07-11) |
 
 ## Unit Test Coverage (AC9)
 6 test suites, 75 tests, all passing via vitest.
@@ -72,9 +73,8 @@ Framework: vitest. Config: `vitest.config.ts` updated. All tests self-contained 
 Bug fix: `verifyHashChain` in `trust-crypto/src/hash.ts` corrected — was computing a fixed-point check (`sha256(prev+curr)===curr`, impossible for real hashes). Now computes rolling hash with optional `expectedChainHash` parameter.
 
 ## Known Limitations
-1. trust-projections Drizzle ORM `PgTableExtraConfig` type mismatch — pre-existing, affects
-   `contracts/db/trust-runtime.ts` extra config callbacks. Not blocking for RC1 runtime.
-2. Redis integration not yet implemented in trust packages (planned for RC2).
+1. Redis integration not yet implemented in trust packages (planned for RC2).
+2. `checkCustomRule` in RiskEngine is a no-op stub (returns null) — custom rules planned for RC2.
 
 ## Approval
 VALIDATION: PASS
