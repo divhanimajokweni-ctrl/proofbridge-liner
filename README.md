@@ -40,6 +40,14 @@
 
 ## Current Status
 
+### 2026-07-11 — RC1 Trust Infrastructure landed + compliance-fabric merged to main
+
+- 6 vitest test suites (75 tests, all passing) for trust-crypto, trust-runtime, trust-api.
+- `verifyHashChain` bug fixed (rolling hash + optional chain hash parameter).
+- Missing `await` on async calls in `trust-api/src/routes.ts` fixed.
+- `compliance-fabric` fast-forward merged into `main` (Ubuntu Pools + Mint Envelopes + unreachable src/app/ cleanup).
+- PR: [#28](https://github.com/divhanimajokweni-ctrl/proofbridge-liner/pull/28)
+
 | Attribute | Value |
 |-----------|-------|
 | **Phase** | Production Hardening |
