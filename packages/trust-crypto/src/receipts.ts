@@ -17,7 +17,8 @@ export type ReceiptType =
   | 'event_journal'
   | 'verification'
   | 'attestation'
-  | 'kill_switch';
+  | 'kill_switch'
+  | 'execution';
 
 export interface ReceiptHeader {
   receiptId: string;

@@ -131,7 +131,8 @@ export type ReceiptType =
   | "event_journal"
   | "verification"
   | "attestation"
-  | "kill_switch";
+  | "kill_switch"
+  | "execution";
 
 // ─── Verification Result ──────────────────────────────────────
 
@@ -175,5 +176,121 @@ export interface ChronicleEntry {
   valueETH: number;
   reason?: string;
   latencyMs?: number;
+  timestamp: number;
+}
+
+// ─── Agent Execution Contract ─────────────────────────────────
+
+/**
+ * Agent Identity — registered once, purpose is immutable.
+ * One agent, one purpose. That keeps reasoning clean.
+ */
+export interface AgentIdentity {
+  agentId: string;
+  displayName: string;
+  purpose: string;
+  capabilities: string[];
+  restrictions: string[];
+  signingKeyRef: string;
+  registeredAt: number;
+}
+
+/**
+ * TaskSpec — structured task given to an agent.
+ * Agent cannot expand scope beyond this spec.
+ */
+export interface TaskSpec {
+  taskId: string;
+  description: string;
+  scope: string[];
+  constraints: string[];
+  contextId: string;
+  policyId: string;
+  createdAt: number;
+}
+
+/**
+ * DiffManifest — what the agent changed.
+ */
+export interface DiffManifest {
+  filesChanged: string[];
+  linesAdded: number;
+  linesRemoved: number;
+  testsAdded: number;
+  testsModified: number;
+}
+
+/**
+ * ExecutionEvidence — verification results from the agent's work.
+ */
+export interface ExecutionEvidence {
+  typecheck: { passed: boolean; errorCount: number };
+  lint: { passed: boolean; errorCount: number };
+  tests: { passed: boolean; total: number; passedCount: number; failed: number };
+  build: { passed: boolean };
+  coverage?: { statements?: number; branches?: number };
+}
+
+/**
+ * ExecutionReceipt — cryptographic record of an agent's execution.
+ * Signed with the agent's HMAC key. Hash-chained per agent.
+ */
+export interface ExecutionReceipt {
+  receiptId: string;
+  agentId: string;
+  agentVersion: string;
+  taskId: string;
+  taskSpecHash: string;
+  repository: {
+    branch: string;
+    baseCommit: string;
+    headCommit: string;
+  };
+  evidence: ExecutionEvidence;
+  diffManifest: DiffManifest;
+  timestamp: number;
+  contextId: string;
+}
+
+/**
+ * ExecutionContractResult — output of enforceExecutionContract.
+ */
+export interface ExecutionContractResult {
+  allowed: boolean;
+  receipt?: ExecutionReceipt;
+  verificationStatus: "pending" | "verified" | "rejected";
+  reason?: string;
+  violations: Array<{
+    ruleId: string;
+    severity: string;
+    message: string;
+  }>;
+  latencyMs: number;
+}
+
+/**
+ * VerificationAttestation — independent verification of an execution receipt.
+ */
+export interface VerificationAttestation {
+  attestationId: string;
+  receiptId: string;
+  verifiedBy: string;
+  status: "verified" | "rejected";
+  reason?: string;
+  timestamp: number;
+}
+
+/**
+ * FounderBrief — plain-English summary of what changed and why.
+ */
+export interface FounderBrief {
+  taskId: string;
+  agentId: string;
+  whatChanged: string;
+  whyChanged: string;
+  howItWorks: string;
+  risksRemaining: string;
+  summary: string;
+  receiptId: string;
   timestamp: number;
 }

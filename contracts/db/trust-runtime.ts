@@ -184,3 +184,27 @@ export const chronicleEntries = pgTable('chronicle_entries', {
 }, (table) => ({
   uq_chronicle_event: unique('uq_chronicle_event').on(table.contextId, table.eventId),
 }));
+
+/**
+ * 10. Execution Receipts Table
+ *
+ * Cryptographic receipts for AI agent execution work.
+ * Every line of code traces back to an agent, a task, evidence, and an approval.
+ */
+export const executionReceipts = pgTable('execution_receipts', {
+  receiptId: varchar('receipt_id', { length: 255 }).primaryKey(),
+  agentId: varchar('agent_id', { length: 255 }).notNull(),
+  taskId: varchar('task_id', { length: 255 }).notNull(),
+  taskSpecHash: varchar('task_spec_hash', { length: 64 }).notNull(),
+  branch: varchar('branch', { length: 255 }).notNull(),
+  baseCommit: varchar('base_commit', { length: 40 }).notNull(),
+  headCommit: varchar('head_commit', { length: 40 }).notNull(),
+  evidence: jsonb('evidence').notNull(),
+  diffManifest: jsonb('diff_manifest').notNull(),
+  verificationStatus: varchar('verification_status', { length: 50 }).default('pending').notNull(),
+  verifiedBy: varchar('verified_by', { length: 255 }),
+  contextId: uuid('context_id').notNull().references(() => trustContexts.contextId),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  uq_execution_receipt_task: unique('uq_execution_receipt_task').on(table.agentId, table.taskId),
+}));
