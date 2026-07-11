@@ -1,12 +1,16 @@
 /** @type {import('next').NextConfig} */
 import path from 'path';
 import { fileURLToPath } from 'url';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { createRequire } from 'module';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 const nextConfig = {
-  outputFileTracing: false,
   reactStrictMode: true,
-  swcMinify: true,
+  turbopack: {
+    root: '.',
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },
