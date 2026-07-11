@@ -37,7 +37,7 @@ export function createTrustRouter(config: TrustApiConfig): Router {
   router.post('/contexts', async (req: Request, res: Response) => {
     try {
       const request = req.body as CreateTrustContextRequest;
-      const result = contextManager.createContext(request);
+      const result = await contextManager.createContext(request);
       
       // Generate configuration receipt
       const receipt = receiptEngine.generateConfigurationReceipt(
@@ -81,7 +81,7 @@ export function createTrustRouter(config: TrustApiConfig): Router {
         return res.status(500).json({ error: 'Event Journal not initialized' });
       }
 
-      const result = journal.journalEvent(request);
+      const result = await journal.journalEvent(request);
       
       // Generate receipt
       const receipt = receiptEngine.generateEventJournalReceipt(
