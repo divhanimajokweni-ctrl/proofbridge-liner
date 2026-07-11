@@ -166,8 +166,12 @@ phase 1 $total_phases "COMMIT GATE — Critical File Check"
 # ============================================================
 phase 2 $total_phases "TYPECHECK GATE — tsc --noEmit"
 {
-  npm run typecheck 2>&1 | tail -20
-  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+  npx tsc --noEmit --project packages/trust-crypto/tsconfig.json 2>&1 && \
+  npx tsc --noEmit --project packages/trust-runtime/tsconfig.json 2>&1 && \
+  npx tsc --noEmit --project packages/trust-api/tsconfig.json 2>&1 && \
+  npx tsc --noEmit --project packages/trust-projections/tsconfig.json 2>&1 && \
+  npx tsc --noEmit --project packages/bartbot/tsconfig.json 2>&1
+  if [ "$?" -ne 0 ]; then
     fail "TypeScript typecheck failed — fix type errors before shipping"
   fi
   pass "TypeScript typecheck passed"
