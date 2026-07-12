@@ -59,7 +59,7 @@ function validateVVUSession(cookieHeader: string): { userId: string; tier: strin
   }
 }
 
-const PROTECTED_PREFIXES = ['/dashboard', '/safekrypte'];
+const PROTECTED_PREFIXES = ['/dashboard', '/safekrypte', '/pools', '/api/pools'];
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
@@ -106,6 +106,13 @@ export async function middleware(req: NextRequest) {
   );
 
   if (!user && isProtected) {
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'Unauthorized', detail: 'Authentication required for this endpoint.' },
+        { status: 401 },
+      );
+    }
+
     const redirectCount = parseInt(req.headers.get('x-vvu-redirect-count') || '0', 10);
     if (redirectCount >= MAX_REDIRECTS) {
       return new NextResponse('Watchdog Intercept: Shielding against authentication loop.', { status: 508 });
