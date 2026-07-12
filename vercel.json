@@ -1,5 +1,5 @@
 {
   "framework": "nextjs",
   "outputDirectory": ".next",
-  "installCommand": "pnpm install --no-frozen-lockfile --ignore-scripts"
+  "installCommand": "PNPM_APPROVE_BUILDS=all pnpm install --frozen-lockfile"
 }
