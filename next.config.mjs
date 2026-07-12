@@ -10,6 +10,11 @@ const nextConfig = {
   reactStrictMode: true,
   turbopack: {
     root: '.',
+    resolveAlias: {
+      '@': {
+        source: '.',
+      },
+    },
   },
   eslint: {
     ignoreDuringBuilds: true,
