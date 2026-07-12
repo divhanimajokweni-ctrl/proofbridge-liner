@@ -5,7 +5,7 @@ packages:
   - 'contracts'
 
 allowBuilds:
-  '@firebase/util': set this to true or false
+  '@firebase/util': true
   esbuild: false
-  protobufjs: set this to true or false
-  sharp: set this to true or false
+  protobufjs: true
+  sharp: true
