@@ -30,12 +30,11 @@ const nextConfig = {
     config.resolve.alias['@/prover'] = path.resolve(__dirname, 'prover');
     config.resolve.alias['@/server'] = path.resolve(__dirname, 'server');
     config.resolve.alias['@'] = path.resolve(__dirname, 'src');
+    config.resolve.alias['@/lib/db'] = path.resolve(__dirname, 'lib/db/src');
     return config;
   },
   async rewrites() {
-    return [
-      { source: '/trust-sphere', destination: '/vvv/trust-sphere.html' },
-    ]
+    return []
   },
 }
 
