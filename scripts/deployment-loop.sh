@@ -202,33 +202,42 @@ phase 4 $total_phases "TEST GATE — npm test"
 } >&3
 
 # ============================================================
-# PHASE 5: BUILD GATE — skipped (local Turbopack env broken)
-# Vercel production build (Phase 7) is the real gate.
+# PHASE 5: BUILD GATE — local next build
 # ============================================================
-phase 5 $total_phases "BUILD GATE — local next build (skipped)"
+phase 5 $total_phases "BUILD GATE — next build"
 {
-  warn "Skipping local next build — Turbopack env has pre-existing unresolved issues"
-  warn "Vercel production build (Phase 7) is the real build gate"
-  pass "Local build skipped (Vercel build is authoritative)"
+  npx next build 2>&1 | tail -20
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    fail "Build failed — aborting deployment loop"
+  fi
+  pass "Build succeeded"
 } >&3
 
 # ----------------------------------------------------------
-# DEV SERVER RESTART — skipped (no build to reload)
+# DEV SERVER RESTART (build overwrites .next/ with production chunks)
 # ----------------------------------------------------------
 {
-  info "Skipping dev server restart — no build was performed"
-  # Verify existing dev server is still healthy
-  if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null | grep -q "200"; then
-    pass "Dev server still healthy (no restart needed)"
-  else
-    # Try to restart if it died
-    nohup npx next dev --port 3000 > /tmp/nextdev.log 2>&1 &
-    sleep 8
+  info "Restarting dev server after build..."
+  if command -v pkill &>/dev/null; then
+    pkill -f "next dev" 2>/dev/null || true
+  fi
+  sleep 1
+  rm -rf .next/ 2>/dev/null || true
+  sleep 1
+  nohup npx next dev --port 3000 > /tmp/nextdev.log 2>&1 &
+  DEV_PID=$!
+  HEALTH_OK=false
+  for i in $(seq 1 12); do
+    sleep 5
     if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health 2>/dev/null | grep -q "200"; then
-      pass "Dev server restarted and healthy"
-    else
-      fail "Dev server failed to restart"
+      HEALTH_OK=true
+      break
     fi
+  done
+  if [ "$HEALTH_OK" = true ]; then
+    pass "Dev server restarted and healthy"
+  else
+    fail "Dev server failed to restart after build"
   fi
 } >&3
 

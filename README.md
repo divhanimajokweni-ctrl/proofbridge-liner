@@ -65,6 +65,8 @@ PR: [#26](https://github.com/divhanimajokweni-ctrl/proofbridge-liner/pull/26) ·
 - [Canonical Three-Layer Trust Stack](#canonical-three-layer-trust-stack)
 - [System Architecture Visual](#system-architecture-visual)
 - [Component Map](#component-map)
+- [Engineering Principles](#engineering-principles)
+  - [Documentation Law](#documentation-law)
 - [Phases & Expansion](#phases--expansion)
 - [Ubuntu Pools — The North Star](#ubuntu-pools--the-north-star)
 - [Fund & Sponsor](#fund--sponsor)
@@ -95,14 +97,37 @@ The answer is a **three-layer trust stack** with a Bayesian safety kernel at its
 
 ## Engineering Principles
 
-The system adheres to the following principles, prioritizing evidence and transparency over trust in contributors:
+The full constitution lives in [`docs/governance/ENGINEERING_CONSTITUTION.md`](docs/governance/ENGINEERING_CONSTITUTION.md).
 
-* **Evidence over assertion.**
-* **Verification over trust.**
-* **Governance over discretion.**
-* **Documentation before deployment.**
-* **Every meaning has purpose.**
-* **Every purpose produces evidence.**
+**Systems Don't Get Second Chances — They Get Runbooks.** Every deployment, every migration, every config change has a documented rollback path before it ships. If it can't be rolled back, it doesn't ship.
+
+**Compliance Is Architecture, Not a Feature.** Governance rules, circuit breakers, kill switches, and trust policies are architectural constraints that shape how code is written from the first commit. The Compliance Gate doesn't care about velocity — it cares about auditability.
+
+**The Build Pipeline Is the Single Source of Truth.** If `scripts/deployment-loop.sh` doesn't pass, the code doesn't ship. No manual overrides. No "works on my machine." The pipeline is the contract between every agent that touches this codebase.
+
+**Agent Code Is Infrastructure Code.** Every agent that touches production systems follows the same traceability chain: Investigation → Plan → Approval → Implementation → Validation. No shortcuts.
+
+**Behavioral Coverage Is Non-Negotiable.** Before any change ships, the system must be verified to behave correctly — not just compile. The five compliance flows (VC issuance, circuit breaker, webhook, SafeKrypte, Ubuntu Pools) are the minimum behavioral coverage bar.
+
+**Documentation Prevents Institutional Amnesia.** Institutional knowledge that isn't written down is institutional knowledge that will be lost. Every architectural decision, every deployment procedure, every compliance rule lives in the repository, not in someone's head.
+
+**Ship Nothing That Can't Be Explained to a Stranger.** If a new engineer cannot pick up the README and understand what this system does and why it exists, the documentation has failed.
+
+### Documentation Law
+
+> "If the system can't explain itself to a stranger, it's not production-ready."
+
+The **Tourist Test**: a new team member (or agent) must be able to pick up the README, follow the onboarding flow, and understand what the system does, why it exists, and how to work on it. If they can't, the documentation has failed.
+
+| Step | Action | Gate |
+|------|--------|------|
+| 1 | Code change touches a documented surface | Developer identifies affected docs |
+| 2 | Relevant documentation updated in same PR | PR review blocks merge if docs missing |
+| 3 | README reviewed for accuracy | No stale references, no orphaned links |
+| 4 | CHANGELOG updated if user-facing | New entries above "Unreleased" |
+| 5 | Post-merge: deployed docs verified | Live docs match merged code |
+
+**Anti-patterns:** "We'll document it later" (later never comes). "The code is the documentation" (code explains *how*, documentation explains *why*). "Everyone knows that" (new agents, future-you — they don't). "It's just a small change" (small changes accumulate).
 
 The repository documents the system, not the biography of its contributors. The institution is the protagonist. The repository provides the architecture, evidence, benchmarks, documentation, and methods for reproducing results.
 
@@ -830,4 +855,4 @@ ProofBridge-Liner exists to make critical financial and governance state transit
 ---
 
 *Built with ❤️ for the Ubuntu Pools ecosystem — from Gqeberha, for the continent.*  
-build-ref: 3ff0fd4
+build-ref: d8c1393
