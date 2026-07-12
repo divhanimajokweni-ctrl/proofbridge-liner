@@ -10,9 +10,9 @@
   ],
   "scripts": {
     "dev": "turbo dev",
-    "build": "next build",
+    "build": "turbo build --force && next build",
     "build:all": "turbo build",
-    "test": "turbo test",
+    "test": "vitest run",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "chaos": "npx tsx tests/chaos-gate-bench.ts",

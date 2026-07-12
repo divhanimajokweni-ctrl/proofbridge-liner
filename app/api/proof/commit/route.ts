@@ -52,9 +52,36 @@ function extractSignatureCount(stdout: string): number {
   return match ? parseInt(match[1], 10) : 0;
 }
 
+// ── Environment guard ────────────────────────────────────────────
+//
+// This route shells out to `docker exec`. Docker is not available on
+// Vercel's serverless runtime — it only exists on the local/worker
+// environment running the lindiwe-governance container stack. Rather
+// than letting `docker exec` throw ENOENT and fall through the generic
+// catch block below (same failure class as the earlier
+// /api/gateway/onboard fs.mkdirSync break on Vercel's read-only
+// filesystem), detect the serverless environment explicitly and
+// short-circuit with a specific, typed response.
+function isDockerAvailableEnvironment(): boolean {
+  if (process.env.VERCEL) return false;
+  return true;
+}
+
 // ── Route Handler ────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  if (!isDockerAvailableEnvironment()) {
+    return NextResponse.json(
+      {
+        error: 'Signing pipeline unavailable in this environment',
+        details:
+          'proof/commit requires the lindiwe-governance Docker container and cannot run on Vercel serverless functions.',
+        hint: 'Run this route against the local/worker deployment where the lindiwe container stack is running (docker-compose), not the Vercel production deployment.',
+      },
+      { status: 501 },
+    );
+  }
+
   try {
     // 1. Parse and validate request body
     const body = await request.json();
