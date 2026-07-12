@@ -70,7 +70,7 @@ Run before writing VALIDATION.md. All 5 must PASS (or explicitly SKIP with docum
 These files MUST exist and be valid before any deployment or build proceeds:
 - `app/api/verify/route.ts` — Run `test -f app/api/verify/route.ts` (expected: OK)
 - `app/api/mint/route.ts` — Run `test -f app/api/mint/route.ts` (expected: OK)
-- `src/middleware.ts` — Run `test -f src/middleware.ts` (expected: OK)
+- `middleware.ts` — Run `test -f middleware.ts` (expected: OK)
 - `AGENTS.md` — Run `test -f AGENTS.md` (expected: OK)
 
 ### Pre-Flight Blocking Policy
@@ -130,6 +130,60 @@ If any critical file is missing:
 
 All MCP servers are RBAC-gated to `+276203506594` (admin) and `core` role.
 Agents load MCP tools on their next runtime build after `openclaw mcp reload`.
+
+### OpenCode Engineering Organization
+
+OpenCode operates as an **engineering firm** within VVU Colony's governance framework. KiloCode owns "what must remain true." OpenCode owns "how it is built without violating those truths."
+
+| Role | Agent | Responsibilities |
+|------|-------|-----------------|
+| **Chief Systems Engineer** | Drake | Implementation strategy, production architecture, runtime performance, infrastructure |
+| **Principal Software Engineer** | Josh | TypeScript, Fastify, React/Next.js, database evolution, testing |
+| **Application Engineer** | BartBot | Feature implementation, API construction, UI integration, documentation sync |
+| **Build Engineer** | Forge | Docker, CI/CD, releases, deployment, reproducible builds |
+| **Reliability Engineer** | Sentinel | Observability, metrics, tracing, replay verification, production health |
+
+**Parallel Responsibilities:**
+
+| KiloCode Colony | OpenCode Engineering |
+|-----------------|---------------------|
+| Preserve X₀ | Implement X₀ |
+| Evaluate architecture | Write production code |
+| Constitutional review | Engineering review |
+| Long-term evolution | Short-term execution |
+| Governance | Delivery |
+| Mathematical invariants | Runtime correctness |
+| Roadmaps | Commits |
+| ADRs | Pull requests |
+
+Full spec: `docs/governance/OPENCODE_ENGINEERING.md`
+
+### Canonical Memory Rule
+
+Before asking a design question, an implementation agent must exhaust the project's canonical knowledge sources. Only if no authoritative decision exists should it interrupt the founder.
+
+```
+Receive task
+
+↓
+
+Search:
+  docs/specs/VVU_COLONY_SPEC.md
+  docs/governance/ENGINEERING_CONSTITUTION.md
+  docs/architecture/HOMEPAGE_VISION.md
+  AGENTS.md
+  MEMORY.md
+  active/PLAN.md
+
+↓
+
+Has founder already decided?
+
+  YES → implement
+  NO  → ask founder
+```
+
+**Rule:** Implementation agents do not reopen settled design decisions. If the spec says it, implement it. If the spec is silent, ask. Documenting the decision creates institutional memory for the next agent.
 
 ### Cross-System Routing Boundary (Kilo ↔ OpenClaw)
 
