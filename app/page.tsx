@@ -59,6 +59,10 @@ function AntLoader({ onComplete }: { onComplete: () => void }) {
 
     let elapsed = 0;
     const FADE_DURATION = 3200;
+    // Cubic ease-in-out: constant-opacity math reads as linear/mechanical to the eye
+    // because human brightness perception is non-linear. This maps elapsed time to
+    // a perceptually even reveal instead of a constant-velocity one.
+    const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
     const tick = (now: number) => {
       const dt = 16;
@@ -156,8 +160,11 @@ function AntLoader({ onComplete }: { onComplete: () => void }) {
       }
 
       // Fade overlay
-      const fadeProgress = Math.min(elapsed / FADE_DURATION, 1);
+      const rawProgress = Math.min(elapsed / FADE_DURATION, 1);
+      const fadeProgress = easeInOutCubic(rawProgress);
       if (fadeProgress >= 1) {
+        // Signal exit-start, not instant unmount. Caller now drives a real
+        // crossfade instead of tearing this canvas out of the DOM mid-scene.
         onComplete();
         return;
       }
@@ -166,7 +173,8 @@ function AntLoader({ onComplete }: { onComplete: () => void }) {
       ctx.fillRect(0, 0, W(), H());
 
       // Text
-      const textAlpha = elapsed < FADE_DURATION * 0.7 ? 1 : 1 - (elapsed - FADE_DURATION * 0.7) / (FADE_DURATION * 0.3);
+      const textRaw = rawProgress < 0.7 ? 1 : 1 - (rawProgress - 0.7) / 0.3;
+      const textAlpha = easeInOutCubic(Math.max(0, Math.min(1, textRaw)));
       if (textAlpha > 0) {
         ctx.globalAlpha = Math.max(0, textAlpha);
         ctx.fillStyle = '#C9A84C';
@@ -187,6 +195,7 @@ function AntLoader({ onComplete }: { onComplete: () => void }) {
     };
   }, [onComplete]);
 
+  const exiting = false; // placeholder retained for prop shape parity below
   return (
     <canvas
       ref={canvasRef}
@@ -195,7 +204,11 @@ function AntLoader({ onComplete }: { onComplete: () => void }) {
         inset: 0,
         zIndex: 9999,
         background: '#07090C',
+        opacity: 1,
+        transition: 'opacity 500ms ease',
+        pointerEvents: 'none',
       }}
+      className="ant-loader-canvas"
     />
   );
 }
@@ -418,10 +431,19 @@ const sections = [
 export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const [showContent, setShowContent] = useState(false);
+  const [loaderExiting, setLoaderExiting] = useState(false);
 
   useEffect(() => {
     if (loaded) {
-      const t = setTimeout(() => setShowContent(true), 100);
+      // Old flow: unmount canvas -> 100ms of blank background -> instant-opacity
+      // content mount. There was no transition on the content mount at all
+      // (`.content-fade` was defined in CSS but never applied), so the visible
+      // result was: scene -> flash of raw background -> hard cut to full content.
+      // Fixed flow: start the content fade-in and the canvas fade-out on the
+      // SAME tick, so they overlap for 500ms — an actual crossfade, not a cut.
+      setShowContent(true);
+      setLoaderExiting(true);
+      const t = setTimeout(() => setLoaded(false), 520);
       return () => clearTimeout(t);
     }
   }, [loaded]);
@@ -470,13 +492,32 @@ export default function Home() {
           color: #C9A84C;
         }
 
+        .hero-content--scrim {
+          padding: 24px 32px;
+          border-radius: 12px;
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          background: radial-gradient(ellipse at center, rgba(7,9,12,0.55) 0%, rgba(7,9,12,0) 70%);
+        }
+
         .hero-sub {
           font-family: 'IBM Plex Mono', monospace;
           font-size: clamp(0.65rem, 1.2vw, 0.85rem);
-          color: #6A8099;
+          color: #A9BBCC;
+          text-shadow: 0 1px 8px rgba(7,9,12,0.9);
           letter-spacing: 0.06em;
           text-transform: uppercase;
           margin-bottom: 32px;
+          max-width: 42ch;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .hero-cta--secondary {
+          color: #A9BBCC;
+          border-color: rgba(169,187,204,0.25);
+          background: transparent;
+          margin-left: 10px;
         }
 
         .hero-cta {
@@ -739,10 +780,15 @@ export default function Home() {
         }
       `}</style>
 
-      {!loaded && <AntLoader onComplete={() => setLoaded(true)} />}
+      {!loaded && !showContent && <AntLoader onComplete={() => setLoaded(true)} />}
+      {loaded && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, opacity: loaderExiting ? 0 : 1, transition: 'opacity 500ms ease', pointerEvents: 'none' }}>
+          <AntLoader onComplete={() => setLoaded(true)} />
+        </div>
+      )}
 
       {showContent && (
-        <div className="landing-root">
+        <div className={`landing-root content-fade${showContent ? ' visible' : ''}`}>
           <nav className="landing-nav">
             <div className="nav-brand">VVU<span>.</span></div>
             <div className="nav-links">
@@ -756,11 +802,14 @@ export default function Home() {
 
           <section className="hero-section">
             <TrustSphereHero />
-            <div className="hero-content">
+            <div className="hero-content hero-content--scrim">
               <div className="hero-brand">Venture Vision <span>Ubuntu</span></div>
-              <div className="hero-sub">Trust infrastructure for the verifiable age</div>
+              <div className="hero-sub">Verifiable infrastructure for digital assets, governance, and trusted financial systems</div>
               <a href="#why-trust" className="hero-cta">
                 Explore the colony ↓
+              </a>
+              <a href="#proofbridge" className="hero-cta hero-cta--secondary">
+                View Architecture
               </a>
             </div>
             <div className="scroll-hint">
