@@ -1,24 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addMessage, listConversations } from '@/lib/agent/conversation-store';
+import { Resend } from 'resend';
 
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET;
-
-async function verifyResendSignature(req: NextRequest, body: string): Promise<boolean> {
-  if (!RESEND_WEBHOOK_SECRET) return true;
-  const signature = req.headers.get('resend-signature');
-  if (!signature) return false;
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(RESEND_WEBHOOK_SECRET),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const signed = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
-  const expected = Array.from(new Uint8Array(signed)).map(b => b.toString(16).padStart(2, '0')).join('');
-  return signature === expected;
-}
 
 function extractThreadId(subject: string): string | null {
   const match = subject.match(/\[([a-f0-9]{8})\]/);
@@ -43,23 +28,56 @@ export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text();
 
+    if (!RESEND_API_KEY) {
+      return NextResponse.json({ error: 'RESEND_API_KEY not configured' }, { status: 500 });
+    }
+
+    const resend = new Resend(RESEND_API_KEY);
+
     if (RESEND_WEBHOOK_SECRET) {
-      const valid = await verifyResendSignature(req, rawBody);
-      if (!valid) {
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      const svixId = req.headers.get('svix-id');
+      const svixTimestamp = req.headers.get('svix-timestamp');
+      const svixSignature = req.headers.get('svix-signature');
+
+      if (!svixId || !svixTimestamp || !svixSignature) {
+        return NextResponse.json({ error: 'Missing Svix headers' }, { status: 401 });
+      }
+
+      try {
+        resend.webhooks.verify({
+          payload: rawBody,
+          headers: {
+            id: svixId,
+            timestamp: svixTimestamp,
+            signature: svixSignature,
+          },
+          webhookSecret: RESEND_WEBHOOK_SECRET,
+        });
+      } catch {
+        return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
       }
     }
 
     const payload = JSON.parse(rawBody);
+
     if (payload.type !== 'email.received') {
       return NextResponse.json({ ok: true, skipped: true });
     }
 
-    const data = payload.data;
-    const from = data.from || '';
-    const to = Array.isArray(data.to) ? data.to[0] : data.to || '';
-    const subject = data.subject || '';
-    const textBody = stripQuotedReply(data.text || '');
+    const webhookData = payload.data;
+    const emailId = webhookData.email_id;
+    const from = webhookData.from || '';
+    const to = Array.isArray(webhookData.to) ? webhookData.to[0] : webhookData.to || '';
+    const subject = webhookData.subject || '';
+
+    const { data: email, error: emailError } = await resend.emails.receiving.get(emailId);
+
+    if (emailError || !email) {
+      console.error('[email/inbound] Failed to fetch email content:', emailError);
+      return NextResponse.json({ error: 'Failed to fetch email content' }, { status: 500 });
+    }
+
+    const textBody = stripQuotedReply(email.text || '');
 
     if (!textBody) {
       return NextResponse.json({ ok: true, skipped: true, reason: 'empty body' });
@@ -121,6 +139,7 @@ export async function POST(req: NextRequest) {
           from,
           to,
           subject,
+          emailId,
           threadId,
           isNewThread,
           bodyLength: textBody.length,
