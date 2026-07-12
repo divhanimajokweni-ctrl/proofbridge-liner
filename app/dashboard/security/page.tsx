@@ -1,6 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import '@/app/styles/variables.css';
+import '@/app/styles/dashboard-shell.css';
+import { PageGuide } from '@/app/components/PageGuide';
 
 type PolicyGroupRule = {
   groupId: string;
@@ -13,13 +16,9 @@ type PolicyGroupRule = {
 
 export default function TokenAuthorizationConsole() {
   const [policies, setPolicies] = useState<PolicyGroupRule[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<PolicyGroupRule | null>(
-    null
-  );
+  const [selectedGroup, setSelectedGroup] = useState<PolicyGroupRule | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [saveStatus, setSaveStatus] = useState<'IDLE' | 'SAVING' | 'SUCCESS'>(
-    'IDLE'
-  );
+  const [saveStatus, setSaveStatus] = useState<'IDLE' | 'SAVING' | 'SUCCESS'>('IDLE');
 
   useEffect(() => {
     async function loadActivePolicies() {
@@ -36,14 +35,12 @@ export default function TokenAuthorizationConsole() {
         setIsLoading(false);
       }
     }
-
     loadActivePolicies();
   }, []);
 
   const handleRuleMutationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGroup) return;
-
     setSaveStatus('SAVING');
     try {
       const response = await fetch('/api/security/policies-update', {
@@ -51,14 +48,11 @@ export default function TokenAuthorizationConsole() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mutatedRule: selectedGroup }),
       });
-
       if (response.ok) {
         setSaveStatus('SUCCESS');
         setTimeout(() => setSaveStatus('IDLE'), 3000);
         setPolicies((prev) =>
-          prev.map((p) =>
-            p.groupId === selectedGroup.groupId ? selectedGroup : p
-          )
+          prev.map((p) => (p.groupId === selectedGroup.groupId ? selectedGroup : p))
         );
       }
     } catch (err) {
@@ -68,183 +62,149 @@ export default function TokenAuthorizationConsole() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950 text-slate-200 font-mono text-xs tracking-widest animate-pulse">
-        SYNCHRONIZING OPA REGULATION MATRIX...
+      <div className="vvu-shell" style={{
+        height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.1em',
+        color: 'var(--color-text-secondary)',
+      }}>
+        SYNCHRONIZING OPA REGULATION MATRIX…
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-6 text-slate-100 font-mono selection:bg-teal-500/30">
-      <div className="mx-auto max-w-7xl space-y-8">
-        {/* Header Block */}
-        <header className="border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white uppercase">
-              🛡️ Token Authorization & RBAC Management Console
-            </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Configure declarative Rego policy parameters for distributed
-              community clusters.
-            </p>
-          </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-400">
-            OPA Sidecar API:{' '}
-            <span className="text-emerald-400 font-bold">ONLINE (:8181)</span>
-          </div>
-        </header>
+    <div className="vvu-page">
+      <div className="vvu-page-header">
+        <div>
+          <h1 className="vvu-page-title">TOKEN AUTHORIZATION &amp; RBAC</h1>
+          <p className="vvu-page-subtitle">Declarative Rego policy parameters · Distributed community clusters</p>
+        </div>
+        <span className="vvu-badge vvu-badge--active">OPA SIDECAR :8181 ONLINE</span>
+      </div>
 
-        {/* Dashboard Workstation Split Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Panel Column: List of Community Groups */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase px-1">
-              Active Community Groups
-            </h3>
-            <div className="space-y-2">
-              {policies.map((group) => (
-                <button
-                  key={group.groupId}
-                  onClick={() => {
-                    setSelectedGroup(group);
-                    setSaveStatus('IDLE');
-                  }}
-                  className={`w-full text-left p-4 rounded-xl border transition-all flex justify-between items-center ${
-                    selectedGroup?.groupId === group.groupId
-                      ? 'bg-slate-900 border-teal-500/50 shadow-md shadow-teal-950/10'
-                                              : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'
-                  }`}
+      <PageGuide index={1} title="Select a group, edit its policy, apply">
+        Pick a community group on the left. Its current rate limits, session caps,
+        and allowed protocol intents load on the right — change what's needed and
+        press Apply to hot-reload the OPA manifest live.
+      </PageGuide>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 280px) 1fr', gap: 16, alignItems: 'start' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span className="vvu-eyebrow">Active Community Groups</span>
+          {policies.map((group) => {
+            const active = selectedGroup?.groupId === group.groupId;
+            return (
+              <button
+                key={group.groupId}
+                onClick={() => { setSelectedGroup(group); setSaveStatus('IDLE'); }}
+                className="vvu-card"
+                style={{
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  borderColor: active ? 'var(--color-gold-border)' : 'var(--color-border)',
+                  boxShadow: active ? 'var(--color-glow-gold)' : 'none',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 11, color: 'var(--color-text-primary)' }}>
+                    {group.groupName}
+                  </span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-muted)' }}>
+                    ID: {group.groupId}
+                  </span>
+                </div>
+                <span
+                  className={`vvu-badge ${group.isEnforced ? 'vvu-badge--active' : 'vvu-badge--pilot'}`}
+                  style={{ padding: '2px 6px' }}
                 >
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold text-white">
-                      {group.groupName}
-                    </p>
-                    <p className="text-[10px] text-slate-500">
-                      ID: {group.groupId}
-                    </p>
-                  </div>
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      group.isEnforced ? 'bg-emerald-500' : 'bg-amber-500'
-                    }`}
-                  />
-                </button>
-                              ))}
-            </div>
-          </div>
+                  {group.isEnforced ? 'ON' : 'OFF'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-          {/* Right Panel Column: Interactive Rule Modifier Form */}
-          {selectedGroup && (
-            <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-900/20 backdrop-blur-sm p-6 space-y-6">
-              <div className="flex justify-between items-center border-b border-slate-800/60 pb-4">
-                <h3 className="text-sm font-bold text-teal-400 uppercase">
-                  [ EDITING POLICIES // {selectedGroup.groupName} ]
-                </h3>
-                <label className="flex items-center gap-2 cursor-pointer text-xs">
-                  <span className="text-slate-400">ENFORCE STRAT:</span>
+        {selectedGroup && (
+          <div className="vvu-card" style={{ gap: 20 }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              borderBottom: '1px solid var(--color-border)', paddingBottom: 12,
+            }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 12, color: 'var(--color-gold-bright)', letterSpacing: '0.04em' }}>
+                EDITING POLICIES // {selectedGroup.groupName}
+              </span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                ENFORCE
+                <input
+                  type="checkbox"
+                  checked={selectedGroup.isEnforced}
+                  onChange={(e) => setSelectedGroup({ ...selectedGroup, isEnforced: e.target.checked })}
+                />
+              </label>
+            </div>
+
+            <form onSubmit={handleRuleMutationSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+                <div>
+                  <label className="vvu-field-label">Max Burst Rate / Min</label>
                   <input
-                    type="checkbox"
-                    checked={selectedGroup.isEnforced}
-                    onChange={(e) =>
-                      setSelectedGroup({
-                        ...selectedGroup,
-                        isEnforced: e.target.checked,
-                      })
-                    }
-                    className="accent-teal-500 rounded border-slate-800 focus:ring-0"
+                    type="number"
+                    value={selectedGroup.rateLimitPerMinute}
+                    onChange={(e) => setSelectedGroup({ ...selectedGroup, rateLimitPerMinute: parseInt(e.target.value) || 0 })}
+                    className="vvu-input"
                   />
-                </label>
+                </div>
+                <div>
+                  <label className="vvu-field-label">Max Concurrent Sessions</label>
+                  <input
+                    type="number"
+                    value={selectedGroup.maxConcurrentSessions}
+                    onChange={(e) => setSelectedGroup({ ...selectedGroup, maxConcurrentSessions: parseInt(e.target.value) || 0 })}
+                    className="vvu-input"
+                  />
+                </div>
               </div>
 
-              <form onSubmit={handleRuleMutationSubmit} className="space-y-5 text-xs">
-                {/* Parameter Input Fields Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5">
-                      Max Burst Sessions Rate Limit
-                    </label>
-                    <input
-                      type="number"
-                      value={selectedGroup.rateLimitPerMinute}
-                      onChange={(e) =>
-                        setSelectedGroup({
-                          ...selectedGroup,
-                          rateLimitPerMinute: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-md text-slate-200 focus:outline-none focus:border-teal-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5">
-                      Max Multi-Thread Concurrent Sessions
-                    </label>
-                    <input
-                      type="number"
-                      value={selectedGroup.maxConcurrentSessions}
-                      onChange={(e) =>
-                        setSelectedGroup({
-                          ...selectedGroup,
-                          maxConcurrentSessions: parseInt(e.target.value) || 0,
-                        })
-                      }
-                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-md text-slate-200 focus:outline-none focus:border-teal-500"
-                    />
-                  </div>
+              <div>
+                <label className="vvu-field-label">Permitted Protocol Call Intents</label>
+                <div className="vvu-card" style={{ gap: 8 }}>
+                  {['CRYPT_SEAL', 'LOG_ROUTE', 'CONTAINER_SPAWN', 'AUDIO_COMPILE', 'RENDER_EXEC'].map((intent) => {
+                    const isChecked = selectedGroup.allowedMethods.includes(intent);
+                    return (
+                      <label key={intent} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--color-text-secondary)' }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {
+                            const newMethods = isChecked
+                              ? selectedGroup.allowedMethods.filter((m) => m !== intent)
+                              : [...selectedGroup.allowedMethods, intent];
+                            setSelectedGroup({ ...selectedGroup, allowedMethods: newMethods });
+                          }}
+                        />
+                        {intent}
+                      </label>
+                    );
+                  })}
                 </div>
+              </div>
 
-                {/* Array Attribute Mapping Fields */}
-                <div>
-                  <label className="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5">
-                    Permitted Protocol Call Intents
-                  </label>
-                  <div className="p-3 bg-slate-950 border border-slate-800 rounded-md space-y-2">
-                    {['CRYPT_SEAL', 'LOG_ROUTE', 'CONTAINER_SPAWN', 'AUDIO_COMPILE', 'RENDER_EXEC'].map((intent) => {
-                      const isChecked = selectedGroup.allowedMethods.includes(intent);
-                      return (
-                        <label key={intent} className="flex items-center gap-3 cursor-pointer text-slate-300 hover:text-white">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              const newMethods = isChecked
-                                ? selectedGroup.allowedMethods.filter((m) => m !== intent)
-                                : [...selectedGroup.allowedMethods, intent];
-                              setSelectedGroup({
-                                ...selectedGroup,
-                                allowedMethods: newMethods,
-                              });
-                            }}
-                            className="accent-teal-500 rounded border-slate-800 bg-slate-900"
-                          />
-                          <span className="font-mono text-xs">{intent}</span>
-                        </label>
-                      );
-                    })}
-</div>
-</div>
-
-                {/* Form Actions Footer Area */}
-                <div className="flex justify-end items-center gap-4 pt-2">
-                  {saveStatus === 'SUCCESS' && (
-                    <span className="text-emerald-400 font-bold animate-fade-in text-[11px]">
-                      ✔ OPA MANIFEST HOT-RELOADED LIVE
-                    </span>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={saveStatus === 'SAVING'}
-                    className="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 disabled:bg-slate-800 text-white font-bold tracking-widest uppercase rounded-md transition-all shadow-md shadow-teal-950/20"
-                  >
-                    {saveStatus === 'SAVING'
-                      ? 'PUSHING RUNTIME RULES...'
-                      : 'APPLY CHANGE RULESETS'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 14 }}>
+                {saveStatus === 'SUCCESS' && (
+                  <span className="vvu-alert-success" style={{ border: 'none', background: 'none', padding: 0 }}>
+                    ✔ OPA MANIFEST HOT-RELOADED LIVE
+                  </span>
+                )}
+                <button type="submit" disabled={saveStatus === 'SAVING'} className="vvu-btn-primary">
+                  {saveStatus === 'SAVING' ? 'PUSHING RUNTIME RULES…' : 'APPLY CHANGE RULESETS'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
