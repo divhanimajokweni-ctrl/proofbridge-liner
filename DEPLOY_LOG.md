@@ -16,3 +16,9 @@
 - **Status**: Deployed
 - **Domain**: https://venturevisionubuntu.co.za
 
+## 2026-07-12T01:43:44Z
+- **Commit**: `3ff0fd4`
+- **Message**: fix: resolve Vercel build — missing deps, path aliases, Drizzle schema, session types
+- **Status**: Deployed
+- **Domain**: https://venturevisionubuntu.co.za
+

@@ -1,8 +1,5 @@
 # VVU · Venture Vision Ubuntu OS
 
-> **If you're Mino (the founder), start here → [`FOUNDERS_VIEW.md`](./FOUNDERS_VIEW.md)**  
-> Quick progress → [`PROGRESS_LOG.md`](./PROGRESS_LOG.md)
-
 ![Status](https://img.shields.io/badge/status-production-green)
 ![Next.js](https://img.shields.io/badge/Next.js-14.0.4-black)
 ![License](https://img.shields.io/badge/license-AGPL--3.0-blue)
@@ -96,17 +93,18 @@ The answer is a **three-layer trust stack** with a Bayesian safety kernel at its
 
 ---
 
-## The Founder · Mihle Iviwe Majokweni
+## Engineering Principles
 
-**In plain English:** The person who built this isn't a CEO with a boardroom. She's an engineer who saw a problem — community savings circles can't prove they're honest — and built the software to fix it.
+The system adheres to the following principles, prioritizing evidence and transparency over trust in contributors:
 
-**Mihle "Divhani" Majokweni** is the principal architect and founder of Venture Vision Ubuntu. A Bayesian decision theorist, FSCA JS2 compliance practitioner, and solo founder operating from **Gqeberha, Eastern Cape, South Africa**, Mihle holds 75% equity with a Denomination Share and absolute veto through Vaguely Vanity Unkempt LLC (Pty) Ltd (CIPC: 2026/259053/07).
+* **Evidence over assertion.**
+* **Verification over trust.**
+* **Governance over discretion.**
+* **Documentation before deployment.**
+* **Every meaning has purpose.**
+* **Every purpose produces evidence.**
 
-Mihle is not a CEO with a boardroom. Mihle is an engineer who recognised that the trust gap in tokenized real-world assets, digital deeds, and community savings circles is not a regulatory problem — it is a **software architecture problem**. The nine-entity structure of VVU OS exists because the trust problem requires separation of cryptographic concerns: the primitive layer must not know what it is signing, the credential layer must not reimplement signing, and the compliance application must consume both without owning either.
-
-> *"A fraud score is worthless if the attestation carrying it can't be proven to have come from where it claims."* — Mihle Majokweni
-
-Mihle's approach is grounded in **Bayesian probability theory** — the Prover Pipeline's Beta-Binomial posterior belief engine with industry-calibrated risk thresholds — and in **specification-driven development** that treats AI agents as extensions of the founder's intent rather than autonomous decision-makers. Every line of code in this repository traces back to an INVESTIGATION.md fact-finding, a PLAN.md approved by Mino (Mihle's review persona), and a VALIDATION.md that proves behavioral coverage before any PR opens.
+The repository documents the system, not the biography of its contributors. The institution is the protagonist. The repository provides the architecture, evidence, benchmarks, documentation, and methods for reproducing results.
 
 ---
 
@@ -832,4 +830,4 @@ ProofBridge-Liner exists to make critical financial and governance state transit
 ---
 
 *Built with ❤️ for the Ubuntu Pools ecosystem — from Gqeberha, for the continent.*  
-build-ref: 899bb61
+build-ref: 3ff0fd4
