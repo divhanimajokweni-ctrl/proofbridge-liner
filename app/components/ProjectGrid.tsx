@@ -1,7 +1,7 @@
 'use client';
 import React from 'react';
 import { motion } from 'framer-motion';
-import '@/app/styles/cyber-glow.css';
+import '../styles/cyber-glow.css';
 
 /* ── Types ─────────────────────────────────────────── */
 interface ProjectNode {

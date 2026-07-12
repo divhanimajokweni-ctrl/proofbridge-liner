@@ -2,7 +2,7 @@
 // Reusable "how this page works" strip. This is the component that
 // should have shipped on Pools the first time: a small, always-visible
 // guide anchored to the page, not a placeholder or a nav label.
-import '@/app/styles/dashboard-shell.css';
+import '../styles/dashboard-shell.css';
 
 export function PageGuide({ index = 1, title, children }: { index?: number; title: string; children: React.ReactNode }) {
   return (
