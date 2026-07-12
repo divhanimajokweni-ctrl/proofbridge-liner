@@ -1,8 +1,8 @@
 // app/dashboard/layout.tsx
 import React from 'react';
 import DashboardNav from './DashboardNav';
-import '@/app/styles/variables.css';
-import '@/app/styles/dashboard-shell.css';
+import '../styles/variables.css';
+import '../styles/dashboard-shell.css';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (

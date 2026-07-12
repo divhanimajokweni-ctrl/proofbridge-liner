@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import '@/app/styles/variables.css';
-import '@/app/styles/dashboard-shell.css';
-import { PageGuide } from '@/app/components/PageGuide';
+import '../../styles/variables.css';
+import '../../styles/dashboard-shell.css';
+import { PageGuide } from '../../components/PageGuide';
 
 type PolicyGroupRule = {
   groupId: string;

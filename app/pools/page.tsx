@@ -9,9 +9,9 @@
 import { useState } from 'react';
 import axios from 'axios';
 import useSWR from 'swr';
-import '@/app/styles/variables.css';
-import '@/app/styles/dashboard-shell.css';
-import { PageGuide } from '@/app/components/PageGuide';
+import '../styles/variables.css';
+import '../styles/dashboard-shell.css';
+import { PageGuide } from '../components/PageGuide';
 
 const fetcher = (url: string) => axios.get(url).then((res) => res.data);
 

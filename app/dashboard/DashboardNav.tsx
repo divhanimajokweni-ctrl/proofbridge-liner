@@ -7,7 +7,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import '@/app/styles/dashboard-shell.css';
+import '../styles/dashboard-shell.css';
 
 export default function DashboardNav() {
   const pathname = usePathname();
