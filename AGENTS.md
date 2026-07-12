@@ -33,7 +33,7 @@ Override: Headless mode (CI/CD) may auto-approve with --headless flag.
 Trigger : active/PLAN.md status = APPROVED (Mino signature present)
 Action  : Execute PLAN.md exactly. File changes on correct branch. No scope expansion.
 Rule    : Any divergence from plan requires stopping and generating a plan amendment.
-Output  : Code on compliance-fabric (Tier-3) or feature branch (Tier-2)
+Output  : Code on main (all tiers — one-branch policy)
 
 ### ROLE 4 — VALIDATOR (REVIEWER)
 Trigger : Implementation complete, before PR is opened
@@ -77,7 +77,7 @@ These files MUST exist and be valid before any deployment or build proceeds:
 Build, push, and deploy operations halt until all critical files above are present and tests pass.
 
 ### Branch Policy
-Canonical branch: `compliance-fabric`
+Canonical branch: `main` (one-branch policy — no long-lived feature branches)
 Backup branch: `backup/local-compliance-fabric`
 
 ### Deployment Rules
@@ -110,7 +110,7 @@ If any critical file is missing:
 2. Do NOT proceed with deployment until test -f passes for all paths above
 
 ### Vercel Build Gate Rule
-- The pre-push hook (`scripts/deployment-loop.sh`) gates ALL pushes on `main`/`compliance-fabric`
+- The pre-push hook (`scripts/deployment-loop.sh`) gates ALL pushes on `main`
 - Vercel production build must succeed BEFORE `git push origin` executes
 - If Vercel build fails, the push is blocked — no exceptions
 - Local `npm run build` is a fast pre-check but not a substitute for the Vercel build gate
@@ -206,7 +206,7 @@ Before the pipeline starts, verify:
 **Codename ART OF CHOKE:** No commit ships until the ENTIRE CI pipeline passes. No warnings treated as passes. No soft failures. No exceptions on canonical branches. Every gate is a hard block. If any phase fails, the loop aborts with a clear failure message — fix the issue and retry.
 
 Tradeoffs of this standard:
-- **Slower push cycle**: Every push to `main`/`compliance-fabric` runs typecheck, lint, tests, build, behavioral coverage, and a full Vercel production build before the commit leaves your machine. Expect 5-15 minutes per push.
+- **Slower push cycle**: Every push to `main` runs typecheck, lint, tests, build, behavioral coverage, and a full Vercel production build before the commit leaves your machine. Expect 5-15 minutes per push.
 - **Vercel CLI required**: On canonical branches, `vercel` CLI must be installed and authenticated. Without it, the loop hard-fails. This is intentional — a deploy gate that silently skips is no gate at all.
 - **Services must be reachable**: Behavioral coverage and health checks require the API to be running (locally or against a staging environment). If services are down, coverage tests SKIP (not FAIL), but the health endpoint check still hard-fails if the deployed site doesn't respond 200.
 - **No silent rot**: Every push verifies type correctness, lint rules, test assertions, build output, and production behavior. There is nowhere for quality debt to hide.
@@ -214,7 +214,7 @@ Tradeoffs of this standard:
 ## DEPLOYMENT LOCK LOOP
 
 ### Enforced Pipeline
-The following loop is LOCKED on `main` and `compliance-fabric` branches. It runs automatically via pre-push hook:
+The following loop is LOCKED on `main` branch. It runs automatically via pre-push hook:
 
 ```
 COMMIT → TYPECHECK → LINT → TESTS → BUILD → BEHAVIORAL COVERAGE →
@@ -223,7 +223,7 @@ LOGS → README → DOCS → CHECKLIST → PUSH AGAIN (loop)
 ```
 
 ### Pre-Push Hook (`scripts/deployment-loop.sh`)
-Runs automatically on `git push` to `main` or `compliance-fabric`:
+Runs automatically on `git push` to `main`:
 1. **Commit Gate** — verifies commit exists and critical files are present
 2. **TypeCheck Gate** — `tsc --noEmit` must pass (zero type errors)
 3. **Lint Gate** — `npm run lint` must pass (zero errors)
@@ -239,7 +239,7 @@ Runs automatically on `git push` to `main` or `compliance-fabric`:
 13. **Final Push** — commits loop artifacts and pushes
 
 ### Lock Bypass
-To bypass the lock on a non-deploy push, push from a non-canonical branch.
+For risky changes, open a short-lived branch (same session: open → merge → delete). The lock only gates `main`. All branches merge to `main` within the same session — no long-lived branches.
 
 ### Manual Loop Trigger
 ```bash
