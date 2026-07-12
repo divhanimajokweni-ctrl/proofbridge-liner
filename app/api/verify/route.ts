@@ -72,7 +72,15 @@ export async function POST(req: NextRequest) {
 
         // Anchor deed hash on-chain via updateProof (oracle-gated on contract)
         const deedHashBytes32 = hexToBytes32(effectiveDocHash);
-        const wallet = new ethers.Wallet(process.env.ORACLE_PRIVATE_KEY!, provider);
+        const oracleKey = process.env.ORACLE_PRIVATE_KEY;
+        if (!oracleKey) {
+          return NextResponse.json({
+            ok: false,
+            error: 'ORACLE_KEY_MISSING',
+            detail: 'ORACLE_PRIVATE_KEY is not configured.',
+          }, { status: 500 });
+        }
+        const wallet = new ethers.Wallet(oracleKey, provider);
         const contractWithSigner = contract.connect(wallet);
         const tx = await (contractWithSigner as any).updateProof(assetId, deedHashBytes32);
         const receipt = await tx.wait();
