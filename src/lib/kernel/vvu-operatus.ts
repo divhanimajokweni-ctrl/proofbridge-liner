@@ -13,15 +13,13 @@
  */
 
 import { VVUMicrokernelV2, ProcessControlBlock } from './vvu-os-v2';
-import { RESERVED_PROCESSES, resolvePidRange, OS_PILLARS, SECURITY_POLICIES, MEMORY_REGIONS } from './vvu-registry';
+import { RESERVED_PROCESSES, SECURITY_POLICIES, MEMORY_REGIONS, PID_RANGES } from './vvu-registry';
 import { IOperator, OperatorResult, OperatorStatus, SubsystemType } from './operators/types';
 import { HALDrvOperator } from './operators/hal-drv';
 import { SafelinerOperator } from './operators/safeline';
 import { SafeKrypteOperator } from './operators/safekrypte';
 import { AuditBusOperator } from './operators/audit-bus';
-import { PID_RANGES } from './vvu-registry';
 import * as os from 'os';
-import * as crypto from 'crypto';
 
 // ─── TYPES ─────────────────────────────────────────────────────────────────
 
@@ -356,7 +354,7 @@ class VVUOperatusImpl {
     }
   }
 
-  private async executeSystemCommand(command: string, args?: Record<string, unknown>): Promise<OperatorResult> {
+  private async executeSystemCommand(command: string, _args?: Record<string, unknown>): Promise<OperatorResult> {
     const start = Date.now();
     switch (command) {
       case 'ping':

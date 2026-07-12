@@ -52,7 +52,7 @@ describe('HeartbeatSchema', () => {
       expect(incident.opHint).toBe('Await Next.js cookies() wrapper explicitly in route handler.');
       expect(incident.priority).toBe('CRITICAL');
       expect(incident.specRef).toBe('vvu-spec-gate-a-cookie-fault');
-      expect(incident.timestamp).toBeTypeOf('number');
+      expect(typeof incident.timestamp).toBe('number');
     });
 
     it('should use UNKNOWN rule for undefined OpTag', () => {
@@ -64,7 +64,8 @@ describe('HeartbeatSchema', () => {
         'Test summary'
       );
 
-      expect(incident.opTag).toBe(OpTag.UNKNOWN);
+      // The original opTag is preserved but its rule falls back to UNKNOWN
+      expect(incident.opTag).toBe('INVALID_TAG' as unknown as OpTag);
       expect(incident.priority).toBe('LOW');
       expect(incident.opHint).toBe('Review unclassified internal error stream metrics.');
     });

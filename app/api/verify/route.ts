@@ -1,23 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAttestation } from '@/lib/tee/attestation';
 import { VerifyPayloadSchema } from '../schemas/gateway';
-
-const rateLimitCache = new Map<string, number[]>();
-const LIMIT_WINDOW_MS = 60000;
-const MAX_REQUESTS = 30;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  if (!rateLimitCache.has(ip)) {
-    rateLimitCache.set(ip, [now]);
-    return false;
-  }
-  const timestamps = rateLimitCache.get(ip)!.filter(t => now - t < LIMIT_WINDOW_MS);
-  if (timestamps.length >= MAX_REQUESTS) return true;
-  timestamps.push(now);
-  rateLimitCache.set(ip, timestamps);
-  return false;
-}
+import { checkRateLimit } from '@/lib/rate-limiter';
 
 function hexToBytes32(hex: string): string {
   const cleaned = hex.replace('0x', '').padStart(64, '0');
@@ -25,10 +9,8 @@ function hexToBytes32(hex: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown-client';
-  if (isRateLimited(ip)) {
-    return NextResponse.json({ error: 'Too Many Requests — Rate Boundary Crossed' }, { status: 429 });
-  }
+  const rateLimitResponse = await checkRateLimit(req, { maxRequests: 30 });
+  if (rateLimitResponse) return rateLimitResponse;
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader || authHeader !== `Bearer ${process.env.KERNEL_SECRET}`) {
@@ -115,7 +97,30 @@ export async function POST(req: NextRequest) {
     const t = +threshold || 0.55;
     const posterior = (a + 1) / (a + b + 2);
     const margin = posterior - t;
-    const verdict = margin > 0 ? 'SAFE' : 'TRIP';
+    let verdict = margin > 0 ? 'SAFE' : 'TRIP';
+    let gemmaOpinion: any = null;
+
+    // ── Borderline zone: call Gemma LLM judge for secondary opinion ──
+    if (verdict === 'SAFE' && process.env.FIREWORKS_API_KEY) {
+      const { isBorderline, gemmaJudge } = await import(
+        '../../../lib/compliance/gemma-judge'
+      );
+      if (isBorderline(posterior, t)) {
+        gemmaOpinion = await gemmaJudge({
+          agentId: validation.data.agentId || 'unknown',
+          targetContract: validation.data.targetContract,
+          valueETH: validation.data.valueETH,
+          chronicleId: validation.data.chronicleId,
+          posterior,
+          threshold: t,
+          gamma: g,
+        });
+        // If Gemma flags FRAUD, override Bayesian SAFE to TRIP
+        if (gemmaOpinion.verdict === 'FRAUD') {
+          verdict = 'TRIP';
+        }
+      }
+    }
 
     // If Bayesian kernel itself trips, halt regardless of circuit state
     if (verdict === 'TRIP') {
@@ -126,6 +131,9 @@ export async function POST(req: NextRequest) {
         posterior: Number(posterior.toFixed(6)),
         threshold: t,
         margin: Number(margin.toFixed(6)),
+        gemmaOpinion: gemmaOpinion
+          ? { verdict: gemmaOpinion.verdict, confidence: gemmaOpinion.confidence, modelUsed: gemmaOpinion.modelUsed }
+          : undefined,
       }, { status: 423 });
     }
 
@@ -144,6 +152,15 @@ export async function POST(req: NextRequest) {
       threshold: t,
       verdict,
       margin: Number(margin.toFixed(6)),
+      gemmaOpinion: gemmaOpinion
+        ? {
+            verdict: gemmaOpinion.verdict,
+            confidence: gemmaOpinion.confidence,
+            reasoning: gemmaOpinion.reasoning,
+            modelUsed: gemmaOpinion.modelUsed,
+            latencyMs: gemmaOpinion.latencyMs,
+          }
+        : undefined,
       teeAttestation: {
         mode: teeAttestation.mode,
         measurement: teeAttestation.measurement,

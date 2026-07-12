@@ -42,7 +42,8 @@ export async function POST(request: Request) {
     }, { status: 400 })
   }
 
-  const { payload, signature } = validation.data
+  const { payload: rawPayload, signature } = validation.data
+  const payload = rawPayload as Record<string, unknown> & { id?: string; payment_id?: string; user?: { id?: string }; from?: string; created_at?: string | number; timestamp?: string | number }
   if (!payload || !signature) {
     return NextResponse.json({ error: 'Missing payload or signature' }, { status: 400 })
   }

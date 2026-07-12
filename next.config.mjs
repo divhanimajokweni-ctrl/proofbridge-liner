@@ -1,13 +1,23 @@
 /** @type {import('next').NextConfig} */
 import path from 'path';
 import { fileURLToPath } from 'url';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+import { createRequire } from 'module';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const require = createRequire(import.meta.url);
 
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
-  eslint: {
-    ignoreDuringBuilds: true,
+  turbopack: {
+    root: '.',
+    resolveAlias: {
+      '@': {
+        source: '.',
+      },
+      '@/lib/db': {
+        source: './lib/db/src',
+      },
+    },
   },
   images: {
     domains: [
@@ -15,23 +25,16 @@ const nextConfig = {
       'api.vvu.earth-tech.ai',
     ],
   },
-  outputFileTracing: false,
   webpack: (config) => {
     config.resolve.alias['ethers'] = path.resolve(__dirname, 'node_modules/ethers/lib.commonjs/index.js');
     config.resolve.alias['@/prover'] = path.resolve(__dirname, 'prover');
+    config.resolve.alias['@/server'] = path.resolve(__dirname, 'server');
+    config.resolve.alias['@'] = path.resolve(__dirname, 'src');
     return config;
   },
   async rewrites() {
     return [
-      { source: '/proofbridge', destination: '/vvv/proofbridge.html' },
-      { source: '/dlt',         destination: '/vvv/dlt.html' },
-      { source: '/gate-1',      destination: '/vvv/gate-1.html' },
-      { source: '/gate-2',      destination: '/vvv/gate-2.html' },
-      { source: '/gate-3',      destination: '/vvv/gate-3.html' },
-      { source: '/gate-4',      destination: '/vvv/gate-4.html' },
-      { source: '/gate-5',      destination: '/vvv/gate-5.html' },
-      { source: '/gate-6',      destination: '/vvv/gate-6.html' },
-      { source: '/gates',       destination: '/vvv/index.html' },
+      { source: '/trust-sphere', destination: '/vvv/trust-sphere.html' },
     ]
   },
 }

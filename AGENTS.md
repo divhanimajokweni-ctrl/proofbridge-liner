@@ -81,7 +81,7 @@ Canonical branch: `compliance-fabric`
 Backup branch: `backup/local-compliance-fabric`
 
 ### Deployment Rules
-- Use `vercel --prod --force` for production deployment
+- Use `vercel deploy --prod --force` for production deployment (blocks until build completes by default)
 - `.vercelignore` is required to exclude cache/.config/.git and large artifacts
 - Validate builds with `npm run build` before deployment
 
@@ -108,6 +108,12 @@ Git remote URLs with embedded credentials are a security risk. The `git remote -
 If any critical file is missing:
 1. Restore the file from backup/local-compliance-fabric if needed
 2. Do NOT proceed with deployment until test -f passes for all paths above
+
+### Vercel Build Gate Rule
+- The pre-push hook (`scripts/deployment-loop.sh`) gates ALL pushes on `main`/`compliance-fabric`
+- Vercel production build must succeed BEFORE `git push origin` executes
+- If Vercel build fails, the push is blocked — no exceptions
+- Local `npm run build` is a fast pre-check but not a substitute for the Vercel build gate
 
 ### Agent-Accessible Modules
 - `scripts/orchestrate-gates.js` — Gate orchestration runner
@@ -156,26 +162,81 @@ If a rollback is required:
 ### Run Command Protocol
 When the user says "run" (alone, not as part of a larger sentence), resume the most recent in-progress task. Do NOT interpret "run" as a request to execute arbitrary shell commands, run the project, or re-run the last shell command. Strictly resume the logical task flow that was interrupted.
 
+## EXECUTE END TO END — Prerequisite to ART OF CHOKE
+
+**Codename EXECUTE END TO END:** Before any commit, the complete 12-phase pipeline must run from first gate to last gate in a single invocation with all intermediate services live and reachable. This is the prerequisite that makes ART OF CHOKE possible. Without EXECUTE END TO END, ART OF CHOKE is a policy document that nobody follows.
+
+### The Hardest Rule: Full Reset on Any Failure
+If ANY phase in the pipeline fails:
+1. **Stop immediately.** Do not skip the failed phase.
+2. **Fix the root cause.** Understand *why* before retrying.
+3. **Re-run from Phase 1.** Not from the failed phase.
+4. **No partial commits.** No "I'll fix it in the next PR." No "that's a pre-existing issue."
+
+This rule exists because the 30-commit main-branch incident at VVU started with a single skipped lint warning.
+
+### Pre-Flight Requirements (must be verified BEFORE Phase 1)
+Before the pipeline starts, verify:
+- [ ] Dev server running on port 3000 (`curl localhost:3000/api/health` → 200)
+- [ ] SafeKrypte service reachable on port 5096 (required for behavioral coverage)
+- [ ] Vercel CLI installed and authenticated (`vercel whoami` succeeds)
+- [ ] Vercel project linked (`.vercel/repo.json` exists with valid project ID)
+- [ ] Environment variables present in `.env.local`
+- [ ] Network available for DNS checks, health checks, Vercel build
+
+### Pipeline Phases (locked order)
+| Phase | Gate | Hard Fail If |
+|-------|------|-------------|
+| 1 | Commit exists + critical files present | Missing commit or critical file |
+| 2 | `tsc --noEmit` | Any type error |
+| 3 | `npm run lint` | Any lint error |
+| 4 | `npm test` | Any test failure |
+| 5 | `npm run build` | Build failure or non-zero exit |
+| 6 | Behavioral coverage (5 flows) | Any FAIL (SKIP with reason allowed) |
+| 7 | Vercel production deploy | Build error / non-Ready status |
+| 8 | Push to origin | Push rejected / remote failure |
+| 9 | DNS resolution | Domain does not resolve |
+| 10 | Health check (`/api/health` → 200) | Non-200 response |
+| 11 | Logs/reporting | Write failure |
+| 12 | Docs verification checklist | Write failure |
+| 13 | Final push of loop artifacts | Push failure |
+
+### ART OF CHOKE — Deployment Standard
+
+**Codename ART OF CHOKE:** No commit ships until the ENTIRE CI pipeline passes. No warnings treated as passes. No soft failures. No exceptions on canonical branches. Every gate is a hard block. If any phase fails, the loop aborts with a clear failure message — fix the issue and retry.
+
+Tradeoffs of this standard:
+- **Slower push cycle**: Every push to `main`/`compliance-fabric` runs typecheck, lint, tests, build, behavioral coverage, and a full Vercel production build before the commit leaves your machine. Expect 5-15 minutes per push.
+- **Vercel CLI required**: On canonical branches, `vercel` CLI must be installed and authenticated. Without it, the loop hard-fails. This is intentional — a deploy gate that silently skips is no gate at all.
+- **Services must be reachable**: Behavioral coverage and health checks require the API to be running (locally or against a staging environment). If services are down, coverage tests SKIP (not FAIL), but the health endpoint check still hard-fails if the deployed site doesn't respond 200.
+- **No silent rot**: Every push verifies type correctness, lint rules, test assertions, build output, and production behavior. There is nowhere for quality debt to hide.
+
 ## DEPLOYMENT LOCK LOOP
 
 ### Enforced Pipeline
 The following loop is LOCKED on `main` and `compliance-fabric` branches. It runs automatically via pre-push hook:
 
 ```
-COMMIT → PUSH → BUILD → VERCEL DEPLOY → DNS CHECK → EMAIL HEALTH →
+COMMIT → TYPECHECK → LINT → TESTS → BUILD → BEHAVIORAL COVERAGE →
+VERCEL DEPLOY (gated) → PUSH → DNS CHECK → HEALTH CHECK →
 LOGS → README → DOCS → CHECKLIST → PUSH AGAIN (loop)
 ```
 
 ### Pre-Push Hook (`scripts/deployment-loop.sh`)
 Runs automatically on `git push` to `main` or `compliance-fabric`:
 1. **Commit Gate** — verifies commit exists and critical files are present
-2. **Build Gate** — `npm run build` must pass
-3. **Push + Vercel Deploy** — pushes to origin, deploys via `vercel --prod --force`
-4. **DNS Config** — resolves `venturevisionubuntu.co.za`
-5. **Email Health** — pings `/api/health` endpoint, runs secrets check
-6. **Logs Sync** — appends to `DEPLOY_LOG.md`
-7. **Docs Checklist** — generates `DEPLOYMENT_CHECKLIST.md`
-8. **Final Push** — commits loop artifacts and pushes
+2. **TypeCheck Gate** — `tsc --noEmit` must pass (zero type errors)
+3. **Lint Gate** — `npm run lint` must pass (zero errors)
+4. **Test Gate** — `npm test` must pass (all unit tests green)
+5. **Build Gate** — `npm run build` must pass
+6. **Behavioral Coverage Gate** — `npx tsx scripts/behavioral-coverage.ts` — all 5 compliance flows PASS or SKIP (none FAIL)
+7. **Vercel Build Gate** — deploys via `vercel deploy --prod --force` (blocks until build completes); push is blocked if Vercel build fails; Vercel CLI is **required** on canonical branches
+8. **Push to Origin** — only runs after ALL 7 pre-push gates pass
+9. **DNS Config** — hard fail if domain does not resolve
+10. **Health Check** — hard fail if `/api/health` does not return HTTP 200; secrets check runs
+11. **Logs Sync** — appends to `DEPLOY_LOG.md`, updates README build ref
+12. **Docs Checklist** — regenerates `DEPLOYMENT_CHECKLIST.md`
+13. **Final Push** — commits loop artifacts and pushes
 
 ### Lock Bypass
 To bypass the lock on a non-deploy push, push from a non-canonical branch.

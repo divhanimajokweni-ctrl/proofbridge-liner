@@ -5,10 +5,21 @@ import "forge-std/Test.sol";
 import "../contracts/CircuitBreakerV2.sol";
 
 contract CircuitBreakerV2Test is Test {
+    // Duplicate event declaration for vm.expectEmit usage
+    event AlignmentBreachTripped(
+        uint256 indexed featureId,
+        uint32 criticalScore,
+        uint256 indexed timestamp,
+        address indexed verifier
+    );
+
     CircuitBreakerV2 public cb;
     address public verifier;
     address public owner;
     address public attacker;
+
+    uint256 internal verifierPk;
+    uint256 internal attackerPk;
 
     uint256 internal featureId;
     uint32 internal criticalScore;
@@ -16,9 +27,14 @@ contract CircuitBreakerV2Test is Test {
     bytes internal signature;
 
     function setUp() public {
+        // Warp past MIN_TRIP_INTERVAL to avoid cooldown arithmetic issues
+        vm.warp(2 hours);
+
+        verifierPk = 0xA11CE;
+        attackerPk = 0xDEAD;
         owner = address(0x1);
-        verifier = address(0x2);
-        attacker = address(0x3);
+        verifier = vm.addr(verifierPk);
+        attacker = vm.addr(attackerPk);
 
         address[] memory signers = new address[](1);
         signers[0] = verifier;
@@ -30,14 +46,14 @@ contract CircuitBreakerV2Test is Test {
         featureId = 41055;
         criticalScore = 1_500_000; // 15.0 * 1e5
         timestamp = block.timestamp;
-        signature = _signAlignmentAssertion(featureId, criticalScore, timestamp, verifier);
+        signature = _signAlignmentAssertion(featureId, criticalScore, timestamp, verifierPk);
     }
 
     function _signAlignmentAssertion(
         uint256 _featureId,
         uint32 _criticalScore,
         uint256 _timestamp,
-        address signer
+        uint256 signerPk
     ) internal view returns (bytes memory) {
         bytes32 structHash = keccak256(
             abi.encode(
@@ -48,7 +64,7 @@ contract CircuitBreakerV2Test is Test {
             )
         );
         bytes32 digest = cb.hashTypedDataV4(structHash);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signer, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
         return abi.encodePacked(r, s, v);
     }
 
@@ -60,6 +76,10 @@ contract CircuitBreakerV2Test is Test {
 
     function testInitializeRevertsOnSecondCall() public {
         // Initializer can only be called once (upgradeable pattern)
+        address[] memory s = new address[](1);
+        s[0] = verifier;
+        vm.expectRevert();
+        cb.initialize(s, 1, verifier);
     }
 
     function testTripOnAlignmentBreach() public {
@@ -69,12 +89,12 @@ contract CircuitBreakerV2Test is Test {
 
     function testTripEmitsEvent() public {
         vm.expectEmit(true, true, true, true);
-        emit CircuitBreakerV2.AlignmentBreachTripped(featureId, criticalScore, timestamp, verifier);
+        emit AlignmentBreachTripped(featureId, criticalScore, timestamp, verifier);
         cb.assertAlignmentBreach(featureId, criticalScore, timestamp, signature);
     }
 
     function testTripRevertsIfNotVerifier() public {
-        bytes memory badSig = _signAlignmentAssertion(featureId, criticalScore, timestamp, attacker);
+        bytes memory badSig = _signAlignmentAssertion(featureId, criticalScore, timestamp, attackerPk);
         vm.prank(attacker);
         vm.expectRevert("Signature validation failed: Unauthorized source");
         cb.assertAlignmentBreach(featureId, criticalScore, timestamp, badSig);
@@ -82,7 +102,9 @@ contract CircuitBreakerV2Test is Test {
 
     function testCooldownEnforced() public {
         cb.assertAlignmentBreach(featureId, criticalScore, timestamp, signature);
+        assertTrue(cb.isPaused());
         vm.warp(block.timestamp + 30 minutes);
+        vm.prank(owner);
         cb.emergencyResume();
         assertFalse(cb.isPaused());
     }

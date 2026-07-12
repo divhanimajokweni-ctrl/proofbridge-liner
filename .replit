@@ -5,6 +5,7 @@ stack = "BEST_EFFORT_FALLBACK"
 
 [nix]
 channel = "stable-25_05"
+packages = ["plan9port"]
 
 [workflows]
 runButton = "Project"
@@ -39,6 +40,10 @@ localPort = 3001
 externalPort = 4200
 
 [[ports]]
+localPort = 3099
+externalPort = 5173
+
+[[ports]]
 localPort = 3456
 externalPort = 3002
 
@@ -57,7 +62,6 @@ externalPort = 8080
 [[ports]]
 localPort = 18789
 externalPort = 3003
-exposeLocalhost = true
 
 [[ports]]
 localPort = 31999

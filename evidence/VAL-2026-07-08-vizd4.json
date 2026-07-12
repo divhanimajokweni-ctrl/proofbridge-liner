@@ -1,0 +1,26 @@
+{
+  "runId": "VAL-2026-07-08-vizd4",
+  "constitutionVersion": "1.0.0",
+  "commit": "7ecbc74984d751681c8d123b5fca13d42380b3c5",
+  "timestamp": "2026-07-08T23:45:17.772Z",
+  "results": {
+    "HappyPath_AppendAndProject": "PASS",
+    "HappyPath_FullFlow": "PASS",
+    "HappyPath_EnvelopeRoundTrip": "PASS",
+    "HappyPath_DeterministicProjection": "PASS",
+    "Negative_InvalidSignature": "PASS",
+    "Negative_IllegalStateTransition": "PASS",
+    "Negative_DuplicateIdempotency": "PASS",
+    "Negative_EmptyCommand": "PASS",
+    "Replay_DeterministicState": "PASS",
+    "Replay_CircuitBreakerCycle": "PASS",
+    "Crypto_PayloadHashAllowsIntegrityCheckWithoutDecryption": "PASS",
+    "Crypto_DifferentKeysDifferentEnvelopes": "PASS"
+  },
+  "summary": {
+    "passed": 12,
+    "failed": 0,
+    "total": 12
+  },
+  "signature": "22fc7b0f8bf40d13572e1fb11be63b6cf7efe55004bce4b86bf82f0f294f120f7fe458ad5549db6af2b7ea688a83d68986ee0c2ed84a00da4eef08ccff463e04"
+}
