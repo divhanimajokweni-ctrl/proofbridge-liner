@@ -37,6 +37,15 @@
       "@/server/*": [
         "./server/*"
       ],
+      "@/lib/db/*": [
+        "./lib/db/src/*"
+      ],
+      "@/lib/db": [
+        "./lib/db/src/index.ts"
+      ],
+      "@/app/globals.css": [
+        "./app/globals.css"
+      ],
       "@/*": [
         "./src/*"
       ]
@@ -61,6 +70,16 @@
     "jest.setup.ts",
     "e2e",
     "vvu-immortal",
-    "scripts/verify-frost.ts"
+    "scripts/verify-frost.ts",
+    "lib/mainframe",
+    "lib/firebase",
+    "lib/safekrypte",
+    "lib/safestakes",
+    "lib/shared-kernel",
+    "lib/proof",
+    "lib/governance",
+    "lib/compliance",
+    "playwright.config.ts",
+    "server"
   ]
 }

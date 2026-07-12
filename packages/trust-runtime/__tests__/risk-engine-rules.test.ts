@@ -74,7 +74,7 @@ describe('RiskEngine', () => {
       const policy = makePolicy([{
         ruleId: 'rl-1',
         ruleType: 'rate_limit',
-        parameters: { maxRequests: 2, windowMs: 1 },
+        parameters: { maxRequests: 2, windowMs: 50 },
         severity: 'block',
       }]);
 
@@ -90,7 +90,7 @@ describe('RiskEngine', () => {
           const after = engine.assessRisk(makeRequest(), policy);
           expect(after.passed).toBe(true);
           resolve();
-        }, 5);
+        }, 60);
       });
     });
   });
