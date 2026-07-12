@@ -12,6 +12,11 @@ export const VerifyPayloadSchema = z.object({
   beta: z.number().min(0).default(8),
   gamma: z.number().min(0).default(1.0),
   threshold: z.number().min(0).max(1).default(0.55),
+  // Gemma LLM judge fields (optional — used for secondary opinion in borderline zone)
+  agentId: z.string().optional(),
+  targetContract: z.string().optional(),
+  valueETH: z.number().min(0).optional(),
+  chronicleId: z.string().optional(),
 });
 
 /**

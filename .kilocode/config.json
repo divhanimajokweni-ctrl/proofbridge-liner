@@ -1,0 +1,25 @@
+{
+  "name": "VVU Trust Runtime",
+  "version": "2.0.0",
+  "description": "Kilocode agents for VVU Trust Runtime — colony model, MCP server, and dev workflow",
+  "mcpServers": {
+    "vvu": {
+      "command": "node",
+      "args": ["/home/runner/workspace/vvu-mcp-server/index.js"]
+    }
+  },
+  "agents": {
+    "default": {
+      "model": "claude-3-5-sonnet-20241022",
+      "temperature": 0.3,
+      "maxTokens": 8000
+    }
+  },
+  "workflows": {
+    "enabled": true,
+    "path": ".kilocode/workflows"
+  },
+  "permissions": {
+    "allow": ["file_read", "file_write", "terminal"]
+  }
+}

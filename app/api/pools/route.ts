@@ -16,11 +16,10 @@ export async function POST(request: Request) {
   const [pool] = await db.insert(savingsPools)
     .values({
       poolName: name,
-      contributionZar: contributionAmountZar,
+      createdBy: crypto.randomUUID(),
+      poolType: 'open',
+      contributionZar: String(contributionAmountZar),
       cycle: rotationFrequency,
-      status: 'PENDING',
-      createdAt: new Date(),
-      updatedAt: new Date(),
     })
     .returning();
 

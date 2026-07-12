@@ -34,7 +34,7 @@ describe('SOC2 Compliance Script Boundary Validation Suite', () => {
   });
 
   test('Build Gate drops execution if file scope does not reference SafeKrypte or SafeLiner', () => {
-    const doc = '---\ntype: system-specification\nclassification: RESTRICTED-INTERNAL\ncompliance_target: SOC2-SEC-CC.6.1\n---\n# An unrelated platform component file.';
+    const doc = '---\ntype: system-specification\nclassification: RESTRICTED-INTERNAL\ncompliance_target: SOC2-SEC-CC.9.9\n---\n# An unrelated platform component file.';
     fs.writeFileSync(path.join(sandboxPath, 'test-out-of-scope.md'), doc);
     expect(() => execSync(`bash ${scriptPath}`, { stdio: 'pipe' })).toThrow();
   });

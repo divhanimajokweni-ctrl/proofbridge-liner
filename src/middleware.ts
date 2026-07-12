@@ -31,22 +31,16 @@ const PUBLIC_PATHS = [
   '/about',
   '/faqs',
   '/ubuntu-pools',
-  '/gateway',
   '/api/health',
   '/api/webhooks',
-  '/api/receipts/verify',
-  '/api/gateway',
   '/favicon.ico',
   '/_next/static',
   '/_next/image',
-  '/auth/callback'
 ];
 
 // Routes protected by VVU Gateway session (not Supabase)
 const VVU_GUARDED_PATHS = [
   '/dashboard',
-  '/gateway-deck',
-  '/agent-terminal',
 ];
 
 const MAX_REDIRECTS = 5;
@@ -71,7 +65,8 @@ function validateVVUSession(cookieHeader: string): { userId: string; tier: strin
 
     const [payload, signature] = parts;
     const crypto = require('crypto');
-    const secret = process.env.VVU_SESSION_SECRET || '';
+    const secret = process.env.VVU_SESSION_SECRET;
+    if (!secret) return null; // fail closed — no fallback
 
     const expectedSig = crypto
       .createHmac('sha256', secret)
@@ -104,7 +99,8 @@ function validateJwtSession(cookieHeader: string): { userId: string; tier: strin
     const sessionToken = cookies['vvu_session_token'];
     if (!sessionToken) return null;
 
-    const secret = process.env.VVU_JWT_SECRET || 'vvu_brain_absolute_cryptographic_signing_key_vector';
+    const secret = process.env.VVU_JWT_SECRET;
+    if (!secret) return null; // fail closed — no fallback
     const decoded = jwt.verify(sessionToken, secret) as { identity: string; permissions: string[] };
 
     if (!decoded || decoded.identity !== 'WAR_ROOM_OPERATOR') return null;
@@ -136,7 +132,7 @@ export async function middleware(req: NextRequest) {
       validateVVUSession(req.headers.get('cookie') || '') ||
       validateJwtSession(req.headers.get('cookie') || '');
     if (!session) {
-      const redirectUrl = new URL('/gateway', req.url);
+      const redirectUrl = new URL('/login', req.url);
       redirectUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(redirectUrl);
     }
