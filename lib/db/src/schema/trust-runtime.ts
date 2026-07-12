@@ -28,13 +28,12 @@ export const trustEvents = pgTable('trust_events', {
   previousHash: varchar('previous_hash', { length: 64 }),
 
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  // Enforce multi-tenant stream isolation and optimistic concurrency at the DB layer
-  unique('uq_trust_stream_version').on(table.tenantId, table.streamId, table.streamVersion),
-  unique('uq_trust_event_id').on(table.eventId),
-  unique('uq_trust_sequence_number').on(table.sequenceNumber),
-  check('chk_trust_version_positive', sql`${table.streamVersion} > 0`),
-]);
+}, (table) => ({
+  uq_trust_stream_version: unique('uq_trust_stream_version').on(table.tenantId, table.streamId, table.streamVersion),
+  uq_trust_event_id: unique('uq_trust_event_id').on(table.eventId),
+  uq_trust_sequence_number: unique('uq_trust_sequence_number').on(table.sequenceNumber),
+  chk_trust_version_positive: check('chk_trust_version_positive', sql`${table.streamVersion} > 0`),
+}));
 
 /**
  * 2. Transactional Outbox (with Worker Leasing)
@@ -71,9 +70,9 @@ export const trustSnapshots = pgTable('trust_snapshots', {
   state: jsonb('state').notNull(),
   snapshotHash: varchar('snapshot_hash', { length: 64 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  primaryKey({ columns: [table.tenantId, table.streamId] }),
-]);
+}, (table) => ({
+  pk_trust_snapshots: primaryKey({ columns: [table.tenantId, table.streamId] }),
+}));
 
 /**
  * 4. Governance Verification Evidence Table

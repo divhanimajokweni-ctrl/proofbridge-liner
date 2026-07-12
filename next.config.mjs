@@ -14,10 +14,10 @@ const nextConfig = {
       '@': {
         source: '.',
       },
+      '@/lib/db': {
+        source: './lib/db/src',
+      },
     },
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
   },
   images: {
     domains: [

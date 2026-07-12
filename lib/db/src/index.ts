@@ -5,12 +5,7 @@ import * as schema from "./schema";
 let _pool: Pool | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
-/**
- * Lazily initialize the database connection on first access.
- * This prevents build-time failures when Next.js collects page data
- * and DATABASE_URL is not available in the build environment.
- */
-export function getDb() {
+function initDb() {
   if (_db) return _db;
 
   if (!process.env.DATABASE_URL) {
@@ -30,9 +25,17 @@ export function getDb() {
   return _db;
 }
 
-/**
- * Close the database pool (call during graceful shutdown).
- */
+export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+  get(_, prop) {
+    const instance = initDb();
+    const value = (instance as unknown as Record<string | symbol, unknown>)[prop];
+    if (typeof value === "function") {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});
+
 export async function closeDb(): Promise<void> {
   if (_pool) {
     await _pool.end();
