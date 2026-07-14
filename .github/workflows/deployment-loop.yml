@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify critical files
         run: |
-          for f in app/api/verify/route.ts app/api/mint/route.ts src/middleware.ts AGENTS.md .vercelignore; do
+          for f in app/api/verify/route.ts app/api/mint/route.ts middleware.ts AGENTS.md .vercelignore; do
             test -f "$f" || { echo "MISSING: $f"; exit 1; }
             echo "OK: $f"
           done

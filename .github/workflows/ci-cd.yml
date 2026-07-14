@@ -42,16 +42,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
 
-      - name: Install forge-std
+      - name: Install forge dependencies
         run: |
           cd contracts
-          forge install foundry-rs/forge-std --no-commit --no-git 2>/dev/null || true
+          forge install foundry-rs/forge-std --no-commit 2>/dev/null || true
+          forge install OpenZeppelin/openzeppelin-contracts --no-commit 2>/dev/null || true
+          forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit 2>/dev/null || true
 
       - name: Run Forge tests
         run: forge test -vvv
@@ -106,7 +110,7 @@ jobs:
         run: |
           if [ -f test/gate1-smoke.test.js ]; then
             PROOFBRIDGE_HMAC_SECRET="${PROOFBRIDGE_HMAC_SECRET}" \
-            pnpm exec jest test/gate1-smoke.test.js --runInBand --no-coverage
+            node --test test/gate1-smoke.test.js
           else
             echo "Skipping Gate-1 smoke test (test file not found)"
           fi

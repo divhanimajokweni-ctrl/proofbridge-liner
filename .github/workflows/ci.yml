@@ -32,7 +32,7 @@ jobs:
       - name: Unit — Gate-1 smoke (local)
         run: |
           PROOFBRIDGE_HMAC_SECRET="${PROOFBRIDGE_HMAC_SECRET}" \
-          pnpm exec jest test/gate1-smoke.test.js --runInBand --no-coverage
+          node --test test/gate1-smoke.test.js
 
       - name: Unit — /api/mint (client_nonce required)
         run: |
