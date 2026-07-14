@@ -22,14 +22,11 @@ contract AssetRegistryTest is Test {
     event KernelReset(bytes32 indexed assetId, address indexed by);
 
     function setUp() public {
-        vm.prank(owner);
+        vm.startPrank(owner);
         registry = new AssetRegistry();
-
-        vm.prank(owner);
         registry.registerAsset(ASSET_A, THRESHOLD, resetter);
-
-        vm.prank(owner);
         registry.registerAsset(ASSET_B, THRESHOLD, address(0));
+        vm.stopPrank();
     }
 
     /*//////////////////////////////////////////////////////////////

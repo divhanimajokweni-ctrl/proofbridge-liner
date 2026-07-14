@@ -25,10 +25,10 @@ contract CircuitBreakerTest is Test {
     event CircuitReset(address indexed by, uint256 timestamp);
 
     function setUp() public {
-        vm.prank(owner);
+        vm.startPrank(owner);
         cb = new CircuitBreaker();
-        vm.prank(owner);
         cb.initialize(oracle);
+        vm.stopPrank();
     }
 
     /*//////////////////////////////////////////////////////////////
