@@ -1,0 +1,48 @@
+{
+  "manifestVersion": 1,
+  "description": "VVU Authorized Scripts — signed by CI-held key. Changes require CODEOWNERS review.",
+  "approvedScripts": [
+    {
+      "path": "scripts/deploy.sh",
+      "sha256": "e6b928204e85f7cbe9912542d74666e3b19b19696cbe53478a0cbd21efe4574b",
+      "owner": "VVU Engineering",
+      "purpose": "Production deployment",
+      "approvalVersion": "v1.0.0"
+    },
+    {
+      "path": "scripts/test.sh",
+      "sha256": "da9a132e65699f36cba0b029b2f8b17257ec5ed156ed81c0851adf5b2b148d28",
+      "owner": "VVU Engineering",
+      "purpose": "Test execution",
+      "approvalVersion": "v1.0.0"
+    },
+    {
+      "path": "scripts/build.sh",
+      "sha256": "6fe6e3d24511f3444d4a9f5eade7088b5e4836f4b1490f680d0e781e631c2764",
+      "owner": "VVU Engineering",
+      "purpose": "Build process",
+      "approvalVersion": "v1.0.0"
+    },
+    {
+      "path": "scripts/diagnose-ci-root-cause.sh",
+      "sha256": "4d0bd51c24afa047a81bfe87c7437a7e8428f1836e08cd050c1adb87afec6967",
+      "owner": "VVU Evidence Office",
+      "purpose": "CI failure root-cause analysis",
+      "approvalVersion": "v2.1"
+    },
+    {
+      "path": "scripts/audit-commit-fabrication.sh",
+      "sha256": "8c8b3285a879c52787008d8083ca820b077e4d59d0d4e22a7ba4a380c14407c6",
+      "owner": "VVU Evidence Office",
+      "purpose": "DEPLOY_LOG.md fabrication audit",
+      "approvalVersion": "v2.1"
+    },
+    {
+      "path": "scripts/common.sh",
+      "sha256": "2398be37d3ea96e4f9cf8ea3fe604441d77fe4016e416ebd1b63671f1e342604",
+      "owner": "VVU Evidence Office",
+      "purpose": "Shared shell utilities",
+      "approvalVersion": "v2.1"
+    }
+  ]
+}
