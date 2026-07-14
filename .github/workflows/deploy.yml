@@ -8,6 +8,7 @@ on:
 jobs:
   chaos-test:
     name: Run Chaos Scenario
+    if: false  # Disabled — requires k8s cluster that doesn't exist (Vercel deployment)
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: "--max-old-space-size=6144"

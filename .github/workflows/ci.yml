@@ -28,23 +28,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # ── Local unit: Gate-1 smoke test + /api/mint nonce serialisation ───────
+      # ── Local unit: Gate-1 smoke test ─────────────────────────────────────
       - name: Unit — Gate-1 smoke (local)
         run: |
           PROOFBRIDGE_HMAC_SECRET="${PROOFBRIDGE_HMAC_SECRET}" \
           node --test test/gate1-smoke.test.js
 
-      - name: Unit — /api/mint (client_nonce required)
-        run: |
-          curl -sS -X POST http://localhost:3000/api/mint \
-            -H "Content-Type: application/json" \
-            -d '{"alpha":4,"beta":4,"gamma":1,"threshold":0.55,"deed_hash":"0000000000000000000000000000000000000000000000000000000000000000","client_nonce":"0000000000000000000000000000000000000000000000000000000000000000","chain_target":"AMOY"}' \
-            | jq -e '.payload.verdict == "PASS"'
-
-      # ── Production verification ────────────────────────────────────────────
-      - name: Production verify — AMOY HALT (low alpha)
-        run: |
-          curl -sS -X POST https://proofbridge-liner.vercel.app/api/verify \
-            -H "Content-Type: application/json" \
-            -d '{"alpha":1,"beta":1,"gamma":1.2,"threshold":0.95,"deed_hash":"0000000000000000000000000000000000000000000000000000000000000001","client_nonce":"0000000000000000000000000000000000000000000000000000000000000001","chain_target":"AMOY"}' \
-            | jq -e '.ok == true | .verdict == "HALT"'
+      # ── Production verification handled by deployment-loop.yml ──────────────

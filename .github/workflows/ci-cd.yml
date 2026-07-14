@@ -49,10 +49,7 @@ jobs:
           version: nightly
 
       - name: Install forge dependencies
-        run: |
-          forge install foundry-rs/forge-std --no-commit --no-git 2>/dev/null || true
-          forge install OpenZeppelin/openzeppelin-contracts --no-commit --no-git 2>/dev/null || true
-          forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit --no-git 2>/dev/null || true
+        run: git submodule update --init --recursive
 
       - name: Run Forge tests
         run: forge test -vvv
