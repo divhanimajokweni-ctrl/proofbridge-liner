@@ -50,9 +50,9 @@ for f in "$TMPDIR"/*.log; do
   if [ -n "$sig" ]; then
     # Normalize: remove timestamps, IDs, paths specific to the run
     norm_sig=$(echo "$sig" \
-      | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}T[0-9:Z]\+/TIMESTAMP/g' \
-      | sed 's\/home\/runner\/work\/[^ ]*/PATH/g' \
-      | sed 's/run id [0-9]\+/RUNID/g')
+      | sed 's/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}T[0-9:Z]*\+/TIMESTAMP/g' \
+      | sed 's|/home/runner/work/[^ ]*|PATH|g' \
+      | sed 's/run id [0-9]\+\+/RUNID/g')
     signatures["$norm_sig"]=$(( ${signatures["$norm_sig"]:-0} + 1 ))
   fi
 done
