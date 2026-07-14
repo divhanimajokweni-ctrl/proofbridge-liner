@@ -1,5 +1,18 @@
 name: Deploy Verification Gate
 
+# VVU Evidence Office — Server‑Side Enforcement with Trust Chain
+#
+# Triggers on any PR or push that modifies DEPLOY_LOG.md.
+# 1. Verifies the signed script manifest and hashes.
+# 2. Runs the full pipeline.
+# 3. Cross‑checks DEPLOY_LOG.md claims against real results.
+# 4. Performs a structured health check with commit SHA verification.
+# 5. Generates a signed evidence envelope and uploads as artifact.
+# 6. Blocks merges on any mismatch or verification failure.
+#
+# Status: Specification complete — pending repository injection and
+#         configuration of branch protection, CODEOWNERS, and secrets.
+
 on:
   pull_request:
     paths:
@@ -9,177 +22,184 @@ on:
     paths:
       - 'DEPLOY_LOG.md'
 
-concurrency:
-  group: deploy-verification-${{ github.ref }}
-  cancel-in-progress: true
+env:
+  PROD_HEALTH_URL: ${{ vars.PROD_HEALTH_URL || 'https://venturevisionubuntu.co.za/api/health' }}
+
+permissions:
+  contents: read
+  actions: write       # needed for artifact upload
+  id-token: write      # if using OIDC
+  pull-requests: write # if commenting on PRs
 
 jobs:
-  detect-fabrication:
-    name: Block Fabricated Deployment Claims
+  # ─── Trust Chain Verification ───
+  verify-trust-chain:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      statuses: write
-      checks: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
 
-      - name: Extract claimed commit from DEPLOY_LOG.md diff
-        id: extract-claim
+      - name: Verify manifest signature
         run: |
-          # Get the new line(s) added to DEPLOY_LOG.md
-          DIFF=$(git diff HEAD^ HEAD -- DEPLOY_LOG.md || echo "")
-          
-          # Find any "- **Status**:" claims that say "Deployed"
-          if echo "$DIFF" | grep -qi "Deployed\|PASS"; then
-            echo "has_deployment_claim=true" >> "$GITHUB_OUTPUT"
-            STATUS_CLAIM=$(echo "$DIFF" | grep -i "Status" | head -1 || echo "unknown")
-            echo "status_claim=$STATUS_CLAIM" >> "$GITHUB_OUTPUT"
-            
-            # Extract commit SHA from the claim
-            CLAIMED_SHA=$(echo "$DIFF" | grep -oP "(?<=Commit.*: \`)[a-f0-9]{7}(?=\`)" | head -1 || echo "unknown")
-            echo "claimed_sha=$CLAIMED_SHA" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_deployment_claim=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Verify claimed commit's actual CI status
-        if: steps.extract-claim.outputs.has_deployment_claim == 'true'
-        id: verify-status
+          echo "$MANIFEST_PUBLIC_KEY" > /tmp/manifest-pub.pem
+          node packages/trust-crypto/dist/verify.js \
+            .manifest.json .manifest.json.sig \
+            --public-key /tmp/manifest-pub.pem
         env:
-          CLAIMED_SHA: ${{ steps.extract-claim.outputs.claimed_sha }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Verifying commit: $CLAIMED_SHA"
-          
-          # Get the full SHA
-          FULL_SHA=$(git rev-parse "$CLAIMED_SHA" 2>/dev/null || echo "")
-          if [ -z "$FULL_SHA" ]; then
-            echo "::error::Could not resolve commit SHA: $CLAIMED_SHA"
-            exit 1
-          fi
-          
-          # Query GitHub for this commit's check status
-          STATUS=$(gh api "repos/${{ github.repository }}/commits/$FULL_SHA/status" \
-            --jq '.state' 2>/dev/null || echo "unknown")
-          
-          echo "Commit $CLAIMED_SHA status: $STATUS"
-          echo "verified_status=$STATUS" >> "$GITHUB_OUTPUT"
-          
-          if [ "$STATUS" = "failure" ]; then
-            echo "::error::DEPLOY_LOG.md claims commit $CLAIMED_SHA is 'Deployed', but GitHub shows it FAILED."
-            echo "::error::This is a fabricated deployment claim. Revert the DEPLOY_LOG.md change and fix CI first."
-            exit 1
-          elif [ "$STATUS" != "success" ]; then
-            echo "::warning::Commit $CLAIMED_SHA status is '$STATUS' (not success or failure). CI may still be running."
-            exit 1
-          fi
+          MANIFEST_PUBLIC_KEY: ${{ secrets.MANIFEST_PUBLIC_KEY }}
 
-      - name: Health check against production (only on main)
-        if: github.ref == 'refs/heads/main' && steps.extract-claim.outputs.has_deployment_claim == 'true'
-        id: health
+      - name: Verify script hashes against manifest
         run: |
-          echo "Running health check against production..."
-          
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            https://venturevisionubuntu.co.za/health || echo "000")
-          
-          echo "Health check HTTP $HTTP_CODE"
-          echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
-          
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "::error::Production health check returned $HTTP_CODE, not 200."
-            echo "::error::Cannot log deployment as successful if production is not healthy."
-            exit 1
-          fi
-
-      - name: Verify DEPLOY_LOG.md format validity
-        if: steps.extract-claim.outputs.has_deployment_claim == 'true'
-        run: |
-          # Extract the new DEPLOY_LOG.md entry
-          NEW_ENTRY=$(git diff HEAD^ HEAD -- DEPLOY_LOG.md | grep "^+" | tail -10)
-          
-          # Check required fields
-          for field in "Commit" "Status" "Domain"; do
-            if ! echo "$NEW_ENTRY" | grep -q "$field"; then
-              echo "::error::Missing required field in DEPLOY_LOG.md: $field"
+          for script in $(jq -r '.approvedScripts[].path' .manifest.json); do
+            expected=$(jq -r ".approvedScripts[] | select(.path==\"$script\") | .sha256" .manifest.json)
+            actual=$(sha256sum "$script" | cut -d' ' -f1)
+            if [ "$expected" != "$actual" ]; then
+              echo "::error::$script hash mismatch. Expected $expected, got $actual."
               exit 1
             fi
           done
-          
-          # Check for common fabrication patterns:
-          # - Pipeline field claiming multiple PASSes without evidence
-          # - "Health 200" without actual health check
-          if echo "$NEW_ENTRY" | grep -qE "Pipeline.*PASS.*PASS.*PASS.*PASS"; then
-            echo "::warning::DEPLOY_LOG.md entry contains 'Pipeline' field with multiple PASS claims."
-            echo "::warning::This pattern was used in fabricated entries. Verify manually if uncertain."
+          echo "✅ All scripts verified against manifest."
+
+  # ─── Pipeline & Fabrication Check ───
+  verify-and-gate:
+    needs: verify-trust-chain
+    runs-on: ubuntu-latest
+    outputs:
+      evidence_hash: ${{ steps.evidence.outputs.hash }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        id: typecheck
+        run: npx tsc --noEmit 2>&1 | tee typecheck.log
+
+      - name: Lint
+        id: lint
+        run: npm run lint 2>&1 | tee lint.log
+
+      - name: Test
+        id: test
+        run: |
+          npm test -- --reporter=json > test-results.json 2>test-errors.log
+
+      - name: Build
+        id: build
+        run: npm run build
+
+      - name: Extract real test counts
+        id: real
+        run: |
+          TESTS_PASSED=$(jq '.numPassedTests // 0' test-results.json)
+          TESTS_TOTAL=$(jq '.numTotalTests // 0' test-results.json)
+          echo "tests_passed=$TESTS_PASSED" >> "$GITHUB_OUTPUT"
+          echo "tests_total=$TESTS_TOTAL" >> "$GITHUB_OUTPUT"
+
+      # ─── Structured Health Check (main only) ───
+      - name: Production health check
+        id: health
+        if: github.ref == 'refs/heads/main'
+        run: |
+          HTTP_CODE=$(curl -s -o health.json -w "%{http_code}" "$PROD_HEALTH_URL")
+          echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Health endpoint returned $HTTP_CODE. Cannot claim 'Deployed'."
+            exit 1
+          fi
+          READY=$(jq -r '.ready // false' health.json)
+          COMMIT_SHA=$(jq -r '.commitSha // empty' health.json)
+          # Verify the deployed commit matches this workflow's commit
+          if [ "$COMMIT_SHA" != "$GITHUB_SHA" ]; then
+            echo "::error::Health endpoint reports commit $COMMIT_SHA, expected $GITHUB_SHA."
+            exit 1
+          fi
+          if [ "$READY" != "true" ]; then
+            echo "::error::Health endpoint reports ready=false."
+            exit 1
+          fi
+          echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+
+      # ─── Determine diff base ───
+      - name: Determine diff base
+        id: diffbase
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            BASE=$(jq -r '.pull_request.base.sha' "$GITHUB_EVENT_PATH")
+            echo "base=$BASE" >> "$GITHUB_OUTPUT"
+          else
+            BASE=$(git rev-parse HEAD^ 2>/dev/null || echo "4b825dc642cb6eb9a060e54bf8b4d0a2b1b2b0b0")
+            echo "base=$BASE" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Set check result
-        if: always()
-        uses: actions/github-script@v7
+      # ─── Fabrication Check ───
+      - name: Cross-check DEPLOY_LOG.md diff
+        run: |
+          BASE="${{ steps.diffbase.outputs.base }}"
+          git diff "$BASE" -- DEPLOY_LOG.md > diff.patch
+          echo "--- Diff ---"
+          cat diff.patch
+
+          ADDED_TESTS=$(grep '^+' diff.patch | grep -i 'Tests' || true)
+          REAL="${{ steps.real.outputs.tests_passed }}/${{ steps.real.outputs.tests_total }}"
+          if [ -n "$ADDED_TESTS" ] && ! echo "$ADDED_TESTS" | grep -q "$REAL"; then
+            echo "::error::DEPLOY_LOG.md claims test numbers that don't match this pipeline ($REAL)."
+            exit 1
+          fi
+
+          ADDED_DEPLOY=$(grep '^+' diff.patch | grep -iE 'deploy|status' || true)
+          if echo "$ADDED_DEPLOY" | grep -qi 'deployed'; then
+            if [ "${{ steps.health.outcome }}" != "success" ]; then
+              echo "::error::DEPLOY_LOG.md claims 'Deployed' but health check failed or skipped."
+              exit 1
+            fi
+          fi
+
+          echo "✅ All DEPLOY_LOG.md claims verified."
+
+      # ─── Signed Evidence Envelope ───
+      - name: Generate and sign evidence envelope
+        id: evidence
+        run: |
+          ENVELOPE=$(jq -n \
+            --arg commit "$GITHUB_SHA" \
+            --arg run "$GITHUB_RUN_ID" \
+            --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg hash_algo "sha256" \
+            '{commit: $commit, run_id: $run, timestamp: $timestamp, hash_algo: $hash_algo}')
+          echo "$ENVELOPE" > evidence-envelope.json
+          COMBINED=$(cat evidence-envelope.json diff.patch test-results.json health.json 2>/dev/null | sha256sum | cut -d' ' -f1)
+          echo "hash=$COMBINED" >> "$GITHUB_OUTPUT"
+          echo "Evidence hash: $COMBINED"
+          echo "$COMBINED" > evidence-hash.txt
+          # Sign the hash using the evidence signing key
+          echo "$COMBINED" | node packages/trust-crypto/dist/sign.js --key "$EVIDENCE_SIGNING_KEY" > evidence-envelope.sig
+        env:
+          EVIDENCE_SIGNING_KEY: ${{ secrets.EVIDENCE_SIGNING_KEY }}
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const status = '${{ job.status }}';
-            const conclusion = status === 'success' ? 'success' : 'failure';
-            const title = 'Deploy Fabrication Verification';
-            const summary = status === 'success' 
-              ? '✅ DEPLOY_LOG.md claim verified against actual CI status and health check'
-              : '🔴 DEPLOY_LOG.md contains fabricated or unverified deployment claims';
-            
-            await github.rest.checks.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: title,
-              head_sha: context.sha,
-              status: 'completed',
-              conclusion: conclusion,
-              output: {
-                title: title,
-                summary: summary,
-                text: `
-## Verification Details
+          name: deployment-evidence-${{ github.run_id }}
+          path: |
+            diff.patch
+            test-results.json
+            health.json
+            evidence-envelope.json
+            evidence-envelope.sig
+            evidence-hash.txt
+          retention-days: 90
 
-- **Claimed Status**: ${{ steps.extract-claim.outputs.status_claim || '(no deployment claim)' }}
-- **Actual CI Status**: ${{ steps.verify-status.outputs.verified_status || '(not verified)' }}
-- **Health Check**: ${{ steps.health.outputs.http_code || '(not run on this branch)' }}
-
-### What This Gate Does
-
-1. **Detects fabrication**: If DEPLOY_LOG.md claims "Deployed" but CI shows "failure", blocks the entry
-2. **Verifies health**: Confirms production responds 200 OK before logging deployment
-3. **Validates format**: Ensures entry contains required fields (Commit, Status, Domain)
-4. **Guards against templates**: Warns on suspicious "Pipeline: PASS PASS PASS..." patterns
-
-### Next Steps
-
-If this check fails:
-- Run: \`npm run diagnose-ci\` to find root CI cause
-- Fix the underlying issue, not the log entry
-- Re-run CI until it passes naturally
-- Only then update DEPLOY_LOG.md with honest status
-                `
-              }
-            });
-
-  block-on-fabrication:
-    name: Block Merge on Fabrication
-    needs: detect-fabrication
+  # ─── Merge Gate ───
+  block-merge-on-fabrication:
+    needs: verify-and-gate
     runs-on: ubuntu-latest
     if: failure()
     steps:
-      - run: |
-          echo "::error::This PR/commit modifies DEPLOY_LOG.md with deployment claims"
-          echo "::error::that do not match the commit's actual CI status."
-          echo ""
-          echo "Fabrication detected. Cannot merge."
-          echo ""
-          echo "To fix:"
-          echo "  1. Revert the DEPLOY_LOG.md change"
-          echo "  2. Run: npm run diagnose-ci (find root CI failure)"
-          echo "  3. Fix the underlying issue"
-          echo "  4. Let CI pass naturally"
-          echo "  5. Update DEPLOY_LOG.md with HONEST status"
+      - name: Reject merge
+        run: |
+          echo "This PR/commit introduces a fabricated or unverified DEPLOY_LOG.md entry,"
+          echo "or failed trust chain verification. Correct the issue and retry."
           exit 1
