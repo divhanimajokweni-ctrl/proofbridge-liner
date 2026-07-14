@@ -178,7 +178,7 @@ If this check fails:
           echo ""
           echo "To fix:"
           echo "  1. Revert the DEPLOY_LOG.md change"
-          echo "  2. Run: npm run diagnose-ci (find root CI failure)"
+          echo "  2. Run: ./scripts/diagnose-ci-root-cause.sh (find root CI failure)"
           echo "  3. Fix the underlying issue"
           echo "  4. Let CI pass naturally"
           echo "  5. Update DEPLOY_LOG.md with HONEST status"

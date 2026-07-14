@@ -11,7 +11,7 @@ on:
       - demo/**
       - vercel.json
       - package.json
-      - package-lock.json
+      - pnpm-lock.yaml
       - .github/workflows/deploy-vercel.yml
 
 jobs:
@@ -32,9 +32,13 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: 'pnpm'
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
       - name: Syntax-check API files
         run: cd api && node --check verify.js && node --check kernel.js
@@ -52,7 +56,7 @@ jobs:
           cat .vercel/project.json
 
       - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+        run: pnpm add -g vercel@latest
 
       - name: Pull Vercel Environment
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"

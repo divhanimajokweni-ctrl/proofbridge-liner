@@ -21,7 +21,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: 'pnpm'
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
 
       # ── 1. Critical file gate ──────────────────────────────────
       - name: Critical file presence
@@ -67,10 +70,10 @@ jobs:
 
       # ── 4. Install deps & build ────────────────────────────────
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: TypeScript compilation
-        run: npm run build
+        run: pnpm run build
         continue-on-error: true
 
       # ── 5. Docker build check ──────────────────────────────────

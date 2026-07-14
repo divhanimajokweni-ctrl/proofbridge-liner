@@ -1,73 +1,78 @@
-# INVESTIGATION — RC1 Trust Infrastructure Completion — 2026-07-11
+# INVESTIGATION — CI/CD Fix + GCP Integration Review — 2026-07-14
 
 ## Task
-Complete the RC1 trust infrastructure by filling all gaps between the current codebase and the target architecture described in the user's RC1 deconstruction.
+Pull origin main, fix CI/CD pipeline bottlenecks (npm→pnpm), review the GCP infrastructure briefing against VVU specs, and generate an execution plan.
 
 ## Current State
 
-### What EXISTS (verified working)
+### Git State
+- **Branch:** `main` (up to date with `origin/main`)
+- **Uncommitted changes:** 19 modified files + 6 untracked files
+- **Key modifications already staged locally (NOT pushed):**
+  - All 6 workflow files patched: npm→pnpm with Corepack
+  - README.md updated with session log
+  - DEPLOY_LOG.md updated
+  - Various scripts modified/created
 
-| Component | File | Status |
-|-----------|------|--------|
-| trust-crypto: hashObject, sha256Hex, computeHashChainLink, hmacSha256Hex, verifyHmacSha256 | `packages/trust-crypto/src/hash.ts` | Real |
-| trust-crypto: Merkle tree (build, prove, verify, batch) | `packages/trust-crypto/src/merkle.ts` | Real |
-| trust-crypto: Receipt generation, signing, verification, batch | `packages/trust-crypto/src/receipts.ts` | Real |
-| trust-events: 13 event types + BARTBOT types (just added) | `packages/trust-events/src/definitions.ts` | Real |
-| trust-events: Canonical serializers | `packages/trust-events/src/serializers.ts` | Real |
-| trust-runtime: EventJournal (in-memory) | `packages/trust-runtime/src/event-journal.ts` | In-memory only |
-| trust-runtime: TrustContextManager (in-memory) | `packages/trust-runtime/src/context-manager.ts` | In-memory only |
-| trust-runtime: HashChainManager (in-memory) | `packages/trust-runtime/src/hash-chain.ts` | In-memory only |
-| trust-runtime: ReceiptEngine (in-memory) | `packages/trust-runtime/src/receipt-engine.ts` | In-memory only |
-| trust-runtime: AttestationEngine (in-memory) | `packages/trust-runtime/src/attestation.ts` | In-memory only |
-| trust-runtime: RiskEngine (partial) | `packages/trust-runtime/src/risk-engine.ts` | 2/5 rules real, 3 stubs |
-| trust-api: Express routes + middleware | `packages/trust-api/src/routes.ts`, `middleware.ts` | Real |
-| trust-projections: EventRepository (PostgreSQL) | `packages/trust-projections/src/event-repository.ts` | Real |
-| trust-projections: ContextRepository (PostgreSQL) | `packages/trust-projections/src/context-repository.ts` | Real |
-| DB schema: trust_events, trust_event_outbox, trust_snapshots, trust_verification_runs, trust_contexts | `contracts/db/trust-runtime.ts` | Real |
-| BARTBOT: security-sentinel, self-audit, policy-sync tasks | `packages/bartbot/src/tasks/` | Real (just created) |
+### CI/CD Pipeline — Root Cause Confirmed
+| Workflow | Original State | Local Fix Applied | Pushed? |
+|----------|---------------|-------------------|---------|
+| `ci-cd.yml` | `npm install` | `pnpm install --frozen-lockfile` | NO |
+| `ci.yml` | `npm install` | `pnpm install --frozen-lockfile` | NO |
+| `deploy-vercel.yml` | `npm install` | `pnpm install --frozen-lockfile` | NO |
+| `deployment-loop.yml` | `npm ci` | `pnpm install --frozen-lockfile` | NO |
+| `validation-gate.yml` | `npm ci` | `pnpm install --frozen-lockfile` | NO |
+| `vercel-production.yml` | `npm ci` | `pnpm install --frozen-lockfile` | NO |
 
-### What is MISSING (per target architecture)
+**Additional fixes applied locally:**
+- `cache: 'npm'` → `cache: 'pnpm'` in all workflows
+- Corepack enable step added before every `pnpm install`
+- `npm run build` → `pnpm run build` etc.
+- `npx jest` → `pnpm exec jest`
+- Foundry toolchain setup added to `ci-cd.yml` contract-tests job
 
-| Component | Gap | Severity |
-|-----------|-----|----------|
-| **DB tables**: trust_receipts, trust_attestations, policy_bundles, chronicle_entries | 4 tables missing from schema | Critical |
-| **trust-crypto exports**: canonicalHash, chainHash, domainHash, GENESIS_HASH | 4 functions/constants missing | High |
-| **verifyHashChain bug**: Loop computes expected hash but never compares, always returns true | Logic bug | Critical |
-| **PostgreSQL backing**: EventJournal, TrustContextManager, ReceiptEngine, AttestationEngine, HashChainManager | All in-memory only | Critical |
-| **enforcePolicyGate**: Single enforcement function | Does not exist | Critical |
-| **kill-switch module**: Dedicated kill-switch implementation | Does not exist | High |
-| **RiskEngine stubs**: rate_limit, calldata_scan, identity_proof, custom | 4/5 rule checkers are stubs | High |
-| **Redis integration**: Rate limiting, kill-switch state, chronicle cache | Not in trust packages | Medium |
-| **Outbox worker**: Consumer for trust_event_outbox | Table exists, no consumer | Medium |
-| **Snapshot reader/writer**: trust_snapshots table exists, no repository | Table exists, no code | Medium |
-| **Verification run writer**: trust_verification_runs table exists, no repository | Table exists, no code | Medium |
+### GCP Integration Status (Current)
+| Component | Status | Evidence |
+|-----------|--------|----------|
+| GCP MCP Server | Referenced but MISSING | `openclaw.json` line 92-95 references `mcp/gcp-server.js` which does not exist |
+| BigQuery | NOT CONFIGURED | No datasets, no jobs, no API enabled |
+| Vertex AI | NOT CONFIGURED | No endpoints, no models deployed |
+| GKE | NOT CONFIGURED | No clusters, no node pools |
+| Terraform | EXISTS but unrelated | `scripts/main.tf` is for GitHub/Replit secret sync, not GCP |
+| `gcloud` CLI | UNKNOWN | Not verified in this session |
+
+### GCP Briefing Review (vs VVU Specs)
+
+The briefing proposes:
+1. **Multi-Model Orchestration** (Vertex AI Reasoning Engine) — NOT in VVU specs
+2. **Open-Weight Models on GKE** (GLM-5.2, Gemma 2) — NOT in VVU specs
+3. **BigQuery Data Agent** — NOT in VVU specs
+4. **NATS JetStream → BigQuery pipeline** — VVU uses NATS but no BigQuery sink exists
+
+**Critical Gap:** The briefing assumes GCP infrastructure that does not exist in this repo. The MCP server files referenced in `openclaw.json` are missing. No gcloud authentication is configured. No BigQuery datasets are created.
 
 ### Relevant Audit Findings
-- HF-1 (Repository Purity): PostgreSQL PK enforces multi-tenant isolation ✓
-- HF-3 (Circuit Breaker): Outbox worker designed not to block event production ✓
-- verifyHashChain bug: Hash chain verification is a no-op (always returns true)
+- HF-1 (Repository Purity): CI/CD must work before any new infrastructure
+- HF-3 (Circuit Breaker): Behavioral coverage must pass before deployment
 
 ### Hard Failures In Scope
-- HF-1: Repository Purity — PostgreSQL backing for EventJournal/TrustContextManager ensures tenant isolation
-- HF-3: Circuit Breaker — RiskEngine stubs must be real for circuit breaker to function
-
-## Current Branch
-`vibe/rc1-trust-context-impl-460439`
+- CI/CD pipeline is broken (100% failure rate on 2,058 runs)
+- GCP integrations are phantom (referenced but not implemented)
 
 ## Required Branch
-`compliance-fabric` for Tier-3 changes
+`main` for CI/CD fix (Tier-2). GCP integration would be `compliance-fabric` (Tier-3).
 
 ## Downstream Dependencies
-- Ubuntu Pools integration depends on `enforcePolicyGate`
-- BARTBOT self-audit depends on PostgreSQL-backed EventJournal
-- Dashboard depends on chronicle_entries projection
-- Governance depends on policy_bundles table
+- All CI/CD workflows depend on the npm→pnpm fix
+- Vercel deployment depends on CI passing
+- GCP briefing implementation depends on GCP APIs being enabled and authenticated
 
 ## Unknowns Before Planning
-1. Should Redis integration be in trust packages or stay in `src/lib/`?
-2. Should enforcePolicyGate be in trust-api or a new trust-enforcement package?
-3. How should the in-memory → PostgreSQL migration work without breaking existing tests?
+1. Is `gcloud` CLI installed and authenticated on this machine?
+2. Which GCP project should be used? (Briefing mentions `project-cc455a72-1490-4cdf-b0e`)
+3. Should GCP integration be implemented now or deferred?
+4. Is the GKE cluster cost justified at this stage (Phase 1)?
 
 ## Stale Context Risk
-- The contracts/db/trust-runtime.ts schema may need updates for new tables
-- The trust-projections package is untracked in git — needs to be committed first
+- The README claims "Phase 1 complete" but CI/CD is broken — this is a credibility gap
+- The briefing's GCP setup assumes infrastructure that doesn't exist

@@ -1,71 +1,85 @@
-# PLAN — Agent Execution Contract — 2026-07-11
+# PLAN — CI/CD Fix + GCP Integration Review — 2026-07-14
 
 ## Business Intent
-Define a tool-agnostic contract that any AI agent must satisfy before contributing code to VVU. Every line of code traces back to an agent, a task, evidence, and an approval. The governance layer stays constant; implementations are replaceable.
+Restore CI/CD pipeline health (currently 100% failure rate across 2,058 runs) and provide a grounded assessment of the GCP infrastructure briefing against VVU's actual codebase state.
 
 ## User Story
-As a **VVU founder governing AI-generated code**, I need every agent execution to produce a cryptographic receipt with verifiable evidence — so that I can trust the software development lifecycle with the same principles as the financial platform.
+As a **VVU founder**, I need the CI/CD pipeline to pass so that code can ship confidently, and I need an honest assessment of whether the GCP briefing's proposals are actionable given current infrastructure.
 
 ## Acceptance Criteria
 
-### AC1: Schema — execution_receipts table
-- [ ] Add `execution_receipts` table to `contracts/db/trust-runtime.ts`
-- [ ] Fields: receiptId, agentId, taskId, taskSpecHash, branch, baseCommit, headCommit, evidence (jsonb), diffManifest (jsonb), verificationStatus, verifiedBy, contextId, createdAt
-- [ ] FK to trust_contexts
+### AC1: CI/CD Pipeline Restored
+- [ ] All 6 workflows use `pnpm install --frozen-lockfile` (already patched locally)
+- [ ] Corepack enable step present in all workflows
+- [ ] `cache: 'pnpm'` in all setup-node steps
+- [ ] Foundry toolchain setup in contract-tests job
+- [ ] All changes committed and pushed to `main`
+- [ ] At least one workflow run passes on GitHub Actions
 
-### AC2: Types — ExecutionReceipt, AgentIdentity, TaskSpec, DiffManifest
-- [ ] Add types to `contracts/api/types.ts`
-- [ ] Extend ReceiptType union with `'execution'`
-- [ ] Add `AgentIdentity`, `TaskSpec`, `DiffManifest`, `ExecutionEvidence`, `ExecutionReceipt` types
+### AC2: README Grounded in Reality
+- [ ] Remove or correct any claims that don't match actual CI state
+- [ ] Session log accurately reflects what was done
+- [ ] Infrastructure stack table matches actual deployment
+- [ ] Build reference hash updated to reflect current HEAD after commit
 
-### AC3: Event types — execution lifecycle events
-- [ ] Add 5 event types to `TrustEventType` in `packages/trust-events/src/definitions.ts`: execution.task_accepted, execution.completed, execution.verified, execution.rejected, execution.merged
-- [ ] Add corresponding payload interfaces
-- [ ] Update validateTrustEvent validTypes array
+### AC3: GCP Briefing Assessment Documented
+- [ ] Clear list of what exists vs what the briefing assumes
+- [ ] Cost/benefit analysis of GCP infrastructure at Phase 1 stage
+- [ ] Recommendation on timing (now vs Phase 2)
 
-### AC4: Contract enforcement — enforceExecutionContract()
-- [ ] New file `packages/trust-api/src/enforce-execution-contract.ts`
-- [ ] Orchestrates: agent registration check → TaskSpec validation → scope check → receipt generation → verification
-- [ ] Returns `ExecutionContractResult`
-
-### AC5: Agent registration — registerAgent() / getAgent()
-- [ ] New file `packages/trust-api/src/agent-registry.ts`
-- [ ] In-memory registry with optional PostgreSQL backing (same pattern as EventJournal)
-- [ ] Functions: registerAgent, getAgent, listAgents, updateAgent
-
-### AC6: Founder Brief — Plain-English summary
-- [ ] New file `packages/trust-api/src/founder-brief.ts`
-- [ ] Generates structured summary from TaskSpec + ExecutionReceipt + VerificationAttestation
-
-### AC7: Validation
-- [ ] Typecheck all packages
-- [ ] Tests for enforceExecutionContract, agent-registry, founder-brief
+## Compliance Gate Status
+- Hard failures in scope: None (CI/CD fix is operational, not compliance)
+- This plan resolves: CI/CD systemic failure (operational)
+- This plan does not touch: HF-1 through HF-5 (compliance gates)
 
 ## Affected Files
 
-### New Files
-```
-packages/trust-api/src/enforce-execution-contract.ts
-packages/trust-api/src/agent-registry.ts
-packages/trust-api/src/founder-brief.ts
-```
-
 ### Modified Files
 ```
-contracts/db/trust-runtime.ts                     # Add execution_receipts table
-contracts/api/types.ts                             # Add types, extend ReceiptType
-packages/trust-events/src/definitions.ts           # Add execution event types
-packages/trust-api/src/index.ts                    # Re-export new modules
+.github/workflows/ci-cd.yml          # npm→pnpm + Corepack + Foundry
+.github/workflows/ci.yml             # npm→pnpm + Corepack
+.github/workflows/deploy-vercel.yml  # npm→pnpm + Corepack
+.github/workflows/deployment-loop.yml # npm→pnpm + Corepack
+.github/workflows/validation-gate.yml # npm→pnpm + Corepack
+.github/workflows/vercel-production.yml # npm→pnpm + Corepack
+.github/workflows/replit-check.yml   # cache: npm→pnpm
+.github/workflows/deploy-verification-gate.yml # diagnose-ci script path
+README.md                            # Session log + status corrections
+DEPLOY_LOG.md                        # Honest status entry
+DEPLOYMENT_CHECKLIST.md              # Updated to reflect pnpm
+active/INVESTIGATION.md              # This investigation
+active/PLAN.md                       # This plan
+active/VALIDATION.md                 # Post-fix validation
 ```
 
 ## Implementation Order
-1. Types first (contracts/api/types.ts) — add all new types
-2. Schema (contracts/db/trust-runtime.ts) — add table
-3. Events (trust-events/definitions.ts) — add event types + payloads
-4. Agent registry (trust-api/agent-registry.ts)
-5. Contract enforcement (trust-api/enforce-execution-contract.ts)
-6. Founder brief (trust-api/founder-brief.ts)
-7. Barrel exports (trust-api/index.ts)
-8. Validation
 
-## APPROVED BY: Mino DATE: 2026-07-11
+### Phase 1: CI/CD Fix (Immediate)
+1. Verify all workflow patches are correct (already done locally)
+2. Commit all changes with descriptive message
+3. Push to `main`
+4. Monitor first workflow run for pass/fail
+5. Fix any remaining issues (lockfile, Node version, etc.)
+
+### Phase 2: Documentation Update
+1. Update README.md session log with accurate status
+2. Update DEPLOY_LOG.md with honest entry
+3. Update DEPLOYMENT_CHECKLIST.md
+4. Verify no stale claims remain
+
+### Phase 3: GCP Assessment
+1. Document what GCP integrations actually exist (none)
+2. Assess briefing proposals against VVU phase timeline
+3. Provide clear recommendation on GCP implementation timing
+
+## Test Assertions
+- `git log --oneline -1` shows new commit with pnpm fix
+- `act -l` or GitHub Actions UI shows workflow triggered
+- First workflow run passes (at minimum: build-and-test job)
+- README session log matches actual commit history
+
+## Branch: `main`
+## Token Budget Estimate: ~3,000 tokens (CI/CD fix is straightforward)
+## Handoff Plan: Write active/HANDOFF.md when session ends
+
+## APPROVED BY: _______________ DATE: _______________

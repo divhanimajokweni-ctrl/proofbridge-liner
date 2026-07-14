@@ -31,9 +31,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build
+          cache: 'pnpm'
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
 
   deploy:
     name: 3 - Vercel Deploy
@@ -48,7 +50,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install -g vercel
+          cache: 'pnpm'
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+      - run: pnpm add -g vercel
       - run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
       - run: vercel build --prod --token=$VERCEL_TOKEN
       - run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
@@ -101,7 +106,7 @@ jobs:
           - [x] Critical files present (verify, mint, middleware, AGENTS.md)
 
           ## Build
-          - [x] `npm run build` passes without errors
+          - [x] `pnpm run build` passes without errors
 
           ## Deploy
           - [x] Pushed to origin

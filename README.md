@@ -13,6 +13,10 @@
 
 ## Current Status · Session Log
 
+### 2026-07-14 — Infrastructure Upgrade: CI/CD Pipeline Migration to pnpm
+
+**What changed and why.** Updated all GitHub Actions workflows (`ci-cd.yml`, `ci.yml`, `deploy-vercel.yml`, `deployment-loop.yml`, `validation-gate.yml`, `vercel-production.yml`) to use `pnpm` instead of `npm`. The monorepo structure was incompatible with `npm install` due to `workspace:*` dependencies. All workflows now use `corepack` and `pnpm install --frozen-lockfile` to ensure deterministic builds and fix systemic CI failures.
+
 ### 2026-07-11 — RC1 Trust Infrastructure: Test Suites + verifyHashChain Fix
 
 **What changed and why.** Added 6 vitest test suites (75 tests, all passing) covering the RC1 trust infrastructure packages (`trust-crypto`, `trust-runtime`, `trust-api`). Fixed a critical bug in `verifyHashChain` that was computing an impossible fixed-point check.
@@ -633,18 +637,18 @@ Circuit breaker outputs become part of the **permanent evidence chain**.
 
 ### Prerequisites
 - Node.js 20+
-- npm 9+
+- pnpm 11+
 - Supabase account
 
 ### Development
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ### Tests
 ```bash
-npm test
-npm run test:e2e
+pnpm test
+pnpm run test:e2e
 ```
 
 ### Database
@@ -675,7 +679,7 @@ docker run --rm -p 3000:3000 -e AMD_STRICT=0 proofbridge-liner
 
 ### Build & Deploy
 ```bash
-npm run build
+pnpm run build
 vercel --prod --force
 ```
 
@@ -685,11 +689,11 @@ vercel --prod --force
 
 | Stage | Command | Description |
 |-------|---------|-------------|
-| **Typecheck** | `npm run typecheck` | TypeScript validation |
-| **Lint** | `npm run lint` | ESLint checks |
-| **Build** | `npm run build` | Production bundle |
-| **Test** | `npm test` | Unit tests |
-| **E2E** | `npm run test:e2e` | Playwright tests |
+| **Typecheck** | `pnpm run typecheck` | TypeScript validation |
+| **Lint** | `pnpm run lint` | ESLint checks |
+| **Build** | `pnpm run build` | Production bundle |
+| **Test** | `pnpm test` | Unit tests |
+| **E2E** | `pnpm run test:e2e` | Playwright tests |
 | **Deploy** | `vercel --prod` | Vercel production |
 
 ---
@@ -788,7 +792,7 @@ vercel --prod --force
 ├── 📁 auth/                  ← Auth-related files
 │
 ├── 📁 archive/               ← Dead/experimental code (kept for reference)
-└── 📁 active/                ← SDD workflow files (INVESTIGATION.md, PLAN.md, etc.)
+└── └── 📁 active/                ← SDD workflow files (INVESTIGATION.md, PLAN.md, etc.)
 ```
 
 ---
@@ -855,4 +859,4 @@ ProofBridge-Liner exists to make critical financial and governance state transit
 ---
 
 *Built with ❤️ for the Ubuntu Pools ecosystem — from Gqeberha, for the continent.*  
-build-ref: 4f6c0f8
+build-ref: dcbf7954
