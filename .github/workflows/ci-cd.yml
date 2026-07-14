@@ -42,8 +42,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Setup Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -52,14 +50,12 @@ jobs:
 
       - name: Install forge dependencies
         run: |
-          cd contracts
-          forge install foundry-rs/forge-std --no-commit 2>/dev/null || true
-          forge install OpenZeppelin/openzeppelin-contracts --no-commit 2>/dev/null || true
-          forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit 2>/dev/null || true
+          forge install foundry-rs/forge-std --no-commit --no-git 2>/dev/null || true
+          forge install OpenZeppelin/openzeppelin-contracts --no-commit --no-git 2>/dev/null || true
+          forge install OpenZeppelin/openzeppelin-contracts-upgradeable --no-commit --no-git 2>/dev/null || true
 
       - name: Run Forge tests
         run: forge test -vvv
-        working-directory: contracts
 
   security:
     name: Security Scan

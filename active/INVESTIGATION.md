@@ -1,78 +1,59 @@
-# INVESTIGATION — CI/CD Fix + GCP Integration Review — 2026-07-14
+# INVESTIGATION — CI/CD Remaining Failures — 2026-07-14
 
 ## Task
-Pull origin main, fix CI/CD pipeline bottlenecks (npm→pnpm), review the GCP infrastructure briefing against VVU specs, and generate an execution plan.
+Investigate why Gate-1 Smoke Test and Contract Tests still fail after the npm→pnpm migration fixed Build & Test.
 
-## Current State
+## Failure 1: Gate-1 Smoke Test (ERR_TEST_FAILURE)
 
-### Git State
-- **Branch:** `main` (up to date with `origin/main`)
-- **Uncommitted changes:** 19 modified files + 6 untracked files
-- **Key modifications already staged locally (NOT pushed):**
-  - All 6 workflow files patched: npm→pnpm with Corepack
-  - README.md updated with session log
-  - DEPLOY_LOG.md updated
-  - Various scripts modified/created
+### Root Cause: Test is fundamentally stale — 7 independent failures
 
-### CI/CD Pipeline — Root Cause Confirmed
-| Workflow | Original State | Local Fix Applied | Pushed? |
-|----------|---------------|-------------------|---------|
-| `ci-cd.yml` | `npm install` | `pnpm install --frozen-lockfile` | NO |
-| `ci.yml` | `npm install` | `pnpm install --frozen-lockfile` | NO |
-| `deploy-vercel.yml` | `npm install` | `pnpm install --frozen-lockfile` | NO |
-| `deployment-loop.yml` | `npm ci` | `pnpm install --frozen-lockfile` | NO |
-| `validation-gate.yml` | `npm ci` | `pnpm install --frozen-lockfile` | NO |
-| `vercel-production.yml` | `npm ci` | `pnpm install --frozen-lockfile` | NO |
+The test at `test/gate1-smoke.test.js` was written against a handler API that no longer exists.
 
-**Additional fixes applied locally:**
-- `cache: 'npm'` → `cache: 'pnpm'` in all workflows
-- Corepack enable step added before every `pnpm install`
-- `npm run build` → `pnpm run build` etc.
-- `npx jest` → `pnpm exec jest`
-- Foundry toolchain setup added to `ci-cd.yml` contract-tests job
+| # | Issue | File:Line | Detail |
+|---|-------|-----------|--------|
+| 1 | **ESM/CJS mismatch** | `package.json` | No `"type": "module"` — Node treats .js as CJS, test uses `import` |
+| 2 | **Import path doesn't exist** | `test/gate1-smoke.test.js:4` | `import handler from "../api/verify.js"` — no `api/` dir at root |
+| 3 | **Default import vs named export** | `test/gate1-smoke.test.js:4` | Route exports `POST` (named), test imports default |
+| 4 | **Express vs Next.js App Router** | `test/gate1-smoke.test.js:28-35` | Test calls `handler(req, res)` Express-style; route is `POST(req: NextRequest) → NextResponse` |
+| 5 | **Verdict values wrong** | `test/gate1-smoke.test.js:42` | Test asserts `PASS/WARN/HALT`; route produces `SAFE/TRIP` |
+| 6 | **Response schema mismatch** | `test/gate1-smoke.test.js:44-55` | Test asserts `receipt_id`, `pipeline_hash`, `anchored_at`, `signature`, `safegrid_signal` — none exist in route |
+| 7 | **Missing gemma-judge module** | `app/api/verify/route.ts:113-114` | Route imports `lib/compliance/gemma-judge` which doesn't exist |
 
-### GCP Integration Status (Current)
-| Component | Status | Evidence |
-|-----------|--------|----------|
-| GCP MCP Server | Referenced but MISSING | `openclaw.json` line 92-95 references `mcp/gcp-server.js` which does not exist |
-| BigQuery | NOT CONFIGURED | No datasets, no jobs, no API enabled |
-| Vertex AI | NOT CONFIGURED | No endpoints, no models deployed |
-| GKE | NOT CONFIGURED | No clusters, no node pools |
-| Terraform | EXISTS but unrelated | `scripts/main.tf` is for GitHub/Replit secret sync, not GCP |
-| `gcloud` CLI | UNKNOWN | Not verified in this session |
+### Verdict
+The test **cannot pass in any environment**. It needs to be rewritten from scratch to match the actual Next.js App Router handler at `app/api/verify/route.ts`.
 
-### GCP Briefing Review (vs VVU Specs)
+---
 
-The briefing proposes:
-1. **Multi-Model Orchestration** (Vertex AI Reasoning Engine) — NOT in VVU specs
-2. **Open-Weight Models on GKE** (GLM-5.2, Gemma 2) — NOT in VVU specs
-3. **BigQuery Data Agent** — NOT in VVU specs
-4. **NATS JetStream → BigQuery pipeline** — VVU uses NATS but no BigQuery sink exists
+## Failure 2: Contract Tests (Forge)
 
-**Critical Gap:** The briefing assumes GCP infrastructure that does not exist in this repo. The MCP server files referenced in `openclaw.json` are missing. No gcloud authentication is configured. No BigQuery datasets are created.
+### Root Cause: Broken forge-std submodule + path mismatch
 
-### Relevant Audit Findings
-- HF-1 (Repository Purity): CI/CD must work before any new infrastructure
-- HF-3 (Circuit Breaker): Behavioral coverage must pass before deployment
+| # | Issue | Detail |
+|---|-------|--------|
+| 1 | **forge-std submodule never properly cloned** | `contracts/lib/forge-std/src/` directory is empty — no `Test.sol` |
+| 2 | **Path mismatch** | `.gitmodules` says `contracts/lib/forge-std`; `foundry.toml` expects `lib/forge-std/` |
+| 3 | **Cascade errors** | "Missing" `IProofHook.sol`, `SafetyKernel.sol`, `BayesianScorer.sol` — these files EXIST at `contracts/`; errors are secondary cascade from forge-std failure |
 
-### Hard Failures In Scope
-- CI/CD pipeline is broken (100% failure rate on 2,058 runs)
-- GCP integrations are phantom (referenced but not implemented)
+### Files That Actually Exist
+- `contracts/IProofHook.sol` — EXISTS
+- `contracts/SafetyKernel.sol` — EXISTS  
+- `contracts/BayesianScorer.sol` — EXISTS
 
-## Required Branch
-`main` for CI/CD fix (Tier-2). GCP integration would be `compliance-fabric` (Tier-3).
+### Verdict
+Fix the forge-std installation and the cascade errors resolve automatically.
 
-## Downstream Dependencies
-- All CI/CD workflows depend on the npm→pnpm fix
-- Vercel deployment depends on CI passing
-- GCP briefing implementation depends on GCP APIs being enabled and authenticated
+---
 
-## Unknowns Before Planning
-1. Is `gcloud` CLI installed and authenticated on this machine?
-2. Which GCP project should be used? (Briefing mentions `project-cc455a72-1490-4cdf-b0e`)
-3. Should GCP integration be implemented now or deferred?
-4. Is the GKE cluster cost justified at this stage (Phase 1)?
+## Required Fixes
 
-## Stale Context Risk
-- The README claims "Phase 1 complete" but CI/CD is broken — this is a credibility gap
-- The briefing's GCP setup assumes infrastructure that doesn't exist
+### Contract Tests
+1. Remove broken `contracts/lib/forge-std/` directory
+2. Install forge-std at correct path (`lib/forge-std/` as expected by `foundry.toml`)
+3. Verify `forge build` compiles all contracts
+
+### Gate-1 Smoke Test
+1. Rewrite `test/gate1-smoke.test.js` to match actual Next.js App Router handler
+2. Use `NextRequest`/`NextResponse` instead of Express mocks
+3. Assert `SAFE`/`TRIP` verdicts instead of `PASS`/`WARN`/`HALT`
+4. Remove assertions for non-existent response fields
+5. Either add `"type": "module"` to package.json or rename test to `.mjs`
