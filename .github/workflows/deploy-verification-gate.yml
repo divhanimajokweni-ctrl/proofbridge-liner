@@ -122,13 +122,39 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const statusClaim = '${{ steps.extract-claim.outputs.status_claim }}' || '(no deployment claim)';
+            const verifiedStatus = '${{ steps.verify-status.outputs.verified_status }}' || '(not verified)';
+            const healthCode = '${{ steps.health.outputs.http_code }}' || '(not run on this branch)';
             const status = '${{ job.status }}';
             const conclusion = status === 'success' ? 'success' : 'failure';
             const title = 'Deploy Fabrication Verification';
             const summary = status === 'success' 
-              ? '✅ DEPLOY_LOG.md claim verified against actual CI status and health check'
-              : '🔴 DEPLOY_LOG.md contains fabricated or unverified deployment claims';
+              ? 'DEPLOY_LOG.md claim verified against actual CI status and health check'
+              : 'DEPLOY_LOG.md contains fabricated or unverified deployment claims';
             
+            const text = [
+              '## Verification Details',
+              '',
+              '- **Claimed Status**: ' + statusClaim,
+              '- **Actual CI Status**: ' + verifiedStatus,
+              '- **Health Check**: ' + healthCode,
+              '',
+              '### What This Gate Does',
+              '',
+              '1. **Detects fabrication**: If DEPLOY_LOG.md claims "Deployed" but CI shows "failure", blocks the entry',
+              '2. **Verifies health**: Confirms production responds 200 OK before logging deployment',
+              '3. **Validates format**: Ensures entry contains required fields (Commit, Status, Domain)',
+              '4. **Guards against templates**: Warns on suspicious "Pipeline: PASS PASS PASS..." patterns',
+              '',
+              '### Next Steps',
+              '',
+              'If this check fails:',
+              '- Run: `npm run diagnose-ci` to find root CI cause',
+              '- Fix the underlying issue, not the log entry',
+              '- Re-run CI until it passes naturally',
+              '- Only then update DEPLOY_LOG.md with honest status',
+            ].join('\n');
+
             await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -139,28 +165,7 @@ jobs:
               output: {
                 title: title,
                 summary: summary,
-                text: `
-## Verification Details
-
-- **Claimed Status**: ${{ steps.extract-claim.outputs.status_claim || '(no deployment claim)' }}
-- **Actual CI Status**: ${{ steps.verify-status.outputs.verified_status || '(not verified)' }}
-- **Health Check**: ${{ steps.health.outputs.http_code || '(not run on this branch)' }}
-
-### What This Gate Does
-
-1. **Detects fabrication**: If DEPLOY_LOG.md claims "Deployed" but CI shows "failure", blocks the entry
-2. **Verifies health**: Confirms production responds 200 OK before logging deployment
-3. **Validates format**: Ensures entry contains required fields (Commit, Status, Domain)
-4. **Guards against templates**: Warns on suspicious "Pipeline: PASS PASS PASS..." patterns
-
-### Next Steps
-
-If this check fails:
-- Run: \`npm run diagnose-ci\` to find root CI cause
-- Fix the underlying issue, not the log entry
-- Re-run CI until it passes naturally
-- Only then update DEPLOY_LOG.md with honest status
-                `
+                text: text
               }
             });
 
