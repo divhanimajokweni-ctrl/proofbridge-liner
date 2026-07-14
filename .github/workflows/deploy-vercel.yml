@@ -29,13 +29,13 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           submodules: false
 
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: 'pnpm'
-
       - name: Enable Corepack (pnpm)
         run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

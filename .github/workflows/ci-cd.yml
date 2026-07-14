@@ -18,14 +18,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-
-      - name: Enable Corepack (pnpm)
-        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -42,13 +42,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Setup Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+
+      - name: Install forge-std
+        run: |
+          cd contracts
+          forge install foundry-rs/forge-std --no-commit --no-git 2>/dev/null || true
 
       - name: Run Forge tests
         run: forge test -vvv
@@ -61,14 +64,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-
-      - name: Enable Corepack (pnpm)
-        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -87,14 +90,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
-
-      - name: Enable Corepack (pnpm)
-        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -135,14 +138,14 @@ jobs:
           terraform apply -auto-approve
         working-directory: src/lib
 
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
-
-      - name: Enable Corepack (pnpm)
-        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

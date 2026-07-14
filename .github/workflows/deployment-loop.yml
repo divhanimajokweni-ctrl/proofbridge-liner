@@ -28,12 +28,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
-      - name: Enable Corepack (pnpm)
-        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
 
@@ -47,12 +47,12 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
-      - name: Enable Corepack (pnpm)
-        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
       - run: pnpm add -g vercel
       - run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
       - run: vercel build --prod --token=$VERCEL_TOKEN

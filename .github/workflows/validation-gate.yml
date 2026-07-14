@@ -7,7 +7,7 @@ on:
     branches: [compliance-fabric]
 
 env:
-  NODE_VERSION: '20.x'
+  NODE_VERSION: '22.x'
 
 jobs:
   validate:
@@ -17,14 +17,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
-
-      - name: Enable Corepack (pnpm)
-        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
 
       # ── 1. Critical file gate ──────────────────────────────────
       - name: Critical file presence
