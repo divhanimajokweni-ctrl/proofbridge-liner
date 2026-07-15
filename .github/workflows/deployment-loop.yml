@@ -54,7 +54,7 @@ jobs:
           node-version: 22
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: rm -rf .vercel
+      - run: rm -rf .vercel && npx --yes vercel link --yes --project=$VERCEL_PROJECT_ID --token=$VERCEL_TOKEN
       - run: npx --yes vercel pull --yes --environment=production --token=$VERCEL_TOKEN
       - run: npx --yes vercel build --prod --token=$VERCEL_TOKEN
       - run: npx --yes vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN

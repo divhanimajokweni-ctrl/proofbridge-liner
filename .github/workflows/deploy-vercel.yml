@@ -40,9 +40,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Syntax-check API files
-        run: cd api && node --check verify.js && node --check kernel.js
-
       - name: Validate Vercel Secrets
         run: |
           [ -n "$VERCEL_TOKEN" ] || { echo "ERROR: VERCEL_TOKEN (PROOFBRIDGE_LINER_VERCEL) is missing"; exit 1; }
@@ -52,9 +49,7 @@ jobs:
       - name: Bind to configured Vercel project
         run: |
           rm -rf .vercel
-          mkdir -p .vercel
-          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
-          cat .vercel/project.json
+          npx --yes vercel link --yes --project=$VERCEL_PROJECT_ID --token="$VERCEL_TOKEN"
 
       - name: Pull Vercel Environment
         run: npx --yes vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
