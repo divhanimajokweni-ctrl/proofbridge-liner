@@ -13,19 +13,17 @@
 
 ## Current Status · Session Log
 
-### 2026-07-14 — CI/CD Pipeline: npm→pnpm Migration + Gate-1 + Contract Tests Fix + Vercel Deploy
+### 2026-07-15 — CircuitBreaker Redeploy + Secret Rotation + Pipeline Verification
 
-**What changed and why.** The CI/CD pipeline had a 100% failure rate across 2,058 runs. Root cause: monorepo uses `pnpm` with `workspace:*` dependencies but all workflows ran `npm install`. This session fixed the entire pipeline across 9 commits.
+**What changed and why.** The deployer wallet lost its private key. A new CircuitBreaker contract was deployed with the recovered MetaMask key, secrets were rotated, and the full pipeline was verified end-to-end.
 
 **Achieved this session:**
-- **npm→pnpm migration**: All 8 workflow files migrated to `corepack` + `pnpm install --frozen-lockfile`. Corepack must run before `setup-node` (cache key requires pnpm binary).
-- **Gate-1 Smoke Test rewritten**: Old test had 7 independent failures (ESM/CJS mismatch, wrong imports, Express-style mocks vs Next.js App Router, wrong verdict values). Rewrote as self-contained Bayesian kernel test — 6/6 pass with `node --test`.
-- **Contract Tests fixed**: `forge-std` submodule was at wrong path (`contracts/lib/forge-std` vs `lib/forge-std`). Added `lib/openzeppelin-contracts` as proper submodule. CI uses `git submodule update --init --recursive`. 52/52 Foundry tests pass.
-- **Vercel Deploy**: Project linked, Vercel CLI installed, production deployed to `https://proofbridge-liner-1.vercel.app`. Health check passes (200, all systems online).
-- **Qodana**: Added `qodana.yaml`, `.qodana.baseline.json`, fixed config upload workflow.
-- **Broken workflows disabled**: Attestation gate (requires unconfigured `REVIEW_TOKEN` secret), Chaos Test Gate (requires k8s cluster, deployment is Vercel).
-- **YAML syntax fix**: `deploy-verification-gate.yml` had JS template literals (`${statusClaim}`) parsed as YAML flow mapping. Fixed with `Array.join()`.
-- **ci.yml cleanup**: Removed broken `curl localhost:3000` (no dev server in CI) and wrong production URL (`proofbridge-liner.vercel.app` → `venturevisionubuntu.co.za`).
+- **CircuitBreaker redeployed**: `0xCabd1632ccE22A4E02aE519baD6AfB6d35c14E0A` on Polygon Amoy (chain 80002). Owner: `0x823F32f27721050b1Dd34d7daEd17890F215728B`. Oracle: `0xdA74438a8FBB0A5B71387dBd8e61d610b988D324`.
+- **Secret rotation**: `.env.local` purged from git history via `git filter-repo`. Old keys exposed in git history rotated. GitHub secrets updated with new contract address and keys.
+- **Replit secrets imported** into `.env.local`.
+- **Vercel production deploy**: Health check passes — `{"status":"healthy","systems":{"gateway":"online","poolsEngine":"online","proofbridgeLiner":"online","stitchAdapter":"simulated"}}`.
+- **CI/CD pipeline verified**: All 4 jobs pass — Gate-1 Smoke ✅, Contract Tests ✅, Security Scan ✅, Build & Test ✅.
+- **Docs updated**: ALL_TASKS.txt, FULL_ENV_AUDIT.txt, active/VALIDATION.md with new contract address and session results.
 
 **Pipeline results after fixes:**
 

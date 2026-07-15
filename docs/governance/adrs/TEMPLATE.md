@@ -7,7 +7,7 @@ approver: [Constitutional Council]
 implementation_owner: [OpenCode Member]
 verification_owner: [Evidence Office Member]
 status: [Proposed | Under Review | Accepted | Rejected | Superseded]
-date: [YYYY-MM-DD]
+date: "[YYYY-MM-DD]"
 ---
 
 # Context

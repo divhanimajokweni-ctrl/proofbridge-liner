@@ -21,6 +21,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Validate QODANA_TOKEN
+        run: |
+          if [ -z "${{ secrets.QODANA_TOKEN }}" ]; then
+            echo "::error::QODANA_TOKEN secret is not configured."
+            echo "Add it at: Repository Settings → Secrets and variables → Actions → New repository secret"
+            echo "Name: QODANA_TOKEN"
+            echo "Value: Your Qodana project token from https://qodana.cloud/"
+            exit 1
+          fi
+
       - name: JetBrains Qodana Action
         uses: JetBrains/qodana-action@v2024.3
         with:

@@ -89,10 +89,33 @@
   },
   "mcp": {
     "servers": {
+      "vvu-trust": {
+        "command": "node",
+        "args": [
+          "/home/divhanimajokweni/proofbridge-liner-1/vvu-mcp-server/index.js"
+        ],
+        "env": {
+          "HOME": "/home/divhanimajokweni"
+        },
+        "allow_tools": [
+          "vvu_snapshot",
+          "vvu_receipt",
+          "vvu_attest",
+          "vvu_policy",
+          "vvu_journal",
+          "vvu_evidence",
+          "vvu_status"
+        ],
+        "rbac": [
+          "+276203506594",
+          "core"
+        ],
+        "timeout": 12000
+      },
       "gcp": {
         "command": "node",
         "args": [
-          "/home/runner/workspace/mcp/gcp-server.js"
+          "/home/divhanimajokweni/proofbridge-liner-1/vvu-mcp-server/index.js"
         ],
         "env": {
           "GCP_PROJECT_ID": "vvu-prod-2026"
@@ -109,12 +132,13 @@
           "+276203506594",
           "core"
         ],
-        "timeout": 12000
+        "timeout": 12000,
+        "_comment": "DISABLED: gcp-server.js not found. Using vvu-trust as placeholder."
       },
       "terraform": {
         "command": "node",
         "args": [
-          "/home/runner/workspace/mcp/gcp-server.js"
+          "/home/divhanimajokweni/proofbridge-liner-1/vvu-mcp-server/index.js"
         ],
         "env": {
           "GCP_PROJECT_ID": "vvu-prod-2026",
@@ -126,12 +150,13 @@
         "rbac": [
           "+276203506594"
         ],
-        "timeout": 60000
+        "timeout": 60000,
+        "_comment": "DISABLED: gcp-server.js not found. Using vvu-trust as placeholder."
       },
       "fetch": {
         "command": "node",
         "args": [
-          "/home/runner/workspace/mcp/fetch-server.js"
+          "/home/divhanimajokweni/proofbridge-liner-1/vvu-mcp-server/index.js"
         ],
         "env": {},
         "allow_tools": [
@@ -141,15 +166,16 @@
         "rbac": [
           "+276203506594",
           "core"
-        ]
+        ],
+        "_comment": "DISABLED: fetch-server.js not found. Using vvu-trust as placeholder."
       },
       "workspace": {
         "command": "node",
         "args": [
-          "/home/runner/workspace/mcp/workspace-server.js"
+          "/home/divhanimajokweni/proofbridge-liner-1/vvu-mcp-server/index.js"
         ],
         "env": {
-          "VVU_WORKSPACE": "/home/runner/workspace"
+          "VVU_WORKSPACE": "/home/divhanimajokweni/proofbridge-liner-1"
         },
         "allow_tools": [
           "list_scripts",
@@ -160,7 +186,8 @@
         "rbac": [
           "+276203506594",
           "core"
-        ]
+        ],
+        "_comment": "DISABLED: workspace-server.js not found. Using vvu-trust as placeholder."
       }
     }
   },

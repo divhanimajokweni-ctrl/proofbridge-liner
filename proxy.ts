@@ -65,7 +65,7 @@ const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const tripped = await isCircuitTripped();
   if (tripped) {
     return NextResponse.json(

@@ -30,6 +30,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Diagnose workspace linking
+        run: |
+          echo "── Workspace packages ──"
+          pnpm ls --depth 0 -r 2>/dev/null || true
+          echo "── @proofbridge/trust-runtime node_modules ──"
+          ls -la node_modules/@proofbridge/ 2>/dev/null || echo "WARNING: @proofbridge scope missing in root node_modules"
+          ls -la packages/trust-runtime/node_modules/@proofbridge/ 2>/dev/null || echo "INFO: no local node_modules (hoisted)"
+          echo "── contracts dist ──"
+          ls contracts/dist/ 2>/dev/null || echo "WARNING: contracts/dist not found — run build for contracts first"
+
       - name: Build TypeScript
         run: pnpm run build
 

@@ -11,13 +11,25 @@ const GATES = [
 
 export async function GET() {
   const gates = GATES.map(g => {
-    const circuitOpen = g.id === 'F' && Math.random() < 0.05
-    const status = circuitOpen ? 'circuit_open' : 'complete'
+    let status = 'complete'
+    let statusLabel = 'NOMINAL'
+    let gaps: string[] = []
+
+    if (g.id === 'D') {
+      status = 'not_implemented'
+      statusLabel = 'NOT IMPLEMENTED'
+      gaps = ['Hash chain integrity monitoring not wired to API']
+    } else if (g.id === 'F') {
+      status = 'complete'
+      statusLabel = 'NOMINAL'
+      gaps = []
+    }
+
     return {
       ...g,
       status,
-      statusLabel: circuitOpen ? 'CIRCUIT OPEN' : 'NOMINAL',
-      gaps: circuitOpen ? ['drift > threshold: Canton/Polygon parity mismatch'] : [],
+      statusLabel,
+      gaps,
       ts: Date.now(),
     }
   })

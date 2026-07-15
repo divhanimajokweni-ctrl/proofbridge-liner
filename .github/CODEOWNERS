@@ -1,7 +1,6 @@
-# Default owners for everything
-* @mino
-
-# Legal documents require legal counsel review and cannot be merged without dual approval
-docs/legal/             @legal-counsel @mino
-docs/legal/pbx/         @legal-counsel @mino
-docs/legal/fsca/        @legal-counsel @mino @compliance-officer
+# Protect workflows, scripts, and manifest
+.github/workflows/    @divhanimajokweni
+scripts/              @divhanimajokweni
+.manifest.json        @divhanimajokweni
+.manifest.json.sig    @divhanimajokweni
+SECURITY.md           @divhanimajokweni

@@ -1,11 +1,17 @@
-#!/usr/bin/env bash
-# common.sh — shared shell utilities for VVU CI tools
-# Source this file in other scripts:  source "$(dirname "$0")/common.sh"
+#!/bin/bash
+# Shared utilities for VVU Trust Chain
 
-vvu_log() { echo "[$(date -u +"%Y-%m-%dT%H:%M:%SZ")] $*"; }
-ensure_gh_auth() {
-  if ! gh auth status &>/dev/null; then
-    vvu_log "ERROR: gh not authenticated. Run 'gh auth login'."
-    exit 1
-  fi
+log() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $1"
+}
+
+error() {
+  log "ERROR: $1" >&2
+  exit 1
+}
+
+# Sign a file
+sign_file() {
+  # Implementation depends on the crypto package
+  node packages/trust-crypto/dist/sign.js "$1" --key "$2" > "$1.sig"
 }

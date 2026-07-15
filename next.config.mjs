@@ -20,9 +20,15 @@ const nextConfig = {
     },
   },
   images: {
-    domains: [
-      'vvu.earth-tech.ai',
-      'api.vvu.earth-tech.ai',
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'vvu.earth-tech.ai',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.vvu.earth-tech.ai',
+      },
     ],
   },
   webpack: (config) => {

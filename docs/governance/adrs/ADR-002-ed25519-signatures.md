@@ -7,7 +7,7 @@ approver: Constitutional Council
 implementation_owner: Josh (OpenCode)
 verification_owner: Evidence Office
 status: Accepted
-date: 2026-06-01
+date: "2026-06-01"
 ---
 
 # Context
