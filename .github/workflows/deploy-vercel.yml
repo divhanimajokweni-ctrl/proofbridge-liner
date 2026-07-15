@@ -19,8 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
     steps:
       - uses: actions/checkout@v4
@@ -40,22 +38,55 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate Vercel Secrets
+      - name: Resolve jurisdiction from manifest
         run: |
-          [ -n "$VERCEL_TOKEN" ] || { echo "ERROR: VERCEL_TOKEN (PROOFBRIDGE_LINER_VERCEL) is missing"; exit 1; }
-          [ -n "$VERCEL_ORG_ID" ] || { echo "ERROR: VERCEL_ORG_ID secret is missing"; exit 1; }
-          [ -n "$VERCEL_PROJECT_ID" ] || { echo "ERROR: VERCEL_PROJECT_ID secret is missing"; exit 1; }
+          BRANCH="${GITHUB_REF_NAME}"
+          case "$BRANCH" in
+            main) JURISDICTION="proofbridge" ;;
+            compliance-fabric) JURISDICTION="workspace-legacy" ;;
+            *) JURISDICTION="proofbridge" ;;
+          esac
+
+          STATUS=$(node -e "const y=require('js-yaml'),f=require('fs').readFileSync('jurisdiction-manifest.yaml','utf8'),m=y.load(f);console.log(m.jurisdictions['$JURISDICTION'].status)")
+          if [ "$STATUS" = "DEPRECATED" ]; then
+            echo "ERROR: Jurisdiction $JURISDICTION is DEPRECATED — deployment blocked"
+            exit 1
+          fi
+
+          PROJECT_ID=$(node -e "const y=require('js-yaml'),f=require('fs').readFileSync('jurisdiction-manifest.yaml','utf8'),m=y.load(f);console.log(m.jurisdictions['$JURISDICTION'].vercel_project_id||'')")
+          ORG_ID=$(node -e "const y=require('js-yaml'),f=require('fs').readFileSync('jurisdiction-manifest.yaml','utf8'),m=y.load(f);console.log(m.jurisdictions['$JURISDICTION'].vercel_org_id||'')")
+
+          if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
+            echo "Jurisdiction $JURISDICTION has no Vercel project — skipping deploy"
+            echo "SKIP_DEPLOY=true" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          echo "VERCEL_PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+          echo "VERCEL_ORG_ID=$ORG_ID" >> $GITHUB_ENV
+          echo "Resolved: jurisdiction=$JURISDICTION project=$PROJECT_ID org=$ORG_ID"
+
+      - name: Validate Vercel Secrets
+        if: env.SKIP_DEPLOY != 'true'
+        run: |
+          [ -n "$VERCEL_TOKEN" ] || { echo "ERROR: VERCEL_TOKEN is missing"; exit 1; }
+          [ -n "$VERCEL_PROJECT_ID" ] || { echo "ERROR: VERCEL_PROJECT_ID could not be resolved from manifest"; exit 1; }
+          [ -n "$VERCEL_ORG_ID" ] || { echo "ERROR: VERCEL_ORG_ID could not be resolved from manifest"; exit 1; }
 
       - name: Bind to configured Vercel project
+        if: env.SKIP_DEPLOY != 'true'
         run: |
           rm -rf .vercel
           npx --yes vercel link --yes --project=$VERCEL_PROJECT_ID --token="$VERCEL_TOKEN"
 
       - name: Pull Vercel Environment
+        if: env.SKIP_DEPLOY != 'true'
         run: npx --yes vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build Production
+        if: env.SKIP_DEPLOY != 'true'
         run: npx --yes vercel build --prod --token="$VERCEL_TOKEN"
 
       - name: Deploy Production
+        if: env.SKIP_DEPLOY != 'true'
         run: npx --yes vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
