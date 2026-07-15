@@ -24,14 +24,15 @@ jobs:
       - name: Validate QODANA_TOKEN
         run: |
           if [ -z "${{ secrets.QODANA_TOKEN }}" ]; then
-            echo "::error::QODANA_TOKEN secret is not configured."
+            echo "::warning::QODANA_TOKEN secret is not configured — skipping Qodana scan."
             echo "Add it at: Repository Settings → Secrets and variables → Actions → New repository secret"
             echo "Name: QODANA_TOKEN"
             echo "Value: Your Qodana project token from https://qodana.cloud/"
-            exit 1
+            echo "SKIP_QODANA=true" >> $GITHUB_ENV
           fi
 
       - name: JetBrains Qodana Action
+        if: env.SKIP_QODANA != 'true'
         uses: JetBrains/qodana-action@v2024.3
         with:
           project-token: ${{ secrets.QODANA_TOKEN }}
@@ -40,7 +41,7 @@ jobs:
           post-action-token: ${{ secrets.QODANA_TOKEN }}
 
       - name: Upload Qodana Results
-        if: always()
+        if: always() && env.SKIP_QODANA != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: qodana-results

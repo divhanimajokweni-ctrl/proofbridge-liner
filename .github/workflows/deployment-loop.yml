@@ -53,6 +53,7 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
+      - run: echo "$(pnpm config get global-bin-dir)" >> $GITHUB_PATH
       - run: pnpm add -g vercel
       - run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
       - run: vercel build --prod --token=$VERCEL_TOKEN
