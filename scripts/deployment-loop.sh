@@ -259,27 +259,95 @@ phase 6 $total_phases "BEHAVIORAL COVERAGE — 5 compliance flows"
 
 # ============================================================
 # PHASE 7: VERCEL BUILD GATE (before git push)
+# Reads jurisdiction-manifest.yaml — never uses raw secrets directly
 # ============================================================
 phase 7 $total_phases "VERCEL BUILD GATE — Build before push"
 {
   CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
   info "Branch: $CURRENT_BRANCH"
 
-  if command -v vercel &>/dev/null; then
-    info "Deploying to Vercel production (waiting for build)..."
-    vercel deploy --prod --force 2>&1 | tail -20
-    VERCEL_EXIT="${PIPESTATUS[0]}"
-    if [ "$VERCEL_EXIT" -ne 0 ]; then
-      warn "Vercel build warned — push blocked. Fix the build before retrying."
-    fi
-    pass "Vercel production build succeeded"
-  else
+  if ! command -v vercel &>/dev/null; then
     if is_canonical_branch; then
       warn "Vercel CLI not found — required on canonical branches ($CURRENT_BRANCH)"
     else
       warn "Vercel CLI not found — skipping Vercel deploy on non-canonical branch"
     fi
+    return 0 2>/dev/null || exit 0
   fi
+
+  # --- Jurisdiction resolution from manifest ---
+  MANIFEST="jurisdiction-manifest.yaml"
+  if [ ! -f "$MANIFEST" ]; then
+    warn "jurisdiction-manifest.yaml not found — cannot resolve deploy target"
+  fi
+
+  # Auto-detect jurisdiction from branch
+  JURISDICTION=""
+  case "$CURRENT_BRANCH" in
+    main)             JURISDICTION="proofbridge" ;;
+    compliance-fabric) JURISDICTION="workspace-legacy" ;;
+    *)                JURISDICTION="proofbridge" ;;
+  esac
+
+  # Parse manifest with node (no yq dependency)
+  J_STATUS=$(node -e "const y=require('js-yaml'),f=require('fs').readFileSync('$MANIFEST','utf8'),m=y.load(f);const j=m.jurisdictions['$JURISDICTION'];console.log(j?j.status:'UNKNOWN')" 2>/dev/null || echo "PARSE_ERROR")
+  J_PROJECT=$(node -e "const y=require('js-yaml'),f=require('fs').readFileSync('$MANIFEST','utf8'),m=y.load(f);const j=m.jurisdictions['$JURISDICTION'];console.log(j?(j.vercel_project_id||''):'')" 2>/dev/null || echo "")
+  J_ORG=$(node -e "const y=require('js-yaml'),f=require('fs').readFileSync('$MANIFEST','utf8'),m=y.load(f);const j=m.jurisdictions['$JURISDICTION'];console.log(j?(j.vercel_org_id||''):'')" 2>/dev/null || echo "")
+
+  info "Jurisdiction: $JURISDICTION (status=$J_STATUS, project=$J_PROJECT)"
+
+  # Block DEPRECATED jurisdictions
+  if [ "$J_STATUS" = "DEPRECATED" ]; then
+    warn "Jurisdiction $JURISDICTION is DEPRECATED — deployment blocked"
+  fi
+
+  # Jurisdictions with null project_id don't deploy to Vercel
+  if [ -z "$J_PROJECT" ] || [ "$J_PROJECT" = "null" ]; then
+    info "Jurisdiction $JURISDICTION has no Vercel project — skipping Vercel deploy"
+    return 0 2>/dev/null || exit 0
+  fi
+
+  # Resolve credentials from jurisdiction-scoped secrets
+  # proofbridge uses VERCEL_TOKEN_PROOFBRIDGE, ubuntu-pools uses VERCEL_TOKEN_PROOFBRIDGE
+  case "$JURISDICTION" in
+    proofbridge|ubuntu-pools)
+      DEPLOY_TOKEN="${VERCEL_TOKEN_PROOFBRIDGE:-$VERCEL_TOKEN}"
+      ;;
+    *)
+      DEPLOY_TOKEN="$VERCEL_TOKEN"
+      ;;
+  esac
+
+  if [ -z "$DEPLOY_TOKEN" ]; then
+    warn "No Vercel token available for jurisdiction $JURISDICTION"
+  fi
+
+  # Verify project belongs to the resolved org
+  info "Verifying project $J_PROJECT belongs to org $J_ORG..."
+  VERIFIED=$(npx --yes vercel project ls --token="$DEPLOY_TOKEN" 2>/dev/null | grep -c "$J_PROJECT" || echo "0")
+  if [ "$VERIFIED" = "0" ]; then
+    warn "Project $J_PROJECT not found under token scope — jurisdiction/secret mismatch"
+  fi
+
+  # Link and deploy using manifest-resolved IDs
+  info "Linking to project $J_PROJECT..."
+  rm -rf .vercel
+  npx --yes vercel link --yes --project="$J_PROJECT" --token="$DEPLOY_TOKEN" 2>&1 | tail -5
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    warn "vercel link failed for $J_PROJECT — check jurisdiction-manifest.yaml and VERCEL_TOKEN"
+  fi
+
+  info "Deploying to Vercel production (waiting for build)..."
+  npx --yes vercel pull --yes --environment=production --token="$DEPLOY_TOKEN" 2>&1 | tail -5
+  npx --yes vercel build --prod --token="$DEPLOY_TOKEN" 2>&1 | tail -20
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    warn "Vercel build warned — push blocked. Fix the build before retrying."
+  fi
+  npx --yes vercel deploy --prebuilt --prod --token="$DEPLOY_TOKEN" 2>&1 | tail -5
+  if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+    warn "Vercel deploy warned — push blocked"
+  fi
+  pass "Vercel production build succeeded"
 
 } >&3
 

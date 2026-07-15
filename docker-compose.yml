@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   whatsapp-daemon:
     build: .
@@ -20,3 +18,39 @@ services:
     volumes:
       - ./auth_store_whatsapp:/usr/src/app/auth_store_whatsapp
       - ./logs:/usr/src/app/logs
+    networks:
+      - openclaw-net
+
+  kilo-runtime:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    environment:
+      - JURISDICTION=proofbridge
+    env_file: ./secrets/.env.proofbridge
+    volumes:
+      - ./.kilocode:/app/.kilocode:ro
+      - ./kilo.json:/app/kilo.json:ro
+      - ./jurisdiction-manifest.yaml:/app/jurisdiction-manifest.yaml:ro
+      - ./active:/app/active
+    networks:
+      - proofbridge-net
+    restart: unless-stopped
+
+  openclaw-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    environment:
+      - JURISDICTION=lindiwe-openclaw
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+    env_file: ./secrets/.env.openclaw
+    volumes:
+      - ./openclaw.json:/app/openclaw.json:ro
+      - ./jurisdiction-manifest.yaml:/app/jurisdiction-manifest.yaml:ro
+    networks:
+      - openclaw-net
+
+networks:
+  proofbridge-net: {}
+  openclaw-net: {}

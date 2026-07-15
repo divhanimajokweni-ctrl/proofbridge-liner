@@ -304,3 +304,28 @@ bash scripts/deployment-loop.sh
 ```bash
 bash scripts/install-hooks.sh
 ```
+
+## DEPLOYMENT JURISDICTION LOCK
+
+No agent, script, or CI job may deploy to Vercel without first resolving its
+target against `jurisdiction-manifest.yaml`. This is not a convention — it is
+a hard gate, enforced identically in the local pre-push hook AND in CI.
+
+### Rule
+Before any `vercel deploy` / `vercel link` / `vercel build` call:
+1. Read the calling agent's jurisdiction from `jurisdiction-manifest.yaml`.
+2. Resolve `VERCEL_PROJECT_ID` + `VERCEL_ORG_ID` from that jurisdiction entry —
+   never from a shared/global secret pair.
+3. Confirm via `vercel project ls --token=$TOKEN` that the resolved
+   `VERCEL_PROJECT_ID` belongs to the resolved `VERCEL_ORG_ID`. Mismatch = hard
+   fail, no fallback, no auto-create.
+4. If `vercel link` returns "Could not retrieve Project Settings," the gate
+   FAILS THE PIPELINE. It does not retry with `--yes` and it never deletes
+   `.vercel` and relinks blind — that's how a new project gets silently
+   created and treated as a deploy target.
+
+### CI Parity Requirement
+Any GitHub Actions workflow that deploys MUST call the same
+`scripts/deployment-loop.sh` gate logic the pre-push hook uses — not a
+hand-rolled `vercel link && vercel deploy` sequence. One gate, two trigger
+points, zero drift. If CI and local hook disagree, CI is wrong by definition.

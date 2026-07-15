@@ -1,22 +1,15 @@
 {
-  "$schema": "https://app.kilo.ai/config.json",
-  "name": "VVU Trust Runtime — Immortal Knowledge Engine",
-  "description": "Trust Runtime agents — colony model, MCP server, Immortal Knowledge Engine E2E pipeline with Firecrawl, SQLite, and GitHub",
-  "model": "claude-3-5-sonnet-20241022",
-  "small_model": "claude-3-5-haiku-20241022",
-  "mcp": {
-    "vvu": {
-      "type": "local",
-      "command": ["node", "/home/runner/workspace/vvu-mcp-server/index.js"],
-      "enabled": true
-    },
-    "firecrawl": {
-      "type": "local",
-      "command": ["npx", "-y", "firecrawl-mcp@latest"],
-      "enabled": true,
-      "environment": {
-        "FIRECRAWL_API_KEY": "${FIRECRAWL_API_KEY}"
-      }
+  "$schema": "https://raw.githubusercontent.com/kilocode-ai/kilocode/main/config.schema.json",
+  "name": "VVU Trust Runtime",
+  "version": "2.0.0",
+  "agents": {
+    "default": {
+      "model": "claude-3-5-sonnet-20241022",
+      "temperature": 0.3,
+      "maxTokens": 8000
     }
+  },
+  "permissions": {
+    "allow": ["file_read", "file_write", "terminal"]
   }
 }
