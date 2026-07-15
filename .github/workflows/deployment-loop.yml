@@ -53,11 +53,10 @@ jobs:
         with:
           node-version: 22
           cache: 'pnpm'
-      - run: echo "$(pnpm config get global-bin-dir)" >> $GITHUB_PATH
-      - run: pnpm add -g vercel
-      - run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-      - run: vercel build --prod --token=$VERCEL_TOKEN
-      - run: vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
+      - run: pnpm install --frozen-lockfile
+      - run: npx --yes vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+      - run: npx --yes vercel build --prod --token=$VERCEL_TOKEN
+      - run: npx --yes vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
       - name: Capture deploy URL
         run: |
           URL=$(vercel inspect --prod --token=$VERCEL_TOKEN | grep -oP 'https://[^\s]+\.vercel\.app' | head -1)
