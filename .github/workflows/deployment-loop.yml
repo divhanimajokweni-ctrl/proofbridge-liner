@@ -54,12 +54,13 @@ jobs:
           node-version: 22
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
+      - run: rm -rf .vercel
       - run: npx --yes vercel pull --yes --environment=production --token=$VERCEL_TOKEN
       - run: npx --yes vercel build --prod --token=$VERCEL_TOKEN
       - run: npx --yes vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
       - name: Capture deploy URL
         run: |
-          URL=$(vercel inspect --prod --token=$VERCEL_TOKEN | grep -oP 'https://[^\s]+\.vercel\.app' | head -1)
+          URL=$(npx --yes vercel inspect --prod --token=$VERCEL_TOKEN | grep -oP 'https://[^\s]+\.vercel\.app' | head -1)
           echo "DEPLOY_URL=$URL" >> $GITHUB_ENV
 
   verify:

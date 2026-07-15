@@ -51,18 +51,16 @@ jobs:
 
       - name: Bind to configured Vercel project
         run: |
+          rm -rf .vercel
           mkdir -p .vercel
           printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
           cat .vercel/project.json
 
-      - name: Install Vercel CLI
-        run: pnpm add -g vercel@latest
-
       - name: Pull Vercel Environment
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: npx --yes vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Build Production
-        run: vercel build --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel build --prod --token="$VERCEL_TOKEN"
 
       - name: Deploy Production
-        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        run: npx --yes vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"

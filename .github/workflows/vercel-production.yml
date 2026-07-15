@@ -47,24 +47,21 @@ jobs:
       - name: Enable Corepack (pnpm)
         run: corepack enable && corepack prepare pnpm@11.11.0 --activate
 
-      - name: Install Vercel CLI
-        run: pnpm add -g vercel@latest
-
       - name: Pull Vercel environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Deploy to Vercel
-        run: vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        run: npx --yes vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Verify production deployment
         run: |
-          URL=$(vercel inspect proofbridge-liner --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/URL/ {print $2}' | head -n 1)
+          URL=$(npx --yes vercel inspect proofbridge-liner --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/URL/ {print $2}' | head -n 1)
           echo "Production URL: $URL"
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL/")
           echo "Root status: $STATUS"
