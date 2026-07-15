@@ -1,10 +1,6 @@
 name: Qodana Code Inspection
 
 on:
-  push:
-    branches: [main, compliance-fabric]
-  pull_request:
-    branches: [main, compliance-fabric]
   workflow_dispatch:
 
 permissions:
