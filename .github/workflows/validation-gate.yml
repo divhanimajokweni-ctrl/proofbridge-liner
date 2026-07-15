@@ -30,7 +30,7 @@ jobs:
       - name: Critical file presence
         run: |
           echo "::group::Critical File Check"
-          for f in app/api/verify/route.ts app/api/mint/route.ts src/middleware.ts AGENTS.md; do
+          for f in app/api/verify/route.ts app/api/mint/route.ts proxy.ts AGENTS.md; do
             if [ -f "$f" ]; then
               echo "✅ $f — OK"
             else

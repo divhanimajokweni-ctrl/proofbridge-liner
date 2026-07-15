@@ -145,7 +145,7 @@ phase 1 $total_phases "COMMIT GATE — Critical File Check"
   CRITICAL_FILES=(
     "app/api/verify/route.ts"
     "app/api/mint/route.ts"
-    "middleware.ts"
+    "proxy.ts"
     "AGENTS.md"
   )
   for f in "${CRITICAL_FILES[@]}"; do
