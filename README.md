@@ -183,7 +183,7 @@ AI systems are probabilistic. A language model generates a continuation minimisi
 
 ### Real-Time Gating, Not Post-Hoc Audit
 
-The CircuitBreaker smart contract on Polygon Amoy (`0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67`) enforces TRIP verdicts on-chain — transfers halt, and resume only on verified inputs. This is the difference between a compliance system and a checkbox one.
+The CircuitBreaker smart contract on Polygon Amoy (`0xCabd1632ccE22A4E02aE519baD6AfB6d35c14E0A`) enforces TRIP verdicts on-chain — transfers halt, and resume only on verified inputs. This is the difference between a compliance system and a checkbox one.
 
 ### Four-Tier Entity Structure
 

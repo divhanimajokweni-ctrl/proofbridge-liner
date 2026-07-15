@@ -1,0 +1,297 @@
+================================================================================
+       FULL ENVIRONMENT SECRETS AUDIT — ALL PLATFORMS — 2026-07-14 23:55 SAST
+================================================================================
+
+PLATFORM 1: GITHUB ACTIONS SECRETS
+================================================================================
+
+Configured (8):
+  GH_PAT                              2026-05-17   ✅ Referenced (git push)
+  HCP_TERRAFORM_VVU_ARCHITECT_TOKEN   2026-06-13   ❌ NOT referenced anywhere
+  PROOFBRIDGE_LINER_VERCEL            2026-05-21   ✅ Referenced (deploy-vercel.yml)
+  TFC_AGENT_TOKEN                     2026-06-13   ❌ NOT referenced anywhere
+  VERCEL_AUTOMATION_BYPASS_SECRET     2026-07-14   ❌ NOT referenced anywhere
+  VERCEL_ORG_ID                       2026-07-14   ✅ Referenced (ci-cd.yml)
+  VERCEL_PROJECT_ID                   2026-07-14   ✅ Referenced (ci-cd.yml)
+  VERCEL_TOKEN                        2026-07-14   ✅ Referenced (ci-cd.yml)
+
+Referenced in workflows but NOT configured:
+  QODANA_TOKEN                        ❌ Missing (qodana.yml)
+  QODANA_CONFIGURATIONS_TOKEN         ❌ Missing (qodana-config-upload.yml)
+  REVIEW_TOKEN                        ❌ Missing (attestation.yml — disabled)
+  SUPABASE_URL                        ❌ Missing
+  SUPABASE_ANON_KEY                   ❌ Missing
+  SUPABASE_SERVICE_KEY                ❌ Missing
+  DATADOG_API_KEY                     ❌ Missing
+  DATADOG_APP_KEY                     ❌ Missing
+  CANTON_JSON_API                     ❌ Missing
+  CIRCUIT_BREAKER_ADDRESS             ❌ Missing
+  CIRCUIT_BREAKER_UPDATER_ADDRESS     ❌ Missing
+  CIRCUIT_BREAKER_UPDATER_KEY         ❌ Missing
+  POLYGON_AMOY_RPC                    ❌ Missing
+  FROST_GROUP_KEY                     ❌ Missing
+  FROST_SHARE_1_HEX                   ❌ Missing
+
+================================================================================
+
+PLATFORM 2: LOCAL .env.local (ACTIVE — loaded by dotenv)
+================================================================================
+
+  STITCH_WEBHOOK_SECRET               ✅ Present
+  VERCEL_OIDC_TOKEN                   ✅ Present (JWT, may expire)
+  KILO_API_KEY                        ✅ Present (JWT, expires 2031)
+  DEPLOYER_PRIVATE_KEY                ✅ Present (hex private key)
+  ORACLE_PRIVATE_KEY                  ✅ Present (hex private key)
+  CIRCUIT_BREAKER_ADMIN_KEY           ✅ Present (hex private key)
+  CIRCUIT_BREAKER_UPDATER_KEY         ✅ Present (hex private key)
+  VVU_SIGNING_KEY                     ✅ Present (ED25519 PEM)
+  SESSION_SECRET                      ✅ Present (hex)
+  COMMAND_CODE_KEY                    ✅ Present (hex)
+  QODANA_TOKEN                        ✅ Present (JWT)
+
+NOT in .env.local (only in .env.example):
+  POLYGON_AMOY_RPC_URL                ❌ Not set
+  ETHERSCAN_API_KEY                   ❌ Not set
+  KERNEL_SECRET                       ❌ Not set
+  NEXT_PUBLIC_SUPABASE_URL            ❌ Not set
+  NEXT_PUBLIC_SUPABASE_ANON_KEY       ❌ Not set
+  SUPABASE_SERVICE_ROLE_KEY           ❌ Not set
+  DATABASE_URL                        ❌ Not set
+  UPSTASH_REDIS_REST_URL              ❌ Not set
+  UPSTASH_REDIS_REST_TOKEN            ❌ Not set
+  STRIPE_SECRET_KEY                   ❌ Not set
+  STRIPE_WEBHOOK_SECRET               ❌ Not set
+  STITCH_CLIENT_ID                    ❌ Not set
+  STITCH_CLIENT_SECRET                ❌ Not set
+  SLACK_OPERATIONAL_WEBHOOK_URL       ❌ Not set
+  DISCORD_OPERATIONAL_WEBHOOK_URL     ❌ Not set
+  WHATSAPP_ADMIN_PHONES               ❌ Not set
+  FIREWORKS_API_KEY                   ❌ Not set
+  RESEND_API_KEY                      ❌ Not set
+
+================================================================================
+
+PLATFORM 3: LOCAL .env (ACTIVE — loaded by dotenv)
+================================================================================
+
+  TFC_AGENT_TOKEN_2                   ✅ Present (different from GH TFC_AGENT_TOKEN)
+  VERCEL_OIDC_TOKEN                   ✅ Present (different project: proofbridge-liner)
+  KILO_API_KEY                        ✅ Present (same as .env.local)
+
+================================================================================
+
+PLATFORM 4: VERCEL
+================================================================================
+
+  Project 1: proofbridge-liner (prj_vjCCZQLgL4VymDQiWRv8oK0jbrBV)
+    In .vercel/repo.json — older project reference
+    
+  Project 2: proofbridge-liner-1 (prj_mh7alLkytpJ18XSFBrMQj5yFu0I6)
+    In .vercel/project.json — current active project
+    Used by CI/CD (VERCEL_PROJECT_ID secret)
+
+  Environment Variables via CLI: NONE SET
+    `vercel env ls` returned empty
+    Supabase env vars (NEXT_PUBLIC_SUPABASE_URL, etc.) may be set in
+    Vercel Dashboard but NOT via CLI (stored as "Sensitive" — reads back empty)
+
+================================================================================
+
+PLATFORM 5: GCP (project-cc455a72-1490-4cdf-b0e)
+================================================================================
+
+  Account: divhanimajokweni@gmail.com
+  Project: project-cc455a72-1490-4cdf-b0e (ProofBridge-Liner-vvu gateway)
+  
+  Secret Manager API: NOT ENABLED
+    Cannot check for stored secrets. API must be enabled first.
+    
+  BigQuery Dataset: lindiwe_knowledge_base
+    Table: nats_jetstream_events
+    UDF: calculate_stokvel_payout
+
+================================================================================
+
+PLATFORM 6: SUPABASE
+================================================================================
+
+  CLI: NOT INSTALLED (supabase command not found)
+  Config: supabase/config.toml exists (local dev config only)
+  
+  Referenced env vars (from .env.example):
+    NEXT_PUBLIC_SUPABASE_URL            ❌ Not in any .env file
+    NEXT_PUBLIC_SUPABASE_ANON_KEY       ❌ Not in any .env file
+    SUPABASE_SERVICE_ROLE_KEY            ❌ Not in any .env file
+    DATABASE_URL                         ❌ Not in any .env file
+
+  Note: These may be set in Vercel Dashboard (read back empty via CLI
+  due to "Sensitive" flag) or may need to be added.
+
+================================================================================
+
+PLATFORM 7: OPENCLAW (openclaw.json)
+================================================================================
+
+  Contains tokens for:
+    Discord bot token                   ✅ Present
+    Telegram bot token                  ✅ Present
+    Slack bot token                     ✅ Present
+    WhatsApp bot token                  ✅ Present
+    Model provider API keys             ✅ Present
+
+  These are platform integration tokens, not deployment secrets.
+
+================================================================================
+
+PLATFORM 8: FOUNDRY (foundry.toml)
+================================================================================
+
+  References env vars:
+    POLYGON_AMOY_RPC_URL                ❌ Not set in .env.local
+    ETHERSCAN_API_KEY                   ❌ Not set in .env.local
+
+  Contract deployed at: 0x8f4A551F0566F5e3cff7c14cE0347ed8A954FB67 (Amoy)
+
+================================================================================
+
+PLATFORM 9: DOCKER
+================================================================================
+
+  docker-compose.yml (root):
+    References env vars via ${} syntax — no hardcoded secrets ✅
+    UPSTASH_REDIS_REST_URL              ❌ Not set
+    UPSTASH_REDIS_REST_TOKEN            ❌ Not set
+    WHATSAPP_ADMIN_PHONES               ❌ Not set
+    SLACK_OPERATIONAL_WEBHOOK_URL       ❌ Not set
+    DISCORD_OPERATIONAL_WEBHOOK_URL     ❌ Not set
+    STITCH_CLIENT_ID                    ❌ Not set
+    STITCH_CLIENT_SECRET                ❌ Not set
+    STITCH_WEBHOOK_SECRET               ✅ In .env.local
+
+  infra/docker-compose.yml:
+    DATADOG_API_KEY                     ❌ Not set (uses ${} reference)
+
+================================================================================
+
+PLATFORM 10: SYSTEM ENVIRONMENT
+================================================================================
+
+  GEMINI_CLI_IDE_AUTH_TOKEN             ✅ Present (system env)
+
+================================================================================
+
+CROSS-REFERENCE: QODANA TOKEN specifically
+================================================================================
+
+  Location                              Status
+  ───────────────────────────────────   ──────
+  .env.local line 14                    ✅ PRESENT (JWT: project=DbeVY, org=dXaoG)
+  GitHub Secrets                        ❌ NOT SET (CI references secrets.QODANA_TOKEN)
+  Vercel                                ❌ NOT SET
+  GCP Secret Manager                    ❌ NOT ENABLED
+  
+  VERDICT: QODANA_TOKEN exists ONLY in local .env.local.
+  The CI workflow (qodana.yml) references secrets.QODANA_TOKEN which does
+  not exist in GitHub Secrets. The workflow gracefully skips (|| true).
+  
+  ACTION NEEDED: Either:
+    a) Add to GitHub Secrets: gh secret set QODANA_TOKEN <value>
+    b) Or leave as-is (Qodana scanning will be skipped in CI)
+
+================================================================================
+
+CROSS-REFERENCE: VERCEL TOKENS
+================================================================================
+
+  Two different Vercel tokens exist:
+  
+  1. PROOFBRIDGE_LINER_VERCEL (GitHub Secret)
+     Used by: deploy-vercel.yml
+     Status: ✅ Configured
+  
+  2. VERCEL_TOKEN (GitHub Secret)
+     Used by: ci-cd.yml Vercel Deploy job
+     Status: ✅ Configured
+  
+  These may be the same token or different. Both are configured.
+  Recommendation: Consolidate to one token (see SECRETS_AUDIT.txt).
+
+================================================================================
+
+CROSS-REFERENCE: TFC/TERRAFORM TOKENS
+================================================================================
+
+  Three different Terraform tokens exist:
+  
+  1. TFC_AGENT_TOKEN (GitHub Secret)
+     Referenced in workflows: ❌ NO
+     Status: UNUSED
+  
+  2. TFC_AGENT_TOKEN_2 (local .env)
+     Referenced in workflows: ❌ NO
+     Status: UNUSED LOCALLY
+  
+  3. HCP_TERRAFORM_VVU_ARCHITECT_TOKEN (GitHub Secret)
+     Referenced in workflows: ❌ NO
+     Status: UNUSED
+  
+  VERDICT: All three Terraform tokens are UNUSED by any workflow.
+
+================================================================================
+
+SUMMARY: WHAT TO DELETE
+================================================================================
+
+  Platform        Secret                          Action
+  ─────────────   ─────────────────────────────   ──────
+  GitHub          HCP_TERRAFORM_VVU_ARCHITECT_TOKEN  DELETE (unused)
+  GitHub          TFC_AGENT_TOKEN                    DELETE (unused)
+  GitHub          VERCEL_AUTOMATION_BYPASS_SECRET     DELETE (unused)
+  
+  Local           TFC_AGENT_TOKEN_2 (in .env)         DELETE from .env (unused)
+  
+  Optional:       PROOFBRIDGE_LINER_VERCEL             MIGRATE to VERCEL_TOKEN, then delete
+
+================================================================================
+
+SUMMARY: WHAT TO ADD
+================================================================================
+
+  Platform        Secret                          Priority
+  ─────────────   ─────────────────────────────   ──────
+  GitHub          QODANA_TOKEN                    Medium (from .env.local)
+  GitHub          SUPABASE_URL                    High (for CI)
+  GitHub          SUPABASE_ANON_KEY               High (for CI)
+  GitHub          SUPABASE_SERVICE_KEY            High (for CI)
+  GitHub          DATABASE_URL                    Medium (for CI db tests)
+  GitHub          POLYGON_AMOY_RPC                Low (contract CI)
+  GitHub          ETHERSCAN_API_KEY               Low (contract CI)
+  Local .env      POLYGON_AMOY_RPC_URL            Low (foundry tests)
+  Local .env      ETHERSCAN_API_KEY               Low (etherscan verify)
+  Local .env      KERNEL_SECRET                   Medium (API auth)
+  Local .env      NEXT_PUBLIC_SUPABASE_URL        High (auth)
+  Local .env      NEXT_PUBLIC_SUPABASE_ANON_KEY   High (auth)
+  Local .env      SUPABASE_SERVICE_ROLE_KEY       High (auth)
+  Local .env      DATABASE_URL                    Medium (Drizzle)
+
+================================================================================
+
+CRITICAL SECURITY NOTES
+================================================================================
+
+1. .env.local contains PRIVATE KEYS (DEPLOYER, ORACLE, CIRCUIT_BREAKER).
+   These are NOT in GitHub Secrets. Ensure .gitignore excludes .env.local.
+
+2. VERCEL_OIDC_TOKEN in .env.local is a JWT that EXPIRES. The one in .env
+   is for a different project (proofbridge-liner vs proofbridge-liner-1).
+
+3. Two Vercel project IDs exist. CI uses prj_mh7alLkytpJ18XSFBrMQj5yFu0I6.
+
+4. GCP Secret Manager is not enabled. No secrets stored there.
+
+5. Supabase CLI is not installed. Cannot verify remote project config.
+
+6. OpenClaw has bot tokens for Discord/Telegram/Slack/WhatsApp in
+   openclaw.json. These are integration tokens, not deployment secrets.
+
+================================================================================
