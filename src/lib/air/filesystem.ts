@@ -339,20 +339,41 @@ export const filesystem = {
   },
   cd: (path: string) => {
     const node = getNode(path);
-    if (!node) return `cd: no such file or directory: ${path}`;
-    if (node.type !== 'directory') return `cd: not a directory: ${path}`;
-    return path;
+    if (!node) return { success: false, error: `cd: no such file or directory: ${path}` };
+    if (node.type !== 'directory') return { success: false, error: `cd: not a directory: ${path}` };
+    return { success: true, cwd: path };
   },
   cat: (path: string) => {
     const content = readFile(path);
-    if (content === null) return `cat: no such file: ${path}`;
-    return content;
+    if (content === null) return { content: `cat: no such file: ${path}`, lineCount: 0 };
+    return { content, lineCount: content.split('\n').length };
   },
   pwd: () => '/',
-  tree: (path: string, depth?: number) => tree(path),
-  find: (pattern: string, path?: string) => findFiles(pattern).join('\n'),
+  tree: (path: string, depth?: number) => {
+    const treeStr = tree(path);
+    const entries = treeStr.split('\n').filter(Boolean);
+    let totalFiles = 0;
+    let totalDirs = 0;
+    for (const entry of entries) {
+      if (entry.includes('/')) totalDirs++;
+      else totalFiles++;
+    }
+    return { entries, totalFiles, totalDirs };
+  },
+  find: (pattern: string, path?: string) => {
+    const matches = findFiles(pattern);
+    return { matches };
+  },
   grep: (pattern: string, path?: string) => {
     const results = grepFiles(pattern, path);
-    return results.map(r => `${r.path}:${r.line}: ${r.content}`).join('\n') || '(no matches)';
+    const filesScanned = new Set(results.map(r => r.path)).size;
+    return {
+      matches: results.map(r => ({
+        lineNumber: r.line,
+        line: r.content,
+        path: r.path,
+      })),
+      filesScanned,
+    };
   },
 };
