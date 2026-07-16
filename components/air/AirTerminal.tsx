@@ -268,19 +268,17 @@ export default function AirTerminal() {
           setPager(result.pager);
           setPagerScroll(0);
         }
-        if (result.lines) {
+        if (result.output) {
           setOutput((prev) =>
             prev.concat(
-              result.lines!.map((l) => ({
+              result.output.split('\n').filter(Boolean).map((l) => ({
                 type: 'output' as const,
                 content: l,
               }))
             )
           );
         }
-        if (result.gateStatus) {
-          setGateStatus(result.gateStatus);
-        }
+        // gateStatus not in CommandResult — skip
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         setOutput((prev) => [

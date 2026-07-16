@@ -329,7 +329,13 @@ export function rootTree(): string { return tree('/'); }
 export const filesystem = {
   ls: (path: string) => {
     const nodes = listDir(path);
-    return nodes.map(n => `${n.type === 'directory' ? 'd' : '-'} ${n.name}`).join('\n') || '(empty)';
+    return {
+      entries: nodes.map(n => ({
+        name: n.name,
+        isDirectory: n.type === 'directory',
+        size: n.content ? String(n.content.length) : undefined,
+      })),
+    };
   },
   cd: (path: string) => {
     const node = getNode(path);
