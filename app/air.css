@@ -1,0 +1,608 @@
+/* ============================================================
+   VVU AIR v3.1.0 — Architecture Intelligence Runtime
+   CRT Terminal Styling
+   ============================================================ */
+
+/* ----------------------------------------------------------
+   1. Phosphor Themes (CSS Custom Properties)
+   ---------------------------------------------------------- */
+
+[data-theme="green"] {
+  --air-text: #33ff33;
+  --air-bg: #0a0a0a;
+  --air-glow: rgba(51, 255, 51, 0.4);
+  --air-glow-dim: rgba(51, 255, 51, 0.15);
+  --air-glow-bright: rgba(51, 255, 51, 0.7);
+  --air-border: rgba(51, 255, 51, 0.12);
+  --air-selection: rgba(51, 255, 51, 0.25);
+  --air-muted: rgba(51, 255, 51, 0.45);
+}
+
+[data-theme="amber"] {
+  --air-text: #ffb000;
+  --air-bg: #0a0a0a;
+  --air-glow: rgba(255, 176, 0, 0.4);
+  --air-glow-dim: rgba(255, 176, 0, 0.15);
+  --air-glow-bright: rgba(255, 176, 0, 0.7);
+  --air-border: rgba(255, 176, 0, 0.12);
+  --air-selection: rgba(255, 176, 0, 0.25);
+  --air-muted: rgba(255, 176, 0, 0.45);
+}
+
+[data-theme="white"] {
+  --air-text: #ffffff;
+  --air-bg: #0a0a0a;
+  --air-glow: rgba(255, 255, 255, 0.3);
+  --air-glow-dim: rgba(255, 255, 255, 0.1);
+  --air-glow-bright: rgba(255, 255, 255, 0.6);
+  --air-border: rgba(255, 255, 255, 0.1);
+  --air-selection: rgba(255, 255, 255, 0.2);
+  --air-muted: rgba(255, 255, 255, 0.4);
+}
+
+/* ----------------------------------------------------------
+   2. Terminal Container
+   ---------------------------------------------------------- */
+
+.air-terminal {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  background: var(--air-bg, #0a0a0a);
+  color: var(--air-text, #33ff33);
+  font-family: 'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ----------------------------------------------------------
+   3. Scanlines Overlay
+   ---------------------------------------------------------- */
+
+.air-terminal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1px,
+    rgba(0, 0, 0, 0.08) 1px,
+    rgba(0, 0, 0, 0.08) 2px
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ----------------------------------------------------------
+   4. Phosphor Glow — ambient glow on terminal container
+   ---------------------------------------------------------- */
+
+.air-terminal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    var(--air-glow-dim, rgba(51, 255, 51, 0.15)) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 99;
+}
+
+/* ----------------------------------------------------------
+   5. Scrollable Body
+   ---------------------------------------------------------- */
+
+.air-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  scroll-behavior: smooth;
+}
+
+.air-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.air-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.air-body::-webkit-scrollbar-thumb {
+  background: var(--air-glow-dim, rgba(51, 255, 51, 0.15));
+  border-radius: 3px;
+}
+
+.air-body::-webkit-scrollbar-thumb:hover {
+  background: var(--air-glow, rgba(51, 255, 51, 0.4));
+}
+
+/* ----------------------------------------------------------
+   6. Boot Sequence Lines
+   ---------------------------------------------------------- */
+
+.air-boot-line {
+  opacity: 0;
+  animation: air-boot-fadein 0.35s ease forwards;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 0;
+  padding: 1px 0;
+}
+
+.air-boot-line:nth-child(1)  { animation-delay: 0.05s; }
+.air-boot-line:nth-child(2)  { animation-delay: 0.12s; }
+.air-boot-line:nth-child(3)  { animation-delay: 0.20s; }
+.air-boot-line:nth-child(4)  { animation-delay: 0.30s; }
+.air-boot-line:nth-child(5)  { animation-delay: 0.42s; }
+.air-boot-line:nth-child(6)  { animation-delay: 0.56s; }
+.air-boot-line:nth-child(7)  { animation-delay: 0.72s; }
+.air-boot-line:nth-child(8)  { animation-delay: 0.90s; }
+.air-boot-line:nth-child(9)  { animation-delay: 1.10s; }
+.air-boot-line:nth-child(10) { animation-delay: 1.32s; }
+.air-boot-line:nth-child(11) { animation-delay: 1.56s; }
+.air-boot-line:nth-child(12) { animation-delay: 1.82s; }
+.air-boot-line:nth-child(13) { animation-delay: 2.10s; }
+.air-boot-line:nth-child(14) { animation-delay: 2.40s; }
+.air-boot-line:nth-child(15) { animation-delay: 2.72s; }
+
+@keyframes air-boot-fadein {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ----------------------------------------------------------
+   7. Cursor Blink
+   ---------------------------------------------------------- */
+
+.air-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1.1em;
+  background: var(--air-text, #33ff33);
+  vertical-align: text-bottom;
+  animation: air-cursor-blink 1.06s step-end infinite;
+  box-shadow: 0 0 6px var(--air-glow, rgba(51, 255, 51, 0.4));
+  margin-left: 2px;
+}
+
+@keyframes air-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ----------------------------------------------------------
+   8. Input / Output Rendering
+   ---------------------------------------------------------- */
+
+.air-input-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.air-prompt {
+  color: var(--air-text, #33ff33);
+  opacity: 0.7;
+  white-space: pre;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.air-input-field {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--air-text, #33ff33);
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  caret-color: var(--air-text, #33ff33);
+  padding: 0;
+  margin: 0;
+  text-shadow: 0 0 8px var(--air-glow, rgba(51, 255, 51, 0.4));
+}
+
+.air-input-field::placeholder {
+  color: var(--air-muted, rgba(51, 255, 51, 0.45));
+  opacity: 1;
+}
+
+.air-input-field::selection {
+  background: var(--air-selection, rgba(51, 255, 51, 0.25));
+  color: var(--air-text, #33ff33);
+}
+
+.air-output-line {
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-shadow: 0 0 6px var(--air-glow, rgba(51, 255, 51, 0.4));
+}
+
+.air-output-line--error {
+  opacity: 0.85;
+}
+
+.air-output-line--system {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.air-output-line--highlight {
+  font-weight: 500;
+}
+
+.air-output-line--success {
+  text-shadow: 0 0 10px var(--air-glow-bright, rgba(51, 255, 51, 0.7));
+}
+
+/* ----------------------------------------------------------
+   9. Pager Overlay
+   ---------------------------------------------------------- */
+
+.air-pager {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--air-bg, #0a0a0a);
+  display: flex;
+  flex-direction: column;
+}
+
+.air-pager-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: var(--air-text, #33ff33);
+  text-shadow: 0 0 6px var(--air-glow, rgba(51, 255, 51, 0.4));
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.air-pager-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.air-pager-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.air-pager-body::-webkit-scrollbar-thumb {
+  background: var(--air-glow-dim, rgba(51, 255, 51, 0.15));
+  border-radius: 3px;
+}
+
+.air-pager-header {
+  flex-shrink: 0;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--air-border, rgba(51, 255, 51, 0.12));
+  font-size: 0.75rem;
+  color: var(--air-muted, rgba(51, 255, 51, 0.45));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.air-pager-footer {
+  flex-shrink: 0;
+  padding: 10px 24px;
+  border-top: 1px solid var(--air-border, rgba(51, 255, 51, 0.12));
+  font-size: 0.7rem;
+  color: var(--air-muted, rgba(51, 255, 51, 0.45));
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.air-pager-controls-hint {
+  opacity: 0.6;
+  letter-spacing: 0.04em;
+}
+
+/* ----------------------------------------------------------
+   10. Status Bar
+   ---------------------------------------------------------- */
+
+.air-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background: var(--air-bg, #0a0a0a);
+  border-top: 1px solid var(--air-border, rgba(51, 255, 51, 0.12));
+  font-size: 0.7rem;
+  color: var(--air-text, #33ff33);
+  opacity: 0.75;
+  gap: 16px;
+}
+
+.air-status-bar:hover {
+  opacity: 1;
+}
+
+.air-status-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.air-status-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.air-status-label {
+  opacity: 0.5;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.6rem;
+}
+
+.air-status-value {
+  color: var(--air-text, #33ff33);
+}
+
+.air-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--air-text, #33ff33);
+  box-shadow: 0 0 6px var(--air-glow, rgba(51, 255, 51, 0.4));
+  animation: air-status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes air-status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ----------------------------------------------------------
+   11. Welcome / Header Area
+   ---------------------------------------------------------- */
+
+.air-welcome {
+  padding: 8px 0 16px 0;
+  border-bottom: 1px solid var(--air-border, rgba(51, 255, 51, 0.12));
+  margin-bottom: 12px;
+}
+
+.air-welcome-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 4px 0;
+  text-shadow: 0 0 12px var(--air-glow, rgba(51, 255, 51, 0.4));
+}
+
+.air-welcome-sub {
+  font-size: 0.7rem;
+  opacity: 0.5;
+  margin: 0;
+  letter-spacing: 0.04em;
+}
+
+/* ----------------------------------------------------------
+   12. History Items
+   ---------------------------------------------------------- */
+
+.air-history-item {
+  margin-bottom: 12px;
+}
+
+.air-history-cmd {
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+
+.air-history-output {
+  margin-top: 4px;
+}
+
+/* ----------------------------------------------------------
+   13. Separator / Divider
+   ---------------------------------------------------------- */
+
+.air-divider {
+  border: none;
+  border-top: 1px solid var(--air-border, rgba(51, 255, 51, 0.12));
+  margin: 12px 0;
+}
+
+/* ----------------------------------------------------------
+   14. Loading Indicator
+   ---------------------------------------------------------- */
+
+.air-loading {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.air-loading-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--air-text, #33ff33);
+  opacity: 0.3;
+  animation: air-loading-bounce 1.2s ease-in-out infinite;
+}
+
+.air-loading-dot:nth-child(2) { animation-delay: 0.15s; }
+.air-loading-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes air-loading-bounce {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(1); }
+  40% { opacity: 1; transform: scale(1.3); }
+}
+
+/* ----------------------------------------------------------
+   15. Table Rendering
+   ---------------------------------------------------------- */
+
+.air-table {
+  border-collapse: collapse;
+  font-family: inherit;
+  font-size: inherit;
+  margin: 4px 0;
+}
+
+.air-table th,
+.air-table td {
+  padding: 2px 12px 2px 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.air-table th {
+  opacity: 0.5;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.65rem;
+  border-bottom: 1px solid var(--air-border, rgba(51, 255, 51, 0.12));
+}
+
+/* ----------------------------------------------------------
+   16. Help Text
+   ---------------------------------------------------------- */
+
+.air-help {
+  opacity: 0.55;
+  font-size: 0.75rem;
+  line-height: 1.7;
+}
+
+.air-help-cmd {
+  opacity: 0.8;
+}
+
+/* ----------------------------------------------------------
+   17. Responsive Breakpoints
+   ---------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .air-terminal {
+    font-size: 12px;
+  }
+
+  .air-body {
+    padding: 12px 14px;
+  }
+
+  .air-status-bar {
+    padding: 4px 10px;
+    font-size: 0.6rem;
+  }
+
+  .air-status-label {
+    display: none;
+  }
+
+  .air-status-section {
+    gap: 8px;
+  }
+
+  .air-pager-body {
+    padding: 14px 16px;
+  }
+
+  .air-pager-header,
+  .air-pager-footer {
+    padding: 8px 16px;
+  }
+
+  .air-welcome-title {
+    font-size: 0.9rem;
+  }
+
+  .air-table th,
+  .air-table td {
+    padding: 2px 6px 2px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .air-terminal {
+    font-size: 11px;
+  }
+
+  .air-status-bar {
+    font-size: 0.55rem;
+  }
+
+  .air-status-item:not(:first-child) {
+    display: none;
+  }
+
+  .air-welcome-sub {
+    font-size: 0.6rem;
+  }
+}
+
+/* ----------------------------------------------------------
+   18. Reduced Motion
+   ---------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .air-cursor {
+    animation: none;
+    opacity: 1;
+  }
+
+  .air-boot-line {
+    animation: none;
+    opacity: 1;
+  }
+
+  .air-loading-dot {
+    animation: none;
+    opacity: 0.5;
+  }
+
+  .air-status-dot {
+    animation: none;
+    opacity: 0.7;
+  }
+
+  .air-pager-body {
+    scroll-behavior: auto;
+  }
+
+  .air-body {
+    scroll-behavior: auto;
+  }
+}

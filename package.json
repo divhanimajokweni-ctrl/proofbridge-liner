@@ -21,7 +21,15 @@
     "kernel": "npx tsx scripts/mock-lindiwe-kernel.ts",
     "run:all": "./scripts/run-all.sh",
     "db:push": "drizzle-kit push --config ./lib/db/drizzle.config.ts",
-    "db:studio": "drizzle-kit studio --config ./lib/db/drizzle.config.ts"
+    "db:studio": "drizzle-kit studio --config ./lib/db/drizzle.config.ts",
+    "gate": "bash air/run-pipeline.sh",
+    "air:compile": "bash air/run-pipeline.sh",
+    "air:seed": "node air/pipeline/seed-evidence.js",
+    "air:collect": "node air/pipeline/1_collect.js",
+    "air:normalize": "node air/pipeline/2_normalize.js",
+    "air:infer": "node air/pipeline/3_infer.js",
+    "air:govern": "node air/pipeline/4_govern.js",
+    "air:codegen": "node air/pipeline/5_codegen.js"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

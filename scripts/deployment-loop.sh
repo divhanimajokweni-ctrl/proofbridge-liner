@@ -27,9 +27,9 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 pass() { printf " [${GREEN}PASS${NC}] %s\n" "$1"; }
-warn() { printf " [${RED}FAIL${NC}] %s\n" "$1"; exit 1; }
-info() { printf " [${CYAN}..${NC}] %s\n" "$1"; }
+fail() { printf " [${RED}FAIL${NC}] %s\n" "$1"; exit 1; }
 warn() { printf " [${YELLOW}WARN${NC}] %s\n" "$1"; }
+info() { printf " [${CYAN}..${NC}] %s\n" "$1"; }
 
 echo "" > "$LOOP_LOG"
 exec 3>&1
@@ -138,25 +138,25 @@ printf "╚═══════════════════════
 phase 1 $total_phases "COMMIT GATE — Critical File Check"
 {
   if [ -z "$(git log --oneline -1 2>/dev/null)" ]; then
-    warn "No commit found. Commit your changes first."
+    fail "No commit found. Commit your changes first."
   fi
   pass "Commit exists"
 
   CRITICAL_FILES=(
     "app/api/verify/route.ts"
     "app/api/mint/route.ts"
-    "proxy.ts"
+    "middleware.ts"
     "AGENTS.md"
   )
   for f in "${CRITICAL_FILES[@]}"; do
     if [ ! -f "$f" ]; then
-      warn "Critical file missing: $f"
+      fail "Critical file missing: $f"
     fi
     pass "Critical file present: $f"
   done
 
   if [ ! -f ".vercelignore" ]; then
-    warn ".vercelignore is required"
+    fail ".vercelignore is required"
   fi
   pass ".vercelignore present"
 } >&3
@@ -172,7 +172,7 @@ phase 2 $total_phases "TYPECHECK GATE — tsc --noEmit"
   npx tsc --noEmit --project packages/trust-projections/tsconfig.json 2>&1 && \
   npx tsc --noEmit --project packages/bartbot/tsconfig.json 2>&1
   if [ "$?" -ne 0 ]; then
-    warn "TypeScript typecheck warned — fix type errors before shipping"
+    fail "TypeScript typecheck failed — fix type errors before shipping"
   fi
   pass "TypeScript typecheck passed"
 } >&3
@@ -184,7 +184,7 @@ phase 3 $total_phases "LINT GATE — npm run lint"
 {
   npm run lint 2>&1 | tail -20
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-    warn "Lint warned — fix lint errors before shipping"
+    fail "Lint failed — fix lint errors before shipping"
   fi
   pass "Lint passed"
 } >&3
@@ -196,7 +196,7 @@ phase 4 $total_phases "TEST GATE — npm test"
 {
   npx vitest run 2>&1 | tail -30
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-    warn "Unit tests warned — fix warning tests before shipping"
+    fail "Unit tests failed — fix failing tests before shipping"
   fi
   pass "All unit tests passed"
 } >&3
@@ -208,7 +208,7 @@ phase 5 $total_phases "BUILD GATE — next build"
 {
   npx next build 2>&1 | tail -20
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-    warn "Build warned — aborting deployment loop"
+    fail "Build failed — aborting deployment loop"
   fi
   pass "Build succeeded"
 } >&3
@@ -237,7 +237,7 @@ phase 5 $total_phases "BUILD GATE — next build"
   if [ "$HEALTH_OK" = true ]; then
     pass "Dev server restarted and healthy"
   else
-    warn "Dev server warned to restart after build"
+    warn "Dev server failed to restart after build"
   fi
 } >&3
 
@@ -249,7 +249,7 @@ phase 6 $total_phases "BEHAVIORAL COVERAGE — 5 compliance flows"
   npx tsx scripts/behavioral-coverage.ts 2>&1
   BC_EXIT=$?
   if [ "$BC_EXIT" -eq 1 ]; then
-    warn "Behavioral coverage FAIL — one or more compliance flows warned"
+    fail "Behavioral coverage FAIL — one or more compliance flows failed"
   fi
   if [ "$BC_EXIT" -eq 2 ]; then
     warn "All behavioral coverage tests SKIPPED (services not reachable)"
@@ -268,7 +268,7 @@ phase 7 $total_phases "VERCEL BUILD GATE — Build before push"
 
   if ! command -v vercel &>/dev/null; then
     if is_canonical_branch; then
-      warn "Vercel CLI not found — required on canonical branches ($CURRENT_BRANCH)"
+      fail "Vercel CLI not found — required on canonical branches ($CURRENT_BRANCH)"
     else
       warn "Vercel CLI not found — skipping Vercel deploy on non-canonical branch"
     fi
@@ -278,7 +278,7 @@ phase 7 $total_phases "VERCEL BUILD GATE — Build before push"
   # --- Jurisdiction resolution from manifest ---
   MANIFEST="jurisdiction-manifest.yaml"
   if [ ! -f "$MANIFEST" ]; then
-    warn "jurisdiction-manifest.yaml not found — cannot resolve deploy target"
+    fail "jurisdiction-manifest.yaml not found — cannot resolve deploy target"
   fi
 
   # Auto-detect jurisdiction from branch
@@ -298,7 +298,7 @@ phase 7 $total_phases "VERCEL BUILD GATE — Build before push"
 
   # Block DEPRECATED jurisdictions
   if [ "$J_STATUS" = "DEPRECATED" ]; then
-    warn "Jurisdiction $JURISDICTION is DEPRECATED — deployment blocked"
+    fail "Jurisdiction $JURISDICTION is DEPRECATED — deployment blocked"
   fi
 
   # Jurisdictions with null project_id don't deploy to Vercel
@@ -319,14 +319,14 @@ phase 7 $total_phases "VERCEL BUILD GATE — Build before push"
   esac
 
   if [ -z "$DEPLOY_TOKEN" ]; then
-    warn "No Vercel token available for jurisdiction $JURISDICTION"
+    fail "No Vercel token available for jurisdiction $JURISDICTION"
   fi
 
   # Verify project belongs to the resolved org
   info "Verifying project $J_PROJECT belongs to org $J_ORG..."
   VERIFIED=$(npx --yes vercel project ls --token="$DEPLOY_TOKEN" 2>/dev/null | grep -c "$J_PROJECT" || echo "0")
   if [ "$VERIFIED" = "0" ]; then
-    warn "Project $J_PROJECT not found under token scope — jurisdiction/secret mismatch"
+    fail "Project $J_PROJECT not found under token scope — jurisdiction/secret mismatch"
   fi
 
   # Link and deploy using manifest-resolved IDs
@@ -334,18 +334,18 @@ phase 7 $total_phases "VERCEL BUILD GATE — Build before push"
   rm -rf .vercel
   npx --yes vercel link --yes --project="$J_PROJECT" --token="$DEPLOY_TOKEN" 2>&1 | tail -5
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-    warn "vercel link failed for $J_PROJECT — check jurisdiction-manifest.yaml and VERCEL_TOKEN"
+    fail "vercel link failed for $J_PROJECT — check jurisdiction-manifest.yaml and VERCEL_TOKEN"
   fi
 
   info "Deploying to Vercel production (waiting for build)..."
   npx --yes vercel pull --yes --environment=production --token="$DEPLOY_TOKEN" 2>&1 | tail -5
   npx --yes vercel build --prod --token="$DEPLOY_TOKEN" 2>&1 | tail -20
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-    warn "Vercel build warned — push blocked. Fix the build before retrying."
+    fail "Vercel build failed — push blocked. Fix the build before retrying."
   fi
   npx --yes vercel deploy --prebuilt --prod --token="$DEPLOY_TOKEN" 2>&1 | tail -5
   if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-    warn "Vercel deploy warned — push blocked"
+    fail "Vercel deploy failed — push blocked"
   fi
   pass "Vercel production build succeeded"
 
@@ -360,7 +360,7 @@ phase 8 $total_phases "PUSH GATE — Push to Origin"
     info "ALL GATES PASSED — pushing branch: $CURRENT_BRANCH"
     git push origin "$CURRENT_BRANCH" 2>&1 | tail -3
     if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-      warn "Git push warned"
+      fail "Git push failed"
     fi
     pass "Pushed to origin/$CURRENT_BRANCH"
   } >&3
@@ -384,7 +384,7 @@ phase 9 $total_phases "DNS CONFIG — Domain Resolution Check"
   if [ -n "$RESULT" ]; then
     pass "DNS resolves: $DOMAIN → $RESULT"
   else
-    warn "DNS did not resolve $DOMAIN — domain configuration issue"
+    fail "DNS did not resolve $DOMAIN — domain configuration issue"
   fi
 } >&3
 
@@ -408,7 +408,7 @@ phase 10 $total_phases "PRODUCTION HEALTH CHECK"
   done
 
   if [ "$HTTP_STATUS" != "200" ]; then
-    warn "Health endpoint returned HTTP $HTTP_STATUS after 3 retries — deployment may be broken"
+    fail "Health endpoint returned HTTP $HTTP_STATUS after 3 retries — deployment may be broken"
   fi
   pass "Health endpoint responding (HTTP 200)"
 
@@ -416,7 +416,7 @@ phase 10 $total_phases "PRODUCTION HEALTH CHECK"
     node scripts/check-secrets.js 2>&1 | head -5
     SECRETS_EXIT=$?
     if [ "$SECRETS_EXIT" -ne 0 ]; then
-      warn "Secrets check warned — review secret configuration"
+      fail "Secrets check failed — review secret configuration"
     fi
     pass "Secrets check passed"
   fi
@@ -463,7 +463,7 @@ phase 12 $total_phases "DOCS VERIFICATION CHECKLIST"
     DOC_COUNT=$(find "$DOCS_DIR" -name "*.md" | wc -l)
     pass "Documentation files: $DOC_COUNT"
   else
-    warn "No docs/ directory found"
+    fail "No docs/ directory found"
   fi
 
   CHECKLIST_FILE="DEPLOYMENT_CHECKLIST.md"
