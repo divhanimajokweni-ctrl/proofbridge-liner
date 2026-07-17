@@ -233,9 +233,11 @@ describe("End-to-End: Gate → Envelope → Ledger → Verify", () => {
     expect(await signer.verify(tampered)).toBe(false);
 
     // 7. Tamper detection: modify hash
+    const lastHashChar = retrieved!.envelope_hash[63];
+    const hashReplacement = lastHashChar === "a" ? "b" : "a";
     const tamperedHash = {
       ...retrieved!,
-      envelope_hash: retrieved!.envelope_hash.substring(0, 63) + "0",
+      envelope_hash: retrieved!.envelope_hash.substring(0, 63) + hashReplacement,
     };
     expect(await signer.verify(tamperedHash)).toBe(false);
   });

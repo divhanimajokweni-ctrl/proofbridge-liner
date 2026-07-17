@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import ClerkProvider from "@/components/ClerkProvider";
 import "./styles/variables.css";
 
 export const metadata: Metadata = {
@@ -16,9 +17,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet" />
       </head>
       <body className="h-full antialiased text-slate-100 flex selection:bg-cyan-500/30" style={{ margin: 0, padding: 0 }}>
-        <main className="flex-1 min-w-0 flex flex-col min-h-screen">
-          {children}
-        </main>
+        <ClerkProvider>
+          <main className="flex-1 min-w-0 flex flex-col min-h-screen">
+            {children}
+          </main>
+        </ClerkProvider>
       </body>
     </html>
   );

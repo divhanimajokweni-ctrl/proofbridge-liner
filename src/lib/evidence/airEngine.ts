@@ -158,7 +158,15 @@ export class InMemoryAirEvidenceLedger implements AirEvidenceLedgerStorage {
 // ─── Hash Computation ──────────────────────────────────────────
 
 export function computeEnvelopeHash(envelope: UnsignedEnvelope): string {
-  const canonical = JSON.stringify(envelope, Object.keys(envelope).sort());
+  const stages = {
+    request: envelope.request,
+    policy_decision: envelope.policy_decision,
+    selected_model: envelope.selected_model,
+    tool_calls: envelope.tool_calls,
+    output: envelope.output,
+    validation: envelope.validation,
+  };
+  const canonical = JSON.stringify(stages, Object.keys(stages).sort());
   return createHash("sha256").update(canonical).digest("hex");
 }
 

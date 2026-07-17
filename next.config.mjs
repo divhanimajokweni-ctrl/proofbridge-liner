@@ -14,6 +14,9 @@ const nextConfig = {
       '@': {
         source: '.',
       },
+      '@/components': {
+        source: './src/components',
+      },
       '@/lib/db': {
         source: './lib/db/src',
       },

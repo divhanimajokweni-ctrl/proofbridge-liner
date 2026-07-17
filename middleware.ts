@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { isClerkConfigured, getClerkSession } from '@/lib/session/clerk';
 
 const CIRCUIT_BREAKER_ADDRESS = process.env.CIRCUIT_BREAKER_ADDRESS;
 const POLYGON_AMOY_RPC_URL = process.env.POLYGON_AMOY_RPC_URL;
@@ -60,32 +61,23 @@ function validateVVUSession(cookieHeader: string): { userId: string; tier: strin
 }
 
 const PROTECTED_PREFIXES = ['/dashboard', '/safekrypte', '/pools', '/api/pools'];
-const PUBLIC_PREFIXES = ['/login', '/session', '/api/health', '/api/verify'];
+const PUBLIC_PREFIXES = ['/login', '/session', '/clerk', '/api/health', '/api/verify'];
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export async function middleware(req: NextRequest) {
-  const tripped = await isCircuitTripped();
-  if (tripped) {
-    return NextResponse.json(
-      { error: 'GATE_D_TRIPPED', detail: 'Global circuit breaker is active. Service halted.' },
-      { status: 423 }
-    );
-  }
+type AuthUser = { id: string; metadata: Record<string, unknown> };
 
-  const { pathname } = req.nextUrl;
-
-  if (PUBLIC_PREFIXES.some(p => pathname.startsWith(p))) {
-    return NextResponse.next();
-  }
+async function trySupabaseAuth(req: NextRequest): Promise<{
+  res: NextResponse;
+  user: AuthUser | null;
+}> {
+  let res = NextResponse.next({ request: req });
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return NextResponse.next();
+    return { res, user: null };
   }
-
-  let res = NextResponse.next({ request: req });
 
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
@@ -102,47 +94,101 @@ export async function middleware(req: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      return { res, user: { id: user.id, metadata: { ...user.user_metadata, ...user.app_metadata } } };
+    }
+    return { res, user: null };
+  } catch {
+    return { res, user: null };
+  }
+}
+
+async function tryClerkAuth(): Promise<AuthUser | null> {
+  if (!isClerkConfigured()) return null;
+  const session = await getClerkSession();
+  if (!session) return null;
+  return { id: session.userId, metadata: { provider: 'clerk' } };
+}
+
+function redirectUnauthorized(
+  req: NextRequest,
+  pathname: string,
+): NextResponse {
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.json(
+      { error: 'Unauthorized', detail: 'Authentication required for this endpoint.' },
+      { status: 401 },
+    );
+  }
+
+  const redirectCount = parseInt(req.headers.get('x-vvu-redirect-count') || '0', 10);
+  if (redirectCount >= MAX_REDIRECTS) {
+    return new NextResponse('Watchdog Intercept: Shielding against authentication loop.', { status: 508 });
+  }
+
+  const url = req.nextUrl.clone();
+
+  if (isClerkConfigured()) {
+    url.pathname = '/clerk/sign-in';
+  } else {
+    url.pathname = '/login';
+  }
+  url.searchParams.set('redirect', pathname);
+  const loopedResponse = NextResponse.redirect(url);
+  loopedResponse.headers.set('x-vvu-redirect-count', (redirectCount + 1).toString());
+  return loopedResponse;
+}
+
+function injectTenantHeaders(res: NextResponse, metadata: Record<string, unknown>): NextResponse {
+  const tenantId = (metadata.tenant_id as string) ?? 'default';
+  const tenantTier = (metadata.tier as string) ?? 'starter';
+  const tenantJurisdiction = (metadata.jurisdiction as string) ?? 'ZA';
+  res.headers.set('x-vvu-tenant-id', tenantId);
+  res.headers.set('x-vvu-tenant-tier', tenantTier);
+  res.headers.set('x-vvu-tenant-jurisdiction', tenantJurisdiction);
+  return res;
+}
+
+export async function middleware(req: NextRequest) {
+  const tripped = await isCircuitTripped();
+  if (tripped) {
+    return NextResponse.json(
+      { error: 'GATE_D_TRIPPED', detail: 'Global circuit breaker is active. Service halted.' },
+      { status: 423 }
+    );
+  }
+
+  const { pathname } = req.nextUrl;
+
+  if (PUBLIC_PREFIXES.some(p => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
 
   const isProtected = PROTECTED_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(p + '/'),
   );
 
-  if (!user && isProtected) {
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json(
-        { error: 'Unauthorized', detail: 'Authentication required for this endpoint.' },
-        { status: 401 },
-      );
-    }
+  const { res: supabaseRes, user: supabaseUser } = await trySupabaseAuth(req);
 
-    const redirectCount = parseInt(req.headers.get('x-vvu-redirect-count') || '0', 10);
-    if (redirectCount >= MAX_REDIRECTS) {
-      return new NextResponse('Watchdog Intercept: Shielding against authentication loop.', { status: 508 });
-    }
-
-    const url = req.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('redirect', pathname);
-    const loopedResponse = NextResponse.redirect(url);
-    loopedResponse.headers.set('x-vvu-redirect-count', (redirectCount + 1).toString());
-    return loopedResponse;
+  if (supabaseUser) {
+    return injectTenantHeaders(supabaseRes, supabaseUser.metadata);
   }
 
-  if (user) {
-    const tenantId = (user.user_metadata as Record<string, unknown>)?.tenant_id as string
-      ?? (user.app_metadata as Record<string, unknown>)?.tenant_id as string
-      ?? 'default';
-    const tenantTier = (user.user_metadata as Record<string, unknown>)?.tier as string ?? 'starter';
-    const tenantJurisdiction = (user.user_metadata as Record<string, unknown>)?.jurisdiction as string ?? 'ZA';
-    res.headers.set('x-vvu-tenant-id', tenantId);
-    res.headers.set('x-vvu-tenant-tier', tenantTier);
-    res.headers.set('x-vvu-tenant-jurisdiction', tenantJurisdiction);
+  const clerkUser = await tryClerkAuth();
+  if (clerkUser) {
+    return injectTenantHeaders(supabaseRes, clerkUser.metadata);
   }
 
-  return res;
+  if (isProtected) {
+    return redirectUnauthorized(req, pathname);
+  }
+
+  return supabaseRes;
 }
 
 export const config = {

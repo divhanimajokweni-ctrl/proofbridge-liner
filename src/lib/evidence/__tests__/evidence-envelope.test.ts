@@ -173,9 +173,11 @@ describe("Envelope Hashing", () => {
   it("verifyEnvelopeHash returns false for tampered hash", () => {
     const envelope = makeTestEnvelope();
     const hash = hashExecutionEnvelope(envelope);
+    const lastChar = hash[63];
+    const replacementChar = lastChar === "a" ? "b" : "a";
     const signed: ExecutionEnvelope = {
       ...envelope,
-      envelope_hash: hash.substring(0, 63) + "0", // tamper last char
+      envelope_hash: hash.substring(0, 63) + replacementChar,
       digital_signature: "",
       signing_key_id: "",
       created_at: new Date(),
@@ -254,9 +256,11 @@ describe("Evidence Signing", () => {
     const signed = await signEnvelope(envelope, signer);
 
     // Tamper with hash
+    const lastChar = signed.envelope_hash[63];
+    const replacementChar = lastChar === "a" ? "b" : "a";
     const tampered = {
       ...signed,
-      envelope_hash: signed.envelope_hash.substring(0, 63) + "0",
+      envelope_hash: signed.envelope_hash.substring(0, 63) + replacementChar,
     };
 
     const isValid = await signer.verify(tampered);
@@ -494,9 +498,11 @@ describe("Full Integration: Build → Hash → Sign → Store → Retrieve → V
     await ledger.append(signed);
 
     const retrieved = await ledger.get(signed.envelope_id)!;
+    const lastChar = retrieved!.envelope_hash[63];
+    const replacementChar = lastChar === "a" ? "b" : "a";
     const tampered = {
       ...retrieved!,
-      envelope_hash: retrieved!.envelope_hash.substring(0, 63) + "0",
+      envelope_hash: retrieved!.envelope_hash.substring(0, 63) + replacementChar,
     };
 
     const isValid = await signer.verify(tampered);

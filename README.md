@@ -13,6 +13,36 @@
 
 ## Current Status · Session Log
 
+### 2026-07-17 — Clerk Backup Auth + 12-Campaign Test Framework + Bug Fixes
+
+**What changed and why.** Added Clerk as a backup authentication provider (Google & Apple OAuth) for when Supabase is unavailable. Built a 12-campaign test framework that exercises every subsystem against operational limits. Fixed 3 bugs discovered during campaign execution.
+
+**Achieved this session:**
+- **Clerk backup auth**: `@clerk/nextjs` installed, `ClerkProvider` wired into layout, `/clerk/sign-in` and `/clerk/sign-up` routes with Google & Apple OAuth buttons, middleware falls back to Clerk when Supabase returns no user.
+- **Auth architecture**: Supabase primary → Clerk fallback → unprotected access. Client-safe `clerk-config.ts` split from server-only `clerk.ts` to avoid bundling `@clerk/nextjs/server` into client components.
+- **12-campaign test framework**: `scripts/run-campaigns.sh` maps all subsystems to executable test commands across 12 evaluation campaigns.
+- **Bug fixes**:
+  - Flaky tamper-detection tests (3 files) — `substring(0, 63) + "0"` was a no-op when hash already ended in "0". Fixed by checking last char and picking a different replacement.
+  - AIR pipeline hash mismatch — `computeEnvelopeHash` was hashing all top-level keys instead of only the 6 execution stages. Fixed to match `hashing.ts` approach.
+- **Campaign results**: 25/36 pass. 11 failures are infrastructure gaps (ts-jest not installed, Playwright not installed, external services not running).
+
+**Pipeline results:**
+
+| Campaign | Status |
+|----------|--------|
+| 1. Constitutional Governance | 5/5 PASS |
+| 2. Evidence Ledger | 3/3 PASS |
+| 3. Capability Registry | 2/2 PASS |
+| 4. Trust Runtime | 9/9 PASS |
+| 5. Agent Runtime | 3/3 PASS |
+| 6. Tenant Isolation | 1/1 PASS |
+| 7. Auth & Identity | 1/1 PASS |
+| 8. Governance | 0/3 FAIL (ts-jest missing) |
+| 9. Watchdog | 1/1 PASS |
+| 10. Compliance | 0/2 FAIL (services down) |
+| 11. E2E | 0/4 FAIL (playwright missing) |
+| 12. Stress | 0/2 FAIL (env vars missing) |
+
 ### 2026-07-15 — CircuitBreaker Redeploy + Secret Rotation + Pipeline Verification
 
 **What changed and why.** The deployer wallet lost its private key. A new CircuitBreaker contract was deployed with the recovered MetaMask key, secrets were rotated, and the full pipeline was verified end-to-end.
@@ -634,10 +664,10 @@ Circuit breaker outputs become part of the **permanent evidence chain**.
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | Next.js 14 · React 18 |
+| **Frontend** | Next.js 16 · React 19 |
 | **Backend** | Next.js API Routes · Supabase |
 | **Database** | Supabase PostgreSQL · RLS |
-| **Auth** | Supabase Auth (email/password) |
+| **Auth** | Supabase Auth (primary) · Clerk (backup — Google & Apple OAuth) |
 | **Smart Contracts** | Solidity 0.8.20 · Foundry (Polygon Amoy) |
 | **ZK Circuits** | Noir · Barretenberg |
 | **IaC** | Terraform |
@@ -721,6 +751,87 @@ vercel --prod --force
 ---
 
 ## Deployment Pipeline
+
+### AIR Kernel Campaign Tests (12-Campaign Evaluation Framework)
+
+The AIR Kernel is validated by 12 evaluation campaigns that exercise every subsystem to its operational limits. Run them all at once or individually.
+
+#### Quick Start — All 12 Campaigns
+
+```bash
+cd ~/proofbridge-liner-1
+bash scripts/run-campaigns.sh all
+```
+
+#### Run a Single Campaign
+
+```bash
+bash scripts/run-campaigns.sh 1    # Constitutional Governance
+bash scripts/run-campaigns.sh 2    # Evidence Ledger
+bash scripts/run-campaigns.sh 3    # Capability Registry
+bash scripts/run-campaigns.sh 4    # Trust Runtime
+bash scripts/run-campaigns.sh 5    # Agent Runtime
+bash scripts/run-campaigns.sh 6    # Tenant Isolation
+bash scripts/run-campaigns.sh 7    # Auth & Identity
+bash scripts/run-campaigns.sh 8    # Governance (legacy Jest)
+bash scripts/run-campaigns.sh 9    # Watchdog
+bash scripts/run-campaigns.sh 10   # Compliance & SOC2
+bash scripts/run-campaigns.sh 11   # E2E (Playwright)
+bash scripts/run-campaigns.sh 12   # Operational Stress
+```
+
+#### Prerequisites for Full Campaign Execution
+
+**Campaigns 1–9** require no extra setup — they run as unit/integration tests.
+
+**Campaign 10** (Compliance) requires a running dev server for behavioral coverage:
+```bash
+pnpm run dev   # in a separate terminal
+```
+
+**Campaign 11** (E2E) requires Playwright and a running dev server:
+```bash
+npx playwright install chromium   # one-time install
+pnpm run dev                      # in a separate terminal
+```
+
+**Campaign 12** (Stress) requires Firebase and Upstash Redis credentials in `.env.local`:
+```bash
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+UPSTASH_REDIS_REST_URL=...
+UPSTASH_REDIS_REST_TOKEN=...
+```
+
+#### Campaign Map
+
+| # | Campaign | What It Tests | Command |
+|---|----------|---------------|---------|
+| 1 | Constitutional Governance | Policy gate, kill-switch, execution contract, agent registry | vitest on `packages/trust-api/` |
+| 2 | Evidence Ledger | Envelope build, hash, sign, store, tamper detection, AIR pipeline | vitest on `src/lib/evidence/` + `scripts/run-air-pipeline.ts` |
+| 3 | Capability Registry | Type guards, contract registry, negotiator, hash primitives | vitest on `contracts/` + `packages/trust-crypto/` |
+| 4 | Trust Runtime | Event store, reducer, projections, replay, SSE, colony | vitest on `src/lib/trust-runtime/` (9 files) |
+| 5 | Agent Runtime | Async event journal, context manager, risk engine | vitest on `packages/trust-runtime/` |
+| 6 | Tenant Isolation | Cross-tenant data, secrets, audit isolation | vitest on `src/lib/tenant/` |
+| 7 | Auth & Identity | Clerk config, session helpers | vitest on `src/lib/session/` |
+| 8 | Governance | Signed registry, compatibility, quorum | jest on `tests/governance/` |
+| 9 | Watchdog | Heartbeat schema, fault classification | vitest on `src/lib/watchdog/` |
+| 10 | Compliance & SOC2 | Spec validation, behavioral coverage | jest + `scripts/behavioral-coverage.ts` |
+| 11 | E2E & Integration | Page loads, auth flows, navigation | playwright on `e2e/` |
+| 12 | Operational Stress | Chaos injection, stress queues | `scripts/stress-test-queue.ts` + `scripts/chaos-burst.js` |
+
+#### Output
+
+Results land in `test-campaign-results/`:
+- `campaign-summary-{timestamp}.md` — PASS/FAIL table
+- `c{N}-{label}.txt` — full output per campaign
+
+```bash
+cat test-campaign-results/campaign-summary-*.md     # summary
+cat test-campaign-results/c2-air-pipeline.txt       # specific campaign log
+```
+
+---
 
 | Stage | Command | Description |
 |-------|---------|-------------|
@@ -870,8 +981,11 @@ Runs automatically on `git push` to `main`:
 - [x] Chaos engineering + weekly reporting automation
 - [x] containerized Docker deployment with PM2/Docker Compose
 - [x] CI/CD pipeline: npm→pnpm migration, Gate-1 smoke test, Contract Tests (52/52)
-- [x] Supabase Auth (email/password) replacing Clerk
+- [x] Supabase Auth (primary) + Clerk backup (Google & Apple OAuth)
 - [x] Trust infrastructure RC1 (Trust Contexts, Event Journal, Risk Engine)
+- [x] Evidence envelope pipeline (build, hash, sign, store, verify, tamper detection)
+- [x] AIR engine with TEE/ZK/Bayesian stages
+- [x] 12-campaign evaluation framework (25/36 passing)
 
 ## Production Hardening Remaining
 
@@ -912,4 +1026,4 @@ ProofBridge-Liner exists to make critical financial and governance state transit
 ---
 
 *Built with ❤️ for the Ubuntu Pools ecosystem — from Gqeberha, for the continent.*  
-build-ref: 338d24c
+build-ref: f4a7c2e
