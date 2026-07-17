@@ -165,6 +165,57 @@ You change this in the Supabase dashboard: **Authentication → Providers → Em
 
 ---
 
+## 9. Tenant Isolation — how multiple clients stay separated
+
+### The problem
+
+When more than one client (e.g. a savings group, a company, a regulator) uses the same ProofBridge system, their data **must never mix**. Tenant A's evidence, secrets, and audit trail must be completely invisible to Tenant B — even if someone makes a coding mistake.
+
+### What we built: "Port-Based Isolation" (lightweight version)
+
+Think of it like **apartments in a building**. Everyone shares the same kitchen (the server), but each apartment has its own locked room (tenant ID). You can't walk into someone else's room even if you're in the same building.
+
+| Component | What it does (plain English) | File |
+|-----------|------------------------------|------|
+| **TenantContext** | An ID card that says "this request belongs to Client X." Carried on every operation like a stamp. | `src/lib/tenant/context.ts` |
+| **TenantRegistry** | The reception desk — stores which clients exist, their tier (starter/professional/enterprise), and jurisdiction. | `src/lib/tenant/registry.ts` |
+| **SecretProvider** | Each client's secret keys are stored separately. Client A's API key is never visible to Client B. | `src/lib/tenant/secrets.ts` |
+| **Tenant-Scoped Ledger** | Each client's evidence events live in their own room. Client A's events have their own sequence numbers — Client B can't even count them. | `src/lib/tenant/ledger.ts` |
+| **Tenant Audit Logger** | Every action is recorded with the client's ID. You can query "what did Client A do?" but never "show me Client B's audit trail." | `src/lib/tenant/audit.ts` |
+
+### How it flows through the system
+
+```
+User logs in (Supabase)
+        │
+        ▼
+Middleware extracts tenant info from user metadata
+        │
+        ▼
+Sets x-vvu-tenant-id, x-vvu-tenant-tier, x-vvu-tenant-jurisdiction headers
+        │
+        ▼
+Route handlers read tenant from headers → pass to TenantContext
+        │
+        ▼
+All events, receipts, and audit entries carry tenant_id
+        │
+        ▼
+Each tenant's data is stored in its own isolated space
+```
+
+### What the tests verify (27 automated checks)
+
+- Tenant A's secrets are never visible to Tenant B
+- Tenant A's ledger events are invisible to Tenant B (separate sequence numbers)
+- The system throws an `ISOLATION_VIOLATION` error if someone tries to cross tenants
+- Audit entries are scoped per-tenant (you can't query another tenant's logs)
+- The Tenant Registry enforces unique client IDs
+
+> **Tenant (i.e. a client or organization):** in VVU's world, a tenant is a savings group, a company, or a regulatory body that uses ProofBridge. Each tenant's data is isolated from every other tenant.
+
+---
+
 ## 9. The Tech Stack (what tools we're built on)
 
 | Tool | What it is, simply |

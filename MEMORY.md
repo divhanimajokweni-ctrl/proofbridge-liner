@@ -10,6 +10,7 @@ Last handoff    : active/HANDOFF.md
 
 ## KNOWLEDGE POINTERS (load file, don't inline content)
 Plain-English system guide (ELI5) : docs/HOW-IT-WORKS.md
+Tenant isolation spec              : docs/tenant-isolation.md
 Auth (Supabase) test report       : active/test-report-supabase-auth.md
 ProofBridge audit (18 findings)  : docs/audit/proofbridge-findings.md
 Hard failures detail (HF 1-5)    : docs/audit/hard-failures.md

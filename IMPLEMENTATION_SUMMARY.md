@@ -205,6 +205,50 @@ The existing `trust-runtime.ts` schema is preserved:
 - [ ] Create documentation: RC1.md, README.md
 - [ ] Create GitHub Actions: chaos-test.yml, ci.yml
 
+---
+
+## Tenant Isolation — BOTTLENECK 2 (Completed)
+
+### Overview
+
+Port-based multi-tenant isolation ensures that each client's data, secrets, and audit trail are completely separated. The implementation is lightweight (single-process per tenant) and backward-compatible (all tenant fields default to `"default"`).
+
+### Components
+
+| Component | File | Description |
+|-----------|------|-------------|
+| `TenantContext` | `src/lib/tenant/context.ts` | Zod-validated identity envelope with extraction from headers, cookies, and JWT |
+| `TenantRegistry` | `src/lib/tenant/registry.ts` | `InMemoryTenantRegistry` (dev) + `SupabaseTenantRegistry` (prod) |
+| `SecretProvider` | `src/lib/tenant/secrets.ts` | `EnvSecretProvider` (dev) + `VaultSecretProvider` (prod stub) |
+| `TenantScopedLedger` | `src/lib/tenant/ledger.ts` | Per-tenant `EventStore` instances with `IsolatedLedgerWrapper` enforcement |
+| `TenantAuditLogger` | `src/lib/tenant/audit.ts` | `InMemoryAuditLogger` (dev) + `SupabaseAuditLogger` (prod) |
+
+### Integration Points
+
+| System | Change | File |
+|--------|--------|------|
+| Middleware | Extracts tenant from Supabase user metadata → `x-vvu-tenant-*` headers | `middleware.ts` |
+| Command Handler | `RuntimeEvent.tenantId` populated from `Command.tenantId` on all event creation paths | `src/lib/trust-runtime/command-handler.ts` |
+| Runtime | `dispatch(command, tenantId?)` injects tenant context into commands | `src/lib/trust-runtime/runtime.ts` |
+| Kernel | `ProcessControlBlock.tenantId` for process-level tenant tracking | `src/lib/kernel/vvu-os.ts` |
+| Audit Receipt | `persistReceipt(payload, tenant?)` scoped by `tenant_id` | `src/lib/audit.ts` |
+
+### Test Coverage
+
+27 automated isolation tests in `src/lib/tenant/__tests__/isolation.test.ts`:
+- Cross-tenant secret isolation
+- Cross-tenant ledger data isolation
+- Cross-tenant audit log isolation
+- `IsolatedLedgerWrapper` enforcement
+- Tenant Registry CRUD operations
+
+### Backward Compatibility
+
+All tenant fields are optional with `"default"` fallback. Existing code continues to work without changes. To enable multi-tenancy:
+1. Set `tenant_id` in Supabase user metadata
+2. The middleware automatically extracts and propagates it
+3. All events, receipts, and audit entries carry `tenant_id`
+
 ## Files Created
 
 ### Contracts (3 files)
