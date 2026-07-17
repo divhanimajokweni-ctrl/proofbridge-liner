@@ -62,10 +62,16 @@ export class TrustRuntime {
   /**
    * Submit a command and process the resulting events.
    * This is the main entry point for the runtime.
+   * Optionally accepts a tenantId to scope the command.
    */
-  async dispatch(command: Command): Promise<RuntimeEvent[]> {
+  async dispatch(command: Command, tenantId?: string): Promise<RuntimeEvent[]> {
+    // Inject tenant context into command if provided
+    const scopedCommand = tenantId
+      ? { ...command, tenantId, streamId: (command as Record<string, unknown>).streamId ?? `tenant:${tenantId}` }
+      : command;
+
     // 1. Command → Event(s)
-    const result = await this.commandHandler.handle(command, {
+    const result = await this.commandHandler.handle(scopedCommand, {
       kernelState: this.state.kernelState,
       sequence: this.state.sequence,
     });

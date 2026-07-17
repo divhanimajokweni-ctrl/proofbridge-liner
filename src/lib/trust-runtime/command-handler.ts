@@ -105,7 +105,7 @@ export class DefaultCommandHandler implements CommandHandler {
       case "TriggerCircuitBreaker":
         return this.handleTriggerCircuitBreaker(command, currentState);
       case "ResetRuntime":
-        return this.handleResetRuntime(currentState);
+        return this.handleResetRuntime(command, currentState);
       default:
         throw new Error(`Unknown command type: ${(command as Command).type}`);
     }
@@ -125,6 +125,8 @@ export class DefaultCommandHandler implements CommandHandler {
     }
 
     const correlationId = `corr-${command.idempotencyKey}`;
+    const tenantId = command.tenantId ?? "default";
+    const streamId = command.streamId ?? `tenant:${tenantId}`;
 
     const event: RuntimeEvent = {
       eventId: command.idempotencyKey,
@@ -141,8 +143,8 @@ export class DefaultCommandHandler implements CommandHandler {
         confidence: command.evidence.confidence,
         tags: command.evidence.tags ?? [],
       },
-      tenantId: "",
-      streamId: "",
+      tenantId,
+      streamId,
       streamVersion: currentState.sequence + 1,
       schemaVersion: 1,
       payloadHash: "",
@@ -169,12 +171,16 @@ export class DefaultCommandHandler implements CommandHandler {
             "ILLEGAL_TRANSITION",
             `Cannot verify attestation in state ${currentState.kernelState}`,
             currentState,
+            command.tenantId ?? "default",
+            command.streamId ?? `tenant:${command.tenantId ?? "default"}`,
           ),
         ],
       };
     }
 
     const correlationId = `attest-${command.receiptId}`;
+    const tenantId = command.tenantId ?? "default";
+    const streamId = command.streamId ?? `tenant:${tenantId}`;
 
     const startEvent: RuntimeEvent = {
       eventId: generateEventId(),
@@ -186,8 +192,8 @@ export class DefaultCommandHandler implements CommandHandler {
       causationId: null,
       source: this.source,
       payload: { receiptId: command.receiptId, platform: command.platform },
-      tenantId: "",
-      streamId: "",
+      tenantId,
+      streamId,
       streamVersion: currentState.sequence + 1,
       schemaVersion: 1,
       payloadHash: "",
@@ -211,8 +217,8 @@ export class DefaultCommandHandler implements CommandHandler {
         platform: command.platform as "AMD SEV-SNP" | "Intel SGX" | "AWS Nitro" | "software",
         measurement: "a3f19c0b7e24d817",
       },
-      tenantId: "",
-      streamId: "",
+      tenantId,
+      streamId,
       streamVersion: currentState.sequence + 2,
       schemaVersion: 1,
       payloadHash: "",
@@ -237,10 +243,15 @@ export class DefaultCommandHandler implements CommandHandler {
             "ILLEGAL_TRANSITION",
             `Cannot commit receipt in state ${currentState.kernelState}`,
             currentState,
+            command.tenantId ?? "default",
+            command.streamId ?? `tenant:${command.tenantId ?? "default"}`,
           ),
         ],
       };
     }
+
+    const tenantId = command.tenantId ?? "default";
+    const streamId = command.streamId ?? `tenant:${tenantId}`;
 
     const event: RuntimeEvent = {
       eventId: generateEventId(),
@@ -258,8 +269,8 @@ export class DefaultCommandHandler implements CommandHandler {
         signature: command.receipt.signature,
         chainHash: command.receipt.chainHash,
       },
-      tenantId: "",
-      streamId: "",
+      tenantId,
+      streamId,
       streamVersion: currentState.sequence + 1,
       schemaVersion: 1,
       payloadHash: "",
@@ -274,6 +285,9 @@ export class DefaultCommandHandler implements CommandHandler {
     command: Command & { type: "ConfirmLedger" },
     currentState: { kernelState: KernelState; sequence: number },
   ): Promise<CommandResult> {
+    const tenantId = command.tenantId ?? "default";
+    const streamId = command.streamId ?? `tenant:${tenantId}`;
+
     const event: RuntimeEvent = {
       eventId: generateEventId(),
       type: "LedgerConfirmed",
@@ -288,8 +302,8 @@ export class DefaultCommandHandler implements CommandHandler {
         blockHeight: command.blockHeight,
         txHash: `0x${Math.random().toString(16).slice(2, 66)}`,
       },
-      tenantId: "",
-      streamId: "",
+      tenantId,
+      streamId,
       streamVersion: currentState.sequence + 1,
       schemaVersion: 1,
       payloadHash: "",
@@ -309,6 +323,9 @@ export class DefaultCommandHandler implements CommandHandler {
         ? "CircuitBreakerOpened"
         : "CircuitBreakerClosed";
 
+    const tenantId = command.tenantId ?? "default";
+    const streamId = command.streamId ?? `tenant:${tenantId}`;
+
     const event: RuntimeEvent = {
       eventId: generateEventId(),
       type: eventType,
@@ -322,8 +339,8 @@ export class DefaultCommandHandler implements CommandHandler {
         action: command.action,
         reason: command.reason,
       },
-      tenantId: "",
-      streamId: "",
+      tenantId,
+      streamId,
       streamVersion: currentState.sequence + 1,
       schemaVersion: 1,
       payloadHash: "",
@@ -335,8 +352,12 @@ export class DefaultCommandHandler implements CommandHandler {
   }
 
   private async handleResetRuntime(
+    command: Command & { type: "ResetRuntime" },
     currentState: { kernelState: KernelState; sequence: number },
   ): Promise<CommandResult> {
+    const tenantId = command.tenantId ?? "default";
+    const streamId = command.streamId ?? `tenant:${tenantId}`;
+
     const event: RuntimeEvent = {
       eventId: generateEventId(),
       type: "RuntimeIdle",
@@ -347,8 +368,8 @@ export class DefaultCommandHandler implements CommandHandler {
       causationId: null,
       source: this.source,
       payload: { idleDuration: 0 },
-      tenantId: "",
-      streamId: "",
+      tenantId,
+      streamId,
       streamVersion: currentState.sequence + 1,
       schemaVersion: 1,
       payloadHash: "",
@@ -367,6 +388,8 @@ export class DefaultCommandHandler implements CommandHandler {
     code: string,
     message: string,
     currentState: { sequence: number },
+    tenantId = "default",
+    streamId = "default",
   ): RuntimeEvent {
     return {
       eventId: generateEventId(),
@@ -378,8 +401,8 @@ export class DefaultCommandHandler implements CommandHandler {
       causationId: null,
       source: this.source,
       payload: { code, message, subsystem: this.source, recoverable: true },
-      tenantId: "",
-      streamId: "",
+      tenantId,
+      streamId,
       streamVersion: currentState.sequence + 1,
       schemaVersion: 1,
       payloadHash: "",

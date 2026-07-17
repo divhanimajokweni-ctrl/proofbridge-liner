@@ -194,12 +194,12 @@ export type RuntimeEventPayload = {
 // ---------------------------------------------------------------------------
 
 export type Command =
-  | { type: "SubmitEvidence"; evidence: EvidencePayload; idempotencyKey: string }
-  | { type: "VerifyAttestation"; receiptId: string; platform: string }
-  | { type: "CommitReceipt"; receipt: ReceiptPayload }
-  | { type: "ConfirmLedger"; seq: number; blockHeight: string }
-  | { type: "TriggerCircuitBreaker"; action: "open" | "close"; reason: string }
-  | { type: "ResetRuntime" };
+  | { type: "SubmitEvidence"; evidence: EvidencePayload; idempotencyKey: string; tenantId?: string; streamId?: string }
+  | { type: "VerifyAttestation"; receiptId: string; platform: string; tenantId?: string; streamId?: string }
+  | { type: "CommitReceipt"; receipt: ReceiptPayload; tenantId?: string; streamId?: string }
+  | { type: "ConfirmLedger"; seq: number; blockHeight: string; tenantId?: string; streamId?: string }
+  | { type: "TriggerCircuitBreaker"; action: "open" | "close"; reason: string; tenantId?: string; streamId?: string }
+  | { type: "ResetRuntime"; tenantId?: string; streamId?: string };
 
 // ---------------------------------------------------------------------------
 // RuntimeState — Derived from Events

@@ -24,6 +24,8 @@ export interface ProcessControlBlock {
   priority: number;
   cpuCyclesRemaining: number;
   memoryAllocationMB: number;
+  /** Tenant that owns this process (null for kernel/system processes). */
+  tenantId: string | null;
 }
 
 // Validation Schema for incoming Subsystem Execution Payloads
@@ -79,6 +81,7 @@ export class VVUKernelEngine {
       priority: reservation.priority,
       cpuCyclesRemaining: reservation.cycles,
       memoryAllocationMB: reservation.memoryMB,
+      tenantId: null,
     };
     this.activeProcesses.push(pcb);
     this.allocatedMemory += reservation.memoryMB;
@@ -86,7 +89,7 @@ export class VVUKernelEngine {
   }
 
   // 2. ALLOCATE PROCESS — supports both reserved and user-spawned processes
-  public allocateProcess(name: string, subsystem: SubsystemType, priority: number, cycles: number, memory: number): number {
+  public allocateProcess(name: string, subsystem: SubsystemType, priority: number, cycles: number, memory: number, tenantId?: string): number {
     if (this.allocatedMemory + memory > this.totalSystemMemory) {
       throw new Error(`[KERNEL_PANIC] Out of Memory allocation failure for: ${name}`);
     }
@@ -111,6 +114,7 @@ export class VVUKernelEngine {
       priority,
       cpuCyclesRemaining: cycles,
       memoryAllocationMB: memory,
+      tenantId: tenantId ?? null,
     };
     this.activeProcesses.push(pcb);
     this.allocatedMemory += memory;

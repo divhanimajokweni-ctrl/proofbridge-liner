@@ -131,6 +131,17 @@ export async function middleware(req: NextRequest) {
     return loopedResponse;
   }
 
+  if (user) {
+    const tenantId = (user.user_metadata as Record<string, unknown>)?.tenant_id as string
+      ?? (user.app_metadata as Record<string, unknown>)?.tenant_id as string
+      ?? 'default';
+    const tenantTier = (user.user_metadata as Record<string, unknown>)?.tier as string ?? 'starter';
+    const tenantJurisdiction = (user.user_metadata as Record<string, unknown>)?.jurisdiction as string ?? 'ZA';
+    res.headers.set('x-vvu-tenant-id', tenantId);
+    res.headers.set('x-vvu-tenant-tier', tenantTier);
+    res.headers.set('x-vvu-tenant-jurisdiction', tenantJurisdiction);
+  }
+
   return res;
 }
 
