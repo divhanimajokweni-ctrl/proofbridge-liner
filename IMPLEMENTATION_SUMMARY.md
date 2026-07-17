@@ -207,6 +207,44 @@ The existing `trust-runtime.ts` schema is preserved:
 
 ---
 
+## Evidence Envelope Pipeline — BOTTLENECK 1 (Completed)
+
+### Overview
+
+6-stage execution envelope pipeline that captures the full agent execution trace — request, policy decision, model selection, tool calls, output, and validation — signs it with Ed25519, and stores it in an append-only ledger. An optional 8-stage AIR extension adds TEE attestation, ZK proof verification, and Bayesian safety scoring.
+
+### Components
+
+| Component | File | Description |
+|-----------|------|-------------|
+| `ExecutionEnvelope` | `src/lib/evidence/envelope.ts` | 6-stage unsigned + signed envelope types, `buildUnsignedEnvelope()` |
+| `hashExecutionEnvelope` | `src/lib/evidence/hashing.ts` | SHA-256 deep key-sorted canonical JSON hashing |
+| `EvidenceSigner` | `src/lib/evidence/signer.ts` | Ed25519 signing via `node:crypto` (no external deps) |
+| `EvidenceLedgerStorage` | `src/lib/evidence/ledger.ts` | Append-only `InMemoryEvidenceLedger` with query/filter |
+| `EnvelopeEmittingGate` | `src/lib/evidence/gate-envelope.ts` | Wraps policy/execution gate results into signed envelopes |
+| `ProofBridgeAirEngine` | `src/lib/evidence/airEngine.ts` | 8-stage AIR envelope with TEE/ZK/Bayesian safety |
+| `GateWrapper` | `src/lib/runtime/gateWrapper.ts` | Runtime integration: `enforcePolicyGateWithEnvelope()`, `enforceExecutionContractWithEnvelope()` |
+
+### Runtime Gate Integration
+
+| Gate | Integration | Behavior |
+|------|-------------|----------|
+| `enforcePolicyGate` | Called by `GateWrapper.wrapPolicyGate()` | RiskEngine evaluation → signed policy envelope emitted (best-effort) |
+| `enforceExecutionContract` | Called by `GateWrapper.wrapExecutionContract()` | Evidence verification → signed execution envelope emitted (best-effort) |
+| `enforceExecutionContractWithEnvelope` | Direct call with envelopeId | **Fail-closed**: verifies envelope exists in ledger + signature valid before executing |
+
+### Verification Endpoint
+
+`GET /api/evidence/[envelopeId]/verify` — Third-party auditors can verify any envelope's hash integrity and Ed25519 signature.
+
+### Test Coverage
+
+- 39 evidence envelope tests (`src/lib/evidence/__tests__/evidence-envelope.test.ts`)
+- 7 gate integration tests (`src/lib/evidence/__tests__/gate-integration.test.ts`)
+- 65 runtime contract tests (`contracts/__tests__/runtime-contracts.test.ts`)
+
+---
+
 ## Tenant Isolation — BOTTLENECK 2 (Completed)
 
 ### Overview
