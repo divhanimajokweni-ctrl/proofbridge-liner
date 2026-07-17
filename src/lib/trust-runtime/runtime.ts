@@ -67,7 +67,7 @@ export class TrustRuntime {
   async dispatch(command: Command, tenantId?: string): Promise<RuntimeEvent[]> {
     // Inject tenant context into command if provided
     const scopedCommand = tenantId
-      ? { ...command, tenantId, streamId: (command as Record<string, unknown>).streamId ?? `tenant:${tenantId}` }
+      ? { ...command, tenantId, streamId: ((command as Record<string, unknown>).streamId as string | undefined) ?? `tenant:${tenantId}` }
       : command;
 
     // 1. Command → Event(s)

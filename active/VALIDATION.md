@@ -83,3 +83,33 @@ Deployer wallet key was lost. New CircuitBreaker contract deployed with recovere
 | `6f61bc3` | Add openzeppelin-contracts submodule + fix ci.yml + disable chaos test |
 | `338d24c` | Add qodana.yaml + baseline + fix config upload workflow |
 | `840cb83` | Update README and production docs |
+
+---
+
+## Session: 2026-07-17 — BOTTLENECK-2 Tenant Isolation + Documentation
+
+### BOTTLENECK-2: Port-Based Multi-Tenant Isolation
+
+| Check | Status | Detail |
+|-------|--------|--------|
+| Typecheck (`tsc --noEmit`) | ✅ PASS | Zero source errors |
+| Tests (`vitest run`) | ✅ PASS | 213/213 (27 new isolation tests) |
+| Middleware tenant extraction | ✅ PASS | Supabase user metadata → `x-vvu-tenant-*` headers |
+| Command handler tenant threading | ✅ PASS | `RuntimeEvent.tenantId` populated from `Command.tenantId` |
+| Kernel process tenant tracking | ✅ PASS | `ProcessControlBlock.tenantId` field |
+| persistReceipt tenant scoping | ✅ PASS | Receipt queries/inserts scoped by `tenant_id` |
+| Documentation | ✅ PASS | HOW-IT-WORKS.md, IMPLEMENTATION_SUMMARY.md, tenant-isolation.md |
+
+**Commits:** `7b7c22d` (feat), `8a2013d` (docs)
+
+### Durable Event Store (Task 2.8)
+
+| Check | Status | Detail |
+|-------|--------|--------|
+| Typecheck (`tsc --noEmit`) | ✅ PASS | Zero source errors (7 TS errors from 2026-07-09 session already fixed) |
+| `npm run db:push` | ⏭️ BLOCKED | Requires `DATABASE_URL` — no PostgreSQL available in this environment |
+| Property tests | ⏭️ BLOCKED | Requires `DATABASE_URL` for `EventStoreRepository` |
+| Lint | ✅ PASS | No lint tasks configured in turbo |
+| Build | ✅ PASS | `next build` succeeds |
+
+**Status:** Schema + repository + OCC retry + outbox worker implemented. Validation blocked on database availability. Will complete when `DATABASE_URL` is configured.

@@ -178,7 +178,7 @@ export class SupabaseAuditLogger implements TenantAuditLogger {
     const { data, error } = await query;
     if (error || !data) return [];
 
-    return data.map((row) => ({
+    return data.map((row: Record<string, unknown>) => ({
       entryId: row.entry_id,
       tenantId: row.tenant_id,
       timestamp: row.timestamp,
