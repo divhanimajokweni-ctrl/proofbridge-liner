@@ -23,11 +23,11 @@ describe('session/clerk-config', () => {
       expect(isClerkConfigured()).toBe(false);
     });
 
-    it('returns false when only publishable key is set', async () => {
+    it('returns true when only publishable key is set (client-side check)', async () => {
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = 'pk_test_123';
       delete process.env.CLERK_SECRET_KEY;
       const { isClerkConfigured } = await import('@/lib/session/clerk-config');
-      expect(isClerkConfigured()).toBe(false);
+      expect(isClerkConfigured()).toBe(true);
     });
 
     it('returns false when only secret key is set', async () => {
