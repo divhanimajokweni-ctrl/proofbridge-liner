@@ -72,7 +72,7 @@ Created → Referenced → Expired → Deletion Proof Generated → Archive Reco
 
 **Implementation:** `packages/trust-runtime/src/event-journal.ts`, `src/lib/trust-runtime/event-store.ts`
 
-**Authority:** ADR-003 (event sourcing), ADR-006 (no status columns)
+**Authority:** ADR-001 (event sourcing), ADR-006 (fail-closed unknown states)
 
 ---
 

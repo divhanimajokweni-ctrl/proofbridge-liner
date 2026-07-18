@@ -65,7 +65,7 @@ Application Surfaces
     Governance            ← describes the system (ADRs, RFCs, knowledge graph)
 ```
 
-**Authority:** ADR‑001 (three‑surface split), ADR‑002 (layering), ADR‑003 (event sourcing), ADR‑004 (two‑graph separation), ADR‑005 (policy‑constraint‑validator split).
+**Authority:** ADR‑004 (three‑surface split), ADR‑001 (event sourcing), ADR‑008 (two‑graph separation).
 
 ### 1.3 Core Data Model (Locked)
 
