@@ -97,17 +97,19 @@ export async function getVerificationKey(circuitJson: any) {
   const fields: string[] = [];
   for (let i = 0; i < vk.length; i += 32) {
     const field = BigInt(`0x${Buffer.from(vk.slice(i, i + 32)).toString('hex')}`);
-    fields.push(`0x${(field % 21888242871839275222246405745257275088548364400416034343698204186575808495617n).toString(16)}`);
+    const BN254_FIELD_MODULUS = BigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
+    fields.push(`0x${(field % BN254_FIELD_MODULUS).toString(16)}`);
   }
   return fields;
 }
 
 export function proofToFields(proofHex: string) {
+  const BN254_FIELD_MODULUS = BigInt("21888242871839275222246405745257275088548364400416034343698204186575808495617");
   const proof = Buffer.from(proofHex, 'hex');
   const fields: string[] = [];
   for (let i = 0; i < proof.length; i += 32) {
     const field = BigInt(`0x${proof.slice(i, i + 32).toString('hex')}`);
-    fields.push(`0x${(field % 21888242871839275222246405745257275088548364400416034343698204186575808495617n).toString(16)}`);
+    fields.push(`0x${(field % BN254_FIELD_MODULUS).toString(16)}`);
   }
   return fields;
 }

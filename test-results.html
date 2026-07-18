@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIR Kernel v1.0 — Gate Verdicts</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0b0f14;color:#c9d1d9;font-family:'SF Mono',Consolas,'Liberation Mono',Menlo,monospace;padding:24px;line-height:1.5}
+h1{color:#78aaff;font-size:1.6rem;margin-bottom:4px}
+h2{color:#78aaff;font-size:1.1rem;margin:28px 0 12px;border-bottom:1px solid #1e2a3a;padding-bottom:6px}
+.timestamp{color:#484f58;font-size:.8rem;margin-bottom:24px}
+.summary{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.summary-card{background:#161b22;border:1px solid #1e2a3a;border-radius:8px;padding:16px 24px;text-align:center;min-width:120px}
+.summary-card .label{color:#484f58;font-size:.75rem;text-transform:uppercase;letter-spacing:1px}
+.summary-card .value{font-size:1.8rem;font-weight:700;margin-top:4px}
+.pass{color:#3fb950}.fail{color:#f85149}.warn{color:#d29922}.skip{color:#8b949e}
+table{width:100%;border-collapse:collapse;margin-bottom:24px;font-size:.85rem}
+th{text-align:left;color:#78aaff;padding:10px 12px;border-bottom:2px solid #1e2a3a;font-weight:600}
+td{padding:8px 12px;border-bottom:1px solid #1e2a3a}
+tr:hover{background:#161b22}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.75rem;font-weight:700}
+.badge-pass{background:#0d3320;color:#3fb950;border:1px solid #238636}
+.badge-fail{background:#3d1214;color:#f85149;border:1px solid #da3633}
+.badge-blocked{background:#2d1f00;color:#d29922;border:1px solid #9e6a03}
+.cap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:24px}
+.cap-item{background:#161b22;border:1px solid #1e2a3a;border-radius:6px;padding:12px 14px}
+.cap-item .cap-name{font-weight:600;font-size:.85rem}
+.cap-item .cap-status{font-size:.75rem;margin-top:4px}
+.footer{border-top:1px solid #1e2a3a;padding-top:12px;color:#484f58;font-size:.75rem;margin-top:32px}
+.verdict-banner{padding:16px 24px;border-radius:8px;margin-bottom:24px;text-align:center;font-size:1.1rem;font-weight:700;border:2px solid}
+.verdict-deficit{background:#3d1214;border-color:#da3633;color:#f85149}
+</style>
+</head>
+<body>
+
+<h1>AIR Kernel v1.0 — Gate Verdicts</h1>
+<p class="timestamp">Generated: 2026-07-17T15:30:00.000Z</p>
+
+<div class="verdict-banner verdict-deficit">OVERALL VERDICT: DEFICIT</div>
+
+<div class="summary">
+  <div class="summary-card"><div class="label">Total Tests</div><div class="value">335</div></div>
+  <div class="summary-card"><div class="label">Passed</div><div class="value pass">335</div></div>
+  <div class="summary-card"><div class="label">Failed</div><div class="value fail">0</div></div>
+  <div class="summary-card"><div class="label">Skipped</div><div class="value skip">0</div></div>
+  <div class="summary-card"><div class="label">Pass Rate</div><div class="value pass">100%</div></div>
+  <div class="summary-card"><div class="label">Campaigns</div><div class="value warn">8/12</div></div>
+</div>
+
+<h2>Constitutional Gate Verdicts</h2>
+<table>
+  <thead>
+    <tr><th>Gate</th><th>Name</th><th>Status</th><th>Tests Run</th><th>Tests Passed</th><th>Timestamp</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>GATE_A</td>
+      <td>Policy &amp; Governance</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>35</td>
+      <td>35</td>
+      <td>2026-07-17T15:27:45Z</td>
+    </tr>
+    <tr>
+      <td>GATE_B</td>
+      <td>Evidence Envelope &amp; AIR Pipeline</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>47</td>
+      <td>47</td>
+      <td>2026-07-17T15:28:10Z</td>
+    </tr>
+    <tr>
+      <td>GATE_C</td>
+      <td>Crypto &amp; Runtime Contracts</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>93</td>
+      <td>93</td>
+      <td>2026-07-17T15:28:30Z</td>
+    </tr>
+    <tr>
+      <td>GATE_D</td>
+      <td>Trust Runtime Core</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>119</td>
+      <td>119</td>
+      <td>2026-07-17T15:28:50Z</td>
+    </tr>
+    <tr>
+      <td>GATE_E</td>
+      <td>Tenant Isolation &amp; Authentication</td>
+      <td><span class="badge badge-pass">PASS</span></td>
+      <td>37</td>
+      <td>37</td>
+      <td>2026-07-17T15:29:16Z</td>
+    </tr>
+    <tr>
+      <td>GATE_F</td>
+      <td>Registry &amp; Validation</td>
+      <td><span class="badge badge-fail">FAIL</span></td>
+      <td>4</td>
+      <td>4</td>
+      <td>2026-07-17T15:29:40Z</td>
+    </tr>
+    <tr>
+      <td>GATE_G</td>
+      <td>E2E Integration &amp; Resilience</td>
+      <td><span class="badge badge-fail">FAIL</span></td>
+      <td>0</td>
+      <td>0</td>
+      <td>2026-07-17T15:29:50Z</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Campaign Results</h2>
+<table>
+  <thead>
+    <tr><th>Campaign</th><th>Name</th><th>Status</th><th>Tests Run</th><th>Tests Passed</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>c1</td><td>Policy &amp; Governance Foundations</td><td><span class="badge badge-pass">PASS</span></td><td>35</td><td>35</td></tr>
+    <tr><td>c2</td><td>Evidence Envelope &amp; AIR Pipeline</td><td><span class="badge badge-pass">PASS</span></td><td>47</td><td>47</td></tr>
+    <tr><td>c3</td><td>Crypto &amp; Runtime Contracts</td><td><span class="badge badge-pass">PASS</span></td><td>93</td><td>93</td></tr>
+    <tr><td>c4</td><td>Trust Runtime Core</td><td><span class="badge badge-pass">PASS</span></td><td>87</td><td>87</td></tr>
+    <tr><td>c5</td><td>Runtime Intelligence</td><td><span class="badge badge-pass">PASS</span></td><td>32</td><td>32</td></tr>
+    <tr><td>c6</td><td>Tenant Isolation</td><td><span class="badge badge-pass">PASS</span></td><td>27</td><td>27</td></tr>
+    <tr><td>c7</td><td>Authentication</td><td><span class="badge badge-pass">PASS</span></td><td>10</td><td>10</td></tr>
+    <tr><td>c8</td><td>Registry &amp; Compatibility</td><td><span class="badge badge-fail">FAIL</span></td><td>0</td><td>0</td></tr>
+    <tr><td>c9</td><td>Heartbeat Schema</td><td><span class="badge badge-pass">PASS</span></td><td>4</td><td>4</td></tr>
+    <tr><td>c10</td><td>Spec Validation &amp; Behavioral Coverage</td><td><span class="badge badge-fail">FAIL</span></td><td>0</td><td>0</td></tr>
+    <tr><td>c11</td><td>E2E Integration</td><td><span class="badge badge-fail">FAIL</span></td><td>0</td><td>0</td></tr>
+    <tr><td>c12</td><td>Stress &amp; Chaos Resilience</td><td><span class="badge badge-fail">FAIL</span></td><td>0</td><td>0</td></tr>
+  </tbody>
+</table>
+
+<h2>System Capabilities</h2>
+<div class="cap-grid">
+  <div class="cap-item"><div class="cap-name">baileys</div><div class="cap-status pass">operational</div></div>
+  <div class="cap-item"><div class="cap-name">zk-proving-stack</div><div class="cap-status pass">operational</div></div>
+  <div class="cap-item"><div class="cap-name">ai-model-router</div><div class="cap-status pass">operational</div></div>
+  <div class="cap-item"><div class="cap-name">safekrypte</div><div class="cap-status warn">degraded — localhost:5096 unreachable</div></div>
+  <div class="cap-item"><div class="cap-name">safeliner</div><div class="cap-status pass">operational</div></div>
+  <div class="cap-item"><div class="cap-name">proofbridge</div><div class="cap-status warn">degraded — E2E unreachable</div></div>
+  <div class="cap-item"><div class="cap-name">ubuntu-pools</div><div class="cap-status warn">degraded — E2E pool tests failed</div></div>
+  <div class="cap-item"><div class="cap-name">trust-runtime</div><div class="cap-status pass">operational</div></div>
+  <div class="cap-item"><div class="cap-name">governance-anchor</div><div class="cap-status pass">operational</div></div>
+</div>
+
+<div class="footer">
+  <span>Commit: 14050d416ccbc636044df16dae743cc9f95b79c0</span> &middot;
+  <span>Generated: 2026-07-17T15:30:00.000Z</span> &middot;
+  <span>Constitution: v1.0.0</span> &middot;
+  <span>Evidence: VAL-2026-07-08-s95a8</span>
+</div>
+
+</body>
+</html>

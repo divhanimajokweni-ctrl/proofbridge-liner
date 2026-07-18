@@ -95,7 +95,7 @@ async function anchorToCircuitBreaker(
         } catch {
             return acc;
         }
-    }, 0n);
+    }, BigInt(0));
 
     return {
         txHash: receipt.hash,

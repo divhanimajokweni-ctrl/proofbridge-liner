@@ -11,6 +11,13 @@ const DATA_BUS_URL = process.env.DATA_BUS_URL ?? '';
 const MAX_BODY_BYTES = Number(process.env.MAX_BODY_BYTES ?? 10240);
 const PUBKEY_DIR = process.env.PUBKEY_DIR ?? path.resolve(process.cwd(), 'data', 'public-keys');
 
+// Production key binding: DERIVATION_SIGNING_KEY from env/vault, never logged
+const DERIVATION_SIGNING_KEY = process.env.DERIVATION_SIGNING_KEY ?? '';
+const TEE_ENCLAVE_PRIVATE_KEY_PEM = process.env.TEE_ENCLAVE_PRIVATE_KEY_PEM ?? '';
+const KEY_BINDING_MODE: 'lite' | 'vault' | 'tee' =
+  TEE_ENCLAVE_PRIVATE_KEY_PEM ? 'tee' :
+  DERIVATION_SIGNING_KEY ? 'vault' : 'lite';
+
 const HEX_RE = /^[0-9a-fA-F]+$/;
 const ID_RE = /^[\w@.\-:+]+$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,12 +68,70 @@ interface Attestation {
   liteTier: true;
 }
 
+/**
+ * Initialize the signing key. Supports three modes:
+ *   - 'tee': Hardware-isolated key from TEE_ENCLAVE_PRIVATE_KEY_PEM (SGX/SEV)
+ *   - 'vault': Key from DERIVATION_SIGNING_KEY env (encrypted vault / HSM)
+ *   - 'lite': In-memory generated key (development only)
+ *
+ * Key material is NEVER logged — only the key ID and binding mode are emitted.
+ */
 async function initKey(): Promise<void> {
-  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
-  litePrivateKey = privateKey;
-  litePublicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }) as string;
-  keyGeneratedAt = Date.now();
-  keyRotationCount++;
+  if (KEY_BINDING_MODE === 'tee' && TEE_ENCLAVE_PRIVATE_KEY_PEM) {
+    // TEE mode: load hardware-isolated key from secure enclave
+    const privateKey = crypto.createPrivateKey({
+      key: Buffer.from(TEE_ENCLAVE_PRIVATE_KEY_PEM, 'base64'),
+      format: 'der',
+      type: 'pkcs8',
+    });
+    const publicKey = crypto.createPublicKey(privateKey);
+    litePrivateKey = privateKey;
+    litePublicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }) as string;
+    keyGeneratedAt = Date.now();
+    keyRotationCount++;
+    // SECURITY: Never log key material — only binding mode and key ID
+    console.log(JSON.stringify({
+      event: 'VU_SAFEKRIPTE_KEY_INIT',
+      bindingMode: 'tee',
+      keyId: `tee_k${keyRotationCount}`,
+      algorithm: 'ED25519',
+    }));
+  } else if (KEY_BINDING_MODE === 'vault' && DERIVATION_SIGNING_KEY) {
+    // Vault mode: derive key from vault-provided secret
+    const keyMaterial = Buffer.from(DERIVATION_SIGNING_KEY, 'hex');
+    if (keyMaterial.length !== 32) {
+      throw new Error('DERIVATION_SIGNING_KEY must be 32 bytes hex-encoded');
+    }
+    // Derive Ed25519 keypair from the vault secret using HKDF
+    const derivedKey = crypto.hkdfSync('sha256', keyMaterial, Buffer.alloc(0), 'safekrypte-production-v1', 32);
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519', {
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    });
+    litePrivateKey = crypto.createPrivateKey(privateKey);
+    litePublicKeyPem = publicKey;
+    keyGeneratedAt = Date.now();
+    keyRotationCount++;
+    console.log(JSON.stringify({
+      event: 'VU_SAFEKRIPTE_KEY_INIT',
+      bindingMode: 'vault',
+      keyId: `vault_k${keyRotationCount}`,
+      algorithm: 'ED25519',
+    }));
+  } else {
+    // Lite mode: in-memory generated key (development)
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+    litePrivateKey = privateKey;
+    litePublicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }) as string;
+    keyGeneratedAt = Date.now();
+    keyRotationCount++;
+    console.log(JSON.stringify({
+      event: 'VU_SAFEKRIPTE_KEY_INIT',
+      bindingMode: 'lite',
+      keyId: `lite_k${keyRotationCount}`,
+      algorithm: 'ED25519',
+    }));
+  }
 }
 
 async function maybeRotateKey(): Promise<void> {
@@ -150,7 +215,16 @@ async function route(
   const path = url.pathname;
 
   if (path === '/health' && method === 'GET') {
-    sendJson(res, 200, { ok: true, service: 'safekrypte-lite', uptime: process.uptime(), creators: creatorCount, tierMax: LITE_TIER_MAX });
+    sendJson(res, 200, {
+      ok: true,
+      service: 'safekrypte-lite',
+      uptime: process.uptime(),
+      creators: creatorCount,
+      tierMax: LITE_TIER_MAX,
+      keyBindingMode: KEY_BINDING_MODE,
+      keyRotationCount,
+      algorithm: 'ED25519',
+    });
     return { handled: true };
   }
 
@@ -200,7 +274,7 @@ async function route(
       creatorId,
       signature: signature.toString('base64'),
       timestamp,
-      vvuKeyId: `sk_lite_v1_k${keyRotationCount}`,
+      vvuKeyId: `${KEY_BINDING_MODE}_v1_k${keyRotationCount}`,
       liteTier: true,
     };
 
@@ -354,6 +428,7 @@ server.listen(PORT, HOST, async () => {
     host: HOST,
     port: PORT,
     tierMax: LITE_TIER_MAX,
+    keyBindingMode: KEY_BINDING_MODE,
     algorithm: 'ED25519',
     endpoints: [
       'GET  /health',

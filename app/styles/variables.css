@@ -70,6 +70,11 @@
   --transition-slow:     350ms var(--ease-out);
 }
 
+body {
+  background: var(--color-void);
+  color: var(--color-text-primary);
+}
+
 /* ── VVU Keyframes ──────────────────────────────────────── */
 @keyframes vvu-fade-up {
   from { opacity: 0; transform: translateY(10px); }
@@ -263,19 +268,54 @@
 /* ── Modern CSS Features ────────────────────────────────────────────── */
 
 /* light-dark() color scheme support */
-:root,
-.light {
-  --color-bg-canvas:    #F5F7FA;
-  --color-surface-card: #FFFFFF;
-  --color-text-body:    #1A202C;
-  --color-text-dim:     #718096;
-}
-
 .dark {
   --color-bg-canvas:    #07090C;
   --color-surface-card: #121925;
   --color-text-body:    #DCE2EA;
   --color-text-dim:     #6A8099;
+}
+
+[data-theme="light"] {
+  --color-void:          #F4F5F0;
+  --color-bg:            #F4F5F0;
+  --color-surface:       #FFFFFF;
+  --color-card:          #FFFFFF;
+  --color-border:        #D1D5CC;
+  --color-border-hover:  #B8BDAE;
+  --color-gold:          #9A7B2F;
+  --color-gold-bright:   #C8A84A;
+  --color-gold-dim:      rgba(154,123,47,0.08);
+  --color-gold-border:   rgba(154,123,47,0.25);
+  --color-glow-gold:     0 0 14px rgba(154,123,47,0.12);
+  --color-cyan:          #0088A3;
+  --color-cyan-dim:      rgba(0,136,163,0.06);
+  --color-cyan-border:   rgba(0,136,163,0.2);
+  --color-green:         #2B8A5E;
+  --color-green-live:    #2E7D4F;
+  --color-green-dim:     rgba(43,138,94,0.08);
+  --color-green-border:  rgba(43,138,94,0.25);
+  --color-ring-green:    0 0 0 0 rgba(43,138,94,0.3);
+  --color-crimson:       #9B1D3C;
+  --color-crimson-bright:#C4254F;
+  --color-crimson-dim:   rgba(155,29,60,0.08);
+  --color-crimson-border:rgba(155,29,60,0.25);
+  --color-orange:        #A36210;
+  --color-orange-dim:    rgba(163,98,16,0.08);
+  --color-blue:          #2D7ABF;
+  --color-blue-dim:      rgba(45,122,191,0.08);
+  --color-purple:        #6B3FA0;
+  --color-purple-dim:    rgba(107,63,160,0.08);
+  --color-text-primary:  #1A1D14;
+  --color-text-secondary:#5A5A5B;
+  --color-text-muted:    #9CA3AF;
+  --color-bg-canvas:     #F4F5F0;
+  --color-surface-card:  #FFFFFF;
+  --color-text-body:     #1A1D14;
+  --color-text-dim:      #5A5A5B;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
 }
 
 /* Auto light/dark using light-dark() where supported */
