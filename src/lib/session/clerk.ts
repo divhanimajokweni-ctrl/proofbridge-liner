@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { isClerkConfigured } from './clerk-config';
+import { isClerkConfigured, isClerkServerConfigured } from './clerk-config';
 
-export { isClerkConfigured };
+export { isClerkConfigured, isClerkServerConfigured };
 
 export async function getClerkSession(): Promise<{ userId: string; sessionId: string } | null> {
   if (!isClerkConfigured()) return null;

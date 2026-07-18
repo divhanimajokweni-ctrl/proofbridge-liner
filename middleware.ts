@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
+import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { isClerkConfigured, getClerkSession } from '@/lib/session/clerk';
+import { isClerkServerConfigured, getClerkSession } from '@/lib/session/clerk';
 
 const CIRCUIT_BREAKER_ADDRESS = process.env.CIRCUIT_BREAKER_ADDRESS;
 const POLYGON_AMOY_RPC_URL = process.env.POLYGON_AMOY_RPC_URL;
@@ -109,7 +110,7 @@ async function trySupabaseAuth(req: NextRequest): Promise<{
 }
 
 async function tryClerkAuth(): Promise<AuthUser | null> {
-  if (!isClerkConfigured()) return null;
+  if (!isClerkServerConfigured()) return null;
   const session = await getClerkSession();
   if (!session) return null;
   return { id: session.userId, metadata: { provider: 'clerk' } };
@@ -133,7 +134,7 @@ function redirectUnauthorized(
 
   const url = req.nextUrl.clone();
 
-  if (isClerkConfigured()) {
+  if (isClerkServerConfigured()) {
     url.pathname = '/clerk/sign-in';
   } else {
     url.pathname = '/login';
@@ -154,7 +155,7 @@ function injectTenantHeaders(res: NextResponse, metadata: Record<string, unknown
   return res;
 }
 
-export async function middleware(req: NextRequest) {
+export default clerkMiddleware(async (_auth, req) => {
   const tripped = await isCircuitTripped();
   if (tripped) {
     return NextResponse.json(
@@ -189,7 +190,7 @@ export async function middleware(req: NextRequest) {
   }
 
   return supabaseRes;
-}
+});
 
 export const config = {
   matcher: [

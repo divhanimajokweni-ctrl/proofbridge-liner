@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/session/client';
 import { isClerkConfigured } from '@/lib/session/clerk-config';
@@ -35,14 +35,14 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  useState(() => {
+  useEffect(() => {
     try {
       const configured = isClerkConfigured();
       setClerkAvailable(configured);
     } catch {
       setClerkAvailable(false);
     }
-  });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
