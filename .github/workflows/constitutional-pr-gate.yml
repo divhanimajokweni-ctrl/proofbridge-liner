@@ -1,0 +1,160 @@
+name: Constitutional PR Gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  constitutional-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check PR Description for Constitutional Questions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            
+            // Define the four constitutional questions
+            const questions = [
+              {
+                id: 'CONSTITUTION_SECTION',
+                pattern: /Which section of this Constitution does it implement\?/i,
+                required: true
+              },
+              {
+                id: 'ADR_REFERENCE',
+                pattern: /Which ADR does it satisfy\?/i,
+                required: true
+              },
+              {
+                id: 'RFC_REFERENCE',
+                pattern: /Which RFC defines the interface\?/i,
+                required: true
+              },
+              {
+                id: 'TEST_REFERENCE',
+                pattern: /Which test proves compliance\?/i,
+                required: true
+              }
+            ];
+            
+            // Check if all questions are answered
+            const missingQuestions = [];
+            const answeredQuestions = [];
+            
+            for (const question of questions) {
+              if (question.pattern.test(body)) {
+                answeredQuestions.push(question.id);
+              } else {
+                missingQuestions.push(question.id);
+              }
+            }
+            
+            // Generate report
+            if (missingQuestions.length > 0) {
+              const report = `## ❌ Constitutional PR Gate Failed\n\n` +
+                `This PR is missing answers to the following constitutional questions:\n\n` +
+                missingQuestions.map(q => `- **${q}**`).join('\n') + `\n\n` +
+                `### Required Questions\n\n` +
+                `1. Which section of this Constitution does it implement?\n` +
+                `2. Which ADR does it satisfy?\n` +
+                `3. Which RFC defines the interface?\n` +
+                `4. Which test proves compliance?\n\n` +
+                `### How to Fix\n\n` +
+                `Please edit your PR description to include answers to all four questions.\n` +
+                `See [MASTER_SPEC.md](./MASTER_SPEC.md) for the thin specification.\n\n` +
+                `**Constitution Reference:** Part 8, Gate 1`;
+              
+              core.setFailed(report);
+            } else {
+              core.info(`✅ All constitutional questions answered: ${answeredQuestions.join(', ')}`);
+              
+              // Add success comment
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## ✅ Constitutional PR Gate Passed\n\n` +
+                  `All four constitutional questions have been answered:\n\n` +
+                  answeredQuestions.map(q => `- **${q}**`).join('\n') + `\n\n` +
+                  `**Constitution Reference:** Part 8, Gate 1`
+              });
+            }
+
+      - name: Verify ADR Reference Exists
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            
+            // Extract ADR reference from PR body
+            const adrMatch = body.match(/ADR[- ](\d+)/i);
+            if (!adrMatch) {
+              core.info('No ADR reference found in PR body, skipping ADR verification');
+              return;
+            }
+            
+            const adrNumber = adrMatch[1].padStart(3, '0');
+            const adrFiles = [
+              `docs/governance/adrs/ADR-${adrNumber}-*.md`,
+              `air/adr/ADR-${adrNumber}-*.md`
+            ];
+            
+            let adrFound = false;
+            for (const pattern of adrFiles) {
+              const files = fs.readdirSync('.').filter(f => f.match(pattern.replace('*', '.*')));
+              if (files.length > 0) {
+                adrFound = true;
+                core.info(`✅ ADR-${adrNumber} found: ${files[0]}`);
+                break;
+              }
+            }
+            
+            if (!adrFound) {
+              core.warning(`⚠️ ADR-${adrNumber} referenced in PR body not found. Please verify the ADR exists.`);
+            }
+
+      - name: Verify Test Reference Exists
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            
+            // Extract test reference from PR body
+            const testMatch = body.match(/test[s]?.*?([a-zA-Z0-9_\-\.]+\.test\.[a-zA-Z]+)/i);
+            if (!testMatch) {
+              core.info('No test file reference found in PR body, skipping test verification');
+              return;
+            }
+            
+            const testFile = testMatch[1];
+            const testFiles = [
+              testFile,
+              `test/${testFile}`,
+              `tests/${testFile}`,
+              `__tests__/${testFile}`,
+              `packages/**/__tests__/${testFile}`,
+              `src/lib/**/__tests__/${testFile}`
+            ];
+            
+            let testFound = false;
+            for (const pattern of testFiles) {
+              if (fs.existsSync(pattern)) {
+                testFound = true;
+                core.info(`✅ Test file found: ${pattern}`);
+                break;
+              }
+            }
+            
+            if (!testFound) {
+              core.warning(`⚠️ Test file ${testFile} referenced in PR body not found. Please verify the test exists.`);
+            }
