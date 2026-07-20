@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CircuitBoard, Lock, KeyRound, ArrowRight, Cpu, ShieldCheck, Zap, FileKey, Eye, EyeOff, Clock, CheckCircle2, XCircle, Activity, BarChart3, Hash } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { CircuitBoard, Lock, KeyRound, ArrowRight, Cpu, ShieldCheck, Zap, FileKey, Eye, EyeOff, Clock, CheckCircle2, XCircle, Activity, BarChart3, Hash, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,13 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { SAMPLE_POLICIES, validateEpd, type PolicyNode } from "@/lib/epd";
 import { motion } from "framer-motion";
-import { GradientBorderCard, containerVariants, cardVariants, itemVariants, GridOverlay } from "./primitives";
+import { GradientBorderCard, containerVariants, cardVariants, itemVariants, GridOverlay, StatusPill } from "./primitives";
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface CircuitGate { id: string; type: "input" | "constraint" | "aggregate" | "output"; label: string; sublabel?: string; x: number; y: number; invariant?: string }
 interface CircuitWire { from: string; to: string; kind: "private" | "public" }
 interface ProofHistoryEntry { id: string; timestamp: string; status: "verified" | "pending" | "failed"; provingTimeMs: number; constraintCount: number; shardKey: string }
 interface Circuit { gates: CircuitGate[]; wires: CircuitWire[]; publicInputs: string[]; privateInputs: string[]; constraintCount: number; estimatedRows: number; provingKeySize: string; verificationKeySize: string }
+interface VerificationAttempt { id: string; timestamp: string; proofId: string; verified: boolean; timeMs: number }
 
 function synthesizeCircuit(policy: PolicyNode): Circuit {
   const gates: CircuitGate[] = [], wires: CircuitWire[] = [];
@@ -71,6 +72,12 @@ export function ZkCircuitSection() {
   const [showWires, setShowWires] = useState(true);
   const [revealPrivate, setRevealPrivate] = useState(false);
   const [hoveredGate, setHoveredGate] = useState<string | null>(null);
+  const [selectedProofId, setSelectedProofId] = useState<string>("");
+  const [verifyingSteps, setVerifyingSteps] = useState<Array<{ label: string; status: "idle" | "running" | "done" | "failed" }>>([]);
+  const [verificationResult, setVerificationResult] = useState<{ verified: boolean; timeMs: number } | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationHistory, setVerificationHistory] = useState<VerificationAttempt[]>([]);
+  const [constraintOverrides, setConstraintOverrides] = useState<Record<string, boolean>>({});
 
   const { policy, circuit, proofHistory } = useMemo(() => {
     const sample = SAMPLE_POLICIES.find((s) => s.filename === filename);
@@ -91,6 +98,85 @@ export function ZkCircuitSection() {
       { name: "R1CS rows", value: Math.round(circuit.estimatedRows / 10), fill: "oklch(0.70 0.13 40 / 0.6)" },
     ];
   }, [circuit]);
+
+  const constraintGates = useMemo(() => circuit.gates.filter(g => g.type === "constraint"), [circuit]);
+
+  const constraintEnabled = useMemo(() => {
+    const result: Record<string, boolean> = {};
+    constraintGates.forEach(g => { result[g.id] = g.id in constraintOverrides ? constraintOverrides[g.id] : true; });
+    return result;
+  }, [constraintGates, constraintOverrides]);
+
+  // Reset verification state when policy changes (render-time adjustment per React docs)
+  const [prevFilename, setPrevFilename] = useState(filename);
+  if (prevFilename !== filename) {
+    setPrevFilename(filename);
+    setSelectedProofId("");
+    setVerifyingSteps([]);
+    setVerificationResult(null);
+    setIsVerifying(false);
+  }
+
+  const circuitSatisfied = useMemo(() =>
+    constraintGates.length > 0 && constraintGates.every(g => constraintEnabled[g.id] !== false),
+    [constraintGates, constraintEnabled]
+  );
+
+  const runVerification = useCallback(() => {
+    if (!selectedProofId || isVerifying) return;
+    const proof = proofHistory.find(p => p.id === selectedProofId);
+    if (!proof) return;
+
+    setIsVerifying(true);
+    setVerificationResult(null);
+
+    const stepsConfig = [
+      { label: "Loading verification key...", delay: 300 },
+      { label: "Computing public inputs...", delay: 500 },
+      { label: "Checking pairing equation...", delay: 700 },
+      { label: "Verifying MMR root inclusion...", delay: 400 },
+    ];
+
+    const willVerify = proof.status === "verified";
+    const startTime = Date.now();
+
+    setVerifyingSteps(stepsConfig.map(s => ({ label: s.label, status: "idle" as const })));
+
+    let offset = 0;
+    stepsConfig.forEach((step, i) => {
+      setTimeout(() => {
+        setVerifyingSteps(prev =>
+          prev.map((s, j) =>
+            j < i ? { ...s, status: "done" as const } :
+            j === i ? { ...s, status: "running" as const } : s
+          )
+        );
+      }, offset);
+      offset += step.delay;
+      setTimeout(() => {
+        setVerifyingSteps(prev =>
+          prev.map((s, j) =>
+            j <= i ? { ...s, status: "done" as const } : s
+          )
+        );
+      }, offset);
+    });
+
+    setTimeout(() => {
+      const totalTime = Date.now() - startTime;
+      const finalLabel = willVerify ? "Proof verified \u2713" : "Verification failed \u2717";
+      setVerifyingSteps(prev => [
+        ...prev.map(s => ({ ...s, status: "done" as const })),
+        { label: finalLabel, status: willVerify ? ("done" as const) : ("failed" as const) },
+      ]);
+      setVerificationResult({ verified: willVerify, timeMs: totalTime });
+      setIsVerifying(false);
+      setVerificationHistory(prev => [
+        { id: `v-${Date.now()}`, timestamp: new Date().toISOString(), proofId: selectedProofId, verified: willVerify, timeMs: totalTime },
+        ...prev,
+      ].slice(0, 10));
+    }, offset + 200);
+  }, [selectedProofId, isVerifying, proofHistory]);
 
   if (!policy || !circuit) return <GradientBorderCard gradientFrom="oklch(0.64 0.21 25 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.1)" className="p-8 text-center"><p className="text-sm text-muted-foreground">Select a valid policy.</p></GradientBorderCard>;
 
@@ -253,6 +339,211 @@ export function ZkCircuitSection() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        </GradientBorderCard>
+      </div>
+
+      {/* ─── Interactive Proof Verification ─── */}
+      <motion.div variants={cardVariants} className="flex items-center gap-2.5 pt-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-verified/30 bg-verified/10">
+          <ShieldCheck className="h-4 w-4 text-verified" />
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold">Interactive Proof Verification</h3>
+          <p className="text-[10px] text-muted-foreground">Simulate step-by-step ZK proof verification &amp; test circuit satisfaction</p>
+        </div>
+      </motion.div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="space-y-4">
+          {/* Verify Proof Panel */}
+          <GradientBorderCard gradientFrom="oklch(0.78 0.16 160 / 0.3)" gradientTo="oklch(0.64 0.21 25 / 0.15)" className="p-4">
+            <div className="relative space-y-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-3.5 w-3.5 text-verified" />
+                <span className="text-xs font-semibold">Verify Proof</span>
+                {verificationResult && (
+                  <StatusPill
+                    status={verificationResult.verified ? "verified" : "violating"}
+                    label={verificationResult.verified ? "Verified" : "Failed"}
+                    className="ml-auto text-[9px]"
+                  />
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Select value={selectedProofId} onValueChange={setSelectedProofId}>
+                  <SelectTrigger className="h-8 flex-1 text-xs">
+                    <SelectValue placeholder="Select a proof..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {proofHistory.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.id} · {p.status} · {p.provingTimeMs}ms
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <motion.button
+                  onClick={runVerification}
+                  disabled={!selectedProofId || isVerifying}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                    selectedProofId && !isVerifying
+                      ? "border-verified/30 bg-verified/10 text-verified hover:bg-verified/20"
+                      : "border-border/40 bg-muted/20 text-muted-foreground cursor-not-allowed"
+                  )}
+                  whileHover={selectedProofId && !isVerifying ? { scale: 1.02 } : undefined}
+                  whileTap={selectedProofId && !isVerifying ? { scale: 0.98 } : undefined}
+                >
+                  {isVerifying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                  Verify
+                </motion.button>
+              </div>
+
+              {verifyingSteps.length > 0 && (
+                <div className="space-y-1.5 rounded-md border border-border/40 bg-background/40 p-3">
+                  {verifyingSteps.map((step, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 26 }}
+                      className="flex items-center gap-2 text-xs"
+                    >
+                      {step.status === "idle" && <span className="h-3.5 w-3.5 rounded-full border border-border/60 bg-muted/20 shrink-0" />}
+                      {step.status === "running" && <Loader2 className="h-3.5 w-3.5 text-repairing animate-spin shrink-0" />}
+                      {step.status === "done" && <CheckCircle2 className="h-3.5 w-3.5 text-verified shrink-0" />}
+                      {step.status === "failed" && <XCircle className="h-3.5 w-3.5 text-violating shrink-0" />}
+                      <span className={cn(
+                        step.status === "idle" ? "text-muted-foreground/50" :
+                        step.status === "running" ? "text-repairing font-medium" :
+                        step.status === "done" ? "text-verified" :
+                        "text-violating font-medium"
+                      )}>{step.label}</span>
+                    </motion.div>
+                  ))}
+
+                  {verificationResult && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={cn(
+                        "mt-2 flex items-center justify-between rounded-md border px-3 py-2",
+                        verificationResult.verified
+                          ? "border-verified/30 bg-verified/5"
+                          : "border-violating/30 bg-violating/5"
+                      )}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {verificationResult.verified
+                          ? <CheckCircle2 className="h-4 w-4 text-verified" />
+                          : <XCircle className="h-4 w-4 text-violating" />}
+                        <span className={cn("text-xs font-semibold", verificationResult.verified ? "text-verified" : "text-violating")}>
+                          {verificationResult.verified ? "Proof Verified" : "Verification Failed"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-muted-foreground">{verificationResult.timeMs}ms</span>
+                    </motion.div>
+                  )}
+                </div>
+              )}
+            </div>
+          </GradientBorderCard>
+
+          {/* Verification Results History */}
+          <GradientBorderCard gradientFrom="oklch(0.80 0.15 80 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.1)" className="p-4">
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <Clock className="h-3.5 w-3.5 text-repairing" />
+                <span className="text-xs font-semibold">Verification History</span>
+                {verificationHistory.length > 0 && (
+                  <Badge variant="outline" className="text-[9px] border-repairing/30 bg-repairing/10 text-repairing font-mono ml-auto">
+                    {verificationHistory.length}
+                  </Badge>
+                )}
+              </div>
+              <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
+                {verificationHistory.length === 0 ? (
+                  <div className="flex items-center justify-center py-6 text-[11px] text-muted-foreground/50">
+                    No verifications run yet
+                  </div>
+                ) : (
+                  verificationHistory.map((v, i) => (
+                    <motion.div
+                      key={v.id}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      className={cn(
+                        "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[11px]",
+                        v.verified ? "border-verified/30 bg-verified/5" : "border-violating/30 bg-violating/5"
+                      )}
+                    >
+                      {v.verified
+                        ? <CheckCircle2 className="h-3 w-3 text-verified shrink-0" />
+                        : <XCircle className="h-3 w-3 text-violating shrink-0" />}
+                      <span className="font-mono font-medium">{v.proofId}</span>
+                      <span className="text-muted-foreground">· {v.timeMs}ms</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+                        {new Date(v.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </span>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            </div>
+          </GradientBorderCard>
+        </div>
+
+        {/* Circuit Satisfaction Test */}
+        <GradientBorderCard gradientFrom="oklch(0.70 0.13 40 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.1)" className="p-4">
+          <div className="relative space-y-3">
+            <div className="flex items-center gap-2">
+              <CircuitBoard className="h-3.5 w-3.5 text-quarantined" />
+              <span className="text-xs font-semibold">Circuit Satisfaction</span>
+              {circuitSatisfied ? (
+                <StatusPill status="verified" label="Satisfied" className="ml-auto text-[9px]" />
+              ) : (
+                <StatusPill status="violating" label="Unsatisfied" className="ml-auto text-[9px]" />
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground">Toggle constraint gates to test circuit satisfaction. All gates must be enabled for the circuit to be satisfied.</p>
+            <div className="space-y-1.5 max-h-[240px] overflow-y-auto pr-1">
+              {constraintGates.map(gate => (
+                <motion.div
+                  key={gate.id}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[11px] transition-colors",
+                    constraintEnabled[gate.id] !== false
+                      ? "border-verified/20 bg-verified/5"
+                      : "border-violating/20 bg-violating/5"
+                  )}
+                  whileHover={{ x: 2, scale: 1.005 }}
+                >
+                  {constraintEnabled[gate.id] !== false
+                    ? <CheckCircle2 className="h-3 w-3 text-verified shrink-0" />
+                    : <XCircle className="h-3 w-3 text-violating shrink-0" />}
+                  <span className="font-mono font-medium flex-1 truncate">{gate.label}</span>
+                  <span className="text-[9px] text-muted-foreground shrink-0">{gate.sublabel}</span>
+                  <Switch
+                    checked={constraintEnabled[gate.id] !== false}
+                    onCheckedChange={(checked) => setConstraintOverrides(prev => ({ ...prev, [gate.id]: checked }))}
+                    className="scale-75 origin-right"
+                  />
+                </motion.div>
+              ))}
+            </div>
+            <div className={cn(
+              "flex items-center justify-center gap-2 rounded-md border py-2.5 text-xs font-semibold",
+              circuitSatisfied
+                ? "border-verified/30 bg-verified/10 text-verified"
+                : "border-violating/30 bg-violating/10 text-violating"
+            )}>
+              {circuitSatisfied
+                ? <><CheckCircle2 className="h-4 w-4" /> Circuit Satisfied — All constraints pass</>
+                : <><XCircle className="h-4 w-4" /> Circuit Unsatisfied — {constraintGates.filter(g => !constraintEnabled[g.id]).length} gate(s) disabled</>}
             </div>
           </div>
         </GradientBorderCard>

@@ -49,6 +49,8 @@ import {
   Library,
   GitGraph,
   Zap,
+  Download,
+  RefreshCw,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
@@ -56,7 +58,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { StatsResponse } from "@/lib/types";
+import type { StatsResponse, ShardRow } from "@/lib/types";
 import { StatusPill, Hash } from "./primitives";
 
 function generateSparkline(base: number, variance: number, length = 12): number[] {
@@ -155,6 +157,8 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
     latency: { p50: number; p95: number; p99: number };
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [shards, setShards] = useState<ShardRow[] | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
     let alive = true;
@@ -164,12 +168,12 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
         .then((d) => alive && (setStats(d), setLoading(false)))
         .catch(() => alive && setLoading(false));
     load();
-    const t = setInterval(load, 8000);
+    const t = autoRefresh ? setInterval(load, 8000) : undefined;
     return () => {
       alive = false;
-      clearInterval(t);
+      if (t) clearInterval(t);
     };
-  }, []);
+  }, [autoRefresh]);
 
   useEffect(() => {
     let alive = true;
@@ -179,12 +183,27 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
         .then((d) => alive && setMetrics(d))
         .catch(() => {});
     loadMetrics();
-    const t = setInterval(loadMetrics, 15000);
+    const t = autoRefresh ? setInterval(loadMetrics, 15000) : undefined;
     return () => {
       alive = false;
-      clearInterval(t);
+      if (t) clearInterval(t);
     };
-  }, []);
+  }, [autoRefresh]);
+
+  useEffect(() => {
+    let alive = true;
+    const loadShards = () =>
+      fetch("/api/shards")
+        .then((r) => r.json())
+        .then((d) => alive && setShards(d.shards ?? []))
+        .catch(() => {});
+    loadShards();
+    const t = autoRefresh ? setInterval(loadShards, 15000) : undefined;
+    return () => {
+      alive = false;
+      if (t) clearInterval(t);
+    };
+  }, [autoRefresh]);
 
   if (loading || !stats) {
     return (
@@ -551,7 +570,298 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
         </Card>
       </motion.div>
 
-      {}
+      {/* ─── Shard Health Heatmap + Invariant Coverage Ring ─── */}
+      <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4" variants={sectionVariants}>
+        {/* Shard Health Heatmap */}
+        <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/40 via-repairing/30 to-violating/20" />
+          <div className="bg-grid-fine absolute inset-0 opacity-15" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-verified/10">
+                <LayoutGrid className="h-3.5 w-3.5 text-verified" />
+              </div>
+              <h3 className="text-sm font-semibold">Shard Health Heatmap</h3>
+              <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+                {shards ? `${shards.length} shards` : "loading…"}
+              </span>
+            </div>
+            {shards ? (
+              <>
+                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
+                  {shards.map((shard, i) => {
+                    const status = shard.invariantStatus;
+                    const colorMap: Record<string, string> = {
+                      healthy: "oklch(0.78 0.16 160)",
+                      repairing: "oklch(0.75 0.15 80)",
+                      violating: "oklch(0.65 0.2 25)",
+                    };
+                    return (
+                      <motion.div
+                        key={shard.id}
+                        title={`${shard.shardKey} (${shard.region}) — ${status}`}
+                        className={`heatmap-cell h-8 w-full rounded cursor-default relative ${status === "violating" ? "animate-pulse" : ""}`}
+                        style={{ backgroundColor: colorMap[status] ?? colorMap.healthy }}
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.02, duration: 0.3 }}
+                      />
+                    );
+                  })}
+                </div>
+                {/* Legend */}
+                <div className="flex items-center gap-4 mt-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "oklch(0.78 0.16 160)" }} />
+                    <span className="text-[9px] text-muted-foreground font-mono uppercase">Healthy</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: "oklch(0.75 0.15 80)" }} />
+                    <span className="text-[9px] text-muted-foreground font-mono uppercase">Repairing</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-sm animate-pulse" style={{ backgroundColor: "oklch(0.65 0.2 25)" }} />
+                    <span className="text-[9px] text-muted-foreground font-mono uppercase">Violating</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-24 flex items-center justify-center text-sm text-muted-foreground">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-verified mr-2" />
+                Loading shards…
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Invariant Coverage Ring */}
+        <Card className="lg:col-span-1 bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/40 via-violating/30 to-repairing/20" />
+          <div className="bg-grid-fine absolute inset-0 opacity-15" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-verified/10">
+                <ShieldCheck className="h-3.5 w-3.5 text-verified" />
+              </div>
+              <h3 className="text-sm font-semibold">Invariant Coverage</h3>
+            </div>
+            {(() => {
+              let passing = 0;
+              let violating = 0;
+              let softViolations = 0;
+              if (shards && shards.length > 0) {
+                for (const shard of shards) {
+                  for (const ev of shard.invariantEvals) {
+                    if (ev.passed) passing++;
+                    else if (ev.soft) softViolations++;
+                    else violating++;
+                  }
+                }
+              } else {
+                passing = stats.shardHealth.healthy * 3;
+                softViolations = stats.shardHealth.repairing * 2;
+                violating = stats.shardHealth.violating * 2;
+              }
+              const total = passing + violating + softViolations || 1;
+              const ringData = [
+                { name: "Passing", value: passing, fill: "oklch(0.78 0.16 160)" },
+                { name: "Soft Violations", value: softViolations, fill: "oklch(0.75 0.15 80)" },
+                { name: "Violating", value: violating, fill: "oklch(0.65 0.2 25)" },
+              ];
+              return (
+                <div className="flex items-center gap-4">
+                  <div className="relative w-28 h-28 shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={ringData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={32}
+                          outerRadius={48}
+                          strokeWidth={0}
+                          dataKey="value"
+                          isAnimationActive={true}
+                          animationDuration={1200}
+                          animationEasing="ease-out"
+                        >
+                          {ringData.map((entry, idx) => (
+                            <Cell key={idx} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-lg font-bold tabular-nums text-verified">
+                        {total > 0 ? Math.round((passing / total) * 100) : 0}%
+                      </span>
+                      <span className="text-[8px] text-muted-foreground uppercase tracking-wider">coverage</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-2.5">
+                    {ringData.map((item) => (
+                      <div key={item.name} className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: item.fill }} />
+                        <span className="text-xs text-muted-foreground flex-1">{item.name}</span>
+                        <span className="text-sm font-semibold tabular-nums">{item.value}</span>
+                        <span className="text-[9px] text-muted-foreground font-mono">
+                          ({total > 0 ? Math.round((item.value / total) * 100) : 0}%)
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </Card>
+      </motion.div>
+
+      {/* ─── Policy Status Timeline ─── */}
+      <motion.div variants={sectionVariants}>
+        <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/40 via-violating/30 to-repairing/20" />
+          <div className="bg-grid-fine absolute inset-0 opacity-15" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-repairing/10">
+                <Clock className="h-3.5 w-3.5 text-repairing" />
+              </div>
+              <h3 className="text-sm font-semibold">Policy Status Timeline</h3>
+              <span className="ml-auto text-[10px] text-muted-foreground font-mono">last 12h</span>
+            </div>
+            <div className="relative h-16">
+              {/* Timeline bar background */}
+              <div className="absolute top-5 left-0 right-0 h-1 rounded-full bg-border/40" />
+              {/* Hour markers */}
+              <div className="absolute inset-x-0 top-4 flex justify-between">
+                {Array.from({ length: 7 }).map((_, h) => {
+                  const hour = new Date(Date.now() - (12 - h * 2) * 3600000);
+                  return (
+                    <div key={h} className="flex flex-col items-center">
+                      <span className="h-2 w-px bg-border/60" />
+                      <span className="text-[7px] text-muted-foreground/50 font-mono mt-0.5">
+                        {hour.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Event dots */}
+              {stats.activity.map((event, i) => {
+                const eventTime = new Date(event.at).getTime();
+                const twelveHoursAgo = Date.now() - 12 * 3600000;
+                const position = ((eventTime - twelveHoursAgo) / (12 * 3600000)) * 100;
+                if (position < 0 || position > 100) return null;
+                const isViolation = event.title.includes("breach");
+                const isShadow = event.kind === "shadow" && !isViolation;
+                const dotColor = isViolation
+                  ? "bg-violating"
+                  : isShadow
+                    ? "bg-repairing"
+                    : "bg-verified";
+                const dotGlow = isViolation
+                  ? "shadow-[0_0_6px_oklch(0.65_0.2_25/0.6)]"
+                  : isShadow
+                    ? "shadow-[0_0_6px_oklch(0.75_0.15_80/0.6)]"
+                    : "shadow-[0_0_6px_oklch(0.78_0.16_160/0.6)]";
+                return (
+                  <Tooltip key={`ev-${i}`}>
+                    <TooltipTrigger asChild>
+                      <motion.div
+                        className={`absolute top-4 -translate-y-1/2 h-3 w-3 rounded-full ${dotColor} ${dotGlow} ring-2 ring-background cursor-pointer z-10`}
+                        style={{ left: `${position}%` }}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: i * 0.05, type: "spring", stiffness: 400 }}
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs font-mono">
+                      <span className="font-semibold">{event.title}</span>
+                      <br />
+                      <span className="text-muted-foreground">{event.detail}</span>
+                      <br />
+                      <span className="text-muted-foreground">{new Date(event.at).toLocaleString()}</span>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
+            {/* Legend */}
+            <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-verified" />
+                <span className="text-[9px] text-muted-foreground font-mono uppercase">Merge</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-violating" />
+                <span className="text-[9px] text-muted-foreground font-mono uppercase">Violation</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-repairing" />
+                <span className="text-[9px] text-muted-foreground font-mono uppercase">Shadow</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </motion.div>
+
+      {/* ─── Quick Actions Bar ─── */}
+      <motion.div variants={sectionVariants}>
+        <Card className="bg-card/60 backdrop-blur border-border/60 p-3 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/30 via-repairing/20 to-violating/10" />
+          <div className="relative flex flex-wrap items-center gap-3">
+            <motion.button
+              className="card-hover-lift flex items-center gap-2 rounded-lg border border-verified/30 bg-verified/10 px-4 py-2 text-sm font-medium text-verified hover:bg-verified/20 transition-colors"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                fetch("/api/shards").then(() => {
+                  fetch("/api/stats")
+                    .then((r) => r.json())
+                    .then((d) => setStats(d));
+                });
+              }}
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Run All Invariants
+            </motion.button>
+            <motion.button
+              className="card-hover-lift flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 px-4 py-2 text-sm font-medium text-foreground hover:bg-background/60 transition-colors"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                const data = JSON.stringify({ stats, metrics, exportedAt: new Date().toISOString() }, null, 2);
+                const blob = new Blob([data], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `epistemic-dashboard-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              <Download className="h-4 w-4" />
+              Export Dashboard
+            </motion.button>
+            <motion.button
+              className={`card-hover-lift flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+                autoRefresh
+                  ? "border-verified/30 bg-verified/10 text-verified hover:bg-verified/20"
+                  : "border-border/60 bg-background/40 text-muted-foreground hover:bg-background/60"
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setAutoRefresh((v) => !v)}
+            >
+              <RefreshCw className={`h-4 w-4 ${autoRefresh ? "animate-spin" : ""}`} style={autoRefresh ? { animationDuration: "3s" } : undefined} />
+              {autoRefresh ? "Auto-Refresh: ON" : "Auto-Refresh: OFF"}
+            </motion.button>
+          </div>
+        </Card>
+      </motion.div>
+
+      {/* Capability Map */}
       <motion.div variants={sectionVariants}>
         <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/40 via-repairing/30 to-violating/20" />

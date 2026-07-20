@@ -207,6 +207,27 @@
 *::-webkit-scrollbar-thumb:hover {
   background-color: oklch(0.45 0.02 160);
 }
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.34 0.014 165 / 0.5) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: oklch(0.34 0.014 165 / 0.5);
+  border-radius: 9999px;
+}
+
+/* Loading skeleton pulse */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+.skeleton-pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
 
 /* Code / mono blocks */
 .codeblock {
@@ -214,4 +235,421 @@
   font-size: 12.5px;
   line-height: 1.55;
   tab-size: 2;
+}
+
+/* ========================================================================
+   ENHANCEMENTS — Premium dark-theme control-room additions
+   ======================================================================== */
+
+/* 1. Noise texture overlay ------------------------------------------------ */
+/* Subtle SVG noise for premium card backgrounds. Layer via pseudo-element. */
+.noise-overlay {
+  position: relative;
+}
+.noise-overlay::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+  z-index: 1;
+  mix-blend-mode: overlay;
+}
+
+/* 2. Glassmorphism utility ------------------------------------------------ */
+.glass {
+  background: oklch(0.22 0.014 168 / 0.45);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid oklch(0.42 0.02 165 / 0.25);
+  box-shadow:
+    0 0 0 1px oklch(0.32 0.014 165 / 0.08) inset,
+    0 8px 32px -8px oklch(0.10 0.01 165 / 0.55);
+}
+
+/* 3. Animated gradient border --------------------------------------------- */
+@keyframes gradient-rotate {
+  0%   { --gradient-angle: 0deg; }
+  100% { --gradient-angle: 360deg; }
+}
+@property --gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.animated-gradient-border {
+  --gradient-angle: 0deg;
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(var(--card), var(--card)) padding-box,
+    conic-gradient(
+      from var(--gradient-angle),
+      oklch(0.78 0.16 160 / 0.7),
+      oklch(0.80 0.15 80 / 0.5),
+      oklch(0.74 0.13 190 / 0.7),
+      oklch(0.78 0.16 160 / 0.7)
+    ) border-box;
+  animation: gradient-rotate 4s linear infinite;
+}
+
+/* 4. Shimmer effect ------------------------------------------------------- */
+@keyframes shimmer-slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: oklch(0.25 0.012 168);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.96 0.01 150 / 0.06) 40%,
+    oklch(0.96 0.01 150 / 0.12) 50%,
+    oklch(0.96 0.01 150 / 0.06) 60%,
+    transparent 100%
+  );
+  animation: shimmer-slide 1.8s ease-in-out infinite;
+}
+
+/* 5. Floating particles --------------------------------------------------- */
+.particle-field {
+  position: relative;
+  overflow: hidden;
+}
+.particle-field::before,
+.particle-field::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.particle-field::before {
+  background-image:
+    radial-gradient(circle 1.2px at 15% 25%, oklch(0.78 0.16 160 / 0.22), transparent),
+    radial-gradient(circle 1px   at 45% 65%, oklch(0.80 0.15 80 / 0.18), transparent),
+    radial-gradient(circle 1.5px at 72% 18%, oklch(0.74 0.13 190 / 0.20), transparent),
+    radial-gradient(circle 0.8px at 88% 78%, oklch(0.78 0.16 160 / 0.15), transparent),
+    radial-gradient(circle 1px   at 30% 90%, oklch(0.80 0.15 80 / 0.16), transparent),
+    radial-gradient(circle 1.3px at 60% 40%, oklch(0.74 0.13 190 / 0.14), transparent),
+    radial-gradient(circle 0.7px at 8%  55%, oklch(0.78 0.16 160 / 0.12), transparent),
+    radial-gradient(circle 1.1px at 95% 35%, oklch(0.80 0.15 80 / 0.17), transparent);
+  background-size: 200% 200%;
+  animation: particle-drift 18s ease-in-out infinite alternate;
+}
+.particle-field::after {
+  background-image:
+    radial-gradient(circle 1px   at 22% 50%, oklch(0.78 0.16 160 / 0.15), transparent),
+    radial-gradient(circle 0.8px at 55% 20%, oklch(0.74 0.13 190 / 0.13), transparent),
+    radial-gradient(circle 1.2px at 80% 60%, oklch(0.80 0.15 80 / 0.16), transparent),
+    radial-gradient(circle 0.6px at 40% 80%, oklch(0.78 0.16 160 / 0.10), transparent),
+    radial-gradient(circle 0.9px at 68% 45%, oklch(0.74 0.13 190 / 0.14), transparent),
+    radial-gradient(circle 1.4px at 12% 72%, oklch(0.80 0.15 80 / 0.18), transparent);
+  background-size: 220% 220%;
+  animation: particle-drift 24s ease-in-out infinite alternate-reverse;
+}
+@keyframes particle-drift {
+  0%   { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+
+/* 6. Glow pulse keyframe -------------------------------------------------- */
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 4px oklch(0.78 0.16 160 / 0.25),
+      0 0 12px oklch(0.78 0.16 160 / 0.15);
+    opacity: 1;
+  }
+  50% {
+    box-shadow:
+      0 0 8px oklch(0.78 0.16 160 / 0.50),
+      0 0 24px oklch(0.78 0.16 160 / 0.30),
+      0 0 48px oklch(0.78 0.16 160 / 0.10);
+    opacity: 0.85;
+  }
+}
+.glow-pulse {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* 7. Heatmap cell styles -------------------------------------------------- */
+.heatmap-cell {
+  transition: background-color 0.35s ease, box-shadow 0.35s ease, transform 0.2s ease;
+  border-radius: 2px;
+}
+.heatmap-cell[data-intensity="0"] {
+  background-color: oklch(0.22 0.012 168);
+}
+.heatmap-cell[data-intensity="1"] {
+  background-color: oklch(0.38 0.06 160);
+}
+.heatmap-cell[data-intensity="2"] {
+  background-color: oklch(0.52 0.10 160);
+}
+.heatmap-cell[data-intensity="3"] {
+  background-color: oklch(0.66 0.14 160);
+}
+.heatmap-cell[data-intensity="4"] {
+  background-color: oklch(0.78 0.16 160);
+  box-shadow: 0 0 6px oklch(0.78 0.16 160 / 0.35);
+}
+.heatmap-cell:hover {
+  box-shadow: 0 0 10px oklch(0.78 0.16 160 / 0.50);
+  transform: scale(1.15);
+  z-index: 2;
+}
+
+/* 8. Data flow animation -------------------------------------------------- */
+@keyframes data-flow-dot {
+  0%   { transform: translateX(0);    opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+.data-flow {
+  position: relative;
+  overflow: hidden;
+}
+.data-flow::before,
+.data-flow::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: oklch(0.78 0.16 160 / 0.85);
+  box-shadow: 0 0 8px oklch(0.78 0.16 160 / 0.50);
+  animation: data-flow-dot 2s linear infinite;
+  margin-top: -3px;
+}
+.data-flow::after {
+  background: oklch(0.74 0.13 190 / 0.75);
+  box-shadow: 0 0 8px oklch(0.74 0.13 190 / 0.45);
+  animation-delay: 1s;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+}
+.data-flow-reverse::before,
+.data-flow-reverse::after {
+  animation-direction: reverse;
+}
+
+/* 9. Card hover lift effect ----------------------------------------------- */
+.card-hover-lift {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.card-hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 12px 28px -6px oklch(0.10 0.01 165 / 0.55),
+    0 0 0 1px oklch(0.78 0.16 160 / 0.12);
+}
+
+/* 10. Stagger fade-in ----------------------------------------------------- */
+@keyframes stagger-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.stagger-fade-in > * {
+  opacity: 0;
+  animation: stagger-fade-up 0.45s ease-out forwards;
+}
+.stagger-fade-in > *:nth-child(1)  { animation-delay: 0.04s; }
+.stagger-fade-in > *:nth-child(2)  { animation-delay: 0.08s; }
+.stagger-fade-in > *:nth-child(3)  { animation-delay: 0.12s; }
+.stagger-fade-in > *:nth-child(4)  { animation-delay: 0.16s; }
+.stagger-fade-in > *:nth-child(5)  { animation-delay: 0.20s; }
+.stagger-fade-in > *:nth-child(6)  { animation-delay: 0.24s; }
+.stagger-fade-in > *:nth-child(7)  { animation-delay: 0.28s; }
+.stagger-fade-in > *:nth-child(8)  { animation-delay: 0.32s; }
+.stagger-fade-in > *:nth-child(9)  { animation-delay: 0.36s; }
+.stagger-fade-in > *:nth-child(10) { animation-delay: 0.40s; }
+.stagger-fade-in > *:nth-child(n+11) { animation-delay: 0.44s; }
+
+/* 11. Scroll reveal ------------------------------------------------------- */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 0.55s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 12. Enhanced scrollbar -------------------------------------------------- */
+/* Overrides the base scrollbar with a visible track for scrollable panels */
+.scrollbar-dark {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.38 0.018 165 / 0.70) oklch(0.18 0.012 168 / 0.50);
+}
+.scrollbar-dark::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+.scrollbar-dark::-webkit-scrollbar-track {
+  background: oklch(0.18 0.012 168 / 0.50);
+  border-radius: 9999px;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb {
+  background-color: oklch(0.38 0.018 165 / 0.70);
+  border: 1px solid oklch(0.22 0.014 168 / 0.60);
+  border-radius: 9999px;
+}
+.scrollbar-dark::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.50 0.03 160);
+}
+
+/* 13. Status bar animation ------------------------------------------------ */
+@keyframes status-gradient {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.status-bar-fill {
+  background: linear-gradient(
+    90deg,
+    oklch(0.78 0.16 160),
+    oklch(0.74 0.13 190),
+    oklch(0.80 0.15 80),
+    oklch(0.74 0.13 190),
+    oklch(0.78 0.16 160)
+  );
+  background-size: 300% 100%;
+  animation: status-gradient 3s ease infinite;
+  border-radius: inherit;
+}
+
+/* 14. Tooltip arrow ------------------------------------------------------- */
+.tooltip {
+  position: relative;
+  background: oklch(0.22 0.014 168 / 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid oklch(0.38 0.02 165 / 0.30);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: oklch(0.96 0.01 150);
+  box-shadow: 0 4px 16px -4px oklch(0.10 0.01 165 / 0.55);
+}
+.tooltip::before {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: oklch(0.22 0.014 168 / 0.92);
+  border: 1px solid oklch(0.38 0.02 165 / 0.30);
+  transform: rotate(45deg);
+}
+/* Arrow on top */
+.tooltip-top::before {
+  top: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-right: none;
+  border-bottom: none;
+}
+/* Arrow on bottom */
+.tooltip-bottom::before {
+  bottom: -5px;
+  left: 50%;
+  margin-left: -4px;
+  border-left: none;
+  border-top: none;
+}
+/* Arrow on left */
+.tooltip-left::before {
+  left: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-right: none;
+  border-top: none;
+}
+/* Arrow on right */
+.tooltip-right::before {
+  right: -5px;
+  top: 50%;
+  margin-top: -4px;
+  border-left: none;
+  border-bottom: none;
+}
+
+/* 15. Print-friendly ------------------------------------------------------ */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    background-image: none !important;
+  }
+  .bg-grid,
+  .bg-grid-fine,
+  .noise-overlay::before,
+  .particle-field::before,
+  .particle-field::after,
+  .shimmer::after,
+  .data-flow::before,
+  .data-flow::after,
+  .animate-sweep::after,
+  .animated-gradient-border {
+    display: none !important;
+  }
+  .glass {
+    background: #f5f5f5 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border-color: #ddd !important;
+    box-shadow: none !important;
+  }
+  .card-hover-lift:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  .scrollbar-dark,
+  .status-bar-fill,
+  .tooltip::before,
+  .glow-pulse,
+  .glow-verified,
+  .glow-repairing,
+  .glow-violating {
+    box-shadow: none !important;
+    animation: none !important;
+  }
+  /* Hide purely decorative / interactive elements */
+  nav,
+  [data-print="hide"],
+  .no-print {
+    display: none !important;
+  }
+  .scroll-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .stagger-fade-in > * {
+    opacity: 1 !important;
+    animation: none !important;
+  }
 }

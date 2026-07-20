@@ -5,10 +5,12 @@ import dynamic from "next/dynamic";
 import {
   ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
   Sparkles, Terminal, Boxes, Globe2, BookOpen, Zap, Search,
-  Clock, GitCompare, CircuitBoard, FileText, History, Library,
+  Clock, GitCompare, CircuitBoard, FileText, History, Library, Activity,
+  Keyboard,
 } from "lucide-react";
 import { usePinnedSections } from "@/hooks/use-pinned-sections";
 import { Pin, PinOff, Star } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 // Lazy-load all section components to reduce initial bundle
 const OverviewSection = dynamic(() => import("@/components/epistemic/overview").then((m) => m.OverviewSection), { ssr: false });
@@ -25,10 +27,13 @@ const PolicyDiffSection = dynamic(() => import("@/components/epistemic/policy-di
 const ZkCircuitSection = dynamic(() => import("@/components/epistemic/zk-circuit").then((m) => m.ZkCircuitSection), { ssr: false });
 const AuditReportsSection = dynamic(() => import("@/components/epistemic/audit-reports").then((m) => m.AuditReportsSection), { ssr: false });
 const PolicyVersioningSection = dynamic(() => import("@/components/epistemic/policy-versioning").then((m) => m.PolicyVersioningSection), { ssr: false });
+const PerformanceMetricsSection = dynamic(() => import("@/components/epistemic/performance-metrics").then((m) => m.PerformanceMetricsSection), { ssr: false });
 const GlobalSearch = dynamic(() => import("@/components/epistemic/global-search").then((m) => m.GlobalSearch), { ssr: false });
 const TemplateLibrarySection = dynamic(() => import("@/components/epistemic/template-library").then((m) => m.TemplateLibrarySection), { ssr: false });
+const KeyboardShortcutsPanel = dynamic(() => import("@/components/epistemic/keyboard-shortcuts").then((m) => m.KeyboardShortcutsPanel), { ssr: false });
+const NotificationCenter = dynamic(() => import("@/components/epistemic/notification-center").then((m) => m.NotificationCenter), { ssr: false });
 
-type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "miner" | "cli" | "federation" | "timeline" | "diff" | "zkcircuit" | "audit" | "versions" | "templates";
+type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "miner" | "cli" | "federation" | "timeline" | "diff" | "zkcircuit" | "audit" | "versions" | "templates" | "metrics";
 
 const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
   { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
@@ -46,6 +51,7 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: 
   { id: "versions", label: "Versioning", icon: History, hint: "Revision history" },
   { id: "cli", label: "CLI Terminal", icon: Terminal, hint: "Validate .epd" },
   { id: "federation", label: "Federation", icon: Globe2, hint: "epistemic://" },
+  { id: "metrics", label: "Metrics", icon: Activity, hint: "Live performance" },
 ];
 
 function SectionLoader() {
@@ -63,6 +69,7 @@ export default function Home() {
   const [active, setActive] = useState<SectionId>("overview");
   const [health, setHealth] = useState<number | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const sectionIds = SECTIONS.map((s) => s.id);
   const { pinned, toggle: togglePin, ready: pinnedReady } = usePinnedSections(sectionIds);
   const pinnedSections = SECTIONS.filter((s) => pinned.has(s.id));
@@ -80,14 +87,46 @@ export default function Home() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      /* Global search: ⌘K / Ctrl+K */
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen((o) => !o);
+        return;
+      }
+      /* Keyboard shortcuts help: ? (Shift+/) — only when not in an input */
+      const target = e.target as HTMLElement;
+      const inInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+      if ((e.key === "?" || (e.shiftKey && e.key === "/")) && !inInput) {
+        e.preventDefault();
+        setShortcutsOpen((o) => !o);
+        return;
+      }
+      /* Number keys 1-9 to jump to section (only when not in input) */
+      if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey && e.key >= "1" && e.key <= "9") {
+        const idx = parseInt(e.key, 10) - 1;
+        if (idx < SECTIONS.length) {
+          setActive(SECTIONS[idx].id);
+          if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        return;
+      }
+      /* Arrow keys for prev/next section (only when not in input) */
+      if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const currentIdx = SECTIONS.findIndex((s) => s.id === active);
+        if (e.key === "ArrowLeft" && currentIdx > 0) {
+          e.preventDefault();
+          setActive(SECTIONS[currentIdx - 1].id);
+          if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+        } else if (e.key === "ArrowRight" && currentIdx < SECTIONS.length - 1) {
+          e.preventDefault();
+          setActive(SECTIONS[currentIdx + 1].id);
+          if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+        }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [active]);
 
   const jump = useCallback((id: string) => {
     setActive(id as SectionId);
@@ -111,6 +150,7 @@ export default function Home() {
       case "audit": return <AuditReportsSection />;
       case "versions": return <PolicyVersioningSection />;
       case "templates": return <TemplateLibrarySection onCreate={() => jump("studio")} />;
+      case "metrics": return <PerformanceMetricsSection />;
       default: return null;
     }
   }, [active, jump]);
@@ -138,24 +178,30 @@ export default function Home() {
                 <span className={"h-2 w-2 rounded-full " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing animate-epistemic-pulse" : "bg-violating animate-epistemic-pulse")} />
                 <span className="text-xs font-mono tabular-nums">{health === null ? "—" : `${health}%`} health</span>
               </div>
-              <button type="button" onClick={() => setSearchOpen(true)} className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-verified/40 transition-colors" title="Search (Cmd+K)">
+              <NotificationCenter />
+              <button type="button" onClick={() => setSearchOpen(true)} className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-verified/40 transition-colors" title="Search (⌘K)">
                 <Search className="h-3.5 w-3.5" /><span className="hidden sm:inline">Search</span>
                 <kbd className="hidden md:inline-flex items-center rounded border border-border/60 bg-muted/40 px-1 py-0.5 text-[9px] font-mono">⌘K</kbd>
+              </button>
+              <button type="button" onClick={() => setShortcutsOpen(true)} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors" title="Keyboard shortcuts (?)">
+                <Keyboard className="h-3.5 w-3.5" />
+                <kbd className="hidden md:inline-flex items-center rounded border border-border/60 bg-muted/40 px-1 py-0.5 text-[9px] font-mono">?</kbd>
               </button>
               <a href="#" onClick={(e) => e.preventDefault()} className="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors" title="Specification">
                 <BookOpen className="h-3.5 w-3.5" /> Spec
               </a>
             </div>
           </div>
-          <nav className="flex items-center gap-1 overflow-x-auto pb-2 -mt-1 scrollbar-thin">
-            {SECTIONS.map((s) => {
+          <nav className="relative flex items-center gap-1 overflow-x-auto pb-2 -mt-1 scrollbar-thin scroll-smooth" style={{ maskImage: "linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent)" }}>
+            {SECTIONS.map((s, idx) => {
               const Icon = s.icon;
               const isActive = active === s.id;
               return (
-                <button key={s.id} onClick={() => setActive(s.id)} className={"group relative inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all " + (isActive ? "bg-verified/10 text-verified border border-verified/30" : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent")}>
+                <button key={s.id} onClick={() => setActive(s.id)} className={"group relative inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all " + (isActive ? "bg-verified/10 text-verified border border-verified/30 shadow-sm shadow-verified/20" : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent")}>
                   <Icon className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">{s.label}</span>
                   <span className="sm:hidden">{s.label.split(" ")[0]}</span>
+                  <span className="hidden md:inline-flex items-center justify-center h-3.5 w-3.5 rounded text-[8px] font-mono text-muted-foreground/50 bg-muted/20">{idx + 1}</span>
                   {isActive && <span className="absolute -bottom-2 left-2 right-2 h-px bg-verified/50" />}
                 </button>
               );
@@ -164,6 +210,16 @@ export default function Home() {
         </div>
       </header>
       <main className="relative flex-1 mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-5">
+        {/* Breadcrumb trail */}
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60 mb-2">
+          <span className="font-mono">epistemic://</span>
+          <span className="text-border/60">/</span>
+          <span className="font-mono text-muted-foreground">{active}</span>
+          <span className="ml-auto flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-verified/60 animate-epistemic-pulse" />
+            <span className="font-mono">live</span>
+          </span>
+        </div>
         <SectionHeader id={active} onTogglePin={togglePin} isPinned={pinned.has(active)} pinnedReady={pinnedReady} />
         {pinnedReady && pinnedSections.length > 0 && (
           <div className="mt-3 flex items-center gap-1.5 flex-wrap">
@@ -180,23 +236,45 @@ export default function Home() {
           </div>
         )}
         <div className="mt-4">
-          <Suspense fallback={<SectionLoader />}>{sectionContent}</Suspense>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+            >
+              <Suspense fallback={<SectionLoader />}>{sectionContent}</Suspense>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
-      <footer className="mt-auto border-t border-border/60 bg-background/80 backdrop-blur">
-        <div className="mx-auto max-w-[1400px] px-4 sm:px-6 py-3">
+      <footer className="mt-auto border-t border-border/60 bg-background/80 backdrop-blur relative">
+        <div className="bg-grid-fine absolute inset-0 opacity-20 pointer-events-none" />
+        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 py-3">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime v0.1</span>
+            <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime v0.2</span>
+            <span className="h-3 w-px bg-border/40" />
             <span className="font-mono">MMR · CRDT · ZK-STARK</span>
             <span className="font-mono hidden sm:inline">correct-by-construction enforcers</span>
+            <span className="h-3 w-px bg-border/40 hidden sm:inline" />
+            <span className="font-mono hidden md:inline">16 sections · {SECTIONS.length} modules</span>
             <span className="ml-auto flex items-center gap-3">
               <span className="font-mono">policy DSL: <span className="text-verified">.epd</span></span>
-              <span className="font-mono">edge→cloud sync: <span className="text-repairing">p2p gossip</span></span>
+              <span className="font-mono hidden sm:inline">edge→cloud sync: <span className="text-repairing">p2p gossip</span></span>
+              <span className="font-mono hidden lg:inline">audit: <span className="text-quarantined">ZK-anchored</span></span>
             </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground/60 mt-1.5">
+            <span className="font-mono">shard consensus: CRDT-OR-Set</span>
+            <span className="font-mono">merge strategy: least-divergent repair</span>
+            <span className="font-mono hidden md:inline">shadow bridge: digital-twin with what-if branching</span>
+            <span className="font-mono hidden lg:inline">federation: epistemic:// multi-org reconciliation</span>
           </div>
         </div>
       </footer>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} onNavigate={(section) => jump(section)} />
+      <KeyboardShortcutsPanel open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </div>
   );
 }
@@ -217,6 +295,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   audit: { title: "Audit Reports", sub: "Exportable compliance report for regulators" },
   versions: { title: "Policy Versioning", sub: "Track .epd revisions, snapshot & restore" },
   templates: { title: "Template Library", sub: "Create policies from domain templates" },
+  metrics: { title: "Performance Metrics", sub: "Real-time throughput, latency & violation analytics" },
 };
 
 function SectionHeader({ id, onTogglePin, isPinned, pinnedReady }: { id: SectionId; onTogglePin?: (id: string) => void; isPinned?: boolean; pinnedReady?: boolean }) {
