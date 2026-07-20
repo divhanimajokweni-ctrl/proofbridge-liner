@@ -1,0 +1,953 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Sparkles,
+     7→  Pickaxe,
+     8→  Check,
+     9→  X,
+    10→  TrendingUp,
+    11→  Activity,
+    12→  Brain,
+    13→  BarChart3,
+    14→  ShieldCheck,
+    15→  AlertTriangle,
+    16→  Clock,
+    17→  RotateCw,
+    18→  Gauge,
+    19→  Eye,
+    20→  EyeOff,
+    21→  Target,
+    22→  Flame,
+    23→  Loader2,
+    24→} from "lucide-react";
+    25→import {
+    26→  Card,
+    27→  CardContent,
+    28→  CardHeader,
+    29→  CardTitle,
+    30→  CardDescription,
+    31→} from "@/components/ui/card";
+    32→import {
+    33→  Select,
+    34→  SelectContent,
+    35→  SelectItem,
+    36→  SelectTrigger,
+    37→  SelectValue,
+    38→} from "@/components/ui/select";
+    39→import { Button } from "@/components/ui/button";
+    40→import { Badge } from "@/components/ui/badge";
+    41→import { Skeleton } from "@/components/ui/skeleton";
+    42→import { Progress } from "@/components/ui/progress";
+    43→import { Separator } from "@/components/ui/separator";
+    44→import {
+    45→  Tooltip,
+    46→  TooltipContent,
+    47→  TooltipProvider,
+    48→  TooltipTrigger,
+    49→} from "@/components/ui/tooltip";
+    50→import {
+    51→  AreaChart,
+    52→  Area,
+    53→  XAxis,
+    54→  YAxis,
+    55→  ResponsiveContainer,
+    56→  Cell,
+    57→  Treemap,
+    58→} from "recharts";
+    59→import { useToast } from "@/hooks/use-toast";
+    60→import { cn } from "@/lib/utils";
+    61→import type { PolicyRow, MinedInvariantRow, Severity, StatsResponse } from "@/lib/types";
+    62→import { StatusPill, SeverityBadge } from "./primitives";
+    63→
+    64→const POLL_MS = 12_000;
+    65→
+    66→interface DriftSummary {
+    67→  total: number;
+    68→  byInvariant: Record<string, number>;
+    69→  bySeverity: Record<string, number>;
+    70→  byPolicy: Record<string, number>;
+    71→  sampleFields: string[];
+    72→}
+    73→
+    74→function fmtRelative(iso: string | null | undefined): string {
+    75→  if (!iso) return "—";
+    76→  const t = new Date(iso).getTime();
+    77→  const diff = Date.now() - t;
+    78→  if (diff < 0) return "just now";
+    79→  const s = Math.floor(diff / 1000);
+    80→  if (s < 60) return `${s}s ago`;
+    81→  const m = Math.floor(s / 60);
+    82→  if (m < 60) return `${m}m ago`;
+    83→  const h = Math.floor(m / 60);
+    84→  if (h < 24) return `${h}h ago`;
+    85→  return `${Math.floor(h / 24)}d ago`;
+    86→}
+    87→
+    88→function isStatistical(rationale: string): boolean {
+    89→  return rationale.trim().toLowerCase().startsWith("statistical");
+    90→}
+    91→
+    92→/** Severity → gradient border color */
+    93→function severityBorderColor(severity: Severity, accepted: boolean): string {
+    94→  if (accepted) return "border-verified/50";
+    95→  switch (severity) {
+    96→    case "critical": return "border-violating/50";
+    97→    case "high": return "border-repairing/50";
+    98→    case "medium": return "border-quarantined/50";
+    99→    case "low": return "border-border/60";
+   100→  }
+   101→}
+   102→
+   103→/** Severity → card top glow */
+   104→function severityGlow(severity: Severity, accepted: boolean): string {
+   105→  if (accepted) return "glow-verified";
+   106→  switch (severity) {
+   107→    case "critical": return "shadow-[0_0_12px_-3px_var(--violating)]";
+   108→    case "high": return "shadow-[0_0_12px_-3px_var(--repairing)]";
+   109→    default: return "";
+   110→  }
+   111→}
+   112→
+   113→/** Confidence gauge — radial progress ring */
+   114→function ConfidenceGauge({
+   115→  confidence,
+   116→  accepted,
+   117→  size = 52,
+   118→}: {
+   119→  confidence: number;
+   120→  accepted: boolean;
+   121→  size?: number;
+   122→}) {
+   123→  const pct = Math.round(confidence * 100);
+   124→  const band =
+   125→    confidence >= 0.8 ? "verified" : confidence >= 0.6 ? "repairing" : "muted";
+   126→  const colorMap: Record<string, string> = {
+   127→    verified: "var(--verified)",
+   128→    repairing: "var(--repairing)",
+   129→    muted: "var(--muted-foreground)",
+   130→  };
+   131→  const color = accepted ? "var(--verified)" : colorMap[band];
+   132→  const textColorMap: Record<string, string> = {
+   133→    verified: "text-verified",
+   134→    repairing: "text-repairing",
+   135→    muted: "text-muted-foreground",
+   136→  };
+   137→  const textColor = accepted ? "text-verified" : textColorMap[band];
+   138→
+   139→  const strokeWidth = 4;
+   140→  const radius = (size - strokeWidth) / 2;
+   141→  const circumference = 2 * Math.PI * radius;
+   142→  const offset = circumference - (pct / 100) * circumference;
+   143→
+   144→  return (
+   145→    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+   146→      <svg width={size} height={size} className="-rotate-90">
+   147→        <circle
+   148→          cx={size / 2}
+   149→          cy={size / 2}
+   150→          r={radius}
+   151→          fill="none"
+   152→          stroke="var(--muted)"
+   153→          strokeWidth={strokeWidth}
+   154→          opacity={0.3}
+   155→        />
+   156→        <motion.circle
+   157→          cx={size / 2}
+   158→          cy={size / 2}
+   159→          r={radius}
+   160→          fill="none"
+   161→          stroke={color}
+   162→          strokeWidth={strokeWidth}
+   163→          strokeDasharray={circumference}
+   164→          initial={{ strokeDashoffset: circumference }}
+   165→          animate={{ strokeDashoffset: offset }}
+   166→          transition={{ duration: 0.8, ease: "easeOut" }}
+   167→          strokeLinecap="round"
+   168→        />
+   169→      </svg>
+   170→      <div className="absolute inset-0 flex items-center justify-center">
+   171→        <span className={cn("font-mono text-[11px] font-bold tabular-nums", textColor)}>
+   172→          {pct}
+   173→        </span>
+   174→      </div>
+   175→    </div>
+   176→  );
+   177→}
+   178→
+   179→/** Candidate card with all enhancements */
+   180→function CandidateCard({
+   181→  candidate,
+   182→  policyName,
+   183→  onAccept,
+   184→  onReject,
+   185→  busy,
+   186→  index,
+   187→}: {
+   188→  candidate: MinedInvariantRow;
+   189→  policyName: string;
+   190→  onAccept: () => void;
+   191→  onReject: () => void;
+   192→  busy: boolean;
+   193→  index: number;
+   194→}) {
+   195→  const statistical = isStatistical(candidate.rationale);
+   196→  const [hovered, setHovered] = useState(false);
+   197→
+   198→  return (
+   199→    <motion.div
+   200→      initial={{ opacity: 0, y: 16, scale: 0.97 }}
+   201→      animate={{ opacity: 1, y: 0, scale: 1 }}
+   202→      exit={{ opacity: 0, y: -8, scale: 0.97 }}
+   203→      transition={{ duration: 0.35, delay: index * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
+   204→      layout
+   205→    >
+   206→      <Card
+   207→        className={cn(
+   208→          "bg-card/60 backdrop-blur p-3.5 relative overflow-hidden transition-all duration-200",
+   209→          severityBorderColor(candidate.severity as Severity, candidate.accepted),
+   210→          severityGlow(candidate.severity as Severity, candidate.accepted),
+   211→          hovered && !candidate.accepted && "border-opacity-100",
+   212→          candidate.accepted && "border-verified/30 glow-verified",
+   213→        )}
+   214→        onMouseEnter={() => setHovered(true)}
+   215→        onMouseLeave={() => setHovered(false)}
+   216→      >
+   217→        {/* Gradient border top accent */}
+   218→        <div
+   219→          className={cn(
+   220→            "absolute top-0 left-0 right-0 h-[2px]",
+   221→            candidate.accepted
+   222→              ? "bg-gradient-to-r from-verified/0 via-verified/60 to-verified/0"
+   223→              : candidate.severity === "critical"
+   224→                ? "bg-gradient-to-r from-violating/0 via-violating/60 to-violating/0"
+   225→                : candidate.severity === "high"
+   226→                  ? "bg-gradient-to-r from-repairing/0 via-repairing/60 to-repairing/0"
+   227→                  : "bg-gradient-to-r from-quarantined/0 via-quarantined/60 to-quarantined/0",
+   228→          )}
+   229→        />
+   230→        <div className="bg-grid-fine absolute inset-0 opacity-20 pointer-events-none" />
+   231→        <div className="relative space-y-2.5">
+   232→          {/* Header: badges + timestamp */}
+   233→          <div className="flex items-start justify-between gap-2">
+   234→            <div className="flex flex-wrap items-center gap-1.5">
+   235→              <SeverityBadge severity={candidate.severity as Severity} />
+   236→              <Badge
+   237→                variant="outline"
+   238→                className={cn(
+   239→                  "text-[9px] gap-0.5",
+   240→                  statistical
+   241→                    ? "border-repairing/30 bg-repairing/10 text-repairing"
+   242→                    : "border-verified/30 bg-verified/10 text-verified",
+   243→                )}
+   244→              >
+   245→                {statistical ? (
+   246→                  <>
+   247→                    <BarChart3 className="h-2.5 w-2.5" /> statistical
+   248→                  </>
+   249→                ) : (
+   250→                  <>
+   251→                    <Sparkles className="h-2.5 w-2.5" /> AI-mined
+   252→                  </>
+   253→                )}
+   254→              </Badge>
+   255→              {candidate.accepted && <StatusPill status="verified" label="Hardened" />}
+   256→            </div>
+   257→            <span className="shrink-0 text-[10px] text-muted-foreground">
+   258→              {fmtRelative(candidate.createdAt)}
+   259→            </span>
+   260→          </div>
+   261→
+   262→          {/* Predicate + Confidence gauge row */}
+   263→          <div className="flex items-start gap-3">
+   264→            <div className="flex-1 min-w-0">
+   265→              <pre className="codeblock rounded-md border border-border/60 bg-background/60 p-2.5 text-verified overflow-x-auto">
+   266→{candidate.predicate}
+   267→              </pre>
+   268→            </div>
+   269→            <div className="shrink-0 flex flex-col items-center gap-1">
+   270→              <ConfidenceGauge confidence={candidate.confidence} accepted={candidate.accepted} />
+   271→              <span className="text-[9px] text-muted-foreground uppercase tracking-wide">conf</span>
+   272→            </div>
+   273→          </div>
+   274→
+   275→          {/* Rationale — expand on hover */}
+   276→          <div
+   277→            className={cn(
+   278→              "transition-all duration-200 overflow-hidden",
+   279→              hovered ? "max-h-32 opacity-100" : "max-h-6 opacity-70",
+   280→            )}
+   281→          >
+   282→            <p className="text-[11px] leading-relaxed text-muted-foreground">
+   283→              {candidate.rationale}
+   284→            </p>
+   285→          </div>
+   286→          {!hovered && candidate.rationale.length > 60 && (
+   287→            <div className="flex items-center gap-1 text-[9px] text-muted-foreground/50">
+   288→              <Eye className="h-2.5 w-2.5" /> hover for full rationale
+   289→            </div>
+   290→          )}
+   291→
+   292→          <Separator className="bg-border/40" />
+   293→
+   294→          {/* Footer: policy + actions */}
+   295→          <div className="flex items-center justify-between gap-2">
+   296→            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+   297→              <span className="flex items-center gap-1">
+   298→                <ShieldCheck className="h-3 w-3" />
+   299→                <span className="font-mono">{policyName}</span>
+   300→              </span>
+   301→            </div>
+   302→            {candidate.accepted ? (
+   303→              <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[10px] gap-0.5">
+   304→                <Check className="h-2.5 w-2.5" /> hardened into enforcer
+   305→              </Badge>
+   306→            ) : (
+   307→              <div className="flex items-center gap-1.5">
+   308→                <motion.div whileTap={{ scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+   309→                  <Button
+   310→                    size="sm"
+   311→                    variant="outline"
+   312→                    onClick={onReject}
+   313→                    disabled={busy}
+   314→                    className="h-7 border-violating/40 bg-violating/10 text-violating hover:bg-violating/20 px-2"
+   315→                  >
+   316→                    <X className="h-3 w-3" />
+   317→                    Reject
+   318→                  </Button>
+   319→                </motion.div>
+   320→                <motion.div whileTap={{ scale: 0.9 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+   321→                  <Button
+   322→                    size="sm"
+   323→                    onClick={onAccept}
+   324→                    disabled={busy}
+   325→                    className="h-7 border border-verified/40 bg-verified/15 text-verified hover:bg-verified/25 px-2.5"
+   326→                    variant="outline"
+   327→                  >
+   328→                    <Check className="h-3 w-3" />
+   329→                    Accept
+   330→                  </Button>
+   331→                </motion.div>
+   332→              </div>
+   333→            )}
+   334→          </div>
+   335→        </div>
+   336→      </Card>
+   337→    </motion.div>
+   338→  );
+   339→}
+   340→
+   341→/** Custom treemap content for violation patterns */
+   342→function CustomTreemapContent(props: {
+   343→  x: number;
+   344→  y: number;
+   345→  width: number;
+   346→  height: number;
+   347→  name: string;
+   348→  value: number;
+   349→  depth: number;
+   350→  index: number;
+   351→}) {
+   352→  const { x, y, width, height, name, value, depth } = props;
+   353→  if (depth !== 1 || width < 30 || height < 20) return null;
+   354→  const colors = [
+   355→    "var(--violating)",
+   356→    "var(--repairing)",
+   357→    "var(--quarantined)",
+   358→    "var(--verified)",
+   359→    "var(--muted-foreground)",
+   360→  ];
+   361→  const color = colors[props.index % colors.length];
+   362→  return (
+   363→    <g>
+   364→      <rect
+   365→        x={x}
+   366→        y={y}
+   367→        width={width}
+   368→        height={height}
+   369→        fill={color}
+   370→        opacity={0.2}
+   371→        rx={4}
+   372→        stroke={color}
+   373→        strokeWidth={1}
+   374→        strokeOpacity={0.4}
+   375→      />
+   376→      {width > 60 && (
+   377→        <text
+   378→          x={x + 6}
+   379→          y={y + 14}
+   380→          fill="var(--foreground)"
+   381→          fontSize={9}
+   382→          fontFamily="monospace"
+   383→          opacity={0.8}
+   384→        >
+   385→          {name.length > 14 ? name.slice(0, 12) + "…" : name}
+   386→        </text>
+   387→      )}
+   388→      {width > 80 && height > 30 && (
+   389→        <text
+   390→          x={x + 6}
+   391→          y={y + 26}
+   392→          fill="var(--muted-foreground)"
+   393→          fontSize={8}
+   394→          fontFamily="monospace"
+   395→        >
+   396→          {value}×
+   397→        </text>
+   398→      )}
+   399→    </g>
+   400→  );
+   401→}
+   402→
+   403→/** Mining progress indicator */
+   404→function MiningProgress({ mining, progress }: { mining: boolean; progress: number }) {
+   405→  if (!mining) return null;
+   406→  return (
+   407→    <motion.div
+   408→      initial={{ opacity: 0, height: 0 }}
+   409→      animate={{ opacity: 1, height: "auto" }}
+   410→      exit={{ opacity: 0, height: 0 }}
+   411→      className="overflow-hidden"
+   412→    >
+   413→      <div className="flex items-center gap-2 rounded-md border border-verified/30 bg-verified/5 px-3 py-2">
+   414→        <Loader2 className="h-3.5 w-3.5 animate-spin text-verified" />
+   415→        <span className="text-xs text-verified font-medium">Mining in progress…</span>
+   416→        <div className="flex-1 max-w-[120px]">
+   417→          <Progress value={progress} className="h-1.5 bg-muted/40" />
+   418→        </div>
+   419→        <span className="text-[10px] text-muted-foreground font-mono">{Math.round(progress)}%</span>
+   420→      </div>
+   421→    </motion.div>
+   422→  );
+   423→}
+   424→
+   425→export function InvariantMinerSection() {
+   426→  const { toast } = useToast();
+   427→  const [policies, setPolicies] = useState<PolicyRow[]>([]);
+   428→  const [mined, setMined] = useState<MinedInvariantRow[]>([]);
+   429→  const [loading, setLoading] = useState(true);
+   430→  const [fetchError, setFetchError] = useState(false);
+   431→  const [filterPolicyId, setFilterPolicyId] = useState<string>("all");
+   432→  const [mining, setMining] = useState(false);
+   433→  const [miningProgress, setMiningProgress] = useState(0);
+   434→  const [patchingId, setPatchingId] = useState<string | null>(null);
+   435→  const [driftSummary, setDriftSummary] = useState<DriftSummary | null>(null);
+   436→  const [llmUsed, setLlmUsed] = useState<boolean | null>(null);
+   437→  const [stats, setStats] = useState<StatsResponse | null>(null);
+   438→
+   439→  const policyMap = useMemo(() => {
+   440→    const m: Record<string, PolicyRow> = {};
+   441→    for (const p of policies) m[p.id] = p;
+   442→    return m;
+   443→  }, [policies]);
+   444→
+   445→  const policyName = (id: string | null, fallback?: string | null) =>
+   446→    fallback ?? (id ? policyMap[id]?.name ?? "global" : "global");
+   447→
+   448→  // Load policies once.
+   449→  useEffect(() => {
+   450→    let cancelled = false;
+   451→    fetch("/api/policies")
+   452→      .then((r) => r.json())
+   453→      .then((d: { policies: PolicyRow[] }) => {
+   454→        if (cancelled) return;
+   455→        setPolicies(d.policies ?? []);
+   456→      })
+   457→      .catch(() => {});
+   458→    return () => {
+   459→      cancelled = true;
+   460→    };
+   461→  }, []);
+   462→
+   463→  // Load stats for drift telemetry panel.
+   464→  useEffect(() => {
+   465→    let cancelled = false;
+   466→    const load = () =>
+   467→      fetch("/api/stats")
+   468→        .then((r) => r.json())
+   469→        .then((d: StatsResponse) => {
+   470→          if (cancelled) return;
+   471→          setStats(d);
+   472→        })
+   473→        .catch(() => {});
+   474→    load();
+   475→    const t = setInterval(load, POLL_MS);
+   476→    return () => {
+   477→      cancelled = true;
+   478→      clearInterval(t);
+   479→    };
+   480→  }, []);
+   481→
+   482→  const loadMined = useCallback(async () => {
+   483→    try {
+   484→      const url =
+   485→        filterPolicyId && filterPolicyId !== "all"
+   486→          ? `/api/miner?policyId=${encodeURIComponent(filterPolicyId)}`
+   487→          : "/api/miner";
+   488→      const r = await fetch(url);
+   489→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   490→      const d: { mined: MinedInvariantRow[] } = await r.json();
+   491→      setMined(d.mined ?? []);
+   492→      setFetchError(false);
+   493→    } catch {
+   494→      setFetchError(true);
+   495→    } finally {
+   496→      setLoading(false);
+   497→    }
+   498→  }, [filterPolicyId]);
+   499→
+   500→  useEffect(() => {
+   501→    setLoading(true);
+   502→    loadMined();
+   503→    const t = setInterval(loadMined, POLL_MS);
+   504→    return () => clearInterval(t);
+   505→  }, [loadMined]);
+   506→
+   507→  const mine = useCallback(async () => {
+   508→    setMining(true);
+   509→    setMiningProgress(0);
+   510→    // Simulate progress while mining
+   511→    const progressInterval = setInterval(() => {
+   512→      setMiningProgress((p) => Math.min(p + Math.random() * 15, 90));
+   513→    }, 400);
+   514→
+   515→    try {
+   516→      const body: { policyId?: string; useLLM: boolean } = { useLLM: true };
+   517→      if (filterPolicyId && filterPolicyId !== "all") body.policyId = filterPolicyId;
+   518→      const r = await fetch("/api/miner/mine", {
+   519→        method: "POST",
+   520→        headers: { "Content-Type": "application/json" },
+   521→        body: JSON.stringify(body),
+   522→      });
+   523→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   524→      const d: { mined: MinedInvariantRow[]; llmUsed: boolean; driftSummary: DriftSummary } =
+   525→        await r.json();
+   526→      const fresh = d.mined ?? [];
+   527→      setLlmUsed(d.llmUsed);
+   528→      setDriftSummary(d.driftSummary ?? null);
+   529→      setMined((prev) => {
+   530→        const seen = new Set(prev.map((m) => m.id));
+   531→        const merged = [...fresh.filter((m) => !seen.has(m.id)), ...prev];
+   532→        return merged.sort((a, b) => b.confidence - a.confidence);
+   533→      });
+   534→      setFetchError(false);
+   535→      setMiningProgress(100);
+   536→      toast({
+   537→        title: `Mined ${fresh.length} candidate${fresh.length === 1 ? "" : "s"}`,
+   538→        description: d.llmUsed
+   539→          ? "LLM augmented the statistical drift baseline."
+   540→          : "Statistical fallback only (LLM unavailable).",
+   541→      });
+   542→    } catch (e) {
+   543→      toast({
+   544→        title: "Mining failed",
+   545→        description: e instanceof Error ? e.message : "Unknown error",
+   546→        variant: "destructive",
+   547→      });
+   548→    } finally {
+   549→      clearInterval(progressInterval);
+   550→      setTimeout(() => {
+   551→        setMining(false);
+   552→        setMiningProgress(0);
+   553→      }, 600);
+   554→    }
+   555→  }, [filterPolicyId, toast]);
+   556→
+   557→  const patch = useCallback(
+   558→    async (id: string, accepted: boolean) => {
+   559→      setPatchingId(id);
+   560→      try {
+   561→        const r = await fetch("/api/miner", {
+   562→          method: "PATCH",
+   563→          headers: { "Content-Type": "application/json" },
+   564→          body: JSON.stringify({ id, accepted }),
+   565→        });
+   566→        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   567→        const d: { mined: MinedInvariantRow } = await r.json();
+   568→        setMined((prev) =>
+   569→          prev
+   570→            .map((m) => (m.id === id ? { ...m, ...d.mined } : m))
+   571→            .sort((a, b) => b.confidence - a.confidence),
+   572→        );
+   573→        toast({
+   574→          title: accepted ? "Invariant hardened" : "Candidate rejected",
+   575→          description: accepted
+   576→            ? "Accepted invariants compile into verified enforcers."
+   577→            : "Rejected — will not be promoted to an enforcer.",
+   578→        });
+   579→      } catch (e) {
+   580→        toast({
+   581→          title: "Update failed",
+   582→          description: e instanceof Error ? e.message : "Unknown error",
+   583→          variant: "destructive",
+   584→        });
+   585→      } finally {
+   586→        setPatchingId(null);
+   587→      }
+   588→    },
+   589→    [toast],
+   590→  );
+   591→
+   592→  const sortedMined = useMemo(
+   593→    () => [...mined].sort((a, b) => b.confidence - a.confidence),
+   594→    [mined],
+   595→  );
+   596→
+   597→  const topViolated = useMemo(() => {
+   598→    if (driftSummary) {
+   599→      return Object.entries(driftSummary.byInvariant)
+   600→        .sort((a, b) => b[1] - a[1])
+   601→        .slice(0, 5);
+   602→    }
+   603→    return stats?.drift?.topViolated ?? ([] as [string, number][]);
+   604→  }, [driftSummary, stats]);
+   605→
+   606→  const totalViolations = stats?.drift?.total ?? stats?.counts.violations ?? driftSummary?.total ?? 0;
+   607→
+   608→  // Build sparkline data from topViolated
+   609→  const sparklineData = useMemo(() => {
+   610→    if (topViolated.length === 0) return [];
+   611→    return topViolated.map(([name, count], i) => ({
+   612→      name: name.length > 16 ? name.slice(0, 14) + "…" : name,
+   613→      violations: count,
+   614→      index: i,
+   615→    }));
+   616→  }, [topViolated]);
+   617→
+   618→  // Build treemap data for violation patterns
+   619→  const treemapData = useMemo(() => {
+   620→    const items = Object.entries(driftSummary?.bySeverity ?? {}).map(([name, value]) => ({
+   621→      name,
+   622→      size: value,
+   623→    }));
+   624→    if (items.length === 0 && topViolated.length > 0) {
+   625→      return topViolated.map(([name, value]) => ({ name, size: value }));
+   626→    }
+   627→    return items;
+   628→  }, [driftSummary, topViolated]);
+   629→
+   630→  return (
+   631→    <section className="space-y-4">
+   632→      {/* Header */}
+   633→      <motion.div
+   634→        initial={{ opacity: 0, y: -8 }}
+   635→        animate={{ opacity: 1, y: 0 }}
+   636→        transition={{ duration: 0.4 }}
+   637→        className="flex items-start gap-2.5"
+   638→      >
+   639→        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 glow-verified">
+   640→          <Sparkles className="h-4.5 w-4.5 text-verified" />
+   641→        </div>
+   642→        <div className="min-w-0">
+   643→          <h2 className="text-base font-semibold text-foreground">AI-Augmented Invariant Miner</h2>
+   644→          <p className="text-xs text-muted-foreground max-w-2xl">
+   645→            The epistemic DAG becomes self-improving. LLMs propose candidate invariants from
+   646→            historical drift; humans accept/reject; accepted invariants harden into verified enforcers.
+   647→          </p>
+   648→        </div>
+   649→      </motion.div>
+   650→
+   651→      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+   652→        {/* LEFT — drift telemetry (1/3) */}
+   653→        <motion.div
+   654→          initial={{ opacity: 0, x: -16 }}
+   655→          animate={{ opacity: 1, x: 0 }}
+   656→          transition={{ duration: 0.4, delay: 0.1 }}
+   657→          className="space-y-3"
+   658→        >
+   659→          <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   660→            {/* Gradient border accent */}
+   661→            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violating/0 via-violating/50 to-violating/0" />
+   662→            <div className="bg-grid-fine absolute inset-0 opacity-30" />
+   663→            <div className="relative space-y-3">
+   664→              <div className="flex items-center justify-between">
+   665→                <div className="flex items-center gap-2">
+   666→                  <Activity className="h-4 w-4 text-violating" />
+   667→                  <span className="text-sm font-semibold text-foreground">Drift telemetry</span>
+   668→                </div>
+   669→                <Badge
+   670→                  variant="outline"
+   671→                  className={cn(
+   672→                    "text-[10px]",
+   673→                    totalViolations > 0
+   674→                      ? "border-violating/30 bg-violating/10 text-violating"
+   675→                      : "border-verified/30 bg-verified/10 text-verified",
+   676→                  )}
+   677→                >
+   678→                  {totalViolations} violation{totalViolations === 1 ? "" : "s"}
+   679→                </Badge>
+   680→              </div>
+   681→
+   682→              <div className="grid grid-cols-2 gap-2">
+   683→                <div className="rounded-md border border-border/60 bg-background/40 p-2.5">
+   684→                  <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+   685→                    <Gauge className="h-3 w-3" /> health
+   686→                  </div>
+   687→                  <div
+   688→                    className={cn(
+   689→                      "mt-0.5 font-mono text-lg tabular-nums",
+   690→                      (stats?.shardHealth.healthScore ?? 100) >= 85
+   691→                        ? "text-verified"
+   692→                        : (stats?.shardHealth.healthScore ?? 100) >= 60
+   693→                          ? "text-repairing"
+   694→                          : "text-violating",
+   695→                    )}
+   696→                  >
+   697→                    {stats ? `${stats.shardHealth.healthScore}%` : "—"}
+   698→                  </div>
+   699→                </div>
+   700→                <div className="rounded-md border border-border/60 bg-background/40 p-2.5">
+   701→                  <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+   702→                    <Brain className="h-3 w-3" /> llm
+   703→                  </div>
+   704→                  <div
+   705→                    className={cn(
+   706→                      "mt-0.5 font-mono text-lg",
+   707→                      llmUsed === null
+   708→                        ? "text-muted-foreground"
+   709→                        : llmUsed
+   710→                          ? "text-verified"
+   711→                          : "text-repairing",
+   712→                    )}
+   713→                  >
+   714→                    {llmUsed === null ? "—" : llmUsed ? "active" : "fallback"}
+   715→                  </div>
+   716→                </div>
+   717→              </div>
+   718→
+   719→              {/* Sparkline chart for drift violations */}
+   720→              {sparklineData.length > 0 && (
+   721→                <div className="rounded-md border border-border/60 bg-background/40 p-2">
+   722→                  <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+   723→                    <TrendingUp className="h-3 w-3" /> violation trend
+   724→                  </div>
+   725→                  <ResponsiveContainer width="100%" height={60}>
+   726→                    <AreaChart data={sparklineData}>
+   727→                      <defs>
+   728→                        <linearGradient id="violationGrad" x1="0" y1="0" x2="0" y2="1">
+   729→                          <stop offset="5%" stopColor="var(--violating)" stopOpacity={0.3} />
+   730→                          <stop offset="95%" stopColor="var(--violating)" stopOpacity={0} />
+   731→                        </linearGradient>
+   732→                      </defs>
+   733→                      <Area
+   734→                        type="monotone"
+   735→                        dataKey="violations"
+   736→                        stroke="var(--violating)"
+   737→                        strokeWidth={1.5}
+   738→                        fill="url(#violationGrad)"
+   739→                        dot={{ fill: "var(--violating)", r: 2 }}
+   740→                        activeDot={{ fill: "var(--violating)", r: 3 }}
+   741→                      />
+   742→                    </AreaChart>
+   743→                  </ResponsiveContainer>
+   744→                </div>
+   745→              )}
+   746→
+   747→              <Separator className="bg-border/40" />
+   748→
+   749→              <div>
+   750→                <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+   751→                  <Target className="h-3 w-3" /> most-violated invariants
+   752→                </div>
+   753→                {topViolated.length === 0 ? (
+   754→                  <p className="text-[11px] text-muted-foreground/70">
+   755→                    No drift data yet — run the miner to populate.
+   756→                  </p>
+   757→                ) : (
+   758→                  <div className="space-y-1.5">
+   759→                    {topViolated.map(([name, count]) => {
+   760→                      const max = topViolated[0]?.[1] ?? 1;
+   761→                      return (
+   762→                        <motion.div
+   763→                          key={name}
+   764→                          initial={{ opacity: 0, x: -8 }}
+   765→                          animate={{ opacity: 1, x: 0 }}
+   766→                          className="space-y-0.5"
+   767→                        >
+   768→                          <div className="flex items-center justify-between text-[11px]">
+   769→                            <span className="font-mono text-foreground truncate">{name}</span>
+   770→                            <span className="font-mono text-muted-foreground tabular-nums">{count}×</span>
+   771→                          </div>
+   772→                          <div className="h-1 w-full overflow-hidden rounded-full bg-muted/40">
+   773→                            <motion.div
+   774→                              className="h-full rounded-full bg-violating/70"
+   775→                              initial={{ width: 0 }}
+   776→                              animate={{ width: `${(count / max) * 100}%` }}
+   777→                              transition={{ duration: 0.6, ease: "easeOut" }}
+   778→                            />
+   779→                          </div>
+   780→                        </motion.div>
+   781→                      );
+   782→                    })}
+   783→                  </div>
+   784→                )}
+   785→              </div>
+   786→            </div>
+   787→          </Card>
+   788→
+   789→          {/* Violation pattern treemap */}
+   790→          {treemapData.length > 0 && (
+   791→            <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   792→              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-repairing/0 via-repairing/50 to-repairing/0" />
+   793→              <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   794→              <div className="relative space-y-2">
+   795→                <div className="flex items-center gap-2">
+   796→                  <Flame className="h-4 w-4 text-repairing" />
+   797→                  <span className="text-sm font-semibold text-foreground">Violation patterns</span>
+   798→                </div>
+   799→                <ResponsiveContainer width="100%" height={100}>
+   800→                  <Treemap
+   801→                    data={treemapData}
+   802→                    dataKey="size"
+   803→                    nameKey="name"
+   804→                    content={<CustomTreemapContent />}
+   805→                  />
+   806→                </ResponsiveContainer>
+   807→              </div>
+   808→            </Card>
+   809→          )}
+   810→
+   811→          {/* Educational note */}
+   812→          <Card className="bg-card/60 backdrop-blur border-quarantined/30 p-3.5 relative overflow-hidden">
+   813→            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-quarantined/0 via-quarantined/50 to-quarantined/0" />
+   814→            <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   815→            <div className="relative space-y-1.5">
+   816→              <div className="flex items-center gap-1.5">
+   817→                <AlertTriangle className="h-3.5 w-3.5 text-quarantined" />
+   818→                <span className="text-xs font-semibold text-foreground">Mining pipeline</span>
+   819→              </div>
+   820→              <ol className="space-y-1 text-[10.5px] text-muted-foreground">
+   821→                <li><span className="text-verified font-mono">1.</span> Drift telemetry collected from invariant violations.</li>
+   822→                <li><span className="text-verified font-mono">2.</span> LLM proposes grounded candidate predicates.</li>
+   823→                <li><span className="text-verified font-mono">3.</span> Human accepts → compiles to WASM enforcer.</li>
+   824→                <li><span className="text-verified font-mono">4.</span> Hardened invariants close the feedback loop.</li>
+   825→              </ol>
+   826→            </div>
+   827→          </Card>
+   828→        </motion.div>
+   829→
+   830→        {/* RIGHT — controls + candidate list (2/3) */}
+   831→        <motion.div
+   832→          initial={{ opacity: 0, x: 16 }}
+   833→          animate={{ opacity: 1, x: 0 }}
+   834→          transition={{ duration: 0.4, delay: 0.15 }}
+   835→          className="space-y-3 lg:col-span-2"
+   836→        >
+   837→          {/* Control row */}
+   838→          <Card className="bg-card/60 backdrop-blur border-border/60 p-3 relative overflow-hidden">
+   839→            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-verified/0 via-verified/30 to-verified/0" />
+   840→            <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   841→            <div className="relative flex flex-wrap items-center gap-2">
+   842→              <div className="flex items-center gap-2">
+   843→                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">policy</span>
+   844→                <Select value={filterPolicyId} onValueChange={setFilterPolicyId}>
+   845→                  <SelectTrigger className="h-8 w-[200px] bg-card/60 text-xs">
+   846→                    <SelectValue placeholder="All policies" />
+   847→                  </SelectTrigger>
+   848→                  <SelectContent>
+   849→                    <SelectItem value="all">All policies</SelectItem>
+   850→                    {policies.map((p) => (
+   851→                      <SelectItem key={p.id} value={p.id}>
+   852→                        {p.name}
+   853→                      </SelectItem>
+   854→                    ))}
+   855→                  </SelectContent>
+   856→                </Select>
+   857→              </div>
+   858→              <TooltipProvider>
+   859→                <Tooltip>
+   860→                  <TooltipTrigger asChild>
+   861→                    <Button
+   862→                      onClick={mine}
+   863→                      disabled={mining}
+   864→                      className="ml-auto bg-verified/15 border border-verified/40 text-verified hover:bg-verified/25"
+   865→                      variant="outline"
+   866→                    >
+   867→                      {mining ? (
+   868→                        <RotateCw className="h-3.5 w-3.5 animate-spin" />
+   869→                      ) : (
+   870→                        <Pickaxe className="h-3.5 w-3.5" />
+   871→                      )}
+   872→                      {mining ? "Mining…" : "Mine candidates"}
+   873→                    </Button>
+   874→                  </TooltipTrigger>
+   875→                  <TooltipContent>
+   876→                    <p>Run AI-augmented mining on drift telemetry</p>
+   877→                  </TooltipContent>
+   878→                </Tooltip>
+   879→              </TooltipProvider>
+   880→              {driftSummary && (
+   881→                <Badge variant="outline" className="border-border/60 text-[10px] gap-1">
+   882→                  <BarChart3 className="h-2.5 w-2.5" />
+   883→                  {driftSummary.total} drift points
+   884→                </Badge>
+   885→              )}
+   886→            </div>
+   887→            {fetchError && (
+   888→              <div className="relative mt-2 flex items-center gap-1.5 text-[10px] text-repairing">
+   889→                <AlertTriangle className="h-3 w-3" />
+   890→                Live list sync unavailable — mining still works. Showing last-known candidates.
+   891→              </div>
+   892→            )}
+   893→          </Card>
+   894→
+   895→          {/* Mining progress indicator */}
+   896→          <AnimatePresence>
+   897→            <MiningProgress mining={mining} progress={miningProgress} />
+   898→          </AnimatePresence>
+   899→
+   900→          {/* Candidate list */}
+   901→          {loading && mined.length === 0 ? (
+   902→            <div className="space-y-2">
+   903→              {Array.from({ length: 4 }).map((_, i) => (
+   904→                <Skeleton key={i} className="h-32 w-full rounded-lg bg-muted/40" />
+   905→              ))}
+   906→            </div>
+   907→          ) : sortedMined.length === 0 ? (
+   908→            <Card className="bg-card/60 border-dashed border-border/60 p-8 text-center">
+   909→              <Pickaxe className="mx-auto h-8 w-8 text-muted-foreground/40" />
+   910→              <p className="mt-2 text-sm text-muted-foreground">No candidate invariants yet.</p>
+   911→              <p className="text-xs text-muted-foreground/70">
+   912→                Run <span className="font-mono text-verified">Mine candidates</span> to propose from drift.
+   913→              </p>
+   914→            </Card>
+   915→          ) : (
+   916→            <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1 epistemic-scroll">
+   917→              <AnimatePresence mode="popLayout">
+   918→                {sortedMined.map((c, i) => (
+   919→                  <CandidateCard
+   920→                    key={c.id}
+   921→                    candidate={c}
+   922→                    policyName={policyName(c.policyId, c.policy?.name)}
+   923→                    onAccept={() => patch(c.id, true)}
+   924→                    onReject={() => patch(c.id, false)}
+   925→                    busy={patchingId === c.id}
+   926→                    index={i}
+   927→                  />
+   928→                ))}
+   929→              </AnimatePresence>
+   930→            </div>
+   931→          )}
+   932→
+   933→          {/* Footer count */}
+   934→          {sortedMined.length > 0 && (
+   935→            <motion.div
+   936→              initial={{ opacity: 0 }}
+   937→              animate={{ opacity: 1 }}
+   938→              className="flex items-center justify-between text-[10px] text-muted-foreground"
+   939→            >
+   940→              <span className="flex items-center gap-1 font-mono">
+   941→                <Clock className="h-3 w-3" />
+   942→                {sortedMined.length} candidate{sortedMined.length === 1 ? "" : "s"} ·{" "}
+   943→                {sortedMined.filter((m) => m.accepted).length} hardened
+   944→              </span>
+   945→              <span className="font-mono">sorted by confidence ↓</span>
+   946→            </motion.div>
+   947→          )}
+   948→        </motion.div>
+   949→      </div>
+   950→    </section>
+   951→  );
+   952→}
+   953→

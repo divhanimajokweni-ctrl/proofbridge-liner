@@ -1,0 +1,672 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+     4→import {
+     5→  Terminal,
+     6→  Play,
+     7→  RotateCw,
+     8→  Trash2,
+     9→  CheckCircle2,
+    10→  XCircle,
+    11→  AlertTriangle,
+    12→  Server,
+    13→  FileText,
+    14→  FlaskConical,
+    15→  KeyRound,
+    16→  List,
+    17→  Settings2,
+    18→  Loader2,
+    19→} from "lucide-react";
+    20→import {
+    21→  Card,
+    22→  CardContent,
+    23→  CardHeader,
+    24→  CardTitle,
+    25→  CardDescription,
+    26→} from "@/components/ui/card";
+    27→import {
+    28→  Select,
+    29→  SelectContent,
+    30→  SelectItem,
+    31→  SelectTrigger,
+    32→  SelectValue,
+    33→} from "@/components/ui/select";
+    34→import { Button } from "@/components/ui/button";
+    35→import { Badge } from "@/components/ui/badge";
+    36→import { Skeleton } from "@/components/ui/skeleton";
+    37→import { Switch } from "@/components/ui/switch";
+    38→import { Textarea } from "@/components/ui/textarea";
+    39→import { Separator } from "@/components/ui/separator";
+    40→import { useToast } from "@/hooks/use-toast";
+    41→import { cn } from "@/lib/utils";
+    42→
+    43→// ────────────────────────────────────────────────────────────────────────────
+    44→// epd-cli mini-service — reached through the Caddy gateway via ?XTransformPort=3031
+    45→// ────────────────────────────────────────────────────────────────────────────
+    46→const CLI_PORT = "3031";
+    47→const CLI_BASE = (path: string) =>
+    48→  path.includes("?") ? `${path}&XTransformPort=${CLI_PORT}` : `${path}?XTransformPort=${CLI_PORT}`;
+    49→
+    50→interface CliSample {
+    51→  name: string;
+    52→  filename: string;
+    53→  source: string;
+    54→}
+    55→
+    56→interface CliRunResponse {
+    57→  ok: boolean;
+    58→  exitCode: number;
+    59→  stdout: string;
+    60→  stderr: string;
+    61→  result?: unknown;
+    62→}
+    63→
+    64→interface TerminalEntry {
+    65→  id: string;
+    66→  prompt: string;
+    67→  stdout: string;
+    68→  stderr: string;
+    69→  exitCode: number;
+    70→  ranAt: number;
+    71→}
+    72→
+    73→// ────────────────────────────────────────────────────────────────────────────
+    74→// ANSI SGR → Tailwind class map (no blue/indigo per design system)
+    75→// ────────────────────────────────────────────────────────────────────────────
+    76→const ANSI_CLASS: Record<string, string> = {
+    77→  "0": "", // reset
+    78→  "1": "font-bold",
+    79→  "2": "opacity-60",
+    80→  "31": "text-violating",
+    81→  "32": "text-verified",
+    82→  "33": "text-repairing",
+    83→  "34": "text-chart-2", // blue → teal (design system forbids blue)
+    84→  "35": "text-chart-5", // magenta → warm violet
+    85→  "36": "text-chart-2", // cyan → teal
+    86→  "90": "text-muted-foreground", // bright black / gray
+    87→};
+    88→
+    89→/**
+    90→ * Render ANSI-colored text (SGR codes only) as a sequence of styled spans.
+    91→ * Splits on `\x1b[...m` escape sequences and applies the accumulated class
+    92→ * set to each text segment. Handles combined codes like `\x1b[1;36m`.
+    93→ */
+    94→function renderAnsi(text: string): React.ReactNode[] {
+    95→  if (!text) return [];
+    96→  const parts = text.split(/\x1b\[(\d+(?:;\d+)*)m/);
+    97→  const nodes: React.ReactNode[] = [];
+    98→  let active = new Set<string>();
+    99→  let key = 0;
+   100→  for (let i = 0; i < parts.length; i++) {
+   101→    const part = parts[i];
+   102→    if (i % 2 === 1) {
+   103→      // escape code segment (one or more ;-separated codes)
+   104→      for (const code of part.split(";")) {
+   105→        if (code === "0" || code === "") {
+   106→          active = new Set();
+   107→        } else {
+   108→          const cls = ANSI_CLASS[code];
+   109→          if (cls) active.add(cls);
+   110→        }
+   111→      }
+   112→    } else if (part) {
+   113→      const cls = Array.from(active).join(" ");
+   114→      // Preserve whitespace by wrapping in a span; split newlines so React
+   115→      // renders them within the pre-formatted container.
+   116→      nodes.push(
+   117→        <span key={key++} className={cls || undefined}>
+   118→          {part}
+   119→        </span>,
+   120→      );
+   121→    }
+   122→  }
+   123→  return nodes;
+   124→}
+   125→
+   126→const DEFAULT_STATE = `{
+   127→  "geo_region": "europe-west",
+   128→  "frequency": 50.01,
+   129→  "generation": [420, 380, 510, 290, 600, 470],
+   130→  "load": [410, 375, 500, 285, 590, 460],
+   131→  "losses": 12,
+   132→  "thermal_headroom": 18
+   133→}`;
+   134→
+   135→const VIOLATING_STATE = `{
+   136→  "geo_region": "europe-west",
+   137→  "frequency": 50.6,
+   138→  "thermal_headroom": 6
+   139→}`;
+   140→
+   141→// Safe baseline used as the `current` state for the repair command.
+   142→const SAFE_CURRENT_STATE = {
+   143→  geo_region: "europe-west",
+   144→  frequency: 50.0,
+   145→  generation: [420, 380, 510, 290, 600, 470],
+   146→  load: [410, 375, 500, 285, 590, 460],
+   147→  losses: 12,
+   148→  thermal_headroom: 18,
+   149→};
+   150→
+   151→type CommandKind = "validate" | "repair" | "proof" | "list-samples";
+   152→
+   153→export function CliTerminalSection() {
+   154→  const { toast } = useToast();
+   155→  const [samples, setSamples] = useState<CliSample[]>([]);
+   156→  const [samplesLoading, setSamplesLoading] = useState(true);
+   157→  const [selectedSample, setSelectedSample] = useState<string>("");
+   158→  const [source, setSource] = useState<string>("");
+   159→  const [stateText, setStateText] = useState<string>(DEFAULT_STATE);
+   160→  const [strict, setStrict] = useState<boolean>(false);
+   161→  const [history, setHistory] = useState<TerminalEntry[]>([]);
+   162→  const [running, setRunning] = useState<CommandKind | null>(null);
+   163→  const [health, setHealth] = useState<{ ok: boolean; checkedAt: number } | null>(null);
+   164→
+   165→  const scrollRef = useRef<HTMLDivElement>(null);
+   166→
+   167→  // Auto-scroll to bottom whenever history grows.
+   168→  useEffect(() => {
+   169→    if (scrollRef.current) {
+   170→      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+   171→    }
+   172→  }, [history]);
+   173→
+   174→  // Load samples on mount.
+   175→  const loadSamples = useCallback(async () => {
+   176→    setSamplesLoading(true);
+   177→    try {
+   178→      const r = await fetch(CLI_BASE("/api/samples"));
+   179→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   180→      const d: { samples: CliSample[] } = await r.json();
+   181→      const list = d.samples ?? [];
+   182→      setSamples(list);
+   183→      if (list.length > 0 && !source) {
+   184→        setSource(list[0].source);
+   185→        setSelectedSample(list[0].filename);
+   186→      }
+   187→    } catch (e) {
+   188→      toast({
+   189→        title: "Failed to load samples",
+   190→        description: e instanceof Error ? e.message : "Unknown error",
+   191→        variant: "destructive",
+   192→      });
+   193→    } finally {
+   194→      setSamplesLoading(false);
+   195→    }
+   196→  }, [source, toast]);
+   197→
+   198→  useEffect(() => {
+   199→    loadSamples();
+   200→  }, [loadSamples]);
+   201→
+   202→  // Poll epd-cli health every 10s.
+   203→  useEffect(() => {
+   204→    let cancelled = false;
+   205→    const check = async () => {
+   206→      try {
+   207→        const r = await fetch(CLI_BASE("/api/health"));
+   208→        const d = await r.json();
+   209→        if (cancelled) return;
+   210→        setHealth({ ok: !!d.ok, checkedAt: Date.now() });
+   211→      } catch {
+   212→        if (!cancelled) setHealth({ ok: false, checkedAt: Date.now() });
+   213→      }
+   214→    };
+   215→    check();
+   216→    const t = setInterval(check, 10_000);
+   217→    return () => {
+   218→      cancelled = true;
+   219→      clearInterval(t);
+   220→    };
+   221→  }, []);
+   222→
+   223→  const loadSample = useCallback(
+   224→    (filename: string) => {
+   225→      const s = samples.find((x) => x.filename === filename);
+   226→      if (s) {
+   227→        setSource(s.source);
+   228→        setSelectedSample(filename);
+   229→        toast({ title: `Loaded ${s.filename}`, description: s.name });
+   230→      }
+   231→    },
+   232→    [samples, toast],
+   233→  );
+   234→
+   235→  const parseState = useCallback(
+   236→    (label: string): Record<string, unknown> | null => {
+   237→      try {
+   238→        return JSON.parse(stateText);
+   239→      } catch (e) {
+   240→        toast({
+   241→          title: `Invalid ${label} JSON`,
+   242→          description: e instanceof Error ? e.message : "Parse error",
+   243→          variant: "destructive",
+   244→        });
+   245→        return null;
+   246→      }
+   247→    },
+   248→    [stateText, toast],
+   249→  );
+   250→
+   251→  const runCommand = useCallback(
+   252→    async (kind: CommandKind) => {
+   253→      if (kind !== "list-samples" && !source.trim()) {
+   254→        toast({ title: "Source is empty", description: "Load a sample or write a .epd policy.", variant: "destructive" });
+   255→        return;
+   256→      }
+   257→      let body: Record<string, unknown>;
+   258→      let promptCmd: string;
+   259→      if (kind === "validate") {
+   260→        const s = parseState("state");
+   261→        if (!s) return;
+   262→        body = { command: "validate", source, state: s, strict };
+   263→        promptCmd = `validate${strict ? " --strict" : ""} (inline source) --state (inline)`;
+   264→      } else if (kind === "repair") {
+   265→        const proposed = parseState("state");
+   266→        if (!proposed) return;
+   267→        body = { command: "repair", source, current: SAFE_CURRENT_STATE, proposed };
+   268→        promptCmd = `repair (inline source) --current (safe baseline) --proposed (inline)`;
+   269→      } else if (kind === "proof") {
+   270→        body = { command: "proof", source, index: 0 };
+   271→        promptCmd = `proof (inline source) --index 0`;
+   272→      } else {
+   273→        body = { command: "list-samples" };
+   274→        promptCmd = `list-samples`;
+   275→      }
+   276→
+   277→      setRunning(kind);
+   278→      try {
+   279→        const r = await fetch(CLI_BASE("/api/run"), {
+   280→          method: "POST",
+   281→          headers: { "Content-Type": "application/json" },
+   282→          body: JSON.stringify(body),
+   283→        });
+   284→        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   285→        const d: CliRunResponse = await r.json();
+   286→        const entry: TerminalEntry = {
+   287→          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+   288→          prompt: `$ epd-cli ${promptCmd}`,
+   289→          stdout: d.stdout ?? "",
+   290→          stderr: d.stderr ?? "",
+   291→          exitCode: d.exitCode,
+   292→          ranAt: Date.now(),
+   293→        };
+   294→        setHistory((prev) => [...prev, entry]);
+   295→        toast({
+   296→          title: d.exitCode === 0 ? "Command succeeded" : "Command failed",
+   297→          description: `exit ${d.exitCode} · ${(d.stdout ?? "").length} bytes output`,
+   298→          variant: d.exitCode === 0 ? "default" : "destructive",
+   299→        });
+   300→      } catch (e) {
+   301→        const entry: TerminalEntry = {
+   302→          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+   303→          prompt: `$ epd-cli ${promptCmd}`,
+   304→          stdout: "",
+   305→          stderr: e instanceof Error ? e.message : "Network error",
+   306→          exitCode: -1,
+   307→          ranAt: Date.now(),
+   308→        };
+   309→        setHistory((prev) => [...prev, entry]);
+   310→        toast({
+   311→          title: "Request failed",
+   312→          description: e instanceof Error ? e.message : "Unknown error",
+   313→          variant: "destructive",
+   314→        });
+   315→      } finally {
+   316→        setRunning(null);
+   317→      }
+   318→    },
+   319→    [source, stateText, strict, parseState, toast],
+   320→  );
+   321→
+   322→  const clearTerminal = useCallback(() => {
+   323→    setHistory([]);
+   324→    toast({ title: "Terminal cleared" });
+   325→  }, [toast]);
+   326→
+   327→  const loadViolating = useCallback(() => {
+   328→    setStateText(VIOLATING_STATE);
+   329→    toast({
+   330→      title: "Loaded violating state",
+   331→      description: "frequency:50.6 breaches freq_bounds [49.8, 50.2]",
+   332→    });
+   333→  }, [toast]);
+   334→
+   335→  const loadSafe = useCallback(() => {
+   336→    setStateText(DEFAULT_STATE);
+   337→    toast({ title: "Loaded safe state", description: "frequency:50.01 — all invariants pass" });
+   338→  }, [toast]);
+   339→
+   340→  const online = health?.ok ?? false;
+   341→
+   342→  const cmdButton = (kind: CommandKind, label: string, icon: React.ReactNode, primary?: boolean) => (
+   343→    <Button
+   344→      onClick={() => runCommand(kind)}
+   345→      disabled={running !== null}
+   346→      variant="outline"
+   347→      className={cn(
+   348→        "h-8 gap-1.5",
+   349→        primary
+   350→          ? "border-verified/40 bg-verified/15 text-verified hover:bg-verified/25"
+   351→          : "border-border/60 bg-card/40 text-foreground hover:bg-muted/40",
+   352→      )}
+   353→    >
+   354→      {running === kind ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : icon}
+   355→      <span className="font-mono text-xs">{label}</span>
+   356→    </Button>
+   357→  );
+   358→
+   359→  return (
+   360→    <section className="space-y-4">
+   361→      {/* Header */}
+   362→      <div className="flex items-start justify-between gap-3">
+   363→        <div className="flex items-start gap-2.5">
+   364→          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 glow-verified">
+   365→            <Terminal className="h-4.5 w-4.5 text-verified" />
+   366→          </div>
+   367→          <div>
+   368→            <h2 className="text-base font-semibold text-foreground">epd-cli Terminal</h2>
+   369→            <p className="text-xs text-muted-foreground">
+   370→              Run the real <span className="font-mono">epd-cli</span> against custom{" "}
+   371→              <span className="font-mono text-verified">.epd</span> policy files —
+   372→              validate, repair, prove ancestry.
+   373→            </p>
+   374→          </div>
+   375→        </div>
+   376→
+   377→        {/* Health status badge */}
+   378→        <Badge
+   379→          variant="outline"
+   380→          className={cn(
+   381→            "gap-1.5 text-[10px] font-mono",
+   382→            online
+   383→              ? "border-verified/30 bg-verified/10 text-verified"
+   384→              : "border-violating/30 bg-violating/10 text-violating",
+   385→          )}
+   386→        >
+   387→          <Server className={cn("h-3 w-3", !online && "animate-epistemic-pulse")} />
+   388→          {online ? `epd-cli online · :${CLI_PORT}` : "offline"}
+   389→        </Badge>
+   390→      </div>
+   391→
+   392→      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+   393→        {/* LEFT — composer (2/5) */}
+   394→        <div className="space-y-3 lg:col-span-2">
+   395→          <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   396→            <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   397→            <div className="relative space-y-3">
+   398→              <div className="flex items-center justify-between">
+   399→                <div className="flex items-center gap-2">
+   400→                  <Settings2 className="h-4 w-4 text-repairing" />
+   401→                  <span className="text-sm font-semibold text-foreground">Command composer</span>
+   402→                </div>
+   403→                <Badge variant="outline" className="border-border/60 text-[9px] font-mono">
+   404→                  :{CLI_PORT}
+   405→                </Badge>
+   406→              </div>
+   407→
+   408→              {/* Sample loader */}
+   409→              <div className="space-y-1.5">
+   410→                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+   411→                  Load bundled sample
+   412→                </label>
+   413→                {samplesLoading ? (
+   414→                  <Skeleton className="h-8 w-full rounded-md bg-muted/40" />
+   415→                ) : (
+   416→                  <Select value={selectedSample} onValueChange={loadSample}>
+   417→                    <SelectTrigger className="bg-card/60 text-xs">
+   418→                      <SelectValue placeholder="Select a sample .epd" />
+   419→                    </SelectTrigger>
+   420→                    <SelectContent>
+   421→                      {samples.map((s) => (
+   422→                        <SelectItem key={s.filename} value={s.filename}>
+   423→                          <span className="font-mono">{s.filename}</span>
+   424→                          <span className="ml-1 text-muted-foreground">· {s.name}</span>
+   425→                        </SelectItem>
+   426→                      ))}
+   427→                    </SelectContent>
+   428→                  </Select>
+   429→                )}
+   430→              </div>
+   431→
+   432→              {/* Source editor */}
+   433→              <div className="space-y-1.5">
+   434→                <label className="flex items-center justify-between text-[11px] uppercase tracking-wide text-muted-foreground">
+   435→                  <span className="flex items-center gap-1">
+   436→                    <FileText className="h-3 w-3" /> .epd source
+   437→                  </span>
+   438→                  <span className="font-mono text-[10px] normal-case text-muted-foreground/70">
+   439→                    {source.split("\n").length} lines
+   440→                  </span>
+   441→                </label>
+   442→                <Textarea
+   443→                  value={source}
+   444→                  onChange={(e) => setSource(e.target.value)}
+   445→                  spellCheck={false}
+   446→                  className={cn(
+   447→                    "codeblock bg-background/60 min-h-[220px] max-h-[420px] resize-y epistemic-scroll",
+   448→                    "border-border/60 focus-visible:border-verified/40",
+   449→                  )}
+   450→                  placeholder="# Write your .epd policy here…"
+   451→                />
+   452→              </div>
+   453→
+   454→              {/* State editor */}
+   455→              <div className="space-y-1.5">
+   456→                <label className="flex items-center justify-between text-[11px] uppercase tracking-wide text-muted-foreground">
+   457→                  <span>State JSON <span className="normal-case text-muted-foreground/70">(for validate / repair)</span></span>
+   458→                  <span className="flex items-center gap-1">
+   459→                    <button
+   460→                      type="button"
+   461→                      onClick={loadSafe}
+   462→                      className="rounded border border-border/60 bg-muted/30 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground hover:text-foreground hover:border-border transition-colors"
+   463→                    >
+   464→                      safe
+   465→                    </button>
+   466→                    <button
+   467→                      type="button"
+   468→                      onClick={loadViolating}
+   469→                      className="rounded border border-violating/40 bg-violating/10 px-1.5 py-0.5 text-[9px] font-mono text-violating hover:bg-violating/20 transition-colors"
+   470→                    >
+   471→                      violating
+   472→                    </button>
+   473→                  </span>
+   474→                </label>
+   475→                <Textarea
+   476→                  value={stateText}
+   477→                  onChange={(e) => setStateText(e.target.value)}
+   478→                  spellCheck={false}
+   479→                  className={cn(
+   480→                    "codeblock bg-background/60 min-h-[100px] max-h-[260px] resize-y epistemic-scroll",
+   481→                    "border-border/60 focus-visible:border-verified/40",
+   482→                  )}
+   483→                />
+   484→              </div>
+   485→
+   486→              {/* Strict toggle */}
+   487→              <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/20 px-2.5 py-1.5">
+   488→                <div className="flex items-center gap-2">
+   489→                  <FlaskConical className="h-3.5 w-3.5 text-repairing" />
+   490→                  <span className="text-xs text-foreground">
+   491→                    <span className="font-mono">--strict</span>
+   492→                  </span>
+   493→                  <span className="text-[10px] text-muted-foreground">
+   494→                    soft violations → exit 1
+   495→                  </span>
+   496→                </div>
+   497→                <Switch checked={strict} onCheckedChange={setStrict} />
+   498→              </div>
+   499→
+   500→              {/* Command buttons */}
+   501→              <Separator className="bg-border/40" />
+   502→              <div className="grid grid-cols-2 gap-2">
+   503→                {cmdButton("validate", "validate", <Play className="h-3.5 w-3.5" />, true)}
+   504→                {cmdButton("repair", "repair", <RotateCw className="h-3.5 w-3.5" />)}
+   505→                {cmdButton("proof", "proof", <KeyRound className="h-3.5 w-3.5" />)}
+   506→                {cmdButton("list-samples", "list-samples", <List className="h-3.5 w-3.5" />)}
+   507→              </div>
+   508→            </div>
+   509→          </Card>
+   510→        </div>
+   511→
+   512→        {/* RIGHT — terminal panel (3/5) */}
+   513→        <div className="lg:col-span-3">
+   514→          <Card className="bg-background/80 backdrop-blur border-border/60 p-0 relative overflow-hidden">
+   515→            <div className="bg-grid-fine absolute inset-0 opacity-25 pointer-events-none" />
+   516→            {/* Terminal title bar with traffic lights */}
+   517→            <div className="relative flex items-center gap-2 border-b border-border/60 bg-background/60 px-3 py-2">
+   518→              <div className="flex items-center gap-1.5">
+   519→                <span className="h-2.5 w-2.5 rounded-full bg-violating/80" />
+   520→                <span className="h-2.5 w-2.5 rounded-full bg-repairing/80" />
+   521→                <span className="h-2.5 w-2.5 rounded-full bg-verified/80" />
+   522→              </div>
+   523→              <span className="ml-2 font-mono text-[11px] text-muted-foreground">
+   524→                epd-cli — epistemic://policies
+   525→              </span>
+   526→              <div className="ml-auto flex items-center gap-2">
+   527→                <span
+   528→                  className={cn(
+   529→                    "flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold",
+   530→                    online
+   531→                      ? "border-verified/40 bg-verified/10 text-verified"
+   532→                      : "border-violating/40 bg-violating/10 text-violating",
+   533→                  )}
+   534→                >
+   535→                  <span
+   536→                    className={cn(
+   537→                      "h-1.5 w-1.5 rounded-full",
+   538→                      online ? "bg-verified" : "bg-violating animate-epistemic-pulse",
+   539→                    )}
+   540→                  />
+   541→                  {online ? "connected" : "disconnected"}
+   542→                </span>
+   543→                <Button
+   544→                  size="sm"
+   545→                  variant="ghost"
+   546→                  onClick={clearTerminal}
+   547→                  disabled={history.length === 0}
+   548→                  className="h-7 px-2 text-[10px] text-muted-foreground hover:text-foreground"
+   549→                >
+   550→                  <Trash2 className="h-3 w-3" />
+   551→                  Clear
+   552→                </Button>
+   553→              </div>
+   554→            </div>
+   555→
+   556→            {/* Terminal body */}
+   557→            <div
+   558→              ref={scrollRef}
+   559→              className="relative max-h-[640px] min-h-[400px] overflow-y-auto epistemic-scroll p-3 font-mono text-[12px] leading-relaxed"
+   560→            >
+   561→              {history.length === 0 ? (
+   562→                <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
+   563→                  <Terminal className="h-8 w-8 mb-2 text-verified/60" />
+   564→                  <p className="text-sm text-foreground/80">
+   565→                    epd-cli ready · <span className="text-verified">run a command</span> to see output
+   566→                  </p>
+   567→                  <p className="mt-1.5 font-mono text-[11px] text-muted-foreground">
+   568→                    try <span className="text-verified font-semibold">validate</span> with the loaded sample
+   569→                  </p>
+   570→                </div>
+   571→              ) : (
+   572→                <div className="space-y-3">
+   573→                  {history.map((entry) => (
+   574→                    <TerminalEntryView key={entry.id} entry={entry} />
+   575→                  ))}
+   576→                  {running && (
+   577→                    <div className="flex items-center gap-2 text-[11px] text-repairing">
+   578→                      <Loader2 className="h-3 w-3 animate-spin" />
+   579→                      <span className="font-mono">executing epd-cli {running}…</span>
+   580→                    </div>
+   581→                  )}
+   582→                </div>
+   583→              )}
+   584→            </div>
+   585→          </Card>
+   586→
+   587→          {/* Quick reference */}
+   588→          <Card className="mt-3 bg-card/60 backdrop-blur border-border/60 p-3 relative overflow-hidden">
+   589→            <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   590→            <div className="relative grid grid-cols-1 gap-2 text-[10.5px] text-muted-foreground sm:grid-cols-2">
+   591→              <div className="flex items-start gap-1.5">
+   592→                <Play className="mt-0.5 h-3 w-3 text-verified shrink-0" />
+   593→                <span>
+   594→                  <span className="font-mono text-foreground">validate</span> — parse + evaluate
+   595→                  invariants against <span className="font-mono">state</span>, emit MMR root.
+   596→                </span>
+   597→              </div>
+   598→              <div className="flex items-start gap-1.5">
+   599→                <RotateCw className="mt-0.5 h-3 w-3 text-repairing shrink-0" />
+   600→                <span>
+   601→                  <span className="font-mono text-foreground">repair</span> — least-divergent
+   602→                  fix from <span className="font-mono">current</span> → <span className="font-mono">proposed</span>.
+   603→                </span>
+   604→              </div>
+   605→              <div className="flex items-start gap-1.5">
+   606→                <KeyRound className="mt-0.5 h-3 w-3 text-verified shrink-0" />
+   607→                <span>
+   608→                  <span className="font-mono text-foreground">proof</span> — generate an MMR
+   609→                  ancestry proof for invariant <span className="font-mono">--index n</span>.
+   610→                </span>
+   611→              </div>
+   612→              <div className="flex items-start gap-1.5">
+   613→                <List className="mt-0.5 h-3 w-3 text-muted-foreground shrink-0" />
+   614→                <span>
+   615→                  <span className="font-mono text-foreground">list-samples</span> — enumerate
+   616→                  bundled <span className="font-mono">.epd</span> policies.
+   617→                </span>
+   618→              </div>
+   619→            </div>
+   620→          </Card>
+   621→        </div>
+   622→      </div>
+   623→    </section>
+   624→  );
+   625→}
+   626→
+   627→function TerminalEntryView({ entry }: { entry: TerminalEntry }) {
+   628→  const ok = entry.exitCode === 0;
+   629→  const failed = entry.exitCode === -1;
+   630→  return (
+   631→    <div className="space-y-1">
+   632→      {/* Prompt line */}
+   633→      <div className="flex items-center gap-2">
+   634→        <span className="text-verified">{entry.prompt}</span>
+   635→      </div>
+   636→      {/* Output */}
+   637→      {(entry.stdout || entry.stderr) && (
+   638→        <pre className="whitespace-pre-wrap break-words text-foreground/90">
+   639→          {renderAnsi(entry.stdout)}
+   640→          {entry.stderr && (
+   641→            <span className="text-violating">
+   642→              {renderAnsi(entry.stderr)}
+   643→            </span>
+   644→          )}
+   645→        </pre>
+   646→      )}
+   647→      {/* Exit code */}
+   648→      <div className="flex items-center gap-1.5 pt-0.5">
+   649→        {failed ? (
+   650→          <span className="inline-flex items-center gap-1 rounded border border-violating/40 bg-violating/10 px-1.5 py-0.5 text-[10px] font-mono text-violating">
+   651→            <XCircle className="h-2.5 w-2.5" />
+   652→            network error
+   653→          </span>
+   654→        ) : ok ? (
+   655→          <span className="inline-flex items-center gap-1 rounded border border-verified/40 bg-verified/10 px-1.5 py-0.5 text-[10px] font-mono text-verified">
+   656→            <CheckCircle2 className="h-2.5 w-2.5" />
+   657→            exit 0
+   658→          </span>
+   659→        ) : (
+   660→          <span className="inline-flex items-center gap-1 rounded border border-violating/40 bg-violating/10 px-1.5 py-0.5 text-[10px] font-mono text-violating">
+   661→            <AlertTriangle className="h-2.5 w-2.5" />
+   662→            exit {entry.exitCode}
+   663→          </span>
+   664→        )}
+   665→        <span className="text-[9px] text-muted-foreground/60 font-mono">
+   666→          {new Date(entry.ranAt).toLocaleTimeString()}
+   667→        </span>
+   668→      </div>
+   669→    </div>
+   670→  );
+   671→}
+   672→

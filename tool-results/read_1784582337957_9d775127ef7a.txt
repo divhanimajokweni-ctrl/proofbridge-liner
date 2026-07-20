@@ -1,0 +1,802 @@
+    60→    60→const POLL_MS = 12_000;
+    61→    61→
+    62→    62→// Animation variants
+    63→    63→const containerVariants = {
+    64→    64→  hidden: { opacity: 0 },
+    65→    65→  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+    66→    66→};
+    67→    67→const cardVariants = {
+    68→    68→  hidden: { opacity: 0, y: 16, scale: 0.97 },
+    69→    69→  show: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 24 } },
+    70→    70→};
+    71→    71→const itemVariants = {
+    72→    72→  hidden: { opacity: 0, x: -8 },
+    73→    73→  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 26 } },
+    74→    74→};
+    75→    75→
+    76→    76→/** Gradient-border card wrapper */
+    77→    77→function GradientBorderCard({
+    78→    78→  children,
+    79→    79→  className,
+    80→    80→  gradient = "from-verified/40 via-repairing/20 to-verified/40",
+    81→    81→  ...props
+    82→    82→}: React.ComponentProps<typeof Card> & { gradient?: string }) {
+    83→    83→  return (
+    84→    84→    <div className={cn("relative rounded-lg p-[1px] bg-gradient-to-r", gradient, className)}>
+    85→    85→      <Card className="bg-card/60 backdrop-blur border-0 rounded-[7px] overflow-hidden" {...props}>
+    86→    86→        {children}
+    87→    87→      </Card>
+    88→    88→    </div>
+    89→    89→  );
+    90→    90→}
+    91→    91→
+    92→    92→function fmtRelative(iso: string | null | undefined): string {
+    93→    93→  if (!iso) return "—";
+    94→    94→  const t = new Date(iso).getTime();
+    95→    95→  const diff = Date.now() - t;
+    96→    96→  if (diff < 0) return "just now";
+    97→    97→  const s = Math.floor(diff / 1000);
+    98→    98→  if (s < 60) return `${s}s ago`;
+    99→    99→  const m = Math.floor(s / 60);
+   100→   100→  if (m < 60) return `${m}m ago`;
+   101→   101→  const h = Math.floor(m / 60);
+   102→   102→  if (h < 24) return `${h}h ago`;
+   103→   103→  return `${Math.floor(h / 24)}d ago`;
+   104→   104→}
+   105→   105→
+   106→   106→function fmtTimestamp(iso: string | null | undefined): string {
+   107→   107→  if (!iso) return "—";
+   108→   108→  const d = new Date(iso);
+   109→   109→  return d.toLocaleString(undefined, {
+   110→   110→    year: "numeric",
+   111→   111→    month: "short",
+   112→   112→    day: "2-digit",
+   113→   113→    hour: "2-digit",
+   114→   114→    minute: "2-digit",
+   115→   115→    second: "2-digit",
+   116→   116→  });
+   117→   117→}
+   118→   118→
+   119→   119→/** Anchor type icon mapping */
+   120→   120→function AnchorIcon({ anchor }: { anchor: string | null }) {
+   121→   121→  if (!anchor || anchor === "none") return null;
+   122→   122→  const iconMap: Record<string, React.ReactNode> = {
+   123→   123→    rekor: <FileText className="h-2.5 w-2.5" />,
+   124→   124→    blockchain: <Link className="h-2.5 w-2.5" />,
+   125→   125→    transparency_log: <Globe className="h-2.5 w-2.5" />,
+   126→   126→  };
+   127→   127→  return <>{iconMap[anchor] ?? <Anchor className="h-2.5 w-2.5" />}</>;
+   128→   128→}
+   129→   129→
+   130→   130→/** ZK verification status badge with animation */
+   131→   131→function ZkStatusBadge({ zkProof, verified }: { zkProof: string | null; verified: boolean }) {
+   132→   132→  if (!zkProof) return null;
+   133→   133→  return (
+   134→   134→    <motion.div
+   135→   135→      initial={{ scale: 0 }}
+   136→   136→      animate={{ scale: 1 }}
+   137→   137→      transition={{ type: "spring", stiffness: 400, damping: 15 }}
+   138→   138→    >
+   139→   139→      <Badge
+   140→   140→        variant="outline"
+   141→   141→        className={cn(
+   142→   142→          "border-verified/30 bg-verified/10 text-verified text-[9px] gap-0.5",
+   143→   143→          verified && "glow-verified",
+   144→   144→        )}
+   145→   145→      >
+   146→   146→        <motion.div
+   147→   147→          animate={{ rotate: [0, 360] }}
+   148→   148→          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+   149→   149→        >
+   150→   150→          <KeyRound className="h-2.5 w-2.5" />
+   151→   151→        </motion.div>
+   152→   152→        ZK
+   153→   153→      </Badge>
+   154→   154→    </motion.div>
+   155→   155→  );
+   156→   156→}
+   157→   157→
+   158→   158→/** Proof chain integrity visualization */
+   159→   159→function ProofChainIntegrity({ proofs }: { proofs: ProofRow[] }) {
+   160→   160→  const verified = proofs.filter((p) => p.verified).length;
+   161→   161→  const total = proofs.length;
+   162→   162→  const ratio = total > 0 ? Math.round((verified / total) * 100) : 0;
+   163→   163→  const isHealthy = ratio === 100;
+   164→   164→
+   165→   165→  return (
+   166→   166→    <div className="space-y-2">
+   167→   167→      <div className="flex items-center justify-between">
+   168→   168→        <div className="flex items-center gap-2">
+   169→   169→          <Shield className={cn("h-4 w-4", isHealthy ? "text-verified" : "text-violating")} />
+   170→   170→          <span className="text-xs font-medium">Chain Integrity</span>
+   171→   171→        </div>
+   172→   172→        <span className={cn("text-sm font-mono font-bold tabular-nums", isHealthy ? "text-verified" : "text-violating")}>
+   173→   173→          {ratio}%
+   174→   174→        </span>
+   175→   175→      </div>
+   176→   176→      <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/40">
+   177→   177→        <motion.div
+   178→   178→          className={cn("h-full rounded-full", isHealthy ? "bg-verified" : "bg-violating")}
+   179→   179→          initial={{ width: 0 }}
+   180→   180→          animate={{ width: `${ratio}%` }}
+   181→   181→          transition={{ type: "spring", stiffness: 120, damping: 20, delay: 0.3 }}
+   182→   182→        />
+   183→   183→      </div>
+   184→   184→      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+   185→   185→        <span className="flex items-center gap-1">
+   186→   186→          <Check className="h-2.5 w-2.5 text-verified" /> {verified} verified
+   187→   187→        </span>
+   188→   188→        <span className="flex items-center gap-1">
+   189→   189→          <XCircle className="h-2.5 w-2.5 text-violating" /> {total - verified} unverified
+   190→   190→        </span>
+   191→   191→      </div>
+   192→   192→    </div>
+   193→   193→  );
+   194→   194→}
+   195→   195→
+   196→   196→/** A single sibling-hash chip in the MMR proof path. */
+   197→   197→function PathChip({
+   198→   198→  hash,
+   199→   199→  index,
+   200→   200→  isLeaf,
+   201→   201→}: {
+   202→   202→  hash: string;
+   203→   203→  index: number;
+   204→   204→  isLeaf?: boolean;
+   205→   205→}) {
+   206→   206→  return (
+   207→   207→    <Tooltip>
+   208→   208→      <TooltipTrigger asChild>
+   209→   209→        <motion.span
+   210→   210→          initial={{ opacity: 0, scale: 0.8 }}
+   211→   211→          animate={{ opacity: 1, scale: 1 }}
+   212→   212→          transition={{ delay: index * 0.05, type: "spring", stiffness: 300, damping: 20 }}
+   213→   213→          className={cn(
+   214→   214→            "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-mono text-[10px] tabular-nums transition-colors",
+   215→   215→            isLeaf
+   216→   216→              ? "border-verified/40 bg-verified/10 text-verified"
+   217→   217→              : "border-border/70 bg-muted/40 text-muted-foreground hover:bg-muted/60",
+   218→   218→          )}
+   219→   219→        >
+   220→   220→          <span className="opacity-60">{index === 0 ? "L" : "S"}</span>
+   221→   221→          {hash.slice(0, 8)}
+   222→   222→        </motion.span>
+   223→   223→      </TooltipTrigger>
+   224→   224→      <TooltipContent side="top" className="font-mono text-xs">
+   225→   225→        {isLeaf ? "leaf" : "sibling"} · {hash}
+   226→   226→      </TooltipContent>
+   227→   227→    </Tooltip>
+   228→   228→  );
+   229→   229→}
+   230→   230→
+   231→   231→/** Render the proof path as a horizontal Merkle-mountain-range chain with animated connections. */
+   232→   232→function ProofPath({ path, mmrRoot }: { path: string[]; mmrRoot: string }) {
+   233→   233→  if (!path || path.length === 0) {
+   234→   234→    return (
+   235→   235→      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+   236→   236→        <Mountain className="h-3.5 w-3.5" />
+   237→   237→        <span className="font-mono">root-only proof (single-leaf MMR)</span>
+   238→   238→      </div>
+   239→   239→    );
+   240→   240→  }
+   241→   241→  return (
+   242→   242→    <div className="space-y-2">
+   243→   243→      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+   244→   244→        <Mountain className="h-3 w-3" />
+   245→   245→        Ancestry path · {path.length} sibling{path.length === 1 ? "" : "s"}
+   246→   246→      </div>
+   247→   247→      <div className="flex flex-wrap items-center gap-1">
+   248→   248→        <PathChip hash={mmrRoot} index={0} isLeaf />
+   249→   249→        {path.map((h, i) => (
+   250→   250→          <span key={`${h}-${i}`} className="flex items-center gap-1">
+   251→   251→            <motion.span
+   252→   252→              initial={{ opacity: 0, x: -4 }}
+   253→   253→              animate={{ opacity: 1, x: 0 }}
+   254→   254→              transition={{ delay: i * 0.06 + 0.1 }}
+   255→   255→              className="text-verified/60"
+   256→   256→            >
+   257→   257→              <ArrowRight className="h-2.5 w-2.5" />
+   258→   258→            </motion.span>
+   259→   259→            <PathChip hash={h} index={i + 1} />
+   260→   260→          </span>
+   261→   261→        ))}
+   262→   262→        <motion.span
+   263→   263→          initial={{ opacity: 0, x: -4 }}
+   264→   264→          animate={{ opacity: 1, x: 0 }}
+   265→   265→          transition={{ delay: path.length * 0.06 + 0.15 }}
+   266→   266→          className="text-verified/60"
+   267→   267→        >
+   268→   268→          <ArrowRight className="h-2.5 w-2.5" />
+   269→   269→        </motion.span>
+   270→   270→        <motion.span
+   271→   271→          initial={{ opacity: 0, scale: 0.8 }}
+   272→   272→          animate={{ opacity: 1, scale: 1 }}
+   273→   273→          transition={{ delay: path.length * 0.06 + 0.2, type: "spring", stiffness: 300, damping: 20 }}
+   274→   274→          className="inline-flex items-center gap-1 rounded-md border border-verified/40 bg-verified/10 px-1.5 py-0.5 font-mono text-[10px] text-verified"
+   275→   275→        >
+   276→   276→          <Fingerprint className="h-2.5 w-2.5" /> root
+   277→   277→        </motion.span>
+   278→   278→      </div>
+   279→   279→    </div>
+   280→   280→  );
+   281→   281→}
+   282→   282→
+   283→   283→/** Collapsible proof card. */
+   284→   284→function ProofCard({
+   285→   285→  proof,
+   286→   286→  policyName,
+   287→   287→  defaultOpen,
+   288→   288→}: {
+   289→   289→  proof: ProofRow;
+   290→   290→  policyName: string;
+   291→   291→  defaultOpen?: boolean;
+   292→   292→}) {
+   293→   293→  const { toast } = useToast();
+   294→   294→  const [open, setOpen] = useState(!!defaultOpen);
+   295→   295→  const [copied, setCopied] = useState(false);
+   296→   296→  const [verifying, setVerifying] = useState(false);
+   297→   297→  const [verified, setVerified] = useState(proof.verified);
+   298→   298→
+   299→   299→  const copyRoot = async () => {
+   300→   300→    try {
+   301→   301→      await navigator.clipboard.writeText(proof.mmrRoot);
+   302→   302→      setCopied(true);
+   303→   303→      setTimeout(() => setCopied(false), 1400);
+   304→   304→      toast({ title: "MMR root copied", description: proof.mmrRoot });
+   305→   305→    } catch {
+   306→   306→      toast({ title: "Copy failed", variant: "destructive" });
+   307→   307→    }
+   308→   308→  };
+   309→   309→
+   310→   310→  const verify = async () => {
+   311→   311→    setVerifying(true);
+   312→   312→    // Simulated verification: the proof is already verified=true from the API;
+   313→   313→    // we animate the checkmark to make the action feel real.
+   314→   314→    await new Promise((r) => setTimeout(r, 650));
+   315→   315→    setVerified(true);
+   316→   316→    setVerifying(false);
+   317→   317→    toast({
+   318→   318→      title: "Proof verified against MMR root",
+   319→   319→      description: `Reconstructed root matches ${proof.mmrRoot}`,
+   320→   320→    });
+   321→   321→  };
+   322→   322→
+   323→   323→  const zkHash = proof.zkProof ? proof.zkProof.split(":").pop() ?? proof.zkProof : null;
+   324→   324→
+   325→   325→  const gradientColor = verified
+   326→   326→    ? "from-verified/30 via-verified/10 to-verified/20"
+   327→   327→    : "from-violating/30 via-violating/10 to-repairing/20";
+   328→   328→
+   329→   329→  return (
+   330→   330→    <Collapsible open={open} onOpenChange={setOpen}>
+   331→   331→      <motion.div variants={itemVariants}>
+   332→   332→        <GradientBorderCard gradient={gradientColor}>
+   333→   333→          <div className="bg-grid-fine absolute inset-0 opacity-20 pointer-events-none" />
+   334→   334→          <CollapsibleTrigger asChild>
+   335→   335→            <button
+   336→   336→              type="button"
+   337→   337→              className="relative w-full text-left p-3 hover:bg-muted/20 transition-colors rounded-t-[7px]"
+   338→   338→            >
+   339→   339→              <div className="flex items-start justify-between gap-2">
+   340→   340→                <div className="min-w-0 flex-1">
+   341→   341→                  <div className="flex items-center gap-2">
+   342→   342→                    {open ? (
+   343→   343→                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+   344→   344→                    ) : (
+   345→   345→                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+   346→   346→                    )}
+   347→   347→                    <span className="truncate text-sm font-medium text-foreground">
+   348→   348→                      {policyName}
+   349→   349→                    </span>
+   350→   350→                    <StatusPill status={verified ? "verified" : "violating"} label={verified ? "Verified" : "Unverified"} />
+   351→   351→                  </div>
+   352→   352→                  <div className="mt-1 flex items-center gap-2 pl-6 text-[11px] text-muted-foreground">
+   353→   353→                    <Link2 className="h-3 w-3" />
+   354→   354→                    <span className="font-mono">{proof.shardKey}</span>
+   355→   355→                    <span className="opacity-50">·</span>
+   356→   356→                    <Hash value={proof.mmrRoot} length={14} />
+   357→   357→                  </div>
+   358→   358→                </div>
+   359→   359→                <div className="flex shrink-0 flex-col items-end gap-1">
+   360→   360→                  <span className="text-[10px] text-muted-foreground">{fmtRelative(proof.createdAt)}</span>
+   361→   361→                  <div className="flex items-center gap-1">
+   362→   362→                    <ZkStatusBadge zkProof={proof.zkProof} verified={verified} />
+   363→   363→                    {proof.anchored && (
+   364→   364→                      <motion.div
+   365→   365→                        initial={{ scale: 0 }}
+   366→   366→                        animate={{ scale: 1 }}
+   367→   367→                        transition={{ type: "spring", stiffness: 400, damping: 15 }}
+   368→   368→                      >
+   369→   369→                        <Badge variant="outline" className="border-quarantined/30 bg-quarantined/10 text-quarantined text-[9px] gap-0.5">
+   370→   370→                          <AnchorIcon anchor={proof.anchor} />
+   371→   371→                          {proof.anchor ?? "anchored"}
+   372→   372→                        </Badge>
+   373→   373→                      </motion.div>
+   374→   374→                    )}
+   375→   375→                  </div>
+   376→   376→                </div>
+   377→   377→              </div>
+   378→   378→            </button>
+   379→   379→          </CollapsibleTrigger>
+   380→   380→          <CollapsibleContent>
+   381→   381→            <div className="relative border-t border-border/60 p-3 space-y-3 bg-muted/10">
+   382→   382→              {/* MMR root with copy */}
+   383→   383→              <motion.div
+   384→   384→                initial={{ opacity: 0, y: 8 }}
+   385→   385→                animate={{ opacity: 1, y: 0 }}
+   386→   386→                transition={{ duration: 0.3 }}
+   387→   387→                className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/60 p-2.5"
+   388→   388→              >
+   389→   389→                <div className="min-w-0">
+   390→   390→                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">MMR root</div>
+   391→   391→                  <div className="mt-0.5 font-mono text-sm text-verified truncate">{proof.mmrRoot}</div>
+   392→   392→                </div>
+   393→   393→                <Button
+   394→   394→                  size="sm"
+   395→   395→                  variant="outline"
+   396→   396→                  onClick={copyRoot}
+   397→   397→                  className="shrink-0 border-border/60 bg-card/40 h-7"
+   398→   398→                >
+   399→   399→                  {copied ? <Check className="h-3 w-3 text-verified" /> : <Copy className="h-3 w-3" />}
+   400→   400→                  {copied ? "Copied" : "Copy"}
+   401→   401→                </Button>
+   402→   402→              </motion.div>
+   403→   403→
+   404→   404→              {/* Proof path visualization */}
+   405→   405→              <ProofPath path={proof.proofPath} mmrRoot={proof.mmrRoot} />
+   406→   406→
+   407→   407→              {/* Merkle mountain range tree */}
+   408→   408→              <motion.div
+   409→   409→                initial={{ opacity: 0, y: 8 }}
+   410→   410→                animate={{ opacity: 1, y: 0 }}
+   411→   411→                transition={{ duration: 0.3, delay: 0.1 }}
+   412→   412→                className="rounded-md border border-border/60 bg-background/60 p-2.5"
+   413→   413→              >
+   414→   414→                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">
+   415→   415→                  <Mountain className="h-3 w-3" />
+   416→   416→                  Merkle mountain range
+   417→   417→                  <span className="ml-auto font-mono normal-case tracking-normal text-[9px]">
+   418→   418→                    {proof.leaves?.length ?? 0} leaves · path highlighted
+   419→   419→                  </span>
+   420→   420→                </div>
+   421→   421→                <MerkleMountainRange
+   422→   422→                  leaves={proof.leaves ?? []}
+   423→   423→                  proofPath={proof.proofPath}
+   424→   424→                  root={proof.mmrRoot}
+   425→   425→                  provenIndex={proof.provenIndex ?? 0}
+   426→   426→                  height={190}
+   427→   427→                />
+   428→   428→              </motion.div>
+   429→   429→
+   430→   430→              {/* ZK + anchor details */}
+   431→   431→              {proof.zkProof && (
+   432→   432→                <motion.div
+   433→   433→                  initial={{ opacity: 0, y: 8 }}
+   434→   434→                  animate={{ opacity: 1, y: 0 }}
+   435→   435→                  transition={{ duration: 0.3, delay: 0.15 }}
+   436→   436→                  className="flex items-center justify-between gap-2 rounded-md border border-verified/30 bg-verified/5 p-2.5"
+   437→   437→                >
+   438→   438→                  <div className="flex items-center gap-2 min-w-0">
+   439→   439→                    <FileKey className="h-3.5 w-3.5 text-verified shrink-0" />
+   440→   440→                    <div className="min-w-0">
+   441→   441→                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">zk-SNARK proof</div>
+   442→   442→                      <div className="font-mono text-[11px] text-verified truncate">{zkHash}</div>
+   443→   443→                    </div>
+   444→   444→                  </div>
+   445→   445→                  <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[9px]">
+   446→   446→                    trustless
+   447→   447→                  </Badge>
+   448→   448→                </motion.div>
+   449→   449→              )}
+   450→   450→
+   451→   451→              {/* Anchored proof details */}
+   452→   452→              {proof.anchored && (
+   453→   453→                <motion.div
+   454→   454→                  initial={{ opacity: 0, y: 8 }}
+   455→   455→                  animate={{ opacity: 1, y: 0 }}
+   456→   456→                  transition={{ duration: 0.3, delay: 0.2 }}
+   457→   457→                  className="flex items-center justify-between gap-2 rounded-md border border-quarantined/30 bg-quarantined/5 p-2.5"
+   458→   458→                >
+   459→   459→                  <div className="flex items-center gap-2 min-w-0">
+   460→   460→                    <Anchor className="h-3.5 w-3.5 text-quarantined shrink-0" />
+   461→   461→                    <div className="min-w-0">
+   462→   462→                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Anchored proof</div>
+   463→   463→                      <div className="font-mono text-[11px] text-quarantined truncate">
+   464→   464→                        {proof.anchor ?? "unknown"} · transparency log
+   465→   465→                      </div>
+   466→   466→                    </div>
+   467→   467→                  </div>
+   468→   468→                  <div className="flex items-center gap-1">
+   469→   469→                    <AnchorIcon anchor={proof.anchor} />
+   470→   470→                    <Badge variant="outline" className="border-quarantined/30 bg-quarantined/10 text-quarantined text-[9px]">
+   471→   471→                      immutable
+   472→   472→                    </Badge>
+   473→   473→                  </div>
+   474→   474→                </motion.div>
+   475→   475→              )}
+   476→   476→
+   477→   477→              {/* Metadata grid */}
+   478→   478→              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+   479→   479→                <Meta label="policy" value={policyName} mono />
+   480→   480→                <Meta label="shard" value={proof.shardKey} mono />
+   481→   481→                <Meta label="kind" value={proof.policy?.proofKind ?? "mmr"} mono />
+   482→   482→                <Meta label="anchored" value={proof.anchored ? proof.anchor ?? "yes" : "no"} mono />
+   483→   483→              </div>
+   484→   484→
+   485→   485→              <div className="flex items-center justify-between gap-2">
+   486→   486→                <Tooltip>
+   487→   487→                  <TooltipTrigger asChild>
+   488→   488→                    <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground cursor-default">
+   489→   489→                      <Clock className="h-3 w-3" />
+   490→   490→                      {fmtRelative(proof.createdAt)}
+   491→   491→                    </span>
+   492→   492→                  </TooltipTrigger>
+   493→   493→                  <TooltipContent>{fmtTimestamp(proof.createdAt)}</TooltipContent>
+   494→   494→                </Tooltip>
+   495→   495→                <Button
+   496→   496→                  size="sm"
+   497→   497→                  onClick={verify}
+   498→   498→                  disabled={verifying}
+   499→   499→                  className={cn(
+   500→   500→                    "h-7",
+   501→   501→                    verified
+   502→   502→                      ? "border-verified/40 bg-verified/10 text-verified hover:bg-verified/20"
+   503→   503→                      : "border-violating/40 bg-violating/10 text-violating hover:bg-violating/20",
+   504→   504→                  )}
+   505→   505→                  variant="outline"
+   506→   506→                >
+   507→   507→                  {verifying ? (
+   508→   508→                    <RotateCw className="h-3 w-3 animate-spin" />
+   509→   509→                  ) : verified ? (
+   510→   510→                    <Check className="h-3 w-3" />
+   511→   511→                  ) : (
+   512→   512→                    <ShieldCheck className="h-3 w-3" />
+   513→   513→                  )}
+   514→   514→                  {verifying ? "Verifying…" : verified ? "Verified" : "Verify"}
+   515→   515→                </Button>
+   516→   516→              </div>
+   517→   517→            </div>
+   518→   518→          </CollapsibleContent>
+   519→   519→        </GradientBorderCard>
+   520→   520→      </motion.div>
+   521→   521→    </Collapsible>
+   522→   522→  );
+   523→   523→}
+   524→   524→
+   525→   525→function Meta({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+   526→   526→  return (
+   527→   527→    <div className="rounded-md border border-border/60 bg-muted/20 p-2 hover:bg-muted/30 transition-colors">
+   528→   528→      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+   529→   529→      <div className={cn("mt-0.5 text-xs text-foreground truncate", mono && "font-mono")}>{value}</div>
+   530→   530→    </div>
+   531→   531→  );
+   532→   532→}
+   533→   533→
+   534→   534→export function MmrProofsSection() {
+   535→   535→  const { toast } = useToast();
+   536→   536→  const [policies, setPolicies] = useState<PolicyRow[]>([]);
+   537→   537→  const [proofs, setProofs] = useState<ProofRow[]>([]);
+   538→   538→  const [loading, setLoading] = useState(true);
+   539→   539→  const [filterPolicyId, setFilterPolicyId] = useState<string>("all");
+   540→   540→  const [searchQuery, setSearchQuery] = useState("");
+   541→   541→  const [mintPolicyId, setMintPolicyId] = useState<string>("");
+   542→   542→  const [minting, setMinting] = useState(false);
+   543→   543→
+   544→   544→  const policyMap = useMemo(() => {
+   545→   545→    const m: Record<string, PolicyRow> = {};
+   546→   546→    for (const p of policies) m[p.id] = p;
+   547→   547→    return m;
+   548→   548→  }, [policies]);
+   549→   549→
+   550→   550→  // Load policies once.
+   551→   551→  useEffect(() => {
+   552→   552→    let cancelled = false;
+   553→   553→    fetch("/api/policies")
+   554→   554→      .then((r) => r.json())
+   555→   555→      .then((d: { policies: PolicyRow[] }) => {
+   556→   556→        if (cancelled) return;
+   557→   557→        const ps = d.policies ?? [];
+   558→   558→        setPolicies(ps);
+   559→   559→        if (ps.length > 0) setMintPolicyId(ps[0].id);
+   560→   560→      })
+   561→   561→      .catch(() => {});
+   562→   562→    return () => {
+   563→   563→      cancelled = true;
+   564→   564→    };
+   565→   565→  }, []);
+   566→   566→
+   567→   567→  const loadProofs = useCallback(async () => {
+   568→   568→    try {
+   569→   569→      const url =
+   570→   570→        filterPolicyId && filterPolicyId !== "all"
+   571→   571→          ? `/api/proofs?policyId=${encodeURIComponent(filterPolicyId)}`
+   572→   572→          : "/api/proofs";
+   573→   573→      const r = await fetch(url);
+   574→   574→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   575→   575→      const d: { proofs: ProofRow[] } = await r.json();
+   576→   576→      setProofs(d.proofs ?? []);
+   577→   577→    } catch (e) {
+   578→   578→      toast({
+   579→   579→        title: "Failed to load proofs",
+   580→   580→        description: e instanceof Error ? e.message : "Unknown error",
+   581→   581→        variant: "destructive",
+   582→   582→      });
+   583→   583→    } finally {
+   584→   584→      setLoading(false);
+   585→   585→    }
+   586→   586→  }, [filterPolicyId, toast]);
+   587→   587→
+   588→   588→  useEffect(() => {
+   589→   589→    setLoading(true);
+   590→   590→    loadProofs();
+   591→   591→    const t = setInterval(loadProofs, POLL_MS);
+   592→   592→    return () => clearInterval(t);
+   593→   593→  }, [loadProofs]);
+   594→   594→
+   595→   595→  const mintProof = useCallback(async () => {
+   596→   596→    if (!mintPolicyId) {
+   597→   597→      toast({ title: "Select a policy first", variant: "destructive" });
+   598→   598→      return;
+   599→   599→    }
+   600→   600→    setMinting(true);
+   601→   601→    try {
+   602→   602→      const r = await fetch("/api/proofs", {
+   603→   603→        method: "POST",
+   604→   604→        headers: { "Content-Type": "application/json" },
+   605→   605→        body: JSON.stringify({ policyId: mintPolicyId }),
+   606→   606→      });
+   607→   607→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   608→   608→      const d = await r.json();
+   609→   609→      const created: ProofRow = {
+   610→   610→        ...d.proof,
+   611→   611→        verified: true,
+   612→   612→        policy: d.proof.policy ?? {
+   613→   613→          name: policyMap[mintPolicyId]?.name ?? "unknown",
+   614→   614→          zkEnabled: policyMap[mintPolicyId]?.zkEnabled ?? false,
+   615→   615→          proofKind: policyMap[mintPolicyId]?.proofKind ?? "mmr",
+   616→   616→        },
+   617→   617→      };
+   618→   618→      setProofs((prev) => [created, ...prev]);
+   619→   619→      toast({
+   620→   620→        title: "MMR proof minted",
+   621→   621→        description: `root ${created.mmrRoot} · ${created.proofPath.length} sibling(s)`,
+   622→   622→      });
+   623→   623→    } catch (e) {
+   624→   624→      toast({
+   625→   625→        title: "Mint failed",
+   626→   626→        description: e instanceof Error ? e.message : "Unknown error",
+   627→   627→        variant: "destructive",
+   628→   628→      });
+   629→   629→    } finally {
+   630→   630→      setMinting(false);
+   631→   631→    }
+   632→   632→  }, [mintPolicyId, policyMap, toast]);
+   633→   633→
+   634→   634→  // Filter proofs by search query
+   635→   635→  const filteredProofs = useMemo(() => {
+   636→   636→    if (!searchQuery.trim()) return proofs;
+   637→   637→    const q = searchQuery.toLowerCase();
+   638→   638→    return proofs.filter((p) => {
+   639→   639→      const name = p.policy?.name ?? policyMap[p.policyId]?.name ?? "";
+   640→   640→      return (
+   641→   641→        name.toLowerCase().includes(q) ||
+   642→   642→        p.shardKey.toLowerCase().includes(q) ||
+   643→   643→        p.mmrRoot.toLowerCase().includes(q) ||
+   644→   644→        (p.anchor ?? "").toLowerCase().includes(q)
+   645→   645→      );
+   646→   646→    });
+   647→   647→  }, [proofs, searchQuery, policyMap]);
+   648→   648→
+   649→   649→  // Summary metrics.
+   650→   650→  const total = proofs.length;
+   651→   651→  const zkCount = proofs.filter((p) => p.zkProof).length;
+   652→   652→  const anchoredCount = proofs.filter((p) => p.anchored).length;
+   653→   653→  const anchoredRate = total > 0 ? Math.round((anchoredCount / total) * 100) : 0;
+   654→   654→  const allVerified = total > 0 && proofs.every((p) => p.verified);
+   655→   655→  const healthy = total > 0 && allVerified;
+   656→   656→
+   657→   657→  return (
+   658→   658→    <TooltipProvider delayDuration={150}>
+   659→   659→      <motion.section
+   660→   660→        className="space-y-4"
+   661→   661→        variants={containerVariants}
+   662→   662→        initial="hidden"
+   663→   663→        animate="show"
+   664→   664→      >
+   665→   665→        {/* Header */}
+   666→   666→        <motion.div variants={itemVariants} className="flex items-center gap-2.5">
+   667→   667→          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 glow-verified">
+   668→   668→            <KeyRound className="h-4.5 w-4.5 text-verified" />
+   669→   669→          </div>
+   670→   670→          <div>
+   671→   671→            <h2 className="text-base font-semibold text-foreground">MMR Ancestry Proof Inspector</h2>
+   672→   672→            <p className="text-xs text-muted-foreground">
+   673→   673→              Merkle-mountain-range ancestry · zero-knowledge merge proofs · transparency anchoring
+   674→   674→            </p>
+   675→   675→          </div>
+   676→   676→        </motion.div>
+   677→   677→
+   678→   678→        {/* Summary bar */}
+   679→   679→        <motion.div variants={cardVariants}>
+   680→   680→          <GradientBorderCard gradient="from-verified/20 via-verified/10 to-repairing/20">
+   681→   681→            <div className="p-4 space-y-3">
+   682→   682→              <div className="bg-grid-fine absolute inset-0 opacity-30" />
+   683→   683→              <div className="relative grid grid-cols-2 gap-3 sm:grid-cols-4">
+   684→   684→                <SummaryStat label="Total proofs" value={total} icon={<Mountain className="h-3.5 w-3.5" />} />
+   685→   685→                <SummaryStat
+   686→   686→                  label="ZK proofs"
+   687→   687→                  value={zkCount}
+   688→   688→                  icon={<KeyRound className="h-3.5 w-3.5" />}
+   689→   689→                  accent="verified"
+   690→   690→                />
+   691→   691→                <SummaryStat
+   692→   692→                  label="Anchored"
+   693→   693→                  value={`${anchoredRate}%`}
+   694→   694→                  icon={<Anchor className="h-3.5 w-3.5" />}
+   695→   695→                  accent="verified"
+   696→   696→                />
+   697→   697→                <SummaryStat
+   698→   698→                  label="Verification"
+   699→   699→                  value={total === 0 ? "—" : healthy ? "healthy" : "degraded"}
+   700→   700→                  icon={<ShieldCheck className="h-3.5 w-3.5" />}
+   701→   701→                  accent={total === 0 ? "muted" : healthy ? "verified" : "violating"}
+   702→   702→                  pulse={!healthy && total > 0}
+   703→   703→                />
+   704→   704→              </div>
+   705→   705→
+   706→   706→              {/* Proof chain integrity */}
+   707→   707→              {total > 0 && (
+   708→   708→                <div className="relative border-t border-border/40 pt-3">
+   709→   709→                  <ProofChainIntegrity proofs={proofs} />
+   710→   710→                </div>
+   711→   711→              )}
+   712→   712→            </div>
+   713→   713→          </GradientBorderCard>
+   714→   714→        </motion.div>
+   715→   715→
+   716→   716→        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+   717→   717→          {/* LEFT — proof list (2/3) */}
+   718→   718→          <div className="space-y-3 lg:col-span-2">
+   719→   719→            <motion.div variants={cardVariants}>
+   720→   720→              <GradientBorderCard gradient="from-verified/20 via-border/10 to-verified/20">
+   721→   721→                <div className="p-3 space-y-3">
+   722→   722→                  <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   723→   723→                  <div className="relative flex flex-wrap items-center justify-between gap-2">
+   724→   724→                    <div className="flex items-center gap-2">
+   725→   725→                      <span className="text-sm font-medium text-foreground">Issued proofs</span>
+   726→   726→                      <Badge variant="outline" className="border-border/60 text-[10px]">{total}</Badge>
+   727→   727→                    </div>
+   728→   728→                    <div className="flex items-center gap-2">
+   729→   729→                      <div className="relative">
+   730→   730→                        <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+   731→   731→                        <Input
+   732→   732→                          value={searchQuery}
+   733→   733→                          onChange={(e) => setSearchQuery(e.target.value)}
+   734→   734→                          placeholder="Search proofs…"
+   735→   735→                          className="h-8 w-[180px] pl-7 text-xs bg-card/60"
+   736→   736→                        />
+   737→   737→                      </div>
+   738→   738→                      <Select value={filterPolicyId} onValueChange={setFilterPolicyId}>
+   739→   739→                        <SelectTrigger className="h-8 w-[200px] bg-card/60 text-xs">
+   740→   740→                          <SelectValue placeholder="All policies" />
+   741→   741→                        </SelectTrigger>
+   742→   742→                        <SelectContent>
+   743→   743→                          <SelectItem value="all">All policies</SelectItem>
+   744→   744→                          {policies.map((p) => (
+   745→   745→                            <SelectItem key={p.id} value={p.id}>
+   746→   746→                              {p.name}
+   747→   747→                            </SelectItem>
+   748→   748→                          ))}
+   749→   749→                        </SelectContent>
+   750→   750→                      </Select>
+   751→   751→                    </div>
+   752→   752→                  </div>
+   753→   753→                </div>
+   754→   754→              </GradientBorderCard>
+   755→   755→            </motion.div>
+   756→   756→
+   757→   757→            {loading ? (
+   758→   758→              <div className="space-y-2">
+   759→   759→                {Array.from({ length: 4 }).map((_, i) => (
+   760→   760→                  <Skeleton key={i} className="h-20 w-full rounded-lg bg-muted/40" />
+   761→   761→                ))}
+   762→   762→              </div>
+   763→   763→            ) : filteredProofs.length === 0 ? (
+   764→   764→              <Card className="bg-card/60 border-dashed border-border/60 p-8 text-center">
+   765→   765→                <KeyRound className="mx-auto h-8 w-8 text-muted-foreground/40" />
+   766→   766→                <p className="mt-2 text-sm text-muted-foreground">
+   767→   767→                  {searchQuery ? "No proofs match your search." : "No ancestry proofs issued."}
+   768→   768→                </p>
+   769→   769→                <p className="text-xs text-muted-foreground/70">
+   770→   770→                  {searchQuery ? "Try a different query." : "Mint one with the composer →"}
+   771→   771→                </p>
+   772→   772→              </Card>
+   773→   773→            ) : (
+   774→   774→              <motion.div
+   775→   775→                className="space-y-2 max-h-[640px] overflow-y-auto pr-1"
+   776→   776→                variants={containerVariants}
+   777→   777→                initial="hidden"
+   778→   778→                animate="show"
+   779→   779→              >
+   780→   780→                {filteredProofs.map((p, i) => (
+   781→   781→                  <ProofCard
+   782→   782→                    key={p.id}
+   783→   783→                    proof={p}
+   784→   784→                    policyName={p.policy?.name ?? policyMap[p.policyId]?.name ?? "unknown"}
+   785→   785→                    defaultOpen={i === 0}
+   786→   786→                  />
+   787→   787→                ))}
+   788→   788→              </motion.div>
+   789→   789→            )}
+   790→   790→          </div>
+   791→   791→
+   792→   792→          {/* RIGHT — mint composer + educational callout (1/3) */}
+   793→   793→          <div className="space-y-3">
+   794→   794→            <motion.div variants={cardVariants}>
+   795→   795→              <GradientBorderCard gradient="from-verified/30 via-verified/10 to-verified/20">
+   796→   796→                <div className="p-4 space-y-3">
+   797→   797→                  <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   798→   798→                  <div className="relative space-y-3">
+   799→   799→                    <div className="flex items-center justify-between">
+   800→   800→                      <div className="flex items-center gap-2">
+   801→   801→                        <Plus className="h-4 w-4 text-verified" />
+   802→   802→                        <span className="text-sm font-semibold text-foreground">Mint MMR proof</span>
+   803→   803→                      </div>
+   804→   804→                      <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[10px]">
+   805→   805→                        ancestry
+   806→   806→                      </Badge>
+   807→   807→                    </div>
+   808→   808→
+   809→   809→                    <div className="space-y-1.5">
+   810→   810→                      <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+   811→   811→                        Source policy
+   812→   812→                      </label>
+   813→   813→                      <Select value={mintPolicyId} onValueChange={setMintPolicyId}>
+   814→   814→                        <SelectTrigger className="bg-card/60">
+   815→   815→                          <SelectValue placeholder="Select policy" />
+   816→   816→                        </SelectTrigger>
+   817→   817→                        <SelectContent>
+   818→   818→                          {policies.map((p) => (
+   819→   819→                            <SelectItem key={p.id} value={p.id}>
+   820→   820→                              {p.name}
+   821→   821→                              {p.zkEnabled && <span className="ml-1 text-verified">●zk</span>}
+   822→   822→                            </SelectItem>
+   823→   823→                          ))}
+   824→   824→                        </SelectContent>
+   825→   825→                      </Select>
+   826→   826→                    </div>
+   827→   827→
+   828→   828→                    <Button
+   829→   829→                      onClick={mintProof}
+   830→   830→                      disabled={minting || !mintPolicyId}
+   831→   831→                      className="w-full bg-verified/15 border border-verified/40 text-verified hover:bg-verified/25"
+   832→   832→                      variant="outline"
+   833→   833→                    >
+   834→   834→                      {minting ? (
+   835→   835→                        <RotateCw className="h-4 w-4 animate-spin" />
+   836→   836→                      ) : (
+   837→   837→                        <Sparkles className="h-4 w-4" />
+   838→   838→                      )}
+   839→   839→                      {minting ? "Minting…" : "Mint MMR proof"}
+   840→   840→                    </Button>
+   841→   841→
+   842→   842→                    {mintPolicyId && policyMap[mintPolicyId]?.zkEnabled && (
+   843→   843→                      <p className="text-[10px] text-verified/80 flex items-center gap-1">
+   844→   844→                        <KeyRound className="h-2.5 w-2.5" />
+   845→   845→                        ZK enabled — a SNARK over the state delta will be generated.
+   846→   846→                      </p>
+   847→   847→                    )}
+   848→   848→                  </div>
+   849→   849→                </div>
+   850→   850→              </GradientBorderCard>
+   851→   851→            </motion.div>
+   852→   852→
+   853→   853→            {/* Educational callout */}
+   854→   854→            <motion.div variants={cardVariants}>
+   855→   855→              <GradientBorderCard gradient="from-quarantined/20 via-quarantined/10 to-quarantined/20">
+   856→   856→                <div className="p-4 space-y-2">
+   857→   857→                  <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   858→   858→                  <div className="relative space-y-2">
+   859→   859→                    <div className="flex items-center gap-2">
+
+[showing lines 60-859 of 925; use offset=860 with limit to continue reading]

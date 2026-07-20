@@ -1,0 +1,173 @@
+// Epistemic Runtime — Prisma schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A compiled .epd policy stored in the runtime.
+model Policy {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  filename    String
+  source      String
+  domain      String?
+  version     String?
+  description String?
+  ok          Boolean  @default(true)
+  errorCount  Int      @default(0)
+  warningCount Int     @default(0)
+  invariantCount Int   @default(0)
+  shardCount  Int      @default(0)
+  shardKey    String?
+  shardStrategy String?
+  repairStrategy String?
+  zkEnabled   Boolean  @default(false)
+  proofKind   String?
+  shadowEnabled Boolean @default(false)
+  takeoverLatencyMs Int?
+  wasmFingerprint String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  shards     Shard[]
+  merges     MergeProposal[]
+  proofs     AncestryProof[]
+  violations InvariantViolation[]
+  shadowEvents ShadowEvent[]
+  mined      MinedInvariant[]
+  revisions  PolicyRevision[]
+
+  @@index([domain])
+}
+
+// A historical revision of a policy's .epd source (versioning).
+model PolicyRevision {
+  id          String   @id @default(cuid())
+  policyId    String
+  policy      Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  version     Int      // sequential revision number
+  source      String   // the .epd source at this revision
+  wasmFingerprint String?
+  invariantCount Int   @default(0)
+  changeSummary String? // short description of what changed
+  author      String?
+  createdAt   DateTime @default(now())
+
+  @@index([policyId])
+  @@unique([policyId, version])
+}
+
+// A shard owning a subset of the state space for a policy.
+model Shard {
+  id         String   @id @default(cuid())
+  policyId   String
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  shardKey   String
+  region     String
+  nodeId     String
+  state      String   // JSON
+  invariantStatus String // "healthy" | "repairing" | "violating"
+  mmrRoot    String
+  peerCount  Int      @default(0)
+  lastMergeAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  merges     MergeProposal[]
+
+  @@index([policyId])
+  @@index([shardKey])
+}
+
+// A merge proposal between two shards, possibly self-repaired.
+model MergeProposal {
+  id           String   @id @default(cuid())
+  policyId     String
+  policy       Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  sourceShardId String?
+  sourceShard  Shard?   @relation(fields: [sourceShardId], references: [id], onDelete: SetNull)
+  targetShard  String
+  sourceShardName String
+  proposedState String   // JSON
+  repairedState String?  // JSON
+  status       String   // pending | repairing | applied | rejected
+  violations   String   // JSON array of names
+  divergence   Float    @default(0)
+  iterations   Int      @default(0)
+  mmrProof     String
+  zkProof      String?
+  createdAt    DateTime @default(now())
+
+  @@index([policyId])
+  @@index([status])
+}
+
+// An MMR ancestry proof anchored for a policy/shard.
+model AncestryProof {
+  id         String   @id @default(cuid())
+  policyId   String
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  shardKey   String
+  mmrRoot    String
+  proofPath  String   // JSON array of sibling hashes
+  zkProof    String?
+  anchored   Boolean  @default(false)
+  anchor     String?  // rekor | blockchain | transparency_log
+  createdAt  DateTime @default(now())
+
+  @@index([policyId])
+}
+
+// A recorded invariant violation (for the miner / drift log).
+model InvariantViolation {
+  id         String   @id @default(cuid())
+  policyId   String
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  invariant  String
+  severity   String
+  soft       Boolean  @default(false)
+  shardKey   String
+  actual     String?
+  expected   String?
+  repaired   Boolean  @default(false)
+  driftDelta Float?
+  createdAt  DateTime @default(now())
+
+  @@index([policyId])
+  @@index([invariant])
+}
+
+// Shadow bridge events: what-if branches, takeovers, replays.
+model ShadowEvent {
+  id         String   @id @default(cuid())
+  policyId   String
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  kind       String   // takeover | whatif | replay | divergence | handback
+  summary    String
+  liveState  String   // JSON
+  shadowState String  // JSON
+  divergence Float    @default(0)
+  authoritative Boolean @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([policyId])
+  @@index([kind])
+}
+
+// Candidate invariants proposed by the AI miner.
+model MinedInvariant {
+  id         String   @id @default(cuid())
+  policyId   String?
+  policy     Policy?  @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  predicate  String
+  rationale  String
+  confidence Float
+  severity   String
+  accepted   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}

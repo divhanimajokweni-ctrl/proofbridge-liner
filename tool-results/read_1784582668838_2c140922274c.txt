@@ -1,0 +1,885 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Terminal,
+     7→  Play,
+     8→  RotateCw,
+     9→  Trash2,
+    10→  CheckCircle2,
+    11→  XCircle,
+    12→  AlertTriangle,
+    13→  Server,
+    14→  FileText,
+    15→  FlaskConical,
+    16→  KeyRound,
+    17→  List,
+    18→  Settings2,
+    19→  Loader2,
+    20→  ArrowUp,
+    21→  ArrowDown,
+    22→  ChevronRight,
+    23→} from "lucide-react";
+    24→import {
+    25→  Card,
+    26→  CardContent,
+    27→  CardHeader,
+    28→  CardTitle,
+    29→  CardDescription,
+    30→} from "@/components/ui/card";
+    31→import {
+    32→  Select,
+    33→  SelectContent,
+    34→  SelectItem,
+    35→  SelectTrigger,
+    36→  SelectValue,
+    37→} from "@/components/ui/select";
+    38→import { Button } from "@/components/ui/button";
+    39→import { Badge } from "@/components/ui/badge";
+    40→import { Skeleton } from "@/components/ui/skeleton";
+    41→import { Switch } from "@/components/ui/switch";
+    42→import { Textarea } from "@/components/ui/textarea";
+    43→import { Separator } from "@/components/ui/separator";
+    44→import {
+    45→  Tooltip,
+    46→  TooltipContent,
+    47→  TooltipProvider,
+    48→  TooltipTrigger,
+    49→} from "@/components/ui/tooltip";
+    50→import { useToast } from "@/hooks/use-toast";
+    51→import { cn } from "@/lib/utils";
+    52→
+    53→const CLI_PORT = "3031";
+    54→const CLI_BASE = (path: string) =>
+    55→  path.includes("?") ? `${path}&XTransformPort=${CLI_PORT}` : `${path}?XTransformPort=${CLI_PORT}`;
+    56→
+    57→interface CliSample {
+    58→  name: string;
+    59→  filename: string;
+    60→  source: string;
+    61→}
+    62→
+    63→interface CliRunResponse {
+    64→  ok: boolean;
+    65→  exitCode: number;
+    66→  stdout: string;
+    67→  stderr: string;
+    68→  result?: unknown;
+    69→}
+    70→
+    71→interface TerminalEntry {
+    72→  id: string;
+    73→  prompt: string;
+    74→  stdout: string;
+    75→  stderr: string;
+    76→  exitCode: number;
+    77→  ranAt: number;
+    78→}
+    79→
+    80→const ANSI_CLASS: Record<string, string> = {
+    81→  "0": "", // reset
+    82→  "1": "font-bold",
+    83→  "2": "opacity-60",
+    84→  "31": "text-rose-400",
+    85→  "32": "text-emerald-400",
+    86→  "33": "text-amber-400",
+    87→  "34": "text-teal-400",
+    88→  "35": "text-fuchsia-400",
+    89→  "36": "text-teal-300",
+    90→  "90": "text-zinc-500",
+    91→};
+    92→
+    93→/**
+    94→ * Render ANSI-colored text (SGR codes only) as a sequence of styled spans.
+    95→ */
+    96→function renderAnsi(text: string): React.ReactNode[] {
+    97→  if (!text) return [];
+    98→  const parts = text.split(/\x1b\[(\d+(?:;\d+)*)m/);
+    99→  const nodes: React.ReactNode[] = [];
+   100→  let active = new Set<string>();
+   101→  let key = 0;
+   102→  for (let i = 0; i < parts.length; i++) {
+   103→    const part = parts[i];
+   104→    if (i % 2 === 1) {
+   105→      for (const code of part.split(";")) {
+   106→        if (code === "0" || code === "") {
+   107→          active = new Set();
+   108→        } else {
+   109→          const cls = ANSI_CLASS[code];
+   110→          if (cls) active.add(cls);
+   111→        }
+   112→      }
+   113→    } else if (part) {
+   114→      const cls = Array.from(active).join(" ");
+   115→      nodes.push(
+   116→        <span key={key++} className={cls || undefined}>
+   117→          {part}
+   118→        </span>,
+   119→      );
+   120→    }
+   121→  }
+   122→  return nodes;
+   123→}
+   124→
+   125→/** Syntax highlight .epd keywords for the source editor */
+   126→function highlightEpd(text: string): React.ReactNode[] {
+   127→  const keywords = [
+   128→    "policy", "invariant", "soft", "shard", "by", "expect", "merge",
+   129→    "on_violation", "ancestry", "shadowbridge", "shadow_bridge", "export",
+   130→    "to", "key", "strategy", "count", "replication", "preserves",
+   131→    "locality_preserving", "max_divergence", "proof", "zk", "gossip",
+   132→    "anchor", "enabled", "takeover_latency_ms", "whatif_branching",
+   133→    "replay", "authoritative", "domain", "version", "description",
+   134→    "severity", "predicate", "objective", "max_iters", "notify",
+   135→  ];
+   136→  const kwSet = new Set(keywords);
+   137→  const lines = text.split("\n");
+   138→  const nodes: React.ReactNode[] = [];
+   139→  let globalKey = 0;
+   140→
+   141→  for (let li = 0; li < lines.length; li++) {
+   142→    const line = lines[li];
+   143→    const tokens = line.split(/(\s+|[{}()"[\],;]|\/\/.*$)/);
+   144→    for (const token of tokens) {
+   145→      if (kwSet.has(token)) {
+   146→        nodes.push(
+   147→          <span key={globalKey++} className="text-emerald-400 font-medium">{token}</span>
+   148→        );
+   149→      } else if (/^".*"$/.test(token)) {
+   150→        nodes.push(
+   151→          <span key={globalKey++} className="text-amber-300">{token}</span>
+   152→        );
+   153→      } else if (/^\d+(\.\d+)?$/.test(token)) {
+   154→        nodes.push(
+   155→          <span key={globalKey++} className="text-teal-300">{token}</span>
+   156→        );
+   157→      } else if (/^\/\/.*$/.test(token)) {
+   158→        nodes.push(
+   159→          <span key={globalKey++} className="text-zinc-500 italic">{token}</span>
+   160→        );
+   161→      } else {
+   162→        nodes.push(
+   163→          <span key={globalKey++}>{token}</span>
+   164→        );
+   165→      }
+   166→    }
+   167→    if (li < lines.length - 1) nodes.push(<span key={globalKey++}>{"\n"}</span>);
+   168→  }
+   169→  return nodes;
+   170→}
+   171→
+   172→const DEFAULT_STATE = `{
+   173→  "geo_region": "europe-west",
+   174→  "frequency": 50.01,
+   175→  "generation": [420, 380, 510, 290, 600, 470],
+   176→  "load": [410, 375, 500, 285, 590, 460],
+   177→  "losses": 12,
+   178→  "thermal_headroom": 18
+   179→}`;
+   180→
+   181→const VIOLATING_STATE = `{
+   182→  "geo_region": "europe-west",
+   183→  "frequency": 50.6,
+   184→  "thermal_headroom": 6
+   185→}`;
+   186→
+   187→const SAFE_CURRENT_STATE = {
+   188→  geo_region: "europe-west",
+   189→  frequency: 50.0,
+   190→  generation: [420, 380, 510, 290, 600, 470],
+   191→  load: [410, 375, 500, 285, 590, 460],
+   192→  losses: 12,
+   193→  thermal_headroom: 18,
+   194→};
+   195→
+   196→type CommandKind = "validate" | "repair" | "proof" | "list-samples";
+   197→
+   198→/** Blinking cursor component */
+   199→function BlinkingCursor() {
+   200→  return (
+   201→    <span className="inline-block w-2 h-4 bg-emerald-400 ml-0.5 animate-[blink_1s_step-end_infinite] align-text-bottom" />
+   202→  );
+   203→}
+   204→
+   205→/** Status badge for validation results */
+   206→function ResultBadge({ exitCode }: { exitCode: number }) {
+   207→  const failed = exitCode === -1;
+   208→  const ok = exitCode === 0;
+   209→  return (
+   210→    <span
+   211→      className={cn(
+   212→        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono font-semibold",
+   213→        failed
+   214→          ? "border-rose-500/40 bg-rose-500/10 text-rose-400"
+   215→          : ok
+   216→            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+   217→            : "border-amber-500/40 bg-amber-500/10 text-amber-400",
+   218→      )}
+   219→    >
+   220→      {failed ? (
+   221→        <>
+   222→          <XCircle className="h-2.5 w-2.5" /> error
+   223→        </>
+   224→      ) : ok ? (
+   225→        <>
+   226→          <CheckCircle2 className="h-2.5 w-2.5" /> pass
+   227→        </>
+   228→      ) : (
+   229→        <>
+   230→          <AlertTriangle className="h-2.5 w-2.5" /> exit {exitCode}
+   231→        </>
+   232→      )}
+   233→    </span>
+   234→  );
+   235→}
+   236→
+   237→/** Animated terminal output with typing effect */
+   238→function AnimatedOutput({ text, delay = 0 }: { text: string; delay?: number }) {
+   239→  const [displayed, setDisplayed] = useState("");
+   240→  const [done, setDone] = useState(false);
+   241→
+   242→  useEffect(() => {
+   243→    let timeout: NodeJS.Timeout;
+   244→    let i = 0;
+   245→    const start = () => {
+   246→      const tick = () => {
+   247→        if (i < text.length) {
+   248→          const chunk = text.length > 200 ? 4 : 1;
+   249→          setDisplayed(text.slice(0, i + chunk));
+   250→          i += chunk;
+   251→          timeout = setTimeout(tick, 8);
+   252→        } else {
+   253→          setDone(true);
+   254→        }
+   255→      };
+   256→      tick();
+   257→    };
+   258→    timeout = setTimeout(start, delay);
+   259→    return () => clearTimeout(timeout);
+   260→  }, [text, delay]);
+   261→
+   262→  return (
+   263→    <span>
+   264→      {renderAnsi(displayed)}
+   265→      {!done && <BlinkingCursor />}
+   266→    </span>
+   267→  );
+   268→}
+   269→
+   270→export function CliTerminalSection() {
+   271→  const { toast } = useToast();
+   272→  const [samples, setSamples] = useState<CliSample[]>([]);
+   273→  const [samplesLoading, setSamplesLoading] = useState(true);
+   274→  const [selectedSample, setSelectedSample] = useState<string>("");
+   275→  const [source, setSource] = useState<string>("");
+   276→  const [stateText, setStateText] = useState<string>(DEFAULT_STATE);
+   277→  const [strict, setStrict] = useState<boolean>(false);
+   278→  const [history, setHistory] = useState<TerminalEntry[]>([]);
+   279→  const [running, setRunning] = useState<CommandKind | null>(null);
+   280→  const [health, setHealth] = useState<{ ok: boolean; checkedAt: number } | null>(null);
+   281→  const [historyIndex, setHistoryIndex] = useState(-1);
+   282→  const [latestEntryId, setLatestEntryId] = useState<string | null>(null);
+   283→
+   284→  const scrollRef = useRef<HTMLDivElement>(null);
+   285→
+   286→  useEffect(() => {
+   287→    if (scrollRef.current) {
+   288→      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+   289→    }
+   290→  }, [history]);
+   291→
+   292→  const loadSamples = useCallback(async () => {
+   293→    setSamplesLoading(true);
+   294→    try {
+   295→      const r = await fetch(CLI_BASE("/api/samples"));
+   296→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   297→      const d: { samples: CliSample[] } = await r.json();
+   298→      const list = d.samples ?? [];
+   299→      setSamples(list);
+   300→      if (list.length > 0 && !source) {
+   301→        setSource(list[0].source);
+   302→        setSelectedSample(list[0].filename);
+   303→      }
+   304→    } catch (e) {
+   305→      toast({
+   306→        title: "Failed to load samples",
+   307→        description: e instanceof Error ? e.message : "Unknown error",
+   308→        variant: "destructive",
+   309→      });
+   310→    } finally {
+   311→      setSamplesLoading(false);
+   312→    }
+   313→  }, [source, toast]);
+   314→
+   315→  useEffect(() => {
+   316→    loadSamples();
+   317→  }, [loadSamples]);
+   318→
+   319→  useEffect(() => {
+   320→    let cancelled = false;
+   321→    const check = async () => {
+   322→      try {
+   323→        const r = await fetch(CLI_BASE("/api/health"));
+   324→        const d = await r.json();
+   325→        if (cancelled) return;
+   326→        setHealth({ ok: !!d.ok, checkedAt: Date.now() });
+   327→      } catch {
+   328→        if (!cancelled) setHealth({ ok: false, checkedAt: Date.now() });
+   329→      }
+   330→    };
+   331→    check();
+   332→    const t = setInterval(check, 10_000);
+   333→    return () => {
+   334→      cancelled = true;
+   335→      clearInterval(t);
+   336→    };
+   337→  }, []);
+   338→
+   339→  const loadSample = useCallback(
+   340→    (filename: string) => {
+   341→      const s = samples.find((x) => x.filename === filename);
+   342→      if (s) {
+   343→        setSource(s.source);
+   344→        setSelectedSample(filename);
+   345→        toast({ title: `Loaded ${s.filename}`, description: s.name });
+   346→      }
+   347→    },
+   348→    [samples, toast],
+   349→  );
+   350→
+   351→  const parseState = useCallback(
+   352→    (label: string): Record<string, unknown> | null => {
+   353→      try {
+   354→        return JSON.parse(stateText);
+   355→      } catch (e) {
+   356→        toast({
+   357→          title: `Invalid ${label} JSON`,
+   358→          description: e instanceof Error ? e.message : "Parse error",
+   359→          variant: "destructive",
+   360→        });
+   361→        return null;
+   362→      }
+   363→    },
+   364→    [stateText, toast],
+   365→  );
+   366→
+   367→  const runCommand = useCallback(
+   368→    async (kind: CommandKind) => {
+   369→      if (kind !== "list-samples" && !source.trim()) {
+   370→        toast({ title: "Source is empty", description: "Load a sample or write a .epd policy.", variant: "destructive" });
+   371→        return;
+   372→      }
+   373→      let body: Record<string, unknown>;
+   374→      let promptCmd: string;
+   375→      if (kind === "validate") {
+   376→        const s = parseState("state");
+   377→        if (!s) return;
+   378→        body = { command: "validate", source, state: s, strict };
+   379→        promptCmd = `validate${strict ? " --strict" : ""} (inline source) --state (inline)`;
+   380→      } else if (kind === "repair") {
+   381→        const proposed = parseState("state");
+   382→        if (!proposed) return;
+   383→        body = { command: "repair", source, current: SAFE_CURRENT_STATE, proposed };
+   384→        promptCmd = `repair (inline source) --current (safe baseline) --proposed (inline)`;
+   385→      } else if (kind === "proof") {
+   386→        body = { command: "proof", source, index: 0 };
+   387→        promptCmd = `proof (inline source) --index 0`;
+   388→      } else {
+   389→        body = { command: "list-samples" };
+   390→        promptCmd = `list-samples`;
+   391→      }
+   392→
+   393→      setRunning(kind);
+   394→      try {
+   395→        const r = await fetch(CLI_BASE("/api/run"), {
+   396→          method: "POST",
+   397→          headers: { "Content-Type": "application/json" },
+   398→          body: JSON.stringify(body),
+   399→        });
+   400→        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   401→        const d: CliRunResponse = await r.json();
+   402→        const entry: TerminalEntry = {
+   403→          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+   404→          prompt: `$ epd-cli ${promptCmd}`,
+   405→          stdout: d.stdout ?? "",
+   406→          stderr: d.stderr ?? "",
+   407→          exitCode: d.exitCode,
+   408→          ranAt: Date.now(),
+   409→        };
+   410→        setHistory((prev) => [...prev, entry]);
+   411→        setLatestEntryId(entry.id);
+   412→        setHistoryIndex(-1);
+   413→        toast({
+   414→          title: d.exitCode === 0 ? "Command succeeded" : "Command failed",
+   415→          description: `exit ${d.exitCode} · ${(d.stdout ?? "").length} bytes output`,
+   416→          variant: d.exitCode === 0 ? "default" : "destructive",
+   417→        });
+   418→      } catch (e) {
+   419→        const entry: TerminalEntry = {
+   420→          id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+   421→          prompt: `$ epd-cli ${promptCmd}`,
+   422→          stdout: "",
+   423→          stderr: e instanceof Error ? e.message : "Network error",
+   424→          exitCode: -1,
+   425→          ranAt: Date.now(),
+   426→        };
+   427→        setHistory((prev) => [...prev, entry]);
+   428→        setLatestEntryId(entry.id);
+   429→        toast({
+   430→          title: "Request failed",
+   431→          description: e instanceof Error ? e.message : "Unknown error",
+   432→          variant: "destructive",
+   433→        });
+   434→      } finally {
+   435→        setRunning(null);
+   436→      }
+   437→    },
+   438→    [source, stateText, strict, parseState, toast],
+   439→  );
+   440→
+   441→  const clearTerminal = useCallback(() => {
+   442→    setHistory([]);
+   443→    setLatestEntryId(null);
+   444→    toast({ title: "Terminal cleared" });
+   445→  }, [toast]);
+   446→
+   447→  const loadViolating = useCallback(() => {
+   448→    setStateText(VIOLATING_STATE);
+   449→    toast({
+   450→      title: "Loaded violating state",
+   451→      description: "frequency:50.6 breaches freq_bounds [49.8, 50.2]",
+   452→    });
+   453→  }, [toast]);
+   454→
+   455→  const loadSafe = useCallback(() => {
+   456→    setStateText(DEFAULT_STATE);
+   457→    toast({ title: "Loaded safe state", description: "frequency:50.01 — all invariants pass" });
+   458→  }, [toast]);
+   459→
+   460→  const navigateHistory = useCallback((direction: "up" | "down") => {
+   461→    if (history.length === 0) return;
+   462→    if (direction === "up") {
+   463→      setHistoryIndex((prev) => Math.min(prev + 1, history.length - 1));
+   464→    } else {
+   465→      setHistoryIndex((prev) => Math.max(prev - 1, -1));
+   466→    }
+   467→  }, [history]);
+   468→
+   469→  const online = health?.ok ?? false;
+   470→
+   471→  const cmdButton = (kind: CommandKind, label: string, icon: React.ReactNode, primary?: boolean) => (
+   472→    <motion.div whileTap={{ scale: 0.95 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+   473→      <Button
+   474→        onClick={() => runCommand(kind)}
+   475→        disabled={running !== null}
+   476→        variant="outline"
+   477→        className={cn(
+   478→          "h-8 gap-1.5 w-full",
+   479→          primary
+   480→            ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
+   481→            : "border-zinc-700 bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700/60",
+   482→        )}
+   483→      >
+   484→        {running === kind ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : icon}
+   485→        <span className="font-mono text-xs">{label}</span>
+   486→      </Button>
+   487→    </motion.div>
+   488→  );
+   489→
+   490→  return (
+   491→    <section className="space-y-4">
+   492→      {/* Header */}
+   493→      <motion.div
+   494→        initial={{ opacity: 0, y: -8 }}
+   495→        animate={{ opacity: 1, y: 0 }}
+   496→        transition={{ duration: 0.4 }}
+   497→        className="flex items-start justify-between gap-3"
+   498→      >
+   499→        <div className="flex items-start gap-2.5">
+   500→          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10 shadow-[0_0_12px_-3px_var(--verified)]">
+   501→            <Terminal className="h-4.5 w-4.5 text-emerald-400" />
+   502→          </div>
+   503→          <div>
+   504→            <h2 className="text-base font-semibold text-foreground">epd-cli Terminal</h2>
+   505→            <p className="text-xs text-muted-foreground">
+   506→              Run the real <span className="font-mono text-emerald-400">epd-cli</span> against custom{" "}
+   507→              <span className="font-mono text-emerald-400">.epd</span> policy files —
+   508→              validate, repair, prove ancestry.
+   509→            </p>
+   510→          </div>
+   511→        </div>
+   512→
+   513→        {/* Health status badge */}
+   514→        <Badge
+   515→          variant="outline"
+   516→          className={cn(
+   517→            "gap-1.5 text-[10px] font-mono",
+   518→            online
+   519→              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+   520→              : "border-rose-500/30 bg-rose-500/10 text-rose-400",
+   521→          )}
+   522→        >
+   523→          <Server className={cn("h-3 w-3", !online && "animate-pulse")} />
+   524→          {online ? `epd-cli online · :${CLI_PORT}` : "offline"}
+   525→        </Badge>
+   526→      </motion.div>
+   527→
+   528→      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+   529→        {/* LEFT — composer (2/5) */}
+   530→        <motion.div
+   531→          initial={{ opacity: 0, x: -16 }}
+   532→          animate={{ opacity: 1, x: 0 }}
+   533→          transition={{ duration: 0.4, delay: 0.1 }}
+   534→          className="space-y-3 lg:col-span-2"
+   535→        >
+   536→          <Card className="bg-zinc-950/80 backdrop-blur border-zinc-800/80 p-4 relative overflow-hidden">
+   537→            {/* Gradient border accent */}
+   538→            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/0 via-emerald-500/50 to-emerald-500/0" />
+   539→            <div className="relative space-y-3">
+   540→              <div className="flex items-center justify-between">
+   541→                <div className="flex items-center gap-2">
+   542→                  <Settings2 className="h-4 w-4 text-amber-400" />
+   543→                  <span className="text-sm font-semibold text-zinc-200">Command composer</span>
+   544→                </div>
+   545→                <Badge variant="outline" className="border-zinc-700 text-[9px] font-mono text-zinc-400">
+   546→                  :{CLI_PORT}
+   547→                </Badge>
+   548→              </div>
+   549→
+   550→              {/* Sample loader */}
+   551→              <div className="space-y-1.5">
+   552→                <label className="text-[11px] uppercase tracking-wide text-zinc-500">
+   553→                  Load bundled sample
+   554→                </label>
+   555→                {samplesLoading ? (
+   556→                  <Skeleton className="h-8 w-full rounded-md bg-zinc-800" />
+   557→                ) : (
+   558→                  <Select value={selectedSample} onValueChange={loadSample}>
+   559→                    <SelectTrigger className="bg-zinc-900 border-zinc-800 text-xs text-zinc-300">
+   560→                      <SelectValue placeholder="Select a sample .epd" />
+   561→                    </SelectTrigger>
+   562→                    <SelectContent>
+   563→                      {samples.map((s) => (
+   564→                        <SelectItem key={s.filename} value={s.filename}>
+   565→                          <span className="font-mono">{s.filename}</span>
+   566→                          <span className="ml-1 text-zinc-500">· {s.name}</span>
+   567→                        </SelectItem>
+   568→                      ))}
+   569→                    </SelectContent>
+   570→                  </Select>
+   571→                )}
+   572→              </div>
+   573→
+   574→              {/* Source editor */}
+   575→              <div className="space-y-1.5">
+   576→                <label className="flex items-center justify-between text-[11px] uppercase tracking-wide text-zinc-500">
+   577→                  <span className="flex items-center gap-1">
+   578→                    <FileText className="h-3 w-3" /> .epd source
+   579→                  </span>
+   580→                  <span className="font-mono text-[10px] normal-case text-zinc-600">
+   581→                    {source.split("\n").length} lines
+   582→                  </span>
+   583→                </label>
+   584→                <div className="relative">
+   585→                  <Textarea
+   586→                    value={source}
+   587→                    onChange={(e) => setSource(e.target.value)}
+   588→                    spellCheck={false}
+   589→                    className={cn(
+   590→                      "codeblock bg-zinc-900/80 min-h-[220px] max-h-[420px] resize-y epistemic-scroll",
+   591→                      "border-zinc-800 focus-visible:border-emerald-500/40 text-zinc-300",
+   592→                    )}
+   593→                    placeholder="# Write your .epd policy here…"
+   594→                  />
+   595→                </div>
+   596→              </div>
+   597→
+   598→              {/* State editor */}
+   599→              <div className="space-y-1.5">
+   600→                <label className="flex items-center justify-between text-[11px] uppercase tracking-wide text-zinc-500">
+   601→                  <span>State JSON <span className="normal-case text-zinc-600">(for validate / repair)</span></span>
+   602→                  <span className="flex items-center gap-1">
+   603→                    <button
+   604→                      type="button"
+   605→                      onClick={loadSafe}
+   606→                      className="rounded border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[9px] font-mono text-zinc-400 hover:text-emerald-400 hover:border-emerald-500/40 transition-colors"
+   607→                    >
+   608→                      safe
+   609→                    </button>
+   610→                    <button
+   611→                      type="button"
+   612→                      onClick={loadViolating}
+   613→                      className="rounded border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-mono text-rose-400 hover:bg-rose-500/20 transition-colors"
+   614→                    >
+   615→                      violating
+   616→                    </button>
+   617→                  </span>
+   618→                </label>
+   619→                <Textarea
+   620→                  value={stateText}
+   621→                  onChange={(e) => setStateText(e.target.value)}
+   622→                  spellCheck={false}
+   623→                  className={cn(
+   624→                    "codeblock bg-zinc-900/80 min-h-[100px] max-h-[260px] resize-y epistemic-scroll",
+   625→                    "border-zinc-800 focus-visible:border-emerald-500/40 text-zinc-300",
+   626→                  )}
+   627→                />
+   628→              </div>
+   629→
+   630→              {/* Strict toggle */}
+   631→              <div className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900/60 px-2.5 py-1.5">
+   632→                <div className="flex items-center gap-2">
+   633→                  <FlaskConical className="h-3.5 w-3.5 text-amber-400" />
+   634→                  <span className="text-xs text-zinc-300">
+   635→                    <span className="font-mono">--strict</span>
+   636→                  </span>
+   637→                  <span className="text-[10px] text-zinc-500">
+   638→                    soft violations → exit 1
+   639→                  </span>
+   640→                </div>
+   641→                <Switch checked={strict} onCheckedChange={setStrict} />
+   642→              </div>
+   643→
+   644→              {/* Command buttons */}
+   645→              <Separator className="bg-zinc-800" />
+   646→              <div className="grid grid-cols-2 gap-2">
+   647→                {cmdButton("validate", "validate", <Play className="h-3.5 w-3.5" />, true)}
+   648→                {cmdButton("repair", "repair", <RotateCw className="h-3.5 w-3.5" />)}
+   649→                {cmdButton("proof", "proof", <KeyRound className="h-3.5 w-3.5" />)}
+   650→                {cmdButton("list-samples", "list-samples", <List className="h-3.5 w-3.5" />)}
+   651→              </div>
+   652→            </div>
+   653→          </Card>
+   654→        </motion.div>
+   655→
+   656→        {/* RIGHT — terminal panel (3/5) */}
+   657→        <motion.div
+   658→          initial={{ opacity: 0, x: 16 }}
+   659→          animate={{ opacity: 1, x: 0 }}
+   660→          transition={{ duration: 0.4, delay: 0.15 }}
+   661→          className="lg:col-span-3"
+   662→        >
+   663→          <Card className="bg-zinc-950 backdrop-blur border-zinc-800/80 p-0 relative overflow-hidden rounded-lg">
+   664→            {/* Gradient border accent */}
+   665→            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-emerald-500/0 via-emerald-500/40 to-emerald-500/0" />
+   666→
+   667→            {/* Terminal title bar with traffic lights */}
+   668→            <div className="relative flex items-center gap-2 border-b border-zinc-800 bg-zinc-900/60 px-3 py-2">
+   669→              <div className="flex items-center gap-1.5">
+   670→                <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80" />
+   671→                <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+   672→                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
+   673→              </div>
+   674→              <span className="ml-2 font-mono text-[11px] text-zinc-500">
+   675→                epd-cli — epistemic://policies
+   676→              </span>
+   677→              <div className="ml-auto flex items-center gap-2">
+   678→                <span
+   679→                  className={cn(
+   680→                    "flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[10px] font-semibold",
+   681→                    online
+   682→                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+   683→                      : "border-rose-500/40 bg-rose-500/10 text-rose-400",
+   684→                  )}
+   685→                >
+   686→                  <span
+   687→                    className={cn(
+   688→                      "h-1.5 w-1.5 rounded-full",
+   689→                      online ? "bg-emerald-400" : "bg-rose-400 animate-pulse",
+   690→                    )}
+   691→                  />
+   692→                  {online ? "connected" : "disconnected"}
+   693→                </span>
+   694→                {history.length > 0 && (
+   695→                  <div className="flex items-center gap-1">
+   696→                    <TooltipProvider>
+   697→                      <Tooltip>
+   698→                        <TooltipTrigger asChild>
+   699→                          <button
+   700→                            type="button"
+   701→                            onClick={() => navigateHistory("up")}
+   702→                            className="rounded border border-zinc-800 bg-zinc-900 px-1 py-0.5 text-[9px] text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 transition-colors"
+   703→                          >
+   704→                            <ArrowUp className="h-2.5 w-2.5" />
+   705→                          </button>
+   706→                        </TooltipTrigger>
+   707→                        <TooltipContent>Previous command</TooltipContent>
+   708→                      </Tooltip>
+   709→                    </TooltipProvider>
+   710→                    <TooltipProvider>
+   711→                      <Tooltip>
+   712→                        <TooltipTrigger asChild>
+   713→                          <button
+   714→                            type="button"
+   715→                            onClick={() => navigateHistory("down")}
+   716→                            className="rounded border border-zinc-800 bg-zinc-900 px-1 py-0.5 text-[9px] text-zinc-500 hover:text-zinc-300 hover:border-zinc-700 transition-colors"
+   717→                          >
+   718→                            <ArrowDown className="h-2.5 w-2.5" />
+   719→                          </button>
+   720→                        </TooltipTrigger>
+   721→                        <TooltipContent>Next command</TooltipContent>
+   722→                      </Tooltip>
+   723→                    </TooltipProvider>
+   724→                  </div>
+   725→                )}
+   726→                <Button
+   727→                  size="sm"
+   728→                  variant="ghost"
+   729→                  onClick={clearTerminal}
+   730→                  disabled={history.length === 0}
+   731→                  className="h-7 px-2 text-[10px] text-zinc-500 hover:text-zinc-300"
+   732→                >
+   733→                  <Trash2 className="h-3 w-3" />
+   734→                  Clear
+   735→                </Button>
+   736→              </div>
+   737→            </div>
+   738→
+   739→            {/* Terminal body */}
+   740→            <div
+   741→              ref={scrollRef}
+   742→              className="relative max-h-[640px] min-h-[400px] overflow-y-auto epistemic-scroll p-3 font-mono text-[12px] leading-relaxed text-zinc-300"
+   743→            >
+   744→              {history.length === 0 ? (
+   745→                <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
+   746→                  <Terminal className="h-8 w-8 mb-2 text-emerald-500/60" />
+   747→                  <p className="text-sm text-zinc-400">
+   748→                    epd-cli ready · <span className="text-emerald-400">run a command</span> to see output
+   749→                  </p>
+   750→                  <p className="mt-1.5 font-mono text-[11px] text-zinc-600">
+   751→                    try <span className="text-emerald-400 font-semibold">validate</span> with the loaded sample
+   752→                  </p>
+   753→                  <div className="mt-4 flex items-center gap-1 text-zinc-700">
+   754→                    <ChevronRight className="h-3 w-3" />
+   755→                    <BlinkingCursor />
+   756→                  </div>
+   757→                </div>
+   758→              ) : (
+   759→                <div className="space-y-3">
+   760→                  <AnimatePresence initial={false}>
+   761→                    {history.map((entry, i) => (
+   762→                      <TerminalEntryView
+   763→                        key={entry.id}
+   764→                        entry={entry}
+   765→                        isNew={entry.id === latestEntryId}
+   766→                        isHighlighted={historyIndex >= 0 && i === history.length - 1 - historyIndex}
+   767→                      />
+   768→                    ))}
+   769→                  </AnimatePresence>
+   770→                  {running && (
+   771→                    <motion.div
+   772→                      initial={{ opacity: 0 }}
+   773→                      animate={{ opacity: 1 }}
+   774→                      className="flex items-center gap-2 text-[11px] text-amber-400"
+   775→                    >
+   776→                      <Loader2 className="h-3 w-3 animate-spin" />
+   777→                      <span className="font-mono">executing epd-cli {running}…</span>
+   778→                      <BlinkingCursor />
+   779→                    </motion.div>
+   780→                  )}
+   781→                  {!running && (
+   782→                    <div className="flex items-center gap-1 text-zinc-700 pt-1">
+   783→                      <ChevronRight className="h-3 w-3" />
+   784→                      <BlinkingCursor />
+   785→                    </div>
+   786→                  )}
+   787→                </div>
+   788→              )}
+   789→            </div>
+   790→          </Card>
+   791→
+   792→          {/* Quick reference */}
+   793→          <Card className="mt-3 bg-zinc-950/60 backdrop-blur border-zinc-800/80 p-3 relative overflow-hidden">
+   794→            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500/0 via-amber-500/30 to-amber-500/0" />
+   795→            <div className="relative grid grid-cols-1 gap-2 text-[10.5px] text-zinc-500 sm:grid-cols-2">
+   796→              <div className="flex items-start gap-1.5">
+   797→                <Play className="mt-0.5 h-3 w-3 text-emerald-400 shrink-0" />
+   798→                <span>
+   799→                  <span className="font-mono text-zinc-300">validate</span> — parse + evaluate
+   800→                  invariants against <span className="font-mono">state</span>, emit MMR root.
+   801→                </span>
+   802→              </div>
+   803→              <div className="flex items-start gap-1.5">
+   804→                <RotateCw className="mt-0.5 h-3 w-3 text-amber-400 shrink-0" />
+   805→                <span>
+   806→                  <span className="font-mono text-zinc-300">repair</span> — least-divergent
+   807→                  fix from <span className="font-mono">current</span> → <span className="font-mono">proposed</span>.
+   808→                </span>
+   809→              </div>
+   810→              <div className="flex items-start gap-1.5">
+   811→                <KeyRound className="mt-0.5 h-3 w-3 text-emerald-400 shrink-0" />
+   812→                <span>
+   813→                  <span className="font-mono text-zinc-300">proof</span> — generate an MMR
+   814→                  ancestry proof for invariant <span className="font-mono">--index n</span>.
+   815→                </span>
+   816→              </div>
+   817→              <div className="flex items-start gap-1.5">
+   818→                <List className="mt-0.5 h-3 w-3 text-zinc-500 shrink-0" />
+   819→                <span>
+   820→                  <span className="font-mono text-zinc-300">list-samples</span> — enumerate
+   821→                  bundled <span className="font-mono">.epd</span> policies.
+   822→                </span>
+   823→              </div>
+   824→            </div>
+   825→          </Card>
+   826→        </motion.div>
+   827→      </div>
+   828→    </section>
+   829→  );
+   830→}
+   831→
+   832→function TerminalEntryView({ entry, isNew, isHighlighted }: { entry: TerminalEntry; isNew: boolean; isHighlighted: boolean }) {
+   833→  const ok = entry.exitCode === 0;
+   834→  const failed = entry.exitCode === -1;
+   835→  const [hovered, setHovered] = useState(false);
+   836→
+   837→  return (
+   838→    <motion.div
+   839→      initial={isNew ? { opacity: 0, y: 8 } : false}
+   840→      animate={{ opacity: 1, y: 0 }}
+   841→      transition={{ duration: 0.25 }}
+   842→      className={cn(
+   843→        "rounded-md transition-colors duration-150",
+   844→        hovered && "bg-zinc-900/50",
+   845→        isHighlighted && "ring-1 ring-amber-500/30",
+   846→      )}
+   847→      onMouseEnter={() => setHovered(true)}
+   848→      onMouseLeave={() => setHovered(false)}
+   849→    >
+   850→      <div className="space-y-1 p-1.5">
+   851→        {/* Prompt line */}
+   852→        <div className="flex items-center gap-2">
+   853→          <span className="text-emerald-400">{entry.prompt}</span>
+   854→        </div>
+   855→        {/* Output with typing effect for new entries */}
+   856→        {(entry.stdout || entry.stderr) && (
+   857→          <pre className="whitespace-pre-wrap break-words text-zinc-300/90">
+   858→            {isNew ? (
+   859→              <AnimatedOutput text={entry.stdout} delay={50} />
+   860→            ) : (
+   861→              renderAnsi(entry.stdout)
+   862→            )}
+   863→            {entry.stderr && (
+   864→              <span className="text-rose-400">
+   865→                {isNew ? (
+   866→                  <AnimatedOutput text={entry.stderr} delay={100} />
+   867→                ) : (
+   868→                  renderAnsi(entry.stderr)
+   869→                )}
+   870→              </span>
+   871→            )}
+   872→          </pre>
+   873→        )}
+   874→        {/* Exit code + status badge */}
+   875→        <div className="flex items-center gap-1.5 pt-0.5">
+   876→          <ResultBadge exitCode={entry.exitCode} />
+   877→          <span className="text-[9px] text-zinc-600 font-mono">
+   878→            {new Date(entry.ranAt).toLocaleTimeString()}
+   879→          </span>
+   880→        </div>
+   881→      </div>
+   882→    </motion.div>
+   883→  );
+   884→}
+   885→

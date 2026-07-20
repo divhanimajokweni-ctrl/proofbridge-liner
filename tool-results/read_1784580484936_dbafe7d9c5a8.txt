@@ -1,0 +1,377 @@
+     1→# Epistemic DAG Runtime — Project Worklog
+     2→
+     3→## Project Status
+     4→Project restored from workspace archive. All 20 dashboard sections are rendering with seeded data. Database has 6 policies, 21 shards, 3 merge proposals, 16 ancestry proofs, 10 violations, 16 shadow events, 18 mined invariants. The epd-cli mini-service is running on port 3031.
+     5→
+     6→## Current State
+     7→- Dev server running on port 3000, no compilation errors
+     8→- Lint passes cleanly
+     9→- All API endpoints responding (stats, policies, merges, proofs, shards, etc.)
+    10→- Overview section shows live data: 64% health, 6 policies, 21 shards
+    11→- All 20 section tabs are functional: Overview, Metrics, Policy DSL Studio, Templates, DAG Topology, Dependencies, Coverage, Merge Repair, Shadow Bridge, MMR Proofs, ZK Circuit, Invariant Miner, Replay Timeline, Policy Diff, Comparison Matrix, Test Suite, Versioning, Audit Reports, CLI Terminal, Federation
+    12→
+    13→## Goals for This Phase
+    14→1. Fix any bugs found during QA
+    15→2. Significantly enhance visual polish and styling details across all sections
+    16→3. Add more interactivity and animations
+    17→4. Improve data visualization (charts, gauges, diagrams)
+    18→5. Add new features and functionality
+    19→
+    20→## Completed
+    21→- Restored workspace from archive (all source files, API routes, components, mini-services)
+    22→- Pushed Prisma schema and seeded database
+    23→- Started epd-cli mini-service on port 3031
+    24→- Verified dev server runs without errors
+    25→- QA check with agent-browser confirmed all sections render
+    26→
+    27→## Unresolved / Next Steps
+    28→- Need deeper QA pass through all 20 sections for visual defects
+    29→- Enhance styling with more details (animations, gradients, shadows, micro-interactions)
+    30→- Add more features (real-time updates, better chart interactivity, more data)
+    31→- Create cron job for 15-minute webDevReview cycle
+    32→
+    33→---
+    34→Task ID: 0
+    35→Agent: orchestrator
+    36→Task: Restore project from workspace archive and verify functionality
+    37→
+    38→Work Log:
+    39→- Extracted workspace tar from /home/z/my-project/upload/
+    40→- Copied all source files: components, API routes, lib/epd, hooks, seed, types, format
+    41→- Copied prisma schema, page.tsx, globals.css, layout.tsx
+    42→- Pushed prisma schema with `bun run db:push`
+    43→- Fixed nested API directory structure (api/api → api)
+    44→- Started epd-cli mini-service on port 3031
+    45→- Verified dev server running and all API endpoints responding
+    46→- QA check with agent-browser: Overview, Policy DSL Studio, DAG Topology sections all render correctly
+    47→- Lint passes cleanly
+    48→
+    49→Stage Summary:
+    50→- Project fully restored from archive
+    51→- Database seeded with 6 sample policies and related data
+    52→- All 20 dashboard sections functional
+    53→- epd-cli mini-service running on port 3031
+    54→
+    55→---
+    56→Task ID: 1-a
+    57→Agent: main
+    58→Task: Enhance Overview and Performance Metrics sections with better visual polish, more details, and richer interactivity
+    59→
+    60→Work Log:
+    61→- Read existing overview.tsx, performance-metrics.tsx, types, primitives, API routes, and globals.css
+    62→- Enhanced Overview component:
+    63→  - Added mini sparkline charts (recharts AreaChart) in each KPI card showing seeded trend data
+    64→  - Added framer-motion staggered entrance animations (containerVariants, cardVariants)
+    65→  - Added hover effects on KPI cards (scale + lift with spring physics)
+    66→  - Improved "Live Epistemic Activity" feed: timeline dots, color-coded event types (merge=green, shadow=amber, breach=red), event badges, relative timestamps
+    67→  - Added health gauge/radial chart (recharts PieChart donut) showing the 64% health score with center label
+    68→  - Added "system pulse" animation (ping + dot) on the health gauge card
+    69→  - Made Capability Map cards more visually appealing with gradients, icons per card, hover arrows, glow shadows, and staggered reveal animations
+    70→  - Improved Runtime Inventory section with animated progress bars per row (framer-motion width animation)
+    71→  - Added accent gradient top borders on all cards
+    72→  - Improved responsive grid (5 cols for KPI + gauge, capability map uses 5 cols on lg)
+    73→  - Extracted KpiCardWithSparkline as separate component to satisfy rules-of-hooks
+    74→- Enhanced Performance Metrics component:
+    75→  - Replaced custom SVG charts with recharts AreaChart for richer interactivity
+    76→  - Added custom styled tooltips (ChartTooltip) with value, threshold zone, and timestamp
+    77→  - Added color-coded threshold zones (green/amber/red ReferenceArea overlays on each chart)
+    78→  - Added threshold zone badge on each chart header (healthy/degraded/critical)
+    79→  - Added summary statistics above each chart (min, max, p95)
+    80→  - Added framer-motion staggered entrance animations for all cards
+    81→  - Added hover micro-animations on KPI cards and ground stat cards
+    82→  - Added accent gradient top borders on all cards
+    83→  - Added icon + label header on Grounded Metrics section
+    84→  - Enhanced GroundStat components with icons and color-coded borders
+    85→  - Chart data re-animates on range switch via dataKey prop on ResponsiveContainer
+    86→- Fixed lint error: useMemo inside .map() callback → extracted KpiCardWithSparkline component
+    87→- Lint passes cleanly (0 errors, 0 warnings)
+    88→
+    89→Stage Summary:
+    90→- Overview section now features sparklines, health gauge, animated progress bars, color-coded activity feed, and gradient capability map cards
+    91→- Performance Metrics section now uses recharts with threshold zones, rich tooltips, summary stats, and smooth animations
+    92→- All existing API integrations preserved and working
+    93→- Theme colors maintained: emerald/green (verified), amber (repairing), rose/red (violating)
+    94→- No indigo or blue colors introduced
+    95→
+    96→---
+    97→Task ID: 1-b
+    98→Agent: main
+    99→Task: Enhance Shadow Bridge and Merge Reconciliation sections with better visual polish, more details, and richer interactivity
+   100→
+   101→Work Log:
+   102→- Read existing shadow-bridge.tsx, merge-reconciliation.tsx, types, primitives, format, globals.css
+   103→- Enhanced Shadow Bridge component (10 improvements):
+   104→  1. Added framer-motion staggered entrance animations (containerVariants, cardVariants, itemVariants) across all sections
+   105→  2. Added animated gauge visualization (GaugeNeedle component) with gradient arc fill and spring-animated needle for divergence meter
+   106→  3. Added DriftSparkline chart using recharts AreaChart with gradient fill showing divergence over time for last 20 events
+   107→  4. Improved takeover panel with animated status indicator (SHADOW IN CONTROL / LIVE IN CONTROL), AnimatePresence for monitoring badge, pulsing dot animation
+   108→  5. Added hover effects on all interactive elements (hover:scale-[1.01], hover:bg-muted/20, hover:shadow-lg transitions)
+   109→  6. Improved what-if simulation with WhatIfDiff component using framer-motion entrance animations, AnimatePresence for smooth show/hide
+   110→  7. Added BridgeStatusIndicator component with animated pulse (5 states: disabled, aligned, drifting, breached, takeover active), icons per status
+   111→  8. Better responsive design: flex-wrap on header, hidden sm:flex for event legend, min-w on mobile
+   112→  9. Added GradientBorderCard wrapper component with gradient borders on all cards (color-coded by status)
+   113→  10. Improved visual hierarchy: GaugeNeedle in divergence meter, trend indicators (TrendingUp/TrendingDown/Minus), pass/fail summary on TwinCards, tooltips on invariant rows
+   114→- Enhanced Merge Reconciliation component (10 improvements):
+   115→  1. Added framer-motion entrance animations (staggered card reveals with containerVariants, cardVariants, itemVariants)
+   116→  2. Improved AppliedDiff with color-coded delta indicators (green for positive, red/violating for negative), styled badges with TrendingUp/AlertTriangle icons
+   117→  3. Added RepairFlowDiagram component showing visual flow: Original → Violations → Self-repair → Healed state, with staggered animation
+   118→  4. Added hover effects on merge proposal cards (hover:shadow-lg, hover:scale-[1.01], hover:border transitions)
+   119→  5. Added DivergenceChart using recharts AreaChart showing divergence across recent merges
+   120→  6. Improved repair solver status with animated Progress bar (green when complete, amber when in-progress)
+   121→  7. Added better visual distinction between clean/repaired/rejected merges via MERGE_TYPE_CONFIG with color-coded borders, glows, and badges
+   122→  8. Added GradientBorderCard wrapper on all cards with color-appropriate gradients
+   123→  9. Better mobile responsiveness: grid grid-cols-1 sm:grid-cols-2, flex-wrap on badges, overflow-x-auto on flow diagram
+   124→  10. Added RepairCostChart (recharts BarChart) showing per-field adjustment costs with positive=green/negative=red cells
+   125→- Added MergeSummary component showing clean/repaired/rejected counts and average divergence
+   126→- Added InlineStateDiff component for color-coded field-level comparison between proposed and repaired states
+   127→- Added TooltipProvider/UITooltip on invariant rows in Shadow Bridge for hover context
+   128→- All existing API integrations preserved (policies, shadow-bridge, shadow-bridge/takeover, shadow-bridge/whatif, merges, merges/repair)
+   129→- Lint passes cleanly (0 errors, 0 warnings)
+   130→- Dev server compiles without errors
+   131→
+   132→Stage Summary:
+   133→- Shadow Bridge section now features animated gauge, drift sparkline, bridge status indicator, gradient borders, trend indicators, and smooth animations
+   134→- Merge Reconciliation section now features repair flow diagram, cost bar chart, divergence area chart, merge type classification, inline state diff, and staggered animations
+   135→- All existing API integrations preserved and working
+   136→- Theme colors maintained: emerald/green (verified), amber (repairing), rose/red (violating)
+   137→- No indigo or blue colors introduced
+   138→
+   139→---
+   140→Task ID: 1-c
+   141→Agent: main
+   142→Task: Enhance DAG Topology, Federation, and Interactive Graph sections with better visual polish, more details, and richer interactivity
+   143→
+   144→Work Log:
+   145→- Read existing dag-topology.tsx, federation.tsx, interactive-graph.tsx, types, primitives, gossip-sim, shard-rebalance, globals.css
+   146→- Enhanced DAG Topology component (9 improvements):
+   147→  1. Added framer-motion entrance animations (containerVariants, cardVariants, itemVariants) across all sections — staggered reveals with spring physics
+   148→  2. Improved shard node cards with GradientBorderCard wrapper (gradient borders color-coded by status), top gradient accent bar per card, and hover scale/lift animations
+   149→  3. Added node hover effects with rich shard details tooltip (region, node ID, policy, peers, MMR root, last merge, invariant pass count) using shadcn/ui Tooltip
+   150→  4. Added animated edges in mesh hint — flow particle animation using framer-motion x animation along mesh connectors
+   151→  5. Improved shard rebalancing section with framer-motion card variants for entrance animation
+   152→  6. Added gradient top borders on all cards (status-colored gradients: verified→repairing→violating)
+   153→  7. Improved shard ledger table with alternating row colors (even rows transparent, odd rows subtle bg-muted), hover effects (hover:bg-muted/25), and per-row framer-motion entrance animation
+   154→  8. Added status indicators with pulse animations on violating shards — animated scale+opacity pulse on violating badges, pulsing red dot on violating status indicators in table rows
+   155→  9. Better responsive design — motion.div wrappers preserve layout semantics while adding entrance animations, section-level containerVariants orchestrate stagger timing
+   156→- Enhanced Federation component (10 improvements):
+   157→  1. Added framer-motion entrance animations (containerVariants, cardVariants, itemVariants) with spring physics for all cards and sections
+   158→  2. Improved organization cards with GradientBorderCard wrapper, trust-level gradient accent bars, and hover scale/lift animations (whileHover, whileTap)
+   159→  3. Added animated connection lines between federated orgs with gradient divider and centered label
+   160→  4. Added reconciliation status with Progress bar indicators per channel (verified=100%, negotiating=60%, drift=25%) with color-coded fill
+   161→  5. Added hover effects on all interactive elements (channels: whileHover scale + ring highlight, protocol steps: whileHover x offset + scale, trust posture rows: whileHover x offset)
+   162→  6. Added gradient borders on all cards using GradientBorderCard wrapper with per-status gradient accents
+   163→  7. Added ZK proof exchange visualization — ZKFlowStep component showing proof type (Groth16/PLONK), animated arrow between orgs, status indicator (CheckCircle2 for verified, spinning RefreshCw for negotiating)
+   164→  8. Added better mobile responsiveness — flex-wrap on header banner, responsive grid for summary stats and org cards
+   165→  9. Added TrustPostureGauge using recharts RadarChart — multi-axis radar showing trust score, ZK capability, proofs, anchored, and policies per organization
+   166→  10. Added animated handshake visualization (HandshakeVisualization component) — bidirectional animated progress bars flanking Handshake icon, appears on channel hover
+   167→  11. Added FederationHealthGauge — recharts PieChart donut showing channel health (verified/negotiating/drift distribution) with center health percentage label and color legend
+   168→  12. Added Channel Health card with live badge indicator
+   169→- Enhanced Interactive Graph component (6 improvements):
+   170→  1. Added node entrance animations — staggered visibility reveal (80ms per node), nodes appear one-by-one on initial load
+   171→  2. Improved node styling with radial gradient fills (3D-like appearance with highlight at top-left), drop shadow filter (feDropShadow), selection glow filter (feGaussianBlur + feMerge)
+   172→  3. Added edge animations — animated data flow particles on highlighted edges using SVG animateMotion, directional arrowhead markers (status-colored), enhanced dash pattern on hover (6 3 vs 3 2)
+   173→  4. Added node selection highlight effect — rotating dashed ring (SVG animateTransform rotate), filter glow, and ring expansion for violating nodes
+   174→  5. Added drag handle indicators — 4 small dots at cardinal positions around node appear on hover/selection, GripVertical badge in header
+   175→  6. Better responsive scaling — framer-motion AnimatePresence on side panel for smooth selected/unselected transitions, Eye icon in selected panel header
+   176→  7. Added animated pulse rings for violating nodes (expanding+fade animation) and repairing nodes (softer pulse)
+   177→  8. Added inner highlight ring on nodes for depth
+   178→- Cleaned up all unused imports (Eye, Maximize2, AnimatePresence in federation, CardContent/Header/Title/Description in dag-topology, STATUS_FILL_LIGHT in interactive-graph, Zap in dag-topology, formatValue/timeAgo in federation, Tooltip components in federation)
+   179→- Lint passes cleanly (0 errors, 0 warnings)
+   180→- Dev server compiles without errors
+   181→- All API integrations preserved (policies, shards, shards/rebalance, federation)
+   182→
+   183→Stage Summary:
+   184→- DAG Topology section now features gradient-bordered shard cards, rich hover tooltips, animated mesh connectors, alternating-color ledger table, and pulsing violation indicators
+   185→- Federation section now features trust posture radar chart, channel health donut gauge, ZK proof exchange visualization, animated handshake between orgs, and reconciliation progress bars
+   186→- Interactive Graph now features staggered node entrance, 3D-like gradient nodes with shadows, animated edge flow particles, selection glow ring, drag handles, and pulsing violation rings
+   187→- All existing API integrations preserved and working
+   188→- Theme colors maintained: emerald/green (verified), amber (repairing), rose/red (violating)
+   189→- No indigo or blue colors introduced
+   190→
+   191→---
+   192→Task ID: 1-d
+   193→Agent: main
+   194→Task: Enhance Policy DSL Studio, MMR Proofs, and MMR Tree sections with better visual polish, more details, and richer interactivity
+   195→
+   196→Work Log:
+   197→- Read existing policy-studio.tsx, mmr-proofs.tsx, mmr-tree.tsx, types, primitives, epd/ast, epd/validator, globals.css
+   198→- Enhanced Policy Studio component (10 improvements):
+   199→  1. Added framer-motion entrance animations (containerVariants, cardVariants, itemVariants) across all sections — staggered card reveals with spring physics
+   200→  2. Improved code editor area with dark syntax-like styling — dark background (oklch 0.12), dimmer line number gutters (oklch 0.10), brighter code text (oklch 0.82), alternating line number opacity, and bottom gradient accent bar
+   201→  3. Added live validation indicator (ValidationIndicator component) with AnimatePresence transitions — spinning Loader2 while validating, spring-animated CheckCircle2/XCircle on result, Activity icon when idle
+   202→  4. Added hover effects on invariant evaluation results — whileHover scale+backgroundColor animation, color-coded borders (verified for pass, violating for fail), spring-animated pass/fail icons with AnimatePresence
+   203→  5. Added gradient borders on all cards using GradientBorderCard wrapper — per-card gradient colors (verified for editor, repairing for evaluator, context-appropriate for diagnostics/enforcer/AST)
+   204→  6. Improved compiled enforcer display — ScrollArea with dark background, better code formatting, staggered fingerprint animations (delay per item), Hash icon on each fingerprint, hover:bg-muted/20 on fingerprint rows
+   205→  7. Added copy-to-clipboard for AST output — Copy/Check icon button with tooltip, toast notification on success
+   206→  8. Added policy health indicator (PolicyHealthGauge component) — spring-animated progress bar, pass/fail count, percentage display with color-coded status
+   207→  9. Better responsive design — maintained xl:grid-cols-5 layout (3+2 columns on desktop, stacked on mobile), GradientBorderCard works at all sizes
+   208→  10. Color-coded severity badges on invariants already existed via SeverityBadge; enhanced with spring-animated pass/fail icons and hover states
+   209→
+   210→- Enhanced MMR Proofs component (10 improvements):
+   211→  1. Added framer-motion entrance animations (containerVariants, cardVariants, itemVariants) across all sections — staggered reveals with spring physics
+   212→  2. Improved proof path visualization with animated connections — each PathChip uses motion.span with staggered delay, ArrowRight icons between chips with fade-in animation, root chip with spring scale
+   213→  3. Added ZK verification status indicators with animated badges (ZkStatusBadge component) — spring-animated scale-in, rotating KeyRound icon, glow-verified on verified proofs
+   214→  4. Added gradient borders on proof cards using GradientBorderCard wrapper — color-coded by verification status (verified=green gradient, unverified=red gradient)
+   215→  5. Improved anchored proof visualization with anchor type icons (AnchorIcon component) — rekor=FileText, blockchain=Link, transparency_log=Globe, spring-animated badge appearance
+   216→  6. Added hover effects showing proof details — expanded anchored proof section with anchor type icon and "immutable" badge, metadata cells with hover:bg-muted/30 transition
+   217→  7. Added proof chain integrity visualization (ProofChainIntegrity component) — spring-animated progress bar, verified/unverified counts, color-coded percentage display
+   218→  8. Better responsive design — maintained lg:grid-cols-3 layout (2+1 columns on desktop, stacked on mobile)
+   219→  9. Added filter/search for proofs — Search icon + Input with real-time filtering by policy name, shard key, MMR root, anchor type; empty state message for no matches
+   220→  10. Added proof generation timestamp formatting — fmtTimestamp function with full locale-formatted date/time, Tooltip on timestamp showing both relative and absolute time
+   221→
+   222→- Enhanced MMR Tree component (6 improvements):
+   223→  1. Improved tree node styling with gradient fills and shadows — radialGradient definitions for on-path nodes (light→dark verified green), off-path nodes (light→dark muted), root node (brightest gradient); SVG filter for drop shadows, glow filter for on-path nodes, root-glow filter for root node
+   224→  2. Added animated connection lines between tree levels — animated data flow particles (SVG animateMotion) on highlighted edges, dashed lines on non-path edges (4 3 pattern)
+   225→  3. Added node hover effects showing hash details — hover state expands node radius (+2px), displays full hash tooltip (rect + text showing first 16 chars), brighter text color on hover, fontWeight 600 on hover
+   226→  4. Added visual indicator for the root hash — pulsing outer ring (SVG animate on r and stroke-opacity), inner ring with higher opacity, "root" label in verified green with fontWeight 600, root-glow filter
+   227→  5. Added inner highlight ring on nodes for depth — small circle at top-left offset with white low-opacity fill for 3D effect
+   228→  6. Better responsive scaling — maintained w-full overflow-x-auto for horizontal scroll on small screens, dynamic width calculation based on leaf count
+   229→
+   230→- Cleaned up unused imports across all three files (useRef in mmr-proofs, Progress in policy-studio, CardContent/CardHeader/CardTitle/CardDescription in mmr-proofs, AnimatePresence/motion in mmr-tree, Link/Zap in mmr-proofs)
+   231→- Lint passes cleanly (0 errors, 0 warnings)
+   232→- Dev server compiles without errors
+   233→- All API integrations preserved (policies, policies/validate, proofs)
+   234→
+   235→Stage Summary:
+   236→- Policy Studio section now features dark syntax editor, live validation indicator, policy health gauge, gradient borders, spring-animated invariant results, copy-to-clipboard AST, and staggered entrance animations
+   237→- MMR Proofs section now features animated proof paths with arrows, ZK status badges with rotating icons, anchor type icons, proof chain integrity gauge, search/filter, formatted timestamps, and gradient-bordered cards
+   238→- MMR Tree now features radial gradient nodes with shadows, animated data flow particles on edges, hover hash tooltips, pulsing root indicator, and 3D highlight rings
+   239→- All existing API integrations preserved and working
+   240→- Theme colors maintained: emerald/green (verified), amber (repairing), rose/red (violating)
+   241→- No indigo or blue colors introduced
+   242→
+   243→---
+   244→Task ID: 2-a
+   245→Agent: main
+   246→Task: Enhance Timeline, Policy Diff, Audit Reports, and ZK Circuit sections with better visual polish, more details, and richer interactivity
+   247→
+   248→Work Log:
+   249→- Read existing timeline.tsx, policy-diff.tsx, audit-reports.tsx, zk-circuit.tsx, types, format, epd, globals.css, primitives
+   250→- Studied existing GradientBorderCard patterns from other enhanced components (merge-reconciliation, policy-studio, mmr-proofs, shadow-bridge, dag-topology)
+   251→
+   252→- Enhanced Timeline component (10 improvements):
+   253→  1. Added framer-motion entrance animations (containerVariants, cardVariants, itemVariants) across all sections — staggered reveals with spring physics
+   254→  2. Added color-coded timeline dots based on event type — circular dots with connector lines between events (verified=green, repairing=amber, violating=red)
+   255→  3. Added event type filter buttons — pill-style toggle buttons for All/Merges/Shadow/Violations with count badges, color-coded active states
+   256→  4. Added histogram chart using recharts BarChart — stacked bar chart showing merge/shadow/violation counts per time bucket with custom tooltip and interactive click-to-jump
+   257→  5. Added hover effects on event cards — whileHover scale+backgroundColor animations on event stream items, whileTap scale feedback
+   258→  6. Added gradient borders on all cards using GradientBorderCard wrapper — verified→repairing→violating gradients, per-card color-coding
+   259→  7. Added timeline scrubber/playback with animated progress — spring-animated progress bar, SkipBack/SkipForward buttons, layoutId animated scrubber indicator
+   260→  8. Better responsive design — flex-wrap on filters, responsive grids, event count badges on filter buttons
+   261→  9. Added event count badges — Badge components on filter buttons showing per-type counts
+   262→  10. Added AnimatePresence on episode detail — smooth transitions between selected events with spring animation, improved transport controls with SkipBack/SkipForward
+   263→
+   264→- Enhanced Policy Diff component (10 improvements):
+   265→  1. Added framer-motion entrance animations (containerVariants, cardVariants, itemVariants) with spring physics
+   266→  2. Improved side-by-side diff with color-coded additions/deletions — green background on added lines, red on removed, amber on changed
+   267→  3. Added structural drift visualization — StructDriftBar component showing drift score with animated segments, drift count badge
+   268→  4. Added invariant-level diff indicators — spring-animated icon reveal per invariant row, color-coded backgrounds per status
+   269→  5. Added hover effects on invariant rows and struct rows — whileHover scale+x offset, whileTap scale feedback
+   270→  6. Added gradient borders on all cards using GradientBorderCard wrapper — color-appropriate gradients per section
+   271→  7. Added diff statistics summary with recharts BarChart — horizontal bar chart showing Added/Removed/Changed/Unchanged counts with themed colors
+   272→  8. Better responsive design — responsive grid for stats+chart, flex-wrap on editors
+   273→  9. Added line-by-line diff highlighting — new LineByLineDiff section with dual-pane layout, +/- icons, line numbers, color-coded backgrounds per line type
+   274→  10. Added AnimatePresence for diff result transitions, swap button hover rotation animation
+   275→
+   276→- Enhanced Audit Reports component (10 improvements):
+   277→  1. Added framer-motion entrance animations (containerVariants, cardVariants, itemVariants) with spring physics
+   278→  2. Added report generation progress indicator — animated Progress bar with percentage, Loader2 spinner, simulates generation
+   279→  3. Added compliance score visualization using recharts — PieChart donut showing passed/failed with center percentage, RadarChart showing multi-axis compliance scores
+   280→  4. Added audit trail integrity indicator — animated progress bar with integrity score, CheckCircle2 badges per factor
+   281→  5. Added hover effects on compliance cards and policy cards — whileHover scale+x offset, shadow transitions
+   282→  6. Added gradient borders on all cards using GradientBorderCard wrapper — per-status gradients
+   283→  7. Added expandable policy cards with AnimatePresence — smooth height animation on expand/collapse
+   284→  8. Better responsive design — responsive grid for compliance signals + charts, flex-wrap on header
+   285→  9. Added Fingerprint and Clock icons on policy audit card footer
+   286→  10. Improved SummaryStat with GradientBorderCard wrapper and hover animations
+   287→
+   288→- Enhanced ZK Circuit component (10 improvements):
+   289→  1. Added framer-motion entrance animations (containerVariants, cardVariants, itemVariants) with spring physics
+   290→  2. Improved circuit diagram with animated gate connections — hover highlights connected wires, animated flow particle on hovered connections, gate glow filter
+   291→  3. Added proof generation timeline — ProofHistoryEntry list with status indicators, proving time, shard key, timestamp
+   292→  4. Added verification key registry display — VkRegistryEntry component showing proving key, verification key, circuit hash
+   293→  5. Added hover effects on circuit elements — GateShape onHover highlighting, animated pulse ring, cursor:pointer
+   294→  6. Added gradient borders on all cards using GradientBorderCard wrapper — per-section gradients
+   295→  7. Added constraint count visualization — recharts horizontal BarChart showing Constraints/Private/Public/R1CS rows
+   296→  8. Better responsive design — maintained lg:grid-cols-4 layout, responsive proof history list
+   297→  9. Added proof history with status indicators and proving time chart — 8 mock proof entries, recharts BarChart with color-coded bars
+   298→  10. Added circuit metrics dashboard with hover animations, improved visual hierarchy
+   299→
+   300→- Lint passes cleanly (0 errors, 0 warnings)
+   301→- Dev server compiles without errors
+   302→- All API integrations preserved (timeline, policies, audit)
+   303→
+   304→Stage Summary:
+   305→- Timeline section now features event type filter buttons with counts, recharts histogram, animated progress bar, SkipBack/SkipForward transport, color-coded timeline dots, gradient borders, and spring-animated episode detail
+   306→- Policy Diff section now features structural drift visualization bar, diff stats BarChart, line-by-line diff with dual-pane highlighting, gradient borders, hover animations on invariant rows, and AnimatePresence transitions
+   307→- Audit Reports section now features compliance radar chart, compliance donut gauge, audit trail integrity indicator with animated progress, report generation progress bar, expandable policy cards with AnimatePresence, and gradient-bordered summary stats
+   308→- ZK Circuit section now features animated gate connections with hover-highlight and flow particles, constraint count BarChart, verification key registry, proof history with status indicators and proving time chart, gradient borders, and hover effects on circuit elements
+   309→- All existing API integrations preserved and working
+   310→- Theme colors maintained: emerald/green (verified), amber (repairing), rose/red (violating)
+   311→- No indigo or blue colors introduced
+   312→
+   313→
+   314→---
+   315→
+   316→## Task 2-b: Invariant Miner, CLI Terminal, Policy Versioning & Template Library Enhancements
+   317→
+   318→**Date**: 2025-03-05
+   319→**Task ID**: 2-b
+   320→
+   321→### Invariant Miner Enhancements
+   322→- Added framer-motion entrance animations for candidate cards (staggered fade+slide with scale)
+   323→- Added radial confidence gauge visualization using SVG ring (animated stroke-dashoffset)
+   324→- Added drift telemetry sparkline chart using recharts AreaChart with gradient fill
+   325→- Added animated accept/reject buttons with spring physics (whileTap scale)
+   326→- Added severity color coding on cards (gradient border top accent per severity)
+   327→- Added gradient borders on cards (top accent line colored by severity/acceptance)
+   328→- Added hover effects showing rationale details (expand on hover, hint when collapsed)
+   329→- Better responsive design (motion.div wrappers with layout animation)
+   330→- Added violation pattern visualization using recharts Treemap with custom content renderer
+   331→- Added mining progress indicator with animated progress bar during mining
+   332→
+   333→### CLI Terminal Enhancements
+   334→- Added framer-motion entrance animations for section panels and terminal entries
+   335→- Improved terminal display with dark theme (zinc-950 background, green/amber/rose text)
+   336→- Added animated typing effect for new command output (AnimatedOutput component)
+   337→- Added command history navigation with up/down arrow buttons
+   338→- Added syntax highlighting for .epd files (keywords, strings, numbers, comments)
+   339→- Added gradient borders on composer card and terminal panel
+   340→- Added hover effects on terminal entries (highlighted background)
+   341→- Better responsive design with motion animations
+   342→- Added blinking cursor animation (BlinkingCursor component with CSS animation)
+   343→- Added status badges for validation results (ResultBadge with pass/error/warning)
+   344→
+   345→### Policy Versioning Enhancements
+   346→- Added framer-motion entrance animations for header, summary card, and revision items
+   347→- Improved revision timeline with animated connectors (gradient line with scaleY animation)
+   348→- Added diff-against-previous functionality (already existed, enhanced with visualization)
+   349→- Added hover effects on revision cards (node scale animation, border color change)
+   350→- Added gradient borders on cards (top accent on expanded items)
+   351→- Added revision stats with InvariantChange component (trending up/down indicators)
+   352→- Better responsive design with animated expand/collapse
+   353→- Added restore confirmation dialog (AlertDialog before restoring)
+   354→- Added version comparison visualization in diff dialog (side-by-side invariant count)
+   355→- Added author and timestamp formatting (formatTimestamp function, author tooltips)
+   356→
+   357→### Template Library Enhancements
+   358→- Added framer-motion entrance animations for template cards (staggered with layout)
+   359→- Added category filter buttons (All, IoT, Datacenter, Healthcare, Energy)
+   360→- Added hover effects showing template preview (invariant line peek on hover)
+   361→- Added gradient borders on cards (domain-colored top accent)
+   362→- Added domain badges with color coding (teal for IoT, green for datacenter, rose for healthcare, amber for energy)
+   363→- Added one-click deployment animation (Rocket icon, spinning Sparkles during deploy)
+   364→- Better responsive design with AnimatePresence
+   365→- Added template search/filter (Input with search icon)
+   366→- Added template statistics in header (total invariants count, domain count)
+   367→- Added "featured" badge on recommended templates (Star icon)
+   368→
+   369→### Technical Details
+   370→- All components use `use client` directive
+   371→- framer-motion used for all animations (motion.div, AnimatePresence, whileTap, whileHover)
+   372→- recharts used for AreaChart (sparkline) and Treemap (violation patterns) in Invariant Miner
+   373→- All theme colors preserved: emerald/green (verified), amber (repairing), rose/red (violating), teal (datacenter)
+   374→- No indigo or blue colors introduced
+   375→- All existing API integrations preserved
+   376→- Lint passes cleanly (0 errors, 0 warnings)
+   377→

@@ -1,0 +1,988 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useState } from "react";
+     4→import { motion } from "framer-motion";
+     5→import {
+     6→  Globe2,
+     7→  Network,
+     8→  KeyRound,
+     9→  ShieldCheck,
+    10→  ArrowRight,
+    11→  Link2,
+    12→  Lock,
+    13→  Zap,
+    14→  Building2,
+    15→  Boxes,
+    16→  RefreshCw,
+    17→  CheckCircle2,
+    18→  AlertTriangle,
+    19→  Fingerprint,
+    20→  Server,
+    21→  Handshake,
+    22→  Activity,
+    23→  CircleDot,
+    24→  Sparkles,
+    25→} from "lucide-react";
+    26→import { Card } from "@/components/ui/card";
+    27→import { Button } from "@/components/ui/button";
+    28→import { Badge } from "@/components/ui/badge";
+    29→import { Progress } from "@/components/ui/progress";
+    30→import { Skeleton } from "@/components/ui/skeleton";
+    31→import { useToast } from "@/hooks/use-toast";
+    32→import { cn } from "@/lib/utils";
+    33→import { FederationGossipSim } from "./gossip-sim";
+    34→import {
+    35→  RadarChart,
+    36→  PolarGrid,
+    37→  PolarAngleAxis,
+    38→  PolarRadiusAxis,
+    39→  Radar,
+    40→  ResponsiveContainer,
+    41→  PieChart,
+    42→  Pie,
+    43→  Cell,
+    44→} from "recharts";
+    45→
+    46→/* ─── framer-motion variants ─── */
+    47→const containerVariants = {
+    48→  hidden: { opacity: 0 },
+    49→  visible: {
+    50→    opacity: 1,
+    51→    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+    52→  },
+    53→};
+    54→
+    55→const cardVariants = {
+    56→  hidden: { opacity: 0, y: 18, scale: 0.96 },
+    57→  visible: {
+    58→    opacity: 1,
+    59→    y: 0,
+    60→    scale: 1,
+    61→    transition: { type: "spring", stiffness: 260, damping: 24 },
+    62→  },
+    63→};
+    64→
+    65→const itemVariants = {
+    66→  hidden: { opacity: 0, x: -8 },
+    67→  visible: {
+    68→    opacity: 1,
+    69→    x: 0,
+    70→    transition: { type: "spring", stiffness: 300, damping: 26 },
+    71→  },
+    72→};
+    73→
+    74→interface FedOrg {
+    75→  id: string;
+    76→  domain: string;
+    77→  name: string;
+    78→  policyCount: number;
+    79→  shardCount: number;
+    80→  zkPolicies: number;
+    81→  rootHash: string;
+    82→  anchored: number;
+    83→  totalProofs: number;
+    84→  handshake: string;
+    85→  trustLevel: "verifiable" | "anchored" | "unverified";
+    86→  policies: {
+    87→    id: string;
+    88→    name: string;
+    89→    invariantCount: number;
+    90→    shadowEnabled: boolean;
+    91→    zkEnabled: boolean;
+    92→    shardCount: number;
+    93→    proofKind: string | null;
+    94→  }[];
+    95→}
+    96→
+    97→interface FedChannel {
+    98→  from: string;
+    99→  to: string;
+   100→  fromName: string;
+   101→  toName: string;
+   102→  kind: "zk_merge" | "mmr_reconcile" | "gossip_sync";
+   103→  status: "verified" | "negotiating" | "drift";
+   104→  rootHash: string;
+   105→}
+   106→
+   107→interface FederationData {
+   108→  federation: FedOrg[];
+   109→  channels: FedChannel[];
+   110→  totals: {
+   111→    organizations: number;
+   112→    policies: number;
+   113→    channels: number;
+   114→    zkOrgs: number;
+   115→    globalRoot: string;
+   116→  };
+   117→}
+   118→
+   119→const TRUST_META: Record<
+   120→  FedOrg["trustLevel"],
+   121→  { color: string; border: string; text: string; label: string; icon: typeof ShieldCheck; gradient: string; accentBorder: string }
+   122→> = {
+   123→  verifiable: {
+   124→    color: "bg-verified/10",
+   125→    border: "border-verified/40",
+   126→    text: "text-verified",
+   127→    label: "ZK-Verifiable",
+   128→    icon: ShieldCheck,
+   129→    gradient: "from-verified/20 via-transparent to-transparent",
+   130→    accentBorder: "bg-gradient-to-r from-verified/60 via-verified/20 to-transparent",
+   131→  },
+   132→  anchored: {
+   133→    color: "bg-repairing/10",
+   134→    border: "border-repairing/40",
+   135→    text: "text-repairing",
+   136→    label: "Anchored",
+   137→    icon: KeyRound,
+   138→    gradient: "from-repairing/20 via-transparent to-transparent",
+   139→    accentBorder: "bg-gradient-to-r from-repairing/60 via-repairing/20 to-transparent",
+   140→  },
+   141→  unverified: {
+   142→    color: "bg-muted",
+   143→    border: "border-border",
+   144→    text: "text-muted-foreground",
+   145→    label: "Unverified",
+   146→    icon: AlertTriangle,
+   147→    gradient: "from-muted/20 via-transparent to-transparent",
+   148→    accentBorder: "bg-gradient-to-r from-muted-foreground/40 via-muted-foreground/10 to-transparent",
+   149→  },
+   150→};
+   151→
+   152→const KIND_META: Record<
+   153→  FedChannel["kind"],
+   154→  { color: string; text: string; label: string; icon: typeof Lock }
+   155→> = {
+   156→  zk_merge: {
+   157→    color: "bg-verified/10 border-verified/40",
+   158→    text: "text-verified",
+   159→    label: "ZK Merge",
+   160→    icon: Lock,
+   161→  },
+   162→  mmr_reconcile: {
+   163→    color: "bg-repairing/10 border-repairing/40",
+   164→    text: "text-repairing",
+   165→    label: "MMR Reconcile",
+   166→    icon: KeyRound,
+   167→  },
+   168→  gossip_sync: {
+   169→    color: "bg-quarantined/10 border-quarantined/40",
+   170→    text: "text-quarantined",
+   171→    label: "Gossip Sync",
+   172→    icon: Zap,
+   173→  },
+   174→};
+   175→
+   176→const STATUS_META: Record<
+   177→  FedChannel["status"],
+   178→  { text: string; label: string; progressPct: number }
+   179→> = {
+   180→  verified: { text: "text-verified", label: "verified", progressPct: 100 },
+   181→  negotiating: { text: "text-repairing", label: "negotiating", progressPct: 60 },
+   182→  drift: { text: "text-violating", label: "drift", progressPct: 25 },
+   183→};
+   184→
+   185→/** Gradient border wrapper for cards */
+   186→function GradientBorderCard({
+   187→  children,
+   188→  className,
+   189→  accentBorder,
+   190→  ...props
+   191→}: {
+   192→  children: React.ReactNode;
+   193→  className?: string;
+   194→  accentBorder: string;
+   195→} & Omit<React.HTMLAttributes<HTMLDivElement>, "children">) {
+   196→  return (
+   197→    <div className={cn("relative rounded-lg p-px", className)} {...props}>
+   198→      <div
+   199→        className={cn("absolute inset-0 rounded-lg", accentBorder)}
+   200→        style={{ opacity: 0.7 }}
+   201→      />
+   202→      <div className="relative rounded-lg bg-card/80 backdrop-blur h-full">
+   203→        {children}
+   204→      </div>
+   205→    </div>
+   206→  );
+   207→}
+   208→
+   209→/** Animated handshake visualization between two orgs */
+   210→function HandshakeVisualization({ from, to, status, isActive }: {
+   211→  from: string;
+   212→  to: string;
+   213→  status: FedChannel["status"];
+   214→  isActive: boolean;
+   215→}) {
+   216→  return (
+   217→    <div className="flex items-center gap-1 my-1">
+   218→      <motion.div
+   219→        className="h-1 flex-1 rounded-full bg-muted/30 overflow-hidden"
+   220→      >
+   221→        {isActive && (
+   222→          <motion.div
+   223→            className={cn(
+   224→              "h-full rounded-full",
+   225→              status === "verified" ? "bg-verified/60" :
+   226→              status === "negotiating" ? "bg-repairing/60" :
+   227→              "bg-violating/60",
+   228→            )}
+   229→            initial={{ width: "0%" }}
+   230→            animate={{ width: "100%" }}
+   231→            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+   232→          />
+   233→        )}
+   234→      </motion.div>
+   235→      <motion.div
+   236→        animate={isActive ? { scale: [1, 1.2, 1] } : {}}
+   237→        transition={isActive ? { duration: 1.5, repeat: Infinity } : {}}
+   238→      >
+   239→        <Handshake
+   240→          className={cn(
+   241→            "h-3 w-3 shrink-0",
+   242→            status === "verified" ? "text-verified" :
+   243→            status === "negotiating" ? "text-repairing" :
+   244→            "text-violating",
+   245→          )}
+   246→        />
+   247→      </motion.div>
+   248→      <motion.div className="h-1 flex-1 rounded-full bg-muted/30 overflow-hidden">
+   249→        {isActive && (
+   250→          <motion.div
+   251→            className={cn(
+   252→              "h-full rounded-full",
+   253→              status === "verified" ? "bg-verified/60" :
+   254→              status === "negotiating" ? "bg-repairing/60" :
+   255→              "bg-violating/60",
+   256→            )}
+   257→            initial={{ width: "100%" }}
+   258→            animate={{ width: "0%" }}
+   259→            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+   260→          />
+   261→        )}
+   262→      </motion.div>
+   263→    </div>
+   264→  );
+   265→}
+   266→
+   267→/** Trust posture gauge - radar chart */
+   268→function TrustPostureGauge({ orgs }: { orgs: FedOrg[] }) {
+   269→  const radarData = orgs.map((o) => ({
+   270→    name: o.name.length > 12 ? o.name.slice(0, 10) + "…" : o.name,
+   271→    trust: o.trustLevel === "verifiable" ? 95 : o.trustLevel === "anchored" ? 60 : 25,
+   272→    zk: Math.min(100, o.zkPolicies * 30 + (o.zkPolicies > 0 ? 20 : 0)),
+   273→    proofs: Math.min(100, o.totalProofs * 15 + 10),
+   274→    anchored: Math.min(100, o.anchored * 25 + 10),
+   275→    policies: Math.min(100, o.policyCount * 20 + 10),
+   276→  }));
+   277→
+   278→  return (
+   279→    <div className="w-full h-[220px]">
+   280→      <ResponsiveContainer width="100%" height="100%">
+   281→        <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+   282→          <PolarGrid
+   283→            stroke="oklch(0.32 0.014 165)"
+   284→            strokeOpacity={0.4}
+   285→          />
+   286→          <PolarAngleAxis
+   287→            dataKey="name"
+   288→            tick={{
+   289→              fontSize: 9,
+   290→              fill: "oklch(0.68 0.015 160)",
+   291→              fontFamily: "var(--font-geist-mono), monospace",
+   292→            }}
+   293→          />
+   294→          <PolarRadiusAxis
+   295→            angle={30}
+   296→            domain={[0, 100]}
+   297→            tick={false}
+   298→            axisLine={false}
+   299→          />
+   300→          <Radar
+   301→            name="Trust"
+   302→            dataKey="trust"
+   303→            stroke="oklch(0.78 0.16 160)"
+   304→            fill="oklch(0.78 0.16 160)"
+   305→            fillOpacity={0.15}
+   306→            strokeWidth={1.5}
+   307→          />
+   308→          <Radar
+   309→            name="ZK"
+   310→            dataKey="zk"
+   311→            stroke="oklch(0.80 0.15 80)"
+   312→            fill="oklch(0.80 0.15 80)"
+   313→            fillOpacity={0.08}
+   314→            strokeWidth={1}
+   315→          />
+   316→          <Radar
+   317→            name="Proofs"
+   318→            dataKey="proofs"
+   319→            stroke="oklch(0.74 0.13 190)"
+   320→            fill="oklch(0.74 0.13 190)"
+   321→            fillOpacity={0.05}
+   322→            strokeWidth={1}
+   323→          />
+   324→        </RadarChart>
+   325→      </ResponsiveContainer>
+   326→    </div>
+   327→  );
+   328→}
+   329→
+   330→/** Health gauge - donut chart showing federation health */
+   331→function FederationHealthGauge({ channels }: { channels: FedChannel[] }) {
+   332→  const verified = channels.filter((c) => c.status === "verified").length;
+   333→  const negotiating = channels.filter((c) => c.status === "negotiating").length;
+   334→  const drift = channels.filter((c) => c.status === "drift").length;
+   335→
+   336→  const data = [
+   337→    { name: "verified", value: verified, color: "oklch(0.78 0.16 160)" },
+   338→    { name: "negotiating", value: negotiating, color: "oklch(0.80 0.15 80)" },
+   339→    { name: "drift", value: drift, color: "oklch(0.64 0.21 25)" },
+   340→  ].filter((d) => d.value > 0);
+   341→
+   342→  const total = verified + negotiating + drift;
+   343→  const healthPct = total > 0 ? Math.round((verified / total) * 100) : 0;
+   344→
+   345→  if (data.length === 0) {
+   346→    return (
+   347→      <div className="flex items-center justify-center h-[120px] text-xs text-muted-foreground italic">
+   348→        No channels
+   349→      </div>
+   350→    );
+   351→  }
+   352→
+   353→  return (
+   354→    <div className="relative h-[120px]">
+   355→      <ResponsiveContainer width="100%" height="100%">
+   356→        <PieChart>
+   357→          <Pie
+   358→            data={data}
+   359→            cx="50%"
+   360→            cy="50%"
+   361→            innerRadius={35}
+   362→            outerRadius={48}
+   363→            paddingAngle={2}
+   364→            dataKey="value"
+   365→            strokeWidth={0}
+   366→          >
+   367→            {data.map((entry, i) => (
+   368→              <Cell key={i} fill={entry.color} fillOpacity={0.8} />
+   369→            ))}
+   370→          </Pie>
+   371→        </PieChart>
+   372→      </ResponsiveContainer>
+   373→      <div className="absolute inset-0 flex items-center justify-center">
+   374→        <div className="text-center">
+   375→          <motion.div
+   376→            className={cn(
+   377→              "text-lg font-bold font-mono",
+   378→              healthPct >= 80 ? "text-verified" : healthPct >= 50 ? "text-repairing" : "text-violating",
+   379→            )}
+   380→            initial={{ opacity: 0, scale: 0.8 }}
+   381→            animate={{ opacity: 1, scale: 1 }}
+   382→            transition={{ type: "spring", stiffness: 300 }}
+   383→          >
+   384→            {healthPct}%
+   385→          </motion.div>
+   386→          <div className="text-[8px] uppercase tracking-wide text-muted-foreground">health</div>
+   387→        </div>
+   388→      </div>
+   389→    </div>
+   390→  );
+   391→}
+   392→
+   393→export function FederationSection() {
+   394→  const { toast } = useToast();
+   395→  const [data, setData] = useState<FederationData | null>(null);
+   396→  const [loading, setLoading] = useState(true);
+   397→  const [reconciling, setReconciling] = useState(false);
+   398→  const [activeChannelIdx, setActiveChannelIdx] = useState<number | null>(null);
+   399→
+   400→  const load = useCallback(() => {
+   401→    fetch("/api/federation")
+   402→      .then((r) => r.json())
+   403→      .then((d) => {
+   404→        setData(d);
+   405→        setLoading(false);
+   406→      })
+   407→      .catch(() => setLoading(false));
+   408→  }, []);
+   409→
+   410→  useEffect(() => {
+   411→    load();
+   412→    const t = setInterval(load, 12000);
+   413→    return () => clearInterval(t);
+   414→  }, [load]);
+   415→
+   416→  const reconcile = async (fromDomain: string, toDomain: string, fromName: string, toName: string) => {
+   417→    setReconciling(true);
+   418→    try {
+   419→      const res = await fetch("/api/federation", {
+   420→        method: "POST",
+   421→        headers: { "Content-Type": "application/json" },
+   422→        body: JSON.stringify({ fromDomain, toDomain }),
+   423→      });
+   424→      const d = await res.json();
+   425→      if (!res.ok) {
+   426→        toast({ title: "Reconciliation failed", description: d.error, variant: "destructive" });
+   427→      } else {
+   428→        const r = d.reconciliation;
+   429→        toast({
+   430→          title: `${r.kind === "zk_merge" ? "ZK" : "MMR"} reconciliation complete`,
+   431→          description: `${fromName} ↔ ${toName} · ${r.privacy}`,
+   432→        });
+   433→      }
+   434→    } catch (e) {
+   435→      toast({ title: "Reconciliation failed", description: String(e), variant: "destructive" });
+   436→    } finally {
+   437→      setReconciling(false);
+   438→    }
+   439→  };
+   440→
+   441→  if (loading || !data) {
+   442→    return (
+   443→      <div className="space-y-4">
+   444→        <Skeleton className="h-24 w-full" />
+   445→        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+   446→          {Array.from({ length: 6 }).map((_, i) => (
+   447→            <Skeleton key={i} className="h-40 w-full" />
+   448→          ))}
+   449→        </div>
+   450→      </div>
+   451→    );
+   452→  }
+   453→
+   454→  const { totals, federation, channels } = data;
+   455→
+   456→  return (
+   457→    <motion.section
+   458→      className="space-y-4"
+   459→      variants={containerVariants}
+   460→      initial="hidden"
+   461→      animate="visible"
+   462→    >
+   463→      {/* Header banner */}
+   464→      <motion.div variants={cardVariants}>
+   465→        <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   466→          {/* Gradient top border */}
+   467→          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-verified/60 via-repairing/30 to-violating/30" />
+   468→          <div className="bg-grid absolute inset-0 opacity-20" />
+   469→          <div className="relative flex flex-wrap items-center gap-4">
+   470→            <motion.div
+   471→              className="flex h-11 w-11 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 glow-verified shrink-0"
+   472→              whileHover={{ scale: 1.1, rotate: 5 }}
+   473→              whileTap={{ scale: 0.95 }}
+   474→            >
+   475→              <Globe2 className="h-5 w-5 text-verified" />
+   476→            </motion.div>
+   477→            <div className="min-w-0 flex-1">
+   478→              <h2 className="text-base font-semibold flex items-center gap-2">
+   479→                epistemic:// Federation
+   480→                <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[9px] font-mono">
+   481→                  verifiable state sync
+   482→                </Badge>
+   483→              </h2>
+   484→              <p className="text-xs text-muted-foreground mt-0.5">
+   485→                Competing organizations reconciling operational realities — the TCP/IP of trustworthy multi-agent coordination.
+   486→              </p>
+   487→            </div>
+   488→            <div className="flex items-center gap-2 shrink-0">
+   489→              <div className="text-right">
+   490→                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Global root</div>
+   491→                <div className="font-mono text-sm text-verified">{totals.globalRoot}</div>
+   492→              </div>
+   493→              <div className="h-10 w-px bg-border/60" />
+   494→              <div className="text-right">
+   495→                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Orgs / ZK-enabled</div>
+   496→                <div className="font-mono text-sm">
+   497→                  <span className="text-foreground">{totals.organizations}</span>
+   498→                  <span className="text-muted-foreground mx-1">/</span>
+   499→                  <span className="text-verified">{totals.zkOrgs}</span>
+   500→                </div>
+   501→              </div>
+   502→            </div>
+   503→          </div>
+   504→        </Card>
+   505→      </motion.div>
+   506→
+   507→      {/* Summary stats */}
+   508→      <motion.div
+   509→        variants={containerVariants}
+   510→        className="grid grid-cols-2 md:grid-cols-4 gap-3"
+   511→      >
+   512→        <SummaryStat icon={Building2} label="Organizations" value={totals.organizations} accent="verified" />
+   513→        <SummaryStat icon={Boxes} label="Policies" value={totals.policies} />
+   514→        <SummaryStat icon={Network} label="Reconcile channels" value={totals.channels} accent="repairing" />
+   515→        <SummaryStat icon={KeyRound} label="ZK-verifiable orgs" value={totals.zkOrgs} accent="verified" />
+   516→      </motion.div>
+   517→
+   518→      {/* Gossip simulation */}
+   519→      <motion.div variants={cardVariants}>
+   520→        <FederationGossipSim orgs={federation.map((o) => ({ id: o.id, name: o.name, zkPolicies: o.zkPolicies }))} />
+   521→      </motion.div>
+   522→
+   523→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   524→        {/* Federation map (orgs + channels) */}
+   525→        <motion.div variants={cardVariants} className="lg:col-span-2">
+   526→          <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   527→            {/* Gradient top border */}
+   528→            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-verified/50 via-repairing/30 to-violating/30" />
+   529→            <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   530→            <div className="relative">
+   531→              <div className="flex items-center gap-2 mb-3">
+   532→                <Network className="h-4 w-4 text-verified" />
+   533→                <h3 className="text-sm font-semibold">Federation topology</h3>
+   534→                <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+   535→                  {federation.length} peers · {channels.length} channels
+   536→                </span>
+   537→              </div>
+   538→
+   539→              {/* Org grid */}
+   540→              <motion.div
+   541→                variants={containerVariants}
+   542→                className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4"
+   543→              >
+   544→                {federation.map((org) => (
+   545→                  <OrgCard key={org.id} org={org} />
+   546→                ))}
+   547→              </motion.div>
+   548→
+   549→              {/* Animated connection lines between orgs */}
+   550→              {channels.length > 0 && (
+   551→                <motion.div
+   552→                  initial={{ opacity: 0 }}
+   553→                  animate={{ opacity: 1 }}
+   554→                  transition={{ delay: 0.3 }}
+   555→                  className="flex items-center gap-2 mb-3 px-1"
+   556→                >
+   557→                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-verified/20 to-transparent" />
+   558→                  <span className="text-[9px] text-muted-foreground uppercase tracking-wider">reconciliation channels</span>
+   559→                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-verified/20 to-transparent" />
+   560→                </motion.div>
+   561→              )}
+   562→
+   563→              {/* Channels */}
+   564→              <div className="mt-4">
+   565→                <div className="flex items-center gap-2 mb-2">
+   566→                  <Link2 className="h-3.5 w-3.5 text-repairing" />
+   567→                  <span className="text-xs font-semibold">Cross-org reconciliation channels</span>
+   568→                </div>
+   569→                <div className="space-y-1.5 max-h-[340px] overflow-y-auto pr-1">
+   570→                  {channels.length === 0 && (
+   571→                    <p className="text-xs text-muted-foreground italic">No channels — need ≥2 organizations.</p>
+   572→                  )}
+   573→                  {channels.map((ch, i) => {
+   574→                    const km = KIND_META[ch.kind];
+   575→                    const sm = STATUS_META[ch.status];
+   576→                    const KIcon = km.icon;
+   577→                    const isActive = activeChannelIdx === i;
+   578→                    return (
+   579→                      <motion.div
+   580→                        key={i}
+   581→                        variants={itemVariants}
+   582→                        whileHover={{ scale: 1.01, x: 2 }}
+   583→                        onMouseEnter={() => setActiveChannelIdx(i)}
+   584→                        onMouseLeave={() => setActiveChannelIdx(null)}
+   585→                        className={cn(
+   586→                          "rounded-md border bg-background/40 px-2.5 py-1.5 transition-colors",
+   587→                          km.color,
+   588→                          isActive && "ring-1 ring-verified/20",
+   589→                        )}
+   590→                      >
+   591→                        <div className="flex items-center gap-2">
+   592→                          <KIcon className={cn("h-3.5 w-3.5 shrink-0", km.text)} />
+   593→                          <div className="min-w-0 flex-1">
+   594→                            <div className="flex items-center gap-1.5 text-xs">
+   595→                              <span className="font-medium truncate">{ch.fromName}</span>
+   596→                              <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+   597→                              <span className="font-medium truncate">{ch.toName}</span>
+   598→                            </div>
+   599→                            <div className="flex items-center gap-2 mt-0.5">
+   600→                              <span className="font-mono text-[10px] text-muted-foreground">{ch.rootHash}</span>
+   601→                              <span className={cn("text-[10px] font-mono uppercase", sm.text)}>· {sm.label}</span>
+   602→                            </div>
+   603→                            {/* Reconciliation progress indicator */}
+   604→                            <div className="mt-1">
+   605→                              <Progress
+   606→                                value={sm.progressPct}
+   607→                                className={cn(
+   608→                                  "h-1",
+   609→                                  ch.status === "verified" ? "[&>div]:bg-verified" :
+   610→                                  ch.status === "negotiating" ? "[&>div]:bg-repairing" :
+   611→                                  "[&>div]:bg-violating",
+   612→                                )}
+   613→                              />
+   614→                            </div>
+   615→                          </div>
+   616→                          <Button
+   617→                            size="sm"
+   618→                            variant="outline"
+   619→                            disabled={reconciling}
+   620→                            onClick={() => {
+   621→                              const fromOrg = federation.find((o) => o.id === ch.from);
+   622→                              const toOrg = federation.find((o) => o.id === ch.to);
+   623→                              if (fromOrg && toOrg) reconcile(fromOrg.domain, toOrg.domain, fromOrg.name, toOrg.name);
+   624→                            }}
+   625→                            className="h-6 px-2 text-[10px] border-verified/30 bg-verified/10 text-verified hover:bg-verified/20 shrink-0"
+   626→                          >
+   627→                            <RefreshCw className={cn("h-3 w-3 mr-1", reconciling && "animate-spin")} />
+   628→                            reconcile
+   629→                          </Button>
+   630→                        </div>
+   631→                        {/* Animated handshake visualization */}
+   632→                        {isActive && (
+   633→                          <HandshakeVisualization
+   634→                            from={ch.fromName}
+   635→                            to={ch.toName}
+   636→                            status={ch.status}
+   637→                            isActive={isActive}
+   638→                          />
+   639→                        )}
+   640→                      </motion.div>
+   641→                    );
+   642→                  })}
+   643→                </div>
+   644→              </div>
+   645→            </div>
+   646→          </Card>
+   647→        </motion.div>
+   648→
+   649→        {/* Side: protocol explainer + trust posture + handshake log */}
+   650→        <div className="space-y-4">
+   651→          <motion.div variants={cardVariants}>
+   652→            <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   653→              {/* Gradient top border */}
+   654→              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-verified/50 to-transparent" />
+   655→              <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   656→              <div className="relative">
+   657→                <div className="flex items-center gap-2 mb-2">
+   658→                  <Server className="h-4 w-4 text-verified" />
+   659→                  <h3 className="text-sm font-semibold">epistemic:// protocol</h3>
+   660→                </div>
+   661→                <p className="text-[11px] text-muted-foreground leading-relaxed">
+   662→                  Every organization speaks a common epistemic handshake. MMR ancestry proofs let any peer verify a merge without seeing full history; with ZK enabled, the proof is a SNARK over the state delta — enabling trustless, privacy-preserving reconciliation.
+   663→                </p>
+   664→                <div className="mt-3 space-y-1.5">
+   665→                  <ProtoRow step="1" label="handshake" detail="epistemic://<domain>/<root>" />
+   666→                  <ProtoRow step="2" label="ancestry proof" detail="MMR path + ZK-SNARK" />
+   667→                  <ProtoRow step="3" label="invariant check" detail="compiled enforcer (Wasm)" />
+   668→                  <ProtoRow step="4" label="merge" detail="least-divergent correction" />
+   669→                </div>
+   670→              </div>
+   671→            </Card>
+   672→          </motion.div>
+   673→
+   674→          {/* Trust posture radar chart */}
+   675→          <motion.div variants={cardVariants}>
+   676→            <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   677→              {/* Gradient top border */}
+   678→              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-repairing/50 to-transparent" />
+   679→              <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   680→              <div className="relative">
+   681→                <div className="flex items-center gap-2 mb-2">
+   682→                  <Fingerprint className="h-4 w-4 text-repairing" />
+   683→                  <h3 className="text-sm font-semibold">Trust posture</h3>
+   684→                  <Badge variant="outline" className="text-[9px] border-repairing/30 bg-repairing/10 text-repairing font-mono ml-auto">
+   685→                    radar
+   686→                  </Badge>
+   687→                </div>
+   688→                <TrustPostureGauge orgs={federation} />
+   689→                <div className="mt-2 space-y-1.5">
+   690→                  {federation.map((o) => {
+   691→                    const tm = TRUST_META[o.trustLevel];
+   692→                    const TIcon = tm.icon;
+   693→                    return (
+   694→                      <motion.div
+   695→                        key={o.id}
+   696→                        variants={itemVariants}
+   697→                        className="flex items-center gap-2 text-xs"
+   698→                        whileHover={{ x: 3 }}
+   699→                      >
+   700→                        <TIcon className={cn("h-3.5 w-3.5 shrink-0", tm.text)} />
+   701→                        <span className="truncate flex-1">{o.name}</span>
+   702→                        <span className={cn("font-mono text-[10px]", tm.text)}>{tm.label}</span>
+   703→                        {o.trustLevel === "verifiable" && (
+   704→                          <Sparkles className="h-3 w-3 text-verified" />
+   705→                        )}
+   706→                      </motion.div>
+   707→                    );
+   708→                  })}
+   709→                </div>
+   710→              </div>
+   711→            </Card>
+   712→          </motion.div>
+   713→
+   714→          {/* Federation health gauge */}
+   715→          <motion.div variants={cardVariants}>
+   716→            <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   717→              {/* Gradient top border */}
+   718→              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-verified/40 via-repairing/30 to-violating/30" />
+   719→              <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   720→              <div className="relative">
+   721→                <div className="flex items-center gap-2 mb-2">
+   722→                  <Activity className="h-4 w-4 text-verified" />
+   723→                  <h3 className="text-sm font-semibold">Channel health</h3>
+   724→                  <Badge variant="outline" className="text-[9px] border-verified/30 bg-verified/10 text-verified font-mono ml-auto">
+   725→                    <CircleDot className="h-2.5 w-2.5 mr-0.5" /> live
+   726→                  </Badge>
+   727→                </div>
+   728→                <FederationHealthGauge channels={channels} />
+   729→                <div className="mt-1 flex items-center justify-center gap-4 text-[10px]">
+   730→                  <div className="flex items-center gap-1">
+   731→                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "oklch(0.78 0.16 160)" }} />
+   732→                    <span className="text-muted-foreground">verified</span>
+   733→                  </div>
+   734→                  <div className="flex items-center gap-1">
+   735→                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "oklch(0.80 0.15 80)" }} />
+   736→                    <span className="text-muted-foreground">negotiating</span>
+   737→                  </div>
+   738→                  <div className="flex items-center gap-1">
+   739→                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: "oklch(0.64 0.21 25)" }} />
+   740→                    <span className="text-muted-foreground">drift</span>
+   741→                  </div>
+   742→                </div>
+   743→              </div>
+   744→            </Card>
+   745→          </motion.div>
+   746→
+   747→          {/* ZK proof exchange visualization */}
+   748→          <motion.div variants={cardVariants}>
+   749→            <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   750→              {/* Gradient top border */}
+   751→              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-verified/40 to-transparent" />
+   752→              <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   753→              <div className="relative">
+   754→                <div className="flex items-center gap-2 mb-2">
+   755→                  <Lock className="h-4 w-4 text-verified" />
+   756→                  <h3 className="text-sm font-semibold">ZK proof exchange</h3>
+   757→                  <Badge variant="outline" className="text-[9px] border-verified/30 bg-verified/10 text-verified font-mono">
+   758→                    SNARK
+   759→                  </Badge>
+   760→                </div>
+   761→                <p className="text-[10px] text-muted-foreground mb-2 leading-relaxed">
+   762→                  Zero-knowledge proofs enable trustless verification across organizational boundaries without revealing underlying state.
+   763→                </p>
+   764→                {/* ZK flow visualization */}
+   765→                <div className="space-y-2">
+   766→                  <ZKFlowStep
+   767→                    from={federation.find((o) => o.zkPolicies > 0)?.name ?? "Org A"}
+   768→                    to={federation.filter((o) => o.zkPolicies > 0)[1]?.name ?? "Org B"}
+   769→                    proofType="Groth16"
+   770→                    status="verified"
+   771→                  />
+   772→                  {federation.filter((o) => o.zkPolicies > 0).length > 2 && (
+   773→                    <ZKFlowStep
+   774→                      from={federation.filter((o) => o.zkPolicies > 0)[1]?.name ?? "Org B"}
+   775→                      to={federation.filter((o) => o.zkPolicies > 0)[2]?.name ?? "Org C"}
+   776→                      proofType="PLONK"
+   777→                      status="negotiating"
+   778→                    />
+   779→                  )}
+   780→                </div>
+   781→                <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+   782→                  <ShieldCheck className="h-3 w-3 text-verified" />
+   783→                  <span>{federation.filter((o) => o.zkPolicies > 0).length} ZK-enabled orgs</span>
+   784→                  <span className="ml-auto font-mono">
+   785→                    {channels.filter((c) => c.kind === "zk_merge").length} ZK channels
+   786→                  </span>
+   787→                </div>
+   788→              </div>
+   789→            </Card>
+   790→          </motion.div>
+   791→        </div>
+   792→      </div>
+   793→    </motion.section>
+   794→  );
+   795→}
+   796→
+   797→/** ZK proof exchange flow step */
+   798→function ZKFlowStep({ from, to, proofType, status }: {
+   799→  from: string;
+   800→  to: string;
+   801→  proofType: string;
+   802→  status: "verified" | "negotiating";
+   803→}) {
+   804→  return (
+   805→    <motion.div
+   806→      initial={{ opacity: 0, x: -8 }}
+   807→      animate={{ opacity: 1, x: 0 }}
+   808→      className={cn(
+   809→        "rounded-md border px-2 py-1.5 flex items-center gap-2",
+   810→        status === "verified"
+   811→          ? "border-verified/30 bg-verified/5"
+   812→          : "border-repairing/30 bg-repairing/5",
+   813→      )}
+   814→    >
+   815→      <Lock className={cn("h-3 w-3 shrink-0", status === "verified" ? "text-verified" : "text-repairing")} />
+   816→      <div className="min-w-0 flex-1">
+   817→        <div className="flex items-center gap-1 text-[11px]">
+   818→          <span className="font-medium truncate">{from}</span>
+   819→          <motion.span
+   820→            animate={{ x: [0, 3, 0] }}
+   821→            transition={{ duration: 1.5, repeat: Infinity }}
+   822→          >
+   823→            <ArrowRight className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+   824→          </motion.span>
+   825→          <span className="font-medium truncate">{to}</span>
+   826→        </div>
+   827→        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground mt-0.5">
+   828→          <span className="font-mono">{proofType}</span>
+   829→          <span className={cn("font-mono uppercase", status === "verified" ? "text-verified" : "text-repairing")}>
+   830→            {status}
+   831→          </span>
+   832→        </div>
+   833→      </div>
+   834→      {status === "verified" && <CheckCircle2 className="h-3.5 w-3.5 text-verified shrink-0" />}
+   835→      {status === "negotiating" && (
+   836→        <motion.div
+   837→          animate={{ rotate: 360 }}
+   838→          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+   839→        >
+   840→          <RefreshCw className="h-3.5 w-3.5 text-repairing shrink-0" />
+   841→        </motion.div>
+   842→      )}
+   843→    </motion.div>
+   844→  );
+   845→}
+   846→
+   847→function OrgCard({ org }: { org: FedOrg }) {
+   848→  const tm = TRUST_META[org.trustLevel];
+   849→  const TIcon = tm.icon;
+   850→  return (
+   851→    <motion.div
+   852→      variants={cardVariants}
+   853→      whileHover={{ scale: 1.02, y: -2 }}
+   854→      whileTap={{ scale: 0.98 }}
+   855→    >
+   856→      <GradientBorderCard
+   857→        accentBorder={tm.accentBorder}
+   858→        className={cn(tm.border)}
+   859→      >
+   860→        <div className="p-3 relative overflow-hidden">
+   861→          {/* Top gradient accent */}
+   862→          <div className={cn("absolute inset-x-0 top-0 h-1 bg-gradient-to-r", tm.gradient)} />
+   863→          <div className="relative">
+   864→            <div className="flex items-start justify-between gap-2">
+   865→              <div className="min-w-0 flex-1">
+   866→                <div className="flex items-center gap-1.5">
+   867→                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+   868→                  <span className="text-sm font-semibold truncate">{org.name}</span>
+   869→                </div>
+   870→                <div className="font-mono text-[10px] text-muted-foreground mt-0.5 truncate">{org.handshake}</div>
+   871→              </div>
+   872→              <span
+   873→                className={cn(
+   874→                  "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase shrink-0",
+   875→                  tm.color,
+   876→                  tm.border,
+   877→                  tm.text,
+   878→                )}
+   879→              >
+   880→                <TIcon className="h-2.5 w-2.5" />
+   881→                {tm.label}
+   882→              </span>
+   883→            </div>
+   884→            <div className="mt-2.5 grid grid-cols-3 gap-2 text-center">
+   885→              <MiniStat label="policies" value={org.policyCount} />
+   886→              <MiniStat label="shards" value={org.shardCount} />
+   887→              <MiniStat label="proofs" value={org.totalProofs} />
+   888→            </div>
+   889→            <div className="mt-2 flex items-center gap-1 flex-wrap">
+   890→              {org.zkPolicies > 0 && (
+   891→                <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[9px] gap-0.5 px-1.5">
+   892→                  <Lock className="h-2.5 w-2.5" /> ZK
+   893→                </Badge>
+   894→              )}
+   895→              {org.anchored > 0 && (
+   896→                <Badge variant="outline" className="border-repairing/30 bg-repairing/10 text-repairing text-[9px] gap-0.5 px-1.5 whitespace-nowrap">
+   897→                  <KeyRound className="h-2.5 w-2.5" /> {org.anchored} anch
+   898→                </Badge>
+   899→              )}
+   900→              <span className="ml-auto font-mono text-[10px] text-muted-foreground" title={org.rootHash}>
+   901→                {org.rootHash.slice(0, 8)}
+   902→              </span>
+   903→            </div>
+   904→          </div>
+   905→        </div>
+   906→      </GradientBorderCard>
+   907→    </motion.div>
+   908→  );
+   909→}
+   910→
+   911→function SummaryStat({
+   912→  icon: Icon,
+   913→  label,
+   914→  value,
+   915→  accent,
+   916→}: {
+   917→  icon: typeof Globe2;
+   918→  label: string;
+   919→  value: number;
+   920→  accent?: "verified" | "repairing";
+   921→}) {
+   922→  const color =
+   923→    accent === "verified"
+   924→      ? "text-verified"
+   925→      : accent === "repairing"
+   926→        ? "text-repairing"
+   927→        : "text-foreground";
+   928→  const gradientBorder =
+   929→    accent === "verified"
+   930→      ? "from-verified/50 via-verified/15 to-transparent"
+   931→      : accent === "repairing"
+   932→        ? "from-repairing/50 via-repairing/15 to-transparent"
+   933→        : "from-muted-foreground/30 via-muted-foreground/10 to-transparent";
+   934→
+   935→  return (
+   936→    <motion.div variants={cardVariants} whileHover={{ scale: 1.03 }}>
+   937→      <Card className="bg-card/60 backdrop-blur border-border/60 p-3 relative overflow-hidden">
+   938→        {/* Gradient top border */}
+   939→        <div className={cn("absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r", gradientBorder)} />
+   940→        <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   941→        <div className="relative flex items-center gap-2.5">
+   942→          <div className="h-8 w-8 rounded-md bg-background/60 flex items-center justify-center shrink-0">
+   943→            <Icon className={cn("h-4 w-4", color)} />
+   944→          </div>
+   945→          <div>
+   946→            <motion.div
+   947→              className={cn("text-xl font-semibold tabular-nums leading-none", color)}
+   948→              initial={{ opacity: 0, scale: 0.8 }}
+   949→              animate={{ opacity: 1, scale: 1 }}
+   950→              transition={{ type: "spring", stiffness: 300 }}
+   951→            >
+   952→              {value}
+   953→            </motion.div>
+   954→            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{label}</div>
+   955→          </div>
+   956→        </div>
+   957→      </Card>
+   958→    </motion.div>
+   959→  );
+   960→}
+   961→
+   962→function MiniStat({ label, value }: { label: string; value: number }) {
+   963→  return (
+   964→    <div className="rounded bg-muted/30 py-1">
+   965→      <div className="text-sm font-semibold tabular-nums">{value}</div>
+   966→      <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</div>
+   967→    </div>
+   968→  );
+   969→}
+   970→
+   971→function ProtoRow({ step, label, detail }: { step: string; label: string; detail: string }) {
+   972→  return (
+   973→    <motion.div
+   974→      variants={itemVariants}
+   975→      whileHover={{ x: 3, scale: 1.01 }}
+   976→      className="flex items-center gap-2 rounded-md border border-border/40 bg-background/40 px-2 py-1"
+   977→    >
+   978→      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-verified/15 text-verified text-[10px] font-mono font-semibold shrink-0">
+   979→        {step}
+   980→      </span>
+   981→      <div className="min-w-0 flex-1">
+   982→        <div className="text-xs font-medium">{label}</div>
+   983→        <div className="font-mono text-[10px] text-muted-foreground truncate">{detail}</div>
+   984→      </div>
+   985→    </motion.div>
+   986→  );
+   987→}
+   988→

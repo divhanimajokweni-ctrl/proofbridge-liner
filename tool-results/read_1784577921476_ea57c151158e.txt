@@ -1,0 +1,932 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→     4→import {
+     5→     5→  Cpu,
+     6→     6→  Activity,
+     7→     7→  Zap,
+     8→     8→  Play,
+     9→     9→  Radio,
+    10→    10→  Moon,
+    11→    11→  ShieldAlert,
+    12→    12→  FlaskConical,
+    13→    13→  RotateCw,
+    14→    14→  GitCompare,
+    15→    15→  Undo2,
+    16→    16→  AlertTriangle,
+    17→    17→  CheckCircle2,
+    18→    18→  XCircle,
+    19→    19→  Clock,
+    20→    20→  Gauge,
+    21→    21→  Power,
+    22→    22→  ArrowRight,
+    23→    23→} from "lucide-react";
+    24→    24→import {
+    25→    25→  Card,
+    26→    26→  CardContent,
+    27→    27→  CardHeader,
+    28→    28→  CardTitle,
+    29→    29→} from "@/components/ui/card";
+    30→    30→import {
+    31→    31→  Select,
+    32→    32→  SelectContent,
+    33→    33→  SelectItem,
+    34→    34→  SelectTrigger,
+    35→    35→  SelectValue,
+    36→    36→} from "@/components/ui/select";
+    37→    37→import { Textarea } from "@/components/ui/textarea";
+    38→    38→import { Input } from "@/components/ui/input";
+    39→    39→import { Button } from "@/components/ui/button";
+    40→    40→import { Badge } from "@/components/ui/badge";
+    41→    41→import { Progress } from "@/components/ui/progress";
+    42→    42→import { Separator } from "@/components/ui/separator";
+    43→    43→import { Skeleton } from "@/components/ui/skeleton";
+    44→    44→import {
+    45→    45→  Dialog,
+    46→    46→  DialogContent,
+    47→    47→  DialogDescription,
+    48→    48→  DialogFooter,
+    49→    49→  DialogHeader,
+    50→    50→  DialogTitle,
+    51→    51→  DialogTrigger,
+    52→    52→  DialogClose,
+    53→    53→} from "@/components/ui/dialog";
+    54→    54→import { useToast } from "@/hooks/use-toast";
+    55→    55→import { cn } from "@/lib/utils";
+    56→    56→import { formatValue } from "@/lib/format";
+    57→    57→import type {
+    58→    58→  PolicyRow,
+    59→    59→  ShadowBridgeRow,
+    60→    60→  ShadowEventRow,
+    61→    61→  ShadowKind,
+    62→    62→  Severity,
+    63→    63→} from "@/lib/types";
+    64→    64→import { SeverityBadge } from "./primitives";
+    65→    65→
+    66→    66→const POLL_MS = 8_000;
+    67→    67→const DEFAULT_DELTA = `{"frequency": 49.5}`;
+    68→    68→
+    69→    69→function fmtRelative(iso: string | null): string {
+    70→    70→  if (!iso) return "—";
+    71→    71→  const t = new Date(iso).getTime();
+    72→    72→  const diff = Date.now() - t;
+    73→    73→  if (diff < 0) return "just now";
+    74→    74→  const s = Math.floor(diff / 1000);
+    75→    75→  if (s < 60) return `${s}s ago`;
+    76→    76→  const m = Math.floor(s / 60);
+    77→    77→  if (m < 60) return `${m}m ago`;
+    78→    78→  const h = Math.floor(m / 60);
+    79→    79→  if (h < 24) return `${h}h ago`;
+    80→    80→  return `${Math.floor(h / 24)}d ago`;
+    81→    81→}
+    82→    82→
+    83→    83→function fmtVal(v: unknown): string {
+    84→    84→  return formatValue(v, 40);
+    85→    85→}
+    86→    86→
+    87→    87→interface InvariantEval {
+    88→    88→  name: string;
+    89→    89→  passed: boolean;
+    90→    90→  severity: Severity;
+    91→    91→  soft: boolean;
+    92→    92→  actual?: string;
+    93→    93→}
+    94→    94→
+    95→    95→/** Event kind → icon + color treatment. */
+    96→    96→const KIND_META: Record<
+    97→    97→  ShadowKind,
+    98→    98→  { icon: typeof ShieldAlert; color: string; border: string; text: string; label: string }
+    99→    99→> = {
+   100→   100→  takeover: {
+   101→   101→    icon: ShieldAlert,
+   102→   102→    color: "bg-violating/15",
+   103→   103→    border: "border-violating/40",
+   104→   104→    text: "text-violating",
+   105→   105→    label: "TAKEOVER",
+   106→   106→  },
+   107→   107→  whatif: {
+   108→   108→    icon: FlaskConical,
+   109→   109→    color: "bg-repairing/15",
+   110→   110→    border: "border-repairing/40",
+   111→   111→    text: "text-repairing",
+   112→   112→    label: "WHAT-IF",
+   113→   113→  },
+   114→   114→  replay: {
+   115→   115→    icon: RotateCw,
+   116→   116→    color: "bg-quarantined/15",
+   117→   117→    border: "border-quarantined/40",
+   118→   118→    text: "text-quarantined",
+   119→   119→    label: "REPLAY",
+   120→   120→  },
+   121→   121→  divergence: {
+   122→   122→    icon: GitCompare,
+   123→   123→    color: "bg-violating/15",
+   124→   124→    border: "border-violating/40",
+   125→   125→    text: "text-violating",
+   126→   126→    label: "DIVERGENCE",
+   127→   127→  },
+   128→   128→  handback: {
+   129→   129→    icon: Undo2,
+   130→   130→    color: "bg-verified/15",
+   131→   131→    border: "border-verified/40",
+   132→   132→    text: "text-verified",
+   133→   133→    label: "HANDBACK",
+   134→   134→  },
+   135→   135→};
+   136→   136→
+   137→   137→function StateKV({ state, accent }: { state: Record<string, unknown>; accent?: string }) {
+   138→   138→  const entries = Object.entries(state ?? {});
+   139→   139→  return (
+   140→   140→    <div className="space-y-1">
+   141→   141→      {entries.length === 0 && (
+   142→   142→        <div className="text-[11px] text-muted-foreground italic">no state</div>
+   143→   143→      )}
+   144→   144→      {entries.map(([k, v]) => (
+   145→   145→        <div
+   146→   146→          key={k}
+   147→   147→          className="flex items-center justify-between gap-2 rounded px-1.5 py-0.5 hover:bg-muted/30"
+   148→   148→        >
+   149→   149→          <span className="font-mono text-[11px] text-muted-foreground">{k}</span>
+   150→   150→          <span
+   151→   151→            className={cn(
+   152→   152→              "font-mono text-[11px] truncate max-w-[60%] text-right",
+   153→   153→              accent ?? "text-foreground",
+   154→   154→            )}
+   155→   155→            title={fmtVal(v)}
+   156→   156→          >
+   157→   157→            {fmtVal(v)}
+   158→   158→          </span>
+   159→   159→        </div>
+   160→   160→      ))}
+   161→   161→    </div>
+   162→   162→  );
+   163→   163→}
+   164→   164→
+   165→   165→function InvariantRow({
+   166→   166→  live,
+   167→   167→  shadow,
+   168→   168→}: {
+   169→   169→  live?: InvariantEval;
+   170→   170→  shadow?: InvariantEval;
+   171→   171→}) {
+   172→   172→  const name = live?.name ?? shadow?.name ?? "?";
+   173→   173→  const divergent = !!live && !!shadow && live.passed !== shadow.passed;
+   174→   174→  return (
+   175→   175→    <div
+   176→   176→      className={cn(
+   177→   177→        "flex items-center justify-between gap-2 rounded px-1.5 py-1",
+   178→   178→        divergent && "bg-violating/10 border border-violating/30",
+   179→   179→      )}
+   180→   180→    >
+   181→   181→      <div className="flex min-w-0 items-center gap-2">
+   182→   182→        <span className="font-mono text-[11px] text-foreground truncate">{name}</span>
+   183→   183→        <SeverityBadge severity={(live ?? shadow)!.severity} soft={(live ?? shadow)!.soft} />
+   184→   184→      </div>
+   185→   185→      <div className="flex items-center gap-2 text-xs">
+   186→   186→        <span
+   187→   187→          className={cn(
+   188→   188→            "flex items-center gap-0.5",
+   189→   189→            live?.passed ? "text-verified" : "text-violating",
+   190→   190→          )}
+   191→   191→          title="live"
+   192→   192→        >
+   193→   193→          {live?.passed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+   194→   194→          <span className="text-[10px] uppercase">L</span>
+   195→   195→        </span>
+   196→   196→        <span
+   197→   197→          className={cn(
+   198→   198→            "flex items-center gap-0.5",
+   199→   199→            shadow?.passed ? "text-verified" : "text-violating",
+   200→   200→          )}
+   201→   201→          title="shadow"
+   202→   202→        >
+   203→   203→          {shadow?.passed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+   204→   204→          <span className="text-[10px] uppercase">S</span>
+   205→   205→        </span>
+   206→   206→      </div>
+   207→   207→    </div>
+   208→   208→  );
+   209→   209→}
+   210→   210→
+   211→   211→function EventTimelineItem({ ev }: { ev: ShadowEventRow }) {
+   212→   212→  const meta = KIND_META[ev.kind] ?? KIND_META.divergence;
+   213→   213→  const Icon = meta.icon;
+   214→   214→  return (
+   215→   215→    <div
+   216→   216→      className={cn(
+   217→   217→        "relative rounded-md border p-2.5 bg-card/40",
+   218→   218→        ev.authoritative ? cn(meta.border, "glow-violating") : "border-border/60",
+   219→   219→      )}
+   220→   220→    >
+   221→   221→      <div className="flex items-start justify-between gap-2">
+   222→   222→        <div className="flex items-center gap-2">
+   223→   223→          <span
+   224→   224→            className={cn(
+   225→   225→              "flex h-6 w-6 items-center justify-center rounded border",
+   226→   226→              meta.color,
+   227→   227→              meta.border,
+   228→   228→            )}
+   229→   229→          >
+   230→   230→            <Icon className={cn("h-3 w-3", meta.text)} />
+   231→   231→          </span>
+   232→   232→          <div className="flex flex-col">
+   233→   233→            <span className={cn("text-[10px] font-semibold uppercase tracking-wide", meta.text)}>
+   234→   234→              {meta.label}
+   235→   235→            </span>
+   236→   236→            <span className="text-[11px] text-foreground">{ev.summary}</span>
+   237→   237→          </div>
+   238→   238→        </div>
+   239→   239→        {ev.authoritative && (
+   240→   240→          <Badge variant="outline" className="border-violating/40 bg-violating/10 text-violating text-[9px]">
+   241→   241→            AUTH
+   242→   242→          </Badge>
+   243→   243→        )}
+   244→   244→      </div>
+   245→   245→      <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
+   246→   246→        <span className="flex items-center gap-1">
+   247→   247→          <GitCompare className="h-2.5 w-2.5" />
+   248→   248→          <span className="font-mono">div {ev.divergence.toFixed(3)}</span>
+   249→   249→        </span>
+   250→   250→        <span className="flex items-center gap-1">
+   251→   251→          <Clock className="h-2.5 w-2.5" />
+   252→   252→          {fmtRelative(ev.createdAt)}
+   253→   253→        </span>
+   254→   254→      </div>
+   255→   255→    </div>
+   256→   256→  );
+   257→   257→}
+   258→   258→
+   259→   259→/** Central divergence meter — vertical bar + armed indicator. */
+   260→   260→function DivergenceMeter({
+   261→   261→  divergence,
+   262→   262→  authoritative,
+   263→   263→}: {
+   264→   264→  divergence: number;
+   265→   265→  authoritative: boolean;
+   266→   266→}) {
+   267→   267→  // Map divergence (could be small float) to a 0-100 percentage with a log-ish curve.
+   268→   268→  const pct = Math.min(100, Math.round(Math.sqrt(divergence) * 35));
+   269→   269→  const armed = divergence > 0.0001 && authoritative;
+   270→   270→  const color =
+   271→   271→    divergence < 0.001 ? "text-verified" : divergence < 1 ? "text-repairing" : "text-violating";
+   272→   272→  const barClass =
+   273→   273→    divergence < 0.001
+   274→   274→      ? "[&>div]:bg-verified"
+   275→   275→      : divergence < 1
+   276→   276→        ? "[&>div]:bg-repairing"
+   277→   277→        : "[&>div]:bg-violating";
+   278→   278→  return (
+   279→   279→    <Card
+   280→   280→      className={cn(
+   281→   281→        "bg-card/60 backdrop-blur border p-3 relative overflow-hidden flex flex-col items-center justify-center gap-2",
+   282→   282→        armed ? "border-violating/40 glow-violating" : "border-border/60",
+   283→   283→      )}
+   284→   284→    >
+   285→   285→      <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   286→   286→      <div className="relative flex flex-col items-center gap-1.5 w-full">
+   287→   287→        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+   288→   288→          Twin Divergence
+   289→   289→        </div>
+   290→   290→        <div className={cn("font-mono text-2xl font-semibold tabular-nums", color)}>
+   291→   291→          {divergence.toFixed(3)}
+   292→   292→        </div>
+   293→   293→        <Progress value={pct} className={cn("h-1.5 w-full", barClass)} />
+   294→   294→        <div
+   295→   295→          className={cn(
+   296→   296→            "mt-1 flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+   297→   297→            armed
+   298→   298→              ? "border-violating/50 bg-violating/15 text-violating animate-epistemic-pulse"
+   299→   299→              : divergence > 0.0001
+   300→   300→                ? "border-repairing/40 bg-repairing/10 text-repairing"
+   301→   301→                : "border-verified/40 bg-verified/10 text-verified",
+   302→   302→          )}
+   303→   303→        >
+   304→   304→          <Power className="h-3 w-3" />
+   305→   305→          {armed ? "TAKEOVER ARMED" : divergence > 0.0001 ? "DRIFT" : "ALIGNED"}
+   306→   306→        </div>
+   307→   307→        <div className="text-[9px] text-muted-foreground text-center leading-tight font-mono mt-0.5">
+   308→   308→          {divergence < 0.001
+   309→   309→            ? "live ≡ shadow"
+   310→   310→            : divergence < 1
+   311→   311→              ? "invariant mismatch"
+   312→   312→              : "authoritative breach"}
+   313→   313→        </div>
+   314→   314→      </div>
+   315→   315→    </Card>
+   316→   316→  );
+   317→   317→}
+   318→   318→
+   319→   319→function TwinCard({
+   320→   320→  side,
+   321→   321→  state,
+   322→   322→  invariants,
+   323→   323→  authoritative,
+   324→   324→}: {
+   325→   325→  side: "live" | "shadow";
+   326→   326→  state: Record<string, unknown>;
+   327→   327→  invariants: InvariantEval[];
+   328→   328→  authoritative?: boolean;
+   329→   329→}) {
+   330→   330→  const isLive = side === "live";
+   331→   331→  return (
+   332→   332→    <Card
+   333→   333→      className={cn(
+   334→   334→        "bg-card/60 backdrop-blur border p-4 relative overflow-hidden",
+   335→   335→        isLive ? "border-verified/30" : "border-quarantined/30",
+   336→   336→      )}
+   337→   337→    >
+   338→   338→      {/* texture */}
+   339→   339→      {!isLive && <div className="bg-grid absolute inset-0 opacity-25 pointer-events-none" />}
+   340→   340→      <div className="relative space-y-3">
+   341→   341→        <div className="flex items-center justify-between">
+   342→   342→          <div className="flex items-center gap-2">
+   343→   343→            {isLive ? (
+   344→   344→              <Radio className="h-4 w-4 text-verified" />
+   345→   345→            ) : (
+   346→   346→              <Moon className="h-4 w-4 text-quarantined" />
+   347→   347→            )}
+   348→   348→            <span
+   349→   349→              className={cn(
+   350→   350→                "text-sm font-semibold uppercase tracking-wide",
+   351→   351→                isLive ? "text-verified" : "text-quarantined",
+   352→   352→              )}
+   353→   353→            >
+   354→   354→              {isLive ? "Live Plant" : "Shadow Twin"}
+   355→   355→            </span>
+   356→   356→          </div>
+   357→   357→          <span
+   358→   358→            className={cn(
+   359→   359→              "flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+   360→   360→              isLive
+   361→   361→                ? "border-verified/40 bg-verified/10 text-verified"
+   362→   362→                : "border-quarantined/40 bg-quarantined/10 text-quarantined",
+   363→   363→            )}
+   364→   364→          >
+   365→   365→            <span
+   366→   366→              className={cn(
+   367→   367→                "inline-block h-1.5 w-1.5 rounded-full",
+   368→   368→                isLive ? "bg-verified animate-epistemic-pulse" : "bg-quarantined",
+   369→   369→              )}
+   370→   370→            />
+   371→   371→            {isLive ? "● LIVE" : "◐ SHADOW"}
+   372→   372→          </span>
+   373→   373→        </div>
+   374→   374→
+   375→   375→        {authoritative && !isLive && (
+   376→   376→          <div className="flex items-center gap-2 rounded-md border border-violating/40 bg-violating/10 px-2.5 py-1.5 text-[11px] text-violating">
+   377→   377→            <ShieldAlert className="h-3.5 w-3.5" />
+   378→   378→            <span className="font-semibold uppercase tracking-wide">Authoritative</span>
+   379→   379→            <span className="opacity-80">— shadow holds control plane</span>
+   380→   380→          </div>
+   381→   381→        )}
+   382→   382→
+   383→   383→        <div>
+   384→   384→          <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+   385→   385→            State snapshot
+   386→   386→          </div>
+   387→   387→          <div className="rounded-md border border-border/60 bg-background/40 p-2">
+   388→   388→            <StateKV state={state} accent={isLive ? "text-foreground" : "text-quarantined/90"} />
+   389→   389→          </div>
+   390→   390→        </div>
+   391→   391→
+   392→   392→        <div>
+   393→   393→          <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+   394→   394→            Invariant evaluations
+   395→   395→          </div>
+   396→   396→          <div className="space-y-0.5">
+   397→   397→            {invariants.length === 0 && (
+   398→   398→              <div className="text-[11px] text-muted-foreground italic">no invariants</div>
+   399→   399→            )}
+   400→   400→            {invariants.map((iv) => (
+   401→   401→              <div
+   402→   402→                key={iv.name}
+   403→   403→                className="flex items-center justify-between gap-2 rounded px-1.5 py-1"
+   404→   404→              >
+   405→   405→                <div className="flex min-w-0 items-center gap-2">
+   406→   406→                  <span className="font-mono text-[11px] text-foreground truncate">{iv.name}</span>
+   407→   407→                  <SeverityBadge severity={iv.severity} soft={iv.soft} />
+   408→   408→                </div>
+   409→   409→                <span
+   410→   410→                  className={cn(
+   411→   411→                    "flex items-center gap-1 text-xs",
+   412→   412→                    iv.passed ? "text-verified" : "text-violating",
+   413→   413→                  )}
+   414→   414→                >
+   415→   415→                  {iv.passed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+   416→   416→                  <span className="text-[10px] uppercase">{iv.passed ? "pass" : "fail"}</span>
+   417→   417→                </span>
+   418→   418→              </div>
+   419→   419→            ))}
+   420→   420→          </div>
+   421→   421→        </div>
+   422→   422→      </div>
+   423→   423→    </Card>
+   424→   424→  );
+   425→   425→}
+   426→   426→
+   427→   427→export function ShadowBridgeSection() {
+   428→   428→  const { toast } = useToast();
+   429→   429→  const [policies, setPolicies] = useState<PolicyRow[]>([]);
+   430→   430→  const [policyId, setPolicyId] = useState<string>("");
+   431→   431→  const [bridge, setBridge] = useState<ShadowBridgeRow | null>(null);
+   432→   432→  const [loading, setLoading] = useState(true);
+   433→   433→  const [takeoverOpen, setTakeoverOpen] = useState(false);
+   434→   434→  const [takingOver, setTakingOver] = useState(false);
+   435→   435→
+   436→   436→  // What-if composer
+   437→   437→  const [deltaText, setDeltaText] = useState(DEFAULT_DELTA);
+   438→   438→  const [predicate, setPredicate] = useState("");
+   439→   439→  const [whatif, setWhatif] = useState<{
+   440→   440→    ok: boolean;
+   441→   441→    evaluations: InvariantEval[];
+   442→   442→    mmrRoot: string;
+   443→   443→    divergence: number;
+   444→   444→  } | null>(null);
+   445→   445→  const [runningWhatif, setRunningWhatif] = useState(false);
+   446→   446→
+   447→   447→  // Load policies once, default to first shadow-enabled.
+   448→   448→  useEffect(() => {
+   449→   449→    let cancelled = false;
+   450→   450→    fetch("/api/policies")
+   451→   451→      .then((r) => r.json())
+   452→   452→      .then((d: { policies: PolicyRow[] }) => {
+   453→   453→        if (cancelled) return;
+   454→   454→        const ps = d.policies ?? [];
+   455→   455→        setPolicies(ps);
+   456→   456→        const shadowFirst = ps.find((p) => p.shadowEnabled);
+   457→   457→        if (shadowFirst) setPolicyId(shadowFirst.id);
+   458→   458→        else if (ps.length > 0) setPolicyId(ps[0].id);
+   459→   459→      })
+   460→   460→      .catch(() => {});
+   461→   461→    return () => {
+   462→   462→      cancelled = true;
+   463→   463→    };
+   464→   464→  }, []);
+   465→   465→
+   466→   466→  const loadBridge = useCallback(async () => {
+   467→   467→    if (!policyId) return;
+   468→   468→    try {
+   469→   469→      const r = await fetch(`/api/shadow-bridge?policyId=${encodeURIComponent(policyId)}`);
+   470→   470→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   471→   471→      const d: { bridges: ShadowBridgeRow[] } = await r.json();
+   472→   472→      const b = (d.bridges ?? [])[0] ?? null;
+   473→   473→      setBridge(b);
+   474→   474→    } catch (e) {
+   475→   475→      toast({
+   476→   476→        title: "Failed to load shadow bridge",
+   477→   477→        description: e instanceof Error ? e.message : "Unknown error",
+   478→   478→        variant: "destructive",
+   479→   479→      });
+   480→   480→    } finally {
+   481→   481→      setLoading(false);
+   482→   482→    }
+   483→   483→  }, [policyId, toast]);
+   484→   484→
+   485→   485→  useEffect(() => {
+   486→   486→    if (!policyId) return;
+   487→   487→    setLoading(true);
+   488→   488→    loadBridge();
+   489→   489→    const t = setInterval(loadBridge, POLL_MS);
+   490→   490→    return () => clearInterval(t);
+   491→   491→  }, [policyId, loadBridge]);
+   492→   492→
+   493→   493→  const doTakeover = useCallback(async () => {
+   494→   494→    if (!policyId) return;
+   495→   495→    setTakingOver(true);
+   496→   496→    try {
+   497→   497→      const r = await fetch("/api/shadow-bridge/takeover", {
+   498→   498→        method: "POST",
+   499→   499→        headers: { "Content-Type": "application/json" },
+   500→   500→        body: JSON.stringify({ policyId }),
+   501→   501→      });
+   502→   502→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   503→   503→      const d = await r.json();
+   504→   504→      toast({
+   505→   505→        title: "Shadow takeover initiated",
+   506→   506→        description: d.event?.summary ?? "Shadow bridge assumed authority.",
+   507→   507→      });
+   508→   508→      setTakeoverOpen(false);
+   509→   509→      loadBridge();
+   510→   510→    } catch (e) {
+   511→   511→      toast({
+   512→   512→        title: "Takeover failed",
+   513→   513→        description: e instanceof Error ? e.message : "Unknown error",
+   514→   514→        variant: "destructive",
+   515→   515→      });
+   516→   516→    } finally {
+   517→   517→      setTakingOver(false);
+   518→   518→    }
+   519→   519→  }, [policyId, toast, loadBridge]);
+   520→   520→
+   521→   521→  const runWhatif = useCallback(async () => {
+   522→   522→    if (!policyId) return;
+   523→   523→    let delta: Record<string, unknown> = {};
+   524→   524→    if (deltaText.trim()) {
+   525→   525→      try {
+   526→   526→        delta = JSON.parse(deltaText);
+   527→   527→      } catch (e) {
+   528→   528→        toast({
+   529→   529→          title: "Invalid state delta JSON",
+   530→   530→          description: e instanceof Error ? e.message : "Parse error",
+   531→   531→          variant: "destructive",
+   532→   532→        });
+   533→   533→        return;
+   534→   534→      }
+   535→   535→    }
+   536→   536→    setRunningWhatif(true);
+   537→   537→    try {
+   538→   538→      const body: Record<string, unknown> = { policyId, stateDelta: delta };
+   539→   539→      if (predicate.trim()) body.predicateOverride = predicate.trim();
+   540→   540→      const r = await fetch("/api/shadow-bridge/whatif", {
+   541→   541→        method: "POST",
+   542→   542→        headers: { "Content-Type": "application/json" },
+   543→   543→        body: JSON.stringify(body),
+   544→   544→      });
+   545→   545→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   546→   546→      const d = await r.json();
+   547→   547→      setWhatif({
+   548→   548→        ok: !!d.ok,
+   549→   549→        evaluations: (d.evaluations ?? []).map((e: InvariantEval) => ({
+   550→   550→          name: e.name,
+   551→   551→          passed: e.passed,
+   552→   552→          severity: e.severity,
+   553→   553→          soft: e.soft,
+   554→   554→          actual: e.actual,
+   555→   555→        })),
+   556→   556→        mmrRoot: d.mmrRoot ?? "—",
+   557→   557→        divergence: d.event?.divergence ?? 0,
+   558→   558→      });
+   559→   559→      toast({
+   560→   560→        title: "What-if replay complete",
+   561→   561→        description: `${(d.evaluations ?? []).filter((e: InvariantEval) => !e.passed).length} violation(s) under modified rules`,
+   562→   562→      });
+   563→   563→      loadBridge();
+   564→   564→    } catch (e) {
+   565→   565→      toast({
+   566→   566→        title: "What-if replay failed",
+   567→   567→        description: e instanceof Error ? e.message : "Unknown error",
+   568→   568→        variant: "destructive",
+   569→   569→      });
+   570→   570→    } finally {
+   571→   571→      setRunningWhatif(false);
+   572→   572→    }
+   573→   573→  }, [policyId, deltaText, predicate, toast, loadBridge]);
+   574→   574→
+   575→   575→  // Build a union of invariant names (live ∪ shadow) preserving order.
+   576→   576→  const invariantUnion = useMemo(() => {
+   577→   577→    if (!bridge) return [] as { name: string; live?: InvariantEval; shadow?: InvariantEval }[];
+   578→   578→    const map = new Map<string, { name: string; live?: InvariantEval; shadow?: InvariantEval }>();
+   579→   579→    for (const iv of bridge.liveInvariants) {
+   580→   580→      map.set(iv.name, { name: iv.name, live: iv });
+   581→   581→    }
+   582→   582→    for (const iv of bridge.shadowInvariants) {
+   583→   583→      const ex = map.get(iv.name);
+   584→   584→      if (ex) ex.shadow = iv;
+   585→   585→      else map.set(iv.name, { name: iv.name, shadow: iv });
+   586→   586→    }
+   587→   587→    return Array.from(map.values());
+   588→   588→  }, [bridge]);
+   589→   589→
+   590→   590→  const events = bridge?.events ?? [];
+   591→   591→  const selectedPolicy = policies.find((p) => p.id === policyId);
+   592→   592→  const shadowEnabled = !!selectedPolicy?.shadowEnabled;
+   593→   593→  const takeoverLatency = bridge?.policy.takeoverLatencyMs ?? selectedPolicy?.takeoverLatencyMs ?? null;
+   594→   594→  const authoritative = bridge?.policy.authoritative ?? false;
+   595→   595→
+   596→   596→  return (
+   597→   597→    <section className="space-y-4">
+   598→   598→      {/* Header */}
+   599→   599→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   600→   600→        <div className="flex items-center gap-2.5">
+   601→   601→          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-quarantined/30 bg-quarantined/10">
+   602→   602→            <Cpu className="h-4.5 w-4.5 text-quarantined" />
+   603→   603→          </div>
+   604→   604→          <div>
+   605→   605→            <h2 className="text-base font-semibold text-foreground">Shadow Bridge</h2>
+   606→   606→            <p className="text-xs text-muted-foreground">
+   607→   607→              Digital-twin control plane · live vs shadow invariants · takeover-ready
+   608→   608→            </p>
+   609→   609→          </div>
+   610→   610→        </div>
+   611→   611→        <div className="flex items-center gap-2">
+   612→   612→          <Select value={policyId} onValueChange={setPolicyId}>
+   613→   613→            <SelectTrigger className="w-[260px] bg-card/60">
+   614→   614→              <SelectValue placeholder="Select policy" />
+   615→   615→            </SelectTrigger>
+   616→   616→            <SelectContent>
+   617→   617→              {policies.map((p) => (
+   618→   618→                <SelectItem key={p.id} value={p.id}>
+   619→   619→                  <span className="flex items-center gap-2">
+   620→   620→                    {p.name}
+   621→   621→                    {p.shadowEnabled && (
+   622→   622→                      <span className="text-[10px] text-quarantined">●shadow</span>
+   623→   623→                    )}
+   624→   624→                  </span>
+   625→   625→                </SelectItem>
+   626→   626→              ))}
+   627→   627→            </SelectContent>
+   628→   628→          </Select>
+   629→   629→        </div>
+   630→   630→      </div>
+   631→   631→
+   632→   632→      {/* Status badges row */}
+   633→   633→      <div className="flex flex-wrap items-center gap-2">
+   634→   634→        <Badge
+   635→   635→          variant="outline"
+   636→   636→          className={cn(
+   637→   637→            "border-border/60",
+   638→   638→            shadowEnabled ? "text-quarantined border-quarantined/40 bg-quarantined/10" : "text-muted-foreground",
+   639→   639→          )}
+   640→   640→        >
+   641→   641→          <Moon className="h-3 w-3" />
+   642→   642→          {shadowEnabled ? "shadow enabled" : "shadow disabled"}
+   643→   643→        </Badge>
+   644→   644→        <Badge
+   645→   645→          variant="outline"
+   646→   646→          className={cn(
+   647→   647→            "border-border/60",
+   648→   648→            authoritative ? "text-violating border-violating/40 bg-violating/10" : "text-muted-foreground",
+   649→   649→          )}
+   650→   650→        >
+   651→   651→          <ShieldAlert className="h-3 w-3" />
+   652→   652→          {authoritative ? "authoritative" : "non-authoritative"}
+   653→   653→        </Badge>
+   654→   654→        <Badge variant="outline" className="border-border/60 text-muted-foreground">
+   655→   655→          <Gauge className="h-3 w-3" />
+   656→   656→          takeover {takeoverLatency ?? "—"}ms
+   657→   657→        </Badge>
+   658→   658→        <Badge variant="outline" className="border-border/60 text-muted-foreground">
+   659→   659→          <Activity className="h-3 w-3" />
+   660→   660→          {events.length} event{events.length === 1 ? "" : "s"}
+   661→   661→        </Badge>
+   662→   662→      </div>
+   663→   663→
+   664→   664→      {!shadowEnabled && (
+   665→   665→        <Card className="bg-repairing/5 border-repairing/30 p-3 text-xs text-repairing flex items-center gap-2">
+   666→   666→          <AlertTriangle className="h-4 w-4 shrink-0" />
+   667→   667→          <span>
+   668→   668→            Selected policy does not have a shadow bridge enabled. Data may be empty — pick a shadow-enabled policy for full functionality.
+   669→   669→          </span>
+   670→   670→        </Card>
+   671→   671→      )}
+   672→   672→
+   673→   673→      {/* Twin comparison + divergence meter */}
+   674→   674→      {loading ? (
+   675→   675→        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr]">
+   676→   676→          <Skeleton className="h-80 w-full rounded-lg bg-muted/40" />
+   677→   677→          <Skeleton className="h-80 w-32 rounded-lg bg-muted/40" />
+   678→   678→          <Skeleton className="h-80 w-full rounded-lg bg-muted/40" />
+   679→   679→        </div>
+   680→   680→      ) : !bridge ? (
+   681→   681→        <Card className="bg-card/60 border-border/60 p-8 text-center">
+   682→   682→          <Moon className="mx-auto h-8 w-8 text-muted-foreground/50" />
+   683→   683→          <p className="mt-2 text-sm text-muted-foreground">No shadow bridge data for this policy.</p>
+   684→   684→        </Card>
+   685→   685→      ) : (
+   686→   686→        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_1fr] md:items-stretch">
+   687→   687→          <TwinCard
+   688→   688→            side="live"
+   689→   689→            state={bridge.liveState}
+   690→   690→            invariants={bridge.liveInvariants}
+   691→   691→          />
+   692→   692→          <div className="flex md:flex-col gap-3">
+   693→   693→            <DivergenceMeter
+   694→   694→              divergence={bridge.divergence}
+   695→   695→              authoritative={authoritative}
+   696→   696→            />
+   697→   697→            {/* Invariant divergence matrix */}
+   698→   698→            <Card className="bg-card/40 border-border/60 p-2.5 relative overflow-hidden flex-1">
+   699→   699→              <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   700→   700→              <div className="relative">
+   701→   701→                <div className="mb-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+   702→   702→                  L vs S matrix
+   703→   703→                </div>
+   704→   704→                <div className="space-y-0.5">
+   705→   705→                  {invariantUnion.length === 0 && (
+   706→   706→                    <div className="text-[11px] text-muted-foreground italic">no invariants</div>
+   707→   707→                  )}
+   708→   708→                  {invariantUnion.map((row) => (
+   709→   709→                    <InvariantRow key={row.name} live={row.live} shadow={row.shadow} />
+   710→   710→                  ))}
+   711→   711→                </div>
+   712→   712→              </div>
+   713→   713→            </Card>
+   714→   714→          </div>
+   715→   715→          <TwinCard
+   716→   716→            side="shadow"
+   717→   717→            state={bridge.shadowState}
+   718→   718→            invariants={bridge.shadowInvariants}
+   719→   719→            authoritative={authoritative}
+   720→   720→          />
+   721→   721→        </div>
+   722→   722→      )}
+   723→   723→
+   724→   724→      {/* Controls */}
+   725→   725→      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+   726→   726→        {/* Takeover */}
+   727→   727→        <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   728→   728→          <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   729→   729→          <div className="relative space-y-3">
+   730→   730→            <div className="flex items-center gap-2">
+   731→   731→              <Power className="h-4 w-4 text-violating" />
+   732→   732→              <span className="text-sm font-semibold text-foreground">Authority transfer</span>
+   733→   733→            </div>
+   734→   734→            <p className="text-[11px] text-muted-foreground">
+   735→   735→              Promote the shadow twin to authoritative control. Live plant will defer to shadow
+   736→   736→              invariants within <span className="font-mono text-foreground">{takeoverLatency ?? "—"}ms</span>.
+   737→   737→            </p>
+   738→   738→            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+   739→   739→              <Zap className="h-3 w-3 text-repairing" />
+   740→   740→              <span>current state: </span>
+   741→   741→              <span className={cn("font-semibold", authoritative ? "text-violating" : "text-verified")}>
+   742→   742→                {authoritative ? "SHADOW AUTHORITATIVE" : "LIVE AUTHORITATIVE"}
+   743→   743→              </span>
+   744→   744→            </div>
+   745→   745→            <Dialog open={takeoverOpen} onOpenChange={setTakeoverOpen}>
+   746→   746→              <DialogTrigger asChild>
+   747→   747→                <Button
+   748→   748→                  variant="outline"
+   749→   749→                  className="w-full border-violating/40 bg-violating/10 text-violating hover:bg-violating/20"
+   750→   750→                  disabled={!shadowEnabled}
+   751→   751→                >
+   752→   752→                  <ShieldAlert className="h-4 w-4" />
+   753→   753→                  Initiate takeover
+   754→   754→                </Button>
+   755→   755→              </DialogTrigger>
+   756→   756→              <DialogContent className="bg-card border-border/60">
+   757→   757→                <DialogHeader>
+   758→   758→                  <DialogTitle className="flex items-center gap-2 text-foreground">
+   759→   759→                    <ShieldAlert className="h-4 w-4 text-violating" />
+   760→   760→                    Confirm shadow takeover
+   761→   761→                  </DialogTitle>
+   762→   762→                  <DialogDescription className="text-muted-foreground">
+   763→   763→                    The shadow bridge will assume authority for{" "}
+   764→   764→                    <span className="font-mono text-foreground">{bridge?.policy.name ?? "this policy"}</span>.
+   765→   765→                    Live plant operations will be governed by shadow invariants. Continue?
+   766→   766→                  </DialogDescription>
+   767→   767→                </DialogHeader>
+   768→   768→                <DialogFooter>
+   769→   769→                  <DialogClose asChild>
+   770→   770→                    <Button variant="outline" className="border-border/60">
+   771→   771→                      Cancel
+   772→   772→                    </Button>
+   773→   773→                  </DialogClose>
+   774→   774→                  <Button
+   775→   775→                    onClick={doTakeover}
+   776→   776→                    disabled={takingOver}
+   777→   777→                    className="bg-violating/15 border border-violating/40 text-violating hover:bg-violating/25"
+   778→   778→                    variant="outline"
+   779→   779→                  >
+   780→   780→                    {takingOver ? (
+   781→   781→                      <RotateCw className="h-4 w-4 animate-spin" />
+   782→   782→                    ) : (
+   783→   783→                      <Power className="h-4 w-4" />
+   784→   784→                    )}
+   785→   785→                    {takingOver ? "Transferring…" : "Assume authority"}
+   786→   786→                  </Button>
+   787→   787→                </DialogFooter>
+   788→   788→              </DialogContent>
+   789→   789→            </Dialog>
+   790→   790→          </div>
+   791→   791→        </Card>
+   792→   792→
+   793→   793→        {/* What-if replay composer */}
+   794→   794→        <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden lg:col-span-2">
+   795→   795→          <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   796→   796→          <div className="relative space-y-3">
+   797→   797→            <div className="flex items-center justify-between">
+   798→   798→              <div className="flex items-center gap-2">
+   799→   799→                <FlaskConical className="h-4 w-4 text-repairing" />
+   800→   800→                <span className="text-sm font-semibold text-foreground">What-if replay</span>
+   801→   801→              </div>
+   802→   802→              <Badge variant="outline" className="border-repairing/30 bg-repairing/10 text-repairing text-[10px]">
+   803→   803→                branch · replay
+   804→   804→              </Badge>
+   805→   805→            </div>
+   806→   806→            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+   807→   807→              <div className="space-y-1.5">
+   808→   808→                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+   809→   809→                  State delta (JSON)
+   810→   810→                </label>
+   811→   811→                <Textarea
+   812→   812→                  value={deltaText}
+   813→   813→                  onChange={(e) => setDeltaText(e.target.value)}
+   814→   814→                  className="font-mono text-xs bg-background/60 min-h-[88px] epistemic-scroll"
+   815→   815→                  spellCheck={false}
+   816→   816→                />
+   817→   817→              </div>
+   818→   818→              <div className="space-y-1.5">
+   819→   819→                <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+   820→   820→                  Predicate override (optional)
+   821→   821→                </label>
+   822→   822→                <Input
+   823→   823→                  value={predicate}
+   824→   824→                  onChange={(e) => setPredicate(e.target.value)}
+   825→   825→                  placeholder="e.g. frequency in [49.5, 50.5]"
+   826→   826→                  className="font-mono text-xs bg-background/60"
+   827→   827→                />
+   828→   828→                <p className="text-[10px] text-muted-foreground">
+   829→   829→                  Rewrites an invariant predicate for this replay only. Original enforcer untouched.
+   830→   830→                </p>
+   831→   831→                <Button
+   832→   832→                  onClick={runWhatif}
+   833→   833→                  disabled={runningWhatif || !shadowEnabled}
+   834→   834→                  variant="outline"
+   835→   835→                  className="w-full border-repairing/40 bg-repairing/10 text-repairing hover:bg-repairing/20"
+   836→   836→                >
+   837→   837→                  {runningWhatif ? (
+   838→   838→                    <RotateCw className="h-4 w-4 animate-spin" />
+   839→   839→                  ) : (
+   840→   840→                    <Play className="h-4 w-4" />
+   841→   841→                  )}
+   842→   842→                  {runningWhatif ? "Replaying…" : "Run what-if"}
+   843→   843→                </Button>
+   844→   844→              </div>
+   845→   845→            </div>
+   846→   846→
+   847→   847→            {whatif && (
+   848→   848→              <div className="rounded-md border border-border/60 bg-background/40 p-2.5 space-y-2">
+   849→   849→                <div className="flex items-center justify-between">
+   850→   850→                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+   851→   851→                    Replayed evaluations
+   852→   852→                  </span>
+   853→   853→                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+   854→   854→                    <span className="font-mono">div {whatif.divergence.toFixed(3)}</span>
+   855→   855→                    <Separator orientation="vertical" className="h-3 bg-border/60" />
+   856→   856→                    <span className="font-mono">mmr {whatif.mmrRoot}</span>
+   857→   857→                  </div>
+   858→   858→                </div>
+   859→   859→                <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+   860→   860→                  {whatif.evaluations.map((ev) => (
+   861→   861→                    <div
+   862→   862→                      key={ev.name}
+   863→   863→                      className={cn(
+   864→   864→                        "flex items-center justify-between gap-2 rounded border px-2 py-1",
+   865→   865→                        ev.passed
+   866→   866→                          ? "border-verified/30 bg-verified/5"
+   867→   867→                          : "border-violating/30 bg-violating/10",
+   868→   868→                      )}
+   869→   869→                    >
+   870→   870→                      <div className="flex items-center gap-1.5 min-w-0">
+   871→   871→                        {ev.passed ? (
+   872→   872→                          <CheckCircle2 className="h-3 w-3 text-verified shrink-0" />
+   873→   873→                        ) : (
+   874→   874→                          <XCircle className="h-3 w-3 text-violating shrink-0" />
+   875→   875→                        )}
+   876→   876→                        <span className="font-mono text-[11px] text-foreground truncate">
+   877→   877→                          {ev.name}
+   878→   878→                        </span>
+   879→   879→                      </div>
+   880→   880→                      <SeverityBadge severity={ev.severity} soft={ev.soft} />
+   881→   881→                    </div>
+   882→   882→                  ))}
+   883→   883→                </div>
+   884→   884→              </div>
+   885→   885→            )}
+   886→   886→          </div>
+   887→   887→        </Card>
+   888→   888→      </div>
+   889→   889→
+   890→   890→      {/* Event timeline */}
+   891→   891→      <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   892→   892→        <div className="bg-grid-fine absolute inset-0 opacity-15" />
+   893→   893→        <div className="relative">
+   894→   894→          <div className="mb-3 flex items-center justify-between">
+   895→   895→            <div className="flex items-center gap-2">
+   896→   896→              <Activity className="h-4 w-4 text-quarantined" />
+   897→   897→              <span className="text-sm font-semibold text-foreground">Event timeline</span>
+   898→   898→              <Badge variant="outline" className="border-border/60 text-[10px]">
+   899→   899→                {events.length}
+   900→   900→              </Badge>
+   901→   901→            </div>
+   902→   902→            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+   903→   903→              {(["takeover", "whatif", "replay", "divergence", "handback"] as ShadowKind[]).map((k) => {
+   904→   904→                const m = KIND_META[k];
+   905→   905→                const Icon = m.icon;
+   906→   906→                return (
+   907→   907→                  <span key={k} className="flex items-center gap-1">
+   908→   908→                    <Icon className={cn("h-2.5 w-2.5", m.text)} />
+   909→   909→                    {m.label}
+   910→   910→                  </span>
+   911→   911→                );
+   912→   912→              })}
+   913→   913→            </div>
+   914→   914→          </div>
+   915→   915→          {events.length === 0 ? (
+   916→   916→            <div className="flex flex-col items-center justify-center py-8 text-center">
+   917→   917→              <Clock className="h-6 w-6 text-muted-foreground/50" />
+   918→   918→              <p className="mt-2 text-xs text-muted-foreground">No shadow events recorded.</p>
+   919→   919→            </div>
+   920→   920→          ) : (
+   921→   921→            <div className="max-h-80 overflow-y-auto epistemic-scroll space-y-2 pr-1">
+   922→   922→              {events.map((ev) => (
+   923→   923→                <EventTimelineItem key={ev.id} ev={ev} />
+   924→   924→              ))}
+   925→   925→            </div>
+   926→   926→          )}
+   927→   927→        </div>
+   928→   928→      </Card>
+   929→   929→    </section>
+   930→   930→  );
+   931→   931→}
+   932→   932→
