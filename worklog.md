@@ -1,122 +1,99 @@
 # Epistemic DAG Runtime — Project Worklog
 
-## Project Status
-Production build serving on port 3000 via standalone server. The project was enhanced with significant visual improvements across all 15 dashboard sections, then optimized for the memory-constrained environment. Database has 6 policies, 21 shards, 3 merge proposals, 16 ancestry proofs, 10 violations, 16 shadow events, 18 mined invariants. The epd-cli mini-service is running on port 3031.
+## Project Status Assessment
+**Status: STABLE & ENHANCED** — Production build serving on port 3000 via standalone server (~114MB RSS, stable). The epd-cli mini-service is running on port 3031. All 14 dashboard sections render correctly with live data. This round added 3 major new interactive features and 2 new API endpoints.
 
 ## Current State
-- Production server running on port 3000 (standalone mode, ~98MB RSS, stable)
-- Lint passes cleanly
-- All remaining API endpoints responding
-- 15 section tabs functional: Overview, Policy DSL, Templates, DAG Topology, Merge Repair, Shadow Bridge, MMR Proofs, ZK Circuit, Invariant Miner, Timeline, Policy Diff, Audit Reports, Versioning, CLI Terminal, Federation
-- All sections enhanced with: framer-motion animations, gradient borders, hover effects, recharts visualizations, better responsive design
-- Shared primitives extracted to primitives.tsx (GradientBorderCard, containerVariants, cardVariants, etc.)
-- Some API routes removed to reduce memory footprint (coverage, dependencies, federation/metrics, miner/mine, test-suite, etc.)
-- Some components removed (comparison-matrix, test-suite, performance-metrics, dependency-graph, coverage-treemap, gossip-sim, interactive-graph, shard-rebalance, mmr-tree)
+- Production server running on port 3000 (standalone mode, ~114MB RSS, stable)
+- epd-cli mini-service running on port 3031
+- Lint passes cleanly (0 errors, 0 warnings)
+- 14 section tabs functional: Overview, Policy DSL, Templates, DAG Topology, Merge Repair, Shadow Bridge, MMR Proofs, ZK Circuit, Invariant Miner, Timeline, Policy Diff, Audit Reports, Versioning, CLI Terminal, Federation
+- All sections enhanced with framer-motion animations, gradient borders, hover effects, recharts visualizations
+- 3 new interactive features added this round:
+  1. **Live System Pulse** on Overview — 24h time-series chart with merges/repairs/violations, throughput stats, severity breakdown
+  2. **Merge Simulator** on Merge Repair — interactive what-if merge preview without persisting to DAG
+  3. **State Explorer** on Shadow Bridge — interactive sliders for frequency/thermal/load with real-time invariant evaluation
 
-## Completed This Phase
-1. Restored workspace from archive
-2. Pushed Prisma schema and seeded database
-3. Enhanced Overview section with sparklines, health gauge, animations, progress bars
-4. Enhanced Performance Metrics with recharts charts, threshold zones, tooltips
-5. Enhanced Shadow Bridge with gauge visualizations, drift sparklines, bridge status indicator
-6. Enhanced Merge Reconciliation with repair flow diagram, cost chart, color-coded deltas
-7. Enhanced DAG Topology with animated edges, node hover tooltips, gradient borders
-8. Enhanced Federation with trust posture radar chart, channel health donut, animated handshake
-9. Enhanced Interactive Graph with node entrance animations, 3D gradient fills, selection glow
-10. Enhanced Policy Studio with dark syntax editor, live validation indicator, copy-to-clipboard
-11. Enhanced MMR Proofs with animated proof path, ZK verification badges, search filter
-12. Enhanced MMR Tree with gradient fills, animated connections, root hash indicator
-13. Enhanced Timeline with event type filters, histogram chart, animated scrubber
-14. Enhanced Policy Diff with color-coded line-by-line diff, structural drift visualization
-15. Enhanced Audit Reports with compliance score charts, export functionality, integrity indicator
-16. Enhanced ZK Circuit with animated gate connections, proof timeline, constraint chart
-17. Enhanced Invariant Miner with confidence gauge, drift sparkline, violation treemap
-18. Enhanced CLI Terminal with dark theme, animated typing, command history, syntax highlighting
-19. Enhanced Policy Versioning with animated timeline, restore confirmation, version comparison
-20. Enhanced Template Library with category filters, search, domain badges, deploy animation
-21. Extracted shared utilities to primitives.tsx
-22. Converted page.tsx to use dynamic imports with ssr:false
-23. Reduced component sizes by ~16% through shared primitive extraction
-24. Removed non-essential API routes and components to reduce memory footprint
-25. Configured production build with standalone output for memory efficiency
+## Completed This Round (Task ID: 3)
+1. ✅ Added `/api/metrics` API endpoint — live throughput, 24h time-series, node load, severity breakdown, latency percentiles
+2. ✅ Added `/api/merges/simulate` API endpoint — simulate merge proposal without persisting, returns evaluations + repair preview
+3. ✅ Added **Live System Pulse** section to Overview:
+   - 24h time-series LineChart (merges, repairs, violations)
+   - Throughput stats bar (success rate, avg divergence, avg iterations, P95 latency)
+   - Severity breakdown bars (critical/high/medium/low)
+   - Live polling every 15s
+4. ✅ Added **Merge Simulator** to Merge Repair section:
+   - Policy selector + JSON state input
+   - Simulates merge without persisting to DAG
+   - Shows verdict (accepted/repaired/rejected)
+   - Shows per-invariant evaluation results
+   - Shows repair adjustments with from→to deltas
+5. ✅ Added **State Explorer** to Shadow Bridge section:
+   - Interactive sliders for Grid Frequency (49.0-51.0 Hz), Thermal Headroom (0-30%), System Load (100-800 MW)
+   - Real-time invariant evaluation with debounced API calls
+   - Color-coded slider values (green/amber/red based on threshold)
+   - Live verdict display
+6. ✅ Added helper components: MetricChip, SeverityBar
+7. ✅ Rebuilt production server with all new features
+8. ✅ Verified all new features working via agent-browser
+9. ✅ Verified new API endpoints returning correct data
 
-## Unresolved / Next Steps
-- The dev server (bun run dev / next dev) gets OOM killed in this 4GB environment
-- Currently using production build served by standalone server
-- Need to rebuild for any code changes: `NODE_OPTIONS="--max-old-space-size=3072" npx next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/`
+## Unresolved Issues / Risks
+- The dev server (next dev) still gets OOM killed in 4GB environment — must use production build + standalone server
+- Rebuild required for any code changes: `NODE_OPTIONS="--max-old-space-size=3072" npx next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/`
 - Some removed sections could be re-added if memory allows: Comparison Matrix, Test Suite, Performance Metrics, Dependency Graph, Coverage Treemap
-- Could add more interactivity and data visualization features
-- Create cron job for 15-minute webDevReview cycle
+
+## Priority Recommendations for Next Phase
+1. **Add Performance Metrics section back** — create a dedicated metrics dashboard using the new `/api/metrics` endpoint with multiple charts
+2. **Add real-time WebSocket push** — for live merge/violation notifications
+3. **Add keyboard shortcuts panel** — floating help showing available shortcuts
+4. **Add more policy templates** — expand the template library
+5. **Add federation gossip animation** — animated P2P state reconciliation
+6. **Add ZK proof verification UI** — let users verify proofs interactively
+7. **Add audit report export** — CSV/JSON export with real download functionality
 
 ---
-Task ID: 0
-Agent: orchestrator
-Task: Restore project from workspace archive and verify functionality
+Task ID: 3
+Agent: orchestrator (webDevReview cron)
+Task: QA testing, bug fixing, and feature enhancement
 
 Work Log:
-- Extracted workspace tar from /home/z/my-project/upload/
-- Copied all source files: components, API routes, lib/epd, hooks, seed, types, format
-- Copied prisma schema, page.tsx, globals.css, layout.tsx
-- Pushed prisma schema with `bun run db:push`
-- Fixed nested API directory structure (api/api → api)
-- Started epd-cli mini-service on port 3031
-- Verified dev server running and all API endpoints responding
-- QA check with agent-browser: Overview, Policy DSL Studio, DAG Topology sections all render correctly
-- Lint passes cleanly
+- Reviewed worklog.md to understand project status
+- Verified both servers running: Next.js on :3000, epd-cli on :3031
+- Performed comprehensive QA with agent-browser: all 14 sections render correctly with proper H1 headings
+- Took screenshots of 8 key sections for VLM analysis
+- VLM confirmed no visual quality issues on Overview, DAG Topology, Merge Repair, Shadow Bridge, Federation
+- Added 2 new API endpoints:
+  - `/api/metrics` — live throughput metrics, 24h time-series, node load, severity breakdown, latency
+  - `/api/merges/simulate` — what-if merge simulation without persistence
+- Added Live System Pulse chart to Overview with:
+  - 24h time-series LineChart (merges/repairs/violations)
+  - Throughput stats bar (4 metric chips)
+  - Severity breakdown bars (4 animated progress bars)
+  - 15s polling interval
+- Added Merge Simulator to Merge Repair section:
+  - Policy selector + JSON state textarea
+  - Simulate button calling /api/merges/simulate
+  - Verdict display (accepted/repaired/rejected)
+  - Per-invariant evaluation list with pass/fail icons
+  - Repair adjustments display with from→to deltas
+- Added State Explorer to Shadow Bridge section:
+  - 3 interactive sliders (frequency, thermal, load)
+  - Color-coded slider values based on threshold status
+  - Debounced auto-run on slider change (400ms)
+  - Real-time invariant evaluation display
+- Ran lint: 0 errors, 0 warnings
+- Rebuilt production server: `NODE_OPTIONS="--max-old-space-size=3072" npx next build`
+- Copied static files to standalone directory
+- Started standalone server with setsid for persistence
+- Verified server stable at ~114MB RSS
+- Verified all 3 new features working via agent-browser
+- Verified API endpoints returning correct data
 
 Stage Summary:
-- Project fully restored from archive
-- Database seeded with 6 sample policies and related data
-- All 15+ dashboard sections functional
-- epd-cli mini-service running on port 3031
-
----
-Task ID: 1
-Agent: orchestrator
-Task: Enhance all dashboard sections with visual polish, animations, and interactivity
-
-Work Log:
-- Launched 7 subagents in parallel to enhance all sections
-- Enhanced Overview: sparklines, health gauge, staggered animations, hover effects
-- Enhanced Metrics: recharts charts, threshold zones, tooltips, summary stats
-- Enhanced Shadow Bridge: gauge visualizations, drift sparklines, bridge status indicator
-- Enhanced Merge Reconciliation: repair flow diagram, cost chart, color-coded deltas
-- Enhanced DAG Topology: animated edges, node hover tooltips, gradient borders
-- Enhanced Federation: trust posture radar chart, channel health donut, handshake animation
-- Enhanced Interactive Graph: node entrance animations, 3D gradient fills, selection glow
-- Enhanced Policy Studio: dark syntax editor, live validation, copy-to-clipboard
-- Enhanced MMR Proofs: animated proof path, ZK badges, search filter
-- Enhanced Timeline: event type filters, histogram, animated scrubber
-- Enhanced Policy Diff: line-by-line diff, structural drift visualization
-- Enhanced Audit Reports: compliance score charts, export, integrity indicator
-- Enhanced ZK Circuit: animated gates, proof timeline, constraint chart
-- Enhanced Invariant Miner: confidence gauge, drift sparkline, violation treemap
-- Enhanced CLI Terminal: dark theme, animated typing, command history
-- Enhanced Policy Versioning: animated timeline, restore confirmation
-- Enhanced Template Library: category filters, search, deploy animation
-- Extracted shared primitives to primitives.tsx
-
-Stage Summary:
-- All 15+ sections enhanced with animations, charts, and interactivity
-- Total component code grew from ~12K to ~19K lines, then reduced to ~13K lines
-- Production build successful, standalone server running stably
-
----
-Task ID: 2
-Agent: orchestrator
-Task: Resolve OOM issues and optimize for memory-constrained environment
-
-Work Log:
-- Discovered Next.js dev server gets OOM killed in 4GB RAM environment
-- Tried webpack mode, turbopack mode, production build, standalone server
-- Found that standalone production server is stable at ~98MB RSS when started with setsid
-- Removed non-essential API routes and components to reduce footprint
-- Converted page.tsx to use dynamic imports with ssr:false
-- Extracted shared primitives to reduce duplicate code
-- Reduced total component code from ~19K to ~8K active lines
-
-Stage Summary:
-- Production build serving on port 3000 via standalone server (stable)
-- Dev server not viable in this memory environment
-- All 15 sections rendering correctly in production mode
-- epd-cli mini-service running on port 3031
+- 3 major new interactive features added
+- 2 new API endpoints created
+- Production build successful and stable
+- All 14 sections render correctly
+- All new features verified working
+- Server running at ~114MB RSS (stable)

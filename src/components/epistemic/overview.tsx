@@ -9,6 +9,15 @@ import {
   Pie,
   Cell,
   ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RTooltip,
+  BarChart,
+  Bar,
+  Legend,
 } from "recharts";
 import {
   Activity,
@@ -139,6 +148,12 @@ const ACTIVITY_CONFIG: Record<string, { icon: typeof Activity; color: string; bg
 
 export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
   const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [metrics, setMetrics] = useState<{
+    timeSeries: { t: number; merges: number; violations: number; repairs: number }[];
+    throughput: { successRate: number; avgDivergence: number; avgIterations: number };
+    severityBreakdown: { critical: number; high: number; medium: number; low: number };
+    latency: { p50: number; p95: number; p99: number };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -150,6 +165,21 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
         .catch(() => alive && setLoading(false));
     load();
     const t = setInterval(load, 8000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const loadMetrics = () =>
+      fetch("/api/metrics")
+        .then((r) => r.json())
+        .then((d) => alive && setMetrics(d))
+        .catch(() => {});
+    loadMetrics();
+    const t = setInterval(loadMetrics, 15000);
     return () => {
       alive = false;
       clearInterval(t);
@@ -321,7 +351,88 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
         </motion.div>
       </div>
 
-      {}
+      {/* Live System Pulse — new feature */}
+      <motion.div variants={sectionVariants}>
+        <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/40 via-repairing/30 to-violating/20" />
+          <div className="bg-grid-fine absolute inset-0 opacity-15" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-verified/10">
+                <Activity className="h-3.5 w-3.5 text-verified" />
+              </div>
+              <h3 className="text-sm font-semibold">Live System Pulse</h3>
+              <span className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-verified opacity-50" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-verified" />
+                </span>
+                24h · refresh 15s
+              </span>
+            </div>
+            {metrics ? (
+              <>
+                {/* Throughput stats bar */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                  <MetricChip label="Success Rate" value={`${metrics.throughput.successRate}%`} color="text-verified" />
+                  <MetricChip label="Avg Divergence" value={metrics.throughput.avgDivergence.toFixed(2)} color="text-repairing" />
+                  <MetricChip label="Avg Iterations" value={metrics.throughput.avgIterations.toFixed(1)} color="text-verified" />
+                  <MetricChip label="P95 Latency" value={`${metrics.latency.p95}ms`} color="text-quarantined" />
+                </div>
+                {/* Time series chart */}
+                <div className="h-48 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={metrics.timeSeries} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 168 / 0.3)" />
+                      <XAxis
+                        dataKey="t"
+                        tickFormatter={(t) => new Date(t).toLocaleTimeString([], { hour: "2-digit" })}
+                        tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9, fontFamily: "var(--font-geist-mono)" }}
+                        stroke="oklch(0.3 0.01 168 / 0.5)"
+                      />
+                      <YAxis
+                        tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9, fontFamily: "var(--font-geist-mono)" }}
+                        stroke="oklch(0.3 0.01 168 / 0.5)"
+                      />
+                      <RTooltip
+                        contentStyle={{
+                          background: "oklch(0.205 0.014 168)",
+                          border: "1px solid oklch(0.32 0.014 165 / 0.6)",
+                          borderRadius: "6px",
+                          fontSize: "10px",
+                          fontFamily: "var(--font-geist-mono)",
+                        }}
+                        labelFormatter={(t) => new Date(t as number).toLocaleString()}
+                      />
+                      <Legend wrapperStyle={{ fontSize: "10px", fontFamily: "var(--font-geist-mono)" }} />
+                      <Line type="monotone" dataKey="merges" stroke="oklch(0.78 0.16 160)" strokeWidth={2} dot={false} name="Merges" animationDuration={600} />
+                      <Line type="monotone" dataKey="repairs" stroke="oklch(0.75 0.15 80)" strokeWidth={2} dot={false} name="Repairs" animationDuration={600} />
+                      <Line type="monotone" dataKey="violations" stroke="oklch(0.65 0.2 25)" strokeWidth={2} dot={false} name="Violations" animationDuration={600} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                {/* Severity breakdown bar */}
+                <div className="mt-3 flex items-center gap-3">
+                  <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide">Severity:</span>
+                  <div className="flex-1 flex items-center gap-2">
+                    <SeverityBar label="critical" count={metrics.severityBreakdown.critical} max={Math.max(metrics.severityBreakdown.critical + metrics.severityBreakdown.high + metrics.severityBreakdown.medium + metrics.severityBreakdown.low, 1)} color="bg-violating" />
+                    <SeverityBar label="high" count={metrics.severityBreakdown.high} max={Math.max(metrics.severityBreakdown.critical + metrics.severityBreakdown.high + metrics.severityBreakdown.medium + metrics.severityBreakdown.low, 1)} color="bg-repairing" />
+                    <SeverityBar label="medium" count={metrics.severityBreakdown.medium} max={Math.max(metrics.severityBreakdown.critical + metrics.severityBreakdown.high + metrics.severityBreakdown.medium + metrics.severityBreakdown.low, 1)} color="bg-quarantined" />
+                    <SeverityBar label="low" count={metrics.severityBreakdown.low} max={Math.max(metrics.severityBreakdown.critical + metrics.severityBreakdown.high + metrics.severityBreakdown.medium + metrics.severityBreakdown.low, 1)} color="bg-muted-foreground" />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-verified mr-2" />
+                Loading live metrics…
+              </div>
+            )}
+          </div>
+        </Card>
+      </motion.div>
+
+      {/* Runtime Inventory + Activity */}
       <motion.div
         className="grid grid-cols-1 lg:grid-cols-3 gap-4"
         variants={sectionVariants}
@@ -590,3 +701,35 @@ function KpiCardWithSparkline({
     </motion.div>
   );
 }
+
+/* ─── MetricChip — small stat display ─── */
+function MetricChip({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="rounded-md border border-border/40 bg-background/40 px-2.5 py-1.5">
+      <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`mt-0.5 font-mono text-sm font-semibold ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+/* ─── SeverityBar — horizontal bar for severity breakdown ─── */
+function SeverityBar({ label, count, max, color }: { label: string; count: number; max: number; color: string }) {
+  const pct = max > 0 ? (count / max) * 100 : 0;
+  return (
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-[9px] text-muted-foreground font-mono uppercase">{label}</span>
+        <span className="text-[9px] font-mono tabular-nums">{count}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-background/60 overflow-hidden">
+        <motion.div
+          className={`h-full rounded-full ${color}`}
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        />
+      </div>
+    </div>
+  );
+}
+

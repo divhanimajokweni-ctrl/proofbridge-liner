@@ -522,6 +522,139 @@ export function MergeReconciliationSection() {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* Interactive Merge Simulator — new feature */}
+      <MergeSimulator policies={policies} />
     </motion.section>
+  );
+}
+
+/* ─── MergeSimulator — interactive what-if merge preview ─── */
+function MergeSimulator({ policies }: { policies: PolicyRow[] }) {
+  const [simPolicyId, setSimPolicyId] = useState<string>(policies[0]?.id ?? "");
+  const [simState, setSimState] = useState<string>(`{"frequency":50.6,"thermal_headroom":6,"generation":[420,380,510,290,600,470],"load":[410,375,500,285,590,460],"losses":12}`);
+  const [simResult, setSimResult] = useState<{
+    evaluations: { name: string; severity: string; soft: boolean; passed: boolean; actual: unknown; expected: unknown; predicate: string }[];
+    violations: string[];
+    hardViolationCount: number;
+    softViolationCount: number;
+    repair: { ok: boolean; repairedState?: Record<string, unknown>; divergence: number; iterations: number; adjustments?: Record<string, { from: unknown; to: unknown; delta: number }> } | null;
+    verdict: string;
+  } | null>(null);
+  const [simulating, setSimulating] = useState(false);
+
+  const runSimulation = useCallback(async () => {
+    if (!simPolicyId) return;
+    let proposed: Record<string, unknown>;
+    try { proposed = JSON.parse(simState); } catch {
+      return;
+    }
+    setSimulating(true);
+    try {
+      const r = await fetch("/api/merges/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ policyId: simPolicyId, proposedState: proposed }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const d = await r.json();
+      setSimResult(d);
+    } catch {
+      /* ignore */
+    } finally { setSimulating(false); }
+  }, [simPolicyId, simState]);
+
+  const verdictColor = simResult?.verdict === "accepted" ? "text-verified" : simResult?.verdict === "repaired" ? "text-repairing" : "text-violating";
+  const verdictBg = simResult?.verdict === "accepted" ? "bg-verified/10 border-verified/30" : simResult?.verdict === "repaired" ? "bg-repairing/10 border-repairing/30" : "bg-violating/10 border-violating/30";
+
+  return (
+    <motion.div variants={cardVariants}>
+      <GradientBorderCard gradientFrom="oklch(0.78 0.16 160 / 0.25)" gradientTo="oklch(0.65 0.2 25 / 0.15)">
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-verified" />
+              <span className="text-sm font-semibold text-foreground">Merge Simulator</span>
+            </div>
+            <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[10px]">what-if · no persist</Badge>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Preview how a proposed state would be evaluated and repaired — without committing to the DAG.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Input panel */}
+            <div className="space-y-2">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Policy</label>
+                <Select value={simPolicyId} onValueChange={setSimPolicyId}>
+                  <SelectTrigger className="bg-card/60 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>{policies.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Proposed state (JSON)</label>
+                <Textarea value={simState} onChange={(e) => setSimState(e.target.value)} className="font-mono text-xs bg-background/60 min-h-[120px] epistemic-scroll" spellCheck={false} />
+              </div>
+              <Button onClick={runSimulation} disabled={simulating || !simPolicyId} variant="outline"
+                className="w-full bg-verified/15 border border-verified/40 text-verified hover:bg-verified/25 transition-all hover:scale-[1.01] active:scale-[0.99] h-8 text-xs">
+                {simulating ? <RotateCw className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                {simulating ? "Simulating…" : "Simulate merge"}
+              </Button>
+            </div>
+
+            {/* Result panel */}
+            <div className="space-y-2">
+              {simResult ? (
+                <>
+                  <div className={cn("rounded-md border px-3 py-2 flex items-center justify-between", verdictBg)}>
+                    <span className={cn("text-sm font-bold uppercase", verdictColor)}>{simResult.verdict}</span>
+                    <div className="flex items-center gap-2 text-[10px] font-mono">
+                      <span className="text-violating">{simResult.hardViolationCount} hard</span>
+                      <span className="text-quarantined">{simResult.softViolationCount} soft</span>
+                    </div>
+                  </div>
+
+                  {/* Invariant evaluations */}
+                  <div className="max-h-[100px] overflow-y-auto epistemic-scroll space-y-1">
+                    {simResult.evaluations.map((ev) => (
+                      <div key={ev.name} className={cn("flex items-center gap-2 rounded border px-2 py-1 text-[10px]",
+                        ev.passed ? "border-verified/20 bg-verified/5" : ev.soft ? "border-quarantined/20 bg-quarantined/5" : "border-violating/20 bg-violating/5")}>
+                        {ev.passed ? <CheckCircle2 className="h-3 w-3 text-verified shrink-0" /> : ev.soft ? <AlertTriangle className="h-3 w-3 text-quarantined shrink-0" /> : <XCircle className="h-3 w-3 text-violating shrink-0" />}
+                        <span className="font-mono truncate flex-1">{ev.name}</span>
+                        {!ev.passed && ev.actual !== null && (
+                          <span className="font-mono text-muted-foreground shrink-0">→ {String(ev.actual)}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Repair adjustments */}
+                  {simResult.repair?.ok && simResult.repair.adjustments && Object.keys(simResult.repair.adjustments).length > 0 && (
+                    <div className="rounded-md border border-repairing/30 bg-repairing/5 p-2 space-y-1">
+                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-repairing">
+                        <Wrench className="h-3 w-3" /> Self-repair applied · {simResult.repair.iterations} iterations · div {simResult.repair.divergence.toFixed(3)}
+                      </div>
+                      {Object.entries(simResult.repair.adjustments).map(([field, adj]) => (
+                        <div key={field} className="flex items-center gap-2 text-[10px] font-mono">
+                          <span className="text-muted-foreground">{field}:</span>
+                          <span className="text-violating line-through">{String(adj.from)}</span>
+                          <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
+                          <span className="text-verified">{String(adj.to)}</span>
+                          <span className={cn("ml-auto", adj.delta > 0 ? "text-verified" : "text-violating")}>{adj.delta > 0 ? "+" : ""}{adj.delta.toFixed(3)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="h-full min-h-[180px] flex flex-col items-center justify-center text-center border border-dashed border-border/40 rounded-md">
+                  <Eye className="h-6 w-6 text-muted-foreground/40" />
+                  <p className="mt-2 text-xs text-muted-foreground">Run simulation to see invariant evaluation & repair preview</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </GradientBorderCard>
+    </motion.div>
   );
 }

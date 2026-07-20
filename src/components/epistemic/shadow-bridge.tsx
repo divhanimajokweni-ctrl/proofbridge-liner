@@ -445,6 +445,161 @@ export function ShadowBridgeSection() {
           </div>
         </GradientBorderCard>
       </motion.div>
+
+      {/* Interactive State Explorer — new feature */}
+      <StateExplorer policyId={policyId} policies={policies} />
     </motion.section>
+  );
+}
+
+/* ─── StateExplorer — interactive slider-based what-if explorer ─── */
+function StateExplorer({ policyId, policies }: { policyId: string; policies: PolicyRow[] }) {
+  const [freq, setFreq] = useState(50.0);
+  const [thermal, setThermal] = useState(18);
+  const [load, setLoad] = useState(450);
+  const [result, setResult] = useState<{
+    evaluations: { name: string; passed: boolean; soft: boolean; severity: string }[];
+    verdict: string;
+  } | null>(null);
+  const [simulating, setSimulating] = useState(false);
+
+  const runExplore = useCallback(async () => {
+    if (!policyId) return;
+    setSimulating(true);
+    try {
+      const state = { frequency: freq, thermal_headroom: thermal, generation: [load], load: [load - 10], losses: 12 };
+      const r = await fetch("/api/merges/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ policyId, proposedState: state }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        setResult({ evaluations: d.evaluations, verdict: d.verdict });
+      }
+    } catch {
+      /* ignore */
+    } finally { setSimulating(false); }
+  }, [policyId, freq, thermal, load]);
+
+  // Auto-run on slider change (debounced)
+  useEffect(() => {
+    const t = setTimeout(runExplore, 400);
+    return () => clearTimeout(t);
+  }, [runExplore]);
+
+  const freqStatus = freq < 49.8 || freq > 50.2 ? "violating" : freq < 49.9 || freq > 50.1 ? "repairing" : "verified";
+  const thermalStatus = thermal < 10 ? "violating" : thermal < 15 ? "repairing" : "verified";
+
+  return (
+    <motion.div variants={cardVariants}>
+      <GradientBorderCard gradientFrom="oklch(0.78 0.16 160 / 0.2)" gradientTo="oklch(0.65 0.2 25 / 0.1)">
+        <GridOverlay />
+        <div className="relative p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FlaskConical className="h-4 w-4 text-verified" />
+              <span className="text-sm font-semibold text-foreground">State Explorer</span>
+            </div>
+            <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[10px]">live what-if</Badge>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Drag sliders to see how state changes affect invariant satisfaction in real time.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Sliders */}
+            <div className="space-y-3">
+              {/* Frequency slider */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Grid Frequency</label>
+                  <span className={cn("font-mono text-sm font-semibold",
+                    freqStatus === "violating" ? "text-violating" : freqStatus === "repairing" ? "text-repairing" : "text-verified")}>
+                    {freq.toFixed(2)} Hz
+                  </span>
+                </div>
+                <input
+                  type="range" min={49.0} max={51.0} step={0.01} value={freq}
+                  onChange={(e) => setFreq(parseFloat(e.target.value))}
+                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-background/60 accent-verified"
+                  style={{ accentColor: freqStatus === "violating" ? "var(--violating)" : freqStatus === "repairing" ? "var(--repairing)" : "var(--verified)" }}
+                />
+                <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+                  <span>49.0</span><span className="text-verified">49.8</span><span className="text-verified">50.2</span><span>51.0</span>
+                </div>
+              </div>
+
+              {/* Thermal headroom slider */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Thermal Headroom</label>
+                  <span className={cn("font-mono text-sm font-semibold",
+                    thermalStatus === "violating" ? "text-violating" : thermalStatus === "repairing" ? "text-repairing" : "text-verified")}>
+                    {thermal}%
+                  </span>
+                </div>
+                <input
+                  type="range" min={0} max={30} step={1} value={thermal}
+                  onChange={(e) => setThermal(parseInt(e.target.value))}
+                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-background/60"
+                  style={{ accentColor: thermalStatus === "violating" ? "var(--violating)" : thermalStatus === "repairing" ? "var(--repairing)" : "var(--verified)" }}
+                />
+                <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+                  <span>0%</span><span className="text-verified">10%</span><span>30%</span>
+                </div>
+              </div>
+
+              {/* Load slider */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">System Load</label>
+                  <span className="font-mono text-sm font-semibold text-foreground">{load} MW</span>
+                </div>
+                <input
+                  type="range" min={100} max={800} step={10} value={load}
+                  onChange={(e) => setLoad(parseInt(e.target.value))}
+                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-background/60 accent-verified"
+                />
+                <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+                  <span>100</span><span>450</span><span>800</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Live evaluation result */}
+            <div className="space-y-2">
+              {simulating && (
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+                  <RotateCw className="h-3 w-3 animate-spin" /> evaluating…
+                </div>
+              )}
+              {result && !simulating && (
+                <>
+                  <div className={cn("rounded-md border px-3 py-2 flex items-center justify-between",
+                    result.verdict === "accepted" ? "bg-verified/10 border-verified/30" :
+                    result.verdict === "repaired" ? "bg-repairing/10 border-repairing/30" : "bg-violating/10 border-violating/30")}>
+                    <span className={cn("text-sm font-bold uppercase",
+                      result.verdict === "accepted" ? "text-verified" :
+                      result.verdict === "repaired" ? "text-repairing" : "text-violating")}>
+                      {result.verdict}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    {result.evaluations.map((ev) => (
+                      <div key={ev.name} className={cn("flex items-center gap-2 rounded border px-2 py-1 text-[10px]",
+                        ev.passed ? "border-verified/20 bg-verified/5" : ev.soft ? "border-quarantined/20 bg-quarantined/5" : "border-violating/20 bg-violating/5")}>
+                        {ev.passed ? <CheckCircle2 className="h-3 w-3 text-verified shrink-0" /> :
+                         ev.soft ? <AlertTriangle className="h-3 w-3 text-quarantined shrink-0" /> :
+                         <XCircle className="h-3 w-3 text-violating shrink-0" />}
+                        <span className="font-mono truncate flex-1">{ev.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </GradientBorderCard>
+    </motion.div>
   );
 }
