@@ -1,0 +1,719 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useMemo, useRef, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Braces,
+     7→  CheckCircle2,
+     8→  AlertTriangle,
+     9→  XCircle,
+    10→  Info,
+    11→  Play,
+    12→  Save,
+    13→  FileCode2,
+    14→  Cpu,
+    15→  Sparkles,
+    16→  Copy,
+    17→  Check,
+    18→  Loader2,
+    19→  Shield,
+    20→  Activity,
+    21→  Hash,
+    22→} from "lucide-react";
+    23→import { Card } from "@/components/ui/card";
+    24→import { Button } from "@/components/ui/button";
+    25→import { Textarea } from "@/components/ui/textarea";
+    26→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    27→import { ScrollArea } from "@/components/ui/scroll-area";
+    28→import {
+    29→  Select,
+    30→  SelectContent,
+    31→  SelectItem,
+    32→  SelectTrigger,
+    33→  SelectValue,
+    34→} from "@/components/ui/select";
+    35→import {
+    36→  Tooltip,
+    37→  TooltipContent,
+    38→  TooltipProvider,
+    39→  TooltipTrigger,
+    40→} from "@/components/ui/tooltip";
+    41→import { useToast } from "@/hooks/use-toast";
+    42→import { SAMPLE_POLICIES, BROKEN_POLICY_SOURCE, type ValidationResult, type PolicyNode } from "@/lib/epd";
+    43→import type { PolicyRow } from "@/lib/types";
+    44→import { SeverityBadge, StatusPill, GradientBorderCard, containerVariants, cardVariants, itemVariants, fmtTimestamp } from "./primitives";
+    45→import { cn } from "@/lib/utils";
+    46→
+    47→const DEFAULT_SOURCE = SAMPLE_POLICIES[0].source;
+    48→
+    49→/** Policy health indicator showing pass/fail ratio */
+    50→function PolicyHealthGauge({ evaluations }: { evaluations: { passed: boolean }[] | null }) {
+    51→  if (!evaluations || evaluations.length === 0) {
+    52→    return (
+    53→      <div className="flex items-center gap-2">
+    54→        <Shield className="h-4 w-4 text-muted-foreground" />
+    55→        <span className="text-xs text-muted-foreground">No evaluations</span>
+    56→      </div>
+    57→    );
+    58→  }
+    59→  const passed = evaluations.filter((e) => e.passed).length;
+    60→  const total = evaluations.length;
+    61→  const ratio = Math.round((passed / total) * 100);
+    62→  const status = ratio === 100 ? "verified" : ratio >= 60 ? "repairing" : "violating";
+    63→
+    64→  const colorMap: Record<string, string> = {
+    65→    verified: "text-verified",
+    66→    repairing: "text-repairing",
+    67→    violating: "text-violating",
+    68→  };
+    69→
+    70→  return (
+    71→    <div className="space-y-1.5">
+    72→      <div className="flex items-center justify-between">
+    73→        <div className="flex items-center gap-2">
+    74→          <Shield className={cn("h-4 w-4", colorMap[status])} />
+    75→          <span className="text-xs font-medium">Policy Health</span>
+    76→        </div>
+    77→        <span className={cn("text-sm font-mono font-bold tabular-nums", colorMap[status])}>
+    78→          {ratio}%
+    79→        </span>
+    80→      </div>
+    81→      <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/40">
+    82→        <motion.div
+    83→          className={cn(
+    84→            "h-full rounded-full",
+    85→            status === "verified" ? "bg-verified" : status === "repairing" ? "bg-repairing" : "bg-violating",
+    86→          )}
+    87→          initial={{ width: 0 }}
+    88→          animate={{ width: `${ratio}%` }}
+    89→          transition={{ type: "spring", stiffness: 120, damping: 20, delay: 0.2 }}
+    90→        />
+    91→      </div>
+    92→      <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+    93→        <span className="flex items-center gap-1">
+    94→          <CheckCircle2 className="h-2.5 w-2.5 text-verified" /> {passed} pass
+    95→        </span>
+    96→        <span className="flex items-center gap-1">
+    97→          <XCircle className="h-2.5 w-2.5 text-violating" /> {total - passed} fail
+    98→        </span>
+    99→      </div>
+   100→    </div>
+   101→  );
+   102→}
+   103→
+   104→/** Live validation indicator */
+   105→function ValidationIndicator({ validating, result }: { validating: boolean; result: ValidationResult | null }) {
+   106→  return (
+   107→    <AnimatePresence mode="wait">
+   108→      {validating ? (
+   109→        <motion.div
+   110→          key="loading"
+   111→          initial={{ opacity: 0, scale: 0.8 }}
+   112→          animate={{ opacity: 1, scale: 1 }}
+   113→          exit={{ opacity: 0, scale: 0.8 }}
+   114→          className="flex items-center gap-1.5"
+   115→        >
+   116→          <Loader2 className="h-4 w-4 text-repairing animate-spin" />
+   117→          <span className="text-xs text-repairing font-medium">Validating…</span>
+   118→        </motion.div>
+   119→      ) : result ? (
+   120→        <motion.div
+   121→          key={result.ok ? "ok" : "err"}
+   122→          initial={{ opacity: 0, scale: 0.8 }}
+   123→          animate={{ opacity: 1, scale: 1 }}
+   124→          exit={{ opacity: 0, scale: 0.8 }}
+   125→          className="flex items-center gap-1.5"
+   126→        >
+   127→          {result.ok ? (
+   128→            <motion.div
+   129→              initial={{ scale: 0 }}
+   130→              animate={{ scale: 1 }}
+   131→              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+   132→            >
+   133→              <CheckCircle2 className="h-4 w-4 text-verified" />
+   134→            </motion.div>
+   135→          ) : (
+   136→            <motion.div
+   137→              initial={{ scale: 0 }}
+   138→              animate={{ scale: 1 }}
+   139→              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+   140→            >
+   141→              <XCircle className="h-4 w-4 text-violating" />
+   142→            </motion.div>
+   143→          )}
+   144→          <span className={cn("text-xs font-medium", result.ok ? "text-verified" : "text-violating")}>
+   145→            {result.ok ? "Valid" : "Invalid"}
+   146→          </span>
+   147→        </motion.div>
+   148→      ) : (
+   149→        <motion.div
+   150→          key="idle"
+   151→          initial={{ opacity: 0 }}
+   152→          animate={{ opacity: 1 }}
+   153→          exit={{ opacity: 0 }}
+   154→          className="flex items-center gap-1.5"
+   155→        >
+   156→          <Activity className="h-4 w-4 text-muted-foreground" />
+   157→          <span className="text-xs text-muted-foreground">Idle</span>
+   158→        </motion.div>
+   159→      )}
+   160→    </AnimatePresence>
+   161→  );
+   162→}
+   163→
+   164→export function PolicyStudioSection() {
+   165→  const { toast } = useToast();
+   166→  const [source, setSource] = useState(DEFAULT_SOURCE);
+   167→  const [filename, setFilename] = useState(SAMPLE_POLICIES[0].filename);
+   168→  const [result, setResult] = useState<ValidationResult | null>(null);
+   169→  const [stateJson, setStateJson] = useState(
+   170→    `{\n  "frequency": 50.01,\n  "generation": [420, 380, 510, 290, 600, 470],\n  "load": [410, 375, 500, 285, 590, 460],\n  "losses": 12,\n  "thermal_headroom": 18\n}`,
+   171→  );
+   172→  const [evaluations, setEvaluations] = useState<
+   173→    { name: string; passed: boolean; severity: string; soft: boolean; actual?: string; expected?: string }[] | null
+   174→  >(null);
+   175→  const [policies, setPolicies] = useState<PolicyRow[]>([]);
+   176→  const [selectedPolicyId, setSelectedPolicyId] = useState<string>("");
+   177→  const [validating, setValidating] = useState(false);
+   178→  const [saving, setSaving] = useState(false);
+   179→  const [enforcerTab, setEnforcerTab] = useState<"rust" | "wasm" | "tla">("rust");
+   180→  const [astCopied, setAstCopied] = useState(false);
+   181→  const textareaRef = useRef<HTMLTextAreaElement>(null);
+   182→  const gutterRef = useRef<HTMLDivElement>(null);
+   183→
+   184→  useEffect(() => {
+   185→    fetch("/api/policies")
+   186→      .then((r) => r.json())
+   187→      .then((d) => setPolicies(d.policies ?? []))
+   188→      .catch(() => {});
+   189→  }, []);
+   190→
+   191→  const lines = useMemo(() => source.split("\n"), [source]);
+   192→
+   193→  const syncScroll = () => {
+   194→    if (textareaRef.current && gutterRef.current) {
+   195→      gutterRef.current.scrollTop = textareaRef.current.scrollTop;
+   196→    }
+   197→  };
+   198→
+   199→  const validate = async () => {
+   200→    setValidating(true);
+   201→    try {
+   202→      let state: Record<string, unknown> | undefined;
+   203→      try {
+   204→        state = stateJson.trim() ? JSON.parse(stateJson) : undefined;
+   205→      } catch {
+   206→
+   207→      }
+   208→      const res = await fetch("/api/policies/validate", {
+   209→        method: "POST",
+   210→        headers: { "Content-Type": "application/json" },
+   211→        body: JSON.stringify({ source, state }),
+   212→      });
+   213→      const data: ValidationResult & { evaluations?: typeof evaluations } = await res.json();
+   214→      setResult(data);
+   215→      setEvaluations(data.evaluations ?? null);
+   216→    } catch (e) {
+   217→      toast({ title: "Validation failed", description: String(e), variant: "destructive" });
+   218→    } finally {
+   219→      setValidating(false);
+   220→    }
+   221→  };
+   222→
+   223→  const save = async () => {
+   224→    setSaving(true);
+   225→    try {
+   226→      const res = await fetch("/api/policies", {
+   227→        method: "POST",
+   228→        headers: { "Content-Type": "application/json" },
+   229→        body: JSON.stringify({ source, filename }),
+   230→      });
+   231→      const data = await res.json();
+   232→      if (!res.ok) {
+   233→        toast({
+   234→          title: "Save rejected",
+   235→          description: data.diagnostics?.[0]?.message ?? "invalid .epd",
+   236→          variant: "destructive",
+   237→        });
+   238→      } else {
+   239→        toast({ title: "Policy compiled & saved", description: data.policy.name });
+   240→        fetch("/api/policies")
+   241→          .then((r) => r.json())
+   242→          .then((d) => setPolicies(d.policies ?? []));
+   243→      }
+   244→    } finally {
+   245→      setSaving(false);
+   246→    }
+   247→  };
+   248→
+   249→  const loadSample = (name: string) => {
+   250→    const s = SAMPLE_POLICIES.find((p) => p.name === name || p.filename === name);
+   251→    if (s) {
+   252→      setSource(s.source);
+   253→      setFilename(s.filename);
+   254→      setResult(null);
+   255→      setEvaluations(null);
+   256→    }
+   257→  };
+   258→
+   259→  const loadBroken = () => {
+   260→    setSource(BROKEN_POLICY_SOURCE);
+   261→    setFilename("broken.epd");
+   262→    setResult(null);
+   263→    setEvaluations(null);
+   264→  };
+   265→
+   266→  const loadSaved = async (id: string) => {
+   267→    setSelectedPolicyId(id);
+   268→    if (!id) return;
+   269→    const res = await fetch(`/api/policies/${id}`);
+   270→    const data = await res.json();
+   271→    if (data.policy) {
+   272→      setSource(data.policy.source);
+   273→      setFilename(data.policy.filename);
+   274→      setResult(null);
+   275→      setEvaluations(null);
+   276→    }
+   277→  };
+   278→
+   279→  const copyAst = async () => {
+   280→    if (!policy) return;
+   281→    try {
+   282→      await navigator.clipboard.writeText(formatAst(policy));
+   283→      setAstCopied(true);
+   284→      setTimeout(() => setAstCopied(false), 1500);
+   285→      toast({ title: "AST copied to clipboard" });
+   286→    } catch {
+   287→      toast({ title: "Copy failed", variant: "destructive" });
+   288→    }
+   289→  };
+   290→
+   291→  const ast = result?.ast;
+   292→  const policy: PolicyNode | undefined = ast?.policies[0];
+   293→  const enforcer = result?.compiledEnforcer;
+   294→
+   295→  const diagCounts = {
+   296→    error: result?.diagnostics.filter((d) => d.level === "error").length ?? 0,
+   297→    warning: result?.diagnostics.filter((d) => d.level === "warning").length ?? 0,
+   298→    info: result?.diagnostics.filter((d) => d.level === "info").length ?? 0,
+   299→  };
+   300→
+   301→  return (
+   302→    <TooltipProvider delayDuration={150}>
+   303→      <motion.div
+   304→        className="grid grid-cols-1 xl:grid-cols-5 gap-4"
+   305→        variants={containerVariants}
+   306→        initial="hidden"
+   307→        animate="show"
+   308→      >
+   309→        {/* Editor column */}
+   310→        <div className="xl:col-span-3 space-y-4">
+   311→          <motion.div variants={cardVariants}>
+   312→            <GradientBorderCard gradient="from-verified/30 via-verified/10 to-repairing/20">
+   313→              {/* Toolbar */}
+   314→              <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-3 py-2 bg-background/40">
+   315→                <FileCode2 className="h-4 w-4 text-verified" />
+   316→                <span className="text-sm font-medium font-mono">{filename}</span>
+   317→                <div className="ml-2 flex items-center gap-1.5">
+   318→                  <Select value={filename} onValueChange={(v) => loadSample(v)}>
+   319→                    <SelectTrigger className="h-7 w-[200px] text-xs">
+   320→                      <SelectValue placeholder="Samples" />
+   321→                    </SelectTrigger>
+   322→                    <SelectContent>
+   323→                      {SAMPLE_POLICIES.map((s) => (
+   324→                        <SelectItem key={s.filename} value={s.filename}>
+   325→                          {s.filename}
+   326→                        </SelectItem>
+   327→                      ))}
+   328→                    </SelectContent>
+   329→                  </Select>
+   330→                  <Select value={selectedPolicyId} onValueChange={loadSaved}>
+   331→                    <SelectTrigger className="h-7 w-[180px] text-xs">
+   332→                      <SelectValue placeholder="Saved policies" />
+   333→                    </SelectTrigger>
+   334→                    <SelectContent>
+   335→                      {policies.map((p) => (
+   336→                        <SelectItem key={p.id} value={p.id}>
+   337→                          {p.name}
+   338→                        </SelectItem>
+   339→                      ))}
+   340→                    </SelectContent>
+   341→                  </Select>
+   342→                </div>
+   343→                <div className="ml-auto flex items-center gap-1.5">
+   344→                  <ValidationIndicator validating={validating} result={result} />
+   345→                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={loadBroken}>
+   346→                    <AlertTriangle className="h-3.5 w-3.5 mr-1" /> Broken demo
+   347→                  </Button>
+   348→                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={save} disabled={saving}>
+   349→                    <Save className="h-3.5 w-3.5 mr-1" /> {saving ? "Saving…" : "Compile & Save"}
+   350→                  </Button>
+   351→                  <Button
+   352→                    size="sm"
+   353→                    className="h-7 text-xs bg-verified/90 hover:bg-verified text-primary-foreground"
+   354→                    onClick={validate}
+   355→                    disabled={validating}
+   356→                  >
+   357→                    {validating ? (
+   358→                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+   359→                    ) : (
+   360→                      <Play className="h-3.5 w-3.5 mr-1" />
+   361→                    )}
+   362→                    {validating ? "Validating…" : "Validate"}
+   363→                  </Button>
+   364→                </div>
+   365→              </div>
+   366→
+   367→              {/* Editor with line numbers — dark code editor style */}
+   368→              <div className="relative flex bg-[oklch(0.12_0.01_165)] h-[460px]">
+   369→                <div
+   370→                  ref={gutterRef}
+   371→                  className="select-none overflow-hidden py-3 pl-3 pr-2 text-right font-mono text-xs bg-[oklch(0.10_0.008_165)] border-r border-border/30 shrink-0"
+   372→                  style={{ minWidth: 52 }}
+   373→                  aria-hidden
+   374→                >
+   375→                  {lines.map((_, i) => (
+   376→                    <div
+   377→                      key={i}
+   378→                      className={cn(
+   379→                        "transition-colors duration-150",
+   380→                        i % 2 === 0 ? "text-muted-foreground/50" : "text-muted-foreground/35",
+   381→                      )}
+   382→                      style={{ height: "1.55em", lineHeight: "1.55em" }}
+   383→                    >
+   384→                      {i + 1}
+   385→                    </div>
+   386→                  ))}
+   387→                </div>
+   388→                <Textarea
+   389→                  ref={textareaRef}
+   390→                  value={source}
+   391→                  onChange={(e) => setSource(e.target.value)}
+   392→                  onScroll={syncScroll}
+   393→                  spellCheck={false}
+   394→                  className="codeblock flex-1 h-full resize-none border-0 rounded-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-[oklch(0.82_0.04_160)] placeholder:text-muted-foreground/40"
+   395→                />
+   396→              </div>
+   397→
+   398→              {/* Gradient accent bar at bottom of editor */}
+   399→              <div className="h-[2px] bg-gradient-to-r from-verified/60 via-repairing/40 to-verified/60" />
+   400→            </GradientBorderCard>
+   401→          </motion.div>
+   402→
+   403→          {/* State evaluator */}
+   404→          <motion.div variants={cardVariants}>
+   405→            <GradientBorderCard gradient="from-repairing/30 via-repairing/10 to-verified/20">
+   406→              <div className="p-4 space-y-3">
+   407→                <div className="flex items-center gap-2">
+   408→                  <Sparkles className="h-4 w-4 text-repairing" />
+   409→                  <h3 className="text-sm font-semibold">Invariant Evaluation State</h3>
+   410→                  <span className="ml-auto text-[10px] text-muted-foreground font-mono">JSON — evaluated on validate</span>
+   411→                </div>
+   412→                <Textarea
+   413→                  value={stateJson}
+   414→                  onChange={(e) => setStateJson(e.target.value)}
+   415→                  spellCheck={false}
+   416→                  className="codeblock min-h-[110px] font-mono text-xs bg-[oklch(0.12_0.01_165)] border-border/40"
+   417→                />
+   418→                {evaluations && evaluations.length > 0 && (
+   419→                  <motion.div
+   420→                    className="space-y-1.5"
+   421→                    variants={containerVariants}
+   422→                    initial="hidden"
+   423→                    animate="show"
+   424→                  >
+   425→                    {evaluations.map((ev, i) => (
+   426→                      <motion.div
+   427→                        key={i}
+   428→                        variants={itemVariants}
+   429→                        whileHover={{ scale: 1.01, backgroundColor: "oklch(0.25 0.015 168 / 0.6)" }}
+   430→                        className={cn(
+   431→                          "flex items-center gap-2 rounded-md border px-2.5 py-1.5 transition-all duration-150 cursor-default",
+   432→                          ev.passed
+   433→                            ? "border-verified/30 bg-verified/5 hover:border-verified/50"
+   434→                            : "border-violating/30 bg-violating/5 hover:border-violating/50",
+   435→                        )}
+   436→                      >
+   437→                        <AnimatePresence mode="wait">
+   438→                          {ev.passed ? (
+   439→                            <motion.div
+   440→                              key="pass"
+   441→                              initial={{ scale: 0, rotate: -90 }}
+   442→                              animate={{ scale: 1, rotate: 0 }}
+   443→                              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+   444→                            >
+   445→                              <CheckCircle2 className="h-3.5 w-3.5 text-verified shrink-0" />
+   446→                            </motion.div>
+   447→                          ) : (
+   448→                            <motion.div
+   449→                              key="fail"
+   450→                              initial={{ scale: 0, rotate: 90 }}
+   451→                              animate={{ scale: 1, rotate: 0 }}
+   452→                              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+   453→                            >
+   454→                              <XCircle className="h-3.5 w-3.5 text-violating shrink-0" />
+   455→                            </motion.div>
+   456→                          )}
+   457→                        </AnimatePresence>
+   458→                        <span className="text-xs font-mono font-medium">{ev.name}</span>
+   459→                        <SeverityBadge severity={ev.severity as "critical" | "high" | "medium" | "low"} soft={ev.soft} />
+   460→                        <span className={cn(
+   461→                          "ml-auto text-[11px] font-mono tabular-nums",
+   462→                          ev.passed ? "text-verified" : "text-violating",
+   463→                        )}>
+   464→                          {ev.passed ? "PASS" : "FAIL"} · {ev.actual}
+   465→                        </span>
+   466→                      </motion.div>
+   467→                    ))}
+   468→                  </motion.div>
+   469→                )}
+   470→              </div>
+   471→            </GradientBorderCard>
+   472→          </motion.div>
+   473→        </div>
+   474→
+   475→        {/* Diagnostics + AST + Enforcer column */}
+   476→        <div className="xl:col-span-2 space-y-4">
+   477→          {/* Validation summary */}
+   478→          <motion.div variants={cardVariants}>
+   479→            <GradientBorderCard gradient={result?.ok ? "from-verified/30 via-verified/10 to-verified/20" : result ? "from-violating/30 via-violating/10 to-repairing/20" : "from-border/30 via-border/10 to-border/20"}>
+   480→              <div className="p-4 space-y-3">
+   481→                <div className="flex items-center gap-2">
+   482→                  <Braces className="h-4 w-4 text-verified" />
+   483→                  <h3 className="text-sm font-semibold">Validation</h3>
+   484→                  {result && (
+   485→                    <span className="ml-auto">
+   486→                      {result.ok ? (
+   487→                        <StatusPill status="verified" label={`${policy?.invariants.length ?? 0} invariants OK`} />
+   488→                      ) : (
+   489→                        <StatusPill status="violating" label={`${diagCounts.error} error(s)`} />
+   490→                      )}
+   491→                    </span>
+   492→                  )}
+   493→                </div>
+   494→                {result ? (
+   495→                  <div className="space-y-1.5 max-h-[180px] overflow-y-auto">
+   496→                    {result.diagnostics.length === 0 && (
+   497→                      <p className="text-xs text-verified flex items-center gap-1.5">
+   498→                        <CheckCircle2 className="h-3.5 w-3.5" /> No diagnostics — policy is well-formed.
+   499→                      </p>
+   500→                    )}
+   501→                    {result.diagnostics.map((d, i) => {
+   502→                      const Icon =
+   503→                        d.level === "error" ? XCircle : d.level === "warning" ? AlertTriangle : Info;
+   504→                      const color =
+   505→                        d.level === "error"
+   506→                          ? "text-violating"
+   507→                          : d.level === "warning"
+   508→                            ? "text-repairing"
+   509→                            : "text-muted-foreground";
+   510→                      const borderColor =
+   511→                        d.level === "error"
+   512→                          ? "border-violating/30"
+   513→                          : d.level === "warning"
+   514→                            ? "border-repairing/30"
+   515→                            : "border-border/40";
+   516→                      return (
+   517→                        <motion.div
+   518→                          key={i}
+   519→                          initial={{ opacity: 0, x: -8 }}
+   520→                          animate={{ opacity: 1, x: 0 }}
+   521→                          transition={{ delay: i * 0.05 }}
+   522→                          className={cn(
+   523→                            "flex items-start gap-2 rounded-md border bg-background/40 px-2.5 py-1.5 text-xs",
+   524→                            borderColor,
+   525→                          )}
+   526→                        >
+   527→                          <Icon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", color)} />
+   528→                          <span className="font-mono text-[10px] text-muted-foreground shrink-0">L{d.line}</span>
+   529→                          <span className={color}>{d.message}</span>
+   530→                        </motion.div>
+   531→                      );
+   532→                    })}
+   533→                  </div>
+   534→                ) : (
+   535→                  <p className="text-xs text-muted-foreground">
+   536→                    Press <span className="font-mono text-verified">Validate</span> to parse & semantically check the policy.
+   537→                  </p>
+   538→                )}
+   539→
+   540→                {/* Policy health gauge */}
+   541→                {evaluations && evaluations.length > 0 && (
+   542→                  <div className="border-t border-border/40 pt-3">
+   543→                    <PolicyHealthGauge evaluations={evaluations} />
+   544→                  </div>
+   545→                )}
+   546→              </div>
+   547→            </GradientBorderCard>
+   548→          </motion.div>
+   549→
+   550→          {/* Compiled enforcer */}
+   551→          <motion.div variants={cardVariants}>
+   552→            <GradientBorderCard gradient="from-verified/20 via-repairing/10 to-verified/20">
+   553→              <div className="p-4 space-y-3">
+   554→                <div className="flex items-center gap-2">
+   555→                  <Cpu className="h-4 w-4 text-verified" />
+   556→                  <h3 className="text-sm font-semibold">Compiled Enforcer</h3>
+   557→                  <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+   558→                    {enforcer ? `${enforcer.invariantFingerprints.length} guardians` : "—"}
+   559→                  </span>
+   560→                </div>
+   561→                {enforcer ? (
+   562→                  <Tabs value={enforcerTab} onValueChange={(v) => setEnforcerTab(v as typeof enforcerTab)}>
+   563→                    <TabsList className="h-8">
+   564→                      <TabsTrigger value="rust" className="text-xs">Rust</TabsTrigger>
+   565→                      <TabsTrigger value="wasm" className="text-xs">Wasm</TabsTrigger>
+   566→                      <TabsTrigger value="tla" className="text-xs">TLA+</TabsTrigger>
+   567→                    </TabsList>
+   568→                    {(["rust", "wasm", "tla"] as const).map((tab) => (
+   569→                      <TabsContent key={tab} value={tab}>
+   570→                        <ScrollArea className="max-h-[220px] rounded-md border border-border/40 bg-[oklch(0.12_0.01_165)]">
+   571→                          <pre className="codeblock p-3 text-[11px] text-[oklch(0.82_0.04_160)] leading-relaxed">
+   572→                            {tab === "rust" ? enforcer.rustPreview : tab === "wasm" ? enforcer.wasmPreview : enforcer.tlaPreview}
+   573→                          </pre>
+   574→                        </ScrollArea>
+   575→                      </TabsContent>
+   576→                    ))}
+   577→                  </Tabs>
+   578→                ) : (
+   579→                  <p className="text-xs text-muted-foreground">
+   580→                    Compiled, zero-overhead guardians appear here after a successful validation.
+   581→                  </p>
+   582→                )}
+   583→                {enforcer && (
+   584→                  <div>
+   585→                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+   586→                      Invariant fingerprints
+   587→                    </p>
+   588→                    <div className="space-y-1 max-h-[100px] overflow-y-auto">
+   589→                      {enforcer.invariantFingerprints.map((f, i) => (
+   590→                        <motion.div
+   591→                          key={f.name}
+   592→                          initial={{ opacity: 0, x: -8 }}
+   593→                          animate={{ opacity: 1, x: 0 }}
+   594→                          transition={{ delay: i * 0.04 }}
+   595→                          className="flex items-center gap-2 text-[11px] rounded-md px-2 py-1 hover:bg-muted/20 transition-colors"
+   596→                        >
+   597→                          <Hash className="h-2.5 w-2.5 text-verified/60 shrink-0" />
+   598→                          <span className="font-mono text-muted-foreground truncate flex-1">{f.name}</span>
+   599→                          <span className="font-mono text-verified tabular-nums">{f.hash}</span>
+   600→                        </motion.div>
+   601→                      ))}
+   602→                    </div>
+   603→                  </div>
+   604→                )}
+   605→              </div>
+   606→            </GradientBorderCard>
+   607→          </motion.div>
+   608→
+   609→          {/* AST viewer */}
+   610→          <motion.div variants={cardVariants}>
+   611→            <GradientBorderCard gradient="from-repairing/20 via-verified/10 to-repairing/20">
+   612→              <div className="p-4 space-y-3">
+   613→                <div className="flex items-center gap-2">
+   614→                  <Braces className="h-4 w-4 text-repairing" />
+   615→                  <h3 className="text-sm font-semibold">Parsed AST</h3>
+   616→                  {policy && (
+   617→                    <span className="ml-auto text-[10px] text-muted-foreground font-mono truncate max-w-[160px]">
+   618→                      {policy.name}
+   619→                    </span>
+   620→                  )}
+   621→                  {policy && (
+   622→                    <Tooltip>
+   623→                      <TooltipTrigger asChild>
+   624→                        <Button
+   625→                          size="sm"
+   626→                          variant="ghost"
+   627→                          className="h-6 w-6 p-0 ml-1"
+   628→                          onClick={copyAst}
+   629→                        >
+   630→                          {astCopied ? (
+   631→                            <Check className="h-3 w-3 text-verified" />
+   632→                          ) : (
+   633→                            <Copy className="h-3 w-3 text-muted-foreground" />
+   634→                          )}
+   635→                        </Button>
+   636→                      </TooltipTrigger>
+   637→                      <TooltipContent>Copy AST to clipboard</TooltipContent>
+   638→                    </Tooltip>
+   639→                  )}
+   640→                </div>
+   641→                {policy ? (
+   642→                  <ScrollArea className="max-h-[260px] rounded-md border border-border/40 bg-[oklch(0.12_0.01_165)]">
+   643→                    <pre className="codeblock p-3 text-[11px] text-[oklch(0.82_0.04_160)] leading-relaxed">
+   644→                      {formatAst(policy)}
+   645→                    </pre>
+   646→                  </ScrollArea>
+   647→                ) : (
+   648→                  <p className="text-xs text-muted-foreground">No parsed policy yet.</p>
+   649→                )}
+   650→              </div>
+   651→            </GradientBorderCard>
+   652→          </motion.div>
+   653→        </div>
+   654→      </motion.div>
+   655→    </TooltipProvider>
+   656→  );
+   657→}
+   658→
+   659→function formatAst(p: PolicyNode): string {
+   660→  const lines: string[] = [];
+   661→  lines.push(`Policy "${p.name}"`);
+   662→  if (p.domain) lines.push(`  domain: ${p.domain}`);
+   663→  if (p.version) lines.push(`  version: ${p.version}`);
+   664→  if (p.shard) {
+   665→    lines.push(
+   666→      `  shard by ${p.shard.dimension ?? "?"} {`,
+   667→    );
+   668→    lines.push(`    key: "${p.shard.key}"`);
+   669→    lines.push(`    strategy: ${p.shard.strategy}`);
+   670→    if (p.shard.count) lines.push(`    count: ${p.shard.count}`);
+   671→    if (p.shard.replication) lines.push(`    replication: ${p.shard.replication}`);
+   672→    lines.push(`  }`);
+   673→  }
+   674→  lines.push(`  invariants (${p.invariants.length}):`);
+   675→  for (const inv of p.invariants) {
+   676→    lines.push(
+   677→      `    ${inv.soft ? "soft " : ""}${inv.name} [${inv.severity}]`,
+   678→    );
+   679→    lines.push(`      predicate: ${inv.rawPredicate}`);
+   680→    if (inv.message) lines.push(`      message: "${inv.message}"`);
+   681→  }
+   682→  if (p.expectMerge) {
+   683→    lines.push(`  expect merge {`);
+   684→    for (const pres of p.expectMerge.preserves) lines.push(`    preserves ${pres}`);
+   685→    if (p.expectMerge.localityPreserving !== undefined)
+   686→      lines.push(`    locality_preserving: ${p.expectMerge.localityPreserving}`);
+   687→    for (const req of p.expectMerge.requires) lines.push(`    requires ${req}`);
+   688→    if (p.expectMerge.maxDivergence !== undefined)
+   689→      lines.push(`    max_divergence: ${p.expectMerge.maxDivergence}`);
+   690→    lines.push(`  }`);
+   691→  }
+   692→  if (p.onViolation) {
+   693→    lines.push(`  on_violation {`);
+   694→    lines.push(`    strategy: ${p.onViolation.strategy}`);
+   695→    lines.push(`    objective: ${p.onViolation.objective}`);
+   696→    if (p.onViolation.maxIters) lines.push(`    max_iters: ${p.onViolation.maxIters}`);
+   697→    lines.push(`  }`);
+   698→  }
+   699→  if (p.ancestry) {
+   700→    lines.push(`  ancestry {`);
+   701→    lines.push(`    proof: ${p.ancestry.proof}`);
+   702→    lines.push(`    zk: ${p.ancestry.zk}`);
+   703→    lines.push(`    gossip: ${p.ancestry.gossip}`);
+   704→    lines.push(`    anchor: ${p.ancestry.anchor}`);
+   705→    lines.push(`  }`);
+   706→  }
+   707→  if (p.shadowBridge) {
+   708→    lines.push(`  shadow_bridge {`);
+   709→    lines.push(`    enabled: ${p.shadowBridge.enabled}`);
+   710→    if (p.shadowBridge.takeoverLatencyMs !== undefined)
+   711→      lines.push(`    takeover_latency_ms: ${p.shadowBridge.takeoverLatencyMs}`);
+   712→    if (p.shadowBridge.whatifBranching !== undefined)
+   713→      lines.push(`    whatif_branching: ${p.shadowBridge.whatifBranching}`);
+   714→    lines.push(`  }`);
+   715→  }
+   716→  if (p.exports.length) lines.push(`  exports: ${p.exports.join(", ")}`);
+   717→  return lines.join("\n");
+   718→}
+   719→

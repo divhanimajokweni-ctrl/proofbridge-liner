@@ -1,0 +1,707 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  History,
+     7→  GitCommit,
+     8→  ArrowRight,
+     9→  RotateCcw,
+    10→  FileCode2,
+    11→  Clock,
+    12→  CheckCircle2,
+    13→  AlertTriangle,
+    14→  Fingerprint,
+    15→  User,
+    16→  ChevronDown,
+    17→  ChevronRight,
+    18→  GitCompare,
+    19→  Plus,
+    20→  Camera,
+    21→  ShieldCheck,
+    22→  TrendingUp,
+    23→  TrendingDown,
+    24→  Minus,
+    25→  Sparkles,
+    26→} from "lucide-react";
+    27→import { Card } from "@/components/ui/card";
+    28→import { Button } from "@/components/ui/button";
+    29→import { Badge } from "@/components/ui/badge";
+    30→import { Skeleton } from "@/components/ui/skeleton";
+    31→import { Separator } from "@/components/ui/separator";
+    32→import { Textarea } from "@/components/ui/textarea";
+    33→import {
+    34→  Select,
+    35→  SelectContent,
+    36→  SelectItem,
+    37→  SelectTrigger,
+    38→  SelectValue,
+    39→} from "@/components/ui/select";
+    40→import {
+    41→  Dialog,
+    42→  DialogContent,
+    43→  DialogDescription,
+    44→  DialogFooter,
+    45→  DialogHeader,
+    46→  DialogTitle,
+    47→  DialogClose,
+    48→} from "@/components/ui/dialog";
+    49→import {
+    50→  AlertDialog,
+    51→  AlertDialogAction,
+    52→  AlertDialogCancel,
+    53→  AlertDialogContent,
+    54→  AlertDialogDescription,
+    55→  AlertDialogFooter,
+    56→  AlertDialogHeader,
+    57→  AlertDialogTitle,
+    58→} from "@/components/ui/alert-dialog";
+    59→import {
+    60→  Tooltip,
+    61→  TooltipContent,
+    62→  TooltipProvider,
+    63→  TooltipTrigger,
+    64→} from "@/components/ui/tooltip";
+    65→import { useToast } from "@/hooks/use-toast";
+    66→import { cn } from "@/lib/utils";
+    67→import { timeAgo } from "@/lib/format";
+    68→import type { PolicyRow } from "@/lib/types";
+    69→
+    70→interface Revision {
+    71→  id: string;
+    72→  version: number;
+    73→  wasmFingerprint: string | null;
+    74→  invariantCount: number;
+    75→  changeSummary: string | null;
+    76→  author: string | null;
+    77→  createdAt: string;
+    78→}
+    79→
+    80→interface RevisionsData {
+    81→  revisions: Revision[];
+    82→  policy: {
+    83→    name: string;
+    84→    source: string;
+    85→    wasmFingerprint: string | null;
+    86→    invariantCount: number;
+    87→    updatedAt: string;
+    88→  } | null;
+    89→}
+    90→
+    91→/** Invariant count change indicator */
+    92→function InvariantChange({ from, to }: { from: number; to: number }) {
+    93→  const diff = to - from;
+    94→  if (diff === 0) {
+    95→    return (
+    96→      <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+    97→        <Minus className="h-2.5 w-2.5" /> no change
+    98→      </span>
+    99→    );
+   100→  }
+   101→  if (diff > 0) {
+   102→    return (
+   103→      <span className="inline-flex items-center gap-0.5 text-[10px] text-verified">
+   104→        <TrendingUp className="h-2.5 w-2.5" /> +{diff}
+   105→      </span>
+   106→    );
+   107→  }
+   108→  return (
+   109→    <span className="inline-flex items-center gap-0.5 text-[10px] text-violating">
+   110→      <TrendingDown className="h-2.5 w-2.5" /> {diff}
+   111→    </span>
+   112→  );
+   113→}
+   114→
+   115→/** Format timestamp nicely */
+   116→function formatTimestamp(iso: string): string {
+   117→  const d = new Date(iso);
+   118→  return d.toLocaleDateString(undefined, {
+   119→    month: "short",
+   120→    day: "numeric",
+   121→    year: "numeric",
+   122→    hour: "2-digit",
+   123→    minute: "2-digit",
+   124→  });
+   125→}
+   126→
+   127→export function PolicyVersioningSection() {
+   128→  const { toast } = useToast();
+   129→  const [policies, setPolicies] = useState<PolicyRow[]>([]);
+   130→  const [policyId, setPolicyId] = useState<string>("");
+   131→  const [data, setData] = useState<RevisionsData | null>(null);
+   132→  const [loading, setLoading] = useState(true);
+   133→  const [expandedRev, setExpandedRev] = useState<string | null>(null);
+   134→  const [snapshotOpen, setSnapshotOpen] = useState(false);
+   135→  const [snapshotSummary, setSnapshotSummary] = useState("");
+   136→  const [restoring, setRestoring] = useState<string | null>(null);
+   137→  const [diffRevisions, setDiffRevisions] = useState<{ a: Revision; b: Revision } | null>(null);
+   138→  const [restoreConfirm, setRestoreConfirm] = useState<Revision | null>(null);
+   139→  const [hoveredRev, setHoveredRev] = useState<string | null>(null);
+   140→
+   141→  useEffect(() => {
+   142→    fetch("/api/policies")
+   143→      .then((r) => r.json())
+   144→      .then((d) => {
+   145→        setPolicies(d.policies ?? []);
+   146→        if (d.policies?.[0]) setPolicyId(d.policies[0].id);
+   147→      })
+   148→      .catch(() => {});
+   149→  }, []);
+   150→
+   151→  const load = useCallback(async () => {
+   152→    if (!policyId) return;
+   153→    setLoading(true);
+   154→    try {
+   155→      const r = await fetch(`/api/policies/revisions?policyId=${policyId}`);
+   156→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   157→      const d: RevisionsData = await r.json();
+   158→      setData(d);
+   159→      setExpandedRev(d.revisions[0]?.id ?? null);
+   160→    } catch {
+   161→
+   162→    } finally {
+   163→      setLoading(false);
+   164→    }
+   165→  }, [policyId]);
+   166→
+   167→  useEffect(() => {
+   168→    load();
+   169→  }, [load]);
+   170→
+   171→  const snapshot = async () => {
+   172→    try {
+   173→      const r = await fetch("/api/policies/revisions", {
+   174→        method: "POST",
+   175→        headers: { "Content-Type": "application/json" },
+   176→        body: JSON.stringify({ policyId, changeSummary: snapshotSummary || undefined }),
+   177→      });
+   178→      const d = await r.json();
+   179→      if (!r.ok) {
+   180→        toast({ title: "Snapshot failed", description: d.error, variant: "destructive" });
+   181→      } else {
+   182→        toast({
+   183→          title: "Revision snapshot saved",
+   184→          description: `v${d.revision.version} · ${d.revision.changeSummary}`,
+   185→        });
+   186→        setSnapshotOpen(false);
+   187→        setSnapshotSummary("");
+   188→        load();
+   189→      }
+   190→    } catch (e) {
+   191→      toast({ title: "Snapshot failed", description: String(e), variant: "destructive" });
+   192→    }
+   193→  };
+   194→
+   195→  const restore = async (rev: Revision) => {
+   196→    setRestoring(rev.id);
+   197→    try {
+   198→      const r = await fetch("/api/policies/revisions", {
+   199→        method: "PATCH",
+   200→        headers: { "Content-Type": "application/json" },
+   201→        body: JSON.stringify({ revisionId: rev.id }),
+   202→      });
+   203→      const d = await r.json();
+   204→      if (!r.ok) {
+   205→        toast({ title: "Restore failed", description: d.error, variant: "destructive" });
+   206→      } else {
+   207→        toast({
+   208→          title: "Policy restored",
+   209→          description: `Reverted to v${rev.version} · ${rev.changeSummary ?? ""}`,
+   210→        });
+   211→        load();
+   212→      }
+   213→    } catch (e) {
+   214→      toast({ title: "Restore failed", description: String(e), variant: "destructive" });
+   215→    } finally {
+   216→      setRestoring(null);
+   217→      setRestoreConfirm(null);
+   218→    }
+   219→  };
+   220→
+   221→  return (
+   222→    <section className="space-y-4">
+   223→      {/* Header */}
+   224→      <motion.div
+   225→        initial={{ opacity: 0, y: -8 }}
+   226→        animate={{ opacity: 1, y: 0 }}
+   227→        transition={{ duration: 0.4 }}
+   228→      >
+   229→        <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   230→          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-verified/0 via-verified/50 to-verified/0" />
+   231→          <div className="bg-grid absolute inset-0 opacity-20" />
+   232→          <div className="relative flex flex-wrap items-center gap-3">
+   233→            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 shrink-0">
+   234→              <History className="h-5 w-5 text-verified" />
+   235→            </div>
+   236→            <div className="min-w-0 flex-1">
+   237→              <h2 className="text-base font-semibold flex items-center gap-2">
+   238→                Policy Versioning
+   239→                <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[9px] font-mono">
+   240→                  revision history
+   241→                </Badge>
+   242→              </h2>
+   243→              <p className="text-xs text-muted-foreground mt-0.5">
+   244→                Track `.epd` revisions over time — snapshot the current version, restore previous revisions, diff any two.
+   245→              </p>
+   246→            </div>
+   247→            <div className="flex items-center gap-2">
+   248→              <Select value={policyId} onValueChange={setPolicyId}>
+   249→                <SelectTrigger className="h-8 w-[200px] text-xs">
+   250→                  <SelectValue placeholder="Select policy" />
+   251→                </SelectTrigger>
+   252→                <SelectContent>
+   253→                  {policies.map((p) => (
+   254→                    <SelectItem key={p.id} value={p.id}>
+   255→                      {p.name}
+   256→                    </SelectItem>
+   257→                  ))}
+   258→                </SelectContent>
+   259→              </Select>
+   260→              <Button
+   261→                size="sm"
+   262→                className="h-8 bg-verified/90 hover:bg-verified text-primary-foreground"
+   263→                onClick={() => setSnapshotOpen(true)}
+   264→                disabled={!policyId}
+   265→              >
+   266→                <Camera className="h-3.5 w-3.5 mr-1.5" /> Snapshot
+   267→              </Button>
+   268→            </div>
+   269→          </div>
+   270→        </Card>
+   271→      </motion.div>
+   272→
+   273→      {/* Current version summary */}
+   274→      {data?.policy && (
+   275→        <motion.div
+   276→          initial={{ opacity: 0, y: 8 }}
+   277→          animate={{ opacity: 1, y: 0 }}
+   278→          transition={{ duration: 0.4, delay: 0.05 }}
+   279→        >
+   280→          <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   281→            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-verified/0 via-verified/40 to-verified/0" />
+   282→            <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   283→            <div className="relative flex flex-wrap items-center gap-4">
+   284→              <div className="flex items-center gap-2">
+   285→                <GitCommit className="h-4 w-4 text-verified" />
+   286→                <span className="text-sm font-semibold">Current (HEAD)</span>
+   287→              </div>
+   288→              <div className="flex items-center gap-2 text-xs">
+   289→                <span className="text-muted-foreground">invariants:</span>
+   290→                <span className="font-mono text-verified">{data.policy.invariantCount}</span>
+   291→              </div>
+   292→              <div className="flex items-center gap-2 text-xs">
+   293→                <span className="text-muted-foreground">fingerprint:</span>
+   294→                <span className="font-mono text-foreground">{data.policy.wasmFingerprint ?? "—"}</span>
+   295→              </div>
+   296→              <div className="flex items-center gap-2 text-xs">
+   297→                <Clock className="h-3 w-3 text-muted-foreground" />
+   298→                <span className="text-muted-foreground">updated {timeAgo(data.policy.updatedAt)}</span>
+   299→              </div>
+   300→              <Badge variant="outline" className="ml-auto text-[9px] border-verified/30 bg-verified/10 text-verified">
+   301→                {data.revisions.length} revision{data.revisions.length === 1 ? "" : "s"}
+   302→              </Badge>
+   303→            </div>
+   304→          </Card>
+   305→        </motion.div>
+   306→      )}
+   307→
+   308→      {/* Revision timeline */}
+   309→      {loading || !data ? (
+   310→        <Skeleton className="h-64 w-full" />
+   311→      ) : data.revisions.length === 0 ? (
+   312→        <Card className="bg-card/60 border-dashed border-border/60 p-8 text-center">
+   313→          <History className="mx-auto h-8 w-8 text-muted-foreground/40" />
+   314→          <p className="mt-2 text-sm text-muted-foreground">No revisions yet.</p>
+   315→          <p className="text-xs text-muted-foreground/70 mt-1">
+   316→            Click <span className="font-mono text-verified">Snapshot</span> to capture the current version.
+   317→          </p>
+   318→        </Card>
+   319→      ) : (
+   320→        <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   321→          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-repairing/0 via-repairing/30 to-repairing/0" />
+   322→          <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   323→          <div className="relative">
+   324→            <div className="flex items-center gap-2 mb-3">
+   325→              <History className="h-4 w-4 text-repairing" />
+   326→              <span className="text-sm font-semibold">Revision history</span>
+   327→              <span className="ml-auto text-[10px] text-muted-foreground font-mono">newest first</span>
+   328→            </div>
+   329→            <div className="relative space-y-2">
+   330→              {/* Animated timeline line */}
+   331→              <motion.div
+   332→                className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-verified/60 via-repairing/40 to-border/30"
+   333→                initial={{ scaleY: 0 }}
+   334→                animate={{ scaleY: 1 }}
+   335→                transition={{ duration: 0.6, ease: "easeOut" }}
+   336→                style={{ transformOrigin: "top" }}
+   337→              />
+   338→              {data.revisions.map((rev, i) => {
+   339→                const isLatest = i === 0;
+   340→                const expanded = expandedRev === rev.id;
+   341→                const prevRev = data.revisions[i + 1];
+   342→                const isHovered = hoveredRev === rev.id;
+   343→                return (
+   344→                  <motion.div
+   345→                    key={rev.id}
+   346→                    initial={{ opacity: 0, x: -12 }}
+   347→                    animate={{ opacity: 1, x: 0 }}
+   348→                    transition={{ duration: 0.3, delay: i * 0.05 }}
+   349→                    className="relative pl-9"
+   350→                    onMouseEnter={() => setHoveredRev(rev.id)}
+   351→                    onMouseLeave={() => setHoveredRev(null)}
+   352→                  >
+   353→                    {/* Animated timeline node */}
+   354→                    <motion.div
+   355→                      className={cn(
+   356→                        "absolute left-[8px] top-2 h-3.5 w-3.5 rounded-full border-2 z-10 transition-all duration-200",
+   357→                        isLatest
+   358→                          ? "border-verified bg-verified"
+   359→                          : expanded
+   360→                            ? "border-repairing bg-repairing"
+   361→                            : "border-muted-foreground bg-background",
+   362→                      )}
+   363→                      initial={{ scale: 0 }}
+   364→                      animate={{ scale: isHovered ? 1.3 : 1 }}
+   365→                      transition={{ type: "spring", stiffness: 400, damping: 15 }}
+   366→                    />
+   367→                    <div
+   368→                      className={cn(
+   369→                        "rounded-md border bg-background/40 transition-all duration-200",
+   370→                        expanded
+   371→                          ? "border-verified/30 shadow-[0_0_12px_-3px_var(--verified)]"
+   372→                          : isHovered
+   373→                            ? "border-repairing/30"
+   374→                            : "border-border/40",
+   375→                      )}
+   376→                    >
+   377→                      {/* Gradient border accent on expanded */}
+   378→                      {expanded && (
+   379→                        <div className="h-[2px] bg-gradient-to-r from-verified/0 via-verified/50 to-verified/0 rounded-t-md" />
+   380→                      )}
+   381→                      <button
+   382→                        type="button"
+   383→                        onClick={() => setExpandedRev(expanded ? null : rev.id)}
+   384→                        className="w-full text-left p-2.5"
+   385→                      >
+   386→                        <div className="flex items-center gap-2 flex-wrap">
+   387→                          {expanded ? (
+   388→                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+   389→                          ) : (
+   390→                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+   391→                          )}
+   392→                          <span className="font-mono text-sm font-semibold">v{rev.version}</span>
+   393→                          {isLatest && (
+   394→                            <Badge variant="outline" className="text-[9px] border-verified/30 bg-verified/10 text-verified">
+   395→                              HEAD
+   396→                            </Badge>
+   397→                          )}
+   398→                          {/* Invariant change indicator */}
+   399→                          {prevRev && (
+   400→                            <InvariantChange from={prevRev.invariantCount} to={rev.invariantCount} />
+   401→                          )}
+   402→                          <span className="text-xs text-foreground truncate flex-1 min-w-0">
+   403→                            {rev.changeSummary ?? "—"}
+   404→                          </span>
+   405→                          <div className="flex items-center gap-2 shrink-0">
+   406→                            {rev.author && (
+   407→                              <TooltipProvider>
+   408→                                <Tooltip>
+   409→                                  <TooltipTrigger asChild>
+   410→                                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+   411→                                      <User className="h-2.5 w-2.5" />
+   412→                                      {rev.author}
+   413→                                    </span>
+   414→                                  </TooltipTrigger>
+   415→                                  <TooltipContent>Author: {rev.author}</TooltipContent>
+   416→                                </Tooltip>
+   417→                              </TooltipProvider>
+   418→                            )}
+   419→                            <span className="text-[10px] text-muted-foreground font-mono">
+   420→                              {timeAgo(rev.createdAt)}
+   421→                            </span>
+   422→                          </div>
+   423→                        </div>
+   424→                      </button>
+   425→                      <AnimatePresence>
+   426→                        {expanded && (
+   427→                          <motion.div
+   428→                            initial={{ height: 0, opacity: 0 }}
+   429→                            animate={{ height: "auto", opacity: 1 }}
+   430→                            exit={{ height: 0, opacity: 0 }}
+   431→                            transition={{ duration: 0.2 }}
+   432→                            className="overflow-hidden"
+   433→                          >
+   434→                            <div className="border-t border-border/40 p-2.5 space-y-2">
+   435→                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+   436→                                <Meta label="invariants" value={String(rev.invariantCount)} mono icon={<ShieldCheck className="h-2.5 w-2.5 text-verified" />} />
+   437→                                <Meta label="fingerprint" value={rev.wasmFingerprint ?? "—"} mono icon={<Fingerprint className="h-2.5 w-2.5 text-muted-foreground" />} />
+   438→                                <Meta label="author" value={rev.author ?? "—"} mono icon={<User className="h-2.5 w-2.5 text-muted-foreground" />} />
+   439→                                <Meta label="created" value={formatTimestamp(rev.createdAt)} mono icon={<Clock className="h-2.5 w-2.5 text-muted-foreground" />} />
+   440→                              </div>
+   441→
+   442→                              {/* Invariant count comparison */}
+   443→                              {prevRev && prevRev.invariantCount !== rev.invariantCount && (
+   444→                                <div className={cn(
+   445→                                  "rounded-md border px-2.5 py-1.5 text-xs flex items-center gap-2",
+   446→                                  rev.invariantCount > prevRev.invariantCount
+   447→                                    ? "border-verified/30 bg-verified/5 text-verified"
+   448→                                    : "border-violating/30 bg-violating/5 text-violating",
+   449→                                )}>
+   450→                                  {rev.invariantCount > prevRev.invariantCount ? (
+   451→                                    <TrendingUp className="h-3 w-3" />
+   452→                                  ) : (
+   453→                                    <TrendingDown className="h-3 w-3" />
+   454→                                  )}
+   455→                                  <span>
+   456→                                    {prevRev.invariantCount} → {rev.invariantCount} invariants
+   457→                                    ({rev.invariantCount > prevRev.invariantCount ? "+" : ""}{rev.invariantCount - prevRev.invariantCount})
+   458→                                  </span>
+   459→                                </div>
+   460→                              )}
+   461→
+   462→                              <Separator className="bg-border/40" />
+   463→                              <div className="flex items-center gap-1.5 flex-wrap">
+   464→                                {prevRev && (
+   465→                                  <Button
+   466→                                    size="sm"
+   467→                                    variant="outline"
+   468→                                    className="h-7 text-[10px] border-repairing/30 bg-repairing/10 text-repairing hover:bg-repairing/20"
+   469→                                    onClick={() => setDiffRevisions({ a: prevRev, b: rev })}
+   470→                                  >
+   471→                                    <GitCompare className="h-3 w-3 mr-1" /> diff v{prevRev.version}→v{rev.version}
+   472→                                  </Button>
+   473→                                )}
+   474→                                <Button
+   475→                                  size="sm"
+   476→                                  variant="outline"
+   477→                                  className="h-7 text-[10px] border-verified/30 bg-verified/10 text-verified hover:bg-verified/20"
+   478→                                  onClick={() => setRestoreConfirm(rev)}
+   479→                                  disabled={restoring === rev.id || isLatest}
+   480→                                >
+   481→                                  <RotateCcw className="h-3 w-3 mr-1" />
+   482→                                  {restoring === rev.id ? "restoring…" : isLatest ? "current" : "restore"}
+   483→                                </Button>
+   484→                              </div>
+   485→                            </div>
+   486→                          </motion.div>
+   487→                        )}
+   488→                      </AnimatePresence>
+   489→                    </div>
+   490→                  </motion.div>
+   491→                );
+   492→              })}
+   493→            </div>
+   494→          </div>
+   495→        </Card>
+   496→      )}
+   497→
+   498→      {/* Snapshot dialog */}
+   499→      <Dialog open={snapshotOpen} onOpenChange={setSnapshotOpen}>
+   500→        <DialogContent className="max-w-md">
+   501→          <DialogHeader>
+   502→            <DialogTitle className="flex items-center gap-2">
+   503→              <Camera className="h-4 w-4 text-verified" />
+   504→              Snapshot current version
+   505→            </DialogTitle>
+   506→            <DialogDescription>
+   507→              Capture the current `.epd` source as a new revision. You can restore it later if a future change causes regressions.
+   508→            </DialogDescription>
+   509→          </DialogHeader>
+   510→          <div className="space-y-2 py-2">
+   511→            <label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+   512→              Change summary
+   513→            </label>
+   514→            <Textarea
+   515→              value={snapshotSummary}
+   516→              onChange={(e) => setSnapshotSummary(e.target.value)}
+   517→              placeholder="e.g. Tightened freq_bounds to [49.9, 50.1]"
+   518→              className="min-h-[70px] text-xs"
+   519→            />
+   520→          </div>
+   521→          <DialogFooter>
+   522→            <DialogClose asChild>
+   523→              <Button size="sm" variant="outline">Cancel</Button>
+   524→            </DialogClose>
+   525→            <Button size="sm" className="bg-verified/90 hover:bg-verified text-primary-foreground" onClick={snapshot}>
+   526→              <Plus className="h-3.5 w-3.5 mr-1.5" /> Create revision
+   527→            </Button>
+   528→          </DialogFooter>
+   529→        </DialogContent>
+   530→      </Dialog>
+   531→
+   532→      {/* Restore confirmation dialog */}
+   533→      <AlertDialog open={!!restoreConfirm} onOpenChange={(open) => !open && setRestoreConfirm(null)}>
+   534→        <AlertDialogContent>
+   535→          <AlertDialogHeader>
+   536→            <AlertDialogTitle className="flex items-center gap-2">
+   537→              <AlertTriangle className="h-4 w-4 text-repairing" />
+   538→              Confirm restore
+   539→            </AlertDialogTitle>
+   540→            <AlertDialogDescription>
+   541→              {restoreConfirm && (
+   542→                <>
+   543→                  Are you sure you want to restore policy to{" "}
+   544→                  <span className="font-mono font-semibold">v{restoreConfirm.version}</span>?
+   545→                  {restoreConfirm.changeSummary && (
+   546→                    <span className="block mt-1 text-xs">
+   547→                      "{restoreConfirm.changeSummary}"
+   548→                    </span>
+   549→                  )}
+   550→                  <span className="block mt-2">
+   551→                    This will replace the current policy source with the snapshot from{" "}
+   552→                    {formatTimestamp(restoreConfirm.createdAt)}.
+   553→                    A new revision will be created to record this restore.
+   554→                  </span>
+   555→                </>
+   556→              )}
+   557→            </AlertDialogDescription>
+   558→          </AlertDialogHeader>
+   559→          <AlertDialogFooter>
+   560→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   561→            <AlertDialogAction
+   562→              onClick={() => restoreConfirm && restore(restoreConfirm)}
+   563→              className="bg-verified/90 hover:bg-verified text-primary-foreground"
+   564→            >
+   565→              <RotateCcw className="h-3.5 w-3.5 mr-1.5 inline" />
+   566→              Restore v{restoreConfirm?.version}
+   567→            </AlertDialogAction>
+   568→          </AlertDialogFooter>
+   569→        </AlertDialogContent>
+   570→      </AlertDialog>
+   571→
+   572→      {/* Diff dialog */}
+   573→      <Dialog open={!!diffRevisions} onOpenChange={(o) => !o && setDiffRevisions(null)}>
+   574→        <DialogContent className="max-w-2xl">
+   575→          <DialogHeader>
+   576→            <DialogTitle className="flex items-center gap-2">
+   577→              <GitCompare className="h-4 w-4 text-repairing" />
+   578→              Revision diff
+   579→            </DialogTitle>
+   580→            <DialogDescription>
+   581→              {diffRevisions && (
+   582→                <>
+   583→                  Comparing <span className="font-mono">v{diffRevisions.a.version}</span> →{" "}
+   584→                  <span className="font-mono">v{diffRevisions.b.version}</span>
+   585→                </>
+   586→              )}
+   587→            </DialogDescription>
+   588→          </DialogHeader>
+   589→          {diffRevisions && (
+   590→            <div className="space-y-2 py-2 max-h-[60vh] overflow-y-auto">
+   591→              {/* Version comparison visualization */}
+   592→              <div className="grid grid-cols-2 gap-3">
+   593→                <div className="rounded-md border border-border/40 bg-background/40 p-3 text-center">
+   594→                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">v{diffRevisions.a.version}</div>
+   595→                  <div className="text-2xl font-mono font-bold text-foreground">{diffRevisions.a.invariantCount}</div>
+   596→                  <div className="text-[10px] text-muted-foreground">invariants</div>
+   597→                </div>
+   598→                <div className="rounded-md border border-border/40 bg-background/40 p-3 text-center">
+   599→                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">v{diffRevisions.b.version}</div>
+   600→                  <div className={cn(
+   601→                    "text-2xl font-mono font-bold",
+   602→                    diffRevisions.b.invariantCount > diffRevisions.a.invariantCount
+   603→                      ? "text-verified"
+   604→                      : diffRevisions.b.invariantCount < diffRevisions.a.invariantCount
+   605→                        ? "text-violating"
+   606→                        : "text-foreground",
+   607→                  )}>
+   608→                    {diffRevisions.b.invariantCount}
+   609→                  </div>
+   610→                  <div className="text-[10px] text-muted-foreground">invariants</div>
+   611→                </div>
+   612→              </div>
+   613→
+   614→              <DiffRow
+   615→                label="invariants"
+   616→                from={String(diffRevisions.a.invariantCount)}
+   617→                to={String(diffRevisions.b.invariantCount)}
+   618→              />
+   619→              <DiffRow
+   620→                label="fingerprint"
+   621→                from={diffRevisions.a.wasmFingerprint ?? "—"}
+   622→                to={diffRevisions.b.wasmFingerprint ?? "—"}
+   623→                mono
+   624→              />
+   625→              <DiffRow
+   626→                label="summary"
+   627→                from={diffRevisions.a.changeSummary ?? "—"}
+   628→                to={diffRevisions.b.changeSummary ?? "—"}
+   629→              />
+   630→              <DiffRow
+   631→                label="author"
+   632→                from={diffRevisions.a.author ?? "—"}
+   633→                to={diffRevisions.b.author ?? "—"}
+   634→              />
+   635→              <DiffRow
+   636→                label="created"
+   637→                from={formatTimestamp(diffRevisions.a.createdAt)}
+   638→                to={formatTimestamp(diffRevisions.b.createdAt)}
+   639→              />
+   640→              <div className="rounded-md border border-border/40 bg-background/40 p-2.5 mt-2">
+   641→                <p className="text-[10px] text-muted-foreground mb-1">
+   642→                  The `.epd` source at each revision is preserved verbatim — restore either version to
+   643→                  inspect or roll back.
+   644→                </p>
+   645→              </div>
+   646→            </div>
+   647→          )}
+   648→          <DialogFooter>
+   649→            <DialogClose asChild>
+   650→              <Button size="sm" variant="outline">Close</Button>
+   651→            </DialogClose>
+   652→          </DialogFooter>
+   653→        </DialogContent>
+   654→      </Dialog>
+   655→    </section>
+   656→  );
+   657→}
+   658→
+   659→function Meta({ label, value, mono, icon }: { label: string; value: string; mono?: boolean; icon?: React.ReactNode }) {
+   660→  return (
+   661→    <div className="rounded border border-border/40 bg-background/40 px-2 py-1.5">
+   662→      <div className="flex items-center gap-1 text-[9px] uppercase tracking-wide text-muted-foreground">
+   663→        {icon}
+   664→        {label}
+   665→      </div>
+   666→      <div className={cn("text-xs truncate mt-0.5", mono && "font-mono")}>{value}</div>
+   667→    </div>
+   668→  );
+   669→}
+   670→
+   671→function DiffRow({
+   672→  label,
+   673→  from,
+   674→  to,
+   675→  mono,
+   676→}: {
+   677→  label: string;
+   678→  from: string;
+   679→  to: string;
+   680→  mono?: boolean;
+   681→}) {
+   682→  const changed = from !== to;
+   683→  return (
+   684→    <div
+   685→      className={cn(
+   686→        "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs",
+   687→        changed ? "border-repairing/30 bg-repairing/5" : "border-border/40 bg-background/30",
+   688→      )}
+   689→    >
+   690→      <span className="text-muted-foreground font-mono w-20 shrink-0">{label}</span>
+   691→      {changed ? (
+   692→        <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
+   693→          <span className={cn("text-violating line-through opacity-70 truncate", mono && "font-mono")}>{from}</span>
+   694→          <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+   695→          <span className={cn("text-verified truncate", mono && "font-mono")}>{to}</span>
+   696→        </div>
+   697→      ) : (
+   698→        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+   699→          <span className={cn("text-muted-foreground truncate", mono && "font-mono")}>{from}</span>
+   700→          <CheckCircle2 className="h-3 w-3 text-verified ml-auto shrink-0" />
+   701→          <span className="text-[10px] text-verified shrink-0">unchanged</span>
+   702→        </div>
+   703→      )}
+   704→    </div>
+   705→  );
+   706→}
+   707→

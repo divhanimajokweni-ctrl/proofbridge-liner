@@ -1,0 +1,747 @@
+     1→"use client";
+     2→
+     3→import { useState, useMemo } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Library,
+     7→  FileCode2,
+     8→  Plus,
+     9→  Zap,
+    10→  Droplets,
+    11→  HeartPulse,
+    12→  Truck,
+    13→  Car,
+    14→  Banknote,
+    15→  Network,
+    16→  ShieldCheck,
+    17→  ArrowRight,
+    18→  Copy,
+    19→  Check,
+    20→  Search,
+    21→  Star,
+    22→  Rocket,
+    23→  Filter,
+    24→  Sparkles,
+    25→} from "lucide-react";
+    26→import { Card } from "@/components/ui/card";
+    27→import { Button } from "@/components/ui/button";
+    28→import { Badge } from "@/components/ui/badge";
+    29→import { Textarea } from "@/components/ui/textarea";
+    30→import { Input } from "@/components/ui/input";
+    31→import { Separator } from "@/components/ui/separator";
+    32→import {
+    33→  Dialog,
+    34→  DialogContent,
+    35→  DialogDescription,
+    36→  DialogFooter,
+    37→  DialogHeader,
+    38→  DialogTitle,
+    39→  DialogClose,
+    40→} from "@/components/ui/dialog";
+    41→import { useToast } from "@/hooks/use-toast";
+    42→import { cn } from "@/lib/utils";
+    43→import { validateEpd } from "@/lib/epd";
+    44→
+    45→interface Template {
+    46→  id: string;
+    47→  name: string;
+    48→  domain: string;
+    49→  icon: typeof Zap;
+    50→  description: string;
+    51→  invariants: number;
+    52→  shard: boolean;
+    53→  zk: boolean;
+    54→  shadow: boolean;
+    55→  source: string;
+    56→  featured?: boolean;
+    57→  category?: string;
+    58→}
+    59→
+    60→const CATEGORIES = [
+    61→  { id: "all", label: "All", icon: Filter },
+    62→  { id: "iot", label: "IoT", icon: Network },
+    63→  { id: "datacenter", label: "Datacenter", icon: Droplets },
+    64→  { id: "healthcare", label: "Healthcare", icon: HeartPulse },
+    65→  { id: "energy", label: "Energy", icon: Banknote },
+    66→];
+    67→
+    68→/** Domain → color mapping */
+    69→const DOMAIN_COLORS: Record<string, string> = {
+    70→  iot: "border-teal-500/30 bg-teal-500/10 text-teal-400",
+    71→  datacenter: "border-verified/30 bg-verified/10 text-verified",
+    72→  healthcare: "border-rose-500/30 bg-rose-500/10 text-rose-400",
+    73→  energy: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+    74→  logistics: "border-repairing/30 bg-repairing/10 text-repairing",
+    75→  automotive: "border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-400",
+    76→};
+    77→
+    78→const DOMAIN_ICON_COLORS: Record<string, string> = {
+    79→  iot: "bg-teal-500/10 border-teal-500/20 text-teal-400 group-hover:bg-teal-500/20",
+    80→  datacenter: "bg-verified/10 border-verified/20 text-verified group-hover:bg-verified/20",
+    81→  healthcare: "bg-rose-500/10 border-rose-500/20 text-rose-400 group-hover:bg-rose-500/20",
+    82→  energy: "bg-amber-500/10 border-amber-500/20 text-amber-400 group-hover:bg-amber-500/20",
+    83→  logistics: "bg-repairing/10 border-repairing/20 text-repairing group-hover:bg-repairing/20",
+    84→  automotive: "bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400 group-hover:bg-fuchsia-500/20",
+    85→};
+    86→
+    87→const TEMPLATES: Template[] = [
+    88→  {
+    89→    id: "iot-fleet",
+    90→    name: "IoT Fleet Telemetry",
+    91→    domain: "iot",
+    92→    icon: Network,
+    93→    description: "Sensor fleet with bandwidth quotas, heartbeat liveness, and monotonic sequence guards.",
+    94→    invariants: 4,
+    95→    shard: true,
+    96→    zk: false,
+    97→    shadow: true,
+    98→    featured: true,
+    99→    category: "iot",
+   100→    source: `# IoT Fleet — telemetry liveness + bandwidth invariants
+   101→policy "iot_fleet_telemetry" {
+   102→  description "Sensor fleet telemetry integrity and liveness"
+   103→  domain "iot"
+   104→  version "1.0.0"
+   105→
+   106→  shard by region {
+   107→    key "geo_zone"
+   108→    strategy locality_preserving
+   109→    count 4
+   110→    replication 2
+   111→  }
+   112→
+   113→  invariant "heartbeat_liveness" "Heartbeat must arrive within 60s window" {
+   114→    predicate heartbeat_age <= 60
+   115→    severity critical
+   116→  }
+   117→
+   118→  invariant "sequence_monotonic" "Sequence numbers must never decrease" {
+   119→    predicate sequence >= prev_sequence
+   120→    severity high
+   121→  }
+   122→
+   123→  invariant "bandwidth_quota" "Per-device bandwidth must stay under quota" {
+   124→    predicate bandwidth_mbps <= 10
+   125→    severity high
+   126→  }
+   127→
+   128→  soft invariant "battery_floor" "Battery should stay above 15%" {
+   129→    predicate battery_pct >= 15
+   130→    severity medium
+   131→  }
+   132→
+   133→  expect merge {
+   134→    preserves max(sequence)
+   135→    locality_preserving true
+   136→  }
+   137→
+   138→  on_violation {
+   139→    strategy self_repair
+   140→    objective least_divergent
+   141→    max_iters 100
+   142→  }
+   143→
+   144→  ancestry {
+   145→    proof mmr
+   146→    zk false
+   147→    gossip p2p
+   148→    anchor rekor
+   149→  }
+   150→
+   151→  shadowbridge {
+   152→    enabled true
+   153→    takeover_latency_ms 300
+   154→    whatif_branching true
+   155→    replay true
+   156→  }
+   157→
+   158→  export to wasm
+   159→}
+   160→`,
+   161→  },
+   162→  {
+   163→    id: "datacenter-cooling",
+   164→    name: "Datacenter Cooling",
+   165→    domain: "datacenter",
+   166→    icon: Droplets,
+   167→    description: "Rack temperature bounds, coolant flow conservation, and CRAC failover safety.",
+   168→    invariants: 5,
+   169→    shard: true,
+   170→    zk: false,
+   171→    shadow: true,
+   172→    featured: true,
+   173→    category: "datacenter",
+   174→    source: `# Datacenter cooling — thermal + flow conservation invariants
+   175→policy "datacenter_cooling_safety" {
+   176→  description "Thermal envelope and coolant flow conservation for datacenter CRAC"
+   177→  domain "datacenter"
+   178→  version "1.0.0"
+   179→
+   180→  shard by subsystem {
+   181→    key "rack_row"
+   182→    strategy subsystem
+   183→    count 6
+   184→    replication 2
+   185→  }
+   186→
+   187→  invariant "rack_temp_bounds" "Rack inlet temperature must stay within ASHRAE bounds" {
+   188→    predicate rack_temp in [18, 27]
+   189→    severity critical
+   190→  }
+   191→
+   192→  invariant "flow_conservation" "Coolant flow in must equal flow out plus leakage" {
+   193→    predicate sum(flow_in) >= sum(flow_out) - leakage_allowance
+   194→    severity critical
+   195→  }
+   196→
+   197→  invariant "crac_redundancy" "At least N+1 CRAC units must be online" {
+   198→    predicate online_crac_count >= 2
+   199→    severity high
+   200→  }
+   201→
+   202→  invariant "humidity_range" "Relative humidity must stay within bounds" {
+   203→    predicate humidity in [40, 60]
+   204→    severity high
+   205→  }
+   206→
+   207→  soft invariant "pue_target" "PUE should stay below 1.4" {
+   208→    predicate pue <= 1.4
+   209→    severity low
+   210→  }
+   211→
+   212→  expect merge {
+   213→    preserves min(rack_temp)
+   214→    preserves min(online_crac_count)
+   215→    locality_preserving true
+   216→  }
+   217→
+   218→  on_violation {
+   219→    strategy self_repair
+   220→    objective min_energy
+   221→    max_iters 80
+   222→    notify "facilities@epistemic.io"
+   223→  }
+   224→
+   225→  ancestry {
+   226→    proof mmr
+   227→    zk false
+   228→    gossip mesh
+   229→    anchor rekor
+   230→  }
+   231→
+   232→  shadowbridge {
+   233→    enabled true
+   234→    takeover_latency_ms 200
+   235→    whatif_branching true
+   236→    replay true
+   237→    authoritative true
+   238→  }
+   239→
+   240→  export to wasm
+   241→  export to tla
+   242→}
+   243→`,
+   244→  },
+   245→  {
+   246→    id: "patient-monitoring",
+   247→    name: "Patient Monitoring",
+   248→    domain: "healthcare",
+   249→    icon: HeartPulse,
+   250→    description: "Vital sign bounds, alarm escalation, and privacy-preserving census reconciliation.",
+   251→    invariants: 4,
+   252→    shard: true,
+   253→    zk: true,
+   254→    shadow: false,
+   255→    featured: false,
+   256→    category: "healthcare",
+   257→    source: `# Patient monitoring — vital-sign safety + ZK census reconciliation
+   258→policy "patient_monitoring_safety" {
+   259→  description "Vital sign bounds and privacy-preserving census reconciliation"
+   260→  domain "healthcare"
+   261→  version "1.0.0"
+   262→
+   263→  shard by facility {
+   264→    key "ward_id"
+   265→    strategy hash
+   266→    count 5
+   267→    replication 2
+   268→  }
+   269→
+   270→  invariant "heart_rate_bounds" "Heart rate must stay within physiological bounds" {
+   271→    predicate heart_rate in [40, 180]
+   272→    severity critical
+   273→  }
+   274→
+   275→  invariant "spo2_floor" "SpO2 must stay above 90%" {
+   276→    predicate spo2 >= 90
+   277→    severity critical
+   278→  }
+   279→
+   280→  invariant "alarm_escalation" "Critical alarms must be acknowledged within 5 min" {
+   281→    predicate alarm_ack_age <= 300
+   282→    severity high
+   283→  }
+   284→
+   285→  soft invariant "staff_ratio" "Nurse-to-patient ratio should stay above 1:4" {
+   286→    predicate nurse_count * 4 >= patient_count
+   287→    severity medium
+   288→  }
+   289→
+   290→  expect merge {
+   291→    preserves max(alarm_ack_age)
+   292→    locality_preserving true
+   293→  }
+   294→
+   295→  on_violation {
+   296→    strategy escalate
+   297→    objective max_consistency
+   298→    notify "charge-nurse@epistemic.io"
+   299→  }
+   300→
+   301→  ancestry {
+   302→    proof mmr
+   303→    zk true
+   304→    gossip mesh
+   305→    anchor transparency_log
+   306→  }
+   307→
+   308→  shadowbridge {
+   309→    enabled false
+   310→  }
+   311→
+   312→  export to wasm
+   313→}
+   314→`,
+   315→  },
+   316→  {
+   317→    id: "energy-market",
+   318→    name: "Energy Market Settlement",
+   319→    domain: "energy",
+   320→    icon: Banknote,
+   321→    description: "Bid/ask conservation, settlement finality, and ZK-anchored audit trail.",
+   322→    invariants: 4,
+   323→    shard: true,
+   324→    zk: true,
+   325→    shadow: false,
+   326→    featured: false,
+   327→    category: "energy",
+   328→    source: `# Energy market — settlement conservation + ZK audit trail
+   329→policy "energy_market_settlement" {
+   330→  description "Bid/ask conservation and settlement finality for energy trading"
+   331→  domain "energy"
+   332→  version "1.0.0"
+   333→
+   334→  shard by region {
+   335→    key "market_zone"
+   336→    strategy locality_preserving
+   337→    count 3
+   338→    replication 3
+   339→  }
+   340→
+   341→  invariant "energy_conservation" "Cleared energy must equal demand" {
+   342→    predicate cleared_energy == demand
+   343→    severity critical
+   344→  }
+   345→
+   346→  invariant "settlement_finality" "Settlements must be irreversible after finality window" {
+   347→    predicate settlement_age >= finality_window
+   348→    severity high
+   349→  }
+   350→
+   351→  invariant "price_bounds" "Clearing price must stay within circuit breaker bounds" {
+   352→    predicate clearing_price in [price_floor, price_ceiling]
+   353→    severity critical
+   354→  }
+   355→
+   356→  soft invariant "bid_volume_cap" "Single participant volume should stay under cap" {
+   357→    predicate max(participant_volume) <= volume_cap
+   358→    severity medium
+   359→  }
+   360→
+   361→  expect merge {
+   362→    preserves sum(cleared_energy)
+   363→    preserves max(clearing_price)
+   364→    locality_preserving true
+   365→    max_divergence 0.0
+   366→  }
+   367→
+   368→  on_violation {
+   369→    strategy reject
+   370→    objective max_consistency
+   371→    notify "market-ops@epistemic.io"
+   372→  }
+   373→
+   374→  ancestry {
+   375→    proof mmr
+   376→    zk true
+   377→    gossip mesh
+   378→    anchor blockchain
+   379→  }
+   380→
+   381→  shadowbridge {
+   382→    enabled false
+   383→  }
+   384→
+   385→  export to wasm
+   386→  export to rust
+   387→}
+   388→`,
+   389→  },
+   390→];
+   391→
+   392→export function TemplateLibrarySection({ onCreate }: { onCreate?: (source: string, filename: string) => void }) {
+   393→  const { toast } = useToast();
+   394→  const [selected, setSelected] = useState<Template | null>(null);
+   395→  const [editedSource, setEditedSource] = useState("");
+   396→  const [policyName, setPolicyName] = useState("");
+   397→  const [validation, setValidation] = useState<{ ok: boolean; invCount: number; errors: number } | null>(null);
+   398→  const [copied, setCopied] = useState(false);
+   399→  const [searchQuery, setSearchQuery] = useState("");
+   400→  const [activeCategory, setActiveCategory] = useState("all");
+   401→  const [deploying, setDeploying] = useState(false);
+   402→
+   403→  const openTemplate = (t: Template) => {
+   404→    setSelected(t);
+   405→    setEditedSource(t.source);
+   406→    const m = t.source.match(/policy "([^"]+)"/);
+   407→    setPolicyName(m ? m[1] : t.name);
+   408→    setValidation(null);
+   409→  };
+   410→
+   411→  const validate = () => {
+   412→    const result = validateEpd(editedSource);
+   413→    setValidation({
+   414→      ok: result.ok,
+   415→      invCount: result.invariantCount,
+   416→      errors: result.diagnostics.filter((d) => d.level === "error").length,
+   417→    });
+   418→    if (result.ok) {
+   419→      toast({ title: "Template valid", description: `${result.invariantCount} invariants compiled` });
+   420→    } else {
+   421→      toast({ title: "Validation failed", description: `${result.diagnostics.filter((d) => d.level === "error").length} error(s)`, variant: "destructive" });
+   422→    }
+   423→  };
+   424→
+   425→  const create = async () => {
+   426→    const result = validateEpd(editedSource);
+   427→    if (!result.ok) {
+   428→      toast({ title: "Cannot create — fix errors first", variant: "destructive" });
+   429→      return;
+   430→    }
+   431→    setDeploying(true);
+   432→    const filename = `${policyName.replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}.epd`;
+   433→    try {
+   434→      const res = await fetch("/api/policies", {
+   435→        method: "POST",
+   436→        headers: { "Content-Type": "application/json" },
+   437→        body: JSON.stringify({ source: editedSource, filename }),
+   438→      });
+   439→      const d = await res.json();
+   440→      if (!res.ok) {
+   441→        toast({ title: "Create failed", description: d.error ?? "invalid", variant: "destructive" });
+   442→      } else {
+   443→        toast({ title: "Policy created", description: `${d.policy.name} saved & compiled` });
+   444→        setSelected(null);
+   445→        onCreate?.(editedSource, filename);
+   446→      }
+   447→    } catch (e) {
+   448→      toast({ title: "Create failed", description: String(e), variant: "destructive" });
+   449→    } finally {
+   450→      setDeploying(false);
+   451→    }
+   452→  };
+   453→
+   454→  const copy = async () => {
+   455→    try {
+   456→      await navigator.clipboard.writeText(editedSource);
+   457→      setCopied(true);
+   458→      setTimeout(() => setCopied(false), 1400);
+   459→      toast({ title: "Source copied" });
+   460→    } catch {
+   461→      toast({ title: "Copy failed", variant: "destructive" });
+   462→    }
+   463→  };
+   464→
+   465→  const filteredTemplates = useMemo(() => {
+   466→    return TEMPLATES.filter((t) => {
+   467→      const matchesCategory = activeCategory === "all" || t.category === activeCategory;
+   468→      const matchesSearch = !searchQuery ||
+   469→        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+   470→        t.domain.toLowerCase().includes(searchQuery.toLowerCase()) ||
+   471→        t.description.toLowerCase().includes(searchQuery.toLowerCase());
+   472→      return matchesCategory && matchesSearch;
+   473→    });
+   474→  }, [activeCategory, searchQuery]);
+   475→
+   476→  const totalInvariants = TEMPLATES.reduce((sum, t) => sum + t.invariants, 0);
+   477→  const domains = new Set(TEMPLATES.map((t) => t.domain)).size;
+   478→
+   479→  return (
+   480→    <section className="space-y-4">
+   481→      {/* Header */}
+   482→      <motion.div
+   483→        initial={{ opacity: 0, y: -8 }}
+   484→        animate={{ opacity: 1, y: 0 }}
+   485→        transition={{ duration: 0.4 }}
+   486→      >
+   487→        <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   488→          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-verified/0 via-verified/50 to-verified/0" />
+   489→          <div className="bg-grid absolute inset-0 opacity-20" />
+   490→          <div className="relative flex flex-wrap items-center gap-3">
+   491→            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 shrink-0">
+   492→              <Library className="h-5 w-5 text-verified" />
+   493→            </div>
+   494→            <div className="min-w-0 flex-1">
+   495→              <h2 className="text-base font-semibold flex items-center gap-2">
+   496→                Policy Template Library
+   497→                <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[9px] font-mono">
+   498→                  {TEMPLATES.length} templates
+   499→                </Badge>
+   500→              </h2>
+   501→              <p className="text-xs text-muted-foreground mt-0.5">
+   502→                Start from a domain template — edit, validate, and compile a new `.epd` policy in one click.
+   503→              </p>
+   504→            </div>
+   505→            {/* Stats */}
+   506→            <div className="flex items-center gap-3 shrink-0">
+   507→              <div className="text-center">
+   508→                <div className="font-mono text-lg font-bold text-verified">{totalInvariants}</div>
+   509→                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">invariants</div>
+   510→              </div>
+   511→              <Separator orientation="vertical" className="h-8 bg-border/40" />
+   512→              <div className="text-center">
+   513→                <div className="font-mono text-lg font-bold text-foreground">{domains}</div>
+   514→                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">domains</div>
+   515→              </div>
+   516→            </div>
+   517→          </div>
+   518→        </Card>
+   519→      </motion.div>
+   520→
+   521→      {/* Search + Category filter */}
+   522→      <motion.div
+   523→        initial={{ opacity: 0, y: 8 }}
+   524→        animate={{ opacity: 1, y: 0 }}
+   525→        transition={{ duration: 0.4, delay: 0.05 }}
+   526→        className="flex flex-wrap items-center gap-2"
+   527→      >
+   528→        {/* Search */}
+   529→        <div className="relative flex-1 min-w-[200px] max-w-sm">
+   530→          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+   531→          <Input
+   532→            value={searchQuery}
+   533→            onChange={(e) => setSearchQuery(e.target.value)}
+   534→            placeholder="Search templates…"
+   535→            className="h-8 pl-8 text-xs bg-card/60 border-border/60"
+   536→          />
+   537→        </div>
+   538→
+   539→        {/* Category filter buttons */}
+   540→        <div className="flex items-center gap-1">
+   541→          {CATEGORIES.map((cat) => {
+   542→            const Icon = cat.icon;
+   543→            const isActive = activeCategory === cat.id;
+   544→            return (
+   545→              <motion.button
+   546→                key={cat.id}
+   547→                whileTap={{ scale: 0.95 }}
+   548→                onClick={() => setActiveCategory(cat.id)}
+   549→                className={cn(
+   550→                  "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors",
+   551→                  isActive
+   552→                    ? "border-verified/40 bg-verified/10 text-verified"
+   553→                    : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground hover:border-border",
+   554→                )}
+   555→              >
+   556→                <Icon className="h-3 w-3" />
+   557→                <span className="hidden sm:inline">{cat.label}</span>
+   558→              </motion.button>
+   559→            );
+   560→          })}
+   561→        </div>
+   562→      </motion.div>
+   563→
+   564→      {/* Template grid */}
+   565→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   566→        <AnimatePresence mode="popLayout">
+   567→          {filteredTemplates.map((t, i) => {
+   568→            const Icon = t.icon;
+   569→            const domainColor = DOMAIN_COLORS[t.domain] ?? "border-border/60";
+   570→            const iconBgColor = DOMAIN_ICON_COLORS[t.domain] ?? "bg-verified/10 border-verified/20 text-verified group-hover:bg-verified/20";
+   571→            return (
+   572→              <motion.div
+   573→                key={t.id}
+   574→                initial={{ opacity: 0, y: 16, scale: 0.97 }}
+   575→                animate={{ opacity: 1, y: 0, scale: 1 }}
+   576→                exit={{ opacity: 0, scale: 0.95 }}
+   577→                transition={{ duration: 0.3, delay: i * 0.05 }}
+   578→                layout
+   579→              >
+   580→                <Card
+   581→                  className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden hover:border-verified/40 transition-all duration-200 cursor-pointer group"
+   582→                  onClick={() => openTemplate(t)}
+   583→                >
+   584→                  {/* Gradient border top accent */}
+   585→                  <div className={cn(
+   586→                    "absolute top-0 left-0 right-0 h-[2px]",
+   587→                    t.domain === "iot" ? "bg-gradient-to-r from-teal-500/0 via-teal-500/50 to-teal-500/0" :
+   588→                    t.domain === "datacenter" ? "bg-gradient-to-r from-verified/0 via-verified/50 to-verified/0" :
+   589→                    t.domain === "healthcare" ? "bg-gradient-to-r from-rose-500/0 via-rose-500/50 to-rose-500/0" :
+   590→                    t.domain === "energy" ? "bg-gradient-to-r from-amber-500/0 via-amber-500/50 to-amber-500/0" :
+   591→                    "bg-gradient-to-r from-verified/0 via-verified/30 to-verified/0",
+   592→                  )} />
+   593→                  <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   594→                  <div className="relative">
+   595→                    <div className="flex items-start gap-3">
+   596→                      <div className={cn("h-10 w-10 rounded-lg border flex items-center justify-center shrink-0 transition-colors", iconBgColor)}>
+   597→                        <Icon className="h-5 w-5" />
+   598→                      </div>
+   599→                      <div className="min-w-0 flex-1">
+   600→                        <div className="flex items-center gap-1.5">
+   601→                          <h3 className="text-sm font-semibold truncate">{t.name}</h3>
+   602→                          {t.featured && (
+   603→                            <Badge className="bg-verified/15 border border-verified/30 text-verified text-[8px] gap-0.5 px-1.5 py-0">
+   604→                              <Star className="h-2 w-2" /> featured
+   605→                            </Badge>
+   606→                          )}
+   607→                        </div>
+   608→                        <Badge variant="outline" className={cn("text-[9px] mt-0.5", domainColor)}>
+   609→                          {t.domain}
+   610→                        </Badge>
+   611→                      </div>
+   612→                      <motion.div
+   613→                        whileHover={{ x: 3 }}
+   614→                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+   615→                      >
+   616→                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+   617→                      </motion.div>
+   618→                    </div>
+   619→                    <p className="text-xs text-muted-foreground mt-2.5 leading-relaxed line-clamp-2">{t.description}</p>
+   620→                    <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+   621→                      <Badge variant="outline" className="text-[9px] border-border/60">
+   622→                        <ShieldCheck className="h-2.5 w-2.5 mr-0.5" /> {t.invariants} inv
+   623→                      </Badge>
+   624→                      {t.shard && (
+   625→                        <Badge variant="outline" className="text-[9px] border-border/60">sharded</Badge>
+   626→                      )}
+   627→                      {t.zk && (
+   628→                        <Badge variant="outline" className="text-[9px] border-verified/30 bg-verified/10 text-verified">ZK</Badge>
+   629→                      )}
+   630→                      {t.shadow && (
+   631→                        <Badge variant="outline" className="text-[9px] border-repairing/30 bg-repairing/10 text-repairing">shadow</Badge>
+   632→                      )}
+   633→                    </div>
+   634→
+   635→                    {/* Hover preview line */}
+   636→                    <div className="mt-2 h-0 group-hover:h-6 overflow-hidden transition-all duration-200">
+   637→                      <p className="text-[10px] text-muted-foreground/60 font-mono truncate">
+   638→                        {t.source.split("\n").find((l) => l.includes("invariant"))?.trim() ?? "Click to open editor"}
+   639→                      </p>
+   640→                    </div>
+   641→                  </div>
+   642→                </Card>
+   643→              </motion.div>
+   644→            );
+   645→          })}
+   646→        </AnimatePresence>
+   647→      </div>
+   648→
+   649→      {filteredTemplates.length === 0 && (
+   650→        <Card className="bg-card/60 border-dashed border-border/60 p-8 text-center">
+   651→          <Search className="mx-auto h-8 w-8 text-muted-foreground/40" />
+   652→          <p className="mt-2 text-sm text-muted-foreground">No templates match your search.</p>
+   653→          <p className="text-xs text-muted-foreground/70 mt-1">
+   654→            Try adjusting the category filter or search query.
+   655→          </p>
+   656→        </Card>
+   657→      )}
+   658→
+   659→      {/* Template editor dialog */}
+   660→      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+   661→        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+   662→          <DialogHeader>
+   663→            <DialogTitle className="flex items-center gap-2">
+   664→              {selected && (() => {
+   665→                const Icon = selected.icon;
+   666→                return <Icon className="h-4 w-4 text-verified" />;
+   667→              })()}
+   668→              {selected?.name ?? "Template"}
+   669→              {selected?.featured && (
+   670→                <Badge className="bg-verified/15 border border-verified/30 text-verified text-[8px] gap-0.5 px-1.5 py-0">
+   671→                  <Star className="h-2 w-2" /> featured
+   672→                </Badge>
+   673→              )}
+   674→            </DialogTitle>
+   675→            <DialogDescription>
+   676→              {selected?.description}
+   677→            </DialogDescription>
+   678→          </DialogHeader>
+   679→          <div className="flex items-center gap-2 py-1">
+   680→            <span className="text-[11px] text-muted-foreground shrink-0">Policy name:</span>
+   681→            <Input
+   682→              value={policyName}
+   683→              onChange={(e) => setPolicyName(e.target.value)}
+   684→              className="h-7 text-xs font-mono"
+   685→            />
+   686→          </div>
+   687→          <div className="flex-1 min-h-0 overflow-hidden rounded-md border border-border/60 bg-background/40">
+   688→            <Textarea
+   689→              value={editedSource}
+   690→              onChange={(e) => {
+   691→                setEditedSource(e.target.value);
+   692→                setValidation(null);
+   693→              }}
+   694→              spellCheck={false}
+   695→              className="codeblock h-[320px] w-full resize-none border-0 rounded-none bg-transparent focus-visible:ring-0 text-[11px]"
+   696→            />
+   697→          </div>
+   698→          {validation && (
+   699→            <motion.div
+   700→              initial={{ opacity: 0, y: 4 }}
+   701→              animate={{ opacity: 1, y: 0 }}
+   702→              className={cn(
+   703→                "rounded-md border px-2.5 py-1.5 text-xs",
+   704→                validation.ok
+   705→                  ? "border-verified/30 bg-verified/5 text-verified"
+   706→                  : "border-violating/30 bg-violating/5 text-violating",
+   707→              )}
+   708→            >
+   709→              {validation.ok
+   710→                ? `✓ Valid — ${validation.invCount} invariants compiled`
+   711→                : `✗ ${validation.errors} error(s) — fix the source above`}
+   712→            </motion.div>
+   713→          )}
+   714→          <DialogFooter>
+   715→            <Button size="sm" variant="outline" onClick={copy}>
+   716→              {copied ? <Check className="h-3.5 w-3.5 mr-1.5 text-verified" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
+   717→              {copied ? "Copied" : "Copy"}
+   718→            </Button>
+   719→            <Button size="sm" variant="outline" onClick={validate}>
+   720→              <ShieldCheck className="h-3.5 w-3.5 mr-1.5" /> Validate
+   721→            </Button>
+   722→            <motion.div whileTap={{ scale: 0.95 }} transition={{ type: "spring", stiffness: 400, damping: 17 }}>
+   723→              <Button size="sm" className="bg-verified/90 hover:bg-verified text-primary-foreground" onClick={create} disabled={deploying}>
+   724→                {deploying ? (
+   725→                  <>
+   726→                    <motion.div
+   727→                      animate={{ rotate: 360 }}
+   728→                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+   729→                    >
+   730→                      <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+   731→                    </motion.div>
+   732→                    Deploying…
+   733→                  </>
+   734→                ) : (
+   735→                  <>
+   736→                    <Rocket className="h-3.5 w-3.5 mr-1.5" /> Create policy
+   737→                  </>
+   738→                )}
+   739→              </Button>
+   740→            </motion.div>
+   741→          </DialogFooter>
+   742→        </DialogContent>
+   743→      </Dialog>
+   744→    </section>
+   745→  );
+   746→}
+   747→

@@ -1,0 +1,732 @@
+     1→"use client";
+     2→
+     3→import { useMemo, useState } from "react";
+     4→import {
+     5→  GitCompare,
+     6→  FileCode2,
+     7→  ArrowRight,
+     8→  CheckCircle2,
+     9→  XCircle,
+    10→  AlertTriangle,
+    11→  Plus,
+    12→  Minus,
+    13→  Equal,
+    14→  Hash,
+    15→  ArrowLeftRight,
+    16→  BarChart3,
+    17→} from "lucide-react";
+    18→import { Card } from "@/components/ui/card";
+    19→import { Button } from "@/components/ui/button";
+    20→import { Badge } from "@/components/ui/badge";
+    21→import { Textarea } from "@/components/ui/textarea";
+    22→import {
+    23→  Select,
+    24→  SelectContent,
+    25→  SelectItem,
+    26→  SelectTrigger,
+    27→  SelectValue,
+    28→} from "@/components/ui/select";
+    29→import { useToast } from "@/hooks/use-toast";
+    30→import { cn } from "@/lib/utils";
+    31→import {
+    32→  SAMPLE_POLICIES,
+    33→  validateEpd,
+    34→  type PolicyNode,
+    35→  type InvariantNode,
+    36→} from "@/lib/epd";
+    37→import { motion, AnimatePresence } from "framer-motion";
+    38→import { GradientBorderCard, containerVariants, cardVariants, itemVariants, fmtTimestamp } from "./primitives";
+    39→import {
+    40→  BarChart,
+    41→  Bar,
+    42→  XAxis,
+    43→  YAxis,
+    44→  Tooltip as RechartsTooltip,
+    45→  ResponsiveContainer,
+    46→  Cell,
+    47→} from "recharts";
+    48→
+    49→type DiffStatus = "added" | "removed" | "changed" | "unchanged";
+    50→
+    51→interface InvariantDiff {
+    52→  name: string;
+    53→  status: DiffStatus;
+    54→  left?: InvariantNode;
+    55→  right?: InvariantNode;
+    56→  changes: { field: string; from: string; to: string }[];
+    57→}
+    58→
+    59→interface PolicyDiffResult {
+    60→  leftName: string;
+    61→  rightName: string;
+    62→  shardChanged: boolean;
+    63→  shardFrom?: string;
+    64→  shardTo?: string;
+    65→  ancestryChanged: boolean;
+    66→  shadowChanged: boolean;
+    67→  repairChanged: boolean;
+    68→  exportsAdded: string[];
+    69→  exportsRemoved: string[];
+    70→  invariants: InvariantDiff[];
+    71→  added: number;
+    72→  removed: number;
+    73→  changed: number;
+    74→  unchanged: number;
+    75→}
+    76→
+    77→function diffPolicies(left: PolicyNode, right: PolicyNode): PolicyDiffResult {
+    78→  const leftInv = new Map(left.invariants.map((i) => [i.name, i]));
+    79→  const rightInv = new Map(right.invariants.map((i) => [i.name, i]));
+    80→  const allNames = Array.from(new Set([...leftInv.keys(), ...rightInv.keys()]));
+    81→
+    82→  const invariants: InvariantDiff[] = allNames.map((name) => {
+    83→    const l = leftInv.get(name);
+    84→    const r = rightInv.get(name);
+    85→    if (l && !r) {
+    86→      return { name, status: "removed", left: l, changes: [] };
+    87→    }
+    88→    if (!l && r) {
+    89→      return { name, status: "added", right: r, changes: [] };
+    90→    }
+    91→    if (l && r) {
+    92→      const changes: { field: string; from: string; to: string }[] = [];
+    93→      if (l.rawPredicate !== r.rawPredicate) {
+    94→        changes.push({ field: "predicate", from: l.rawPredicate, to: r.rawPredicate });
+    95→      }
+    96→      if (l.severity !== r.severity) {
+    97→        changes.push({ field: "severity", from: l.severity, to: r.severity });
+    98→      }
+    99→      if (l.soft !== r.soft) {
+   100→        changes.push({ field: "soft", from: String(l.soft), to: String(r.soft) });
+   101→      }
+   102→      if (l.tolerance !== r.tolerance) {
+   103→        changes.push({ field: "tolerance", from: String(l.tolerance), to: String(r.tolerance) });
+   104→      }
+   105→      return {
+   106→        name,
+   107→        status: changes.length ? "changed" : "unchanged",
+   108→        left: l,
+   109→        right: r,
+   110→        changes,
+   111→      };
+   112→    }
+   113→    return { name, status: "unchanged", changes: [] };
+   114→  });
+   115→
+   116→  invariants.sort((a, b) => {
+   117→    const order: Record<DiffStatus, number> = { changed: 0, added: 1, removed: 2, unchanged: 3 };
+   118→    return order[a.status] - order[b.status];
+   119→  });
+   120→
+   121→  const shardFrom = left.shard
+   122→    ? `${left.shard.dimension ?? left.shard.key} · ${left.shard.strategy}`
+   123→    : "—";
+   124→  const shardTo = right.shard
+   125→    ? `${right.shard.dimension ?? right.shard.key} · ${right.shard.strategy}`
+   126→    : "—";
+   127→
+   128→  return {
+   129→    leftName: left.name,
+   130→    rightName: right.name,
+   131→    shardChanged: shardFrom !== shardTo,
+   132→    shardFrom,
+   133→    shardTo,
+   134→    ancestryChanged:
+   135→      JSON.stringify(left.ancestry) !== JSON.stringify(right.ancestry),
+   136→    shadowChanged:
+   137→      JSON.stringify(left.shadowBridge) !== JSON.stringify(right.shadowBridge),
+   138→    repairChanged:
+   139→      JSON.stringify(left.onViolation) !== JSON.stringify(right.onViolation),
+   140→    exportsAdded: right.exports.filter((e) => !left.exports.includes(e)),
+   141→    exportsRemoved: left.exports.filter((e) => !right.exports.includes(e)),
+   142→    invariants,
+   143→    added: invariants.filter((i) => i.status === "added").length,
+   144→    removed: invariants.filter((i) => i.status === "removed").length,
+   145→    changed: invariants.filter((i) => i.status === "changed").length,
+   146→    unchanged: invariants.filter((i) => i.status === "unchanged").length,
+   147→  };
+   148→}
+   149→
+   150→const STATUS_META: Record<
+   151→  DiffStatus,
+   152→  { icon: typeof Plus; color: string; bg: string; text: string; label: string; lineBg: string }
+   153→> = {
+   154→  added: { icon: Plus, color: "text-verified", bg: "bg-verified/10 border-verified/30", text: "text-verified", label: "ADDED", lineBg: "bg-verified/8" },
+   155→  removed: { icon: Minus, color: "text-violating", bg: "bg-violating/10 border-violating/30", text: "text-violating", label: "REMOVED", lineBg: "bg-violating/8" },
+   156→  changed: { icon: AlertTriangle, color: "text-repairing", bg: "bg-repairing/10 border-repairing/30", text: "text-repairing", label: "CHANGED", lineBg: "bg-repairing/8" },
+   157→  unchanged: { icon: Equal, color: "text-muted-foreground", bg: "bg-muted/20 border-border/40", text: "text-muted-foreground", label: "SAME", lineBg: "bg-transparent" },
+   158→};
+   159→
+   160→export function PolicyDiffSection() {
+   161→  const { toast } = useToast();
+   162→  const [leftSource, setLeftSource] = useState(SAMPLE_POLICIES[0].source);
+   163→  const [rightSource, setRightSource] = useState(SAMPLE_POLICIES[1].source);
+   164→  const [leftFilename, setLeftFilename] = useState(SAMPLE_POLICIES[0].filename);
+   165→  const [rightFilename, setRightFilename] = useState(SAMPLE_POLICIES[1].filename);
+   166→
+   167→  const result = useMemo<PolicyDiffResult | null>(() => {
+   168→    try {
+   169→      const l = validateEpd(leftSource);
+   170→      const r = validateEpd(rightSource);
+   171→      if (!l.ok || !l.ast?.policies[0] || !r.ok || !r.ast?.policies[0]) return null;
+   172→      return diffPolicies(l.ast.policies[0], r.ast.policies[0]);
+   173→    } catch {
+   174→      return null;
+   175→    }
+   176→  }, [leftSource, rightSource]);
+   177→
+   178→  const loadSample = (side: "left" | "right", filename: string) => {
+   179→    const s = SAMPLE_POLICIES.find((p) => p.filename === filename);
+   180→    if (!s) return;
+   181→    if (side === "left") {
+   182→      setLeftSource(s.source);
+   183→      setLeftFilename(s.filename);
+   184→    } else {
+   185→      setRightSource(s.source);
+   186→      setRightFilename(s.filename);
+   187→    }
+   188→  };
+   189→
+   190→  const swap = () => {
+   191→    setLeftSource(rightSource);
+   192→    setLeftFilename(rightFilename);
+   193→    setRightSource(leftSource);
+   194→    setRightFilename(leftFilename);
+   195→    toast({ title: "Policies swapped" });
+   196→  };
+   197→
+   198→  const lineDiff = useMemo(() => {
+   199→    if (!result) return [];
+   200→    const leftLines = leftSource.split("\n");
+   201→    const rightLines = rightSource.split("\n");
+   202→    const maxLen = Math.max(leftLines.length, rightLines.length);
+   203→    const lines: { leftNum: number; leftText: string; rightNum: number; rightText: string; type: "same" | "left-only" | "right-only" | "changed" }[] = [];
+   204→
+   205→    for (let i = 0; i < maxLen; i++) {
+   206→      const ll = leftLines[i];
+   207→      const rl = rightLines[i];
+   208→      if (ll === undefined && rl !== undefined) {
+   209→        lines.push({ leftNum: 0, leftText: "", rightNum: i + 1, rightText: rl, type: "right-only" });
+   210→      } else if (rl === undefined && ll !== undefined) {
+   211→        lines.push({ leftNum: i + 1, leftText: ll, rightNum: 0, rightText: "", type: "left-only" });
+   212→      } else if (ll === rl) {
+   213→        lines.push({ leftNum: i + 1, leftText: ll, rightNum: i + 1, rightText: rl, type: "same" });
+   214→      } else {
+   215→        lines.push({ leftNum: i + 1, leftText: ll ?? "", rightNum: i + 1, rightText: rl ?? "", type: "changed" });
+   216→      }
+   217→    }
+   218→    return lines;
+   219→  }, [result, leftSource, rightSource]);
+   220→
+   221→  const diffStatsData = useMemo(() => {
+   222→    if (!result) return [];
+   223→    return [
+   224→      { name: "Added", value: result.added, fill: "oklch(0.78 0.16 160 / 0.7)" },
+   225→      { name: "Removed", value: result.removed, fill: "oklch(0.64 0.21 25 / 0.7)" },
+   226→      { name: "Changed", value: result.changed, fill: "oklch(0.80 0.15 80 / 0.7)" },
+   227→      { name: "Unchanged", value: result.unchanged, fill: "oklch(0.42 0.01 165 / 0.5)" },
+   228→    ];
+   229→  }, [result]);
+   230→
+   231→  return (
+   232→    <motion.section
+   233→      className="space-y-4"
+   234→      variants={containerVariants}
+   235→      initial="hidden"
+   236→      animate="show"
+   237→    >
+   238→      {/* Header */}
+   239→      <GradientBorderCard gradient="from-verified/40 via-repairing/20 to-violating/20" className="p-4">
+   240→        <div className="bg-grid absolute inset-0 opacity-20 pointer-events-none" />
+   241→        <div className="relative flex flex-wrap items-center gap-3">
+   242→          <motion.div variants={cardVariants} className="flex h-10 w-10 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 shrink-0">
+   243→            <GitCompare className="h-5 w-5 text-verified" />
+   244→          </motion.div>
+   245→          <motion.div variants={cardVariants} className="min-w-0 flex-1">
+   246→            <h2 className="text-base font-semibold flex items-center gap-2">
+   247→              Policy Diff
+   248→              <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[9px] font-mono">
+   249→                .epd comparison
+   250→              </Badge>
+   251→            </h2>
+   252→            <p className="text-xs text-muted-foreground mt-0.5">
+   253→              Compare two `.epd` policies side-by-side — invariant additions, removals, predicate changes, and structural drift.
+   254→            </p>
+   255→          </motion.div>
+   256→        </div>
+   257→      </GradientBorderCard>
+   258→
+   259→      {/* Two-column editors */}
+   260→      <motion.div variants={cardVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   261→        <DiffEditor
+   262→          side="left"
+   263→          label="Base policy"
+   264→          filename={leftFilename}
+   265→          source={leftSource}
+   266→          onSource={setLeftSource}
+   267→          onLoadSample={(f) => loadSample("left", f)}
+   268→          accent="violating"
+   269→        />
+   270→        <DiffEditor
+   271→          side="right"
+   272→          label="Proposed policy"
+   273→          filename={rightFilename}
+   274→          source={rightSource}
+   275→          onSource={setRightSource}
+   276→          onLoadSample={(f) => loadSample("right", f)}
+   277→          accent="verified"
+   278→        />
+   279→      </motion.div>
+   280→
+   281→      {/* Swap button */}
+   282→      <div className="flex justify-center -my-2 relative z-10">
+   283→        <motion.div whileHover={{ scale: 1.05, rotate: 180 }} whileTap={{ scale: 0.95 }} transition={{ duration: 0.3 }}>
+   284→          <Button
+   285→            size="sm"
+   286→            variant="outline"
+   287→            onClick={swap}
+   288→            className="h-8 px-3 bg-card/80 backdrop-blur border-border/60"
+   289→          >
+   290→            <ArrowLeftRight className="h-3.5 w-3.5 mr-1.5" />
+   291→            swap sides
+   292→          </Button>
+   293→        </motion.div>
+   294→      </div>
+   295→
+   296→      {/* Diff result */}
+   297→      <AnimatePresence mode="wait">
+   298→        {result ? (
+   299→          <motion.div
+   300→            key="diff-result"
+   301→            initial={{ opacity: 0, y: 12 }}
+   302→            animate={{ opacity: 1, y: 0 }}
+   303→            exit={{ opacity: 0, y: -12 }}
+   304→            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+   305→            className="space-y-4"
+   306→          >
+   307→            {/* Summary bar with diff stats chart */}
+   308→            <GradientBorderCard gradient="from-verified/30 via-repairing/20 to-violating/20" className="p-4">
+   309→              <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-4">
+   310→                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   311→                  <DiffStat icon={Plus} label="Added" value={result.added} accent="verified" />
+   312→                  <DiffStat icon={Minus} label="Removed" value={result.removed} accent="violating" />
+   313→                  <DiffStat icon={AlertTriangle} label="Changed" value={result.changed} accent="repairing" />
+   314→                  <DiffStat icon={Equal} label="Unchanged" value={result.unchanged} accent="muted" />
+   315→                </div>
+   316→                <div className="h-[80px]">
+   317→                  <ResponsiveContainer width="100%" height="100%">
+   318→                    <BarChart data={diffStatsData} layout="vertical" barCategoryGap={4}>
+   319→                      <XAxis type="number" hide />
+   320→                      <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: "oklch(0.55 0.01 160)" }} axisLine={false} tickLine={false} width={65} />
+   321→                      <RechartsTooltip
+   322→                        contentStyle={{
+   323→                          backgroundColor: "oklch(0.22 0.014 168)",
+   324→                          border: "1px solid oklch(0.32 0.014 165)",
+   325→                          borderRadius: "6px",
+   326→                          fontSize: "11px",
+   327→                        }}
+   328→                      />
+   329→                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+   330→                        {diffStatsData.map((entry, index) => (
+   331→                          <Cell key={`cell-${index}`} fill={entry.fill} />
+   332→                        ))}
+   333→                      </Bar>
+   334→                    </BarChart>
+   335→                  </ResponsiveContainer>
+   336→                </div>
+   337→              </div>
+   338→            </GradientBorderCard>
+   339→
+   340→            {/* Structural diff with drift visualization */}
+   341→            <GradientBorderCard gradient="from-repairing/30 via-verified/15 to-repairing/20" className="p-4">
+   342→              <div className="relative space-y-2">
+   343→                <div className="flex items-center gap-2 mb-1">
+   344→                  <FileCode2 className="h-4 w-4 text-repairing" />
+   345→                  <span className="text-sm font-semibold">Structural drift</span>
+   346→                  <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+   347→                    {result.leftName} → {result.rightName}
+   348→                  </span>
+   349→                </div>
+   350→                {/* Drift bar visualization */}
+   351→                <StructDriftBar result={result} />
+   352→                <StructRow
+   353→                  label="Shard"
+   354→                  from={result.shardFrom ?? "—"}
+   355→                  to={result.shardTo ?? "—"}
+   356→                  changed={result.shardChanged}
+   357→                />
+   358→                <StructRow
+   359→                  label="Ancestry"
+   360→                  from={result.shardChanged ? "config A" : "config"}
+   361→                  to={result.shardChanged ? "config B" : "config"}
+   362→                  changed={result.ancestryChanged}
+   363→                  hideValues={!result.ancestryChanged}
+   364→                />
+   365→                <StructRow
+   366→                  label="Shadow bridge"
+   367→                  from="config"
+   368→                  to="config"
+   369→                  changed={result.shadowChanged}
+   370→                  hideValues={!result.shadowChanged}
+   371→                />
+   372→                <StructRow
+   373→                  label="Repair strategy"
+   374→                  from="config"
+   375→                  to="config"
+   376→                  changed={result.repairChanged}
+   377→                  hideValues={!result.repairChanged}
+   378→                />
+   379→                {(result.exportsAdded.length > 0 || result.exportsRemoved.length > 0) && (
+   380→                  <motion.div
+   381→                    variants={itemVariants}
+   382→                    className="flex items-center gap-2 rounded-md border border-border/40 bg-background/40 px-2.5 py-1.5 text-xs"
+   383→                  >
+   384→                    <span className="text-muted-foreground font-mono w-28 shrink-0">Exports</span>
+   385→                    {result.exportsAdded.map((e) => (
+   386→                      <Badge key={`a-${e}`} variant="outline" className="text-[9px] border-verified/30 bg-verified/10 text-verified">
+   387→                        <Plus className="h-2.5 w-2.5 mr-0.5" /> {e}
+   388→                      </Badge>
+   389→                    ))}
+   390→                    {result.exportsRemoved.map((e) => (
+   391→                      <Badge key={`r-${e}`} variant="outline" className="text-[9px] border-violating/30 bg-violating/10 text-violating">
+   392→                        <Minus className="h-2.5 w-2.5 mr-0.5" /> {e}
+   393→                      </Badge>
+   394→                    ))}
+   395→                  </motion.div>
+   396→                )}
+   397→              </div>
+   398→            </GradientBorderCard>
+   399→
+   400→            {/* Invariant diffs with hover and animation */}
+   401→            <GradientBorderCard gradient="from-verified/30 via-repairing/15 to-verified/20" className="p-4">
+   402→              <div className="relative">
+   403→                <div className="flex items-center gap-2 mb-2">
+   404→                  <Hash className="h-4 w-4 text-verified" />
+   405→                  <span className="text-sm font-semibold">Invariant changes</span>
+   406→                  <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+   407→                    {result.invariants.length} total
+   408→                  </span>
+   409→                </div>
+   410→                <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+   411→                  {result.invariants.map((inv, idx) => {
+   412→                    const m = STATUS_META[inv.status];
+   413→                    const Icon = m.icon;
+   414→                    return (
+   415→                      <motion.div
+   416→                        key={inv.name}
+   417→                        variants={itemVariants}
+   418→                        custom={idx}
+   419→                        whileHover={{ scale: 1.005, x: 2 }}
+   420→                        whileTap={{ scale: 0.995 }}
+   421→                        className={cn("rounded-md border px-2.5 py-1.5 transition-shadow hover:shadow-md", m.bg)}
+   422→                      >
+   423→                        <div className="flex items-center gap-2">
+   424→                          <motion.div
+   425→                            initial={{ scale: 0 }}
+   426→                            animate={{ scale: 1 }}
+   427→                            transition={{ type: "spring", stiffness: 400, damping: 20, delay: idx * 0.03 }}
+   428→                          >
+   429→                            <Icon className={cn("h-3.5 w-3.5 shrink-0", m.text)} />
+   430→                          </motion.div>
+   431→                          <span className="font-mono text-xs font-medium truncate">{inv.name}</span>
+   432→                          <span className={cn("ml-auto text-[9px] font-semibold uppercase tracking-wide", m.text)}>
+   433→                            {m.label}
+   434→                          </span>
+   435→                        </div>
+   436→                        {inv.status === "added" && inv.right && (
+   437→                          <div className="mt-1 pl-5.5 font-mono text-[11px] text-verified bg-verified/5 rounded px-1.5 py-0.5">
+   438→                            + {inv.right.rawPredicate}
+   439→                          </div>
+   440→                        )}
+   441→                        {inv.status === "removed" && inv.left && (
+   442→                          <div className="mt-1 pl-5.5 font-mono text-[11px] text-violating bg-violating/5 rounded px-1.5 py-0.5 line-through opacity-70">
+   443→                            - {inv.left.rawPredicate}
+   444→                          </div>
+   445→                        )}
+   446→                        {inv.status === "changed" && inv.changes.map((c, i) => (
+   447→                          <div key={i} className="mt-1 pl-5.5 space-y-0.5">
+   448→                            <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
+   449→                              {c.field}
+   450→                            </div>
+   451→                            <div className="font-mono text-[11px] flex items-center gap-1.5 flex-wrap">
+   452→                              <span className="text-violating line-through opacity-70 bg-violating/5 px-1 rounded">{c.from}</span>
+   453→                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+   454→                              <span className="text-verified bg-verified/5 px-1 rounded">{c.to}</span>
+   455→                            </div>
+   456→                          </div>
+   457→                        ))}
+   458→                        {inv.status === "unchanged" && inv.left && (
+   459→                          <div className="mt-1 pl-5.5 font-mono text-[11px] text-muted-foreground/60">
+   460→                            {inv.left.rawPredicate}
+   461→                          </div>
+   462→                        )}
+   463→                      </motion.div>
+   464→                    );
+   465→                  })}
+   466→                </div>
+   467→              </div>
+   468→            </GradientBorderCard>
+   469→
+   470→            {/* Line-by-line diff view */}
+   471→            <GradientBorderCard gradient="from-violating/30 via-repairing/15 to-verified/20" className="p-4">
+   472→              <div className="relative">
+   473→                <div className="flex items-center gap-2 mb-2">
+   474→                  <BarChart3 className="h-4 w-4 text-repairing" />
+   475→                  <span className="text-sm font-semibold">Line-by-line diff</span>
+   476→                  <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+   477→                    {leftSource.split("\n").length} / {rightSource.split("\n").length} lines
+   478→                  </span>
+   479→                </div>
+   480→                <div className="max-h-[360px] overflow-y-auto rounded-md border border-border/40 bg-background/30 font-mono text-[11px]">
+   481→                  {lineDiff.map((line, i) => (
+   482→                    <motion.div
+   483→                      key={i}
+   484→                      initial={{ opacity: 0 }}
+   485→                      animate={{ opacity: 1 }}
+   486→                      transition={{ delay: i * 0.01 }}
+   487→                      className={cn(
+   488→                        "flex border-b border-border/20 last:border-0",
+   489→                        line.type === "left-only" && "bg-violating/5",
+   490→                        line.type === "right-only" && "bg-verified/5",
+   491→                        line.type === "changed" && "bg-repairing/5",
+   492→                      )}
+   493→                    >
+   494→                      {/* Left side */}
+   495→                      <div className="w-1/2 flex border-r border-border/20">
+   496→                        <span className={cn(
+   497→                          "select-none w-8 shrink-0 text-right pr-1.5 py-0.5 text-[9px]",
+   498→                          line.type === "left-only" ? "text-violating/70 bg-violating/10" : line.type === "changed" ? "text-repairing/70 bg-repairing/10" : "text-muted-foreground/40",
+   499→                        )}>
+   500→                          {line.leftNum || ""}
+   501→                        </span>
+   502→                        <span className={cn(
+   503→                          "flex-1 px-1.5 py-0.5 whitespace-pre overflow-hidden",
+   504→                          line.type === "left-only" && "text-violating",
+   505→                          line.type === "changed" && "text-violating/80",
+   506→                        )}>
+   507→                          {line.type === "left-only" && <Minus className="inline h-3 w-3 mr-0.5 text-violating" />}
+   508→                          {line.type === "changed" && <Minus className="inline h-3 w-3 mr-0.5 text-violating/50" />}
+   509→                          {line.leftText}
+   510→                        </span>
+   511→                      </div>
+   512→                      {/* Right side */}
+   513→                      <div className="w-1/2 flex">
+   514→                        <span className={cn(
+   515→                          "select-none w-8 shrink-0 text-right pr-1.5 py-0.5 text-[9px]",
+   516→                          line.type === "right-only" ? "text-verified/70 bg-verified/10" : line.type === "changed" ? "text-repairing/70 bg-repairing/10" : "text-muted-foreground/40",
+   517→                        )}>
+   518→                          {line.rightNum || ""}
+   519→                        </span>
+   520→                        <span className={cn(
+   521→                          "flex-1 px-1.5 py-0.5 whitespace-pre overflow-hidden",
+   522→                          line.type === "right-only" && "text-verified",
+   523→                          line.type === "changed" && "text-verified/80",
+   524→                        )}>
+   525→                          {line.type === "right-only" && <Plus className="inline h-3 w-3 mr-0.5 text-verified" />}
+   526→                          {line.type === "changed" && <Plus className="inline h-3 w-3 mr-0.5 text-verified/50" />}
+   527→                          {line.rightText}
+   528→                        </span>
+   529→                      </div>
+   530→                    </motion.div>
+   531→                  ))}
+   532→                </div>
+   533→              </div>
+   534→            </GradientBorderCard>
+   535→          </motion.div>
+   536→        ) : (
+   537→          <motion.div
+   538→            key="diff-empty"
+   539→            initial={{ opacity: 0 }}
+   540→            animate={{ opacity: 1 }}
+   541→            exit={{ opacity: 0 }}
+   542→          >
+   543→            <GradientBorderCard gradient="from-violating/30 to-violating/10" className="p-8 text-center">
+   544→              <AlertTriangle className="mx-auto h-8 w-8 text-muted-foreground/40" />
+   545→              <p className="mt-2 text-sm text-muted-foreground">
+   546→                One or both policies failed to parse.
+   547→              </p>
+   548→              <p className="text-xs text-muted-foreground/70 mt-1">
+   549→                Fix the `.epd` source in the editors above to see the diff.
+   550→              </p>
+   551→            </GradientBorderCard>
+   552→          </motion.div>
+   553→        )}
+   554→      </AnimatePresence>
+   555→    </motion.section>
+   556→  );
+   557→}
+   558→
+   559→function DiffEditor({
+   560→  side,
+   561→  label,
+   562→  filename,
+   563→  source,
+   564→  onSource,
+   565→  onLoadSample,
+   566→  accent,
+   567→}: {
+   568→  side: "left" | "right";
+   569→  label: string;
+   570→  filename: string;
+   571→  source: string;
+   572→  onSource: (s: string) => void;
+   573→  onLoadSample: (filename: string) => void;
+   574→  accent: "verified" | "violating";
+   575→}) {
+   576→  const lines = source.split("\n");
+   577→  const borderColor = accent === "verified" ? "border-verified/30" : "border-violating/30";
+   578→  const dotColor = accent === "verified" ? "bg-verified" : "bg-violating";
+   579→  const gradient = accent === "verified" ? "from-verified/40 to-verified/10" : "from-violating/40 to-violating/10";
+   580→
+   581→  return (
+   582→    <GradientBorderCard gradient={gradient} className={cn("p-0", borderColor)}>
+   583→      <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2 bg-background/40">
+   584→        <span className={cn("h-2 w-2 rounded-full", dotColor)} />
+   585→        <span className="text-xs font-medium">{label}</span>
+   586→        <span className="font-mono text-[11px] text-muted-foreground truncate">{filename}</span>
+   587→        <Select value={filename} onValueChange={onLoadSample}>
+   588→          <SelectTrigger className="h-6 w-[150px] text-[10px] ml-auto">
+   589→            <SelectValue />
+   590→          </SelectTrigger>
+   591→          <SelectContent>
+   592→            {SAMPLE_POLICIES.map((s) => (
+   593→              <SelectItem key={s.filename} value={s.filename}>
+   594→                {s.filename}
+   595→              </SelectItem>
+   596→            ))}
+   597→          </SelectContent>
+   598→        </Select>
+   599→      </div>
+   600→      <div className="relative flex bg-background/30 h-[360px]">
+   601→        <div
+   602→          className="select-none overflow-hidden py-2 pl-2.5 pr-1.5 text-right font-mono text-[10px] text-muted-foreground/50 bg-background/20 shrink-0"
+   603→          style={{ minWidth: 36 }}
+   604→          aria-hidden
+   605→        >
+   606→          {lines.map((_, i) => (
+   607→            <div key={i} style={{ height: "1.5em", lineHeight: "1.5em" }}>
+   608→              {i + 1}
+   609→            </div>
+   610→          ))}
+   611→        </div>
+   612→        <Textarea
+   613→          value={source}
+   614→          onChange={(e) => onSource(e.target.value)}
+   615→          spellCheck={false}
+   616→          className="codeblock flex-1 h-full resize-none border-0 rounded-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-[11px]"
+   617→        />
+   618→      </div>
+   619→    </GradientBorderCard>
+   620→  );
+   621→}
+   622→
+   623→function DiffStat({
+   624→  icon: Icon,
+   625→  label,
+   626→  value,
+   627→  accent,
+   628→}: {
+   629→  icon: typeof Plus;
+   630→  label: string;
+   631→  value: number;
+   632→  accent: "verified" | "violating" | "repairing" | "muted";
+   633→}) {
+   634→  const color =
+   635→    accent === "verified"
+   636→      ? "text-verified"
+   637→      : accent === "violating"
+   638→        ? "text-violating"
+   639→        : accent === "repairing"
+   640→          ? "text-repairing"
+   641→          : "text-muted-foreground";
+   642→  return (
+   643→    <motion.div
+   644→      className="flex items-center gap-2.5"
+   645→      whileHover={{ scale: 1.05 }}
+   646→      whileTap={{ scale: 0.95 }}
+   647→    >
+   648→      <div className="h-8 w-8 rounded-md bg-background/60 flex items-center justify-center shrink-0">
+   649→        <Icon className={cn("h-4 w-4", color)} />
+   650→      </div>
+   651→      <div>
+   652→        <div className={cn("text-xl font-semibold tabular-nums leading-none", color)}>{value}</div>
+   653→        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{label}</div>
+   654→      </div>
+   655→    </motion.div>
+   656→  );
+   657→}
+   658→
+   659→function StructDriftBar({ result }: { result: PolicyDiffResult }) {
+   660→  const total = 4; // shard, ancestry, shadow, repair
+   661→  const drifts = [
+   662→    { label: "shard", changed: result.shardChanged },
+   663→    { label: "ancestry", changed: result.ancestryChanged },
+   664→    { label: "shadow", changed: result.shadowChanged },
+   665→    { label: "repair", changed: result.repairChanged },
+   666→  ];
+   667→  const driftCount = drifts.filter((d) => d.changed).length;
+   668→
+   669→  return (
+   670→    <div className="flex items-center gap-2 mb-1">
+   671→      <span className="text-[10px] text-muted-foreground shrink-0">drift score</span>
+   672→      <div className="flex-1 h-2 rounded-full bg-muted/30 overflow-hidden flex">
+   673→        {drifts.map((d, i) => (
+   674→          <motion.div
+   675→            key={d.label}
+   676→            className={cn("h-full", d.changed ? "bg-repairing/70" : "bg-verified/30")}
+   677→            initial={{ width: 0 }}
+   678→            animate={{ width: `${100 / total}%` }}
+   679→            transition={{ delay: i * 0.08, type: "spring", stiffness: 300, damping: 25 }}
+   680→            title={`${d.label}: ${d.changed ? "changed" : "unchanged"}`}
+   681→          />
+   682→        ))}
+   683→      </div>
+   684→      <span className={cn("text-[10px] font-mono font-medium shrink-0", driftCount > 0 ? "text-repairing" : "text-verified")}>
+   685→        {driftCount}/{total} drifted
+   686→      </span>
+   687→    </div>
+   688→  );
+   689→}
+   690→
+   691→function StructRow({
+   692→  label,
+   693→  from,
+   694→  to,
+   695→  changed,
+   696→  hideValues = false,
+   697→}: {
+   698→  label: string;
+   699→  from: string;
+   700→  to: string;
+   701→  changed: boolean;
+   702→  hideValues?: boolean;
+   703→}) {
+   704→  return (
+   705→    <motion.div
+   706→      className={cn(
+   707→        "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs",
+   708→        changed
+   709→          ? "border-repairing/30 bg-repairing/5"
+   710→          : "border-border/40 bg-background/30",
+   711→      )}
+   712→      whileHover={{ scale: 1.005, x: 2 }}
+   713→      transition={{ type: "spring", stiffness: 400, damping: 28 }}
+   714→    >
+   715→      <span className="text-muted-foreground font-mono w-28 shrink-0">{label}</span>
+   716→      {changed ? (
+   717→        <div className="flex items-center gap-1.5 font-mono text-[11px] min-w-0 flex-1">
+   718→          <span className="text-violating line-through opacity-70 truncate">{from}</span>
+   719→          <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+   720→          <span className="text-verified truncate">{to}</span>
+   721→        </div>
+   722→      ) : (
+   723→        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+   724→          {!hideValues && <span className="font-mono text-[11px] text-muted-foreground truncate">{from}</span>}
+   725→          <CheckCircle2 className="h-3 w-3 text-verified ml-auto shrink-0" />
+   726→          <span className="text-[10px] text-verified">unchanged</span>
+   727→        </div>
+   728→      )}
+   729→    </motion.div>
+   730→  );
+   731→}
+   732→

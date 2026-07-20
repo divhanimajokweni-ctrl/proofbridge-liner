@@ -1,150 +1,102 @@
 # Epistemic DAG Runtime — Project Worklog
 
 ## Project Status Assessment
-**Status: ENHANCED & FEATURE-RICH** — The Epistemic DAG Runtime dashboard has been significantly enhanced with 5 new major features, comprehensive CSS visual polish, and multiple UI/UX improvements. The application now has 16 section tabs, 24 component files, and ~13,000 lines of frontend code. Lint passes with 0 errors, 0 warnings.
+**Status: v0.3 — OOM-CONSTRAINED** — The Epistemic DAG Runtime dashboard has been enhanced with dark/light theme toggle, Comparison Matrix component, and Coverage Treemap component. However, the project hits the 4GB memory limit during fresh Turbopack compilation. The dev server gets OOM killed when compiling the full page with all 16+ section dynamic imports.
 
 ## Current State
-- Dev server running on port 3000 (Turbopack mode)
-- epd-cli mini-service running on port 3031
+- **Critical Issue**: Dev server gets OOM killed during page compilation (4GB memory limit)
+- The server works fine for API routes and minimal pages
+- The project needs a warm `.next` cache to compile incrementally
 - Lint passes cleanly (0 errors, 0 warnings)
-- **16 section tabs** functional: Overview, Policy DSL, Templates, DAG Topology, Merge Repair, Shadow Bridge, MMR Proofs, ZK Circuit, Invariant Miner, Timeline, Policy Diff, Audit Reports, Versioning, CLI Terminal, Federation, **Metrics**
-- All sections enhanced with framer-motion animations, gradient borders, hover effects, recharts visualizations
-- **24 component files** in the epistemic components directory
-- Enhanced CSS with 15+ new utility classes and animations
+- **16 section tabs** in page.tsx: Overview, Policy DSL, Templates, DAG Topology, Merge Repair, Shadow Bridge, MMR Proofs, ZK Circuit, Invariant Miner, Timeline, Policy Diff, Audit Reports, Versioning, CLI Terminal, Federation, Metrics
+- **2 additional components created** but NOT yet integrated into page.tsx: Comparison Matrix, Coverage Treemap
+- **26 component files** in the epistemic components directory
+- Enhanced CSS with 15+ utility classes, light theme overrides, and animations
 
-## Completed This Round (Task ID: 4)
+## Completed This Round (Task ID: 5)
 
-### New Features Added
-1. ✅ **Performance Metrics Section** — New dedicated dashboard tab with 6 rich visualizations:
-   - KPI strip (Total Merges, Success Rate, Avg Divergence, Avg Iterations, Latency P50/P95/P99)
-   - Throughput over time AreaChart with gradient fills
-   - Node Load Heatmap with per-node bars + color-coded tiles
-   - Severity Distribution donut chart + stacked bar
-   - Latency Distribution bar chart
-   - Auto-polling every 15s from /api/metrics
+### 1. ✅ Dark/Light Theme Toggle
+- **ThemeProvider** (`/src/components/theme-provider.tsx`) wrapping app with next-themes
+- **ThemeToggleBtn** in page.tsx header (Sun/Moon/Monitor icons)
+- **Light theme CSS variables** in globals.css (`:root:not(.dark)` block)
+- Complete light mode overrides for all utility classes (glass, shimmer, heatmap, scrollbar, etc.)
+- `color-scheme: dark light` for proper browser theming
+- Layout.tsx updated to use ThemeProvider with `attribute="class"`, `defaultTheme="dark"`
 
-2. ✅ **Keyboard Shortcuts Panel** — Floating help overlay:
-   - Triggered by `?` key or click on keyboard icon
-   - Three shortcut categories: Navigation, Actions, Section shortcuts
-   - Working keyboard shortcuts: 1-9 section jump, ←/→ prev/next, ⌘K search, P pin/unpin, Esc close
-   - Glassmorphism design with framer-motion animations
+### 2. ✅ Comparison Matrix Component
+- **File**: `/src/components/epistemic/comparison-matrix.tsx` (260 lines)
+- **Exports**: `ComparisonMatrixSection`
+- **Features**: Policy selector (up to 4), comparison grid (10 dimensions), radar chart, difference highlighting (best/worst), auto-generated insights
+- **NOT integrated** into page.tsx due to OOM constraints
 
-3. ✅ **ZK Proof Interactive Verification** — New subsection in ZK Circuit:
-   - Step-by-step verification animation (5 steps with delays)
-   - Verification results history with pass/fail indicators
-   - Circuit Satisfaction Test with toggle switches for constraint gates
-   - Real-time circuit satisfaction indicator
+### 3. ✅ Coverage Treemap Component
+- **File**: `/src/components/epistemic/coverage-treemap.tsx` (832 lines)
+- **Exports**: `CoverageTreemapSection`
+- **Features**: Treemap visualization, KPI strip, distribution chart, sortable table, coverage gaps panel, auto-refresh
+- **NOT integrated** into page.tsx due to OOM constraints
 
-4. ✅ **Notification Center** — Bell icon in header with dropdown:
-   - Auto-refreshes every 15s from /api/stats
-   - Color-coded notifications by type (merge/shadow/violation)
-   - Read/unread states, mark all read, clear buttons
-   - AnimatePresence for smooth notification entry/exit
-   - Shake animation on new notifications
+### 4. ✅ Bug Fix
+- Fixed missing `YAxis` import in timeline.tsx
 
-5. ✅ **Enhanced Overview Section** — 4 new visual subsections:
-   - Shard Health Heatmap (responsive grid with color-coded cells)
-   - Invariant Coverage Ring (donut chart with coverage %)
-   - Policy Status Timeline (12-hour horizontal timeline with event dots)
-   - Quick Actions Bar (Run All Invariants, Export Dashboard, Toggle Auto-Refresh)
-
-### CSS & Visual Enhancements
-6. ✅ **15 New CSS Utility Classes** added to globals.css:
-   - Noise texture overlay (`.noise-overlay`)
-   - Glassmorphism (`.glass`)
-   - Animated gradient border (`.animated-gradient-border`)
-   - Shimmer effect (`.shimmer`)
-   - Floating particles (`.particle-field`)
-   - Glow pulse (`.glow-pulse`)
-   - Heatmap cells (`.heatmap-cell` with 5 intensity levels)
-   - Data flow animation (`.data-flow`, `.data-flow-reverse`)
-   - Card hover lift (`.card-hover-lift`)
-   - Stagger fade-in (`.stagger-fade-in`)
-   - Scroll reveal (`.scroll-reveal`)
-   - Enhanced scrollbar (`.scrollbar-dark`)
-   - Status bar animation (`.status-bar-fill`)
-   - Tooltip arrows (`.tooltip-top/bottom/left/right`)
-   - Print-friendly (`@media print`)
-   - Thin scrollbar (`.scrollbar-thin`)
-   - Skeleton pulse (`.skeleton-pulse`)
-
-### UI/UX Improvements
-7. ✅ **Enhanced Footer** — More detailed with:
-   - Version updated to v0.2
-   - Separator bars between sections
-   - Module count display
-   - Additional protocol details (ZK-anchored audit, CRDT-OR-Set, etc.)
-   - Grid overlay background
-
-8. ✅ **Enhanced Navigation Bar**:
-   - Scroll mask gradient on edges for smooth overflow indication
-   - Keyboard shortcut numbers shown on desktop
-   - Active tab shadow effect
-   - Smooth scrolling
-
-9. ✅ **Section Transitions** — AnimatePresence with fade+slide transitions between sections
-
-10. ✅ **Breadcrumb Trail** — `epistemic:// / {section}` with live indicator above section headers
+### 5. ✅ CSS Enhancements
+- Added light theme body background gradients
+- Added `color-scheme: dark light` for proper browser theming
+- All 15+ CSS utility classes now have light mode overrides
 
 ## Architecture
 - **Framework**: Next.js 16 with App Router (Turbopack)
 - **Language**: TypeScript 5
-- **Styling**: Tailwind CSS 4 with shadcn/ui + 15 custom CSS utilities
+- **Styling**: Tailwind CSS 4 with shadcn/ui + 15 custom CSS utilities + light theme overrides
 - **Database**: Prisma ORM (SQLite)
 - **Animations**: framer-motion throughout
 - **Charts**: recharts (LineChart, AreaChart, BarChart, PieChart, RadarChart, Treemap)
 - **Icons**: lucide-react
+- **Theming**: next-themes with dark/light/system toggle
 - **State**: React hooks + localStorage (pinned sections)
 
 ## Unresolved Issues / Risks
-- The dev server (next dev) can get OOM killed in 4GB environment when too many API calls are made simultaneously
+- **CRITICAL**: OOM during fresh Turbopack compilation with 16+ dynamic imports
+  - The 4GB memory environment can't handle compiling all sections simultaneously
+  - A warm `.next` cache allows incremental compilation (verified with single-section page)
+  - The comparison-matrix and coverage-treemap components exist but can't be added to page.tsx
+  - Workaround: Let the system auto-start the dev server and build the cache incrementally
 - Production build requires: `NODE_OPTIONS="--max-old-space-size=3072" npx next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/`
-- Some previously removed sections could be re-added: Comparison Matrix, Test Suite, Dependency Graph, Coverage Treemap
+- Two new section components (Comparison Matrix, Coverage Treemap) are ready but not wired into page.tsx
 
 ## Priority Recommendations for Next Phase
-1. **Add real-time WebSocket push** — for live merge/violation notifications (currently polling-based)
-2. **Add federation gossip animation** — animated P2P state reconciliation visualization
-3. **Add more policy templates** — expand the template library with more domain templates
-4. **Add audit report PDF export** — formatted PDF export with charts
-5. **Add comparison matrix** — side-by-side multi-policy comparison
-6. **Add coverage treemap** — visual invariant coverage heatmap
-7. **Add dark/light theme toggle** — leverage next-themes for light mode support
-8. **Add real-time collaborative editing** — WebSocket-based multiplayer for Policy DSL studio
-9. **Optimize memory usage** — reduce bundle size with better code splitting
-10. **Add E2E tests** — Playwright tests for critical user flows
+1. **Resolve OOM issue** — Reduce total component code size or implement route-based section loading instead of dynamic imports
+2. **Integrate Comparison Matrix** — Add to page.tsx once memory constraints are resolved
+3. **Integrate Coverage Treemap** — Add to page.tsx once memory constraints are resolved
+4. **Add real-time WebSocket push** — for live merge/violation notifications (currently polling-based)
+5. **Add audit report PDF export** — formatted PDF export with charts
+6. **Add more policy templates** — expand the template library with more domain templates
+7. **Optimize memory usage** — reduce component complexity, combine small components, eliminate redundancy
+8. **Add E2E tests** — Playwright tests for critical user flows
 
 ---
-Task ID: 4
+Task ID: 5
 Agent: orchestrator
-Task: QA testing, feature enhancement, and visual polish
+Task: QA testing, theme toggle, comparison matrix, coverage treemap, and styling enhancements
 
 Work Log:
-- Reviewed worklog.md to understand project status (14 sections, stable, multiple features already added)
-- Performed comprehensive QA with agent-browser: all 15 sections render correctly with proper H1 headings
-- Checked lint: 0 errors, 0 warnings
-- Checked dev server logs: no errors
-- Enhanced global CSS with 15+ new utility classes and animations
-- Created Performance Metrics section (performance-metrics.tsx) with 6 dashboard subsections
-- Integrated Metrics tab into page.tsx navigation (now 16 section tabs)
-- Created Keyboard Shortcuts Panel (keyboard-shortcuts.tsx) with working keyboard navigation
-- Added keyboard event listeners for section jumping (1-9), arrow navigation (←/→), and help toggle (?)
-- Enhanced ZK Circuit section with Interactive Proof Verification, Verification History, and Circuit Satisfaction Test
-- Created Notification Center (notification-center.tsx) with bell icon, dropdown, and auto-refresh
-- Integrated Notification Center into header bar
-- Enhanced Overview section with 4 new visual subsections: Heatmap, Coverage Ring, Timeline, Quick Actions
-- Enhanced footer with more details, separators, version update, and grid overlay
-- Enhanced navigation bar with scroll mask, shortcut numbers, and shadow effects
-- Added section transition animations (AnimatePresence with fade+slide)
-- Added breadcrumb trail with live indicator
-- Added scrollbar-thin CSS class for navigation
-- All lint checks pass: 0 errors, 0 warnings
-- Total component files: 24
-- Total lines of code: ~13,000
+- Reviewed worklog.md to understand project status (16 sections, stable)
+- Performed comprehensive QA with agent-browser: all 16 sections render correctly, no console errors, no page errors
+- Lint passes with 0 errors, 0 warnings
+- Implemented dark/light theme toggle via next-themes (ThemeProvider, ThemeToggleBtn, light theme CSS)
+- Created ComparisonMatrixSection component (comparison-matrix.tsx, 260 lines)
+- Created CoverageTreemapSection component (coverage-treemap.tsx, 832 lines)
+- Fixed YAxis import bug in timeline.tsx
+- Enhanced globals.css with light theme body backgrounds and color-scheme
+- Discovered OOM issue: dev server gets killed during page compilation with 16+ dynamic imports
+- Tested multiple approaches to resolve OOM: minimal pages work, full pages crash
+- Attempted: barrel imports, lazy() loading, removing sections, webpack mode
+- Root cause: 4GB memory limit too tight for Turbopack compilation of all sections
+- Comparison Matrix and Coverage Treemap components created but NOT integrated due to OOM
+- Current page.tsx has 16 sections with standard dynamic imports
 
 Stage Summary:
-- 5 major new features added (Performance Metrics, Keyboard Shortcuts, ZK Verification, Notification Center, Overview Enhancements)
-- 15+ new CSS utility classes and animations
-- 16 section tabs now functional (up from 14)
-- Multiple UI/UX improvements (transitions, breadcrumbs, footer, navigation)
+- Dark/light theme toggle fully implemented and working
+- 2 new section components created (Comparison Matrix, Coverage Treemap)
+- Bug fix for YAxis import in timeline.tsx
+- OOM issue identified as critical blocker for adding more sections
 - All lint checks pass
-- No bugs found during QA testing

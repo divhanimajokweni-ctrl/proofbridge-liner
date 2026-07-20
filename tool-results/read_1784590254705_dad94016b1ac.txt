@@ -1,0 +1,661 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts";
+     6→import {
+     7→  GitMerge, Wrench, Play, RotateCw, CheckCircle2, XCircle, ArrowRight,
+     8→  ShieldCheck, Sparkles, KeyRound, Clock, ChevronDown, ChevronRight,
+     9→  AlertTriangle, Activity, TrendingUp, Zap, Layers, GitBranch, Eye,
+    10→} from "lucide-react";
+    11→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+    12→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+    13→import { Textarea } from "@/components/ui/textarea";
+    14→import { Button } from "@/components/ui/button";
+    15→import { Badge } from "@/components/ui/badge";
+    16→import { Skeleton } from "@/components/ui/skeleton";
+    17→import { Progress } from "@/components/ui/progress";
+    18→import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+    19→import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+    20→import { useToast } from "@/hooks/use-toast";
+    21→import { cn } from "@/lib/utils";
+    22→import type { PolicyRow, MergeRow } from "@/lib/types";
+    23→import {
+    24→  GradientBorderCard, containerVariants, cardVariants, itemVariants,
+    25→  fmtTimestamp, fmtVal, StatusPill, Hash, SeverityBadge, SectionHeader,
+    26→  CHART_TOOLTIP_STYLE, StatCard, divColor,
+    27→} from "./primitives";
+    28→
+    29→const POLL_MS = 10_000;
+    30→const DEFAULT_PROPOSED = `{"frequency":50.6,"thermal_headroom":6,"generation":[420,380,510,290,600,470],"load":[410,375,500,285,590,460],"losses":12}`;
+    31→
+    32→interface AppliedRepair { field: string; from: unknown; to: unknown }
+    33→interface RepairResult { ok: boolean; repairedState: Record<string, unknown> | null; violations: string[]; divergence: number; iterations: number; applied: AppliedRepair[] }
+    34→
+    35→function AppliedDiff({ repair }: { repair: AppliedRepair }) {
+    36→  const delta = typeof repair.from === "number" && typeof repair.to === "number" ? repair.to - repair.from : null;
+    37→  const isPos = delta !== null && delta > 0;
+    38→  const isNeg = delta !== null && delta < 0;
+    39→  const isViolation = isNeg;
+    40→  return (
+    41→    <motion.div variants={itemVariants}
+    42→      className={cn("flex flex-col gap-1.5 rounded-md border p-2.5 transition-all hover:shadow-md hover:scale-[1.01]",
+    43→        isViolation ? "border-violating/40 bg-violating/5" : isPos ? "border-verified/40 bg-verified/5" : "border-border/60 bg-muted/20")}>
+    44→      <div className="flex items-center justify-between gap-2">
+    45→        <span className="font-mono text-xs text-foreground font-medium">{repair.field}</span>
+    46→        {delta !== null && (
+    47→          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}
+    48→            className={cn("inline-flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-[10px] font-mono font-semibold",
+    49→              isPos ? "bg-verified/15 text-verified" : isNeg ? "bg-violating/15 text-violating" : "bg-muted text-muted-foreground")}>
+    50→            {isPos ? <TrendingUp className="h-2.5 w-2.5" /> : isNeg ? <AlertTriangle className="h-2.5 w-2.5" /> : null}
+    51→            {delta > 0 ? "+" : ""}{delta.toFixed(3)}
+    52→          </motion.span>
+    53→        )}
+    54→      </div>
+    55→      <div className="flex items-center gap-2 text-xs">
+    56→        <span className="font-mono px-1.5 py-0.5 rounded bg-violating/10 text-violating line-through decoration-violating/50">{fmtVal(repair.from)}</span>
+    57→        <motion.div initial={{ x: -4, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: 0.15 }}>
+    58→          <ArrowRight className={cn("h-3 w-3 shrink-0", isViolation ? "text-violating" : "text-verified")} />
+    59→        </motion.div>
+    60→        <span className="font-mono px-1.5 py-0.5 rounded bg-verified/10 text-verified">{fmtVal(repair.to)}</span>
+    61→      </div>
+    62→    </motion.div>
+    63→  );
+    64→}
+    65→
+    66→function RepairFlowDiagram({ repair }: { repair: RepairResult }) {
+    67→  const steps = [
+    68→    { label: "Original", icon: GitBranch, color: "text-repairing", bg: "bg-repairing/10", border: "border-repairing/40", detail: `${repair.applied.length} field(s)` },
+    69→    { label: "Violations", icon: AlertTriangle, color: "text-violating", bg: "bg-violating/10", border: "border-violating/40", detail: `${repair.violations.length} unresolved` },
+    70→    { label: "Self-repair", icon: Wrench, color: repair.ok ? "text-verified" : "text-repairing", bg: repair.ok ? "bg-verified/10" : "bg-repairing/10", border: repair.ok ? "border-verified/40" : "border-repairing/40", detail: `${repair.iterations} iter(s)` },
+    71→    { label: repair.ok ? "Healed" : "Partial", icon: repair.ok ? ShieldCheck : XCircle, color: repair.ok ? "text-verified" : "text-violating", bg: repair.ok ? "bg-verified/10" : "bg-violating/10", border: repair.ok ? "border-verified/40" : "border-violating/40", detail: `div ${repair.divergence.toFixed(4)}` },
+    72→  ];
+    73→  return (
+    74→    <div className="flex items-center gap-1 overflow-x-auto py-1">
+    75→      {steps.map((step, i) => {
+    76→        const Icon = step.icon;
+    77→        return (
+    78→          <div key={step.label} className="flex items-center gap-1 shrink-0">
+    79→            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+    80→              transition={{ delay: i * 0.12, type: "spring", stiffness: 280, damping: 24 }}
+    81→              className={cn("flex flex-col items-center gap-1 rounded-md border px-2.5 py-1.5 min-w-[72px]", step.bg, step.border)}>
+    82→              <Icon className={cn("h-3.5 w-3.5", step.color)} />
+    83→              <span className={cn("text-[9px] font-semibold uppercase tracking-wide", step.color)}>{step.label}</span>
+    84→              <span className="text-[8px] font-mono text-muted-foreground">{step.detail}</span>
+    85→            </motion.div>
+    86→            {i < steps.length - 1 && (
+    87→              <motion.div initial={{ opacity: 0, scaleX: 0 }} animate={{ opacity: 1, scaleX: 1 }} transition={{ delay: i * 0.12 + 0.06, duration: 0.3 }}>
+    88→                <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+    89→              </motion.div>
+    90→            )}
+    91→          </div>
+    92→        );
+    93→      })}
+    94→    </div>
+    95→  );
+    96→}
+    97→
+    98→function DivergenceChart({ merges }: { merges: MergeRow[] }) {
+    99→  const data = useMemo(() => {
+   100→    if (!merges?.length) return Array.from({ length: 10 }, (_, i) => ({ name: `#${i + 1}`, divergence: Math.abs(Math.sin(i * 0.6) * 0.3 + Math.cos(i * 0.3) * 0.15) }));
+   101→    return merges.slice(0, 10).map((m, i) => ({ name: `#${i + 1}`, divergence: m.divergence }));
+   102→  }, [merges]);
+   103→  return (
+   104→    <div className="h-32 w-full">
+   105→      <ResponsiveContainer width="100%" height="100%">
+   106→        <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+   107→          <defs><linearGradient id="divGrad" x1="0" y1="0" x2="0" y2="1">
+   108→            <stop offset="5%" stopColor="oklch(0.80 0.15 80)" stopOpacity={0.35} />
+   109→            <stop offset="95%" stopColor="oklch(0.80 0.15 80)" stopOpacity={0.02} />
+   110→          </linearGradient></defs>
+   111→          <YAxis domain={[0, "auto"]} hide />
+   112→          <XAxis dataKey="name" tick={{ fontSize: 9, fill: "oklch(0.68 0.015 160)" }} axisLine={false} tickLine={false} />
+   113→          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [v.toFixed(4), "divergence"]} />
+   114→          <Area type="monotone" dataKey="divergence" stroke="oklch(0.80 0.15 80)" strokeWidth={1.5} fill="url(#divGrad)" animationDuration={1200} />
+   115→        </AreaChart>
+   116→      </ResponsiveContainer>
+   117→    </div>
+   118→  );
+   119→}
+   120→
+   121→function RepairCostChart({ repair }: { repair: RepairResult }) {
+   122→  const data = useMemo(() => {
+   123→    if (!repair.applied?.length) return [];
+   124→    return repair.applied.map((a) => {
+   125→      const from = typeof a.from === "number" ? a.from : 0;
+   126→      const to = typeof a.to === "number" ? a.to : 0;
+   127→      return { name: a.field.length > 12 ? a.field.slice(0, 10) + "…" : a.field, cost: Math.abs(to - from), direction: to - from };
+   128→    });
+   129→  }, [repair]);
+   130→  if (!data.length) return null;
+   131→  return (
+   132→    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 260, damping: 24 }} className="space-y-2">
+   133→      <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><Activity className="h-3 w-3" />Repair cost per field</div>
+   134→      <div className="h-28 w-full">
+   135→        <ResponsiveContainer width="100%" height="100%">
+   136→          <BarChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+   137→            <XAxis dataKey="name" tick={{ fontSize: 9, fill: "oklch(0.68 0.015 160)" }} axisLine={false} tickLine={false} />
+   138→            <YAxis hide />
+   139→            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [v.toFixed(4), "cost"]} />
+   140→            <Bar dataKey="cost" radius={[3, 3, 0, 0]} animationDuration={800}>
+   141→              {data.map((entry, i) => <Cell key={i} fill={entry.direction >= 0 ? "oklch(0.78 0.16 160 / 0.7)" : "oklch(0.64 0.21 25 / 0.7)"} />)}
+   142→            </Bar>
+   143→          </BarChart>
+   144→        </ResponsiveContainer>
+   145→      </div>
+   146→      <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
+   147→        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-verified" />positive</span>
+   148→        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-violating" />negative</span>
+   149→      </div>
+   150→    </motion.div>
+   151→  );
+   152→}
+   153→
+   154→function RepairVisualization({ repair, mergeId, onRerun, rerunning }: { repair: RepairResult; mergeId?: string; onRerun?: () => void; rerunning?: boolean }) {
+   155→  return (
+   156→    <GradientBorderCard gradientFrom={repair.ok ? "oklch(0.78 0.16 160 / 0.35)" : "oklch(0.64 0.21 25 / 0.4)"}
+   157→      gradientTo="oklch(0.32 0.014 165 / 0.1)" className={cn(repair.ok ? "glow-verified" : "glow-violating")}>
+   158→      <div className="bg-grid-fine absolute inset-0 opacity-20 rounded-lg" />
+   159→      <div className="relative space-y-3 p-4">
+   160→        <div className="flex items-center justify-between gap-2">
+   161→          <div className="flex items-center gap-2"><Wrench className={cn("h-4 w-4", repair.ok ? "text-verified" : "text-violating")} /><span className="text-sm font-semibold text-foreground">Self-repair result</span></div>
+   162→          <StatusPill status={repair.ok ? "applied" : "rejected"} label={repair.ok ? "Repaired" : "Unresolved"} />
+   163→        </div>
+   164→        <RepairFlowDiagram repair={repair} />
+   165→        <div className="space-y-1.5">
+   166→          <div className="flex items-center justify-between text-[10px]">
+   167→            <span className="uppercase tracking-wide text-muted-foreground">Solver progress</span>
+   168→            <span className="font-mono text-foreground">{repair.iterations} iteration(s)</span>
+   169→          </div>
+   170→          <Progress value={repair.ok ? 100 : Math.min(85, repair.iterations * 20)} className={cn("h-1.5", repair.ok ? "[&>div]:bg-verified" : "[&>div]:bg-repairing")} />
+   171→        </div>
+   172→        <div className="grid grid-cols-3 gap-2 text-center">
+   173→          <StatCard label="Divergence" value={repair.divergence.toFixed(4)} color={divColor(repair.divergence)} />
+   174→          <StatCard label="Iterations" value={repair.iterations} />
+   175→          <StatCard label="Applied" value={repair.applied.length} color="text-verified" />
+   176→        </div>
+   177→        <RepairCostChart repair={repair} />
+   178→        {repair.applied.length > 0 && (
+   179→          <div>
+   180→            <div className="mb-1.5 text-[11px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><Layers className="h-3 w-3" />Field transformations</div>
+   181→            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+   182→              {repair.applied.map((a, i) => <AppliedDiff key={`${a.field}-${i}`} repair={a} />)}
+   183→            </motion.div>
+   184→          </div>
+   185→        )}
+   186→        {repair.violations.length > 0 && (
+   187→          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+   188→            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-violating"><AlertTriangle className="h-3 w-3" />Unresolved violations ({repair.violations.length})</div>
+   189→            <div className="flex flex-wrap gap-1.5">
+   190→              {repair.violations.map((v) => (
+   191→                <motion.span key={v} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+   192→                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+   193→                  className="inline-flex items-center gap-1 rounded border border-violating/40 bg-violating/10 px-2 py-0.5 text-[11px] font-mono text-violating">
+   194→                  <XCircle className="h-3 w-3" />{v}
+   195→                </motion.span>
+   196→              ))}
+   197→            </div>
+   198→          </motion.div>
+   199→        )}
+   200→        {mergeId && onRerun && (
+   201→          <Button variant="outline" size="sm" onClick={onRerun} disabled={rerunning}
+   202→            className="w-full border-border/60 bg-card/40 transition-all hover:scale-[1.01] active:scale-[0.99]">
+   203→            <RotateCw className={cn("h-3.5 w-3.5", rerunning && "animate-spin")} />{rerunning ? "Re-running…" : "Re-run repair"}
+   204→          </Button>
+   205→        )}
+   206→      </div>
+   207→    </GradientBorderCard>
+   208→  );
+   209→}
+   210→
+   211→function getMergeType(merge: MergeRow): "clean" | "repaired" | "rejected" {
+   212→  if (merge.status === "rejected") return "rejected";
+   213→  if (merge.repairedState && Object.keys(merge.repairedState).length > 0) return "repaired";
+   214→  return "clean";
+   215→}
+   216→
+   217→const MERGE_TYPE_CONFIG = {
+   218→  clean: { border: "border-verified/30", bg: "bg-verified/5", glow: "", badge: { label: "CLEAN", color: "border-verified/40 bg-verified/10 text-verified" } },
+   219→  repaired: { border: "border-repairing/30", bg: "bg-repairing/5", glow: "glow-repairing", badge: { label: "REPAIRED", color: "border-repairing/40 bg-repairing/10 text-repairing" } },
+   220→  rejected: { border: "border-violating/30", bg: "bg-violating/5", glow: "glow-violating", badge: { label: "REJECTED", color: "border-violating/40 bg-violating/10 text-violating" } },
+   221→};
+   222→
+   223→function MergeItem({ merge, defaultOpen }: { merge: MergeRow; defaultOpen?: boolean }) {
+   224→  const [open, setOpen] = useState(!!defaultOpen);
+   225→  const mergeType = getMergeType(merge);
+   226→  const config = MERGE_TYPE_CONFIG[mergeType];
+   227→  return (
+   228→    <motion.div variants={cardVariants}>
+   229→      <Collapsible open={open} onOpenChange={setOpen}>
+   230→        <Card className={cn("bg-card/60 backdrop-blur p-0 relative overflow-hidden transition-all hover:shadow-lg", open ? config.border : "border-border/60", config.glow)}>
+   231→          <CollapsibleTrigger asChild>
+   232→            <button type="button" className="relative w-full text-left p-3 hover:bg-muted/30 transition-colors">
+   233→              <div className="flex items-start justify-between gap-2">
+   234→                <div className="min-w-0 flex-1">
+   235→                  <div className="flex items-center gap-2 flex-wrap">
+   236→                    {open ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+   237→                    <span className="truncate text-sm font-medium text-foreground">{merge.policy.name}</span>
+   238→                    <StatusPill status={merge.status} />
+   239→                    <Badge variant="outline" className={cn("text-[9px]", config.badge.color)}>{config.badge.label}</Badge>
+   240→                  </div>
+   241→                  <div className="mt-1 flex items-center gap-1.5 pl-6 text-[11px] text-muted-foreground">
+   242→                    <span className="font-mono">{merge.sourceShardName}</span><ArrowRight className="h-3 w-3" /><span className="font-mono">{merge.targetShard}</span>
+   243→                  </div>
+   244→                </div>
+   245→                <div className="flex shrink-0 flex-col items-end gap-1">
+   246→                  <span className="text-[10px] text-muted-foreground">{fmtTimestamp(merge.createdAt)}</span>
+   247→                  {merge.zkProof && <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[10px]"><KeyRound className="h-2.5 w-2.5" /> ZK</Badge>}
+   248→                </div>
+   249→              </div>
+   250→              <div className="mt-2 flex items-center gap-3 pl-6 text-[10px] text-muted-foreground flex-wrap">
+   251→                <span className="flex items-center gap-1"><span className="uppercase tracking-wide">div</span><span className={cn("font-mono", divColor(merge.divergence))}>{merge.divergence.toFixed(3)}</span></span>
+   252→                <span className="flex items-center gap-1"><span className="uppercase tracking-wide">iters</span><span className="font-mono text-foreground">{merge.iterations}</span></span>
+   253→                <span className="flex items-center gap-1"><span className="uppercase tracking-wide">mmr</span><Hash value={merge.mmrProof} length={10} /></span>
+   254→                {merge.violations.length > 0 && <span className="flex items-center gap-1 text-violating"><XCircle className="h-2.5 w-2.5" />{merge.violations.length} violation{merge.violations.length === 1 ? "" : "s"}</span>}
+   255→              </div>
+   256→            </button>
+   257→          </CollapsibleTrigger>
+   258→          <CollapsibleContent>
+   259→            <div className={cn("border-t p-3 space-y-3", config.bg)}>
+   260→              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+   261→                <div>
+   262→                  <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-repairing"><GitBranch className="h-3 w-3" />Proposed state</div>
+   263→                  <pre className="codeblock max-h-64 overflow-y-auto epistemic-scroll rounded-md border border-repairing/30 bg-background/60 p-2.5 text-[11px] leading-relaxed text-foreground/90">
+   264→{JSON.stringify(merge.proposedState, null, 2)}
+   265→                  </pre>
+   266→                </div>
+   267→                <div>
+   268→                  <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground"><ShieldCheck className="h-3 w-3" />Repaired state {merge.repairedState ? "" : "(none)"}</div>
+   269→                  <pre className={cn("codeblock max-h-64 overflow-y-auto epistemic-scroll rounded-md border p-2.5 text-[11px] leading-relaxed text-foreground/90",
+   270→                    merge.repairedState ? "border-verified/30 bg-background/60" : "border-border/60 bg-muted/30")}>
+   271→{merge.repairedState ? JSON.stringify(merge.repairedState, null, 2) : "— no repair applied —"}
+   272→                  </pre>
+   273→                </div>
+   274→              </div>
+   275→              {merge.repairedState && <InlineStateDiff proposed={merge.proposedState} repaired={merge.repairedState} />}
+   276→              {merge.violations.length > 0 && (
+   277→                <div>
+   278→                  <div className="mb-1.5 text-[10px] uppercase tracking-wide text-violating">Violations</div>
+   279→                  <div className="flex flex-wrap gap-1.5">
+   280→                    {merge.violations.map((v) => <span key={v} className="inline-flex items-center gap-1 rounded border border-violating/40 bg-violating/10 px-2 py-0.5 text-[11px] font-mono text-violating"><XCircle className="h-3 w-3" />{v}</span>)}
+   281→                  </div>
+   282→                </div>
+   283→              )}
+   284→              <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
+   285→                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(merge.createdAt).toLocaleString()}</span>
+   286→                {merge.zkProof && <span className="flex items-center gap-1 font-mono text-verified"><KeyRound className="h-3 w-3" />{merge.zkProof}</span>}
+   287→                <span className="font-mono">merge id: {merge.id}</span>
+   288→              </div>
+   289→            </div>
+   290→          </CollapsibleContent>
+   291→        </Card>
+   292→      </Collapsible>
+   293→    </motion.div>
+   294→  );
+   295→}
+   296→
+   297→function InlineStateDiff({ proposed, repaired }: { proposed: Record<string, unknown>; repaired: Record<string, unknown> }) {
+   298→  const diffs = useMemo(() => {
+   299→    const keys = new Set([...Object.keys(proposed ?? {}), ...Object.keys(repaired ?? {})]);
+   300→    return Array.from(keys).sort().map((key) => {
+   301→      const fromVal = proposed?.[key]; const toVal = repaired?.[key];
+   302→      const changed = JSON.stringify(fromVal) !== JSON.stringify(toVal);
+   303→      const delta = typeof fromVal === "number" && typeof toVal === "number" ? toVal - fromVal : null;
+   304→      return { key, from: fromVal, to: toVal, changed, delta };
+   305→    }).filter((d) => d.changed);
+   306→  }, [proposed, repaired]);
+   307→  if (!diffs.length) return null;
+   308→  return (
+   309→    <div>
+   310→      <div className="mb-1.5 text-[10px] uppercase tracking-wide text-foreground/70 flex items-center gap-1.5"><Eye className="h-3 w-3" />State delta ({diffs.length} change{diffs.length === 1 ? "" : "s"})</div>
+   311→      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+   312→        {diffs.map((d) => (
+   313→          <div key={d.key} className={cn("flex items-center justify-between gap-2 rounded border px-2 py-1 text-[11px]",
+   314→            d.delta !== null ? d.delta > 0 ? "border-verified/30 bg-verified/5" : "border-violating/30 bg-violating/5" : "border-repairing/30 bg-repairing/5")}>
+   315→            <div className="flex items-center gap-1.5 min-w-0"><span className="font-mono text-muted-foreground truncate">{d.key}</span><ArrowRight className="h-2.5 w-2.5 shrink-0 text-muted-foreground" /></div>
+   316→            <div className="flex items-center gap-1 shrink-0">
+   317→              <span className={cn("font-mono line-through decoration-violating/50", d.delta !== null && d.delta < 0 ? "text-violating" : "text-muted-foreground")}>{fmtVal(d.from)}</span>
+   318→              <span className={cn("font-mono", d.delta !== null ? d.delta > 0 ? "text-verified" : "text-violating" : "text-verified")}>{fmtVal(d.to)}</span>
+   319→              {d.delta !== null && <Badge variant="outline" className={cn("text-[8px] px-1 py-0 h-4", d.delta > 0 ? "border-verified/30 text-verified" : "border-violating/30 text-violating")}>{d.delta > 0 ? "+" : ""}{d.delta.toFixed(3)}</Badge>}
+   320→            </div>
+   321→          </div>
+   322→        ))}
+   323→      </div>
+   324→    </div>
+   325→  );
+   326→}
+   327→
+   328→function MergeSummary({ merges }: { merges: MergeRow[] }) {
+   329→  const stats = useMemo(() => {
+   330→    const clean = merges.filter((m) => getMergeType(m) === "clean").length;
+   331→    const repaired = merges.filter((m) => getMergeType(m) === "repaired").length;
+   332→    const rejected = merges.filter((m) => getMergeType(m) === "rejected").length;
+   333→    const avgDiv = merges.length > 0 ? merges.reduce((s, m) => s + m.divergence, 0) / merges.length : 0;
+   334→    return { clean, repaired, rejected, avgDiv, total: merges.length };
+   335→  }, [merges]);
+   336→  return (
+   337→    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+   338→      <StatCard label="Clean" value={stats.clean} color="text-verified" bg="bg-verified/10" border="border-verified/30" />
+   339→      <StatCard label="Repaired" value={stats.repaired} color="text-repairing" bg="bg-repairing/10" border="border-repairing/30" />
+   340→      <StatCard label="Rejected" value={stats.rejected} color="text-violating" bg="bg-violating/10" border="border-violating/30" />
+   341→      <StatCard label="Avg div" value={stats.avgDiv.toFixed(3)} bg="bg-muted/20" border="border-border/60" />
+   342→    </div>
+   343→  );
+   344→}
+   345→
+   346→export function MergeReconciliationSection() {
+   347→  const { toast } = useToast();
+   348→  const [policies, setPolicies] = useState<PolicyRow[]>([]);
+   349→  const [merges, setMerges] = useState<MergeRow[]>([]);
+   350→  const [loadingMerges, setLoadingMerges] = useState(true);
+   351→  const [policyId, setPolicyId] = useState<string>("");
+   352→  const [proposedText, setProposedText] = useState(DEFAULT_PROPOSED);
+   353→  const [submitting, setSubmitting] = useState(false);
+   354→  const [rerunning, setRerunning] = useState(false);
+   355→  const [lastResult, setLastResult] = useState<{ mergeId: string; repair: RepairResult } | null>(null);
+   356→
+   357→  useEffect(() => {
+   358→    let cancelled = false;
+   359→    fetch("/api/policies").then((r) => r.json()).then((d: { policies: PolicyRow[] }) => {
+   360→      if (cancelled) return;
+   361→      const ps = d.policies ?? [];
+   362→      setPolicies(ps);
+   363→      if (ps.length > 0 && !policyId) setPolicyId(ps[0].id);
+   364→    }).catch(() => {});
+   365→    return () => { cancelled = true; };
+   366→  }, []);
+   367→
+   368→  const loadMerges = useCallback(async () => {
+   369→    try {
+   370→      const r = await fetch("/api/merges");
+   371→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   372→      const d: { merges: MergeRow[] } = await r.json();
+   373→      setMerges(d.merges ?? []);
+   374→    } catch (e) {
+   375→      toast({ title: "Failed to load merges", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+   376→    } finally { setLoadingMerges(false); }
+   377→  }, [toast]);
+   378→
+   379→  useEffect(() => { loadMerges(); const t = setInterval(loadMerges, POLL_MS); return () => clearInterval(t); }, [loadMerges]);
+   380→
+   381→  const runRepair = useCallback(async () => {
+   382→    if (!policyId) { toast({ title: "Select a policy first", variant: "destructive" }); return; }
+   383→    let proposed: Record<string, unknown>;
+   384→    try { proposed = JSON.parse(proposedText); } catch (e) {
+   385→      toast({ title: "Invalid JSON", description: e instanceof Error ? e.message : "Parse error", variant: "destructive" }); return;
+   386→    }
+   387→    setSubmitting(true);
+   388→    try {
+   389→      const r = await fetch("/api/merges", { method: "POST", headers: { "Content-Type": "application/json" },
+   390→        body: JSON.stringify({ policyId, sourceShardName: "manual", targetShard: "default", proposedState: proposed }) });
+   391→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   392→      const d = await r.json();
+   393→      const mergeId: string = d.merge?.id;
+   394→      const repair: RepairResult = d.repair;
+   395→      setLastResult({ mergeId, repair });
+   396→      toast({ title: repair.ok ? "Self-repair succeeded" : "Self-repair unresolved",
+   397→        description: repair.ok ? `Applied ${repair.applied.length} fix(es) · div ${repair.divergence.toFixed(3)}` : `${repair.violations.length} still violating`,
+   398→        variant: repair.ok ? "default" : "destructive" });
+   399→      loadMerges();
+   400→    } catch (e) {
+   401→      toast({ title: "Repair request failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+   402→    } finally { setSubmitting(false); }
+   403→  }, [policyId, proposedText, toast, loadMerges]);
+   404→
+   405→  const rerun = useCallback(async () => {
+   406→    if (!lastResult?.mergeId) return;
+   407→    setRerunning(true);
+   408→    try {
+   409→      const r = await fetch("/api/merges/repair", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mergeId: lastResult.mergeId }) });
+   410→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   411→      const d = await r.json();
+   412→      const repair: RepairResult = d.repair;
+   413→      setLastResult((prev) => (prev ? { ...prev, repair } : prev));
+   414→      toast({ title: repair.ok ? "Re-run succeeded" : "Re-run unresolved",
+   415→        description: `div ${repair.divergence.toFixed(3)} · ${repair.applied.length} applied`, variant: repair.ok ? "default" : "destructive" });
+   416→      loadMerges();
+   417→    } catch (e) {
+   418→      toast({ title: "Re-run failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
+   419→    } finally { setRerunning(false); }
+   420→  }, [lastResult, toast, loadMerges]);
+   421→
+   422→  const recentMerges = useMemo(() => merges.slice(0, 12), [merges]);
+   423→
+   424→  return (
+   425→    <motion.section variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+   426→      <motion.div variants={cardVariants}>
+   427→        <SectionHeader icon={GitMerge} title="Self-Repairing Merge Reconciliation" subtitle="Propose a state merge · invariant enforcer self-heals to least-divergent fix"
+   428→          iconClass="border-repairing/30 bg-repairing/10 text-repairing" />
+   429→      </motion.div>
+   430→
+   431→      <motion.div variants={cardVariants}>
+   432→        <GradientBorderCard gradientFrom="oklch(0.80 0.15 80 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.1)">
+   433→          <div className="p-3 space-y-3">
+   434→            <div className="flex items-center justify-between">
+   435→              <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-repairing" /><span className="text-sm font-semibold text-foreground">Merge Analytics</span></div>
+   436→              <Badge variant="outline" className="border-border/60 text-[10px]">{merges.length} total</Badge>
+   437→            </div>
+   438→            <MergeSummary merges={merges} />
+   439→            <DivergenceChart merges={merges} />
+   440→          </div>
+   441→        </GradientBorderCard>
+   442→      </motion.div>
+   443→
+   444→      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+   445→        <div className="space-y-3">
+   446→          <motion.div variants={cardVariants}>
+   447→            <Card className="bg-card/60 backdrop-blur border-border/60 p-3 relative overflow-hidden">
+   448→              <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   449→              <div className="relative flex items-center justify-between">
+   450→                <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /><span className="text-sm font-medium text-foreground">Recent proposals</span>
+   451→                  <Badge variant="outline" className="border-border/60 text-[10px]">{merges.length}</Badge>
+   452→                </div>
+   453→                <span className="text-[10px] text-muted-foreground">click to expand</span>
+   454→              </div>
+   455→            </Card>
+   456→          </motion.div>
+   457→          {loadingMerges ? (
+   458→            <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg bg-muted/40" />)}</div>
+   459→          ) : recentMerges.length === 0 ? (
+   460→            <motion.div variants={cardVariants}>
+   461→              <Card className="bg-card/60 border-border/60 p-8 text-center">
+   462→                <Wrench className="mx-auto h-8 w-8 text-muted-foreground/50" />
+   463→                <p className="mt-2 text-sm text-muted-foreground">No merge proposals yet.</p>
+   464→                <p className="text-xs text-muted-foreground/70">Use the composer to propose one →</p>
+   465→              </Card>
+   466→            </motion.div>
+   467→          ) : (
+   468→            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-2 max-h-[640px] overflow-y-auto epistemic-scroll pr-1">
+   469→              {recentMerges.map((m) => <MergeItem key={m.id} merge={m} />)}
+   470→            </motion.div>
+   471→          )}
+   472→        </div>
+   473→
+   474→        <div className="space-y-3">
+   475→          <motion.div variants={cardVariants}>
+   476→            <GradientBorderCard gradientFrom="oklch(0.80 0.15 80 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.1)">
+   477→              <div className="bg-grid-fine absolute inset-0 opacity-20 rounded-lg" />
+   478→              <div className="relative space-y-3 p-4">
+   479→                <div className="flex items-center justify-between">
+   480→                  <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-repairing" /><span className="text-sm font-semibold text-foreground">Propose merge</span></div>
+   481→                  <Badge variant="outline" className="border-repairing/30 bg-repairing/10 text-repairing text-[10px]">self_repair</Badge>
+   482→                </div>
+   483→                <div className="space-y-1.5">
+   484→                  <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Target policy</label>
+   485→                  <Select value={policyId} onValueChange={setPolicyId}>
+   486→                    <SelectTrigger className="bg-card/60"><SelectValue placeholder="Select policy" /></SelectTrigger>
+   487→                    <SelectContent>{policies.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+   488→                  </Select>
+   489→                </div>
+   490→                <div className="space-y-1.5">
+   491→                  <label className="text-[11px] uppercase tracking-wide text-muted-foreground">Proposed state (JSON)</label>
+   492→                  <Textarea value={proposedText} onChange={(e) => setProposedText(e.target.value)} className="font-mono text-xs bg-background/60 min-h-[180px] epistemic-scroll" spellCheck={false} />
+   493→                  <p className="text-[10px] text-muted-foreground">Prefilled with violating example — <span className="font-mono">frequency:50.6</span> breaches <span className="font-mono">freq_bounds [49.8, 50.2]</span>.</p>
+   494→                </div>
+   495→                <Button onClick={runRepair} disabled={submitting || !policyId} variant="outline"
+   496→                  className="w-full bg-repairing/15 border border-repairing/40 text-repairing hover:bg-repairing/25 transition-all hover:scale-[1.01] active:scale-[0.99]">
+   497→                  {submitting ? <RotateCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+   498→                  {submitting ? "Running self-repair…" : "Run self-repair"}
+   499→                </Button>
+   500→              </div>
+   501→            </GradientBorderCard>
+   502→          </motion.div>
+   503→          <AnimatePresence mode="wait">
+   504→            {lastResult ? (
+   505→              <motion.div key="repair-result" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}
+   506→                transition={{ type: "spring", stiffness: 260, damping: 24 }}>
+   507→                <RepairVisualization repair={lastResult.repair} mergeId={lastResult.mergeId} onRerun={rerun} rerunning={rerunning} />
+   508→              </motion.div>
+   509→            ) : (
+   510→              <motion.div key="repair-placeholder" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+   511→                <GradientBorderCard gradientFrom="oklch(0.32 0.014 165 / 0.2)" gradientTo="oklch(0.32 0.014 165 / 0.08)">
+   512→                  <div className="p-6 text-center">
+   513→                    <ShieldCheck className="mx-auto h-8 w-8 text-muted-foreground/40" />
+   514→                    <p className="mt-2 text-sm text-muted-foreground">No repair run yet — propose a merge to see the diff.</p>
+   515→                    <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+   516→                      <CheckCircle2 className="h-3 w-3 text-verified" /><span>passed</span><XCircle className="h-3 w-3 text-violating" /><span>violated</span>
+   517→                    </div>
+   518→                  </div>
+   519→                </GradientBorderCard>
+   520→              </motion.div>
+   521→            )}
+   522→          </AnimatePresence>
+   523→        </div>
+   524→      </div>
+   525→
+   526→      {/* Interactive Merge Simulator — new feature */}
+   527→      <MergeSimulator policies={policies} />
+   528→    </motion.section>
+   529→  );
+   530→}
+   531→
+   532→/* ─── MergeSimulator — interactive what-if merge preview ─── */
+   533→function MergeSimulator({ policies }: { policies: PolicyRow[] }) {
+   534→  const [simPolicyId, setSimPolicyId] = useState<string>(policies[0]?.id ?? "");
+   535→  const [simState, setSimState] = useState<string>(`{"frequency":50.6,"thermal_headroom":6,"generation":[420,380,510,290,600,470],"load":[410,375,500,285,590,460],"losses":12}`);
+   536→  const [simResult, setSimResult] = useState<{
+   537→    evaluations: { name: string; severity: string; soft: boolean; passed: boolean; actual: unknown; expected: unknown; predicate: string }[];
+   538→    violations: string[];
+   539→    hardViolationCount: number;
+   540→    softViolationCount: number;
+   541→    repair: { ok: boolean; repairedState?: Record<string, unknown>; divergence: number; iterations: number; adjustments?: Record<string, { from: unknown; to: unknown; delta: number }> } | null;
+   542→    verdict: string;
+   543→  } | null>(null);
+   544→  const [simulating, setSimulating] = useState(false);
+   545→
+   546→  const runSimulation = useCallback(async () => {
+   547→    if (!simPolicyId) return;
+   548→    let proposed: Record<string, unknown>;
+   549→    try { proposed = JSON.parse(simState); } catch {
+   550→      return;
+   551→    }
+   552→    setSimulating(true);
+   553→    try {
+   554→      const r = await fetch("/api/merges/simulate", {
+   555→        method: "POST",
+   556→        headers: { "Content-Type": "application/json" },
+   557→        body: JSON.stringify({ policyId: simPolicyId, proposedState: proposed }),
+   558→      });
+   559→      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+   560→      const d = await r.json();
+   561→      setSimResult(d);
+   562→    } catch {
+   563→      /* ignore */
+   564→    } finally { setSimulating(false); }
+   565→  }, [simPolicyId, simState]);
+   566→
+   567→  const verdictColor = simResult?.verdict === "accepted" ? "text-verified" : simResult?.verdict === "repaired" ? "text-repairing" : "text-violating";
+   568→  const verdictBg = simResult?.verdict === "accepted" ? "bg-verified/10 border-verified/30" : simResult?.verdict === "repaired" ? "bg-repairing/10 border-repairing/30" : "bg-violating/10 border-violating/30";
+   569→
+   570→  return (
+   571→    <motion.div variants={cardVariants}>
+   572→      <GradientBorderCard gradientFrom="oklch(0.78 0.16 160 / 0.25)" gradientTo="oklch(0.65 0.2 25 / 0.15)">
+   573→        <div className="p-4 space-y-3">
+   574→          <div className="flex items-center justify-between">
+   575→            <div className="flex items-center gap-2">
+   576→              <Eye className="h-4 w-4 text-verified" />
+   577→              <span className="text-sm font-semibold text-foreground">Merge Simulator</span>
+   578→            </div>
+   579→            <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[10px]">what-if · no persist</Badge>
+   580→          </div>
+   581→          <p className="text-[11px] text-muted-foreground">Preview how a proposed state would be evaluated and repaired — without committing to the DAG.</p>
+   582→
+   583→          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+   584→            {/* Input panel */}
+   585→            <div className="space-y-2">
+   586→              <div className="space-y-1">
+   587→                <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Policy</label>
+   588→                <Select value={simPolicyId} onValueChange={setSimPolicyId}>
+   589→                  <SelectTrigger className="bg-card/60 h-8 text-xs"><SelectValue /></SelectTrigger>
+   590→                  <SelectContent>{policies.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+   591→                </Select>
+   592→              </div>
+   593→              <div className="space-y-1">
+   594→                <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Proposed state (JSON)</label>
+   595→                <Textarea value={simState} onChange={(e) => setSimState(e.target.value)} className="font-mono text-xs bg-background/60 min-h-[120px] epistemic-scroll" spellCheck={false} />
+   596→              </div>
+   597→              <Button onClick={runSimulation} disabled={simulating || !simPolicyId} variant="outline"
+   598→                className="w-full bg-verified/15 border border-verified/40 text-verified hover:bg-verified/25 transition-all hover:scale-[1.01] active:scale-[0.99] h-8 text-xs">
+   599→                {simulating ? <RotateCw className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+   600→                {simulating ? "Simulating…" : "Simulate merge"}
+   601→              </Button>
+   602→            </div>
+   603→
+   604→            {/* Result panel */}
+   605→            <div className="space-y-2">
+   606→              {simResult ? (
+   607→                <>
+   608→                  <div className={cn("rounded-md border px-3 py-2 flex items-center justify-between", verdictBg)}>
+   609→                    <span className={cn("text-sm font-bold uppercase", verdictColor)}>{simResult.verdict}</span>
+   610→                    <div className="flex items-center gap-2 text-[10px] font-mono">
+   611→                      <span className="text-violating">{simResult.hardViolationCount} hard</span>
+   612→                      <span className="text-quarantined">{simResult.softViolationCount} soft</span>
+   613→                    </div>
+   614→                  </div>
+   615→
+   616→                  {/* Invariant evaluations */}
+   617→                  <div className="max-h-[100px] overflow-y-auto epistemic-scroll space-y-1">
+   618→                    {simResult.evaluations.map((ev) => (
+   619→                      <div key={ev.name} className={cn("flex items-center gap-2 rounded border px-2 py-1 text-[10px]",
+   620→                        ev.passed ? "border-verified/20 bg-verified/5" : ev.soft ? "border-quarantined/20 bg-quarantined/5" : "border-violating/20 bg-violating/5")}>
+   621→                        {ev.passed ? <CheckCircle2 className="h-3 w-3 text-verified shrink-0" /> : ev.soft ? <AlertTriangle className="h-3 w-3 text-quarantined shrink-0" /> : <XCircle className="h-3 w-3 text-violating shrink-0" />}
+   622→                        <span className="font-mono truncate flex-1">{ev.name}</span>
+   623→                        {!ev.passed && ev.actual !== null && (
+   624→                          <span className="font-mono text-muted-foreground shrink-0">→ {String(ev.actual)}</span>
+   625→                        )}
+   626→                      </div>
+   627→                    ))}
+   628→                  </div>
+   629→
+   630→                  {/* Repair adjustments */}
+   631→                  {simResult.repair?.ok && simResult.repair.adjustments && Object.keys(simResult.repair.adjustments).length > 0 && (
+   632→                    <div className="rounded-md border border-repairing/30 bg-repairing/5 p-2 space-y-1">
+   633→                      <div className="flex items-center gap-1.5 text-[10px] font-semibold text-repairing">
+   634→                        <Wrench className="h-3 w-3" /> Self-repair applied · {simResult.repair.iterations} iterations · div {simResult.repair.divergence.toFixed(3)}
+   635→                      </div>
+   636→                      {Object.entries(simResult.repair.adjustments).map(([field, adj]) => (
+   637→                        <div key={field} className="flex items-center gap-2 text-[10px] font-mono">
+   638→                          <span className="text-muted-foreground">{field}:</span>
+   639→                          <span className="text-violating line-through">{String(adj.from)}</span>
+   640→                          <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
+   641→                          <span className="text-verified">{String(adj.to)}</span>
+   642→                          <span className={cn("ml-auto", adj.delta > 0 ? "text-verified" : "text-violating")}>{adj.delta > 0 ? "+" : ""}{adj.delta.toFixed(3)}</span>
+   643→                        </div>
+   644→                      ))}
+   645→                    </div>
+   646→                  )}
+   647→                </>
+   648→              ) : (
+   649→                <div className="h-full min-h-[180px] flex flex-col items-center justify-center text-center border border-dashed border-border/40 rounded-md">
+   650→                  <Eye className="h-6 w-6 text-muted-foreground/40" />
+   651→                  <p className="mt-2 text-xs text-muted-foreground">Run simulation to see invariant evaluation & repair preview</p>
+   652→                </div>
+   653→              )}
+   654→            </div>
+   655→          </div>
+   656→        </div>
+   657→      </GradientBorderCard>
+   658→    </motion.div>
+   659→  );
+   660→}
+   661→

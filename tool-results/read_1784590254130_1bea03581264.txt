@@ -1,0 +1,910 @@
+     1→"use client";
+     2→
+     3→import { useMemo, useState } from "react";
+     4→import {
+     5→  GitCompare,
+     6→  ArrowUpRight,
+     7→  ArrowDownRight,
+     8→  Minus,
+     9→  Check,
+    10→  X,
+    11→  Download,
+    12→  ShieldCheck,
+    13→  Activity,
+    14→  Layers,
+    15→  Lock,
+    16→  AlertTriangle,
+    17→  GitBranch,
+    18→  Clock,
+    19→  Gauge,
+    20→} from "lucide-react";
+    21→import { Card } from "@/components/ui/card";
+    22→import { Button } from "@/components/ui/button";
+    23→import { Badge } from "@/components/ui/badge";
+    24→import { cn } from "@/lib/utils";
+    25→import { motion, AnimatePresence } from "framer-motion";
+    26→import {
+    27→  RadarChart,
+    28→  PolarGrid,
+    29→  PolarAngleAxis,
+    30→  PolarRadiusAxis,
+    31→  Radar,
+    32→  ResponsiveContainer,
+    33→  Tooltip as RechartsTooltip,
+    34→  Legend,
+    35→} from "recharts";
+    36→import {
+    37→  GradientBorderCard,
+    38→  containerVariants,
+    39→  cardVariants,
+    40→  itemVariants,
+    41→  StatusPill,
+    42→  GridOverlay,
+    43→  TopAccentBar,
+    44→  CHART_TOOLTIP_STYLE,
+    45→} from "./primitives";
+    46→
+    47→/* ─── Mock data types ─── */
+    48→type EnforcementMode = "strict" | "moderate" | "permissive";
+    49→
+    50→interface ComparisonPolicy {
+    51→  id: string;
+    52→  name: string;
+    53→  domain: string;
+    54→  invariantCount: number;
+    55→  shardCount: number;
+    56→  healthScore: number;
+    57→  mergeSuccessRate: number;
+    58→  shadowEnabled: boolean;
+    59→  activeViolations: number;
+    60→  violationSeverities: string[];
+    61→  avgDivergence: number;
+    62→  divergenceTrend: "up" | "down" | "flat";
+    63→  zkProofs: number;
+    64→  lastModified: string;
+    65→  enforcementMode: EnforcementMode;
+    66→  version: string;
+    67→}
+    68→
+    69→/* ─── Mock data generator ─── */
+    70→function generateMockPolicies(): ComparisonPolicy[] {
+    71→  const now = Date.now();
+    72→  const hour = 3600000;
+    73→  const day = 86400000;
+    74→
+    75→  return [
+    76→    {
+    77→      id: "pol-a7f3",
+    78→      name: "Payment Gateway v3",
+    79→      domain: "finance",
+    80→      invariantCount: 24,
+    81→      shardCount: 8,
+    82→      healthScore: 96,
+    83→      mergeSuccessRate: 98.2,
+    84→      shadowEnabled: true,
+    85→      activeViolations: 0,
+    86→      violationSeverities: [],
+    87→      avgDivergence: 0.002,
+    88→      divergenceTrend: "down",
+    89→      zkProofs: 18,
+    90→      lastModified: new Date(now - 2 * hour).toISOString(),
+    91→      enforcementMode: "strict",
+    92→      version: "3.2.1",
+    93→    },
+    94→    {
+    95→      id: "pol-b2e1",
+    96→      name: "User Auth Policy",
+    97→      domain: "identity",
+    98→      invariantCount: 16,
+    99→      shardCount: 5,
+   100→      healthScore: 91,
+   101→      mergeSuccessRate: 94.7,
+   102→      shadowEnabled: true,
+   103→      activeViolations: 1,
+   104→      violationSeverities: ["medium"],
+   105→      avgDivergence: 0.018,
+   106→      divergenceTrend: "flat",
+   107→      zkProofs: 12,
+   108→      lastModified: new Date(now - 6 * hour).toISOString(),
+   109→      enforcementMode: "strict",
+   110→      version: "2.1.0",
+   111→    },
+   112→    {
+   113→      id: "pol-c9d4",
+   114→      name: "Inventory Tracker",
+   115→      domain: "supply-chain",
+   116→      invariantCount: 10,
+   117→      shardCount: 12,
+   118→      healthScore: 73,
+   119→      mergeSuccessRate: 82.3,
+   120→      shadowEnabled: false,
+   121→      activeViolations: 4,
+   122→      violationSeverities: ["high", "medium", "low", "low"],
+   123→      avgDivergence: 0.142,
+   124→      divergenceTrend: "up",
+   125→      zkProofs: 3,
+   126→      lastModified: new Date(now - 1 * day).toISOString(),
+   127→      enforcementMode: "moderate",
+   128→      version: "1.4.3",
+   129→    },
+   130→    {
+   131→      id: "pol-d5a8",
+   132→      name: "Event Sourcing Core",
+   133→      domain: "infrastructure",
+   134→      invariantCount: 31,
+   135→      shardCount: 6,
+   136→      healthScore: 88,
+   137→      mergeSuccessRate: 91.5,
+   138→      shadowEnabled: true,
+   139→      activeViolations: 2,
+   140→      violationSeverities: ["medium", "low"],
+   141→      avgDivergence: 0.034,
+   142→      divergenceTrend: "down",
+   143→      zkProofs: 22,
+   144→      lastModified: new Date(now - 45 * 60000).toISOString(),
+   145→      enforcementMode: "strict",
+   146→      version: "4.0.0",
+   147→    },
+   148→    {
+   149→      id: "pol-e1f6",
+   150→      name: "Rate Limiter",
+   151→      domain: "platform",
+   152→      invariantCount: 7,
+   153→      shardCount: 3,
+   154→      healthScore: 54,
+   155→      mergeSuccessRate: 68.9,
+   156→      shadowEnabled: false,
+   157→      activeViolations: 6,
+   158→      violationSeverities: ["critical", "high", "high", "medium", "low", "low"],
+   159→      avgDivergence: 0.891,
+   160→      divergenceTrend: "up",
+   161→      zkProofs: 0,
+   162→      lastModified: new Date(now - 3 * day).toISOString(),
+   163→      enforcementMode: "permissive",
+   164→      version: "0.9.2",
+   165→    },
+   166→    {
+   167→      id: "pol-f8c2",
+   168→      name: "Data Pipeline Guard",
+   169→      domain: "data",
+   170→      invariantCount: 19,
+   171→      shardCount: 9,
+   172→      healthScore: 82,
+   173→      mergeSuccessRate: 87.1,
+   174→      shadowEnabled: true,
+   175→      activeViolations: 2,
+   176→      violationSeverities: ["medium", "low"],
+   177→      avgDivergence: 0.067,
+   178→      divergenceTrend: "flat",
+   179→      zkProofs: 9,
+   180→      lastModified: new Date(now - 12 * hour).toISOString(),
+   181→      enforcementMode: "moderate",
+   182→      version: "2.3.0",
+   183→    },
+   184→    {
+   185→      id: "pol-g3b7",
+   186→      name: "Compliance Monitor",
+   187→      domain: "regulatory",
+   188→      invariantCount: 42,
+   189→      shardCount: 4,
+   190→      healthScore: 99,
+   191→      mergeSuccessRate: 99.8,
+   192→      shadowEnabled: true,
+   193→      activeViolations: 0,
+   194→      violationSeverities: [],
+   195→      avgDivergence: 0.001,
+   196→      divergenceTrend: "flat",
+   197→      zkProofs: 38,
+   198→      lastModified: new Date(now - 30 * 60000).toISOString(),
+   199→      enforcementMode: "strict",
+   200→      version: "5.1.0",
+   201→    },
+   202→    {
+   203→      id: "pol-h6e9",
+   204→      name: "ML Feature Store",
+   205→      domain: "ml-ops",
+   206→      invariantCount: 13,
+   207→      shardCount: 7,
+   208→      healthScore: 65,
+   209→      mergeSuccessRate: 76.4,
+   210→      shadowEnabled: false,
+   211→      activeViolations: 3,
+   212→      violationSeverities: ["high", "medium", "medium"],
+   213→      avgDivergence: 0.312,
+   214→      divergenceTrend: "up",
+   215→      zkProofs: 2,
+   216→      lastModified: new Date(now - 2 * day).toISOString(),
+   217→      enforcementMode: "permissive",
+   218→      version: "1.0.5",
+   219→    },
+   220→  ];
+   221→}
+   222→
+   223→const ALL_POLICIES = generateMockPolicies();
+   224→const MAX_SELECT = 4;
+   225→
+   226→/* ─── Comparison dimensions definition ─── */
+   227→interface Dimension {
+   228→  key: keyof ComparisonPolicy | string;
+   229→  label: string;
+   230→  icon: React.ComponentType<{ className?: string }>;
+   231→  format: (val: unknown, policy: ComparisonPolicy) => React.ReactNode;
+   232→  compare: (values: unknown[]) => number[]; // returns indices of best/worst: [best, worst]
+   233→  higherIsBetter: boolean;
+   234→}
+   235→
+   236→function fmtRelativeTime(iso: string): string {
+   237→  const diff = Date.now() - new Date(iso).getTime();
+   238→  if (diff < 0) return "just now";
+   239→  const m = Math.floor(diff / 60000);
+   240→  if (m < 60) return `${m}m ago`;
+   241→  const h = Math.floor(m / 60);
+   242→  if (h < 24) return `${h}h ago`;
+   243→  const d = Math.floor(h / 24);
+   244→  return `${d}d ago`;
+   245→}
+   246→
+   247→const DIMENSIONS: Dimension[] = [
+   248→  {
+   249→    key: "invariantCount",
+   250→    label: "Invariant Count",
+   251→    icon: ShieldCheck,
+   252→    format: (val) => <span className="font-mono text-sm">{val as number}</span>,
+   253→    compare: (vals) => {
+   254→      const n = vals as number[];
+   255→      return [n.indexOf(Math.max(...n)), n.indexOf(Math.min(...n))];
+   256→    },
+   257→    higherIsBetter: true,
+   258→  },
+   259→  {
+   260→    key: "shardCount",
+   261→    label: "Shard Count",
+   262→    icon: Layers,
+   263→    format: (val) => <span className="font-mono text-sm">{val as number}</span>,
+   264→    compare: (vals) => {
+   265→      const n = vals as number[];
+   266→      return [n.indexOf(Math.max(...n)), n.indexOf(Math.min(...n))];
+   267→    },
+   268→    higherIsBetter: true,
+   269→  },
+   270→  {
+   271→    key: "healthScore",
+   272→    label: "Health Score",
+   273→    icon: Activity,
+   274→    format: (val) => {
+   275→      const v = val as number;
+   276→      return (
+   277→        <span className={cn("font-mono text-sm font-semibold", v >= 85 ? "text-verified" : v >= 60 ? "text-repairing" : "text-violating")}>
+   278→          {v}%
+   279→        </span>
+   280→      );
+   281→    },
+   282→    compare: (vals) => {
+   283→      const n = vals as number[];
+   284→      return [n.indexOf(Math.max(...n)), n.indexOf(Math.min(...n))];
+   285→    },
+   286→    higherIsBetter: true,
+   287→  },
+   288→  {
+   289→    key: "mergeSuccessRate",
+   290→    label: "Merge Success Rate",
+   291→    icon: GitBranch,
+   292→    format: (val) => {
+   293→      const v = val as number;
+   294→      return (
+   295→        <span className={cn("font-mono text-sm", v >= 90 ? "text-verified" : v >= 75 ? "text-repairing" : "text-violating")}>
+   296→          {v.toFixed(1)}%
+   297→        </span>
+   298→      );
+   299→    },
+   300→    compare: (vals) => {
+   301→      const n = vals as number[];
+   302→      return [n.indexOf(Math.max(...n)), n.indexOf(Math.min(...n))];
+   303→    },
+   304→    higherIsBetter: true,
+   305→  },
+   306→  {
+   307→    key: "shadowEnabled",
+   308→    label: "Shadow Enabled",
+   309→    icon: Gauge,
+   310→    format: (val) =>
+   311→      val ? (
+   312→        <StatusPill status="verified" label="Yes" className="text-[10px] px-2 py-0" />
+   313→      ) : (
+   314→        <StatusPill status="idle" label="No" className="text-[10px] px-2 py-0" />
+   315→      ),
+   316→    compare: (vals) => {
+   317→      const b = vals as boolean[];
+   318→      const trueIdx = b.findIndex((v) => v);
+   319→      const falseIdx = b.findIndex((v) => !v);
+   320→      return [trueIdx >= 0 ? trueIdx : 0, falseIdx >= 0 ? falseIdx : 0];
+   321→    },
+   322→    higherIsBetter: true,
+   323→  },
+   324→  {
+   325→    key: "activeViolations",
+   326→    label: "Active Violations",
+   327→    icon: AlertTriangle,
+   328→    format: (val, policy) => {
+   329→      const v = val as number;
+   330→      const hasCritical = policy.violationSeverities.includes("critical");
+   331→      return (
+   332→        <span className={cn("font-mono text-sm", v === 0 ? "text-verified" : hasCritical ? "text-violating" : v > 3 ? "text-violating" : "text-repairing")}>
+   333→          {v}
+   334→        </span>
+   335→      );
+   336→    },
+   337→    compare: (vals) => {
+   338→      const n = vals as number[];
+   339→      return [n.indexOf(Math.min(...n)), n.indexOf(Math.max(...n))];
+   340→    },
+   341→    higherIsBetter: false,
+   342→  },
+   343→  {
+   344→    key: "avgDivergence",
+   345→    label: "Avg Divergence",
+   346→    icon: Activity,
+   347→    format: (val, policy) => {
+   348→      const v = val as number;
+   349→      const TrendIcon = policy.divergenceTrend === "up" ? ArrowUpRight : policy.divergenceTrend === "down" ? ArrowDownRight : Minus;
+   350→      const trendColor = policy.divergenceTrend === "down" ? "text-verified" : policy.divergenceTrend === "up" ? "text-violating" : "text-muted-foreground";
+   351→      return (
+   352→        <span className="inline-flex items-center gap-1">
+   353→          <span className={cn("font-mono text-sm", v < 0.01 ? "text-verified" : v < 0.1 ? "text-repairing" : "text-violating")}>
+   354→            {v.toFixed(3)}
+   355→          </span>
+   356→          <TrendIcon className={cn("h-3 w-3", trendColor)} />
+   357→        </span>
+   358→      );
+   359→    },
+   360→    compare: (vals) => {
+   361→      const n = vals as number[];
+   362→      return [n.indexOf(Math.min(...n)), n.indexOf(Math.max(...n))];
+   363→    },
+   364→    higherIsBetter: false,
+   365→  },
+   366→  {
+   367→    key: "zkProofs",
+   368→    label: "ZK Proofs",
+   369→    icon: Lock,
+   370→    format: (val) => <span className="font-mono text-sm">{val as number}</span>,
+   371→    compare: (vals) => {
+   372→      const n = vals as number[];
+   373→      return [n.indexOf(Math.max(...n)), n.indexOf(Math.min(...n))];
+   374→    },
+   375→    higherIsBetter: true,
+   376→  },
+   377→  {
+   378→    key: "lastModified",
+   379→    label: "Last Modified",
+   380→    icon: Clock,
+   381→    format: (val) => (
+   382→      <span className="font-mono text-xs text-muted-foreground">{fmtRelativeTime(val as string)}</span>
+   383→    ),
+   384→    compare: (vals) => {
+   385→      const times = (vals as string[]).map((v) => new Date(v).getTime());
+   386→      return [times.indexOf(Math.max(...times)), times.indexOf(Math.min(...times))];
+   387→    },
+   388→    higherIsBetter: true,
+   389→  },
+   390→  {
+   391→    key: "enforcementMode",
+   392→    label: "Enforcement Mode",
+   393→    icon: ShieldCheck,
+   394→    format: (val) => {
+   395→      const v = val as EnforcementMode;
+   396→      const config: Record<EnforcementMode, { className: string; label: string }> = {
+   397→        strict: { className: "border-verified/30 bg-verified/10 text-verified", label: "Strict" },
+   398→        moderate: { className: "border-repairing/30 bg-repairing/10 text-repairing", label: "Moderate" },
+   399→        permissive: { className: "border-violating/30 bg-violating/10 text-violating", label: "Permissive" },
+   400→      };
+   401→      const c = config[v];
+   402→      return (
+   403→        <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", c.className)}>
+   404→          {c.label}
+   405→        </span>
+   406→      );
+   407→    },
+   408→    compare: (vals) => {
+   409→      const order: EnforcementMode[] = ["strict", "moderate", "permissive"];
+   410→      const ranks = (vals as EnforcementMode[]).map((v) => order.indexOf(v));
+   411→      return [ranks.indexOf(Math.min(...ranks)), ranks.indexOf(Math.max(...ranks))];
+   412→    },
+   413→    higherIsBetter: true,
+   414→  },
+   415→];
+   416→
+   417→/* ─── Radar chart normalized dimensions ─── */
+   418→function buildRadarData(policies: ComparisonPolicy[]) {
+   419→  if (policies.length === 0) return [];
+   420→  const maxHealth = 100;
+   421→  const maxMerge = 100;
+   422→  const maxInvariant = Math.max(...ALL_POLICIES.map((p) => p.invariantCount));
+   423→  const maxZk = Math.max(...ALL_POLICIES.map((p) => p.zkProofs));
+   424→
+   425→  const axes = [
+   426→    { axis: "Health", key: "healthScore" as const, max: maxHealth },
+   427→    { axis: "Merge Rate", key: "mergeSuccessRate" as const, max: maxMerge },
+   428→    { axis: "Invariant Cov.", key: "invariantCount" as const, max: maxInvariant },
+   429→    { axis: "ZK Coverage", key: "zkProofs" as const, max: maxZk },
+   430→    { axis: "Violation-Free", key: "violationFree" as const, max: 100 },
+   431→  ];
+   432→
+   433→  return axes.map(({ axis, key, max }) => {
+   434→    const entry: Record<string, string | number> = { axis };
+   435→    for (const p of policies) {
+   436→      let raw: number;
+   437→      if (key === "violationFree") {
+   438→        raw = Math.max(0, 100 - p.activeViolations * 15);
+   439→      } else {
+   440→        raw = p[key] as number;
+   441→      }
+   442→      entry[p.name] = Math.round((raw / max) * 100);
+   443→    }
+   444→    return entry;
+   445→  });
+   446→}
+   447→
+   448→const RADAR_COLORS = [
+   449→  "oklch(0.78 0.16 160)",  // emerald
+   450→  "oklch(0.74 0.13 190)",  // teal
+   451→  "oklch(0.80 0.15 80)",   // amber
+   452→  "oklch(0.68 0.16 320)",  // violet-warm
+   453→];
+   454→
+   455→/* ─── Difference summary generator ─── */
+   456→function generateDiffSummary(policies: ComparisonPolicy[]): string[] {
+   457→  if (policies.length < 2) return [];
+   458→  const summaries: string[] = [];
+   459→
+   460→  const best = policies.reduce((a, b) => (a.healthScore > b.healthScore ? a : b));
+   461→  const worst = policies.reduce((a, b) => (a.healthScore < b.healthScore ? a : b));
+   462→  if (best.id !== worst.id) {
+   463→    summaries.push(
+   464→      `${best.name} leads in health score at ${best.healthScore}%, while ${worst.name} trails at ${worst.healthScore}% — a ${best.healthScore - worst.healthScore} point gap.`
+   465→    );
+   466→  }
+   467→
+   468→  const strictPolicies = policies.filter((p) => p.enforcementMode === "strict");
+   469→  const permissivePolicies = policies.filter((p) => p.enforcementMode === "permissive");
+   470→  if (strictPolicies.length > 0 && permissivePolicies.length > 0) {
+   471→    summaries.push(
+   472→      `Enforcement modes differ: ${strictPolicies.map((p) => p.name).join(", ")} run strict, while ${permissivePolicies.map((p) => p.name).join(", ")} are permissive.`
+   473→    );
+   474→  }
+   475→
+   476→  const shadowEnabled = policies.filter((p) => p.shadowEnabled);
+   477→  const shadowDisabled = policies.filter((p) => !p.shadowEnabled);
+   478→  if (shadowEnabled.length > 0 && shadowDisabled.length > 0) {
+   479→    summaries.push(
+   480→      `${shadowEnabled.length} of ${policies.length} policies have shadow bridges enabled (${shadowEnabled.map((p) => p.name).join(", ")}), while ${shadowDisabled.map((p) => p.name).join(", ")} do not.`
+   481→    );
+   482→  }
+   483→
+   484→  const highViolation = policies.filter((p) => p.activeViolations >= 3);
+   485→  if (highViolation.length > 0) {
+   486→    summaries.push(
+   487→      `${highViolation.map((p) => p.name).join(", ")} ${highViolation.length === 1 ? "has" : "have"} elevated violation counts (≥3), suggesting active drift that may require repair intervention.`
+   488→    );
+   489→  }
+   490→
+   491→  const bestMerge = policies.reduce((a, b) => (a.mergeSuccessRate > b.mergeSuccessRate ? a : b));
+   492→  const worstMerge = policies.reduce((a, b) => (a.mergeSuccessRate < b.mergeSuccessRate ? a : b));
+   493→  if (bestMerge.id !== worstMerge.id) {
+   494→    summaries.push(
+   495→      `Merge success rates span from ${worstMerge.mergeSuccessRate.toFixed(1)}% (${worstMerge.name}) to ${bestMerge.mergeSuccessRate.toFixed(1)}% (${bestMerge.name}).`
+   496→    );
+   497→  }
+   498→
+   499→  return summaries;
+   500→}
+   501→
+   502→/* ─── Main Section Component ─── */
+   503→export function ComparisonMatrixSection() {
+   504→  const [selectedIds, setSelectedIds] = useState<string[]>([ALL_POLICIES[0].id, ALL_POLICIES[1].id, ALL_POLICIES[3].id]);
+   505→  const [selectorOpen, setSelectorOpen] = useState(false);
+   506→
+   507→  const selectedPolicies = useMemo(
+   508→    () => ALL_POLICIES.filter((p) => selectedIds.includes(p.id)),
+   509→    [selectedIds]
+   510→  );
+   511→
+   512→  const radarData = useMemo(() => buildRadarData(selectedPolicies), [selectedPolicies]);
+   513→  const diffSummary = useMemo(() => generateDiffSummary(selectedPolicies), [selectedPolicies]);
+   514→
+   515→  const togglePolicy = (id: string) => {
+   516→    setSelectedIds((prev) => {
+   517→      if (prev.includes(id)) {
+   518→        return prev.filter((x) => x !== id);
+   519→      }
+   520→      if (prev.length >= MAX_SELECT) return prev;
+   521→      return [...prev, id];
+   522→    });
+   523→  };
+   524→
+   525→  return (
+   526→    <motion.section className="space-y-4" variants={containerVariants} initial="hidden" animate="show">
+   527→      {/* ─── Header ─── */}
+   528→      <GradientBorderCard gradientFrom="oklch(0.78 0.16 160 / 0.4)" gradientTo="oklch(0.74 0.13 190 / 0.2)" className="p-4">
+   529→        <GridOverlay />
+   530→        <div className="relative flex flex-wrap items-center gap-3">
+   531→          <motion.div variants={cardVariants} className="flex h-10 w-10 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 shrink-0">
+   532→            <GitCompare className="h-5 w-5 text-verified" />
+   533→          </motion.div>
+   534→          <motion.div variants={cardVariants} className="min-w-0 flex-1">
+   535→            <h2 className="text-base font-semibold flex items-center gap-2">
+   536→              Comparison Matrix
+   537→              <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[9px] font-mono">
+   538→                {selectedPolicies.length}/{MAX_SELECT}
+   539→              </Badge>
+   540→            </h2>
+   541→            <p className="text-xs text-muted-foreground mt-0.5">Side-by-side multi-policy comparison — identify gaps, highlight leaders, and spot drift across your governance surface.</p>
+   542→          </motion.div>
+   543→          <motion.div variants={cardVariants} className="flex items-center gap-2 flex-wrap">
+   544→            <Button
+   545→              size="sm"
+   546→              variant="outline"
+   547→              className="h-8 relative"
+   548→              onClick={() => setSelectorOpen(!selectorOpen)}
+   549→            >
+   550→              <GitCompare className="h-3.5 w-3.5 mr-1.5" />
+   551→              Select Policies
+   552→            </Button>
+   553→            <Button
+   554→              size="sm"
+   555→              variant="outline"
+   556→              className="h-8 opacity-60 cursor-default"
+   557→              onClick={() => {}}
+   558→            >
+   559→              <Download className="h-3.5 w-3.5 mr-1.5" />
+   560→              Export Comparison
+   561→            </Button>
+   562→          </motion.div>
+   563→        </div>
+   564→      </GradientBorderCard>
+   565→
+   566→      {/* ─── Policy Selector Dropdown ─── */}
+   567→      <AnimatePresence>
+   568→        {selectorOpen && (
+   569→          <motion.div
+   570→            initial={{ opacity: 0, height: 0, y: -8 }}
+   571→            animate={{ opacity: 1, height: "auto", y: 0 }}
+   572→            exit={{ opacity: 0, height: 0, y: -8 }}
+   573→            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+   574→          >
+   575→            <GradientBorderCard gradientFrom="oklch(0.74 0.13 190 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.15)" className="p-4">
+   576→              <div className="relative">
+   577→                <div className="flex items-center gap-2 mb-3">
+   578→                  <Layers className="h-4 w-4 text-repairing" />
+   579→                  <h3 className="text-sm font-semibold">Select up to {MAX_SELECT} policies</h3>
+   580→                  <span className="ml-auto text-[10px] text-muted-foreground font-mono">
+   581→                    {selectedIds.length} selected
+   582→                  </span>
+   583→                </div>
+   584→                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+   585→                  {ALL_POLICIES.map((policy) => {
+   586→                    const isSelected = selectedIds.includes(policy.id);
+   587→                    const isDisabled = !isSelected && selectedIds.length >= MAX_SELECT;
+   588→                    return (
+   589→                      <motion.button
+   590→                        key={policy.id}
+   591→                        type="button"
+   592→                        disabled={isDisabled}
+   593→                        onClick={() => togglePolicy(policy.id)}
+   594→                        whileHover={{ scale: 1.02, x: 2 }}
+   595→                        whileTap={{ scale: 0.98 }}
+   596→                        className={cn(
+   597→                          "flex items-center gap-2 rounded-lg border p-2.5 text-left transition-all",
+   598→                          isSelected
+   599→                            ? "border-verified/50 bg-verified/10 shadow-[0_0_12px_oklch(0.78_0.16_160_/_0.15)]"
+   600→                            : isDisabled
+   601→                            ? "border-border/30 bg-muted/10 opacity-40 cursor-not-allowed"
+   602→                            : "border-border/40 bg-background/40 hover:border-verified/30 hover:bg-verified/5"
+   603→                        )}
+   604→                      >
+   605→                        <div
+   606→                          className={cn(
+   607→                            "flex h-5 w-5 items-center justify-center rounded border shrink-0 transition-colors",
+   608→                            isSelected ? "border-verified bg-verified text-primary-foreground" : "border-border/60 bg-muted/20"
+   609→                          )}
+   610→                        >
+   611→                          {isSelected ? <Check className="h-3 w-3" /> : <X className="h-3 w-3 opacity-0" />}
+   612→                        </div>
+   613→                        <div className="min-w-0 flex-1">
+   614→                          <div className="text-xs font-medium truncate">{policy.name}</div>
+   615→                          <div className="text-[10px] text-muted-foreground truncate">
+   616→                            {policy.domain} · v{policy.version}
+   617→                          </div>
+   618→                        </div>
+   619→                        <div
+   620→                          className={cn(
+   621→                            "h-2 w-2 rounded-full shrink-0",
+   622→                            policy.healthScore >= 85 ? "bg-verified" : policy.healthScore >= 60 ? "bg-repairing" : "bg-violating"
+   623→                          )}
+   624→                        />
+   625→                      </motion.button>
+   626→                    );
+   627→                  })}
+   628→                </div>
+   629→              </div>
+   630→            </GradientBorderCard>
+   631→          </motion.div>
+   632→        )}
+   633→      </AnimatePresence>
+   634→
+   635→      {/* ─── Empty state ─── */}
+   636→      {selectedPolicies.length === 0 && (
+   637→        <GradientBorderCard gradientFrom="oklch(0.32 0.014 165 / 0.2)" gradientTo="oklch(0.32 0.014 165 / 0.1)" className="p-8">
+   638→          <div className="relative text-center">
+   639→            <GitCompare className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+   640→            <p className="text-sm text-muted-foreground">Select at least one policy to begin comparison.</p>
+   641→            <Button size="sm" variant="outline" className="mt-3 h-8" onClick={() => setSelectorOpen(true)}>
+   642→              <GitCompare className="h-3.5 w-3.5 mr-1.5" /> Open Selector
+   643→            </Button>
+   644→          </div>
+   645→        </GradientBorderCard>
+   646→      )}
+   647→
+   648→      {/* ─── Comparison Grid ─── */}
+   649→      {selectedPolicies.length > 0 && (
+   650→        <GradientBorderCard gradientFrom="oklch(0.78 0.16 160 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.15)" className="p-0 overflow-hidden">
+   651→          <TopAccentBar color="oklch(0.78 0.16 160)" />
+   652→          <div className="relative noise-overlay">
+   653→            <div className="overflow-x-auto scrollbar-thin">
+   654→              <table className="w-full min-w-[600px]">
+   655→                <thead>
+   656→                  <tr className="border-b border-border/40">
+   657→                    <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground sticky left-0 bg-card z-10 min-w-[160px]">
+   658→                      Dimension
+   659→                    </th>
+   660→                    {selectedPolicies.map((p, i) => (
+   661→                      <th key={p.id} className="text-center px-4 py-3 min-w-[150px]">
+   662→                        <motion.div
+   663→                          initial={{ opacity: 0, y: -8 }}
+   664→                          animate={{ opacity: 1, y: 0 }}
+   665→                          transition={{ delay: i * 0.08 }}
+   666→                          className="flex flex-col items-center gap-1"
+   667→                        >
+   668→                          <span
+   669→                            className="inline-block h-2 w-2 rounded-full"
+   670→                            style={{ backgroundColor: RADAR_COLORS[i] }}
+   671→                          />
+   672→                          <span className="text-xs font-semibold text-foreground">{p.name}</span>
+   673→                          <span className="text-[9px] text-muted-foreground font-mono">{p.domain} · v{p.version}</span>
+   674→                        </motion.div>
+   675→                      </th>
+   676→                    ))}
+   677→                  </tr>
+   678→                </thead>
+   679→                <tbody>
+   680→                  {DIMENSIONS.map((dim, rowIdx) => {
+   681→                    const values = selectedPolicies.map((p) => p[dim.key as keyof ComparisonPolicy]);
+   682→                    const [bestIdx, worstIdx] = dim.compare(values);
+   683→                    const Icon = dim.icon;
+   684→
+   685→                    return (
+   686→                      <motion.tr
+   687→                        key={dim.key}
+   688→                        variants={itemVariants}
+   689→                        className={cn(
+   690→                          "border-b border-border/20 transition-colors",
+   691→                          "hover:bg-muted/10"
+   692→                        )}
+   693→                      >
+   694→                        <td className="px-4 py-2.5 sticky left-0 bg-card z-10">
+   695→                          <div className="flex items-center gap-2">
+   696→                            <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+   697→                            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">{dim.label}</span>
+   698→                          </div>
+   699→                        </td>
+   700→                        {selectedPolicies.map((p, colIdx) => {
+   701→                          const cellValue = p[dim.key as keyof ComparisonPolicy];
+   702→                          const isBest = colIdx === bestIdx && selectedPolicies.length > 1;
+   703→                          const isWorst = colIdx === worstIdx && selectedPolicies.length > 1 && bestIdx !== worstIdx;
+   704→
+   705→                          return (
+   706→                            <motion.td
+   707→                              key={p.id}
+   708→                              initial={{ opacity: 0, scale: 0.95 }}
+   709→                              animate={{ opacity: 1, scale: 1 }}
+   710→                              transition={{ delay: rowIdx * 0.03 + colIdx * 0.04 }}
+   711→                              className={cn(
+   712→                                "px-4 py-2.5 text-center transition-colors",
+   713→                                isBest && "bg-verified/8",
+   714→                                isWorst && "bg-violating/8"
+   715→                              )}
+   716→                            >
+   717→                              <div className="flex flex-col items-center gap-0.5">
+   718→                                <div className="flex items-center gap-1">
+   719→                                  {isBest && (
+   720→                                    <motion.span
+   721→                                      initial={{ scale: 0 }}
+   722→                                      animate={{ scale: 1 }}
+   723→                                      className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-verified/20 text-verified"
+   724→                                    >
+   725→                                      <ArrowUpRight className="h-2.5 w-2.5" />
+   726→                                    </motion.span>
+   727→                                  )}
+   728→                                  {isWorst && (
+   729→                                    <motion.span
+   730→                                      initial={{ scale: 0 }}
+   731→                                      animate={{ scale: 1 }}
+   732→                                      className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-violating/20 text-violating"
+   733→                                    >
+   734→                                      <ArrowDownRight className="h-2.5 w-2.5" />
+   735→                                    </motion.span>
+   736→                                  )}
+   737→                                  {dim.format(cellValue, p)}
+   738→                                </div>
+   739→                                {isBest && (
+   740→                                  <span className="text-[8px] font-mono text-verified/70 uppercase tracking-wider">best</span>
+   741→                                )}
+   742→                                {isWorst && (
+   743→                                  <span className="text-[8px] font-mono text-violating/70 uppercase tracking-wider">worst</span>
+   744→                                )}
+   745→                              </div>
+   746→                            </motion.td>
+   747→                          );
+   748→                        })}
+   749→                      </motion.tr>
+   750→                    );
+   751→                  })}
+   752→                </tbody>
+   753→              </table>
+   754→            </div>
+   755→          </div>
+   756→        </GradientBorderCard>
+   757→      )}
+   758→
+   759→      {/* ─── Radar Chart + Difference Summary ─── */}
+   760→      {selectedPolicies.length >= 2 && (
+   761→        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   762→          {/* Radar Chart */}
+   763→          <GradientBorderCard gradientFrom="oklch(0.74 0.13 190 / 0.3)" gradientTo="oklch(0.78 0.16 160 / 0.15)" className="p-4">
+   764→            <TopAccentBar color="oklch(0.74 0.13 190)" />
+   765→            <div className="relative">
+   766→              <div className="noise-overlay rounded-lg" />
+   767→              {/* Glass morphism container */}
+   768→              <div className="relative rounded-xl bg-card/60 backdrop-blur-xl border border-border/30 p-4">
+   769→                <div className="flex items-center gap-2 mb-3">
+   770→                  <Activity className="h-4 w-4 text-repairing" />
+   771→                  <h3 className="text-sm font-semibold">Normalized Radar</h3>
+   772→                  <span className="text-[10px] text-muted-foreground font-mono ml-auto">
+   773→                    0–100 scale
+   774→                  </span>
+   775→                </div>
+   776→                <div className="particle-field rounded-lg overflow-hidden">
+   777→                  <ResponsiveContainer width="100%" height={300}>
+   778→                    <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
+   779→                      <PolarGrid stroke="oklch(0.32 0.014 165 / 0.5)" strokeDasharray="2 3" />
+   780→                      <PolarAngleAxis
+   781→                        dataKey="axis"
+   782→                        tick={{ fontSize: 10, fill: "oklch(0.68 0.015 160)" }}
+   783→                      />
+   784→                      <PolarRadiusAxis
+   785→                        angle={90}
+   786→                        domain={[0, 100]}
+   787→                        tick={{ fontSize: 8, fill: "oklch(0.55 0.01 160)" }}
+   788→                        tickCount={5}
+   789→                      />
+   790→                      {selectedPolicies.map((p, i) => (
+   791→                        <Radar
+   792→                          key={p.id}
+   793→                          name={p.name}
+   794→                          dataKey={p.name}
+   795→                          stroke={RADAR_COLORS[i]}
+   796→                          fill={RADAR_COLORS[i]}
+   797→                          fillOpacity={0.12}
+   798→                          strokeWidth={2}
+   799→                          dot={{ r: 3, fill: RADAR_COLORS[i], stroke: RADAR_COLORS[i], strokeWidth: 1 }}
+   800→                        />
+   801→                      ))}
+   802→                      <RechartsTooltip
+   803→                        contentStyle={CHART_TOOLTIP_STYLE}
+   804→                        formatter={(value: number) => [`${value}%`, ""]}
+   805→                      />
+   806→                      <Legend
+   807→                        wrapperStyle={{ fontSize: 10, fontFamily: "var(--font-geist-mono)" }}
+   808→                        iconType="circle"
+   809→                        iconSize={8}
+   810→                      />
+   811→                    </RadarChart>
+   812→                  </ResponsiveContainer>
+   813→                </div>
+   814→                {/* Legend dots below chart */}
+   815→                <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
+   816→                  {selectedPolicies.map((p, i) => (
+   817→                    <div key={p.id} className="flex items-center gap-1.5">
+   818→                      <span
+   819→                        className="inline-block h-2.5 w-2.5 rounded-full"
+   820→                        style={{ backgroundColor: RADAR_COLORS[i] }}
+   821→                      />
+   822→                      <span className="text-[10px] text-muted-foreground font-mono">{p.name}</span>
+   823→                    </div>
+   824→                  ))}
+   825→                </div>
+   826→              </div>
+   827→            </div>
+   828→          </GradientBorderCard>
+   829→
+   830→          {/* Difference Summary */}
+   831→          <GradientBorderCard gradientFrom="oklch(0.80 0.15 80 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.15)" className="p-4">
+   832→            <TopAccentBar color="oklch(0.80 0.15 80)" />
+   833→            <div className="relative">
+   834→              <div className="noise-overlay rounded-lg" />
+   835→              <div className="relative">
+   836→                <div className="flex items-center gap-2 mb-3">
+   837→                  <GitCompare className="h-4 w-4 text-repairing" />
+   838→                  <h3 className="text-sm font-semibold">Difference Summary</h3>
+   839→                  <Badge variant="outline" className="ml-auto text-[9px] font-mono border-repairing/30 bg-repairing/10 text-repairing">
+   840→                    {diffSummary.length} insights
+   841→                  </Badge>
+   842→                </div>
+   843→
+   844→                {diffSummary.length === 0 ? (
+   845→                  <div className="text-center py-8">
+   846→                    <Check className="h-8 w-8 text-verified mx-auto mb-2" />
+   847→                    <p className="text-xs text-muted-foreground">Policies are nearly identical across compared dimensions.</p>
+   848→                  </div>
+   849→                ) : (
+   850→                  <div className="space-y-2 max-h-[340px] overflow-y-auto scrollbar-thin pr-1">
+   851→                    {diffSummary.map((text, i) => (
+   852→                      <motion.div
+   853→                        key={i}
+   854→                        initial={{ opacity: 0, x: -8 }}
+   855→                        animate={{ opacity: 1, x: 0 }}
+   856→                        transition={{ delay: i * 0.08 }}
+   857→                        whileHover={{ x: 3, backgroundColor: "oklch(0.25 0.015 168 / 0.3)" }}
+   858→                        className="flex items-start gap-2.5 rounded-lg border border-border/30 bg-background/30 p-3 transition-colors"
+   859→                      >
+   860→                        <div
+   861→                          className={cn(
+   862→                            "flex h-5 w-5 items-center justify-center rounded-full shrink-0 mt-0.5 text-[10px] font-bold",
+   863→                            i === 0
+   864→                              ? "bg-verified/15 text-verified"
+   865→                              : i <= 2
+   866→                              ? "bg-repairing/15 text-repairing"
+   867→                              : "bg-muted/20 text-muted-foreground"
+   868→                          )}
+   869→                        >
+   870→                          {i + 1}
+   871→                        </div>
+   872→                        <p className="text-xs leading-relaxed text-foreground/90">{text}</p>
+   873→                      </motion.div>
+   874→                    ))}
+   875→                  </div>
+   876→                )}
+   877→
+   878→                {/* Quick stats row */}
+   879→                <div className="grid grid-cols-3 gap-2 mt-4">
+   880→                  {selectedPolicies.map((p, i) => (
+   881→                    <motion.div
+   882→                      key={p.id}
+   883→                      initial={{ opacity: 0, scale: 0.9 }}
+   884→                      animate={{ opacity: 1, scale: 1 }}
+   885→                      transition={{ delay: 0.3 + i * 0.06 }}
+   886→                      className="rounded-lg border border-border/30 bg-background/30 p-2 text-center"
+   887→                    >
+   888→                      <span
+   889→                        className="inline-block h-2 w-2 rounded-full mb-1"
+   890→                        style={{ backgroundColor: RADAR_COLORS[i] }}
+   891→                      />
+   892→                      <div className={cn(
+   893→                        "text-lg font-bold font-mono leading-none",
+   894→                        p.healthScore >= 85 ? "text-verified" : p.healthScore >= 60 ? "text-repairing" : "text-violating"
+   895→                      )}>
+   896→                        {p.healthScore}%
+   897→                      </div>
+   898→                      <div className="text-[9px] text-muted-foreground mt-0.5 truncate">{p.name}</div>
+   899→                    </motion.div>
+   900→                  ))}
+   901→                </div>
+   902→              </div>
+   903→            </div>
+   904→          </GradientBorderCard>
+   905→        </div>
+   906→      )}
+   907→    </motion.section>
+   908→  );
+   909→}
+   910→
