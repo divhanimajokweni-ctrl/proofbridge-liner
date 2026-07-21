@@ -1,0 +1,606 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Cpu, Activity, Zap, Play, Radio, Moon, ShieldAlert, FlaskConical,
+     7→  RotateCw, GitCompare, Undo2, AlertTriangle, CheckCircle2, XCircle,
+     8→  Clock, Gauge, Power, Wifi, WifiOff, TrendingUp, TrendingDown, Minus, Eye, BarChart3,
+     9→} from "lucide-react";
+    10→import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from "recharts";
+    11→import { Card } from "@/components/ui/card";
+    12→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+    13→import { Textarea } from "@/components/ui/textarea";
+    14→import { Input } from "@/components/ui/input";
+    15→import { Button } from "@/components/ui/button";
+    16→import { Badge } from "@/components/ui/badge";
+    17→import { Progress } from "@/components/ui/progress";
+    18→import { Separator } from "@/components/ui/separator";
+    19→import { Skeleton } from "@/components/ui/skeleton";
+    20→import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+    21→import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+    22→import { useToast } from "@/hooks/use-toast";
+    23→import { cn } from "@/lib/utils";
+    24→import { formatValue } from "@/lib/format";
+    25→import type { PolicyRow, ShadowBridgeRow, ShadowEventRow, ShadowKind, Severity } from "@/lib/types";
+    26→import { GradientBorderCard, containerVariants, cardVariants, itemVariants, fmtTimestamp, SeverityBadge, CHART_TOOLTIP_STYLE, SectionHeader, divColor, GridOverlay } from "./primitives";
+    27→
+    28→const POLL_MS = 8_000;
+    29→const DEFAULT_DELTA = `{"frequency": 49.5}`;
+    30→
+    31→interface InvariantEval { name: string; passed: boolean; severity: Severity; soft: boolean; actual?: string }
+    32→
+    33→const KIND_META: Record<ShadowKind, { icon: typeof ShieldAlert; color: string; border: string; text: string; label: string }> = {
+    34→  takeover: { icon: ShieldAlert, color: "bg-violating/15", border: "border-violating/40", text: "text-violating", label: "TAKEOVER" },
+    35→  whatif: { icon: FlaskConical, color: "bg-repairing/15", border: "border-repairing/40", text: "text-repairing", label: "WHAT-IF" },
+    36→  replay: { icon: RotateCw, color: "bg-quarantined/15", border: "border-quarantined/40", text: "text-quarantined", label: "REPLAY" },
+    37→  divergence: { icon: GitCompare, color: "bg-violating/15", border: "border-violating/40", text: "text-violating", label: "DIVERGENCE" },
+    38→  handback: { icon: Undo2, color: "bg-verified/15", border: "border-verified/40", text: "text-verified", label: "HANDBACK" },
+    39→};
+    40→
+    41→function fmtVal(v: unknown) { return formatValue(v, 40); }
+    42→
+    43→function DriftSparkline({ events }: { events: ShadowEventRow[] }) {
+    44→  const data = useMemo(() => {
+    45→    if (!events?.length) return Array.from({ length: 20 }, (_, i) => ({ idx: i, drift: Math.abs(Math.sin(i * 0.4) * 0.3 + Math.cos(i * 0.7) * 0.15 + 0.05) }));
+    46→    return events.slice(0, 20).map((ev, i) => ({ idx: i, drift: ev.divergence }));
+    47→  }, [events]);
+    48→  const maxDrift = Math.max(...data.map((d) => d.drift), 0.01);
+    49→  return (
+    50→    <div className="h-12 w-full"><ResponsiveContainer width="100%" height="100%">
+    51→      <AreaChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
+    52→        <defs><linearGradient id="driftGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="oklch(0.80 0.15 80)" stopOpacity={0.4} /><stop offset="95%" stopColor="oklch(0.80 0.15 80)" stopOpacity={0.02} /></linearGradient></defs>
+    53→        <YAxis domain={[0, maxDrift * 1.2]} hide /><Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [v.toFixed(4), "drift"]} />
+    54→        <Area type="monotone" dataKey="drift" stroke="oklch(0.80 0.15 80)" strokeWidth={1.5} fill="url(#driftGrad)" animationDuration={1200} />
+    55→      </AreaChart>
+    56→    </ResponsiveContainer></div>
+    57→  );
+    58→}
+    59→
+    60→function GaugeNeedle({ value, max, size = 80 }: { value: number; max: number; size?: number }) {
+    61→  const clamped = Math.min(Math.max(value / max, 0), 1);
+    62→  const angle = -90 + clamped * 180;
+    63→  const color = clamped < 0.33 ? "oklch(0.78 0.16 160)" : clamped < 0.66 ? "oklch(0.80 0.15 80)" : "oklch(0.64 0.21 25)";
+    64→  return (
+    65→    <svg width={size} height={size / 2 + 6} viewBox="0 0 80 46" className="overflow-visible">
+    66→      <defs><linearGradient id="gaugeArcGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="oklch(0.78 0.16 160)" /><stop offset="50%" stopColor="oklch(0.80 0.15 80)" /><stop offset="100%" stopColor="oklch(0.64 0.21 25)" /></linearGradient></defs>
+    67→      <path d="M 8 42 A 34 34 0 0 1 72 42" fill="none" stroke="oklch(0.32 0.014 165 / 0.4)" strokeWidth={5} strokeLinecap="round" />
+    68→      <motion.path d="M 8 42 A 34 34 0 0 1 72 42" fill="none" stroke="url(#gaugeArcGrad)" strokeWidth={5} strokeLinecap="round"
+    69→        strokeDasharray={`${clamped * 107} 107`} initial={{ strokeDasharray: "0 107" }} animate={{ strokeDasharray: `${clamped * 107} 107` }} transition={{ duration: 1.2, ease: "easeOut" }} />
+    70→      <motion.line x1="40" y1="42" x2="40" y2="12" stroke={color} strokeWidth={2} strokeLinecap="round"
+    71→        initial={{ rotate: -90, transformOrigin: "40px 42px" }} animate={{ rotate: angle, transformOrigin: "40px 42px" }} transition={{ type: "spring", stiffness: 120, damping: 18, delay: 0.3 }} />
+    72→      <circle cx="40" cy="42" r={3} fill={color} />
+    73→    </svg>
+    74→  );
+    75→}
+    76→
+    77→function StateKV({ state, accent }: { state: Record<string, unknown>; accent?: string }) {
+    78→  return (
+    79→    <div className="space-y-1">
+    80→      {Object.entries(state ?? {}).length === 0 && <div className="text-[11px] text-muted-foreground italic">no state</div>}
+    81→      {Object.entries(state ?? {}).map(([k, v]) => (
+    82→        <motion.div key={k} variants={itemVariants} className="flex items-center justify-between gap-2 rounded px-1.5 py-0.5 hover:bg-muted/30 transition-colors">
+    83→          <span className="font-mono text-[11px] text-muted-foreground">{k}</span>
+    84→          <span className={cn("font-mono text-[11px] truncate max-w-[60%] text-right", accent ?? "text-foreground")} title={fmtVal(v)}>{fmtVal(v)}</span>
+    85→        </motion.div>
+    86→      ))}
+    87→    </div>
+    88→  );
+    89→}
+    90→
+    91→function InvariantRow({ live, shadow }: { live?: InvariantEval; shadow?: InvariantEval }) {
+    92→  const name = live?.name ?? shadow?.name ?? "?";
+    93→  const divergent = !!live && !!shadow && live.passed !== shadow.passed;
+    94→  return (
+    95→    <motion.div variants={itemVariants}
+    96→      className={cn("flex items-center justify-between gap-2 rounded px-1.5 py-1 transition-colors hover:bg-muted/20", divergent && "bg-violating/10 border border-violating/30")}>
+    97→      <div className="flex min-w-0 items-center gap-2"><span className="font-mono text-[11px] text-foreground truncate">{name}</span><SeverityBadge severity={(live ?? shadow)!.severity} soft={(live ?? shadow)!.soft} /></div>
+    98→      <div className="flex items-center gap-2 text-xs">
+    99→        {([["L", live], ["S", shadow]] as const).map(([label, inv]) => (
+   100→          <TooltipProvider key={label}><UITooltip><TooltipTrigger asChild>
+   101→            <span className={cn("flex items-center gap-0.5 cursor-default", inv?.passed ? "text-verified" : "text-violating")}>
+   102→              {inv?.passed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}<span className="text-[10px] uppercase">{label}</span>
+   103→            </span>
+   104→          </TooltipTrigger><TooltipContent side="top" className="text-xs">{label === "L" ? "Live" : "Shadow"}: {inv?.passed ? "passed" : "failed"}</TooltipContent></UITooltip></TooltipProvider>
+   105→        ))}
+   106→      </div>
+   107→    </motion.div>
+   108→  );
+   109→}
+   110→
+   111→function EventTimelineItem({ ev }: { ev: ShadowEventRow }) {
+   112→  const meta = KIND_META[ev.kind] ?? KIND_META.divergence;
+   113→  const Icon = meta.icon;
+   114→  return (
+   115→    <motion.div variants={itemVariants}
+   116→      className={cn("relative rounded-md border p-2.5 bg-card/40 transition-all hover:bg-muted/20", ev.authoritative ? cn(meta.border, "glow-violating") : "border-border/60")}>
+   117→      <div className="flex items-start justify-between gap-2">
+   118→        <div className="flex items-center gap-2">
+   119→          <span className={cn("flex h-6 w-6 items-center justify-center rounded border", meta.color, meta.border)}><Icon className={cn("h-3 w-3", meta.text)} /></span>
+   120→          <div className="flex flex-col"><span className={cn("text-[10px] font-semibold uppercase tracking-wide", meta.text)}>{meta.label}</span><span className="text-[11px] text-foreground">{ev.summary}</span></div>
+   121→        </div>
+   122→        {ev.authoritative && <Badge variant="outline" className="border-violating/40 bg-violating/10 text-violating text-[9px]">AUTH</Badge>}
+   123→      </div>
+   124→      <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground">
+   125→        <span className="flex items-center gap-1"><GitCompare className="h-2.5 w-2.5" /><span className="font-mono">div {ev.divergence.toFixed(3)}</span></span>
+   126→        <span className="flex items-center gap-1"><Clock className="h-2.5 w-2.5" />{fmtTimestamp(ev.createdAt)}</span>
+   127→      </div>
+   128→    </motion.div>
+   129→  );
+   130→}
+   131→
+   132→function BridgeStatusIndicator({ shadowEnabled, authoritative, divergence }: { shadowEnabled: boolean; authoritative: boolean; divergence: number }) {
+   133→  const status = !shadowEnabled ? "disabled" : authoritative ? "takeover" : divergence < 0.001 ? "aligned" : divergence < 1 ? "drifting" : "breached";
+   134→  const cfg: Record<string, { color: string; bg: string; border: string; text: string; icon: typeof Wifi }> = {
+   135→    disabled: { color: "text-muted-foreground", bg: "bg-muted/20", border: "border-border/60", text: "DISABLED", icon: WifiOff },
+   136→    aligned: { color: "text-verified", bg: "bg-verified/10", border: "border-verified/40", text: "ALIGNED", icon: Wifi },
+   137→    drifting: { color: "text-repairing", bg: "bg-repairing/10", border: "border-repairing/40", text: "DRIFTING", icon: TrendingUp },
+   138→    breached: { color: "text-violating", bg: "bg-violating/10", border: "border-violating/40", text: "BREACHED", icon: AlertTriangle },
+   139→    takeover: { color: "text-violating", bg: "bg-violating/15", border: "border-violating/50", text: "TAKEOVER ACTIVE", icon: ShieldAlert },
+   140→  };
+   141→  const c = cfg[status]; const Icon = c.icon;
+   142→  return (
+   143→    <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 25 }}
+   144→      className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-1.5", c.bg, c.border)}>
+   145→      <span className="relative flex h-2.5 w-2.5">
+   146→        <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-75", (status === "takeover" || status === "breached") && "animate-epistemic-pulse", c.color.replace("text-", "bg-"))} />
+   147→        <span className={cn("relative inline-flex h-2.5 w-2.5 rounded-full", c.color.replace("text-", "bg-"))} />
+   148→      </span>
+   149→      <Icon className={cn("h-3.5 w-3.5", c.color)} /><span className={cn("text-xs font-semibold uppercase tracking-wide", c.color)}>{c.text}</span>
+   150→    </motion.div>
+   151→  );
+   152→}
+   153→
+   154→function DivergenceMeter({ divergence, authoritative, events }: { divergence: number; authoritative: boolean; events: ShadowEventRow[] }) {
+   155→  const pct = Math.min(100, Math.round(Math.sqrt(divergence) * 35));
+   156→  const armed = divergence > 0.0001 && authoritative;
+   157→  const barClass = divergence < 0.001 ? "[&>div]:bg-verified" : divergence < 1 ? "[&>div]:bg-repairing" : "[&>div]:bg-violating";
+   158→  const trend = events.length >= 2 ? events[0].divergence - events[1].divergence : 0;
+   159→  const TrendIcon = Math.abs(trend) < 0.0001 ? Minus : trend > 0 ? TrendingUp : TrendingDown;
+   160→  const trendColor = Math.abs(trend) < 0.0001 ? "text-muted-foreground" : trend > 0 ? "text-violating" : "text-verified";
+   161→
+   162→  return (
+   163→    <GradientBorderCard gradientFrom={divergence < 0.001 ? "oklch(0.78 0.16 160 / 0.35)" : divergence < 1 ? "oklch(0.80 0.15 80 / 0.35)" : "oklch(0.64 0.21 25 / 0.4)"}
+   164→      gradientTo="oklch(0.32 0.014 165 / 0.1)" className={cn(armed && "glow-violating")}>
+   165→      <GridOverlay />
+   166→      <div className="relative flex flex-col items-center gap-1.5 p-3 w-full">
+   167→        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Twin Divergence</div>
+   168→        <motion.div className={cn("font-mono text-2xl font-semibold tabular-nums", divColor(divergence))}
+   169→          initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }}>{divergence.toFixed(3)}</motion.div>
+   170→        <GaugeNeedle value={pct} max={100} size={100} />
+   171→        <Progress value={pct} className={cn("h-1.5 w-full", barClass)} />
+   172→        <div className={cn("flex items-center gap-1 text-[10px]", trendColor)}>
+   173→          <TrendIcon className="h-3 w-3" /><span className="font-mono">{trend >= 0 ? "+" : ""}{trend.toFixed(4)}</span><span className="text-muted-foreground">trend</span>
+   174→        </div>
+   175→        <motion.div className={cn("flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+   176→          armed ? "border-violating/50 bg-violating/15 text-violating animate-epistemic-pulse" : divergence > 0.0001 ? "border-repairing/40 bg-repairing/10 text-repairing" : "border-verified/40 bg-verified/10 text-verified")}
+   177→          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+   178→          <Power className="h-3 w-3" />{armed ? "TAKEOVER ARMED" : divergence > 0.0001 ? "DRIFT" : "ALIGNED"}
+   179→        </motion.div>
+   180→        <div className="text-[9px] text-muted-foreground text-center leading-tight font-mono mt-0.5">{divergence < 0.001 ? "live ≡ shadow" : divergence < 1 ? "invariant mismatch" : "authoritative breach"}</div>
+   181→      </div>
+   182→    </GradientBorderCard>
+   183→  );
+   184→}
+   185→
+   186→function TwinCard({ side, state, invariants, authoritative }: { side: "live" | "shadow"; state: Record<string, unknown>; invariants: InvariantEval[]; authoritative?: boolean }) {
+   187→  const isLive = side === "live";
+   188→  const passCount = invariants.filter((iv) => iv.passed).length;
+   189→  const failCount = invariants.length - passCount;
+   190→  return (
+   191→    <GradientBorderCard gradientFrom={isLive ? "oklch(0.78 0.16 160 / 0.3)" : "oklch(0.70 0.13 40 / 0.3)"} gradientTo="oklch(0.32 0.014 165 / 0.1)">
+   192→      {!isLive && <div className="bg-grid absolute inset-0 opacity-25 pointer-events-none rounded-lg" />}
+   193→      <div className="relative space-y-3 p-4">
+   194→        <div className="flex items-center justify-between">
+   195→          <div className="flex items-center gap-2">
+   196→            {isLive ? <Radio className="h-4 w-4 text-verified" /> : <Moon className="h-4 w-4 text-quarantined" />}
+   197→            <span className={cn("text-sm font-semibold uppercase tracking-wide", isLive ? "text-verified" : "text-quarantined")}>{isLive ? "Live Plant" : "Shadow Twin"}</span>
+   198→          </div>
+   199→          <span className={cn("flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+   200→            isLive ? "border-verified/40 bg-verified/10 text-verified" : "border-quarantined/40 bg-quarantined/10 text-quarantined")}>
+   201→            <span className={cn("inline-block h-1.5 w-1.5 rounded-full", isLive ? "bg-verified animate-epistemic-pulse" : "bg-quarantined")} />{isLive ? "● LIVE" : "◐ SHADOW"}
+   202→          </span>
+   203→        </div>
+   204→        {authoritative && !isLive && (
+   205→          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+   206→            className="flex items-center gap-2 rounded-md border border-violating/40 bg-violating/10 px-2.5 py-1.5 text-[11px] text-violating">
+   207→            <ShieldAlert className="h-3.5 w-3.5" /><span className="font-semibold uppercase tracking-wide">Authoritative</span><span className="opacity-80">— shadow holds control plane</span>
+   208→          </motion.div>
+   209→        )}
+   210→        <div className="flex items-center gap-3 text-[10px]">
+   211→          <span className="flex items-center gap-1 text-verified"><CheckCircle2 className="h-3 w-3" />{passCount} pass</span>
+   212→          {failCount > 0 && <span className="flex items-center gap-1 text-violating"><XCircle className="h-3 w-3" />{failCount} fail</span>}
+   213→          <span className="text-muted-foreground">of {invariants.length} invariants</span>
+   214→        </div>
+   215→        <div>
+   216→          <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">State snapshot</div>
+   217→          <div className="rounded-md border border-border/60 bg-background/40 p-2"><StateKV state={state} accent={isLive ? "text-foreground" : "text-quarantined/90"} /></div>
+   218→        </div>
+   219→        <div>
+   220→          <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Invariant evaluations</div>
+   221→          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-0.5">
+   222→            {invariants.length === 0 && <div className="text-[11px] text-muted-foreground italic">no invariants</div>}
+   223→            {invariants.map((iv) => (
+   224→              <motion.div key={iv.name} variants={itemVariants} className="flex items-center justify-between gap-2 rounded px-1.5 py-1 hover:bg-muted/20 transition-colors">
+   225→                <div className="flex min-w-0 items-center gap-2"><span className="font-mono text-[11px] text-foreground truncate">{iv.name}</span><SeverityBadge severity={iv.severity} soft={iv.soft} /></div>
+   226→                <span className={cn("flex items-center gap-1 text-xs", iv.passed ? "text-verified" : "text-violating")}>
+   227→                  {iv.passed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}<span className="text-[10px] uppercase">{iv.passed ? "pass" : "fail"}</span>
+   228→                </span>
+   229→              </motion.div>
+   230→            ))}
+   231→          </motion.div>
+   232→        </div>
+   233→      </div>
+   234→    </GradientBorderCard>
+   235→  );
+   236→}
+   237→
+   238→function WhatIfDiff({ whatif }: { whatif: { ok: boolean; evaluations: InvariantEval[]; mmrRoot: string; divergence: number } }) {
+   239→  return (
+   240→    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 280, damping: 24 }}
+   241→      className="rounded-md border border-border/60 bg-background/40 p-2.5 space-y-2">
+   242→      <div className="flex items-center justify-between">
+   243→        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Replayed evaluations</span>
+   244→        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+   245→          <span className="font-mono">div {whatif.divergence.toFixed(3)}</span><Separator orientation="vertical" className="h-3 bg-border/60" /><span className="font-mono">mmr {whatif.mmrRoot}</span>
+   246→        </div>
+   247→      </div>
+   248→      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+   249→        {whatif.evaluations.map((ev) => (
+   250→          <motion.div key={ev.name} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}
+   251→            className={cn("flex items-center justify-between gap-2 rounded border px-2 py-1 transition-colors hover:bg-muted/20", ev.passed ? "border-verified/30 bg-verified/5" : "border-violating/30 bg-violating/10")}>
+   252→            <div className="flex items-center gap-1.5 min-w-0">{ev.passed ? <CheckCircle2 className="h-3 w-3 text-verified shrink-0" /> : <XCircle className="h-3 w-3 text-violating shrink-0" />}<span className="font-mono text-[11px] text-foreground truncate">{ev.name}</span></div>
+   253→            <SeverityBadge severity={ev.severity} soft={ev.soft} />
+   254→          </motion.div>
+   255→        ))}
+   256→      </div>
+   257→    </motion.div>
+   258→  );
+   259→}
+   260→
+   261→export function ShadowBridgeSection() {
+   262→  const { toast } = useToast();
+   263→  const [policies, setPolicies] = useState<PolicyRow[]>([]);
+   264→  const [policyId, setPolicyId] = useState("");
+   265→  const [bridge, setBridge] = useState<ShadowBridgeRow | null>(null);
+   266→  const [loading, setLoading] = useState(true);
+   267→  const [takeoverOpen, setTakeoverOpen] = useState(false);
+   268→  const [takingOver, setTakingOver] = useState(false);
+   269→  const [deltaText, setDeltaText] = useState(DEFAULT_DELTA);
+   270→  const [predicate, setPredicate] = useState("");
+   271→  const [whatif, setWhatif] = useState<{ ok: boolean; evaluations: InvariantEval[]; mmrRoot: string; divergence: number } | null>(null);
+   272→  const [runningWhatif, setRunningWhatif] = useState(false);
+   273→
+   274→  useEffect(() => {
+   275→    let c = false;
+   276→    fetch("/api/policies").then((r) => r.json()).then((d: { policies: PolicyRow[] }) => {
+   277→      if (c) return; const ps = d.policies ?? []; setPolicies(ps);
+   278→      const shadowFirst = ps.find((p) => p.shadowEnabled);
+   279→      if (shadowFirst) setPolicyId(shadowFirst.id); else if (ps.length > 0) setPolicyId(ps[0].id);
+   280→    }).catch(() => {}); return () => { c = true; };
+   281→  }, []);
+   282→
+   283→  const loadBridge = useCallback(async () => {
+   284→    if (!policyId) return;
+   285→    try { const r = await fetch(`/api/shadow-bridge?policyId=${encodeURIComponent(policyId)}`); if (!r.ok) throw new Error(`HTTP ${r.status}`); const d: { bridges: ShadowBridgeRow[] } = await r.json(); setBridge((d.bridges ?? [])[0] ?? null); }
+   286→    catch (e) { toast({ title: "Failed to load shadow bridge", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" }); }
+   287→    finally { setLoading(false); }
+   288→  }, [policyId, toast]);
+   289→
+   290→  useEffect(() => { if (!policyId) return; setLoading(true); loadBridge(); const t = setInterval(loadBridge, POLL_MS); return () => clearInterval(t); }, [policyId, loadBridge]);
+   291→
+   292→  const doTakeover = useCallback(async () => {
+   293→    if (!policyId) return; setTakingOver(true);
+   294→    try {
+   295→      const r = await fetch("/api/shadow-bridge/takeover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ policyId }) });
+   296→      if (!r.ok) throw new Error(`HTTP ${r.status}`); const d = await r.json();
+   297→      toast({ title: "Shadow takeover initiated", description: d.event?.summary ?? "Shadow bridge assumed authority." }); setTakeoverOpen(false); loadBridge();
+   298→    } catch (e) { toast({ title: "Takeover failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" }); }
+   299→    finally { setTakingOver(false); }
+   300→  }, [policyId, toast, loadBridge]);
+   301→
+   302→  const runWhatif = useCallback(async () => {
+   303→    if (!policyId) return; let delta: Record<string, unknown> = {};
+   304→    if (deltaText.trim()) { try { delta = JSON.parse(deltaText); } catch (e) { toast({ title: "Invalid state delta JSON", description: e instanceof Error ? e.message : "Parse error", variant: "destructive" }); return; } }
+   305→    setRunningWhatif(true);
+   306→    try {
+   307→      const body: Record<string, unknown> = { policyId, stateDelta: delta }; if (predicate.trim()) body.predicateOverride = predicate.trim();
+   308→      const r = await fetch("/api/shadow-bridge/whatif", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+   309→      if (!r.ok) throw new Error(`HTTP ${r.status}`); const d = await r.json();
+   310→      setWhatif({ ok: !!d.ok, evaluations: (d.evaluations ?? []).map((e: InvariantEval) => ({ name: e.name, passed: e.passed, severity: e.severity, soft: e.soft, actual: e.actual })), mmrRoot: d.mmrRoot ?? "—", divergence: d.event?.divergence ?? 0 });
+   311→      toast({ title: "What-if replay complete", description: `${(d.evaluations ?? []).filter((e: InvariantEval) => !e.passed).length} violation(s) under modified rules` }); loadBridge();
+   312→    } catch (e) { toast({ title: "What-if replay failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" }); }
+   313→    finally { setRunningWhatif(false); }
+   314→  }, [policyId, deltaText, predicate, toast, loadBridge]);
+   315→
+   316→  const invariantUnion = useMemo(() => {
+   317→    if (!bridge) return [] as { name: string; live?: InvariantEval; shadow?: InvariantEval }[];
+   318→    const map = new Map<string, { name: string; live?: InvariantEval; shadow?: InvariantEval }>();
+   319→    for (const iv of bridge.liveInvariants) map.set(iv.name, { name: iv.name, live: iv });
+   320→    for (const iv of bridge.shadowInvariants) { const ex = map.get(iv.name); if (ex) ex.shadow = iv; else map.set(iv.name, { name: iv.name, shadow: iv }); }
+   321→    return Array.from(map.values());
+   322→  }, [bridge]);
+   323→
+   324→  const events = bridge?.events ?? [];
+   325→  const selectedPolicy = policies.find((p) => p.id === policyId);
+   326→  const shadowEnabled = !!selectedPolicy?.shadowEnabled;
+   327→  const takeoverLatency = bridge?.policy.takeoverLatencyMs ?? selectedPolicy?.takeoverLatencyMs ?? null;
+   328→  const authoritative = bridge?.policy.authoritative ?? false;
+   329→  const divergence = bridge?.divergence ?? 0;
+   330→
+   331→  return (
+   332→    <motion.section variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+   333→      <motion.div variants={cardVariants} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   334→        <SectionHeader icon={Cpu} title="Shadow Bridge" subtitle="Digital-twin control plane · live vs shadow invariants · takeover-ready" />
+   335→        <div className="flex items-center gap-2 flex-wrap">
+   336→          <BridgeStatusIndicator shadowEnabled={shadowEnabled} authoritative={authoritative} divergence={divergence} />
+   337→          <Select value={policyId} onValueChange={setPolicyId}>
+   338→            <SelectTrigger className="w-[220px] sm:w-[260px] bg-card/60"><SelectValue placeholder="Select policy" /></SelectTrigger>
+   339→            <SelectContent>{policies.map((p) => <SelectItem key={p.id} value={p.id}><span className="flex items-center gap-2">{p.name}{p.shadowEnabled && <span className="text-[10px] text-quarantined">●shadow</span>}</span></SelectItem>)}</SelectContent>
+   340→          </Select>
+   341→        </div>
+   342→      </motion.div>
+   343→
+   344→      <motion.div variants={cardVariants} className="flex flex-wrap items-center gap-2">
+   345→        <Badge variant="outline" className={cn("border-border/60 transition-colors hover:border-quarantined/40", shadowEnabled ? "text-quarantined border-quarantined/40 bg-quarantined/10" : "text-muted-foreground")}><Moon className="h-3 w-3" />{shadowEnabled ? "shadow enabled" : "shadow disabled"}</Badge>
+   346→        <Badge variant="outline" className={cn("border-border/60 transition-colors hover:border-violating/40", authoritative ? "text-violating border-violating/40 bg-violating/10" : "text-muted-foreground")}><ShieldAlert className="h-3 w-3" />{authoritative ? "authoritative" : "non-authoritative"}</Badge>
+   347→        <Badge variant="outline" className="border-border/60 text-muted-foreground"><Gauge className="h-3 w-3" />takeover {takeoverLatency ?? "—"}ms</Badge>
+   348→        <Badge variant="outline" className="border-border/60 text-muted-foreground"><Activity className="h-3 w-3" />{events.length} event{events.length === 1 ? "" : "s"}</Badge>
+   349→      </motion.div>
+   350→
+   351→      {!shadowEnabled && (
+   352→        <motion.div variants={cardVariants}><Card className="bg-repairing/5 border-repairing/30 p-3 text-xs text-repairing flex items-center gap-2"><AlertTriangle className="h-4 w-4 shrink-0" /><span>Selected policy does not have a shadow bridge enabled. Pick a shadow-enabled policy for full functionality.</span></Card></motion.div>
+   353→      )}
+   354→
+   355→      <motion.div variants={cardVariants}>
+   356→        <GradientBorderCard gradientFrom="oklch(0.80 0.15 80 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.1)">
+   357→          <div className="p-3">
+   358→            <div className="flex items-center justify-between mb-2"><div className="flex items-center gap-2"><BarChart3 className="h-4 w-4 text-repairing" /><span className="text-sm font-semibold text-foreground">Drift Monitoring</span></div><Badge variant="outline" className="border-repairing/30 bg-repairing/10 text-repairing text-[10px]">live</Badge></div>
+   359→            <DriftSparkline events={events} />
+   360→            <div className="flex items-center justify-between mt-1.5 text-[10px] text-muted-foreground"><span className="font-mono">last 20 events</span><span className="font-mono">divergence over time</span></div>
+   361→          </div>
+   362→        </GradientBorderCard>
+   363→      </motion.div>
+   364→
+   365→      {loading ? (
+   366→        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr]"><Skeleton className="h-80 w-full rounded-lg bg-muted/40" /><Skeleton className="h-80 w-32 rounded-lg bg-muted/40" /><Skeleton className="h-80 w-full rounded-lg bg-muted/40" /></div>
+   367→      ) : !bridge ? (
+   368→        <motion.div variants={cardVariants}><Card className="bg-card/60 border-border/60 p-8 text-center"><Moon className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-2 text-sm text-muted-foreground">No shadow bridge data for this policy.</p></Card></motion.div>
+   369→      ) : (
+   370→        <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px_1fr] md:items-stretch">
+   371→          <motion.div variants={cardVariants}><TwinCard side="live" state={bridge.liveState} invariants={bridge.liveInvariants} /></motion.div>
+   372→          <motion.div variants={cardVariants} className="flex md:flex-col gap-3">
+   373→            <DivergenceMeter divergence={bridge.divergence} authoritative={authoritative} events={events} />
+   374→            <Card className="bg-card/40 border-border/60 p-2.5 relative overflow-hidden flex-1">
+   375→              <GridOverlay />
+   376→              <div className="relative">
+   377→                <div className="mb-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">L vs S matrix</div>
+   378→                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-0.5">
+   379→                  {invariantUnion.length === 0 && <div className="text-[11px] text-muted-foreground italic">no invariants</div>}
+   380→                  {invariantUnion.map((row) => <InvariantRow key={row.name} live={row.live} shadow={row.shadow} />)}
+   381→                </motion.div>
+   382→              </div>
+   383→            </Card>
+   384→          </motion.div>
+   385→          <motion.div variants={cardVariants}><TwinCard side="shadow" state={bridge.shadowState} invariants={bridge.shadowInvariants} authoritative={authoritative} /></motion.div>
+   386→        </div>
+   387→      )}
+   388→
+   389→      <motion.div variants={containerVariants} className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+   390→        <motion.div variants={cardVariants}>
+   391→          <GradientBorderCard gradientFrom="oklch(0.64 0.21 25 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.1)">
+   392→            <GridOverlay />
+   393→            <div className="relative space-y-3 p-4">
+   394→              <div className="flex items-center gap-2"><Power className="h-4 w-4 text-violating" /><span className="text-sm font-semibold text-foreground">Authority transfer</span></div>
+   395→              <p className="text-[11px] text-muted-foreground">Promote shadow twin to authoritative control within <span className="font-mono text-foreground">{takeoverLatency ?? "—"}ms</span>.</p>
+   396→              <div className="flex items-center gap-3">
+   397→                <div className={cn("flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-[10px] font-semibold", authoritative ? "border-violating/40 bg-violating/10 text-violating" : "border-verified/40 bg-verified/10 text-verified")}>
+   398→                  <span className={cn("relative flex h-2 w-2", authoritative && "animate-epistemic-pulse")}><span className={cn("inline-flex h-2 w-2 rounded-full", authoritative ? "bg-violating" : "bg-verified")} /></span>
+   399→                  {authoritative ? "SHADOW IN CONTROL" : "LIVE IN CONTROL"}
+   400→                </div>
+   401→                <AnimatePresence mode="wait">{authoritative && <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} className="flex items-center gap-1 text-[10px] text-violating font-mono"><Eye className="h-3 w-3" />monitoring</motion.div>}</AnimatePresence>
+   402→              </div>
+   403→              <Dialog open={takeoverOpen} onOpenChange={setTakeoverOpen}>
+   404→                <DialogTrigger asChild><Button variant="outline" className="w-full border-violating/40 bg-violating/10 text-violating hover:bg-violating/20 transition-all hover:scale-[1.01] active:scale-[0.99]" disabled={!shadowEnabled}><ShieldAlert className="h-4 w-4" />Initiate takeover</Button></DialogTrigger>
+   405→                <DialogContent className="bg-card border-border/60"><DialogHeader><DialogTitle className="flex items-center gap-2 text-foreground"><ShieldAlert className="h-4 w-4 text-violating" />Confirm shadow takeover</DialogTitle><DialogDescription className="text-muted-foreground">Shadow bridge will assume authority for <span className="font-mono text-foreground">{bridge?.policy.name ?? "this policy"}</span>. Continue?</DialogDescription></DialogHeader>
+   406→                  <DialogFooter><DialogClose asChild><Button variant="outline" className="border-border/60">Cancel</Button></DialogClose><Button onClick={doTakeover} disabled={takingOver} className="bg-violating/15 border border-violating/40 text-violating hover:bg-violating/25 transition-all" variant="outline">{takingOver ? <RotateCw className="h-4 w-4 animate-spin" /> : <Power className="h-4 w-4" />}{takingOver ? "Transferring…" : "Assume authority"}</Button></DialogFooter>
+   407→                </DialogContent>
+   408→              </Dialog>
+   409→            </div>
+   410→          </GradientBorderCard>
+   411→        </motion.div>
+   412→
+   413→        <motion.div variants={cardVariants} className="lg:col-span-2">
+   414→          <GradientBorderCard gradientFrom="oklch(0.80 0.15 80 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.1)">
+   415→            <GridOverlay />
+   416→            <div className="relative space-y-3 p-4">
+   417→              <div className="flex items-center justify-between"><div className="flex items-center gap-2"><FlaskConical className="h-4 w-4 text-repairing" /><span className="text-sm font-semibold text-foreground">What-if replay</span></div><Badge variant="outline" className="border-repairing/30 bg-repairing/10 text-repairing text-[10px]">branch · replay</Badge></div>
+   418→              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+   419→                <div className="space-y-1.5"><label className="text-[11px] uppercase tracking-wide text-muted-foreground">State delta (JSON)</label><Textarea value={deltaText} onChange={(e) => setDeltaText(e.target.value)} className="font-mono text-xs bg-background/60 min-h-[88px] epistemic-scroll" spellCheck={false} /></div>
+   420→                <div className="space-y-1.5"><label className="text-[11px] uppercase tracking-wide text-muted-foreground">Predicate override (optional)</label><Input value={predicate} onChange={(e) => setPredicate(e.target.value)} placeholder="e.g. frequency in [49.5, 50.5]" className="font-mono text-xs bg-background/60" /><p className="text-[10px] text-muted-foreground">Rewrites an invariant predicate for this replay only.</p>
+   421→                  <Button onClick={runWhatif} disabled={runningWhatif || !shadowEnabled} variant="outline" className="w-full border-repairing/40 bg-repairing/10 text-repairing hover:bg-repairing/20 transition-all hover:scale-[1.01] active:scale-[0.99]">{runningWhatif ? <RotateCw className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}{runningWhatif ? "Replaying…" : "Run what-if"}</Button>
+   422→                </div>
+   423→              </div>
+   424→              <AnimatePresence>{whatif && <WhatIfDiff whatif={whatif} />}</AnimatePresence>
+   425→            </div>
+   426→          </GradientBorderCard>
+   427→        </motion.div>
+   428→      </motion.div>
+   429→
+   430→      <motion.div variants={cardVariants}>
+   431→        <GradientBorderCard gradientFrom="oklch(0.70 0.13 40 / 0.25)" gradientTo="oklch(0.32 0.014 165 / 0.1)">
+   432→          <GridOverlay />
+   433→          <div className="relative p-4">
+   434→            <div className="mb-3 flex items-center justify-between">
+   435→              <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-quarantined" /><span className="text-sm font-semibold text-foreground">Event timeline</span><Badge variant="outline" className="border-border/60 text-[10px]">{events.length}</Badge></div>
+   436→              <div className="hidden sm:flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
+   437→                {(["takeover", "whatif", "replay", "divergence", "handback"] as ShadowKind[]).map((k) => { const m = KIND_META[k]; const Icon = m.icon; return <span key={k} className="flex items-center gap-1"><Icon className={cn("h-2.5 w-2.5", m.text)} />{m.label}</span>; })}
+   438→              </div>
+   439→            </div>
+   440→            {events.length === 0 ? (
+   441→              <div className="flex flex-col items-center justify-center py-8 text-center"><Clock className="h-6 w-6 text-muted-foreground/50" /><p className="mt-2 text-xs text-muted-foreground">No shadow events recorded.</p></div>
+   442→            ) : (
+   443→              <motion.div variants={containerVariants} initial="hidden" animate="visible" className="max-h-80 overflow-y-auto epistemic-scroll space-y-2 pr-1">{events.map((ev) => <EventTimelineItem key={ev.id} ev={ev} />)}</motion.div>
+   444→            )}
+   445→          </div>
+   446→        </GradientBorderCard>
+   447→      </motion.div>
+   448→
+   449→      {/* Interactive State Explorer — new feature */}
+   450→      <StateExplorer policyId={policyId} policies={policies} />
+   451→    </motion.section>
+   452→  );
+   453→}
+   454→
+   455→/* ─── StateExplorer — interactive slider-based what-if explorer ─── */
+   456→function StateExplorer({ policyId, policies }: { policyId: string; policies: PolicyRow[] }) {
+   457→  const [freq, setFreq] = useState(50.0);
+   458→  const [thermal, setThermal] = useState(18);
+   459→  const [load, setLoad] = useState(450);
+   460→  const [result, setResult] = useState<{
+   461→    evaluations: { name: string; passed: boolean; soft: boolean; severity: string }[];
+   462→    verdict: string;
+   463→  } | null>(null);
+   464→  const [simulating, setSimulating] = useState(false);
+   465→
+   466→  const runExplore = useCallback(async () => {
+   467→    if (!policyId) return;
+   468→    setSimulating(true);
+   469→    try {
+   470→      const state = { frequency: freq, thermal_headroom: thermal, generation: [load], load: [load - 10], losses: 12 };
+   471→      const r = await fetch("/api/merges/simulate", {
+   472→        method: "POST",
+   473→        headers: { "Content-Type": "application/json" },
+   474→        body: JSON.stringify({ policyId, proposedState: state }),
+   475→      });
+   476→      if (r.ok) {
+   477→        const d = await r.json();
+   478→        setResult({ evaluations: d.evaluations, verdict: d.verdict });
+   479→      }
+   480→    } catch {
+   481→      /* ignore */
+   482→    } finally { setSimulating(false); }
+   483→  }, [policyId, freq, thermal, load]);
+   484→
+   485→  // Auto-run on slider change (debounced)
+   486→  useEffect(() => {
+   487→    const t = setTimeout(runExplore, 400);
+   488→    return () => clearTimeout(t);
+   489→  }, [runExplore]);
+   490→
+   491→  const freqStatus = freq < 49.8 || freq > 50.2 ? "violating" : freq < 49.9 || freq > 50.1 ? "repairing" : "verified";
+   492→  const thermalStatus = thermal < 10 ? "violating" : thermal < 15 ? "repairing" : "verified";
+   493→
+   494→  return (
+   495→    <motion.div variants={cardVariants}>
+   496→      <GradientBorderCard gradientFrom="oklch(0.78 0.16 160 / 0.2)" gradientTo="oklch(0.65 0.2 25 / 0.1)">
+   497→        <GridOverlay />
+   498→        <div className="relative p-4 space-y-3">
+   499→          <div className="flex items-center justify-between">
+   500→            <div className="flex items-center gap-2">
+   501→              <FlaskConical className="h-4 w-4 text-verified" />
+   502→              <span className="text-sm font-semibold text-foreground">State Explorer</span>
+   503→            </div>
+   504→            <Badge variant="outline" className="border-verified/30 bg-verified/10 text-verified text-[10px]">live what-if</Badge>
+   505→          </div>
+   506→          <p className="text-[11px] text-muted-foreground">Drag sliders to see how state changes affect invariant satisfaction in real time.</p>
+   507→
+   508→          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   509→            {/* Sliders */}
+   510→            <div className="space-y-3">
+   511→              {/* Frequency slider */}
+   512→              <div className="space-y-1">
+   513→                <div className="flex items-center justify-between">
+   514→                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Grid Frequency</label>
+   515→                  <span className={cn("font-mono text-sm font-semibold",
+   516→                    freqStatus === "violating" ? "text-violating" : freqStatus === "repairing" ? "text-repairing" : "text-verified")}>
+   517→                    {freq.toFixed(2)} Hz
+   518→                  </span>
+   519→                </div>
+   520→                <input
+   521→                  type="range" min={49.0} max={51.0} step={0.01} value={freq}
+   522→                  onChange={(e) => setFreq(parseFloat(e.target.value))}
+   523→                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-background/60 accent-verified"
+   524→                  style={{ accentColor: freqStatus === "violating" ? "var(--violating)" : freqStatus === "repairing" ? "var(--repairing)" : "var(--verified)" }}
+   525→                />
+   526→                <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+   527→                  <span>49.0</span><span className="text-verified">49.8</span><span className="text-verified">50.2</span><span>51.0</span>
+   528→                </div>
+   529→              </div>
+   530→
+   531→              {/* Thermal headroom slider */}
+   532→              <div className="space-y-1">
+   533→                <div className="flex items-center justify-between">
+   534→                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Thermal Headroom</label>
+   535→                  <span className={cn("font-mono text-sm font-semibold",
+   536→                    thermalStatus === "violating" ? "text-violating" : thermalStatus === "repairing" ? "text-repairing" : "text-verified")}>
+   537→                    {thermal}%
+   538→                  </span>
+   539→                </div>
+   540→                <input
+   541→                  type="range" min={0} max={30} step={1} value={thermal}
+   542→                  onChange={(e) => setThermal(parseInt(e.target.value))}
+   543→                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-background/60"
+   544→                  style={{ accentColor: thermalStatus === "violating" ? "var(--violating)" : thermalStatus === "repairing" ? "var(--repairing)" : "var(--verified)" }}
+   545→                />
+   546→                <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+   547→                  <span>0%</span><span className="text-verified">10%</span><span>30%</span>
+   548→                </div>
+   549→              </div>
+   550→
+   551→              {/* Load slider */}
+   552→              <div className="space-y-1">
+   553→                <div className="flex items-center justify-between">
+   554→                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">System Load</label>
+   555→                  <span className="font-mono text-sm font-semibold text-foreground">{load} MW</span>
+   556→                </div>
+   557→                <input
+   558→                  type="range" min={100} max={800} step={10} value={load}
+   559→                  onChange={(e) => setLoad(parseInt(e.target.value))}
+   560→                  className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-background/60 accent-verified"
+   561→                />
+   562→                <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+   563→                  <span>100</span><span>450</span><span>800</span>
+   564→                </div>
+   565→              </div>
+   566→            </div>
+   567→
+   568→            {/* Live evaluation result */}
+   569→            <div className="space-y-2">
+   570→              {simulating && (
+   571→                <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+   572→                  <RotateCw className="h-3 w-3 animate-spin" /> evaluating…
+   573→                </div>
+   574→              )}
+   575→              {result && !simulating && (
+   576→                <>
+   577→                  <div className={cn("rounded-md border px-3 py-2 flex items-center justify-between",
+   578→                    result.verdict === "accepted" ? "bg-verified/10 border-verified/30" :
+   579→                    result.verdict === "repaired" ? "bg-repairing/10 border-repairing/30" : "bg-violating/10 border-violating/30")}>
+   580→                    <span className={cn("text-sm font-bold uppercase",
+   581→                      result.verdict === "accepted" ? "text-verified" :
+   582→                      result.verdict === "repaired" ? "text-repairing" : "text-violating")}>
+   583→                      {result.verdict}
+   584→                    </span>
+   585→                  </div>
+   586→                  <div className="space-y-1">
+   587→                    {result.evaluations.map((ev) => (
+   588→                      <div key={ev.name} className={cn("flex items-center gap-2 rounded border px-2 py-1 text-[10px]",
+   589→                        ev.passed ? "border-verified/20 bg-verified/5" : ev.soft ? "border-quarantined/20 bg-quarantined/5" : "border-violating/20 bg-violating/5")}>
+   590→                        {ev.passed ? <CheckCircle2 className="h-3 w-3 text-verified shrink-0" /> :
+   591→                         ev.soft ? <AlertTriangle className="h-3 w-3 text-quarantined shrink-0" /> :
+   592→                         <XCircle className="h-3 w-3 text-violating shrink-0" />}
+   593→                        <span className="font-mono truncate flex-1">{ev.name}</span>
+   594→                      </div>
+   595→                    ))}
+   596→                  </div>
+   597→                </>
+   598→              )}
+   599→            </div>
+   600→          </div>
+   601→        </div>
+   602→      </GradientBorderCard>
+   603→    </motion.div>
+   604→  );
+   605→}
+   606→

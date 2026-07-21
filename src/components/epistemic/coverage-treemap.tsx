@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Variants } from "framer-motion";
 import {
   Treemap,
   BarChart,
@@ -199,10 +200,10 @@ function generateCoverageData(): CoverageData {
 
 /* ─── Custom Treemap Content ─── */
 function CoverageTreemapContent(props: {
-  x: number; y: number; width: number; height: number;
-  name: string; size: number; coverage: number; depth: number;
+  x?: number; y?: number; width?: number; height?: number;
+  name?: string; size?: number; coverage?: number; depth?: number;
 }) {
-  const { x, y, width, height, name, size, coverage, depth } = props;
+  const { x = 0, y = 0, width = 0, height = 0, name = "", size = 0, coverage = 0, depth = 0 } = props;
   if (depth !== 1 || width < 20 || height < 16) return null;
 
   const fillColor = coverageColor(coverage);
@@ -243,7 +244,7 @@ function TreemapTooltip({ active, payload }: { active?: boolean; payload?: Array
 }
 
 /* ─── Section variants ─── */
-const sectionVariants = {
+const sectionVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
 };

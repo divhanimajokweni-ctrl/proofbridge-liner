@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import type { PolicyRow } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { GradientBorderCard, containerVariants, cardVariants, itemVariants, fmtTimestamp, csvEscape, SeverityDot, GridOverlay, TopAccentBar } from "./primitives";
-import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { RadarGrid, DonutChart } from "./chart-primitives";
 
 interface AuditInvariant { name: string; severity: string; soft: boolean; predicate: string; message?: string }
 interface AuditPolicy {
@@ -90,18 +90,18 @@ export function AuditReportsSection() {
   const complianceRadarData = useMemo(() => {
     if (!report) return [];
     return [
-      { axis: "Verification", value: report.compliance.formalVerification ? 100 : 0 },
-      { axis: "ZK Anchored", value: Math.min(100, (report.compliance.zkAnchored / Math.max(1, report.summary.policyCount)) * 100) },
-      { axis: "Shadow Ready", value: Math.min(100, (report.compliance.shadowReady / Math.max(1, report.summary.policyCount)) * 100) },
-      { axis: "No Critical Drift", value: report.compliance.zeroUnrepairedCriticalViolations ? 100 : 20 },
-      { axis: "Shard Health", value: report.compliance.allShardsHealthy ? 100 : 60 },
+      { label: "Verification", value: report.compliance.formalVerification ? 100 : 0, max: 100 },
+      { label: "ZK Anchored", value: Math.min(100, (report.compliance.zkAnchored / Math.max(1, report.summary.policyCount)) * 100), max: 100 },
+      { label: "Shadow Ready", value: Math.min(100, (report.compliance.shadowReady / Math.max(1, report.summary.policyCount)) * 100), max: 100 },
+      { label: "No Critical", value: report.compliance.zeroUnrepairedCriticalViolations ? 100 : 20, max: 100 },
+      { label: "Shard Health", value: report.compliance.allShardsHealthy ? 100 : 60, max: 100 },
     ];
   }, [report]);
 
   const complianceDonutData = useMemo(() => {
     if (!report) return [];
     const passed = [report.compliance.formalVerification, report.compliance.zkAnchored > 0, report.compliance.shadowReady > 0, report.compliance.zeroUnrepairedCriticalViolations, report.compliance.allShardsHealthy].filter(Boolean).length;
-    return [{ name: "Passed", value: passed, fill: "oklch(0.78 0.16 160 / 0.8)" }, { name: "Failed", value: 5 - passed, fill: "oklch(0.64 0.21 25 / 0.6)" }];
+    return [{ label: "Passed", value: passed, color: "verified" }, { label: "Failed", value: 5 - passed, color: "violating" }];
   }, [report]);
 
   const trailIntegrity = useMemo(() => {
@@ -192,27 +192,17 @@ export function AuditReportsSection() {
               })}
             </div>
             <div className="flex flex-col items-center gap-3">
-              <div className="w-full max-w-[200px]">
-                <ResponsiveContainer width="100%" height={160}>
-                  <PieChart><Pie data={complianceDonutData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} dataKey="value" strokeWidth={0}>
-                    {complianceDonutData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}
-                  </Pie></PieChart>
-                </ResponsiveContainer>
-                <div className="text-center -mt-4">
+              <div className="w-full max-w-[200px] flex flex-col items-center">
+                <DonutChart data={complianceDonutData} size={120} thickness={16} showLabels />
+                <div className="text-center -mt-1">
                   <span className={cn("text-2xl font-bold", complianceDonutData[0].value >= 4 ? "text-verified" : complianceDonutData[0].value >= 2 ? "text-repairing" : "text-violating")}>
                     {Math.round((complianceDonutData[0].value / 5) * 100)}%
                   </span>
                   <p className="text-[10px] text-muted-foreground">compliance score</p>
                 </div>
               </div>
-              <div className="w-full max-w-[240px]">
-                <ResponsiveContainer width="100%" height={180}>
-                  <RadarChart data={complianceRadarData}>
-                    <PolarGrid stroke="oklch(0.32 0.014 165)" />
-                    <PolarAngleAxis dataKey="axis" tick={{ fontSize: 9, fill: "oklch(0.55 0.01 160)" }} />
-                    <Radar name="Compliance" dataKey="value" stroke="oklch(0.78 0.16 160)" fill="oklch(0.78 0.16 160)" fillOpacity={0.2} strokeWidth={1.5} />
-                  </RadarChart>
-                </ResponsiveContainer>
+              <div className="w-full max-w-[240px] flex items-center justify-center">
+                <RadarGrid data={complianceRadarData} size={180} color="verified" />
               </div>
             </div>
           </div>

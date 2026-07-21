@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { SparkLine, MiniBar } from "./chart-primitives";
 import {
   GitMerge, Wrench, Play, RotateCw, CheckCircle2, XCircle, ArrowRight,
   ShieldCheck, Sparkles, KeyRound, Clock, ChevronDown, ChevronRight,
@@ -85,20 +85,13 @@ function RepairFlowDiagram({ repair }: { repair: RepairResult }) {
 }
 
 function DivergenceChart({ merges }: { merges: MergeRow[] }) {
-  const data = useMemo(() => {
-    if (!merges?.length) return Array.from({ length: 10 }, (_, i) => ({ name: `#${i + 1}`, divergence: Math.abs(Math.sin(i * 0.6) * 0.3) }));
-    return merges.slice(0, 10).map((m, i) => ({ name: `#${i + 1}`, divergence: m.divergence }));
+  const values = useMemo(() => {
+    if (!merges?.length) return Array.from({ length: 10 }, (_, i) => Math.abs(Math.sin(i * 0.6) * 0.3));
+    return merges.slice(0, 10).map((m) => m.divergence);
   }, [merges]);
   return (
-    <div className="h-32 w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
-          <defs><linearGradient id="divGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="oklch(0.80 0.15 80)" stopOpacity={0.35} /><stop offset="95%" stopColor="oklch(0.80 0.15 80)" stopOpacity={0.02} /></linearGradient></defs>
-          <YAxis domain={[0, "auto"]} hide /><XAxis dataKey="name" tick={{ fontSize: 9, fill: "oklch(0.68 0.015 160)" }} axisLine={false} tickLine={false} />
-          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [v.toFixed(4), "divergence"]} />
-          <Area type="monotone" dataKey="divergence" stroke="oklch(0.80 0.15 80)" strokeWidth={1.5} fill="url(#divGrad)" />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className="h-32 w-full flex items-center justify-center">
+      <SparkLine data={values} width={280} height={100} color="var(--repairing)" fill className="w-full" />
     </div>
   );
 }
@@ -106,20 +99,14 @@ function DivergenceChart({ merges }: { merges: MergeRow[] }) {
 function RepairCostChart({ repair }: { repair: RepairResult }) {
   const data = useMemo(() => repair.applied?.map((a) => {
     const from = typeof a.from === "number" ? a.from : 0; const to = typeof a.to === "number" ? a.to : 0;
-    return { name: a.field.length > 12 ? a.field.slice(0, 10) + "…" : a.field, cost: Math.abs(to - from), direction: to - from };
+    return { label: a.field.length > 12 ? a.field.slice(0, 10) + "…" : a.field, value: Math.abs(to - from), color: to - from >= 0 ? "verified" : "violating" };
   }) ?? [], [repair]);
   if (!data.length) return null;
   return (
     <div className="space-y-2">
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5"><Activity className="h-3 w-3" />Repair cost per field</div>
-      <div className="h-28 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
-            <XAxis dataKey="name" tick={{ fontSize: 9, fill: "oklch(0.68 0.015 160)" }} axisLine={false} tickLine={false} />
-            <YAxis hide /><Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [v.toFixed(4), "cost"]} />
-            <Bar dataKey="cost" radius={[3, 3, 0, 0]}>{data.map((entry, i) => <Cell key={i} fill={entry.direction >= 0 ? "oklch(0.78 0.16 160 / 0.7)" : "oklch(0.64 0.21 25 / 0.7)"} />)}</Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="h-28 w-full flex items-center justify-center">
+        <MiniBar data={data} width={280} height={90} className="w-full" />
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import {
   RotateCw, GitCompare, Undo2, AlertTriangle, CheckCircle2, XCircle,
   Clock, Gauge, Power, Wifi, WifiOff, TrendingUp, TrendingDown, Minus, Eye, BarChart3,
 } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip } from "recharts";
+import { SparkLine } from "./chart-primitives";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,19 +41,12 @@ const KIND_META: Record<ShadowKind, { icon: typeof ShieldAlert; color: string; b
 function fmtVal(v: unknown) { return formatValue(v, 40); }
 
 function DriftSparkline({ events }: { events: ShadowEventRow[] }) {
-  const data = useMemo(() => {
-    if (!events?.length) return Array.from({ length: 20 }, (_, i) => ({ idx: i, drift: Math.abs(Math.sin(i * 0.4) * 0.3 + Math.cos(i * 0.7) * 0.15 + 0.05) }));
-    return events.slice(0, 20).map((ev, i) => ({ idx: i, drift: ev.divergence }));
+  const values = useMemo(() => {
+    if (!events?.length) return Array.from({ length: 20 }, (_, i) => Math.abs(Math.sin(i * 0.4) * 0.3 + Math.cos(i * 0.7) * 0.15 + 0.05));
+    return events.slice(0, 20).map((ev) => ev.divergence);
   }, [events]);
-  const maxDrift = Math.max(...data.map((d) => d.drift), 0.01);
   return (
-    <div className="h-12 w-full"><ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 2, right: 2, bottom: 2, left: 2 }}>
-        <defs><linearGradient id="driftGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="oklch(0.80 0.15 80)" stopOpacity={0.4} /><stop offset="95%" stopColor="oklch(0.80 0.15 80)" stopOpacity={0.02} /></linearGradient></defs>
-        <YAxis domain={[0, maxDrift * 1.2]} hide /><Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [v.toFixed(4), "drift"]} />
-        <Area type="monotone" dataKey="drift" stroke="oklch(0.80 0.15 80)" strokeWidth={1.5} fill="url(#driftGrad)" animationDuration={1200} />
-      </AreaChart>
-    </ResponsiveContainer></div>
+    <div className="h-12 w-full flex items-center"><SparkLine data={values} width={200} height={40} color="var(--repairing)" fill className="w-full" /></div>
   );
 }
 

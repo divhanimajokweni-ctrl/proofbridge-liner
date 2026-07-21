@@ -1,0 +1,545 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useMemo, useState } from "react";
+     4→     4→import { motion, AnimatePresence } from "framer-motion";
+     5→     5→import {
+     6→     6→  AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer,
+     7→     7→  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, BarChart, Bar, Legend,
+     8→     8→} from "recharts";
+     9→     9→import {
+    10→    10→  Activity, GitBranch, ShieldCheck, Network, Boxes, KeyRound, Cpu,
+    11→    11→  TrendingUp, AlertTriangle, Wrench, Sparkles, ArrowRight, Clock,
+    12→    12→  LayoutGrid, FileText, Terminal, Globe2, CircuitBoard, History,
+    13→    13→  GitCompare, FlaskConical, Library, GitGraph, Zap, Download, RefreshCw,
+    14→    14→} from "lucide-react";
+    15→    15→import { Card } from "@/components/ui/card";
+    16→    16→import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+    17→    17→import type { StatsResponse, ShardRow } from "@/lib/types";
+    18→    18→import { StatusPill, Hash } from "./primitives";
+    19→    19→
+    20→    20→function generateSparkline(base: number, variance: number, length = 12): number[] {
+    21→    21→  let seed = base * 7 + 31;
+    22→    22→  const rand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    23→    23→  return Array.from({ length }, () => Math.max(0, Math.round((base + (rand() - 0.5) * 2 * variance) * 10) / 10));
+    24→    24→}
+    25→    25→
+    26→    26→const cv = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
+    27→    27→const cardV = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 24 } } };
+    28→    28→const secV = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+    29→    29→
+    30→    30→const CAPABILITY_ICONS: Record<string, typeof Activity> = {
+    31→    31→  studio: GitBranch, templates: Library, topology: Network, dependencies: GitGraph,
+    32→    32→  coverage: LayoutGrid, merges: Wrench, shadow: Cpu, proofs: KeyRound,
+    33→    33→  zkcircuit: CircuitBoard, miner: Sparkles, timeline: Clock, diff: GitCompare,
+    34→    34→  matrix: Activity, tests: FlaskConical, metrics: TrendingUp, versions: History,
+    35→    35→  audit: FileText, cli: Terminal, federation: Globe2, overview: ShieldCheck,
+    36→    36→};
+    37→    37→
+    38→    38→const ACT_CFG: Record<string, { icon: typeof Activity; color: string; bg: string; border: string; dot: string; label: string }> = {
+    39→    39→  merge: { icon: GitBranch, color: "text-verified", bg: "bg-verified/10", border: "border-verified/20", dot: "bg-verified", label: "Merge" },
+    40→    40→  shadow: { icon: Cpu, color: "text-repairing", bg: "bg-repairing/10", border: "border-repairing/20", dot: "bg-repairing", label: "Shadow" },
+    41→    41→  violation: { icon: AlertTriangle, color: "text-violating", bg: "bg-violating/10", border: "border-violating/20", dot: "bg-violating", label: "Breach" },
+    42→    42→};
+    43→    43→
+    44→    44→const CHART_STYLE = { background: "oklch(0.205 0.014 168)", border: "1px solid oklch(0.32 0.014 165 / 0.6)", borderRadius: "6px", fontSize: "10px", fontFamily: "var(--font-geist-mono)" };
+    45→    45→
+    46→    46→function MetricChip({ label, value, color }: { label: string; value: string; color: string }) {
+    47→    47→  return (
+    48→    48→    <div className="rounded-md border border-border/40 bg-background/40 px-2.5 py-1.5">
+    49→    49→      <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</div>
+    50→    50→      <div className={`mt-0.5 font-mono text-sm font-semibold ${color}`}>{value}</div>
+    51→    51→    </div>
+    52→    52→  );
+    53→    53→}
+    54→    54→
+    55→    55→function SeverityBar({ label, count, max, color }: { label: string; count: number; max: number; color: string }) {
+    56→    56→  const pct = max > 0 ? (count / max) * 100 : 0;
+    57→    57→  return (
+    58→    58→    <div className="flex-1 min-w-0">
+    59→    59→      <div className="flex items-center justify-between mb-0.5">
+    60→    60→        <span className="text-[9px] text-muted-foreground font-mono uppercase">{label}</span>
+    61→    61→        <span className="text-[9px] font-mono tabular-nums">{count}</span>
+    62→    62→      </div>
+    63→    63→      <div className="h-1.5 rounded-full bg-background/60 overflow-hidden">
+    64→    64→        <motion.div className={`h-full rounded-full ${color}`} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5 }} />
+    65→    65→      </div>
+    66→    66→    </div>
+    67→    67→  );
+    68→    68→}
+    69→    69→
+    70→    70→function CardShell({ children, accent }: { children: React.ReactNode; accent?: string }) {
+    71→    71→  return (
+    72→    72→    <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+    73→    73→      {accent && <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: accent }} />}
+    74→    74→      <div className="bg-grid-fine absolute inset-0 opacity-15" />
+    75→    75→      <div className="relative">{children}</div>
+    76→    76→    </Card>
+    77→    77→  );
+    78→    78→}
+    79→    79→
+    80→    80→function SectionHeader2({ icon: Icon, title, extra }: { icon: typeof Activity; title: string; extra?: React.ReactNode }) {
+    81→    81→  return (
+    82→    82→    <div className="flex items-center gap-2 mb-4">
+    83→    83→      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-verified/10">
+    84→    84→        <Icon className="h-3.5 w-3.5 text-verified" />
+    85→    85→      </div>
+    86→    86→      <h3 className="text-sm font-semibold">{title}</h3>
+    87→    87→      {extra}
+    88→    88→    </div>
+    89→    89→  );
+    90→    90→}
+    91→    91→
+    92→    92→const CAPABILITIES = [
+    93→    93→  { id: "studio", label: "Policy DSL Studio", hint: ".epd → enforcers", g: "from-verified/8 to-verified/2" },
+    94→    94→  { id: "templates", label: "Template Library", hint: "create from template", g: "from-verified/8 to-verified/2" },
+    95→    95→  { id: "topology", label: "DAG Shard Topology", hint: "invariant-aware sharding", g: "from-verified/8 to-verified/2" },
+    96→    96→  { id: "merges", label: "Self-Repairing Merges", hint: "least-divergent correction", g: "from-repairing/8 to-repairing/2" },
+    97→    97→  { id: "shadow", label: "Shadow Bridge", hint: "digital-twin takeover", g: "from-repairing/8 to-repairing/2" },
+    98→    98→  { id: "proofs", label: "MMR Ancestry Proofs", hint: "ZK verifiable history", g: "from-verified/8 to-verified/2" },
+    99→    99→  { id: "zkcircuit", label: "ZK Proof Circuit", hint: "SNARK constraints", g: "from-verified/8 to-verified/2" },
+   100→   100→  { id: "miner", label: "Invariant Miner", hint: "AI-mined candidates", g: "from-verified/8 to-verified/2" },
+   101→   101→  { id: "timeline", label: "Replay Timeline", hint: "event scrubber", g: "from-repairing/8 to-repairing/2" },
+   102→   102→  { id: "diff", label: "Policy Diff", hint: "compare .epd", g: "from-verified/8 to-verified/2" },
+   103→   103→  { id: "metrics", label: "Performance Metrics", hint: "live charts", g: "from-verified/8 to-verified/2" },
+   104→   104→  { id: "versions", label: "Policy Versioning", hint: "revision history", g: "from-verified/8 to-verified/2" },
+   105→   105→  { id: "audit", label: "Audit Reports", hint: "compliance export", g: "from-repairing/8 to-repairing/2" },
+   106→   106→  { id: "cli", label: "CLI Terminal", hint: "validate .epd files", g: "from-repairing/8 to-repairing/2" },
+   107→   107→  { id: "federation", label: "epistemic:// Federation", hint: "multi-org reconciliation", g: "from-verified/8 to-verified/2" },
+   108→   108→];
+   109→   109→
+   110→   110→export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
+   111→   111→  const [stats, setStats] = useState<StatsResponse | null>(null);
+   112→   112→  const [metrics, setMetrics] = useState<{
+   113→   113→    timeSeries: { t: number; merges: number; violations: number; repairs: number }[];
+   114→   114→    throughput: { successRate: number; avgDivergence: number; avgIterations: number };
+   115→   115→    severityBreakdown: { critical: number; high: number; medium: number; low: number };
+   116→   116→    latency: { p50: number; p95: number; p99: number };
+   117→   117→  } | null>(null);
+   118→   118→  const [loading, setLoading] = useState(true);
+   119→   119→  const [shards, setShards] = useState<ShardRow[] | null>(null);
+   120→   120→  const [autoRefresh, setAutoRefresh] = useState(true);
+   121→   121→
+   122→   122→  useEffect(() => {
+   123→   123→    let alive = true;
+   124→   124→    const load = () => fetch("/api/stats").then((r) => r.json()).then((d) => alive && (setStats(d), setLoading(false))).catch(() => alive && setLoading(false));
+   125→   125→    load();
+   126→   126→    const t = autoRefresh ? setInterval(load, 8000) : undefined;
+   127→   127→    return () => { alive = false; if (t) clearInterval(t); };
+   128→   128→  }, [autoRefresh]);
+   129→   129→
+   130→   130→  useEffect(() => {
+   131→   131→    let alive = true;
+   132→   132→    const load = () => fetch("/api/metrics").then((r) => r.json()).then((d) => alive && setMetrics(d)).catch(() => {});
+   133→   133→    load();
+   134→   134→    const t = autoRefresh ? setInterval(load, 15000) : undefined;
+   135→   135→    return () => { alive = false; if (t) clearInterval(t); };
+   136→   136→  }, [autoRefresh]);
+   137→   137→
+   138→   138→  useEffect(() => {
+   139→   139→    let alive = true;
+   140→   140→    const load = () => fetch("/api/shards").then((r) => r.json()).then((d) => alive && setShards(d.shards ?? [])).catch(() => {});
+   141→   141→    load();
+   142→   142→    const t = autoRefresh ? setInterval(load, 15000) : undefined;
+   143→   143→    return () => { alive = false; if (t) clearInterval(t); };
+   144→   144→  }, [autoRefresh]);
+   145→   145→
+   146→   146→  if (loading || !stats) {
+   147→   147→    return (
+   148→   148→      <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" initial="hidden" animate="visible" variants={cv}>
+   149→   149→        {Array.from({ length: 8 }).map((_, i) => (
+   150→   150→          <motion.div key={i} variants={cardV} className="h-32 rounded-xl bg-card/40 animate-pulse border border-border/30" />
+   151→   151→        ))}
+   152→   152→      </motion.div>
+   153→   153→    );
+   154→   154→  }
+   155→   155→
+   156→   156→  const healthScore = stats.shardHealth.healthScore;
+   157→   157→  const healthStatus = healthScore >= 85 ? "healthy" : healthScore >= 60 ? "repairing" : "violating";
+   158→   158→  const gaugeColor = healthStatus === "healthy" ? "var(--verified)" : healthStatus === "repairing" ? "var(--repairing)" : "var(--violating)";
+   159→   159→
+   160→   160→  const kpis = [
+   161→   161→    { label: "Epistemic Health", value: `${healthScore}%`, numericValue: healthScore, sub: `${stats.shardHealth.healthy} ok · ${stats.shardHealth.repairing} fix · ${stats.shardHealth.violating} bad`, icon: ShieldCheck, status: healthStatus, sparkBase: healthScore, sparkVariance: 8, accentColor: gaugeColor },
+   162→   162→    { label: "Policies", value: String(stats.counts.policies), numericValue: stats.counts.policies, sub: `${stats.counts.shards} shards`, icon: GitBranch, status: null, sparkBase: stats.counts.policies, sparkVariance: 2, accentColor: "var(--verified)" },
+   163→   163→    { label: "Merge Success", value: `${stats.mergeHealth.successRate}%`, numericValue: stats.mergeHealth.successRate, sub: `${stats.mergeHealth.applied} applied · ${stats.mergeHealth.rejected} rejected`, icon: Wrench, status: null, sparkBase: stats.mergeHealth.successRate, sparkVariance: 6, accentColor: "var(--repairing)" },
+   164→   164→    { label: "Anchored Proofs", value: `${stats.ancestry.anchoredRate}%`, numericValue: stats.ancestry.anchoredRate, sub: `${stats.ancestry.zkProofs}/${stats.ancestry.totalProofs} ZK`, icon: KeyRound, status: null, sparkBase: stats.ancestry.anchoredRate, sparkVariance: 5, accentColor: "var(--verified)" },
+   165→   165→  ];
+   166→   166→
+   167→   167→  const gaugeData = [{ name: "Health", value: healthScore }, { name: "Remaining", value: 100 - healthScore }];
+   168→   168→  const activityItems = stats.activity.map((a, i) => {
+   169→   169→    const kind = a.title.includes("breach") ? "violation" : a.kind;
+   170→   170→    return { ...a, kind, config: ACT_CFG[kind] ?? ACT_CFG.merge };
+   171→   171→  });
+   172→   172→
+   173→   173→  const inventory = [
+   174→   174→    { icon: GitBranch, label: "Policies", value: stats.counts.policies, hint: "compiled .epd", max: Math.max(stats.counts.policies * 1.5, 10), color: "var(--verified)" },
+   175→   175→    { icon: Network, label: "Shards", value: stats.counts.shards, hint: "partitions", max: Math.max(stats.counts.shards * 1.5, 10), color: "var(--verified)" },
+   176→   176→    { icon: GitBranch, label: "Merge proposals", value: stats.counts.merges, hint: "cross-shard", max: Math.max(stats.counts.merges * 1.5, 10), color: "var(--repairing)" },
+   177→   177→    { icon: KeyRound, label: "Ancestry proofs", value: stats.counts.proofs, hint: "MMR + ZK", max: Math.max(stats.counts.proofs * 1.5, 10), color: "var(--verified)" },
+   178→   178→    { icon: AlertTriangle, label: "Drift violations", value: stats.counts.violations, hint: "miner feed", max: Math.max(stats.counts.violations * 1.5, 10), color: "var(--violating)" },
+   179→   179→    { icon: Cpu, label: "Shadow events", value: stats.counts.shadowEvents, hint: "twin telemetry", max: Math.max(stats.counts.shadowEvents * 1.5, 10), color: "var(--repairing)" },
+   180→   180→    { icon: Sparkles, label: "Mined invariants", value: stats.counts.mined, hint: "AI candidates", max: Math.max(stats.counts.mined * 1.5, 10), color: "var(--verified)" },
+   181→   181→  ];
+   182→   182→
+   183→   183→  const COLOR_MAP: Record<string, string> = { healthy: "oklch(0.78 0.16 160)", repairing: "oklch(0.75 0.15 80)", violating: "oklch(0.65 0.2 25)" };
+   184→   184→
+   185→   185→  // Coverage ring data
+   186→   186→  let passing = 0, violating = 0, softViolations = 0;
+   187→   187→  if (shards && shards.length > 0) {
+   188→   188→    for (const shard of shards) for (const ev of shard.invariantEvals) { if (ev.passed) passing++; else if (ev.soft) softViolations++; else violating++; }
+   189→   189→  } else { passing = stats.shardHealth.healthy * 3; softViolations = stats.shardHealth.repairing * 2; violating = stats.shardHealth.violating * 2; }
+   190→   190→  const totalInv = passing + violating + softViolations || 1;
+   191→   191→  const ringData = [
+   192→   192→    { name: "Passing", value: passing, fill: "oklch(0.78 0.16 160)" },
+   193→   193→    { name: "Soft", value: softViolations, fill: "oklch(0.75 0.15 80)" },
+   194→   194→    { name: "Violating", value: violating, fill: "oklch(0.65 0.2 25)" },
+   195→   195→  ];
+   196→   196→
+   197→   197→  return (
+   198→   198→    <motion.div className="space-y-5" initial="hidden" animate="visible" variants={cv}>
+   199→   199→      {/* KPI strip */}
+   200→   200→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+   201→   201→        {kpis.map((k, idx) => <KpiCardWithSparkline key={k.label} kpi={k} idx={idx} />)}
+   202→   202→        {/* Health gauge */}
+   203→   203→        <motion.div variants={cardV} whileHover={{ scale: 1.02 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
+   204→   204→          <Card className="relative overflow-hidden bg-card/60 backdrop-blur border-border/60 p-4 h-full">
+   205→   205→            <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: `linear-gradient(90deg, ${gaugeColor}, transparent)` }} />
+   206→   206→            <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   207→   207→            <div className="relative flex flex-col items-center">
+   208→   208→              <span className="text-xs uppercase tracking-wider text-muted-foreground mb-1">System Health</span>
+   209→   209→              <div className="relative w-28 h-28">
+   210→   210→                <ResponsiveContainer width="100%" height="100%">
+   211→   211→                  <PieChart><Pie data={gaugeData} startAngle={225} endAngle={-45} innerRadius={36} outerRadius={48} strokeWidth={0} dataKey="value" animationDuration={1000}>
+   212→   212→                    <Cell fill={gaugeColor} /><Cell fill="oklch(0.25 0.012 168)" />
+   213→   213→                  </Pie></PieChart>
+   214→   214→                </ResponsiveContainer>
+   215→   215→                <div className="absolute inset-0 flex flex-col items-center justify-center">
+   216→   216→                  <span className="text-2xl font-bold tabular-nums" style={{ color: gaugeColor }}>{healthScore}%</span>
+   217→   217→                  <span className="text-[9px] text-muted-foreground uppercase tracking-wider">{healthStatus}</span>
+   218→   218→                </div>
+   219→   219→              </div>
+   220→   220→              <div className="flex items-center gap-1.5 mt-1">
+   221→   221→                <span className="relative flex h-2 w-2">
+   222→   222→                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50" style={{ backgroundColor: gaugeColor }} />
+   223→   223→                  <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: gaugeColor }} />
+   224→   224→                </span>
+   225→   225→                <span className="text-[10px] text-muted-foreground font-mono">system pulse</span>
+   226→   226→              </div>
+   227→   227→            </div>
+   228→   228→          </Card>
+   229→   229→        </motion.div>
+   230→   230→      </div>
+   231→   231→
+   232→   232→      {/* Live System Pulse */}
+   233→   233→      <motion.div variants={secV}>
+   234→   234→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.75 0.15 80 / 0.3), oklch(0.65 0.2 25 / 0.2))">
+   235→   235→          <SectionHeader2 icon={Activity} title="Live System Pulse" extra={
+   236→   236→            <span className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
+   237→   237→              <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-verified opacity-50" /><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-verified" /></span>
+   238→   238→              24h · refresh 15s
+   239→   239→            </span>
+   240→   240→          } />
+   241→   241→          {metrics ? (
+   242→   242→            <>
+   243→   243→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+   244→   244→                <MetricChip label="Success Rate" value={`${metrics.throughput.successRate}%`} color="text-verified" />
+   245→   245→                <MetricChip label="Avg Divergence" value={metrics.throughput.avgDivergence.toFixed(2)} color="text-repairing" />
+   246→   246→                <MetricChip label="Avg Iterations" value={metrics.throughput.avgIterations.toFixed(1)} color="text-verified" />
+   247→   247→                <MetricChip label="P95 Latency" value={`${metrics.latency.p95}ms`} color="text-quarantined" />
+   248→   248→              </div>
+   249→   249→              <div className="h-48 w-full">
+   250→   250→                <ResponsiveContainer width="100%" height="100%">
+   251→   251→                  <LineChart data={metrics.timeSeries} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+   252→   252→                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 168 / 0.3)" />
+   253→   253→                    <XAxis dataKey="t" tickFormatter={(t) => new Date(t).toLocaleTimeString([], { hour: "2-digit" })} tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9 }} stroke="oklch(0.3 0.01 168 / 0.5)" />
+   254→   254→                    <YAxis tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9 }} stroke="oklch(0.3 0.01 168 / 0.5)" />
+   255→   255→                    <RTooltip contentStyle={CHART_STYLE} labelFormatter={(t) => new Date(t as number).toLocaleString()} />
+   256→   256→                    <Legend wrapperStyle={{ fontSize: "10px" }} />
+   257→   257→                    <Line type="monotone" dataKey="merges" stroke="oklch(0.78 0.16 160)" strokeWidth={2} dot={false} name="Merges" />
+   258→   258→                    <Line type="monotone" dataKey="repairs" stroke="oklch(0.75 0.15 80)" strokeWidth={2} dot={false} name="Repairs" />
+   259→   259→                    <Line type="monotone" dataKey="violations" stroke="oklch(0.65 0.2 25)" strokeWidth={2} dot={false} name="Violations" />
+   260→   260→                  </LineChart>
+   261→   261→                </ResponsiveContainer>
+   262→   262→              </div>
+   263→   263→              <div className="mt-3 flex items-center gap-3">
+   264→   264→                <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide">Severity:</span>
+   265→   265→                <div className="flex-1 flex items-center gap-2">
+   266→   266→                  {(["critical", "high", "medium", "low"] as const).map((s, i) => {
+   267→   267→                    const colors = ["bg-violating", "bg-repairing", "bg-quarantined", "bg-muted-foreground"];
+   268→   268→                    const sevTotal = metrics.severityBreakdown.critical + metrics.severityBreakdown.high + metrics.severityBreakdown.medium + metrics.severityBreakdown.low;
+   269→   269→                    return <SeverityBar key={s} label={s} count={metrics.severityBreakdown[s]} max={Math.max(sevTotal, 1)} color={colors[i]} />;
+   270→   270→                  })}
+   271→   271→                </div>
+   272→   272→              </div>
+   273→   273→            </>
+   274→   274→          ) : (
+   275→   275→            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
+   276→   276→              <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-verified mr-2" />Loading live metrics…
+   277→   277→            </div>
+   278→   278→          )}
+   279→   279→        </CardShell>
+   280→   280→      </motion.div>
+   281→   281→
+   282→   282→      {/* Runtime Inventory + Activity */}
+   283→   283→      <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4" variants={secV}>
+   284→   284→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.75 0.15 80 / 0.3), transparent)">
+   285→   285→          <SectionHeader2 icon={Boxes} title="Runtime Inventory" />
+   286→   286→          <div className="space-y-3">
+   287→   287→            {inventory.map((item) => {
+   288→   288→              const Icon = item.icon;
+   289→   289→              const pct = Math.min(100, (item.value / item.max) * 100);
+   290→   290→              return (
+   291→   291→                <div key={item.label} className="group/inv">
+   292→   292→                  <div className="flex items-center gap-3">
+   293→   293→                    <div className="h-7 w-7 rounded-md bg-background/60 border border-border/30 flex items-center justify-center group-hover/inv:border-border/60 transition-colors">
+   294→   294→                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+   295→   295→                    </div>
+   296→   296→                    <div className="flex-1 min-w-0">
+   297→   297→                      <div className="flex items-center justify-between">
+   298→   298→                        <p className="text-sm">{item.label}</p>
+   299→   299→                        <span className="text-lg font-semibold tabular-nums">{item.value}</span>
+   300→   300→                      </div>
+   301→   301→                      <div className="flex items-center gap-2 mt-0.5">
+   302→   302→                        <div className="flex-1 h-1 rounded-full bg-background/60 overflow-hidden">
+   303→   303→                          <motion.div className="h-full rounded-full" style={{ backgroundColor: item.color }} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} />
+   304→   304→                        </div>
+   305→   305→                        <span className="text-[9px] text-muted-foreground font-mono shrink-0">{item.hint}</span>
+   306→   306→                      </div>
+   307→   307→                    </div>
+   308→   308→                  </div>
+   309→   309→                </div>
+   310→   310→              );
+   311→   311→            })}
+   312→   312→          </div>
+   313→   313→        </CardShell>
+   314→   314→
+   315→   315→        <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   316→   316→          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-repairing/40 via-verified/30 to-transparent" />
+   317→   317→          <div className="bg-grid-fine absolute inset-0 opacity-15" />
+   318→   318→          <div className="relative">
+   319→   319→            <div className="flex items-center gap-2 mb-4">
+   320→   320→              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-repairing/10"><Activity className="h-3.5 w-3.5 text-repairing" /></div>
+   321→   321→              <h3 className="text-sm font-semibold">Live Epistemic Activity</h3>
+   322→   322→              <span className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
+   323→   323→                <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-verified opacity-50" /><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-verified" /></span>
+   324→   324→                refresh 8s
+   325→   325→              </span>
+   326→   326→            </div>
+   327→   327→            <div className="max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+   328→   328→              <AnimatePresence mode="popLayout">
+   329→   329→                {activityItems.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">No recent activity.</p>}
+   330→   330→                {activityItems.map((a, i) => {
+   331→   331→                  const Cfg = a.config;
+   332→   332→                  const ActIcon = Cfg.icon;
+   333→   333→                  return (
+   334→   334→                    <motion.div key={`${a.title}-${i}`} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.2, delay: i * 0.02 }}
+   335→   335→                      className="relative flex items-start gap-3 rounded-lg border border-border/30 bg-background/30 px-3 py-2.5 mb-2 hover:border-border/60 hover:bg-background/50 transition-all group/act">
+   336→   336→                      <div className={`mt-0.5 h-7 w-7 shrink-0 rounded-md flex items-center justify-center ${Cfg.bg} ${Cfg.border} border`}>
+   337→   337→                        <ActIcon className={`h-3.5 w-3.5 ${Cfg.color}`} />
+   338→   338→                      </div>
+   339→   339→                      <div className="min-w-0 flex-1">
+   340→   340→                        <div className="flex items-center gap-2">
+   341→   341→                          <p className="text-sm font-medium truncate">{a.title}</p>
+   342→   342→                          <span className={`ml-auto text-[9px] font-mono px-1.5 py-0.5 rounded-full shrink-0 ${Cfg.bg} ${Cfg.color}`}>{Cfg.label}</span>
+   343→   343→                        </div>
+   344→   344→                        <div className="flex items-center gap-2 mt-0.5">
+   345→   345→                          <p className="text-xs text-muted-foreground truncate font-mono">{a.detail}</p>
+   346→   346→                          <span className="ml-auto text-[10px] text-muted-foreground/70 font-mono shrink-0 flex items-center gap-1">
+   347→   347→                            <Clock className="h-2.5 w-2.5" />{new Date(a.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+   348→   348→                          </span>
+   349→   349→                        </div>
+   350→   350→                      </div>
+   351→   351→                    </motion.div>
+   352→   352→                  );
+   353→   353→                })}
+   354→   354→              </AnimatePresence>
+   355→   355→            </div>
+   356→   356→          </div>
+   357→   357→        </Card>
+   358→   358→      </motion.div>
+   359→   359→
+   360→   360→      {/* Shard Health Heatmap + Coverage Ring */}
+   361→   361→      <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4" variants={secV}>
+   362→   362→        <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   363→   363→          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/40 via-repairing/30 to-violating/20" />
+   364→   364→          <div className="bg-grid-fine absolute inset-0 opacity-15" />
+   365→   365→          <div className="relative">
+   366→   366→            <SectionHeader2 icon={LayoutGrid} title="Shard Health Heatmap" extra={<span className="ml-auto text-[10px] text-muted-foreground font-mono">{shards ? `${shards.length} shards` : "loading…"}</span>} />
+   367→   367→            {shards ? (
+   368→   368→              <>
+   369→   369→                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
+   370→   370→                  {shards.map((shard, i) => (
+   371→   371→                    <motion.div key={shard.id} title={`${shard.shardKey} (${shard.region}) — ${shard.invariantStatus}`}
+   372→   372→                      className={`heatmap-cell h-8 w-full rounded cursor-default relative ${shard.invariantStatus === "violating" ? "animate-pulse" : ""}`}
+   373→   373→                      style={{ backgroundColor: COLOR_MAP[shard.invariantStatus] ?? COLOR_MAP.healthy }}
+   374→   374→                      initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02, duration: 0.2 }} />
+   375→   375→                  ))}
+   376→   376→                </div>
+   377→   377→                <div className="flex items-center gap-4 mt-3">
+   378→   378→                  {[["Healthy", "oklch(0.78 0.16 160)"], ["Repairing", "oklch(0.75 0.15 80)"], ["Violating", "oklch(0.65 0.2 25)"]].map(([l, c]) => (
+   379→   379→                    <div key={l} className="flex items-center gap-1.5">
+   380→   380→                      <span className={`h-2.5 w-2.5 rounded-sm${l === "Violating" ? " animate-pulse" : ""}`} style={{ backgroundColor: c }} />
+   381→   381→                      <span className="text-[9px] text-muted-foreground font-mono uppercase">{l}</span>
+   382→   382→                    </div>
+   383→   383→                  ))}
+   384→   384→                </div>
+   385→   385→              </>
+   386→   386→            ) : <div className="h-24 flex items-center justify-center text-sm text-muted-foreground"><div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-verified mr-2" />Loading shards…</div>}
+   387→   387→          </div>
+   388→   388→        </Card>
+   389→   389→
+   390→   390→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.65 0.2 25 / 0.3), oklch(0.75 0.15 80 / 0.2))">
+   391→   391→          <SectionHeader2 icon={ShieldCheck} title="Invariant Coverage" />
+   392→   392→          <div className="flex items-center gap-4">
+   393→   393→            <div className="relative w-28 h-28 shrink-0">
+   394→   394→              <ResponsiveContainer width="100%" height="100%">
+   395→   395→                <PieChart><Pie data={ringData} cx="50%" cy="50%" innerRadius={32} outerRadius={48} strokeWidth={0} dataKey="value" animationDuration={1000}>
+   396→   396→                  {ringData.map((entry, idx) => <Cell key={idx} fill={entry.fill} />)}
+   397→   397→                </Pie></PieChart>
+   398→   398→              </ResponsiveContainer>
+   399→   399→              <div className="absolute inset-0 flex flex-col items-center justify-center">
+   400→   400→                <span className="text-lg font-bold tabular-nums text-verified">{Math.round((passing / totalInv) * 100)}%</span>
+   401→   401→                <span className="text-[8px] text-muted-foreground uppercase tracking-wider">coverage</span>
+   402→   402→              </div>
+   403→   403→            </div>
+   404→   404→            <div className="flex-1 space-y-2.5">
+   405→   405→              {ringData.map((item) => (
+   406→   406→                <div key={item.name} className="flex items-center gap-2">
+   407→   407→                  <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: item.fill }} />
+   408→   408→                  <span className="text-xs text-muted-foreground flex-1">{item.name}</span>
+   409→   409→                  <span className="text-sm font-semibold tabular-nums">{item.value}</span>
+   410→   410→                  <span className="text-[9px] text-muted-foreground font-mono">({Math.round((item.value / totalInv) * 100)}%)</span>
+   411→   411→                </div>
+   412→   412→              ))}
+   413→   413→            </div>
+   414→   414→          </div>
+   415→   415→        </CardShell>
+   416→   416→      </motion.div>
+   417→   417→
+   418→   418→      {/* Policy Status Timeline */}
+   419→   419→      <motion.div variants={secV}>
+   420→   420→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.65 0.2 25 / 0.3), oklch(0.75 0.15 80 / 0.2))">
+   421→   421→          <SectionHeader2 icon={Clock} title="Policy Status Timeline" extra={<span className="ml-auto text-[10px] text-muted-foreground font-mono">last 12h</span>} />
+   422→   422→          <div className="relative h-16">
+   423→   423→            <div className="absolute top-5 left-0 right-0 h-1 rounded-full bg-border/40" />
+   424→   424→            <div className="absolute inset-x-0 top-4 flex justify-between">
+   425→   425→              {Array.from({ length: 7 }).map((_, h) => {
+   426→   426→                const hour = new Date(Date.now() - (12 - h * 2) * 3600000);
+   427→   427→                return <div key={h} className="flex flex-col items-center"><span className="h-2 w-px bg-border/60" /><span className="text-[7px] text-muted-foreground/50 font-mono mt-0.5">{hour.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>;
+   428→   428→              })}
+   429→   429→            </div>
+   430→   430→            {stats.activity.map((event, i) => {
+   431→   431→              const eventTime = new Date(event.at).getTime();
+   432→   432→              const twelveHoursAgo = Date.now() - 12 * 3600000;
+   433→   433→              const position = ((eventTime - twelveHoursAgo) / (12 * 3600000)) * 100;
+   434→   434→              if (position < 0 || position > 100) return null;
+   435→   435→              const isViolation = event.title.includes("breach");
+   436→   436→              const isShadow = event.kind === "shadow" && !isViolation;
+   437→   437→              const dotColor = isViolation ? "bg-violating" : isShadow ? "bg-repairing" : "bg-verified";
+   438→   438→              return (
+   439→   439→                <Tooltip key={`ev-${i}`}>
+   440→   440→                  <TooltipTrigger asChild>
+   441→   441→                    <motion.div className={`absolute top-4 -translate-y-1/2 h-3 w-3 rounded-full ${dotColor} ring-2 ring-background cursor-pointer z-10`}
+   442→   442→                      style={{ left: `${position}%` }} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.04, type: "spring", stiffness: 400 }} />
+   443→   443→                  </TooltipTrigger>
+   444→   444→                  <TooltipContent side="top" className="text-xs font-mono">
+   445→   445→                    <span className="font-semibold">{event.title}</span><br />
+   446→   446→                    <span className="text-muted-foreground">{event.detail}</span><br />
+   447→   447→                    <span className="text-muted-foreground">{new Date(event.at).toLocaleString()}</span>
+   448→   448→                  </TooltipContent>
+   449→   449→                </Tooltip>
+   450→   450→              );
+   451→   451→            })}
+   452→   452→          </div>
+   453→   453→          <div className="flex items-center gap-4 mt-2">
+   454→   454→            {[["Merge", "bg-verified"], ["Violation", "bg-violating"], ["Shadow", "bg-repairing"]].map(([l, c]) => (
+   455→   455→              <div key={l} className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${c}`} /><span className="text-[9px] text-muted-foreground font-mono uppercase">{l}</span></div>
+   456→   456→            ))}
+   457→   457→          </div>
+   458→   458→        </CardShell>
+   459→   459→      </motion.div>
+   460→   460→
+   461→   461→      {/* Quick Actions Bar */}
+   462→   462→      <motion.div variants={secV}>
+   463→   463→        <Card className="bg-card/60 backdrop-blur border-border/60 p-3 relative overflow-hidden">
+   464→   464→          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/30 via-repairing/20 to-violating/10" />
+   465→   465→          <div className="relative flex flex-wrap items-center gap-3">
+   466→   466→            <motion.button className="card-hover-lift flex items-center gap-2 rounded-lg border border-verified/30 bg-verified/10 px-4 py-2 text-sm font-medium text-verified hover:bg-verified/20 transition-colors"
+   467→   467→              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+   468→   468→              onClick={() => { fetch("/api/shards").then(() => fetch("/api/stats").then((r) => r.json()).then((d) => setStats(d))); }}>
+   469→   469→              <ShieldCheck className="h-4 w-4" />Run All Invariants
+   470→   470→            </motion.button>
+   471→   471→            <motion.button className="card-hover-lift flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 px-4 py-2 text-sm font-medium text-foreground hover:bg-background/60 transition-colors"
+   472→   472→              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+   473→   473→              onClick={() => { const data = JSON.stringify({ stats, metrics, exportedAt: new Date().toISOString() }, null, 2); const blob = new Blob([data], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `epistemic-dashboard-${Date.now()}.json`; a.click(); URL.revokeObjectURL(url); }}>
+   474→   474→              <Download className="h-4 w-4" />Export Dashboard
+   475→   475→            </motion.button>
+   476→   476→            <motion.button className={`card-hover-lift flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${autoRefresh ? "border-verified/30 bg-verified/10 text-verified hover:bg-verified/20" : "border-border/60 bg-background/40 text-muted-foreground hover:bg-background/60"}`}
+   477→   477→              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setAutoRefresh((v) => !v)}>
+   478→   478→              <RefreshCw className={`h-4 w-4 ${autoRefresh ? "animate-spin" : ""}`} style={autoRefresh ? { animationDuration: "3s" } : undefined} />
+   479→   479→              {autoRefresh ? "Auto-Refresh: ON" : "Auto-Refresh: OFF"}
+   480→   480→            </motion.button>
+   481→   481→          </div>
+   482→   482→        </Card>
+   483→   483→      </motion.div>
+   484→   484→
+   485→   485→      {/* Capability Map */}
+   486→   486→      <motion.div variants={secV}>
+   487→   487→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.75 0.15 80 / 0.3), oklch(0.65 0.2 25 / 0.2))">
+   488→   488→          <SectionHeader2 icon={TrendingUp} title="Capability Map" extra={<span className="ml-auto text-[10px] text-muted-foreground font-mono">epistemic://</span>} />
+   489→   489→          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+   490→   490→            {CAPABILITIES.map((c, idx) => {
+   491→   491→              const Icon = CAPABILITY_ICONS[c.id] ?? Activity;
+   492→   492→              return (
+   493→   493→                <motion.button key={c.id} onClick={() => onJump(c.id)}
+   494→   494→                  className={`group text-left rounded-xl border border-border/40 bg-gradient-to-br ${c.g} p-3 hover:border-verified/40 hover:shadow-[0_0_16px_-4px_oklch(0.78_0.16_160/0.3)] transition-all relative overflow-hidden`}
+   495→   495→                  whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02, duration: 0.25 }}>
+   496→   496→                  <div className="flex items-center gap-2">
+   497→   497→                    <div className="h-6 w-6 rounded-md bg-background/60 border border-border/30 flex items-center justify-center group-hover:border-verified/30 transition-colors">
+   498→   498→                      <Icon className="h-3 w-3 text-muted-foreground group-hover:text-verified transition-colors" />
+   499→   499→                    </div>
+   500→   500→                    <ArrowRight className="h-3 w-3 text-muted-foreground/0 group-hover:text-verified/60 ml-auto transition-all" />
+   501→   501→                  </div>
+   502→   502→                  <p className="mt-2 text-sm font-medium leading-tight">{c.label}</p>
+   503→   503→                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{c.hint}</p>
+   504→   504→                </motion.button>
+   505→   505→              );
+   506→   506→            })}
+   507→   507→          </div>
+   508→   508→        </CardShell>
+   509→   509→      </motion.div>
+   510→   510→    </motion.div>
+   511→   511→  );
+   512→   512→}
+   513→   513→
+   514→   514→function KpiCardWithSparkline({ kpi, idx }: { kpi: { label: string; value: string; numericValue: number; sub: string; icon: typeof Activity; status: string | null; sparkBase: number; sparkVariance: number; accentColor: string }; idx: number }) {
+   515→   515→  const Icon = kpi.icon;
+   516→   516→  const sparkData = useMemo(() => generateSparkline(kpi.sparkBase, kpi.sparkVariance).map((v, i) => ({ v, i })), [kpi.sparkBase, kpi.sparkVariance]);
+   517→   517→  return (
+   518→   518→    <motion.div variants={cardV} whileHover={{ scale: 1.02 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
+   519→   519→      <Card className="relative overflow-hidden bg-card/60 backdrop-blur border-border/60 p-4 h-full group cursor-default">
+   520→   520→        <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: `linear-gradient(90deg, ${kpi.accentColor}, transparent)` }} />
+   521→   521→        <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   522→   522→        <div className="relative">
+   523→   523→          <div className="flex items-center justify-between">
+   524→   524→            <span className="text-xs uppercase tracking-wider text-muted-foreground">{kpi.label}</span>
+   525→   525→            <Icon className="h-4 w-4 text-muted-foreground" />
+   526→   526→          </div>
+   527→   527→          <div className="mt-2 flex items-end gap-2 flex-wrap">
+   528→   528→            <span className="text-3xl font-semibold tabular-nums leading-none">{kpi.value}</span>
+   529→   529→            {kpi.status && <StatusPill status={kpi.status as "healthy" | "repairing" | "violating"} />}
+   530→   530→          </div>
+   531→   531→          <p className="mt-1.5 text-xs text-muted-foreground leading-tight">{kpi.sub}</p>
+   532→   532→          <div className="mt-2 h-8 w-full">
+   533→   533→            <ResponsiveContainer width="100%" height="100%">
+   534→   534→              <AreaChart data={sparkData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
+   535→   535→                <defs><linearGradient id={`spark-${idx}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={kpi.accentColor} stopOpacity={0.4} /><stop offset="100%" stopColor={kpi.accentColor} stopOpacity={0.05} /></linearGradient></defs>
+   536→   536→                <Area type="monotone" dataKey="v" stroke={kpi.accentColor} strokeWidth={1.5} fill={`url(#spark-${idx})`} animationDuration={600} />
+   537→   537→              </AreaChart>
+   538→   538→            </ResponsiveContainer>
+   539→   539→          </div>
+   540→   540→        </div>
+   541→   541→      </Card>
+   542→   542→    </motion.div>
+   543→   543→  );
+   544→   544→}
+   545→   545→

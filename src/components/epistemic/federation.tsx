@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { FederationGossipSim } from "./gossip-sim";
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { RadarGrid, DonutChart } from "./chart-primitives";
 import { containerVariants, cardVariants, itemVariants, SectionHeader, StatCard } from "./primitives";
 
 interface FedOrg { id: string; domain: string; name: string; policyCount: number; shardCount: number; zkPolicies: number; rootHash: string; anchored: number; totalProofs: number; handshake: string; trustLevel: "verifiable" | "anchored" | "unverified"; policies: { id: string; name: string; invariantCount: number; shadowEnabled: boolean; zkEnabled: boolean; shardCount: number; proofKind: string | null }[] }
@@ -68,23 +68,17 @@ function HandshakeVisualization({ status, isActive }: { from: string; to: string
 
 function TrustPostureGauge({ orgs }: { orgs: FedOrg[] }) {
   const radarData = orgs.map((o) => ({
-    name: o.name.length > 12 ? o.name.slice(0, 10) + "…" : o.name,
-    trust: o.trustLevel === "verifiable" ? 95 : o.trustLevel === "anchored" ? 60 : 25,
-    zk: Math.min(100, o.zkPolicies * 30 + (o.zkPolicies > 0 ? 20 : 0)),
-    proofs: Math.min(100, o.totalProofs * 15 + 10),
+    label: o.name.length > 12 ? o.name.slice(0, 10) + "…" : o.name,
+    value: o.trustLevel === "verifiable" ? 95 : o.trustLevel === "anchored" ? 60 : 25,
+    max: 100,
   }));
+  if (radarData.length < 3) {
+    // Pad to minimum 3 for radar
+    while (radarData.length < 3) radarData.push({ label: "—", value: 0, max: 100 });
+  }
   return (
-    <div className="w-full h-[220px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
-          <PolarGrid stroke="oklch(0.32 0.014 165)" strokeOpacity={0.4} />
-          <PolarAngleAxis dataKey="name" tick={{ fontSize: 9, fill: "oklch(0.68 0.015 160)", fontFamily: "var(--font-geist-mono), monospace" }} />
-          <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-          <Radar name="Trust" dataKey="trust" stroke="oklch(0.78 0.16 160)" fill="oklch(0.78 0.16 160)" fillOpacity={0.15} strokeWidth={1.5} />
-          <Radar name="ZK" dataKey="zk" stroke="oklch(0.80 0.15 80)" fill="oklch(0.80 0.15 80)" fillOpacity={0.08} strokeWidth={1} />
-          <Radar name="Proofs" dataKey="proofs" stroke="oklch(0.74 0.13 190)" fill="oklch(0.74 0.13 190)" fillOpacity={0.05} strokeWidth={1} />
-        </RadarChart>
-      </ResponsiveContainer>
+    <div className="w-full flex items-center justify-center">
+      <RadarGrid data={radarData} size={200} color="verified" />
     </div>
   );
 }
@@ -93,23 +87,17 @@ function FederationHealthGauge({ channels }: { channels: FedChannel[] }) {
   const verified = channels.filter((c) => c.status === "verified").length;
   const negotiating = channels.filter((c) => c.status === "negotiating").length;
   const drift = channels.filter((c) => c.status === "drift").length;
-  const data = [{ name: "verified", value: verified, color: "oklch(0.78 0.16 160)" }, { name: "negotiating", value: negotiating, color: "oklch(0.80 0.15 80)" }, { name: "drift", value: drift, color: "oklch(0.64 0.21 25)" }].filter((d) => d.value > 0);
+  const data = [{ label: "verified", value: verified, color: "verified" }, { label: "negotiating", value: negotiating, color: "repairing" }, { label: "drift", value: drift, color: "violating" }].filter((d) => d.value > 0);
   const total = verified + negotiating + drift;
   const healthPct = total > 0 ? Math.round((verified / total) * 100) : 0;
   if (!data.length) return <div className="flex items-center justify-center h-[120px] text-xs text-muted-foreground italic">No channels</div>;
   return (
-    <div className="relative h-[120px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart><Pie data={data} cx="50%" cy="50%" innerRadius={35} outerRadius={48} paddingAngle={2} dataKey="value" strokeWidth={0}>
-          {data.map((_, i) => <Cell key={i} fill={data[i].color} fillOpacity={0.8} />)}
-        </Pie></PieChart>
-      </ResponsiveContainer>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center">
-          <motion.div className={cn("text-lg font-bold font-mono", healthPct >= 80 ? "text-verified" : healthPct >= 50 ? "text-repairing" : "text-violating")}
-            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 300 }}>{healthPct}%</motion.div>
-          <div className="text-[8px] uppercase tracking-wide text-muted-foreground">health</div>
-        </div>
+    <div className="relative flex flex-col items-center justify-center h-[120px]">
+      <DonutChart data={data} size={100} thickness={14} showLabels />
+      <div className="mt-1 text-center">
+        <motion.div className={cn("text-lg font-bold font-mono", healthPct >= 80 ? "text-verified" : healthPct >= 50 ? "text-repairing" : "text-violating")}
+          initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ type: "spring", stiffness: 300 }}>{healthPct}%</motion.div>
+        <div className="text-[8px] uppercase tracking-wide text-muted-foreground">health</div>
       </div>
     </div>
   );

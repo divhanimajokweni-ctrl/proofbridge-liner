@@ -242,8 +242,9 @@ export function InteractiveDagGraph({ shards }: { shards: ShardRow[] }) {
   }, []);
 
   const onPointerUp = useCallback(() => {
-    if (dragRef.current) {
-      const node = nodesRef.current.find((n) => n.id === dragRef.current.id);
+    const drag = dragRef.current;
+    if (drag) {
+      const node = nodesRef.current.find((n) => n.id === drag.id);
       if (node) {
         node.fx = null;
         node.fy = null;

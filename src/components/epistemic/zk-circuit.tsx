@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { SAMPLE_POLICIES, validateEpd, type PolicyNode } from "@/lib/epd";
 import { motion } from "framer-motion";
 import { GradientBorderCard, containerVariants, cardVariants, itemVariants, GridOverlay, StatusPill } from "./primitives";
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
+import { MiniBar } from "./chart-primitives";
 
 interface CircuitGate { id: string; type: "input" | "constraint" | "aggregate" | "output"; label: string; sublabel?: string; x: number; y: number; invariant?: string }
 interface CircuitWire { from: string; to: string; kind: "private" | "public" }
@@ -92,14 +92,14 @@ export function ZkCircuitSection() {
   const constraintData = useMemo(() => {
     if (!circuit) return [];
     return [
-      { name: "Constraints", value: circuit.constraintCount, fill: "oklch(0.80 0.15 80 / 0.7)" },
-      { name: "Private", value: circuit.privateInputs.length, fill: "oklch(0.68 0.015 160 / 0.5)" },
-      { name: "Public", value: circuit.publicInputs.length, fill: "oklch(0.78 0.16 160 / 0.7)" },
-      { name: "R1CS rows", value: Math.round(circuit.estimatedRows / 10), fill: "oklch(0.70 0.13 40 / 0.6)" },
+      { label: "Constraints", value: circuit.constraintCount, color: "repairing" },
+      { label: "Private", value: circuit.privateInputs.length, color: "quarantined" },
+      { label: "Public", value: circuit.publicInputs.length, color: "verified" },
+      { label: "R1CS rows", value: Math.round(circuit.estimatedRows / 10), color: "violating" },
     ];
   }, [circuit]);
 
-  const constraintGates = useMemo(() => circuit.gates.filter(g => g.type === "constraint"), [circuit]);
+  const constraintGates = useMemo(() => circuit ? circuit.gates.filter(g => g.type === "constraint") : [], [circuit]);
 
   const constraintEnabled = useMemo(() => {
     const result: Record<string, boolean> = {};
@@ -224,13 +224,7 @@ export function ZkCircuitSection() {
           <GradientBorderCard gradientFrom="oklch(0.80 0.15 80 / 0.3)" gradientTo="oklch(0.32 0.014 165 / 0.1)" className="p-4">
             <div className="relative">
               <div className="flex items-center gap-2 mb-2"><BarChart3 className="h-3.5 w-3.5 text-repairing" /><span className="text-xs font-semibold">Constraint breakdown</span></div>
-              <ResponsiveContainer width="100%" height={80}>
-                <BarChart data={constraintData} layout="vertical" barCategoryGap={4}>
-                  <XAxis type="number" hide /><YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: "oklch(0.55 0.01 160)" }} axisLine={false} tickLine={false} width={70} />
-                  <RechartsTooltip contentStyle={{ backgroundColor: "oklch(0.22 0.014 168)", border: "1px solid oklch(0.32 0.014 165)", borderRadius: "6px", fontSize: "11px" }} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>{constraintData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}</Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <MiniBar data={constraintData} width={260} height={80} horizontal className="w-full" />
             </div>
           </GradientBorderCard>
           <GradientBorderCard gradientFrom="oklch(0.78 0.16 160 / 0.2)" gradientTo="oklch(0.80 0.15 80 / 0.1)" className="p-4">
@@ -329,16 +323,8 @@ export function ZkCircuitSection() {
                 </motion.div>
               ))}
             </div>
-            <div className="mt-3 h-[70px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={proofHistory.map((p) => ({ time: new Date(p.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), provingTime: p.provingTimeMs, status: p.status }))} barCategoryGap={2}>
-                  <XAxis dataKey="time" tick={{ fontSize: 8, fill: "oklch(0.55 0.01 160)" }} axisLine={false} tickLine={false} /><YAxis hide />
-                  <RechartsTooltip contentStyle={{ backgroundColor: "oklch(0.22 0.014 168)", border: "1px solid oklch(0.32 0.014 165)", borderRadius: "6px", fontSize: "11px" }} formatter={(value: number) => [`${value}ms`, "Proving time"]} />
-                  <Bar dataKey="provingTime" radius={[2, 2, 0, 0]}>
-                    {proofHistory.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.status === "verified" ? "oklch(0.78 0.16 160 / 0.7)" : entry.status === "pending" ? "oklch(0.80 0.15 80 / 0.7)" : "oklch(0.64 0.21 25 / 0.7)"} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="mt-3 h-[70px] flex items-end justify-center">
+              <MiniBar data={proofHistory.map((p) => ({ label: new Date(p.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), value: p.provingTimeMs, color: p.status === "verified" ? "verified" : p.status === "pending" ? "repairing" : "violating" }))} width={280} height={65} className="w-full" />
             </div>
           </div>
         </GradientBorderCard>

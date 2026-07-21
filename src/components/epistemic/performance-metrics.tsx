@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
-  ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, Legend,
-} from "recharts";
+  SparkLine, MiniBar, DonutChart,
+} from "./chart-primitives";
 import { Activity, TrendingUp, TrendingDown, Minus, Gauge, Timer, GitBranch, AlertTriangle, Server, Layers } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,16 +41,16 @@ export function PerformanceMetricsSection() {
     if (!metrics) return [];
     const sb = metrics.severityBreakdown;
     return [
-      { name: "Critical", value: sb.critical, color: "oklch(0.65 0.2 25)" },
-      { name: "High", value: sb.high, color: "oklch(0.75 0.15 80)" },
-      { name: "Medium", value: sb.medium, color: "oklch(0.70 0.10 200)" },
-      { name: "Low", value: sb.low, color: "oklch(0.55 0.04 168)" },
+      { label: "Critical", value: sb.critical, color: "violating" },
+      { label: "High", value: sb.high, color: "repairing" },
+      { label: "Medium", value: sb.medium, color: "quarantined" },
+      { label: "Low", value: sb.low, color: "verified" },
     ].filter((d) => d.value > 0);
   }, [metrics]);
   const latencyData = useMemo(() => metrics ? [
-    { name: "P50", value: metrics.latency.p50, fill: "oklch(0.78 0.16 160)" },
-    { name: "P95", value: metrics.latency.p95, fill: "oklch(0.75 0.15 80)" },
-    { name: "P99", value: metrics.latency.p99, fill: "oklch(0.65 0.2 25)" },
+    { label: "P50", value: metrics.latency.p50, color: "verified" },
+    { label: "P95", value: metrics.latency.p95, color: "repairing" },
+    { label: "P99", value: metrics.latency.p99, color: "violating" },
   ] : [], [metrics]);
   const totalViolations = useMemo(() => metrics ? metrics.severityBreakdown.critical + metrics.severityBreakdown.high + metrics.severityBreakdown.medium + metrics.severityBreakdown.low : 0, [metrics]);
 
@@ -132,23 +131,23 @@ export function PerformanceMetricsSection() {
               <h3 className="text-sm font-semibold">Throughput Over Time</h3>
               <span className="ml-auto text-[10px] text-muted-foreground font-mono">24h window</span>
             </div>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={timeSeriesData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gM" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="oklch(0.78 0.16 160)" stopOpacity={0.35} /><stop offset="100%" stopColor="oklch(0.78 0.16 160)" stopOpacity={0.02} /></linearGradient>
-                    <linearGradient id="gR" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="oklch(0.75 0.15 80)" stopOpacity={0.3} /><stop offset="100%" stopColor="oklch(0.75 0.15 80)" stopOpacity={0.02} /></linearGradient>
-                    <linearGradient id="gV" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="oklch(0.65 0.2 25)" stopOpacity={0.3} /><stop offset="100%" stopColor="oklch(0.65 0.2 25)" stopOpacity={0.02} /></linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 168 / 0.3)" />
-                  <XAxis dataKey="time" tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9 }} stroke="oklch(0.3 0.01 168 / 0.5)" />
-                  <YAxis tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9 }} stroke="oklch(0.3 0.01 168 / 0.5)" />
-                  <RTooltip contentStyle={CHART_TOOLTIP_STYLE} /><Legend wrapperStyle={{ fontSize: "10px" }} />
-                  <Area type="monotone" dataKey="merges" stroke="oklch(0.78 0.16 160)" strokeWidth={2} fill="url(#gM)" name="Merges" />
-                  <Area type="monotone" dataKey="repairs" stroke="oklch(0.75 0.15 80)" strokeWidth={2} fill="url(#gR)" name="Repairs" />
-                  <Area type="monotone" dataKey="violations" stroke="oklch(0.65 0.2 25)" strokeWidth={2} fill="url(#gV)" name="Violations" />
-                </AreaChart>
-              </ResponsiveContainer>
+            <div className="h-64 w-full flex flex-col gap-3">
+              <div className="flex-1 flex flex-col gap-2">
+                <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-verified/70" />Merges</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-repairing/70" />Repairs</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-violating/70" />Violations</span>
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <SparkLine data={timeSeriesData.map((d) => d.merges)} width={400} height={80} color="verified" fill className="w-full" />
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <SparkLine data={timeSeriesData.map((d) => d.repairs)} width={400} height={60} color="repairing" fill className="w-full" />
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                  <SparkLine data={timeSeriesData.map((d) => d.violations)} width={400} height={40} color="violating" fill className="w-full" />
+                </div>
+              </div>
             </div>
           </div>
         </Card>
@@ -219,12 +218,8 @@ export function PerformanceMetricsSection() {
               </div>
               {totalViolations === 0 ? <div className="py-8 text-center text-sm text-muted-foreground">No violations</div> : (
                 <div className="flex flex-col items-center">
-                  <div className="h-48 w-full max-w-[260px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart><Pie data={severityData} cx="50%" cy="50%" innerRadius={48} outerRadius={72} strokeWidth={1} stroke="oklch(0.205 0.014 168)" dataKey="value" animationDuration={600}>
-                        {severityData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                      </Pie><RTooltip contentStyle={CHART_TOOLTIP_STYLE} /><Legend wrapperStyle={{ fontSize: "10px" }} /></PieChart>
-                    </ResponsiveContainer>
+                  <div className="flex items-center justify-center">
+                    <DonutChart data={severityData} size={120} thickness={18} showLabels />
                   </div>
                   <div className="mt-3 w-full">
                     <div className="text-[9px] text-muted-foreground font-mono uppercase tracking-wide mb-1.5">Breakdown</div>
@@ -232,7 +227,7 @@ export function PerformanceMetricsSection() {
                       {severityData.map((s, i) => { const pct = totalViolations > 0 ? (s.value / totalViolations) * 100 : 0; return <motion.div key={i} className="h-full" style={{ backgroundColor: s.color }} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5, delay: i * 0.1 }} />; })}
                     </div>
                     <div className="flex items-center gap-3 mt-2">
-                      {severityData.map((s, i) => <div key={i} className="flex items-center gap-1"><SeverityDot severity={s.name.toLowerCase()} /><span className="text-[9px] font-mono text-muted-foreground">{s.name} <span className="font-semibold" style={{ color: s.color }}>{s.value}</span></span></div>)}
+                      {severityData.map((s, i) => <div key={i} className="flex items-center gap-1"><SeverityDot severity={s.label.toLowerCase()} /><span className="text-[9px] font-mono text-muted-foreground">{s.label} <span className="font-semibold" style={{ color: s.color }}>{s.value}</span></span></div>)}
                     </div>
                   </div>
                 </div>
@@ -252,20 +247,12 @@ export function PerformanceMetricsSection() {
               <h3 className="text-sm font-semibold">Latency Distribution</h3>
               <span className="ml-auto text-[10px] text-muted-foreground font-mono">merge commit ms</span>
             </div>
-            <div className="h-44 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={latencyData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }} barCategoryGap="25%">
-                  <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 168 / 0.3)" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 10 }} stroke="oklch(0.3 0.01 168 / 0.5)" />
-                  <YAxis tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9 }} stroke="oklch(0.3 0.01 168 / 0.5)" tickFormatter={(v) => `${v}ms`} />
-                  <RTooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [`${v}ms`, "Latency"]} />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>{latencyData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}</Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="h-44 w-full flex items-end justify-center">
+              <MiniBar data={latencyData} width={260} height={120} className="w-full" />
             </div>
             <div className="mt-3 flex items-center gap-4 pt-3 border-t border-border/30">
               {[["P50", metrics.latency.p50, "oklch(0.78 0.16 160)", "text-verified"], ["P95", metrics.latency.p95, "oklch(0.75 0.15 80)", "text-repairing"], ["P99", metrics.latency.p99, "oklch(0.65 0.2 25)", "text-violating"]].map(([l, v, bg, tc]) => (
-                <div key={l} className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: bg }} /><span className="text-[9px] font-mono text-muted-foreground">{l}: <span className={cn("font-semibold", tc)}>{v}ms</span></span></div>
+                <div key={l} className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: bg as string }} /><span className="text-[9px] font-mono text-muted-foreground">{l}: <span className={cn("font-semibold", tc)}>{v}ms</span></span></div>
               ))}
               <span className="ml-auto text-[9px] font-mono text-muted-foreground">tail ratio: <span className="text-foreground font-semibold">{(metrics.latency.p99 / Math.max(metrics.latency.p50, 1)).toFixed(1)}x</span></span>
             </div>

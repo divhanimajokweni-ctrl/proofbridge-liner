@@ -2,13 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  AreaChart, Area, PieChart, Pie, Cell, ResponsiveContainer,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, BarChart, Bar, Legend,
-} from "recharts";
+import type { Variants } from "framer-motion";
+import { SparkLine, DonutChart, MetricGauge } from "./chart-primitives";
 import {
   Activity, GitBranch, ShieldCheck, Network, Boxes, KeyRound, Cpu,
-  TrendingUp, AlertTriangle, Wrench, Sparkles, ArrowRight, Clock,
+  TrendingUp, AlertTriangle, Wrench, Sparkles, Clock,
   LayoutGrid, FileText, Terminal, Globe2, CircuitBoard, History,
   GitCompare, FlaskConical, Library, GitGraph, Zap, Download, RefreshCw,
 } from "lucide-react";
@@ -24,8 +22,18 @@ function generateSparkline(base: number, variance: number, length = 12): number[
 }
 
 const cv = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
-const cardV = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 24 } } };
+const cardV: Variants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 24 } } };
 const secV = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+
+function GradientDivider() {
+  return <motion.div className="h-px w-full bg-gradient-to-r from-transparent via-verified/30 to-transparent" initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 0.8 }} style={{ transformOrigin: "center" }} />;
+}
+
+function AnimNum({ target, cls }: { target: number; cls?: string }) {
+  const [v, setV] = useState(0);
+  useEffect(() => { let f: number; const s = performance.now(); const tick = (n: number) => { const p = Math.min((n - s) / 800, 1); setV(Math.round(p * target)); if (p < 1) f = requestAnimationFrame(tick); }; f = requestAnimationFrame(tick); return () => cancelAnimationFrame(f); }, [target]);
+  return <span className={cls}>{v}</span>;
+}
 
 const CAPABILITY_ICONS: Record<string, typeof Activity> = {
   studio: GitBranch, templates: Library, topology: Network, dependencies: GitGraph,
@@ -41,7 +49,6 @@ const ACT_CFG: Record<string, { icon: typeof Activity; color: string; bg: string
   violation: { icon: AlertTriangle, color: "text-violating", bg: "bg-violating/10", border: "border-violating/20", dot: "bg-violating", label: "Breach" },
 };
 
-const CHART_STYLE = { background: "oklch(0.205 0.014 168)", border: "1px solid oklch(0.32 0.014 165 / 0.6)", borderRadius: "6px", fontSize: "10px", fontFamily: "var(--font-geist-mono)" };
 
 function MetricChip({ label, value, color }: { label: string; value: string; color: string }) {
   return (
@@ -69,7 +76,7 @@ function SeverityBar({ label, count, max, color }: { label: string; count: numbe
 
 function CardShell({ children, accent }: { children: React.ReactNode; accent?: string }) {
   return (
-    <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+    <Card className="bg-card/80 backdrop-blur-sm border-border/60 p-4 relative overflow-hidden">
       {accent && <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: accent }} />}
       <div className="bg-grid-fine absolute inset-0 opacity-15" />
       <div className="relative">{children}</div>
@@ -164,7 +171,6 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
     { label: "Anchored Proofs", value: `${stats.ancestry.anchoredRate}%`, numericValue: stats.ancestry.anchoredRate, sub: `${stats.ancestry.zkProofs}/${stats.ancestry.totalProofs} ZK`, icon: KeyRound, status: null, sparkBase: stats.ancestry.anchoredRate, sparkVariance: 5, accentColor: "var(--verified)" },
   ];
 
-  const gaugeData = [{ name: "Health", value: healthScore }, { name: "Remaining", value: 100 - healthScore }];
   const activityItems = stats.activity.map((a, i) => {
     const kind = a.title.includes("breach") ? "violation" : a.kind;
     return { ...a, kind, config: ACT_CFG[kind] ?? ACT_CFG.merge };
@@ -200,23 +206,17 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {kpis.map((k, idx) => <KpiCardWithSparkline key={k.label} kpi={k} idx={idx} />)}
         {/* Health gauge */}
-        <motion.div variants={cardV} whileHover={{ scale: 1.02 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
-          <Card className="relative overflow-hidden bg-card/60 backdrop-blur border-border/60 p-4 h-full">
+        <motion.div variants={cardV} whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
+          <Card className="relative overflow-hidden bg-card/80 backdrop-blur-sm border-border/60 p-4 h-full">
             <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: `linear-gradient(90deg, ${gaugeColor}, transparent)` }} />
             <div className="bg-grid-fine absolute inset-0 opacity-20" />
             <div className="relative flex flex-col items-center">
               <span className="text-xs uppercase tracking-wider text-muted-foreground mb-1">System Health</span>
-              <div className="relative w-28 h-28">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart><Pie data={gaugeData} startAngle={225} endAngle={-45} innerRadius={36} outerRadius={48} strokeWidth={0} dataKey="value" animationDuration={1000}>
-                    <Cell fill={gaugeColor} /><Cell fill="oklch(0.25 0.012 168)" />
-                  </Pie></PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-bold tabular-nums" style={{ color: gaugeColor }}>{healthScore}%</span>
-                  <span className="text-[9px] text-muted-foreground uppercase tracking-wider">{healthStatus}</span>
-                </div>
+              <div className="relative">
+                <div className="absolute -inset-4 rounded-full border-2 animate-pulse" style={{ borderColor: gaugeColor, opacity: 0.12, animationDuration: "2s" }} />
+                <MetricGauge value={healthScore} max={100} label={healthStatus} color={healthStatus === "healthy" ? "verified" : healthStatus === "repairing" ? "repairing" : "violating"} size={112} />
               </div>
+              <span className="text-2xl font-bold tabular-nums bg-clip-text text-transparent mt-1" style={{ backgroundImage: healthScore >= 85 ? "linear-gradient(90deg, var(--verified), oklch(0.78 0.16 160 / 0.7))" : healthScore >= 60 ? "linear-gradient(90deg, var(--repairing), oklch(0.80 0.15 80 / 0.7))" : "linear-gradient(90deg, var(--violating), oklch(0.64 0.21 25 / 0.7))" }}>{healthScore}%</span>
               <div className="flex items-center gap-1.5 mt-1">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50" style={{ backgroundColor: gaugeColor }} />
@@ -246,19 +246,28 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
                 <MetricChip label="Avg Iterations" value={metrics.throughput.avgIterations.toFixed(1)} color="text-verified" />
                 <MetricChip label="P95 Latency" value={`${metrics.latency.p95}ms`} color="text-quarantined" />
               </div>
-              <div className="h-48 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={metrics.timeSeries} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.3 0.01 168 / 0.3)" />
-                    <XAxis dataKey="t" tickFormatter={(t) => new Date(t).toLocaleTimeString([], { hour: "2-digit" })} tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9 }} stroke="oklch(0.3 0.01 168 / 0.5)" />
-                    <YAxis tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9 }} stroke="oklch(0.3 0.01 168 / 0.5)" />
-                    <RTooltip contentStyle={CHART_STYLE} labelFormatter={(t) => new Date(t as number).toLocaleString()} />
-                    <Legend wrapperStyle={{ fontSize: "10px" }} />
-                    <Line type="monotone" dataKey="merges" stroke="oklch(0.78 0.16 160)" strokeWidth={2} dot={false} name="Merges" />
-                    <Line type="monotone" dataKey="repairs" stroke="oklch(0.75 0.15 80)" strokeWidth={2} dot={false} name="Repairs" />
-                    <Line type="monotone" dataKey="violations" stroke="oklch(0.65 0.2 25)" strokeWidth={2} dot={false} name="Violations" />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="w-full space-y-2">
+                <div>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "oklch(0.78 0.16 160)" }} />
+                    <span className="text-[9px] text-muted-foreground font-mono uppercase">Merges</span>
+                  </div>
+                  <SparkLine data={metrics.timeSeries.map(d => d.merges)} fill color="oklch(0.78 0.16 160)" width={320} height={40} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "oklch(0.75 0.15 80)" }} />
+                    <span className="text-[9px] text-muted-foreground font-mono uppercase">Repairs</span>
+                  </div>
+                  <SparkLine data={metrics.timeSeries.map(d => d.repairs)} fill color="oklch(0.75 0.15 80)" width={320} height={40} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "oklch(0.65 0.2 25)" }} />
+                    <span className="text-[9px] text-muted-foreground font-mono uppercase">Violations</span>
+                  </div>
+                  <SparkLine data={metrics.timeSeries.map(d => d.violations)} fill color="oklch(0.65 0.2 25)" width={320} height={40} />
+                </div>
               </div>
               <div className="mt-3 flex items-center gap-3">
                 <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide">Severity:</span>
@@ -278,6 +287,7 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
           )}
         </CardShell>
       </motion.div>
+      <GradientDivider />
 
       {/* Runtime Inventory + Activity */}
       <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4" variants={secV}>
@@ -312,7 +322,7 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
           </div>
         </CardShell>
 
-        <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+        <Card className="lg:col-span-2 bg-card/80 backdrop-blur-sm border-border/60 p-4 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-repairing/40 via-verified/30 to-transparent" />
           <div className="bg-grid-fine absolute inset-0 opacity-15" />
           <div className="relative">
@@ -359,7 +369,7 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
 
       {/* Shard Health Heatmap + Coverage Ring */}
       <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4" variants={secV}>
-        <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+        <Card className="lg:col-span-2 bg-card/80 backdrop-blur-sm border-border/60 p-4 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/40 via-repairing/30 to-violating/20" />
           <div className="bg-grid-fine absolute inset-0 opacity-15" />
           <div className="relative">
@@ -369,16 +379,17 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
                 <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
                   {shards.map((shard, i) => (
                     <motion.div key={shard.id} title={`${shard.shardKey} (${shard.region}) — ${shard.invariantStatus}`}
-                      className={`heatmap-cell h-8 w-full rounded cursor-default relative ${shard.invariantStatus === "violating" ? "animate-pulse" : ""}`}
+                      className={`heatmap-cell h-8 w-full rounded cursor-default relative hover:ring-2 hover:ring-foreground/20 hover:z-10 hover:scale-110 transition-transform ${shard.invariantStatus === "violating" ? "animate-pulse" : ""}`}
                       style={{ backgroundColor: COLOR_MAP[shard.invariantStatus] ?? COLOR_MAP.healthy }}
                       initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02, duration: 0.2 }} />
                   ))}
                 </div>
                 <div className="flex items-center gap-4 mt-3">
-                  {[["Healthy", "oklch(0.78 0.16 160)"], ["Repairing", "oklch(0.75 0.15 80)"], ["Violating", "oklch(0.65 0.2 25)"]].map(([l, c]) => (
+                  {[["Healthy", "oklch(0.78 0.16 160)", "Invariants passing"], ["Repairing", "oklch(0.75 0.15 80)", "Soft violations"], ["Violating", "oklch(0.65 0.2 25)", "Active breaches"]].map(([l, c, d]) => (
                     <div key={l} className="flex items-center gap-1.5">
-                      <span className={`h-2.5 w-2.5 rounded-sm${l === "Violating" ? " animate-pulse" : ""}`} style={{ backgroundColor: c }} />
+                      <span className={`h-2.5 w-2.5 rounded-sm${l === "Violating" ? " animate-pulse" : ""}`} style={{ backgroundColor: c as string }} />
                       <span className="text-[9px] text-muted-foreground font-mono uppercase">{l}</span>
+                      <span className="text-[8px] text-muted-foreground/60 font-mono">({d as string})</span>
                     </div>
                   ))}
                 </div>
@@ -390,15 +401,13 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
         <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.65 0.2 25 / 0.3), oklch(0.75 0.15 80 / 0.2))">
           <SectionHeader2 icon={ShieldCheck} title="Invariant Coverage" />
           <div className="flex items-center gap-4">
-            <div className="relative w-28 h-28 shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart><Pie data={ringData} cx="50%" cy="50%" innerRadius={32} outerRadius={48} strokeWidth={0} dataKey="value" animationDuration={1000}>
-                  {ringData.map((entry, idx) => <Cell key={idx} fill={entry.fill} />)}
-                </Pie></PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-lg font-bold tabular-nums text-verified">{Math.round((passing / totalInv) * 100)}%</span>
-                <span className="text-[8px] text-muted-foreground uppercase tracking-wider">coverage</span>
+            <div className="relative shrink-0">
+              <DonutChart data={ringData.map(d => ({ label: d.name, value: d.value, color: d.fill }))} size={112} thickness={16} />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="flex flex-col items-center justify-center h-16 w-16 rounded-full bg-card/90">
+                  <AnimNum target={Math.round((passing / totalInv) * 100)} cls="text-lg font-bold tabular-nums text-verified" />
+                  <span className="text-[8px] text-muted-foreground uppercase tracking-wider">coverage</span>
+                </div>
               </div>
             </div>
             <div className="flex-1 space-y-2.5">
@@ -412,8 +421,14 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
               ))}
             </div>
           </div>
+          <div className="mt-3">
+            <div className="h-2 rounded-full bg-background/60 overflow-hidden">
+              <motion.div className="h-full rounded-full" style={{ background: "linear-gradient(90deg, oklch(0.78 0.16 160), oklch(0.75 0.15 80), oklch(0.65 0.2 25))" }} initial={{ width: 0 }} animate={{ width: `${Math.round((passing / totalInv) * 100)}%` }} transition={{ duration: 0.8, ease: "easeOut" }} />
+            </div>
+          </div>
         </CardShell>
       </motion.div>
+      <GradientDivider />
 
       {/* Policy Status Timeline */}
       <motion.div variants={secV}>
@@ -457,10 +472,11 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
           </div>
         </CardShell>
       </motion.div>
+      <GradientDivider />
 
       {/* Quick Actions Bar */}
       <motion.div variants={secV}>
-        <Card className="bg-card/60 backdrop-blur border-border/60 p-3 relative overflow-hidden">
+        <Card className="bg-card/80 backdrop-blur-sm border-border/60 p-3 relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/30 via-repairing/20 to-violating/10" />
           <div className="relative flex flex-wrap items-center gap-3">
             <motion.button className="card-hover-lift flex items-center gap-2 rounded-lg border border-verified/30 bg-verified/10 px-4 py-2 text-sm font-medium text-verified hover:bg-verified/20 transition-colors"
@@ -473,8 +489,9 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
               onClick={() => { const data = JSON.stringify({ stats, metrics, exportedAt: new Date().toISOString() }, null, 2); const blob = new Blob([data], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `epistemic-dashboard-${Date.now()}.json`; a.click(); URL.revokeObjectURL(url); }}>
               <Download className="h-4 w-4" />Export Dashboard
             </motion.button>
-            <motion.button className={`card-hover-lift flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${autoRefresh ? "border-verified/30 bg-verified/10 text-verified hover:bg-verified/20" : "border-border/60 bg-background/40 text-muted-foreground hover:bg-background/60"}`}
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setAutoRefresh((v) => !v)}>
+            <motion.button className={`card-hover-lift flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all ${autoRefresh ? "border-verified/40 bg-verified/15 text-verified shadow-[0_0_12px_-4px_oklch(0.78_0.16_160/0.3)]" : "border-border/60 bg-background/40 text-muted-foreground"}`}
+              whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }} onClick={() => setAutoRefresh((v) => !v)}>
+              <span className={`h-2 w-2 rounded-full transition-colors ${autoRefresh ? "bg-verified animate-pulse" : "bg-muted-foreground/40"}`} />
               <RefreshCw className={`h-4 w-4 ${autoRefresh ? "animate-spin" : ""}`} style={autoRefresh ? { animationDuration: "3s" } : undefined} />
               {autoRefresh ? "Auto-Refresh: ON" : "Auto-Refresh: OFF"}
             </motion.button>
@@ -491,13 +508,13 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
               const Icon = CAPABILITY_ICONS[c.id] ?? Activity;
               return (
                 <motion.button key={c.id} onClick={() => onJump(c.id)}
-                  className={`group text-left rounded-xl border border-border/40 bg-gradient-to-br ${c.g} p-3 hover:border-verified/40 hover:shadow-[0_0_16px_-4px_oklch(0.78_0.16_160/0.3)] transition-all relative overflow-hidden`}
+                  className={`group text-left rounded-xl border border-border/30 bg-gradient-to-br ${c.g} p-3 hover:border-verified/30 hover:shadow-[0_0_16px_-4px_oklch(0.78_0.16_160/0.3),inset_0_0_12px_oklch(0.78_0.16_160/0.06)] transition-all relative overflow-hidden`}
                   whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02, duration: 0.25 }}>
                   <div className="flex items-center gap-2">
                     <div className="h-6 w-6 rounded-md bg-background/60 border border-border/30 flex items-center justify-center group-hover:border-verified/30 transition-colors">
                       <Icon className="h-3 w-3 text-muted-foreground group-hover:text-verified transition-colors" />
                     </div>
-                    <ArrowRight className="h-3 w-3 text-muted-foreground/0 group-hover:text-verified/60 ml-auto transition-all" />
+                    <span className="ml-auto text-muted-foreground/0 group-hover:text-verified/70 text-sm font-bold transition-all translate-x-[-4px] group-hover:translate-x-0">→</span>
                   </div>
                   <p className="mt-2 text-sm font-medium leading-tight">{c.label}</p>
                   <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{c.hint}</p>
@@ -513,10 +530,11 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
 
 function KpiCardWithSparkline({ kpi, idx }: { kpi: { label: string; value: string; numericValue: number; sub: string; icon: typeof Activity; status: string | null; sparkBase: number; sparkVariance: number; accentColor: string }; idx: number }) {
   const Icon = kpi.icon;
-  const sparkData = useMemo(() => generateSparkline(kpi.sparkBase, kpi.sparkVariance).map((v, i) => ({ v, i })), [kpi.sparkBase, kpi.sparkVariance]);
+  const sparkData = useMemo(() => generateSparkline(kpi.sparkBase, kpi.sparkVariance), [kpi.sparkBase, kpi.sparkVariance]);
   return (
-    <motion.div variants={cardV} whileHover={{ scale: 1.02 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
-      <Card className="relative overflow-hidden bg-card/60 backdrop-blur border-border/60 p-4 h-full group cursor-default">
+    <motion.div variants={cardV} whileHover={{ scale: 1.05 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
+      <Card className="relative overflow-hidden bg-card/80 backdrop-blur-sm border-border/60 p-4 h-full group cursor-default hover:shadow-lg hover:shadow-verified/5 transition-shadow">
+        <div className="absolute inset-0 opacity-[0.03]" style={{ background: `linear-gradient(135deg, ${kpi.accentColor}, transparent 60%)` }} />
         <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: `linear-gradient(90deg, ${kpi.accentColor}, transparent)` }} />
         <div className="bg-grid-fine absolute inset-0 opacity-20" />
         <div className="relative">
@@ -529,13 +547,8 @@ function KpiCardWithSparkline({ kpi, idx }: { kpi: { label: string; value: strin
             {kpi.status && <StatusPill status={kpi.status as "healthy" | "repairing" | "violating"} />}
           </div>
           <p className="mt-1.5 text-xs text-muted-foreground leading-tight">{kpi.sub}</p>
-          <div className="mt-2 h-8 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sparkData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-                <defs><linearGradient id={`spark-${idx}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={kpi.accentColor} stopOpacity={0.4} /><stop offset="100%" stopColor={kpi.accentColor} stopOpacity={0.05} /></linearGradient></defs>
-                <Area type="monotone" dataKey="v" stroke={kpi.accentColor} strokeWidth={1.5} fill={`url(#spark-${idx})`} animationDuration={600} />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="mt-2 w-full">
+            <SparkLine data={sparkData} fill color={kpi.accentColor} width={200} height={32} />
           </div>
         </div>
       </Card>

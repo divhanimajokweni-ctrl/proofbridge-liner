@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AreaChart, Area, ResponsiveContainer, Treemap } from "recharts";
+import { SparkLine, HeatGrid } from "./chart-primitives";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { PolicyRow, MinedInvariantRow, Severity, StatsResponse } from "@/lib/types";
@@ -121,19 +121,7 @@ function CandidateCard({ candidate, policyName, onAccept, onReject, busy, index 
   );
 }
 
-function CustomTreemapContent(props: { x: number; y: number; width: number; height: number; name: string; value: number; depth: number; index: number }) {
-  const { x, y, width, height, name, value, depth } = props;
-  if (depth !== 1 || width < 30 || height < 20) return null;
-  const colors = ["var(--violating)", "var(--repairing)", "var(--quarantined)", "var(--verified)", "var(--muted-foreground)"];
-  const color = colors[props.index % colors.length];
-  return (
-    <g>
-      <rect x={x} y={y} width={width} height={height} fill={color} opacity={0.2} rx={4} stroke={color} strokeWidth={1} strokeOpacity={0.4} />
-      {width > 60 && <text x={x + 6} y={y + 14} fill="var(--foreground)" fontSize={9} fontFamily="monospace" opacity={0.8}>{name.length > 14 ? name.slice(0, 12) + "…" : name}</text>}
-      {width > 80 && height > 30 && <text x={x + 6} y={y + 26} fill="var(--muted-foreground)" fontSize={8} fontFamily="monospace">{value}×</text>}
-    </g>
-  );
-}
+
 
 function MiningProgress({ mining, progress }: { mining: boolean; progress: number }) {
   if (!mining) return null;
@@ -249,14 +237,7 @@ export function InvariantMinerSection() {
               {sparklineData.length > 0 && (
                 <div className="rounded-md border border-border/60 bg-background/40 p-2">
                   <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground mb-1"><TrendingUp className="h-3 w-3" />violation trend</div>
-                  <ResponsiveContainer width="100%" height={60}>
-                    <AreaChart data={sparklineData}>
-                      <defs><linearGradient id="violationGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--violating)" stopOpacity={0.3} /><stop offset="95%" stopColor="var(--violating)" stopOpacity={0} />
-                      </linearGradient></defs>
-                      <Area type="monotone" dataKey="violations" stroke="var(--violating)" strokeWidth={1.5} fill="url(#violationGrad)" dot={{ fill: "var(--violating)", r: 2 }} activeDot={{ fill: "var(--violating)", r: 3 }} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  <SparkLine data={sparklineData.map((d) => d.violations)} width={200} height={50} color="violating" fill className="w-full" />
                 </div>
               )}
               <Separator className="bg-border/40" />
@@ -288,7 +269,7 @@ export function InvariantMinerSection() {
               <div className="bg-grid-fine absolute inset-0 opacity-20" />
               <div className="relative space-y-2">
                 <div className="flex items-center gap-2"><Flame className="h-4 w-4 text-repairing" /><span className="text-sm font-semibold text-foreground">Violation patterns</span></div>
-                <ResponsiveContainer width="100%" height={100}><Treemap data={treemapData} dataKey="size" nameKey="name" content={<CustomTreemapContent />} /></ResponsiveContainer>
+                <HeatGrid data={treemapData.map((d, i) => ({ x: i % 5, y: Math.floor(i / 5), value: d.size, label: d.name }))} rows={Math.max(1, Math.ceil(treemapData.length / 5))} cols={5} colorScale={["var(--quarantined)", "var(--violating)"]} />
               </div>
             </Card>
           )}

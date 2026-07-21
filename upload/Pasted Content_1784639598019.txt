@@ -1,0 +1,3661 @@
+# Bridging the Gap: Aligning the Epistemic Runtime with the Hydro-Bayesian Research Architecture
+
+---
+
+## Executive Summary
+
+The Epistemic Runtime and the Hydro-Bayesian Kernel represent two distinct but complementary systems. The **Hydro-Bayesian Kernel (HBK)** is the scientific model under investigation—a computational engine integrating EPANET hydraulic simulation with Bayesian filtering. The **Epistemic Runtime** is the execution and governance substrate—a deterministic, auditable execution environment that ensures every simulation trial is reproducible, verifiable, and cryptographically provable.
+
+This document proposes a **principled integration architecture** that bridges these systems without compromising the separation between scientific research and commercial infrastructure. The integration enables the HBK to leverage the Epistemic Runtime's reproducibility guarantees while preserving the HBK's status as a publishable, open research output.
+
+---
+
+## 1. The Integration Challenge
+
+### 1.1 Current State: Two Independent Systems
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      HYDRO-BAYESIAN KERNEL (HBK)                          │
+│                                                                           │
+│  • Scientific model under investigation                                   │
+│  • EPANET hydraulic simulation                                            │
+│  • Sequential Monte Carlo (PF vs EnKF)                                   │
+│  • Research output: open-source, publishable                             │
+│  • Lives in research directory                                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                                    ⬇️ No formal integration
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         EPISTEMIC RUNTIME                                 │
+│                                                                           │
+│  • Execution and governance infrastructure                               │
+│  • Deterministic event sourcing engine                                   │
+│  • Cryptographic proof logger (Merkle tree chains)                       │
+│  • VVU corporate asset: closed-source background IP                      │
+│  • Lives in packages/core/                                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.2 The Gap
+
+| Aspect | HBK (Research) | Epistemic Runtime (Infrastructure) | Gap |
+|--------|---------------|-----------------------------------|-----|
+| **Reproducibility** | Manual, ad-hoc | Built-in, cryptographic | Large |
+| **Auditability** | Script outputs | Immutable proof logs | Large |
+| **Versioning** | Git tags | Constitutional epochs | Medium |
+| **Execution trace** | Scattered logs | Structured event sourcing | Large |
+| **IP status** | Open research | Closed commercial | Strategic |
+
+---
+
+## 2. Integration Principles
+
+### 2.1 Separation of Concerns (Non-Negotiable)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      SCIENTIFIC LAYER (Open)                              │
+│  Hydro-Bayesian Kernel (HBK)                                              │
+│  • EPANET engine                                                          │
+│  • Particle filter implementation                                         │
+│  • Ensemble Kalman filter implementation                                 │
+│  • Benchmark scenarios 1-5                                               │
+│                                                                           │
+│  LICENSE: Open-source (MIT/Apache 2.0)                                   │
+│  OWNERSHIP: Research community / UCT / WITS                              │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+                                   │ Executes via defined interface
+                                   │ (No exposure of runtime internals)
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      INFRASTRUCTURE LAYER (Protected)                     │
+│  Epistemic Runtime                                                       │
+│  • Deterministic execution engine                                        │
+│  • Proof generation (Merkle chains)                                      │
+│  • Event sourcing and replay                                             │
+│  • Constitutional governance                                             │
+│                                                                           │
+│  LICENSE: Closed-source (VVU IP)                                         │
+│  OWNERSHIP: VVU                                                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.2 The Integration Interface
+
+The HBK should interact with the Epistemic Runtime through a **well-defined, minimal API** that captures execution metadata without exposing the runtime's internals.
+
+```typescript
+// packages/hbk/src/interfaces/runtime-adapter.ts
+
+/**
+ * Minimal interface between HBK and Epistemic Runtime.
+ * This is the ONLY integration point.
+ */
+export interface RuntimeAdapter {
+  /**
+   * Register a simulation trial with the runtime
+   * Returns a proof record that can be verified later
+   */
+  registerTrial(params: TrialParams): Promise<TrialProof>;
+
+  /**
+   * Record a simulation step's outputs
+   * Chain creates an immutable proof log
+   */
+  recordStep(params: StepParams): Promise<StepReceipt>;
+
+  /**
+   * Retrieve a previously recorded trial
+   * Allows verification and replay
+   */
+  getTrial(trialId: string): Promise<ArchivedTrial>;
+}
+
+export interface TrialParams {
+  trialId: string;
+  timestamp: string;
+  environment: {
+    epanetVersion: string;
+    networkHash: string;
+    leakParameters: LeakParameters;
+  };
+  algorithm: {
+    type: 'PF' | 'EnKF';
+    populationSize: number;
+    priors: any;
+    prngSeed: string;
+  };
+  evidence: {
+    observationCount: number;
+    durationSeconds: number;
+  };
+}
+
+export interface StepParams {
+  trialId: string;
+  stepIndex: number;
+  state: StateSnapshot;
+  evidence: EvidenceSnapshot;
+  posterior: PosteriorDistribution;
+  metrics: StepMetrics;
+}
+
+export interface TrialProof {
+  trialId: string;
+  proofHash: string;
+  proofPath: string;
+  chainIndex: number;
+}
+
+export interface ArchivedTrial {
+  trialId: string;
+  proof: TrialProof;
+  steps: StepReceipt[];
+  summary: TrialSummary;
+}
+```
+
+---
+
+## 3. Implementation Architecture
+
+### 3.1 Directory Structure
+
+```
+epistemic-dag/
+├── packages/
+│   ├── core/                           # Epistemic Runtime (Protected)
+│   │   ├── types/                      # Primitives
+│   │   ├── runtime/                    # Engine, compiler, projector
+│   │   ├── bridge/                     # Integration adapters
+│   │   └── proof/                      # Proof generation
+│   │
+│   ├── hbk/                            # Hydro-Bayesian Kernel (Open Research)
+│   │   ├── src/
+│   │   │   ├── simulation/             # EPANET integration
+│   │   │   ├── inference/              # PF and EnKF implementations
+│   │   │   ├── scenarios/              # Scenarios 1-5
+│   │   │   ├── adapters/               # Runtime integration adapters
+│   │   │   │   └── runtime-adapter.ts  # Interface to Epistemic Runtime
+│   │   │   └── cli/                    # CLI for running experiments
+│   │   ├── tests/                      # Unit tests
+│   │   ├── scenarios/                  # Scenario configurations
+│   │   ├── package.json                # HBK package manifest
+│   │   └── README.md                   # HBK documentation
+│   │
+│   └── proof-archive/                  # Immutable proof storage
+│       ├── trials/                     # Individual trial proofs
+│       ├── summaries/                  # Campaign summaries
+│       └── manifests/                  # Environment manifests
+│
+├── scripts/
+│   ├── run-hbk-campaign.sh             # Run HBK campaign with runtime
+│   └── verify-proofs.sh                # Verify proof chain integrity
+│
+└── qa/                                 # QA pipeline (from earlier docs)
+    ├── qa-loop.ts                      # Multi-layer QA
+    ├── vlm-prompts.ts                  # Visual analysis
+    └── ...
+```
+
+### 3.2 Execution Flow: HBK with Runtime Integration
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    RESEARCHER / CI PIPELINE                               │
+│                                                                           │
+│  Command: bun run hbk:campaign --scenario=3 --trials=100                  │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    HBK CAMPAIGN ORCHESTRATOR                              │
+│                                                                           │
+│  1. Initialize environment manifest (EPANET version, PRNG seed, etc.)     │
+│  2. For each trial:                                                       │
+│     a. Create trial record (via RuntimeAdapter.registerTrial)             │
+│     b. Run simulation with specified algorithm                           │
+│     c. Record each step (via RuntimeAdapter.recordStep)                  │
+│     d. Capture final metrics                                             │
+│  3. Generate campaign summary                                             │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+                                   │ registers trial
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    EPISTEMIC RUNTIME (Protected)                          │
+│                                                                           │
+│  • Creates immutable proof record                                         │
+│  • Appends to proof chain (Merkle tree)                                   │
+│  • Returns proof hash and chain index                                     │
+│  • Archives step data with cryptographic linkage                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   │ returns proof
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PROOF ARCHIVE (Immutable Storage)                      │
+│                                                                           │
+│  trials/
+│  └── 2026-07-21-scenario3/
+│      ├── trial-001/
+│      │   ├── manifest.json          # Environment + algorithm config
+│      │   ├── steps.jsonl            # Step-by-step evidence and states
+│      │   ├── final-metrics.json     # RMSE, Brier, FPR, latency
+│      │   └── proof.sig              # Cryptographic proof signature
+│      ├── trial-002/
+│      │   └── ...
+│      └── campaign-summary.json      # Aggregate results
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 4. Concrete Integration: HBK Executing via Runtime
+
+#### 4.1 HBK Implementation with Runtime Integration
+
+```typescript
+// packages/hbk/src/simulation/hbk-runner.ts
+
+import { RuntimeAdapter, TrialParams, StepParams } from '../adapters/runtime-adapter';
+import { EpanetSimulator } from './epanet-simulator';
+import { ParticleFilter } from '../inference/particle-filter';
+import { EnsembleKalmanFilter } from '../inference/ensemble-kalman-filter';
+import { ScenarioConfig, ScenarioResult } from '../scenarios/types';
+
+export class HBKRuntimeRunner {
+  private runtime: RuntimeAdapter;
+
+  constructor(runtimeAdapter: RuntimeAdapter) {
+    this.runtime = runtimeAdapter;
+  }
+
+  /**
+   * Run a single trial through the Epistemic Runtime
+   * All execution metadata is automatically captured and proven
+   */
+  async runTrial(
+    scenario: ScenarioConfig,
+    algorithmType: 'PF' | 'EnKF',
+    prngSeed: string
+  ): Promise<ScenarioResult> {
+    const trialId = this.generateTrialId(scenario, algorithmType);
+
+    // Step 1: Register trial with runtime
+    const params: TrialParams = {
+      trialId,
+      timestamp: new Date().toISOString(),
+      environment: {
+        epanetVersion: this.getEpanetVersion(),
+        networkHash: scenario.networkHash,
+        leakParameters: scenario.leakParameters,
+      },
+      algorithm: {
+        type: algorithmType,
+        populationSize: algorithmType === 'PF' ? 750 : 64,
+        priors: scenario.priors,
+        prngSeed,
+      },
+      evidence: {
+        observationCount: scenario.durationSeconds / 5, // 0.2 Hz sampling
+        durationSeconds: scenario.durationSeconds,
+      },
+    };
+
+    // This registers the trial and returns a proof record
+    const proof = await this.runtime.registerTrial(params);
+
+    // Step 2: Initialize simulation and filter
+    const simulator = new EpanetSimulator(scenario.network);
+    const filter = algorithmType === 'PF'
+      ? new ParticleFilter(params.algorithm.populationSize, scenario.priors, prngSeed)
+      : new EnsembleKalmanFilter(params.algorithm.populationSize, scenario.priors, prngSeed);
+
+    // Step 3: Run simulation loop with step recording
+    let currentState = await simulator.initialize();
+    let stepIndex = 0;
+
+    while (!simulator.isComplete()) {
+      // Get evidence at this timestep
+      const evidence = await simulator.getEvidence();
+
+      // Run filter update
+      const posterior = filter.update(currentState, evidence);
+
+      // Record step with runtime
+      const stepParams: StepParams = {
+        trialId,
+        stepIndex,
+        state: currentState,
+        evidence,
+        posterior,
+        metrics: {
+          rmse: this.calculateRMSE(posterior, scenario.trueLeakLocation),
+          brierScore: this.calculateBrierScore(posterior, scenario.trueLeakLocation),
+          falsePositiveRate: this.calculateFPR(posterior, scenario.trueLeakLocation),
+          latencyMs: stepMetrics.latency,
+          convergenceTime: this.calculateConvergenceTime(posterior),
+        },
+      };
+
+      // Record step → immutable proof log entry
+      await this.runtime.recordStep(stepParams);
+
+      // Advance simulation
+      currentState = await simulator.step();
+      stepIndex++;
+    }
+
+    // Step 4: Return result (which is also archived)
+    return {
+      trialId,
+      proof,
+      algorithm: algorithmType,
+      finalMetrics: await this.getFinalMetrics(trialId),
+      convergencePath: await this.getConvergencePath(trialId),
+    };
+  }
+}
+```
+
+#### 4.2 Runtime Adapter Implementation
+
+```typescript
+// packages/hbk/src/adapters/runtime-adapter.ts
+
+import { RuntimeAdapter, TrialParams, StepParams } from '../interfaces/runtime-adapter';
+import { createHash } from 'crypto';
+
+/**
+ * Production implementation: Connects to the Epistemic Runtime
+ */
+export class EpistemicRuntimeAdapter implements RuntimeAdapter {
+  private runtimeEndpoint: string;
+
+  constructor(endpoint: string = 'http://localhost:3001/api/runtime') {
+    this.runtimeEndpoint = endpoint;
+  }
+
+  async registerTrial(params: TrialParams): Promise<TrialProof> {
+    const response = await fetch(`${this.runtimeEndpoint}/trials`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Runtime trial registration failed: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async recordStep(params: StepParams): Promise<StepReceipt> {
+    const response = await fetch(`${this.runtimeEndpoint}/trials/${params.trialId}/steps`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Runtime step recording failed: ${response.status}`);
+    }
+
+    return response.json();
+  }
+
+  async getTrial(trialId: string): Promise<ArchivedTrial> {
+    const response = await fetch(`${this.runtimeEndpoint}/trials/${trialId}`);
+    if (!response.ok) {
+      throw new Error(`Trial retrieval failed: ${response.status}`);
+    }
+    return response.json();
+  }
+}
+
+/**
+ * Mock implementation: For development and CI (no runtime required)
+ */
+export class MockRuntimeAdapter implements RuntimeAdapter {
+  private trials: Map<string, { params: TrialParams; steps: StepParams[] }> = new Map();
+
+  async registerTrial(params: TrialParams): Promise<TrialProof> {
+    const proof: TrialProof = {
+      trialId: params.trialId,
+      proofHash: createHash('sha256')
+        .update(JSON.stringify(params))
+        .digest('hex'),
+      proofPath: `mock/proof/${params.trialId}`,
+      chainIndex: this.trials.size + 1,
+    };
+
+    this.trials.set(params.trialId, { params, steps: [] });
+    return proof;
+  }
+
+  async recordStep(params: StepParams): Promise<StepReceipt> {
+    const trial = this.trials.get(params.trialId);
+    if (!trial) {
+      throw new Error(`Trial ${params.trialId} not found`);
+    }
+
+    trial.steps.push(params);
+
+    return {
+      trialId: params.trialId,
+      stepIndex: params.stepIndex,
+      receiptHash: createHash('sha256')
+        .update(JSON.stringify(params))
+        .digest('hex'),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async getTrial(trialId: string): Promise<ArchivedTrial> {
+    const trial = this.trials.get(trialId);
+    if (!trial) {
+      throw new Error(`Trial ${trialId} not found`);
+    }
+
+    return {
+      trialId,
+      proof: {
+        trialId,
+        proofHash: 'mock-hash',
+        proofPath: 'mock/path',
+        chainIndex: 0,
+      },
+      steps: trial.steps.map((s) => ({
+        trialId: s.trialId,
+        stepIndex: s.stepIndex,
+        receiptHash: 'mock-hash',
+        timestamp: new Date().toISOString(),
+      })),
+      summary: {
+        totalSteps: trial.steps.length,
+        durationSeconds: trial.params.evidence.durationSeconds,
+        finalRMSE: 0,
+      },
+    };
+  }
+}
+```
+
+#### 4.3 Running HBK with Runtime
+
+```bash
+# Development: Use mock runtime (no proof generation)
+EPISTEMIC_RUNTIME_MODE=mock bun run hbk:scenario --scenario=1
+
+# Production: Use real runtime (cryptographic proofs)
+EPISTEMIC_RUNTIME_ENDPOINT=http://localhost:3001/api/runtime \
+  bun run hbk:campaign --scenario=3 --trials=100
+
+# Verify proof chain
+bun run verify-proofs --trial=2026-07-21-scenario3-trial-001
+```
+
+---
+
+## 5. Proof Verification
+
+### 5.1 Verifying a Trial's Integrity
+
+```typescript
+// scripts/verify-proofs.ts
+
+import { EpistemicRuntimeAdapter } from '../packages/hbk/src/adapters/runtime-adapter';
+
+async function verifyTrial(trialId: string) {
+  const runtime = new EpistemicRuntimeAdapter();
+  
+  // 1. Retrieve the archived trial from runtime
+  const trial = await runtime.getTrial(trialId);
+  
+  // 2. Verify the proof chain
+  const isChainValid = await verifyProofChain(trial);
+  
+  // 3. Re-run the simulation from the manifest
+  // (This is the reproducibility guarantee)
+  const rerunResult = await rerunFromManifest(trial);
+  
+  // 4. Compare original metrics vs rerun
+  const matches = compareResults(trial.summary, rerunResult);
+  
+  console.log(`
+    Verification results for trial ${trialId}:
+    - Proof chain: ${isChainValid ? '✅ VALID' : '❌ INVALID'}
+    - Reproducibility: ${matches ? '✅ PASS' : '❌ FAIL'}
+    
+    Original RMSE: ${trial.summary.finalRMSE}
+    Re-run RMSE:   ${rerunResult.finalRMSE}
+  `);
+}
+```
+
+### 5.2 Output: Verification Report
+
+```json
+{
+  "trialId": "2026-07-21-scenario3-trial-001",
+  "verificationStatus": "PASSED",
+  "checks": {
+    "proofChain": {
+      "status": "PASSED",
+      "chainLength": 724,
+      "hashMatches": true
+    },
+    "environmentMatch": {
+      "status": "PASSED",
+      "epanetVersion": "2.2.0",
+      "networkHash": "a7f9e3..."
+    },
+    "algorithmMatch": {
+      "status": "PASSED",
+      "type": "PF",
+      "populationSize": 750,
+      "prngSeed": "seed-12345"
+    },
+    "reproducibility": {
+      "status": "PASSED",
+      "originalRMSE": 487.2,
+      "rerunRMSE": 488.1,
+      "difference": 0.9,
+      "tolerance": 5.0
+    }
+  },
+  "verifiedBy": "UCT Research Committee",
+  "timestamp": "2026-07-21T14:32:10.000Z"
+}
+```
+
+---
+
+## 6. Governance & IP Alignment
+
+### 6.1 Ownership Classification
+
+| Asset | Owner | Status |
+|-------|-------|--------|
+| **HBK Source Code** | UCT / WITS / Research Community | Open-source (MIT/Apache) |
+| **HBK Research Outputs** | UCT / WITS / Research Community | Open-access publications |
+| **Benchmark Datasets** | Research Community | Open (CC-BY) |
+| **Simulation Scenarios** | Research Community | Open |
+| **Epistemic Runtime** | VVU | Closed-source background IP |
+| **Runtime Integration Adapter** | VVU (implementation) | Protected, but interface is open |
+
+### 6.2 Strategic Alignment
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      RESEARCH VALUE                                        │
+│                                                                           │
+│  • UCT/WITS publications                                                  │
+│  • Open benchmark datasets                                                │
+│  • Reproducible science                                                   │
+│  • PhD student theses                                                     │
+│  • Peer-reviewed journal papers                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    ▲
+                                    │
+                            Shared Results
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      COMMERCIAL VALUE                                      │
+│                                                                           │
+│  • Epistemic Runtime platform                                              │
+│  • Verified scientific findings → product confidence                     │
+│  • Credibility: "VVU technology is scientifically validated"              │
+│  • Future products: Hydro-Gateway, Energy-Smart, etc.                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 6.3 The Strategic Verdict (Month 24)
+
+The integration ensures the Epistemic Runtime produces an **immutable audit trail** of the entire research campaign. This allows VVU to:
+
+1. **Spin out VVU Earth Technologies** (if hypothesis confirmed) with **empirical backing**—not just promise.
+2. **Pivot to platform play** (if hypothesis rejected) with **scientific validation** of the negative result—saving years of wasted engineering capital.
+3. **Demonstrate reproducibility** to regulators, investors, and municipal partners.
+
+---
+
+## 7. QA Pipeline Integration
+
+### 7.1 Extending the QA Pipeline to HBK
+
+```typescript
+// scripts/qa-loop.ts (extended)
+
+// Add HBK verification to the QA pipeline
+async function hbkVerification(): Promise<{
+  passed: boolean;
+  errors: string[];
+  duration: number;
+}> {
+  console.log("\n🧪 HBK Runtime Verification");
+  const startTime = Date.now();
+  const errors: string[] = [];
+
+  try {
+    // Run a small verification trial through the runtime
+    const result = await $`bun run hbk:verify --quick`.nothrow();
+
+    if (result.exitCode !== 0) {
+      errors.push(`HBK verification failed: ${result.stdout.toString()}`);
+    }
+
+    // Check that proof chain is valid
+    const proofCheck = await $`bun run verify-proofs --latest`.nothrow();
+    if (proofCheck.exitCode !== 0) {
+      errors.push(`Proof chain verification failed`);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    errors.push(`HBK verification error: ${msg}`);
+  }
+
+  const duration = Date.now() - startTime;
+  return { passed: errors.length === 0, errors, duration };
+}
+```
+
+### 7.2 Updated QA Pipeline Output
+
+```json
+{
+  "timestamp": "2026-07-21T14:32:10.000Z",
+  "layers": {
+    "health": { "passed": true },
+    "browser": { "passed": true },
+    "visual": { "passed": true },
+    "lint": { "passed": true },
+    "hbk": {
+      "passed": true,
+      "details": {
+        "verificationTrials": 3,
+        "proofChainLength": 2172,
+        "reproducibilityMatches": true,
+        "lastVerification": "2026-07-21T14:30:00.000Z"
+      },
+      "duration": 2340
+    }
+  },
+  "summary": {
+    "totalTests": 5,
+    "passed": 5,
+    "failed": 0,
+    "overallPassed": true
+  }
+}
+```
+
+---
+
+## 8. Migration Path
+
+### Phase 1: Adapter Development (Week 1-2)
+
+- [ ] Define `RuntimeAdapter` interface in HBK
+- [ ] Implement `MockRuntimeAdapter` for development
+- [ ] Write tests for adapter API
+
+### Phase 2: HBK Integration (Week 3-4)
+
+- [ ] Integrate `RuntimeAdapter` into `HBKRuntimeRunner`
+- [ ] Add runtime hooks to scenario executions
+- [ ] Verify that trials register correctly
+
+### Phase 3: Proof Generation (Week 5-6)
+
+- [ ] Implement proof chain generation in Epistemic Runtime
+- [ ] Add proof verification scripts
+- [ ] Test proof chain integrity
+
+### Phase 4: QA Pipeline Integration (Week 7-8)
+
+- [ ] Add HBK verification to QA pipeline
+- [ ] Update CI/CD with proof verification steps
+- [ ] Create dashboard for proof chain monitoring
+
+### Phase 5: Full Campaign (Month 9+)
+
+- [ ] Run full 12-month simulation campaign through runtime
+- [ ] All trials registered and proven
+- [ ] Campaign summary includes proof chain verification
+
+---
+
+## 9. Key Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| **Reproducibility** | Anyone can re-run the exact simulation from the proof manifest |
+| **Auditability** | Regulators and peers can verify every step of the research |
+| **IP Separation** | HBK remains open research; Runtime remains VVU infrastructure |
+| **Strategic Verdict** | Decision to commercialize (or not) is empirically driven |
+| **Credibility** | "VVU technology is scientifically validated" is a provable claim |
+| **Platform Preservation** | Even if HBK hypothesis fails, Epistemic Runtime remains valuable |
+
+---
+
+## 10. Summary: The Integrated Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      RESEARCHER / CI PIPELINE                             │
+│                                                                           │
+│  Command: bun run hbk:campaign --scenario=3 --trials=100                  │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    HYDRO-BAYESIAN KERNEL (Open Research)                   │
+│                                                                           │
+│  • EPANET hydraulic simulation                                            │
+│  • Particle Filter (PF) vs Ensemble Kalman Filter (EnKF)                │
+│  • Scenarios 1-5                                                          │
+│  • Publishes: Papers, datasets, methodology                              │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+                                   │ RuntimeAdapter interface
+                                   │ (captures execution metadata)
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    EPISTEMIC RUNTIME (Protected Infrastructure)           │
+│                                                                           │
+│  • Deterministic event sourcing                                           │
+│  • Cryptographic proof chains (Merkle trees)                              │
+│  • Constitutional governance (epochs)                                     │
+│  • Immutable audit trail                                                  │
+└──────────────────────────────────┬──────────────────────────────────────────┘
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    PROOF ARCHIVE (Immutable Storage)                       │
+│                                                                           │
+│  • Every trial: manifest + step data + proof signature                    │
+│  • Every campaign: aggregated results + chain verification               │
+│  • Every publication: linked to proof archive for reproducibility        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+**Conclusion**: The Epistemic Runtime and the Hydro-Bayesian Kernel are not competing systems—they are complementary layers of a complete research and commercialisation pipeline. The integration preserves IP separation, enables reproducibility, and ensures that the strategic verdict at Month 24 is empirically driven rather than speculative.
+# Core Improvements for Autonomous High-Risk Execution
+
+## Epistemic Runtime — Production Readiness Roadmap
+
+---
+
+## Executive Summary
+
+The Epistemic Runtime is architecturally sound—it embodies the three irreducible axioms (Immutability, Closure, Separation) and implements the six primitives correctly. However, running **high-risk, autonomous systems** requires capabilities beyond the current implementation. This document identifies the **critical gaps** and proposes **targeted improvements** to enable the Epistemic Runtime to operate as a **self-governing, fault-tolerant, auditable execution kernel** for VVU's critical infrastructure.
+
+---
+
+## 1. Current State Assessment
+
+### 1.1 What Works Well
+
+| Capability | Status | Confidence |
+|------------|--------|------------|
+| Deterministic evaluation | ✅ Implemented | High |
+| Proof generation | ✅ Implemented | High |
+| State projection (fold) | ✅ Implemented | High |
+| Specification compilation | ✅ Implemented | High |
+| Shadow mode (divergence) | ✅ Implemented | Medium |
+| Primitive types | ✅ Defined | High |
+
+### 1.2 Critical Gaps for Autonomous Operation
+
+| Capability | Status | Risk |
+|------------|--------|------|
+| **Fault tolerance** | ❌ Missing | Critical |
+| **Self-healing** | ❌ Missing | Critical |
+| **Graceful degradation** | ❌ Missing | High |
+| **Real-time constraints** | ❌ Not profiled | High |
+| **Distributed consensus** | ❌ Missing | High |
+| **State recovery** | ⚠️ Partial | Medium |
+| **Key rotation** | ❌ Missing | Medium |
+| **Certificate governance** | ❌ Missing | Medium |
+| **Replay protection** | ❌ Missing | Medium |
+| **Production monitoring** | ❌ Missing | Medium |
+
+---
+
+## 2. The Autonomous Runtime Requirements
+
+### 2.1 The Question
+
+> *What must the Epistemic Runtime guarantee to operate VVU's critical infrastructure without human intervention?*
+
+### 2.2 The Answer: Five Non-Negotiable Properties
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    AUTONOMOUS RUNTIME REQUIREMENTS                         │
+│                                                                           │
+│  1. FAULT TOLERANCE      ───  Survive failures without data loss          │
+│  2. SELF-HEALING         ───  Detect and recover from corruption          │
+│  3. GRACEFUL DEGRADATION ───  Continue operating in degraded mode         │
+│  4. REAL-TIME EXECUTION  ───  Meet latency guarantees for SCADA           │
+│  5. AUDITABLE DECISIONS  ───  Every action is provably lawful            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. Required Improvements (By Priority)
+
+### Priority 1: Runtime Hardening (Must Have for Any Deployment)
+
+#### 3.1.1 Fault-Tolerant Execution Engine
+
+**Current State**: `evaluate()` is a pure function—it either succeeds or throws.
+
+**Gap**: A hardware fault, network timeout, or transient error causes the entire transition to fail.
+
+**Solution**: Implement **circuit breaker patterns** at the runtime level.
+
+```typescript
+// packages/core/runtime/engine-fault-tolerant.ts
+
+export interface FaultTolerantRuntime<State, Observation> {
+  /**
+   * Evaluate with automatic retry and graceful degradation
+   * - Retries on transient failures (network, timeouts)
+   * - Falls back to safe state on persistent failures
+   * - Logs every failure for audit
+   */
+  evaluateWithResilience(
+    state: State,
+    observation: Observation,
+    ruleSet: CompiledRuleSet,
+    epoch: ConstitutionalEpoch,
+    options: ResilienceOptions
+  ): Promise<Verdict<State>>;
+}
+
+export interface ResilienceOptions {
+  maxRetries: number;          // Default: 3
+  retryBackoff: number;        // Exponential backoff factor
+  fallbackMode: 'safe' | 'maintain' | 'report';
+  timeoutMs: number;           // Per-evaluation timeout
+  circuitBreakerThreshold: number; // Failures before circuit opens
+}
+
+/**
+ * Implementation: Wraps evaluate() with resilience
+ */
+export class FaultTolerantRuntime<State, Observation>
+  implements FaultTolerantRuntime<State, Observation>
+{
+  private runtime: StateslessRuntime<State, Observation>;
+  private circuitState: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+  private consecutiveFailures = 0;
+
+  async evaluateWithResilience(
+    state: State,
+    observation: Observation,
+    ruleSet: CompiledRuleSet,
+    epoch: ConstitutionalEpoch,
+    options: ResilienceOptions = { maxRetries: 3, retryBackoff: 2, fallbackMode: 'safe', timeoutMs: 5000, circuitBreakerThreshold: 5 }
+  ): Promise<Verdict<State>> {
+    
+    // Check circuit breaker
+    if (this.circuitState === 'OPEN') {
+      return this.fallbackVerdict(state, 'Circuit breaker open - system degraded');
+    }
+
+    let lastError: Error | null = null;
+    let attempt = 0;
+
+    while (attempt < options.maxRetries) {
+      try {
+        const result = await this.evaluateWithTimeout(
+          state, observation, ruleSet, epoch, options.timeoutMs
+        );
+
+        // Success: reset circuit
+        this.consecutiveFailures = 0;
+        this.circuitState = 'CLOSED';
+        return result;
+
+      } catch (error) {
+        lastError = error as Error;
+        attempt++;
+        
+        // Log failure for audit
+        await this.logFailure({
+          timestamp: new Date().toISOString(),
+          attempt,
+          error: lastError.message,
+          stateHash: hashObject(state),
+          observationHash: hashObject(observation),
+        });
+
+        // Check if we should open circuit
+        this.consecutiveFailures++;
+        if (this.consecutiveFailures >= options.circuitBreakerThreshold) {
+          this.circuitState = 'OPEN';
+          console.error(`[Runtime] Circuit breaker OPEN after ${this.consecutiveFailures} consecutive failures`);
+          break;
+        }
+
+        // Exponential backoff
+        const delay = options.retryBackoff ** attempt * 100;
+        await this.sleep(delay);
+      }
+    }
+
+    // All retries failed
+    return this.fallbackVerdict(state, `All retries failed: ${lastError?.message}`);
+  }
+
+  private async evaluateWithTimeout(
+    state: State,
+    observation: Observation,
+    ruleSet: CompiledRuleSet,
+    epoch: ConstitutionalEpoch,
+    timeoutMs: number
+  ): Promise<Verdict<State>> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`Evaluation timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      try {
+        const result = this.runtime.evaluate(state, observation, ruleSet, epoch, '', null);
+        clearTimeout(timeout);
+        resolve(result);
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
+    });
+  }
+
+  private fallbackVerdict(state: State, reason: string): Verdict<State> {
+    return {
+      accepted: false,
+      candidateState: state,
+      proof: {
+        epochId: 'fallback',
+        observationHash: 'fallback',
+        inferenceHash: '',
+        previousProofHash: null,
+        signature: '',
+        timestamp: new Date().toISOString(),
+        divergenceSignals: [reason],
+      },
+      divergenceSignals: [reason],
+    };
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async logFailure(failure: any): Promise<void> {
+    // Append to immutable failure log
+    // In production: write to distributed log
+    console.warn('[Runtime] Evaluation failure:', failure);
+  }
+}
+```
+
+---
+
+#### 3.1.2 State Recovery & Replay Protection
+
+**Current State**: Projector folds proof log to reconstruct state. No protection against replay attacks.
+
+**Gap**: An attacker could replay old proof logs to roll back state.
+
+**Solution**: Add **chain height checks** and **Merkle root verification**.
+
+```typescript
+// packages/core/runtime/projector-replay-protected.ts
+
+export interface ReplayProtectedProjector<State> extends Projector<State> {
+  /**
+   * Fold with replay protection
+   * - Verifies chain height monotonicity
+   * - Checks Merkle root integrity
+   * - Prevents rollback attacks
+   */
+  foldWithProtection(
+    genesis: Genesis,
+    proofLog: readonly ProofRecord[],
+    activeEpoch: ConstitutionalEpoch,
+    stateTransformers: Record<string, StateTransformer<State>>,
+    lastKnownHeight?: number
+  ): State;
+}
+
+export class ReplayProtectedProjector<State>
+  extends Projector<State>
+  implements ReplayProtectedProjector<State>
+{
+  private merkleRootCache = new Map<string, string>();
+
+  foldWithProtection(
+    genesis: Genesis,
+    proofLog: readonly ProofRecord[],
+    activeEpoch: ConstitutionalEpoch,
+    stateTransformers: Record<string, StateTransformer<State>>,
+    lastKnownHeight?: number
+  ): State {
+    
+    // 1. Verify chain height (prevent rollback)
+    if (lastKnownHeight !== undefined && proofLog.length < lastKnownHeight) {
+      throw new Error(
+        `Replay attack detected: chain height decreased from ${lastKnownHeight} to ${proofLog.length}`
+      );
+    }
+
+    // 2. Verify each proof's epoch validity
+    const invalidEpochs: string[] = [];
+    for (const proof of proofLog) {
+      if (!this.isEpochValid(proof.epochId, activeEpoch)) {
+        invalidEpochs.push(proof.epochId);
+      }
+    }
+    if (invalidEpochs.length > 0) {
+      throw new Error(
+        `Invalid epochs in proof log: ${invalidEpochs.join(', ')}`
+      );
+    }
+
+    // 3. Compute Merkle root and verify against Genesis
+    const computedRoot = this.computeMerkleRoot(proofLog);
+    if (genesis.rootHash && computedRoot !== genesis.rootHash) {
+      throw new Error(
+        `Merkle root mismatch: expected ${genesis.rootHash}, got ${computedRoot}`
+      );
+    }
+
+    // 4. Proceed with normal fold
+    return super.fold(genesis, proofLog, activeEpoch, stateTransformers);
+  }
+
+  private computeMerkleRoot(proofLog: readonly ProofRecord[]): string {
+    if (proofLog.length === 0) return 'empty';
+    
+    const hashes = proofLog.map(p => p.inferenceHash);
+    return merkleRoot(hashes);
+  }
+}
+```
+
+---
+
+#### 3.1.3 Graceful Degradation Mode
+
+**Current State**: Runtime either succeeds or rejects. No partial operation.
+
+**Gap**: In critical systems, a total failure may be worse than degraded operation.
+
+**Solution**: Implement **degradation states** with clear safety boundaries.
+
+```typescript
+// packages/core/runtime/degradation.ts
+
+export type DegradationLevel = 'nominal' | 'degraded' | 'minimal' | 'failsafe';
+
+export interface DegradationState {
+  level: DegradationLevel;
+  reason: string;
+  timestamp: string;
+  capabilities: {
+    evaluation: boolean;
+    proofGeneration: boolean;
+    stateProjection: boolean;
+    governance: boolean;
+  };
+  constraints: {
+    maxObservationRate?: number; // Observations per second
+    maxStateSize?: number;       // Bytes
+    allowedOperators?: string[]; // Limited rule set
+  };
+}
+
+export class DegradationManager {
+  private currentState: DegradationState = {
+    level: 'nominal',
+    reason: 'System operating normally',
+    timestamp: new Date().toISOString(),
+    capabilities: {
+      evaluation: true,
+      proofGeneration: true,
+      stateProjection: true,
+      governance: true,
+    },
+    constraints: {},
+  };
+
+  /**
+   * Detect degradation triggers
+   */
+  public assessState(health: RuntimeHealth): DegradationLevel {
+    // Check for resource exhaustion
+    if (health.memoryUsage > 0.9) return 'minimal';
+    if (health.memoryUsage > 0.75) return 'degraded';
+    
+    // Check for performance degradation
+    if (health.averageLatency > 10000) return 'minimal';
+    if (health.averageLatency > 5000) return 'degraded';
+    
+    // Check for error rate
+    if (health.errorRate > 0.2) return 'failsafe';
+    if (health.errorRate > 0.05) return 'minimal';
+    
+    return 'nominal';
+  }
+
+  /**
+   * Apply degradation constraints
+   */
+  public applyDegradation(level: DegradationLevel): DegradationState {
+    switch (level) {
+      case 'nominal':
+        return {
+          level: 'nominal',
+          reason: 'Full capability',
+          timestamp: new Date().toISOString(),
+          capabilities: { evaluation: true, proofGeneration: true, stateProjection: true, governance: true },
+          constraints: {},
+        };
+
+      case 'degraded':
+        return {
+          level: 'degraded',
+          reason: 'Performance degradation detected - reducing throughput',
+          timestamp: new Date().toISOString(),
+          capabilities: { evaluation: true, proofGeneration: true, stateProjection: true, governance: true },
+          constraints: { maxObservationRate: 2 }, // Slow down to 2 ops/sec
+        };
+
+      case 'minimal':
+        return {
+          level: 'minimal',
+          reason: 'Resource constraints - limiting operations',
+          timestamp: new Date().toISOString(),
+          capabilities: { evaluation: true, proofGeneration: false, stateProjection: true, governance: false },
+          constraints: { maxObservationRate: 1, maxStateSize: 1024 * 1024 },
+        };
+
+      case 'failsafe':
+        return {
+          level: 'failsafe',
+          reason: 'Critical errors - rejecting all transitions',
+          timestamp: new Date().toISOString(),
+          capabilities: { evaluation: false, proofGeneration: false, stateProjection: true, governance: false },
+          constraints: {},
+        };
+    }
+  }
+}
+```
+
+---
+
+### Priority 2: Distributed & Consensus
+
+#### 3.2.1 Distributed Runtime Cluster
+
+**Current State**: Single-node runtime.
+
+**Gap**: Single point of failure for critical infrastructure.
+
+**Solution**: Implement **distributed consensus** for runtime decisions.
+
+```typescript
+// packages/core/runtime/distributed.ts
+
+export interface DistributedRuntime<State, Observation> {
+  /**
+   * Evaluate across a cluster of runtime nodes
+   * - Quorum consensus on verdict
+   * - Byzantine fault tolerance
+   * - Automatic failover
+   */
+  evaluateDistributed(
+    state: State,
+    observation: Observation,
+    ruleSet: CompiledRuleSet,
+    epoch: ConstitutionalEpoch,
+    quorumSize?: number
+  ): Promise<DistributedVerdict<State>>;
+}
+
+export interface DistributedVerdict<State> {
+  accepted: boolean;
+  candidateState: State;
+  proof: ProofRecord;
+  consensus: {
+    totalNodes: number;
+    votesFor: number;
+    votesAgainst: number;
+    quorumReached: boolean;
+  };
+  nodes: {
+    id: string;
+    verdict: Verdict<State>;
+    latency: number;
+  }[];
+}
+
+/**
+ * Implementation: Raft-inspired consensus
+ */
+export class RaftDistributedRuntime<State, Observation>
+  implements DistributedRuntime<State, Observation>
+{
+  private nodes: RuntimeNode[] = [];
+  private currentLeader: string | null = null;
+
+  async evaluateDistributed(
+    state: State,
+    observation: Observation,
+    ruleSet: CompiledRuleSet,
+    epoch: ConstitutionalEpoch,
+    quorumSize: number = Math.floor(this.nodes.length * 2 / 3) + 1
+  ): Promise<DistributedVerdict<State>> {
+    
+    // 1. Find or elect leader
+    const leader = this.getLeader();
+    if (!leader) {
+      throw new Error('No leader available');
+    }
+
+    // 2. Send evaluation request to all nodes
+    const results = await Promise.allSettled(
+      this.nodes.map(node =>
+        node.evaluate(state, observation, ruleSet, epoch)
+      )
+    );
+
+    // 3. Count votes
+    const verdicts = results
+      .filter((r): r is PromiseFulfilledResult<Verdict<State>> => 
+        r.status === 'fulfilled'
+      )
+      .map(r => r.value);
+
+    const votesFor = verdicts.filter(v => v.accepted).length;
+    const votesAgainst = verdicts.filter(v => !v.accepted).length;
+
+    // 4. Check quorum
+    const quorumReached = votesFor >= quorumSize;
+
+    // 5. Return consensus verdict
+    const accepted = quorumReached && votesFor > votesAgainst;
+
+    return {
+      accepted,
+      candidateState: accepted ? this.aggregateState(verdicts) : state,
+      proof: this.aggregateProof(verdicts),
+      consensus: {
+        totalNodes: this.nodes.length,
+        votesFor,
+        votesAgainst,
+        quorumReached,
+      },
+      nodes: verdicts.map((v, i) => ({
+        id: this.nodes[i].id,
+        verdict: v,
+        latency: this.nodes[i].lastLatency,
+      })),
+    };
+  }
+
+  private aggregateState(verdicts: Verdict<State>[]): State {
+    // State aggregation strategy: majority rule
+    // In production: use state reconciliation
+    const stateMap = new Map<string, { count: number; state: State }>();
+    
+    for (const v of verdicts) {
+      const key = hashObject(v.candidateState);
+      const existing = stateMap.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        stateMap.set(key, { count: 1, state: v.candidateState });
+      }
+    }
+
+    let maxCount = 0;
+    let maxState: State | null = null;
+    for (const [_, entry] of stateMap) {
+      if (entry.count > maxCount) {
+        maxCount = entry.count;
+        maxState = entry.state;
+      }
+    }
+
+    return maxState || verdicts[0].candidateState;
+  }
+
+  private aggregateProof(verdicts: Verdict<State>[]): ProofRecord {
+    // Combine proofs from multiple nodes
+    // In production: use threshold signatures
+    return {
+      epochId: verdicts[0].proof.epochId,
+      observationHash: verdicts[0].proof.observationHash,
+      inferenceHash: this.combinedInferenceHash(verdicts),
+      previousProofHash: verdicts[0].proof.previousProofHash,
+      signature: this.aggregateSignatures(verdicts),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  private combinedInferenceHash(verdicts: Verdict<State>[]): string {
+    // Combine all inference hashes into a single hash
+    return hashObject(verdicts.map(v => v.proof.inferenceHash).sort());
+  }
+
+  private aggregateSignatures(verdicts: Verdict<State>[]): string {
+    // In production: BLS signature aggregation
+    return verdicts.map(v => v.proof.signature).join(':');
+  }
+
+  private getLeader(): RuntimeNode | null {
+    if (this.currentLeader) {
+      const leader = this.nodes.find(n => n.id === this.currentLeader);
+      if (leader && leader.isHealthy()) {
+        return leader;
+      }
+    }
+    // Elect new leader
+    return this.electLeader();
+  }
+
+  private electLeader(): RuntimeNode | null {
+    const healthyNodes = this.nodes.filter(n => n.isHealthy());
+    if (healthyNodes.length === 0) return null;
+    
+    // Simple leader election: oldest healthy node
+    const leader = healthyNodes.reduce((a, b) => 
+      a.startTime < b.startTime ? a : b
+    );
+    this.currentLeader = leader.id;
+    return leader;
+  }
+}
+```
+
+---
+
+#### 3.2.2 Byzantine Fault Tolerance (BFT)
+
+**Critical for high-risk systems**: Nodes must tolerate malicious or faulty nodes.
+
+```typescript
+// packages/core/runtime/bft.ts
+
+export interface BFTConfig {
+  f: number; // Maximum Byzantine nodes
+  n: number; // Total nodes (must satisfy n ≥ 3f + 1)
+}
+
+export class BFTDistributedRuntime<State, Observation>
+  extends RaftDistributedRuntime<State, Observation>
+{
+  private config: BFTConfig;
+
+  constructor(nodes: RuntimeNode[], config: BFTConfig) {
+    super(nodes);
+    this.config = config;
+    
+    // Verify BFT condition
+    if (nodes.length < 3 * config.f + 1) {
+      throw new Error(
+        `BFT condition violated: need ${3 * config.f + 1} nodes, have ${nodes.length}`
+      );
+    }
+  }
+
+  async evaluateDistributed(
+    state: State,
+    observation: Observation,
+    ruleSet: CompiledRuleSet,
+    epoch: ConstitutionalEpoch
+  ): Promise<DistributedVerdict<State>> {
+    
+    // 1. Send to all nodes
+    const results = await Promise.allSettled(
+      this.nodes.map(node =>
+        node.evaluate(state, observation, ruleSet, epoch)
+      )
+    );
+
+    // 2. Filter out failed nodes
+    const validVerdicts = results
+      .filter((r): r is PromiseFulfilledResult<Verdict<State>> => 
+        r.status === 'fulfilled' && this.verifyProof(r.value.proof)
+      )
+      .map(r => r.value);
+
+    // 3. BFT quorum: need at least 2f + 1 valid responses
+    const required = 2 * this.config.f + 1;
+    if (validVerdicts.length < required) {
+      throw new Error(
+        `BFT quorum not reached: need ${required}, got ${validVerdicts.length}`
+      );
+    }
+
+    // 4. Byzantine agreement on verdict
+    const verdictCounts = new Map<string, number>();
+    for (const v of validVerdicts) {
+      const key = `${v.accepted}:${hashObject(v.candidateState)}`;
+      verdictCounts.set(key, (verdictCounts.get(key) || 0) + 1);
+    }
+
+    let maxCount = 0;
+    let maxKey = '';
+    for (const [key, count] of verdictCounts) {
+      if (count > maxCount) {
+        maxCount = count;
+        maxKey = key;
+      }
+    }
+
+    // 5. Only accept if agreement > f + 1 (Byzantine majority)
+    const [accepted, stateHash] = maxKey.split(':');
+    const isAgreed = maxCount > this.config.f;
+
+    return {
+      accepted: isAgreed && accepted === 'true',
+      candidateState: isAgreed ? this.findStateByHash(validVerdicts, stateHash) : state,
+      proof: this.aggregateProof(validVerdicts),
+      consensus: {
+        totalNodes: this.nodes.length,
+        votesFor: validVerdicts.filter(v => v.accepted).length,
+        votesAgainst: validVerdicts.filter(v => !v.accepted).length,
+        quorumReached: isAgreed,
+      },
+      nodes: validVerdicts.map((v, i) => ({
+        id: this.nodes[i].id,
+        verdict: v,
+        latency: this.nodes[i].lastLatency,
+      })),
+    };
+  }
+
+  private verifyProof(proof: ProofRecord): boolean {
+    // In production: cryptographic verification
+    return true;
+  }
+
+  private findStateByHash(verdicts: Verdict<State>[], hash: string): State {
+    for (const v of verdicts) {
+      if (hashObject(v.candidateState) === hash) {
+        return v.candidateState;
+      }
+    }
+    return verdicts[0].candidateState;
+  }
+}
+```
+
+---
+
+### Priority 3: Governance & Security
+
+#### 3.3.1 Automated Key Rotation
+
+**Current State**: Static keys in Genesis.
+
+**Gap**: Keys must be rotated periodically to maintain security.
+
+**Solution**: Implement **automated key rotation** with epoch transitions.
+
+```typescript
+// packages/core/governance/key-rotation.ts
+
+export interface KeyRotationPolicy {
+  maxKeyAge: number;        // Seconds before rotation required
+  rotationWindow: number;   // Grace period for rotation
+  quorumRequired: number;   // Number of signers required
+}
+
+export class KeyRotationManager {
+  private currentKey: string;
+  private keyCreatedAt: number;
+  private policy: KeyRotationPolicy;
+
+  constructor(initialKey: string, policy: KeyRotationPolicy) {
+    this.currentKey = initialKey;
+    this.keyCreatedAt = Date.now();
+    this.policy = policy;
+  }
+
+  /**
+   * Check if key rotation is required
+   */
+  public shouldRotate(): boolean {
+    const keyAge = (Date.now() - this.keyCreatedAt) / 1000;
+    return keyAge > this.policy.maxKeyAge;
+  }
+
+  /**
+   * Generate new key and create new epoch
+   */
+  public async rotateKey(
+    currentEpoch: ConstitutionalEpoch,
+    signers: string[]
+  ): Promise<ConstitutionalEpoch> {
+    if (!this.shouldRotate() && !this.isWithinRotationWindow()) {
+      throw new Error('Key rotation not yet required');
+    }
+
+    // 1. Generate new key pair
+    const newKey = this.generateNewKey();
+    
+    // 2. Get quorum signatures
+    const signatures = await this.collectSignatures(newKey, signers);
+    if (signatures.length < this.policy.quorumRequired) {
+      throw new Error(
+        `Insufficient signatures: need ${this.policy.quorumRequired}, got ${signatures.length}`
+      );
+    }
+
+    // 3. Create new epoch
+    return {
+      id: `epoch-${Date.now()}`,
+      version: `${parseInt(currentEpoch.version) + 1}`,
+      parent: currentEpoch.id,
+      effectiveFrom: new Date().toISOString(),
+      specificationHash: currentEpoch.specificationHash,
+      ruleSetHash: currentEpoch.ruleSetHash,
+      signer: newKey.publicKey,
+      multisigThreshold: this.policy.quorumRequired,
+      signatures: signatures.map(s => s.signature),
+    };
+  }
+
+  private generateNewKey(): { publicKey: string; privateKey: string } {
+    // In production: use HSM or secure enclave
+    return {
+      publicKey: `pub-${Date.now()}`,
+      privateKey: `priv-${Date.now()}`,
+    };
+  }
+
+  private async collectSignatures(
+    newKey: { publicKey: string; privateKey: string },
+    signers: string[]
+  ): Promise<{ signer: string; signature: string }[]> {
+    // In production: request signatures from authorized signers
+    return signers.map(s => ({
+      signer: s,
+      signature: `sig-${Date.now()}-${s}`,
+    }));
+  }
+
+  private isWithinRotationWindow(): boolean {
+    const keyAge = (Date.now() - this.keyCreatedAt) / 1000;
+    return keyAge > this.policy.maxKeyAge - this.policy.rotationWindow;
+  }
+}
+```
+
+---
+
+#### 3.3.2 Certificate Governance
+
+**Current State**: No certificate management.
+
+**Gap**: Runtime needs to verify identities and authorizations.
+
+**Solution**: Implement **certificate authority** with revocation.
+
+```typescript
+// packages/core/governance/certificates.ts
+
+export interface Certificate {
+  id: string;
+  subject: string;          // Entity identity
+  issuer: string;           // Issuing authority
+  publicKey: string;
+  capabilities: string[];   // e.g., ['sign', 'validate', 'govern']
+  validFrom: string;
+  validUntil: string;
+  revoked: boolean;
+  revocationReason?: string;
+  signature: string;
+}
+
+export class CertificateAuthority {
+  private certificates: Map<string, Certificate> = new Map();
+  private revokedList: Set<string> = new Set();
+
+  /**
+   * Issue a new certificate
+   */
+  public issueCertificate(
+    subject: string,
+    publicKey: string,
+    capabilities: string[],
+    validityDays: number = 365
+  ): Certificate {
+    const cert: Certificate = {
+      id: `cert-${Date.now()}`,
+      subject,
+      issuer: 'VVU-CA-001',
+      publicKey,
+      capabilities,
+      validFrom: new Date().toISOString(),
+      validUntil: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000).toISOString(),
+      revoked: false,
+      signature: this.signCertificate(subject, publicKey, capabilities),
+    };
+
+    this.certificates.set(cert.id, cert);
+    return cert;
+  }
+
+  /**
+   * Verify a certificate
+   */
+  public verifyCertificate(cert: Certificate): boolean {
+    // 1. Check revocation
+    if (this.revokedList.has(cert.id)) {
+      return false;
+    }
+
+    // 2. Check validity period
+    const now = new Date();
+    if (new Date(cert.validFrom) > now || new Date(cert.validUntil) < now) {
+      return false;
+    }
+
+    // 3. Verify signature
+    return this.verifySignature(cert);
+  }
+
+  /**
+   * Revoke a certificate
+   */
+  public revokeCertificate(certId: string, reason: string): void {
+    const cert = this.certificates.get(certId);
+    if (!cert) {
+      throw new Error(`Certificate ${certId} not found`);
+    }
+
+    cert.revoked = true;
+    cert.revocationReason = reason;
+    this.revokedList.add(certId);
+  }
+
+  private signCertificate(subject: string, publicKey: string, capabilities: string[]): string {
+    // In production: actual cryptographic signing
+    return `sig-${Date.now()}`;
+  }
+
+  private verifySignature(cert: Certificate): boolean {
+    // In production: actual signature verification
+    return true;
+  }
+}
+```
+
+---
+
+### Priority 4: Monitoring & Observability
+
+#### 4.1.1 Health Check API
+
+**Current State**: Basic health endpoint.
+
+**Gap**: Need fine-grained health metrics for autonomous operation.
+
+**Solution**: Implement **comprehensive health API**.
+
+```typescript
+// packages/core/monitoring/health.ts
+
+export interface RuntimeHealth {
+  // General
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  uptime: number;          // Seconds since last restart
+
+  // Performance
+  averageLatency: number;   // Last 100 evaluations
+  p95Latency: number;
+  throughput: number;       // Evaluations per second
+  queueDepth: number;
+
+  // Resource
+  memoryUsage: number;      // 0.0 to 1.0
+  cpuUsage: number;         // 0.0 to 1.0
+
+  // Error
+  errorRate: number;        // 0.0 to 1.0
+  consecutiveFailures: number;
+
+  // Consensus
+  clusterSize: number;
+  healthyNodes: number;
+
+  // Governance
+  epochId: string;
+  keyAge: number;          // Seconds since last rotation
+  certificatesValid: number;
+  certificatesExpiring: number;
+
+  // Components
+  components: {
+    engine: 'healthy' | 'degraded' | 'unhealthy';
+    projector: 'healthy' | 'degraded' | 'unhealthy';
+    governance: 'healthy' | 'degraded' | 'unhealthy';
+    storage: 'healthy' | 'degraded' | 'unhealthy';
+  };
+
+  // Degradation
+  degradationLevel: 'nominal' | 'degraded' | 'minimal' | 'failsafe';
+}
+
+export class HealthMonitor {
+  private metrics: {
+    latencies: number[];
+    errors: number[];
+    timestamps: number[];
+  } = { latencies: [], errors: [], timestamps: [] };
+  private startTime: number = Date.now();
+
+  /**
+   * Record an evaluation result
+   */
+  public recordEvaluation(latency: number, error: boolean): void {
+    this.metrics.latencies.push(latency);
+    this.metrics.errors.push(error ? 1 : 0);
+    this.metrics.timestamps.push(Date.now());
+
+    // Keep only last 1000 samples
+    if (this.metrics.latencies.length > 1000) {
+      this.metrics.latencies.shift();
+      this.metrics.errors.shift();
+      this.metrics.timestamps.shift();
+    }
+  }
+
+  /**
+   * Get current health status
+   */
+  public getHealth(): RuntimeHealth {
+    const latencies = this.metrics.latencies;
+    const errors = this.metrics.errors;
+    const now = Date.now();
+
+    const avgLatency = latencies.reduce((a, b) => a + b, 0) / (latencies.length || 1);
+    const sorted = [...latencies].sort((a, b) => a - b);
+    const p95 = sorted[Math.floor(sorted.length * 0.95)] || 0;
+    const errorRate = errors.reduce((a, b) => a + b, 0) / (errors.length || 1);
+
+    // Calculate throughput (last 60 seconds)
+    const recent = this.metrics.timestamps.filter(t => now - t < 60000);
+    const throughput = recent.length / 60;
+
+    const recentErrors = this.metrics.timestamps
+      .map((t, i) => ({ time: t, error: this.metrics.errors[i] }))
+      .filter(({ time }) => now - time < 60000)
+      .filter(({ error }) => error === 1)
+      .length;
+    const recentErrorRate = recentErrors / (recent.length || 1);
+
+    // Degradation level
+    let degradationLevel: 'nominal' | 'degraded' | 'minimal' | 'failsafe' = 'nominal';
+    if (recentErrorRate > 0.2) degradationLevel = 'failsafe';
+    else if (recentErrorRate > 0.05) degradationLevel = 'minimal';
+    else if (avgLatency > 5000) degradationLevel = 'degraded';
+
+    // Component health
+    const componentHealth = {
+      engine: avgLatency > 10000 ? 'unhealthy' : avgLatency > 5000 ? 'degraded' : 'healthy',
+      projector: this.checkProjectorHealth(),
+      governance: this.checkGovernanceHealth(),
+      storage: this.checkStorageHealth(),
+    };
+
+    const allHealthy = Object.values(componentHealth).every(h => h === 'healthy');
+    const anyDegraded = Object.values(componentHealth).some(h => h === 'degraded');
+
+    return {
+      status: allHealthy ? 'healthy' : anyDegraded ? 'degraded' : 'unhealthy',
+      timestamp: new Date().toISOString(),
+      uptime: (now - this.startTime) / 1000,
+      averageLatency: avgLatency,
+      p95Latency: p95,
+      throughput,
+      queueDepth: this.getQueueDepth(),
+      memoryUsage: this.getMemoryUsage(),
+      cpuUsage: this.getCpuUsage(),
+      errorRate: recentErrorRate,
+      consecutiveFailures: this.getConsecutiveFailures(),
+      clusterSize: this.getClusterSize(),
+      healthyNodes: this.getHealthyNodes(),
+      epochId: this.getCurrentEpoch(),
+      keyAge: this.getKeyAge(),
+      certificatesValid: this.getValidCertificates(),
+      certificatesExpiring: this.getExpiringCertificates(),
+      components: componentHealth,
+      degradationLevel,
+    };
+  }
+
+  // Helper methods (implement in production)
+  private checkProjectorHealth(): 'healthy' | 'degraded' | 'unhealthy' { return 'healthy'; }
+  private checkGovernanceHealth(): 'healthy' | 'degraded' | 'unhealthy' { return 'healthy'; }
+  private checkStorageHealth(): 'healthy' | 'degraded' | 'unhealthy' { return 'healthy'; }
+  private getQueueDepth(): number { return 0; }
+  private getMemoryUsage(): number { return 0.5; }
+  private getCpuUsage(): number { return 0.3; }
+  private getConsecutiveFailures(): number { return 0; }
+  private getClusterSize(): number { return 1; }
+  private getHealthyNodes(): number { return 1; }
+  private getCurrentEpoch(): string { return 'epoch-1'; }
+  private getKeyAge(): number { return 3600; }
+  private getValidCertificates(): number { return 10; }
+  private getExpiringCertificates(): number { return 2; }
+}
+```
+
+---
+
+#### 4.1.2 Incident Reporting & Alerting
+
+**Critical for autonomous operation**: System must report its own failures.
+
+```typescript
+// packages/core/monitoring/incident.ts
+
+export interface Incident {
+  id: string;
+  timestamp: string;
+  severity: 'critical' | 'major' | 'minor' | 'info';
+  category: 'performance' | 'security' | 'governance' | 'consensus' | 'degradation';
+  title: string;
+  description: string;
+  affectedComponents: string[];
+  rootCause?: string;
+  resolution?: string;
+  resolvedAt?: string;
+  proof?: ProofRecord; // Cryptographic proof of incident
+}
+
+export class IncidentReporter {
+  private incidents: Incident[] = [];
+  private alertChannels: AlertChannel[] = [];
+
+  /**
+   * Report an incident
+   */
+  public reportIncident(
+    severity: Incident['severity'],
+    category: Incident['category'],
+    title: string,
+    description: string,
+    affectedComponents: string[],
+    proof?: ProofRecord
+  ): Incident {
+    const incident: Incident = {
+      id: `inc-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      severity,
+      category,
+      title,
+      description,
+      affectedComponents,
+      proof,
+    };
+
+    this.incidents.push(incident);
+
+    // Send alerts based on severity
+    if (severity === 'critical' || severity === 'major') {
+      this.sendAlerts(incident);
+    }
+
+    // Log to immutable audit log
+    this.logIncident(incident);
+
+    return incident;
+  }
+
+  /**
+   * Resolve an incident
+   */
+  public resolveIncident(incidentId: string, resolution: string): void {
+    const incident = this.incidents.find(i => i.id === incidentId);
+    if (incident) {
+      incident.resolution = resolution;
+      incident.resolvedAt = new Date().toISOString();
+    }
+  }
+
+  /**
+   * Get open incidents
+   */
+  public getOpenIncidents(): Incident[] {
+    return this.incidents.filter(i => !i.resolvedAt);
+  }
+
+  /**
+   * Add an alert channel
+   */
+  public addAlertChannel(channel: AlertChannel): void {
+    this.alertChannels.push(channel);
+  }
+
+  private sendAlerts(incident: Incident): void {
+    for (const channel of this.alertChannels) {
+      try {
+        channel.send(incident);
+      } catch (err) {
+        console.error('Failed to send alert:', err);
+      }
+    }
+  }
+
+  private logIncident(incident: Incident): void {
+    // In production: append to immutable incident log
+    console.log(`[INCIDENT] ${incident.severity}: ${incident.title}`);
+  }
+}
+
+export interface AlertChannel {
+  send(incident: Incident): void;
+}
+```
+
+---
+
+### Priority 5: Performance & Real-Time
+
+#### 5.1.1 Latency Profiling
+
+**Critical for SCADA**: Runtime must meet hard real-time constraints.
+
+```typescript
+// packages/core/performance/profiler.ts
+
+export interface LatencyProfile {
+  mean: number;      // ms
+  p50: number;       // ms
+  p95: number;       // ms
+  p99: number;       // ms
+  max: number;       // ms
+  outliers: number;  // > 2 * p99
+  samples: number;
+}
+
+export class LatencyProfiler {
+  private samples: number[] = [];
+  private maxSamples = 10000;
+
+  /**
+   * Record a latency measurement
+   */
+  public record(latencyMs: number): void {
+    this.samples.push(latencyMs);
+    if (this.samples.length > this.maxSamples) {
+      this.samples.shift();
+    }
+  }
+
+  /**
+   * Get current latency profile
+   */
+  public getProfile(): LatencyProfile {
+    const sorted = [...this.samples].sort((a, b) => a - b);
+    const len = sorted.length;
+
+    if (len === 0) {
+      return { mean: 0, p50: 0, p95: 0, p99: 0, max: 0, outliers: 0, samples: 0 };
+    }
+
+    const sum = sorted.reduce((a, b) => a + b, 0);
+    const p50 = sorted[Math.floor(len * 0.50)];
+    const p95 = sorted[Math.floor(len * 0.95)];
+    const p99 = sorted[Math.floor(len * 0.99)];
+    const max = sorted[len - 1];
+
+    const threshold = p99 * 2;
+    const outliers = sorted.filter(v => v > threshold).length;
+
+    return {
+      mean: sum / len,
+      p50,
+      p95,
+      p99,
+      max,
+      outliers,
+      samples: len,
+    };
+  }
+
+  /**
+   * Check if latency meets requirements
+   */
+  public meetsRequirement(maxLatencyMs: number, percentile: 50 | 95 | 99 = 95): boolean {
+    const profile = this.getProfile();
+    const value = percentile === 50 ? profile.p50 : percentile === 95 ? profile.p95 : profile.p99;
+    return value < maxLatencyMs;
+  }
+
+  /**
+   * Get latency violation report
+   */
+  public getViolationReport(thresholdMs: number): {
+    violations: number;
+    totalSamples: number;
+    violationRate: number;
+    worstViolation: number;
+  } {
+    const violations = this.samples.filter(v => v > thresholdMs).length;
+    const worstViolation = this.samples.reduce((max, v) => v > max ? v : max, 0);
+
+    return {
+      violations,
+      totalSamples: this.samples.length,
+      violationRate: violations / (this.samples.length || 1),
+      worstViolation,
+    };
+  }
+
+  /**
+   * Reset profiler
+   */
+  public reset(): void {
+    this.samples = [];
+  }
+}
+```
+
+---
+
+#### 5.1.2 Real-Time Execution Guarantee
+
+```typescript
+// packages/core/performance/realtime.ts
+
+export interface RealTimeGuarantee {
+  maxLatencyMs: number;
+  percentile: 50 | 95 | 99;
+  violationWindowMs: number;  // Rolling window for monitoring
+  maxViolationsPerWindow: number;
+}
+
+export class RealTimeExecutor {
+  private profiler: LatencyProfiler;
+  private guarantee: RealTimeGuarantee;
+  private violationCount: number = 0;
+  private windowStart: number = Date.now();
+
+  constructor(guarantee: RealTimeGuarantee) {
+    this.guarantee = guarantee;
+    this.profiler = new LatencyProfiler();
+  }
+
+  /**
+   * Execute with real-time guarantee
+   */
+  public async execute<T>(
+    operation: () => Promise<T>
+  ): Promise<{ result: T; latency: number }> {
+    const start = performance.now();
+
+    try {
+      const result = await operation();
+      const latency = performance.now() - start;
+
+      this.profiler.record(latency);
+      this.checkViolation(latency);
+
+      return { result, latency };
+    } catch (error) {
+      // Record failure as max latency
+      const latency = performance.now() - start;
+      this.profiler.record(latency);
+      this.checkViolation(latency);
+      throw error;
+    }
+  }
+
+  private checkViolation(latency: number): void {
+    const threshold = this.guarantee.maxLatencyMs;
+    const percentile = this.guarantee.percentile;
+
+    // Check if this sample is a violation
+    const isViolation = latency > threshold;
+
+    if (isViolation) {
+      this.violationCount++;
+    }
+
+    // Check window
+    const now = Date.now();
+    if (now - this.windowStart > this.guarantee.violationWindowMs) {
+      this.windowStart = now;
+
+      // If too many violations, report degradation
+      if (this.violationCount > this.guarantee.maxViolationsPerWindow) {
+        this.reportDegradation(this.violationCount);
+      }
+
+      this.violationCount = 0;
+    }
+  }
+
+  private reportDegradation(violations: number): void {
+    console.error(
+      `[RealTime] Degradation detected: ${violations} violations in ${this.guarantee.violationWindowMs}ms`
+    );
+    // In production: trigger degradation mode
+  }
+
+  /**
+   * Check if current performance meets guarantee
+   */
+  public meetsGuarantee(): boolean {
+    return this.profiler.meetsRequirement(
+      this.guarantee.maxLatencyMs,
+      this.guarantee.percentile
+    );
+  }
+
+  public getProfile(): LatencyProfile {
+    return this.profiler.getProfile();
+  }
+}
+```
+
+---
+
+## 4. Implementation Roadmap
+
+### Phase 1: Runtime Hardening (Week 1-2)
+
+| Task | Priority | Effort |
+|------|----------|--------|
+| Implement FaultTolerantRuntime | Critical | Medium |
+| Add ReplayProtectedProjector | Critical | Medium |
+| Implement GracefulDegradation | High | Medium |
+
+### Phase 2: Distributed Runtime (Week 3-4)
+
+| Task | Priority | Effort |
+|------|----------|--------|
+| Implement DistributedRuntime (Raft) | High | Large |
+| Add Byzantine Fault Tolerance | High | Large |
+
+### Phase 3: Governance & Security (Week 5-6)
+
+| Task | Priority | Effort |
+|------|----------|--------|
+| Implement KeyRotationManager | High | Medium |
+| Implement CertificateAuthority | High | Medium |
+
+### Phase 4: Monitoring & Observability (Week 7-8)
+
+| Task | Priority | Effort |
+|------|----------|--------|
+| Implement HealthMonitor | High | Medium |
+| Implement IncidentReporter | High | Medium |
+
+### Phase 5: Performance & Real-Time (Week 9-10)
+
+| Task | Priority | Effort |
+|------|----------|--------|
+| Implement LatencyProfiler | High | Small |
+| Implement RealTimeExecutor | High | Medium |
+
+---
+
+## 5. Summary: Epistemic Runtime — Production Capability Matrix
+
+| Capability | Current | Phase 1 | Phase 2 | Phase 3 | Phase 4 | Phase 5 |
+|------------|---------|---------|---------|---------|---------|---------|
+| Fault Tolerance | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| State Recovery | ⚠️ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Graceful Degradation | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Distributed Consensus | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| BFT | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Key Rotation | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Certificate Governance | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Health Monitoring | ⚠️ | ⚠️ | ⚠️ | ⚠️ | ✅ | ✅ |
+| Incident Reporting | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Real-Time Guarantees | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+---
+
+## 6. Key Metrics for Success
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| Max evaluation latency | < 5s (P95) | LatencyProfiler |
+| Error rate | < 0.01% | HealthMonitor |
+| Uptime | 99.99% | HealthMonitor |
+| Recovery time | < 30s | IncidentReporter |
+| Key rotation frequency | Quarterly | KeyRotationManager |
+| Certificate expiration | < 1% expiring | CertificateAuthority |
+
+---
+
+**Conclusion**: The Epistemic Runtime is architecturally sound, but to operate autonomously in high-risk environments, it requires **targeted hardening** across fault tolerance, distribution, governance, and observability. The proposed improvements are **practical, phased, and aligned with VVU's strategic objective** of building durable infrastructure that can be trusted without human intervention.
+# Epistemic Runtime — Strategic Evolution Roadmap
+
+## From Single-Industry Prototype to Multi-Industry Standard for Autonomous High-Risk Orchestration Systems
+
+---
+
+## Executive Summary
+
+The Epistemic Runtime has been validated as a sound execution kernel for evidence-based decision systems. The Hydro-Bayesian research programme demonstrates its applicability to critical water infrastructure. However, to **emerge as the natural standard for autonomous high-risk orchestration systems** across multiple industries—energy, healthcare, transportation, manufacturing, finance—the runtime requires strategic evolution beyond its current form.
+
+This document identifies the **missing capabilities** required for multi-industry adoption and proposes a **phased evolution roadmap** that transforms the Epistemic Runtime from a single-use kernel into a **platform for autonomous, auditable, high-risk orchestration**.
+
+---
+
+## 1. Strategic Positioning
+
+### 1.1 The Vision
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                           │
+│   EPISTEMIC RUNTIME: THE NATURAL STANDARD                                 │
+│   FOR AUTONOMOUS HIGH-RISK ORCHESTRATION SYSTEMS                          │
+│                                                                           │
+│   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│   │   WATER      │  │   ENERGY     │  │ HEALTHCARE   │  │ TRANSPORT    │ │
+│   │   Hydro-     │  │   Grid       │  │   Surgical   │  │   Traffic    │ │
+│   │   Bayesian   │  │   Mgmt       │  │   Robotics   │  │   Control    │ │
+│   └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
+│                                                                           │
+│   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│   │ MANUFACTURING│  │   FINANCE    │  │   DEFENSE    │  │   SPACE      │ │
+│   │   Industrial │  │   Trading    │  │   Command    │  │   Mission    │ │
+│   │   Control    │  │   Systems    │  │   & Control  │  │   Control    │ │
+│   └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘ │
+│                                                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.2 The Differentiator
+
+The Epistemic Runtime is uniquely positioned because it:
+
+| Attribute | Competitive Advantage |
+|-----------|----------------------|
+| **Axiom-driven** | Built from irreducible axioms, not inherited assumptions |
+| **Industry-agnostic** | Domain knowledge lives in Specifications, not the engine |
+| **Crypto-verifiable** | Every decision is provably lawful and replayable |
+| **Governance-native** | Constitutional epochs enable policy evolution without redeployment |
+| **Self-auditing** | Immutable proof logs enable continuous verification |
+
+---
+
+## 2. The Strategic Gaps for Multi-Industry Adoption
+
+### 2.1 Current State vs. Standard-Ready
+
+| Capability | Current | Required for Standard |
+|------------|---------|----------------------|
+| **Specification Language** | TypeScript-defined | Formal, verifiable DSL |
+| **Industry Adaptation** | Manual coding | Declarative templates per industry |
+| **Interoperability** | Limited | Standard APIs, protocols, data formats |
+| **Security Certification** | Not certified | SOC2, ISO 27001, IEC 62443 |
+| **Performance Benchmarks** | Not published | Industry-standard benchmarks |
+| **Compliance Mappings** | None | Regulatory mappings (GDPR, HIPAA, NIST) |
+| **Developer Experience** | Minimal | SDKs, tools, documentation |
+| **Community Governance** | VVU-owned | Open governance model |
+| **Ecosystem** | None | Plugins, extensions, integrations |
+| **Training & Support** | None | Certification programs, SLAs |
+
+---
+
+## 3. Required Improvements (By Strategic Priority)
+
+### Priority 1: Specification & Domain Modelling
+
+#### 3.1.1 Formal Specification Language (DSL)
+
+**Current**: Specifications are defined in TypeScript with predicate/action registries.
+
+**Gap**: Non-engineers (domain experts, regulators) cannot write or review Specifications.
+
+**Solution**: Create a **domain-specific language (DSL)** for Specifications with formal semantics.
+
+```typescript
+// Current: TypeScript
+const specification: Specification = {
+  id: 'spec-cb-001',
+  invariants: [
+    {
+      id: 'pressure-safety',
+      predicateKey: 'pressure_max_5_0',
+    },
+  ],
+};
+
+// Desired: DSL (e.g., YAML-based)
+specification:
+  id: spec-cb-001
+  invariants:
+    - id: pressure-safety
+      expression: "state.pressure < 5.0"
+      description: "Pressure must remain below 5.0 bar"
+  inferenceRules:
+    - id: trigger-breaker
+      condition: "obs.pressure >= 5.0"
+      action: "open_circuit_breaker()"
+```
+
+**Implementation**:
+
+```typescript
+// packages/core/dsl/parser.ts
+
+export interface DSLParser {
+  /**
+   * Parse a DSL specification into a runtime Specification
+   */
+  parse(dsl: string): Specification;
+
+  /**
+   * Validate DSL syntax and semantics
+   */
+  validate(dsl: string): ValidationResult;
+
+  /**
+   * Generate documentation from DSL
+   */
+  generateDocs(spec: Specification): Documentation;
+}
+
+export class YAMLDSLParser implements DSLParser {
+  parse(dsl: string): Specification {
+    const parsed = YAML.parse(dsl);
+    return this.transformToRuntime(parsed);
+  }
+
+  validate(dsl: string): ValidationResult {
+    const errors: string[] = [];
+    const parsed = YAML.parse(dsl);
+
+    // Validate syntax
+    if (!parsed.specification) {
+      errors.push('Missing specification root');
+    }
+
+    // Validate invariants
+    if (parsed.specification?.invariants) {
+      for (const inv of parsed.specification.invariants) {
+        if (!inv.expression) {
+          errors.push(`Invariant ${inv.id} missing expression`);
+        }
+        if (!this.isValidExpression(inv.expression)) {
+          errors.push(`Invalid expression in ${inv.id}: ${inv.expression}`);
+        }
+      }
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
+
+  private isValidExpression(expr: string): boolean {
+    // In production: use expression parser/validator
+    return true;
+  }
+
+  private transformToRuntime(parsed: any): Specification {
+    // Transform parsed DSL to runtime Specification
+    return {
+      id: parsed.specification.id,
+      name: parsed.specification.name,
+      version: parsed.specification.version,
+      invariants: parsed.specification.invariants.map((inv: any) => ({
+        id: inv.id,
+        description: inv.description,
+        predicateKey: this.compileExpression(inv.expression),
+      })),
+      inferenceRules: parsed.specification.inferenceRules.map((rule: any) => ({
+        id: rule.id,
+        description: rule.description,
+        conditionKey: this.compileExpression(rule.condition),
+        actionKey: this.compileAction(rule.action),
+      })),
+    };
+  }
+
+  private compileExpression(expr: string): string {
+    // In production: register compiled predicate
+    return `pred_${expr}`;
+  }
+
+  private compileAction(action: string): string {
+    // In production: register compiled action
+    return `action_${action}`;
+  }
+}
+```
+
+---
+
+#### 3.1.2 Industry-Specific Specification Templates
+
+**Current**: Specifications are hand-coded per domain.
+
+**Gap**: Domain experts need templates that encode industry best practices.
+
+**Solution**: Create **industry-specific specification templates** with pre-verified invariants and rules.
+
+```typescript
+// packages/core/templates/index.ts
+
+export interface IndustryTemplate {
+  id: string;
+  name: string;
+  domain: Industry;
+  description: string;
+  defaultSpec: Specification;
+  commonInvariants: Predicate[];
+  commonActions: Action[];
+  regulatoryMappings: RegulatoryMapping[];
+  bestPractices: string[];
+}
+
+export enum Industry {
+  WATER = 'water',
+  ENERGY = 'energy',
+  HEALTHCARE = 'healthcare',
+  TRANSPORT = 'transport',
+  MANUFACTURING = 'manufacturing',
+  FINANCE = 'finance',
+  DEFENSE = 'defense',
+  SPACE = 'space',
+}
+
+// packages/core/templates/water.ts
+export const WaterIndustryTemplate: IndustryTemplate = {
+  id: 'water-template-001',
+  name: 'Water Infrastructure Management',
+  domain: Industry.WATER,
+  description: 'Standard template for water distribution systems',
+  
+  defaultSpec: {
+    id: 'water-spec-default',
+    name: 'Standard Water Safety Specification',
+    version: '1.0.0',
+    invariants: [
+      {
+        id: 'pressure-safety',
+        description: 'Pressure must remain within safe bounds',
+        predicateKey: 'pressure_max_5_0',
+      },
+      {
+        id: 'flow-safety',
+        description: 'Flow must remain within pipe capacity',
+        predicateKey: 'flow_within_capacity',
+      },
+    ],
+    inferenceRules: [
+      {
+        id: 'trigger-breaker-on-high-pressure',
+        description: 'Open circuit breaker on high pressure',
+        conditionKey: 'is_pressure_excessive',
+        actionKey: 'SET_CIRCUIT_BREAKER_OPEN',
+      },
+    ],
+  },
+  
+  commonInvariants: [
+    { id: 'pressure_safety', check: (state) => state.pressure < 5.0 },
+    { id: 'flow_within_capacity', check: (state) => state.flow < state.capacity },
+    { id: 'water_quality', check: (state) => state.turbidity < 1.0 },
+  ],
+  
+  commonActions: [
+    { id: 'open_breaker', action: (state) => ({ ...state, breaker: 'OPEN' }) },
+    { id: 'close_breaker', action: (state) => ({ ...state, breaker: 'CLOSED' }) },
+    { id: 'adjust_valve', action: (state, pct) => ({ ...state, valve: pct }) },
+  ],
+  
+  regulatoryMappings: [
+    {
+      regulation: 'WRC Guidelines',
+      mappings: [
+        { invariant: 'pressure_safety', requirement: 'Pressure ≤ 5.0 bar' },
+      ],
+    },
+  ],
+  
+  bestPractices: [
+    'Always use pressure safety invariant',
+    'Include water quality monitoring where possible',
+    'Configure breaker thresholds based on local regulations',
+  ],
+};
+```
+
+---
+
+#### 3.1.3 Specification Versioning & Lifecycle Management
+
+**Current**: Specifications are versioned but lifecycle management is manual.
+
+**Gap**: Production systems need automated promotion, rollback, and deprecation.
+
+**Solution**: Implement **Specification Lifecycle Management**.
+
+```typescript
+// packages/core/governance/spec-lifecycle.ts
+
+export enum SpecificationStatus {
+  DRAFT = 'draft',
+  REVIEW = 'review',
+  APPROVED = 'approved',
+  DEPLOYED = 'deployed',
+  DEPRECATED = 'deprecated',
+  ARCHIVED = 'archived',
+}
+
+export interface SpecificationVersion {
+  id: string;
+  spec: Specification;
+  status: SpecificationStatus;
+  version: string;
+  createdAt: string;
+  createdBy: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  deployedAt?: string;
+  deployedTo?: string[];
+  deprecatedAt?: string;
+  deprecatedBy?: string;
+  archiveAt?: string;
+  auditTrail: AuditEntry[];
+  riskAssessment: RiskAssessment;
+  dependencies: string[];
+  conflicts: string[];
+}
+
+export class SpecificationLifecycleManager {
+  private versions: Map<string, SpecificationVersion> = new Map();
+  private currentDeployed: string | null = null;
+
+  /**
+   * Create new specification version
+   */
+  public createVersion(spec: Specification, author: string): SpecificationVersion {
+    const version: SpecificationVersion = {
+      id: `spec-${Date.now()}`,
+      spec,
+      status: SpecificationStatus.DRAFT,
+      version: this.nextVersion(),
+      createdAt: new Date().toISOString(),
+      createdBy: author,
+      auditTrail: [],
+      riskAssessment: this.assessRisk(spec),
+      dependencies: this.findDependencies(spec),
+      conflicts: this.findConflicts(spec),
+    };
+
+    this.versions.set(version.id, version);
+    return version;
+  }
+
+  /**
+   * Promote a specification through lifecycle stages
+   */
+  public promote(versionId: string, action: 'review' | 'approve' | 'deploy' | 'deprecate', actor: string): void {
+    const version = this.versions.get(versionId);
+    if (!version) {
+      throw new Error(`Version ${versionId} not found`);
+    }
+
+    switch (action) {
+      case 'review':
+        version.status = SpecificationStatus.REVIEW;
+        version.reviewedAt = new Date().toISOString();
+        version.reviewedBy = actor;
+        break;
+
+      case 'approve':
+        version.status = SpecificationStatus.APPROVED;
+        version.approvedAt = new Date().toISOString();
+        version.approvedBy = actor;
+        break;
+
+      case 'deploy':
+        version.status = SpecificationStatus.DEPLOYED;
+        version.deployedAt = new Date().toISOString();
+        version.deployedTo = version.deployedTo || [];
+        version.deployedTo.push('production');
+        this.currentDeployed = versionId;
+        break;
+
+      case 'deprecate':
+        version.status = SpecificationStatus.DEPRECATED;
+        version.deprecatedAt = new Date().toISOString();
+        version.deprecatedBy = actor;
+        break;
+    }
+
+    version.auditTrail.push({
+      action,
+      actor,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Rollback to a previous deployed version
+   */
+  public rollback(versionId: string): void {
+    const version = this.versions.get(versionId);
+    if (!version || version.status !== SpecificationStatus.DEPLOYED) {
+      throw new Error(`Version ${versionId} is not deployed`);
+    }
+
+    this.currentDeployed = versionId;
+    // Trigger runtime to reload specification
+  }
+
+  /**
+   * Check if a specification is compatible with current deployment
+   */
+  public isCompatible(versionId: string): boolean {
+    const version = this.versions.get(versionId);
+    if (!version) return false;
+
+    if (this.currentDeployed) {
+      const current = this.versions.get(this.currentDeployed);
+      if (current) {
+        // Check for breaking changes
+        return !this.hasBreakingChanges(current.spec, version.spec);
+      }
+    }
+
+    return true;
+  }
+
+  private hasBreakingChanges(oldSpec: Specification, newSpec: Specification): boolean {
+    // Check if any invariant was removed
+    const oldInvariants = new Set(oldSpec.invariants.map(i => i.id));
+    const newInvariants = new Set(newSpec.invariants.map(i => i.id));
+    
+    for (const id of oldInvariants) {
+      if (!newInvariants.has(id)) {
+        return true; // Invariant removed - breaking change
+      }
+    }
+
+    return false;
+  }
+
+  private assessRisk(spec: Specification): RiskAssessment {
+    // In production: AI-driven risk assessment
+    return {
+      level: 'medium',
+      score: 0.5,
+      factors: ['complexity', 'security-critical'],
+    };
+  }
+
+  private findDependencies(spec: Specification): string[] {
+    return spec.invariants
+      .map(i => i.predicateKey)
+      .filter(k => k.startsWith('dep_'));
+  }
+
+  private findConflicts(spec: Specification): string[] {
+    // Find conflicting rules
+    const conflicts: string[] = [];
+    // In production: analyze rule conflicts
+    return conflicts;
+  }
+
+  private nextVersion(): string {
+    const versions = Array.from(this.versions.values());
+    const maxVersion = versions.reduce((max, v) => {
+      const num = parseInt(v.version.split('.')[0]);
+      return num > max ? num : max;
+    }, 0);
+    return `${maxVersion + 1}.0.0`;
+  }
+}
+```
+
+---
+
+### Priority 2: Interoperability & Integration
+
+#### 3.2.1 Standard API Contracts
+
+**Current**: Internal APIs are defined per project.
+
+**Gap**: Multi-industry adoption requires standardised APIs.
+
+**Solution**: Define **OpenAPI/GraphQL contracts** for all runtime interfaces.
+
+```typescript
+// packages/core/api/openapi.yaml
+/**
+ * Epistemic Runtime API Specification (OpenAPI 3.0)
+ */
+const OpenAPISpec = {
+  openapi: '3.0.0',
+  info: {
+    title: 'Epistemic Runtime API',
+    version: '1.0.0',
+    description: 'Runtime for autonomous, auditable decision systems',
+  },
+  paths: {
+    '/api/runtime/evaluate': {
+      post: {
+        summary: 'Evaluate evidence through the runtime',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  state: { type: 'object' },
+                  observation: { type: 'object' },
+                  ruleSetId: { type: 'string' },
+                  epochId: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Evaluation complete',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    accepted: { type: 'boolean' },
+                    candidateState: { type: 'object' },
+                    proof: { $ref: '#/components/schemas/ProofRecord' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    '/api/runtime/project': {
+      post: {
+        summary: 'Project current state from proof log',
+        responses: {
+          '200': {
+            description: 'State projection complete',
+          },
+        },
+      },
+    },
+    '/api/runtime/proofs': {
+      get: {
+        summary: 'Retrieve proof chain',
+        responses: {
+          '200': {
+            description: 'Proof chain retrieved',
+          },
+        },
+      },
+    },
+    '/api/runtime/epochs': {
+      post: {
+        summary: 'Create new constitutional epoch',
+      },
+    },
+    '/api/runtime/health': {
+      get: {
+        summary: 'Runtime health status',
+        responses: {
+          '200': {
+            description: 'Health status',
+          },
+        },
+      },
+    },
+  },
+  components: {
+    schemas: {
+      ProofRecord: {
+        type: 'object',
+        properties: {
+          epochId: { type: 'string' },
+          observationHash: { type: 'string' },
+          inferenceHash: { type: 'string' },
+          previousProofHash: { type: 'string' },
+          signature: { type: 'string' },
+          timestamp: { type: 'string' },
+        },
+      },
+    },
+  },
+};
+```
+
+---
+
+#### 3.2.2 Protocol Adapters (MQTT, AMQP, gRPC, REST)
+
+**Current**: HTTP/HTTPS only.
+
+**Gap**: Industrial systems use a variety of protocols.
+
+**Solution**: Implement **protocol adapters** for standard industrial protocols.
+
+```typescript
+// packages/core/adapters/index.ts
+
+export interface ProtocolAdapter {
+  /**
+   * Start the adapter
+   */
+  start(): Promise<void>;
+
+  /**
+   * Stop the adapter
+   */
+  stop(): Promise<void>;
+
+  /**
+   * Send an evaluation request
+   */
+  evaluate(state: any, observation: any): Promise<Verdict<any>>;
+
+  /**
+   * Subscribe to evidence streams
+   */
+  subscribeEvidence(callback: (evidence: any) => void): void;
+
+  /**
+   * Publish proof results
+   */
+  publishProof(proof: ProofRecord): Promise<void>;
+}
+
+// packages/core/adapters/mqtt.ts
+export class MQTTAdapter implements ProtocolAdapter {
+  private client: MQTTClient;
+  private config: MQTTConfig;
+
+  constructor(config: MQTTConfig) {
+    this.config = config;
+    this.client = mqtt.connect(config.url, config.options);
+  }
+
+  async start(): Promise<void> {
+    await this.client.connect();
+    await this.subscribeToTopics();
+  }
+
+  async stop(): Promise<void> {
+    await this.client.end();
+  }
+
+  async evaluate(state: any, observation: any): Promise<Verdict<any>> {
+    // Forward evaluation to runtime via MQTT
+    const response = await this.client.request('runtime/evaluate', {
+      state,
+      observation,
+    });
+    return JSON.parse(response);
+  }
+
+  subscribeEvidence(callback: (evidence: any) => void): void {
+    this.client.on('evidence', callback);
+  }
+
+  async publishProof(proof: ProofRecord): Promise<void> {
+    await this.client.publish('proofs', JSON.stringify(proof), { qos: 1 });
+  }
+
+  private async subscribeToTopics(): Promise<void> {
+    await this.client.subscribe('runtime/+/request');
+    await this.client.subscribe('evidence/+/stream');
+  }
+}
+```
+
+---
+
+#### 3.2.3 Data Format Standards
+
+**Current**: JSON only.
+
+**Gap**: Industry-standard data formats (Protobuf, Avro, CBOR, etc.)
+
+**Solution**: Support **multiple serialization formats**.
+
+```typescript
+// packages/core/formats/index.ts
+
+export interface Serializer<T, R> {
+  serialize(data: T): R;
+  deserialize(data: R): T;
+  contentType: string;
+}
+
+export class JSONSerializer<T> implements Serializer<T, string> {
+  contentType = 'application/json';
+  serialize(data: T): string { return JSON.stringify(data); }
+  deserialize(data: string): T { return JSON.parse(data); }
+}
+
+export class ProtobufSerializer<T> implements Serializer<T, Uint8Array> {
+  contentType = 'application/protobuf';
+  constructor(private message: any) {}
+  serialize(data: T): Uint8Array { return this.message.encode(data).finish(); }
+  deserialize(data: Uint8Array): T { return this.message.decode(data); }
+}
+
+export class CBORSerializer<T> implements Serializer<T, Uint8Array> {
+  contentType = 'application/cbor';
+  serialize(data: T): Uint8Array { return CBOR.encode(data); }
+  deserialize(data: Uint8Array): T { return CBOR.decode(data); }
+}
+
+export class AvroSerializer<T> implements Serializer<T, Buffer> {
+  contentType = 'application/avro';
+  constructor(private schema: any) {}
+  serialize(data: T): Buffer { return Avro.serialize(this.schema, data); }
+  deserialize(data: Buffer): T { return Avro.deserialize(this.schema, data); }
+}
+```
+
+---
+
+### Priority 3: Security Certification & Compliance
+
+#### 3.3.1 Security Framework
+
+**Current**: No formal security certification.
+
+**Gap**: High-risk industries require SOC2, ISO 27001, IEC 62443.
+
+**Solution**: Implement **security framework** aligned with industry standards.
+
+```typescript
+// packages/core/security/framework.ts
+
+export interface SecurityFramework {
+  /**
+   * Identity & Access Management
+   */
+  iam: IAMService;
+
+  /**
+   * Encryption at rest and in transit
+   */
+  encryption: EncryptionService;
+
+  /**
+   * Audit logging
+   */
+  audit: AuditLogService;
+
+  /**
+   * Vulnerability scanning
+   */
+  vulnerability: VulnerabilityService;
+
+  /**
+   * Incident response
+   */
+  incident: IncidentResponseService;
+
+  /**
+   * Compliance mapping
+   */
+  compliance: ComplianceMappingService;
+}
+
+// packages/core/security/compliance.ts
+
+export interface ComplianceRequirement {
+  id: string;
+  standard: 'SOC2' | 'ISO27001' | 'IEC62443' | 'NIST' | 'GDPR' | 'HIPAA';
+  control: string;
+  description: string;
+  status: 'implemented' | 'partial' | 'planned' | 'not_applicable';
+  evidence: string;
+  lastVerified: string;
+}
+
+export class ComplianceMappingService {
+  private requirements: ComplianceRequirement[] = [];
+
+  /**
+   * Add a compliance requirement
+   */
+  addRequirement(req: ComplianceRequirement): void {
+    this.requirements.push(req);
+  }
+
+  /**
+   * Check compliance status
+   */
+  getComplianceStatus(): {
+    total: number;
+    implemented: number;
+    partial: number;
+    planned: number;
+    percentage: number;
+  } {
+    const total = this.requirements.length;
+    const implemented = this.requirements.filter(r => r.status === 'implemented').length;
+    const partial = this.requirements.filter(r => r.status === 'partial').length;
+    const planned = this.requirements.filter(r => r.status === 'planned').length;
+
+    return {
+      total,
+      implemented,
+      partial,
+      planned,
+      percentage: (implemented / total) * 100,
+    };
+  }
+
+  /**
+   * Get gap analysis
+   */
+  getGapAnalysis(): ComplianceRequirement[] {
+    return this.requirements.filter(r => r.status === 'planned' || r.status === 'partial');
+  }
+}
+```
+
+---
+
+#### 3.3.2 Security Certifications Roadmap
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    SECURITY CERTIFICATION ROADMAP                          │
+│                                                                           │
+│  Phase 1: SOC2 Type I                                                     │
+│  ─────────────────────────────────────────────────────────────             │
+│  • Security, Availability, Processing Integrity, Confidentiality, Privacy │
+│  • Evidence: Built-in audit logs, access controls, encryption              │
+│                                                                           │
+│  Phase 2: ISO 27001                                                       │
+│  ─────────────────────────────────────────────────────────────             │
+│  • Information Security Management System                                 │
+│  • Evidence: Policies, procedures, risk assessments                       │
+│                                                                           │
+│  Phase 3: IEC 62443                                                       │
+│  ─────────────────────────────────────────────────────────────             │
+│  • Industrial Automation and Control Systems Security                     │
+│  • Evidence: Secure development lifecycle, network segmentation           │
+│                                                                           │
+│  Phase 4: NIST SP 800-53                                                  │
+│  ─────────────────────────────────────────────────────────────             │
+│  • Federal Information Systems Security Controls                          │
+│  • Evidence: Complete security framework                                  │
+│                                                                           │
+│  Phase 5: Industry-Specific                                                │
+│  ─────────────────────────────────────────────────────────────             │
+│  • HIPAA (Healthcare), GDPR (EU), FISC (Finance), etc.                   │
+│  • Evidence: Regulatory compliance mappings                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Priority 4: Developer Experience & Ecosystem
+
+#### 4.1.1 SDKs & Client Libraries
+
+**Current**: No official SDKs.
+
+**Gap**: Developers need SDKs in multiple languages to adopt the runtime.
+
+**Solution**: Create **official SDKs** for major programming languages.
+
+```typescript
+// packages/sdk-typescript/index.ts
+
+/**
+ * TypeScript SDK for Epistemic Runtime
+ */
+export class EpistemicRuntimeClient {
+  private client: HttpClient;
+  private apiKey: string;
+
+  constructor(config: RuntimeConfig) {
+    this.client = new HttpClient(config.endpoint);
+    this.apiKey = config.apiKey || '';
+  }
+
+  /**
+   * Evaluate evidence against a specification
+   */
+  async evaluate<T>(
+    state: T,
+    observation: any,
+    ruleSetId: string,
+    epochId: string
+  ): Promise<EvaluationResult<T>> {
+    const response = await this.client.post('/api/runtime/evaluate', {
+      state,
+      observation,
+      ruleSetId,
+      epochId,
+    }, {
+      headers: { 'X-API-Key': this.apiKey },
+    });
+
+    return response.json();
+  }
+
+  /**
+   * Project current state from proof log
+   */
+  async projectState<T>(
+    genesis: Genesis,
+    proofLog: ProofRecord[],
+    epochId: string
+  ): Promise<T> {
+    const response = await this.client.post('/api/runtime/project', {
+      genesis,
+      proofLog,
+      epochId,
+    }, {
+      headers: { 'X-API-Key': this.apiKey },
+    });
+
+    return response.json();
+  }
+
+  /**
+   * Get proof chain for audit
+   */
+  async getProofs(from?: string, limit: number = 100): Promise<ProofRecord[]> {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    params.append('limit', String(limit));
+
+    const response = await this.client.get(`/api/runtime/proofs?${params}`, {
+      headers: { 'X-API-Key': this.apiKey },
+    });
+
+    return response.json();
+  }
+
+  /**
+   * Create specification from DSL
+   */
+  async createSpecification(dsl: string): Promise<Specification> {
+    const response = await this.client.post('/api/runtime/specifications', {
+      dsl,
+    }, {
+      headers: { 'X-API-Key': this.apiKey },
+    });
+
+    return response.json();
+  }
+}
+```
+
+---
+
+#### 4.1.2 CLI Tool
+
+```typescript
+// packages/cli/index.ts
+
+#!/usr/bin/env node
+
+import { Command } from 'commander';
+
+const program = new Command();
+
+program
+  .name('epistemic')
+  .description('Epistemic Runtime CLI')
+  .version('1.0.0');
+
+// Evaluate command
+program
+  .command('evaluate')
+  .description('Evaluate evidence through the runtime')
+  .option('-s, --state <file>', 'State file (JSON)')
+  .option('-o, --observation <file>', 'Observation file (JSON)')
+  .option('-r, --ruleset <id>', 'RuleSet ID')
+  .option('-e, --epoch <id>', 'Epoch ID')
+  .action(async (options) => {
+    const state = JSON.parse(await readFile(options.state, 'utf8'));
+    const observation = JSON.parse(await readFile(options.observation, 'utf8'));
+    const result = await client.evaluate(state, observation, options.ruleset, options.epoch);
+    console.log(JSON.stringify(result, null, 2));
+  });
+
+// Project command
+program
+  .command('project')
+  .description('Project state from proof log')
+  .option('-g, --genesis <file>', 'Genesis file (JSON)')
+  .option('-p, --proofs <file>', 'Proof log file (JSONL)')
+  .option('-e, --epoch <id>', 'Epoch ID')
+  .action(async (options) => {
+    const genesis = JSON.parse(await readFile(options.genesis, 'utf8'));
+    const proofLog = await readJSONL(options.proofs);
+    const state = await client.projectState(genesis, proofLog, options.epoch);
+    console.log(JSON.stringify(state, null, 2));
+  });
+
+// Verify command
+program
+  .command('verify')
+  .description('Verify proof chain integrity')
+  .option('-p, --proofs <file>', 'Proof log file (JSONL)')
+  .action(async (options) => {
+    const proofLog = await readJSONL(options.proofs);
+    const valid = await verifyChain(proofLog);
+    console.log(`Proof chain is ${valid ? '✅ VALID' : '❌ INVALID'}`);
+    process.exit(valid ? 0 : 1);
+  });
+
+// Health command
+program
+  .command('health')
+  .description('Check runtime health')
+  .option('-e, --endpoint <url>', 'Runtime endpoint')
+  .action(async (options) => {
+    const health = await client.getHealth(options.endpoint);
+    console.log(`Status: ${health.status}`);
+    console.log(`Uptime: ${health.uptime}s`);
+    console.log(`Components:`);
+    for (const [name, status] of Object.entries(health.components)) {
+      console.log(`  ${name}: ${status}`);
+    }
+  });
+
+program.parse(process.argv);
+```
+
+---
+
+#### 4.1.3 Documentation & Training
+
+```markdown
+# Epistemic Runtime Documentation
+
+## Getting Started
+
+### 1. Install the CLI
+```bash
+npm install -g @epistemic/runtime-cli
+```
+
+### 2. Create your first specification
+```yaml
+specification:
+  id: my-first-spec
+  name: "Simple Safety Specification"
+  version: "1.0.0"
+  invariants:
+    - id: pressure-safety
+      expression: "state.pressure < 5.0"
+      description: "Pressure must stay below 5.0 bar"
+```
+
+### 3. Evaluate evidence
+```bash
+epistemic evaluate -s state.json -o observation.json -r my-first-spec
+```
+
+## Industry Templates
+
+### Water Infrastructure
+[Template: Water Industry Specification]
+
+### Energy Grid
+[Template: Energy Industry Specification]
+
+### Healthcare
+[Template: Healthcare Industry Specification]
+
+## Certification
+
+- [x] SOC2 Type I (Q1 2027)
+- [ ] ISO 27001 (Q2 2027)
+- [ ] IEC 62443 (Q3 2027)
+
+## Support
+
+- Documentation: https://docs.epistemic-runtime.io
+- Discord: https://discord.gg/epistemic-runtime
+- GitHub: https://github.com/epistemic-runtime
+```
+
+---
+
+### Priority 5: Community & Ecosystem
+
+#### 5.1.1 Open Governance Model
+
+**Current**: VVU-owned.
+
+**Gap**: Industry standards require open governance.
+
+**Solution**: Implement **open governance model** with community participation.
+
+```typescript
+// packages/core/governance/open.ts
+
+export interface GovernanceModel {
+  /**
+   * Who can propose changes
+   */
+  proposers: 'any' | 'members' | 'partners' | 'core' | 'founder';
+
+  /**
+   * Who can approve changes
+   */
+  approvers: 'members' | 'partners' | 'core' | 'founder';
+
+  /**
+   * Decision-making process
+   */
+  process: 'consensus' | 'majority' | 'super-majority' | 'founder';
+
+  /**
+   * Community roles
+   */
+  roles: CommunityRole[];
+
+  /**
+   * Contribution guidelines
+   */
+  guidelines: ContributionGuideline[];
+
+  /**
+   * Code of conduct
+   */
+  codeOfConduct: string;
+}
+
+export interface CommunityRole {
+  name: string;
+  responsibilities: string[];
+  permissions: string[];
+  termLength: number; // months
+}
+
+export class OpenGovernance implements GovernanceModel {
+  proposers: 'any';
+  approvers: 'members';
+  process: 'consensus';
+  roles = [
+    { name: 'Contributor', responsibilities: ['Submit PRs'], permissions: ['create_pr'], termLength: 12 },
+    { name: 'Maintainer', responsibilities: ['Review PRs'], permissions: ['review', 'merge'], termLength: 24 },
+    { name: 'Core Team', responsibilities: ['Architecture', 'Security'], permissions: ['all'], termLength: 36 },
+  ];
+  guidelines = [
+    { title: 'PR Process', description: 'All PRs require 2 approvals' },
+    { title: 'Release Process', description: 'Monthly releases on first Monday' },
+  ];
+  codeOfConduct = 'https://github.com/epistemic-runtime/code-of-conduct';
+}
+```
+
+---
+
+#### 5.2.2 Plugin & Extension Framework
+
+**Current**: No extension mechanism.
+
+**Gap**: Industry adoption requires extensibility.
+
+**Solution**: Implement **plugin architecture**.
+
+```typescript
+// packages/core/plugins/index.ts
+
+export interface Plugin {
+  id: string;
+  name: string;
+  version: string;
+  author: string;
+  description: string;
+  capabilities: string[];
+
+  /**
+   * Initialize the plugin
+   */
+  init(runtime: RuntimeInterface): Promise<void>;
+
+  /**
+   * Register new predicates
+   */
+  registerPredicates?(): Record<string, (state?: any, obs?: any) => boolean>;
+
+  /**
+   * Register new actions
+   */
+  registerActions?(): Record<string, (state: any) => any>;
+
+  /**
+   * Hook into evaluation lifecycle
+   */
+  beforeEvaluate?(state: any, observation: any): Promise<{ state: any; observation: any }>;
+  afterEvaluate?(result: Verdict<any>): Promise<Verdict<any>>;
+
+  /**
+   * Hook into projection lifecycle
+   */
+  beforeProject?(state: any, proof: ProofRecord): Promise<any>;
+  afterProject?(state: any): Promise<any>;
+
+  /**
+   * Cleanup
+   */
+  cleanup?(): Promise<void>;
+}
+
+export class PluginManager {
+  private plugins: Map<string, Plugin> = new Map();
+
+  /**
+   * Load a plugin
+   */
+  async loadPlugin(pluginPath: string): Promise<void> {
+    const plugin: Plugin = await import(pluginPath);
+    await plugin.init(this.runtime);
+    this.plugins.set(plugin.id, plugin);
+
+    if (plugin.registerPredicates) {
+      const predicates = plugin.registerPredicates();
+      for (const [key, fn] of Object.entries(predicates)) {
+        registerPredicate(key, fn);
+      }
+    }
+
+    if (plugin.registerActions) {
+      const actions = plugin.registerActions();
+      for (const [key, fn] of Object.entries(actions)) {
+        registerAction(key, fn);
+      }
+    }
+  }
+
+  /**
+   * Get a plugin
+   */
+  getPlugin(id: string): Plugin | undefined {
+    return this.plugins.get(id);
+  }
+
+  /**
+   * List all plugins
+   */
+  listPlugins(): { id: string; name: string; version: string }[] {
+    return Array.from(this.plugins.values()).map(p => ({
+      id: p.id,
+      name: p.name,
+      version: p.version,
+    }));
+  }
+}
+```
+
+---
+
+#### 5.2.3 Reference Implementations
+
+| Industry | Reference Implementation | Status |
+|----------|-------------------------|--------|
+| **Water** | Hydro-Bayesian Kernel | ✅ Active |
+| **Energy** | Grid Control Specification | 🔜 Planning |
+| **Healthcare** | Surgical Robotics Specification | 🔜 Planning |
+| **Transport** | Traffic Management Specification | 🔜 Planning |
+| **Manufacturing** | Industrial Control Specification | 🔜 Planning |
+| **Finance** | Trading Compliance Specification | 🔜 Planning |
+
+---
+
+## 6. Strategic Roadmap
+
+### Phase 1: Foundation (Months 1-6)
+
+| Task | Priority | Deliverable |
+|------|----------|-------------|
+| Formal DSL for Specifications | Critical | YAML/JSON specification language |
+| Industry Templates (Water, Energy) | Critical | Pre-verified templates |
+| Specification Lifecycle Management | Critical | Promotion, rollback, deprecation |
+
+### Phase 2: Interoperability (Months 7-12)
+
+| Task | Priority | Deliverable |
+|------|----------|-------------|
+| OpenAPI Specification | Critical | Standard API contracts |
+| Protocol Adapters (MQTT, gRPC) | High | Multi-protocol support |
+| Serialization Formats (Protobuf, CBOR) | High | Multiple data formats |
+
+### Phase 3: Security Certification (Months 13-18)
+
+| Task | Priority | Deliverable |
+|------|----------|-------------|
+| SOC2 Type I | Critical | Security certification |
+| ISO 27001 | High | Information security management |
+| Security Framework | High | Encryption, IAM, audit |
+
+### Phase 4: Developer Experience (Months 19-24)
+
+| Task | Priority | Deliverable |
+|------|----------|-------------|
+| TypeScript SDK | Critical | Official SDK |
+| CLI Tool | High | Command-line interface |
+| Documentation Portal | High | Comprehensive docs |
+
+### Phase 5: Ecosystem (Months 25-30)
+
+| Task | Priority | Deliverable |
+|------|----------|-------------|
+| Plugin Framework | High | Extension mechanism |
+| Open Governance | High | Community model |
+| Partner Program | Medium | Industry partnerships |
+
+### Phase 6: Industry Expansion (Months 31-36)
+
+| Task | Priority | Deliverable |
+|------|----------|-------------|
+| Healthcare Reference Implementation | High | Surgical robotics spec |
+| Finance Reference Implementation | High | Trading compliance spec |
+| Defense Reference Implementation | Medium | Command & control spec |
+
+---
+
+## 7. Key Success Metrics
+
+| Metric | Target | Current |
+|--------|--------|---------|
+| **Adoption** | 50+ industry users | 1 (Hydro-Bayesian) |
+| **Specifications** | 100+ published templates | 1 (Circuit Breaker) |
+| **Plugins** | 20+ community plugins | 0 |
+| **Certifications** | SOC2, ISO27001, IEC62443 | None |
+| **Contributors** | 100+ community contributors | 1 (VVU) |
+| **Documentation** | Complete, multi-language | Sparse |
+| **Response Time** | 24hrs for community issues | N/A |
+
+---
+
+## 8. Strategic Positioning Summary
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    EPISTEMIC RUNTIME — STRATEGIC POSITIONING               │
+│                                                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                     DIFFERENTIATORS                                 │   │
+│  │                                                                     │   │
+│  │   • Axiom-Driven Architecture                                       │   │
+│  │   • Industry-Agnostic Core                                          │   │
+│  │   • Cryptographic Verifiability                                     │   │
+│  │   • Constitutional Governance                                       │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    EVOLUTION PATHWAYS                               │   │
+│  │                                                                     │   │
+│  │   • Formal DSL & Templates      →   Specification Standardization   │   │
+│  │   • Protocol Adapters           →   Multi-Industry Interoperability │   │
+│  │   • Security Certifications     →   Trust & Compliance              │   │
+│  │   • SDKs & Ecosystem            →   Developer Adoption              │   │
+│  │   • Open Governance             →   Community Ownership            │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                    MARKET POSITIONING                                │   │
+│  │                                                                     │   │
+│  │   • "The Linux Kernel for Autonomous Systems"                      │   │
+│  │   • "Proof-Based, Not Trust-Based"                                 │   │
+│  │   • "From Water to Space—One Runtime"                              │   │
+│  │   • "The Standard for Verifiable Infrastructure"                   │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 9. Conclusion
+
+The Epistemic Runtime is **architecturally positioned** to become the natural standard for autonomous high-risk orchestration systems. It possesses the fundamental differentiators that industry standards require:
+
+1. **Axiom-driven design** — not inherited assumptions
+2. **Industry-agnostic core** — domain knowledge is external
+3. **Cryptographic verifiability** — trust is built into the architecture
+4. **Constitutional governance** — policy evolves without redeployment
+
+However, achieving industry-standard status requires **strategic evolution** across:
+
+- **Specification** — formal DSL, industry templates, lifecycle management
+- **Interoperability** — standard APIs, protocol adapters, data formats
+- **Security** — certification frameworks, compliance mappings
+- **Developer Experience** — SDKs, CLI, documentation, training
+- **Ecosystem** — plugins, open governance, reference implementations
+
+The roadmap outlined above provides a **practical, phased path** from a single-industry prototype to a multi-industry standard—without compromising VVU's strategic IP or competitive advantage.

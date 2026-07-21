@@ -1,56 +1,45 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
-import dynamic from "next/dynamic";
+import { useEffect, useState, useCallback, useMemo, Suspense, lazy, ComponentType, createElement } from "react";
 import {
   ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
-  Sparkles, Terminal, Boxes, Globe2, BookOpen, Zap, Search,
-  Clock, GitCompare, CircuitBoard, FileText, History, Library, Activity,
-  Keyboard, Sun, Moon, Monitor,
+  Terminal, Boxes, Globe2, Zap, Search,
+  Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare,
 } from "lucide-react";
 import { usePinnedSections } from "@/hooks/use-pinned-sections";
-import { Pin, PinOff, Star } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useTheme } from "next-themes";
+import { CommandPalette } from "@/components/epistemic/command-palette";
+import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
 
-type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "miner" | "cli" | "federation" | "timeline" | "diff" | "zkcircuit" | "audit" | "versions" | "templates" | "metrics";
+type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison";
 
 const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
   { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
-  { id: "studio", label: "Policy DSL", icon: GitBranch, hint: ".epd → enforcers" },
-  { id: "templates", label: "Templates", icon: Library, hint: "Create from template" },
+  { id: "studio", label: "Policy Studio", icon: GitBranch, hint: ".epd → enforcers" },
   { id: "topology", label: "DAG Topology", icon: Network, hint: "Sharded state" },
-  { id: "merges", label: "Merge Repair", icon: Wrench, hint: "Self-healing" },
+  { id: "merges", label: "Merge & Repair", icon: Wrench, hint: "Self-healing" },
   { id: "shadow", label: "Shadow Bridge", icon: Cpu, hint: "Digital twin" },
-  { id: "proofs", label: "MMR Proofs", icon: KeyRound, hint: "ZK ancestry" },
-  { id: "zkcircuit", label: "ZK Circuit", icon: CircuitBoard, hint: "SNARK constraints" },
-  { id: "miner", label: "Invariant Miner", icon: Sparkles, hint: "AI candidates" },
-  { id: "timeline", label: "Timeline", icon: Clock, hint: "Event scrubber" },
-  { id: "diff", label: "Policy Diff", icon: GitCompare, hint: "Compare .epd" },
-  { id: "audit", label: "Audit Reports", icon: FileText, hint: "Compliance" },
-  { id: "versions", label: "Versioning", icon: History, hint: "Revision history" },
+  { id: "proofs", label: "MMR & ZK Proofs", icon: KeyRound, hint: "ZK ancestry" },
+  { id: "timeline", label: "Timeline & Audit", icon: Clock, hint: "Event scrubber" },
   { id: "cli", label: "CLI Terminal", icon: Terminal, hint: "Validate .epd" },
   { id: "federation", label: "Federation", icon: Globe2, hint: "epistemic://" },
   { id: "metrics", label: "Metrics", icon: Activity, hint: "Live performance" },
+  { id: "comparison", label: "Comparison", icon: GitCompare, hint: "Policy comparison" },
 ];
 
 const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   overview: { title: "Runtime Overview", sub: "Global epistemic health across all policies & shards" },
-  studio: { title: "Policy DSL Studio", sub: "Author .epd, validate invariants, compile to verified enforcers" },
+  studio: { title: "Policy Studio", sub: "Author .epd, manage templates, compare versions & revisions" },
   topology: { title: "DAG Shard Topology", sub: "Invariant-aware sharding of the state space" },
-  merges: { title: "Self-Repairing Merges", sub: "Least-divergent correction of cross-shard merge conflicts" },
+  merges: { title: "Self-Repairing Merges", sub: "Least-divergent correction with AI-mined invariants" },
   shadow: { title: "Shadow Bridge", sub: "Digital-twin shadow mode with what-if branching & takeover" },
-  proofs: { title: "MMR Ancestry Proofs", sub: "Zero-knowledge verifiable merge history" },
-  miner: { title: "Invariant Miner", sub: "AI-mined candidate invariants from drift telemetry" },
+  proofs: { title: "MMR & ZK Proofs", sub: "Zero-knowledge ancestry proofs & SNARK circuit constraints" },
+  timeline: { title: "Timeline & Audit", sub: "Historical replay, compliance reports & policy diffing" },
   cli: { title: "CLI Terminal", sub: "Run epd-cli against custom .epd policy files" },
   federation: { title: "epistemic:// Federation", sub: "Multi-organization verifiable state reconciliation" },
-  timeline: { title: "Historical Replay Timeline", sub: "Scrub through merges, shadow events & invariant breaches" },
-  diff: { title: "Policy Diff", sub: "Compare two .epd policies side-by-side" },
-  zkcircuit: { title: "ZK Proof Circuit", sub: "SNARK constraint graph synthesized from invariants" },
-  audit: { title: "Audit Reports", sub: "Exportable compliance report for regulators" },
-  versions: { title: "Policy Versioning", sub: "Track .epd revisions, snapshot & restore" },
-  templates: { title: "Template Library", sub: "Create policies from domain templates" },
   metrics: { title: "Performance Metrics", sub: "Real-time throughput, latency & violation analytics" },
+  comparison: { title: "Policy Comparison Matrix", sub: "Compare policies across multiple dimensions with radar analysis" },
 };
 
 function SectionLoader() {
@@ -65,41 +54,48 @@ function SectionLoader() {
 }
 
 function ThemeToggleBtn() {
-  const { theme, setTheme } = useTheme();
-  const Icon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
+  const { resolvedTheme, setTheme } = useTheme();
+  const Icon = resolvedTheme === "dark" ? Moon : resolvedTheme === "light" ? Sun : Monitor;
   return (
-    <button type="button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors" title="Toggle theme">
+    <button type="button" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors" title="Toggle theme" suppressHydrationWarning>
       <Icon className="h-3.5 w-3.5" />
     </button>
   );
 }
 
-// Lazy-load all section components
-const OverviewSection = dynamic(() => import("@/components/epistemic/overview").then((m) => m.OverviewSection), { ssr: false });
-const PolicyStudioSection = dynamic(() => import("@/components/epistemic/policy-studio").then((m) => m.PolicyStudioSection), { ssr: false });
-const DagTopologySection = dynamic(() => import("@/components/epistemic/dag-topology").then((m) => m.DagTopologySection), { ssr: false });
-const MergeReconciliationSection = dynamic(() => import("@/components/epistemic/merge-reconciliation").then((m) => m.MergeReconciliationSection), { ssr: false });
-const ShadowBridgeSection = dynamic(() => import("@/components/epistemic/shadow-bridge").then((m) => m.ShadowBridgeSection), { ssr: false });
-const MmrProofsSection = dynamic(() => import("@/components/epistemic/mmr-proofs").then((m) => m.MmrProofsSection), { ssr: false });
-const InvariantMinerSection = dynamic(() => import("@/components/epistemic/invariant-miner").then((m) => m.InvariantMinerSection), { ssr: false });
-const CliTerminalSection = dynamic(() => import("@/components/epistemic/cli-terminal").then((m) => m.CliTerminalSection), { ssr: false });
-const FederationSection = dynamic(() => import("@/components/epistemic/federation").then((m) => m.FederationSection), { ssr: false });
-const TimelineSection = dynamic(() => import("@/components/epistemic/timeline").then((m) => m.TimelineSection), { ssr: false });
-const PolicyDiffSection = dynamic(() => import("@/components/epistemic/policy-diff").then((m) => m.PolicyDiffSection), { ssr: false });
-const ZkCircuitSection = dynamic(() => import("@/components/epistemic/zk-circuit").then((m) => m.ZkCircuitSection), { ssr: false });
-const AuditReportsSection = dynamic(() => import("@/components/epistemic/audit-reports").then((m) => m.AuditReportsSection), { ssr: false });
-const PolicyVersioningSection = dynamic(() => import("@/components/epistemic/policy-versioning").then((m) => m.PolicyVersioningSection), { ssr: false });
-const TemplateLibrarySection = dynamic(() => import("@/components/epistemic/template-library").then((m) => m.TemplateLibrarySection), { ssr: false });
-const PerformanceMetricsSection = dynamic(() => import("@/components/epistemic/performance-metrics").then((m) => m.PerformanceMetricsSection), { ssr: false });
-const GlobalSearch = dynamic(() => import("@/components/epistemic/global-search").then((m) => m.GlobalSearch), { ssr: false });
-const KeyboardShortcutsPanel = dynamic(() => import("@/components/epistemic/keyboard-shortcuts").then((m) => m.KeyboardShortcutsPanel), { ssr: false });
-const NotificationCenter = dynamic(() => import("@/components/epistemic/notification-center").then((m) => m.NotificationCenter), { ssr: false });
+const OverviewSection = lazy(() => import("@/components/epistemic/overview").then(m => ({ default: m.OverviewSection as ComponentType<any> })));
+const PolicyStudioSection = lazy(() => import("@/components/epistemic/policy-studio").then(m => ({ default: m.PolicyStudioSection as ComponentType<any> })));
+const DagTopologySection = lazy(() => import("@/components/epistemic/dag-topology").then(m => ({ default: m.DagTopologySection as ComponentType<any> })));
+const MergeReconciliationSection = lazy(() => import("@/components/epistemic/merge-reconciliation").then(m => ({ default: m.MergeReconciliationSection as ComponentType<any> })));
+const ShadowBridgeSection = lazy(() => import("@/components/epistemic/shadow-bridge").then(m => ({ default: m.ShadowBridgeSection as ComponentType<any> })));
+const MmrProofsSection = lazy(() => import("@/components/epistemic/mmr-proofs").then(m => ({ default: m.MmrProofsSection as ComponentType<any> })));
+const TimelineSection = lazy(() => import("@/components/epistemic/timeline").then(m => ({ default: m.TimelineSection as ComponentType<any> })));
+const CliTerminalSection = lazy(() => import("@/components/epistemic/cli-terminal").then(m => ({ default: m.CliTerminalSection as ComponentType<any> })));
+const FederationSection = lazy(() => import("@/components/epistemic/federation").then(m => ({ default: m.FederationSection as ComponentType<any> })));
+const PerformanceMetricsSection = lazy(() => import("@/components/epistemic/performance-metrics").then(m => ({ default: m.PerformanceMetricsSection as ComponentType<any> })));
+const ComparisonMatrixSection = lazy(() => import("@/components/epistemic/comparison-matrix").then(m => ({ default: m.ComparisonMatrixSection as ComponentType<any> })));
+const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
+
+const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
+  overview: OverviewSection,
+  studio: PolicyStudioSection,
+  topology: DagTopologySection,
+  merges: MergeReconciliationSection,
+  shadow: ShadowBridgeSection,
+  proofs: MmrProofsSection,
+  timeline: TimelineSection,
+  cli: CliTerminalSection,
+  federation: FederationSection,
+  metrics: PerformanceMetricsSection,
+  comparison: ComparisonMatrixSection,
+};
 
 export default function Home() {
   const [active, setActive] = useState<SectionId>("overview");
-  const [health, setHealth] = useState<number | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [health, setHealth] = useState<number | null>(null);
   const sectionIds = SECTIONS.map((s) => s.id);
   const { pinned, toggle: togglePin, ready: pinnedReady } = usePinnedSections(sectionIds);
   const pinnedSections = SECTIONS.filter((s) => pinned.has(s.id));
@@ -112,12 +108,24 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
+  // ⌘K / Ctrl+K keyboard shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen((o) => !o); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // Section navigation & arrow keys
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (cmdOpen) return; // don't handle when palette is open
       const target = e.target as HTMLElement;
       const inInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
-      if ((e.key === "?" || (e.shiftKey && e.key === "/")) && !inInput) { e.preventDefault(); setShortcutsOpen((o) => !o); return; }
       if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey && e.key >= "1" && e.key <= "9") {
         const idx = parseInt(e.key, 10) - 1;
         if (idx < SECTIONS.length) { setActive(SECTIONS[idx].id); window.scrollTo({ top: 0, behavior: "smooth" }); }
@@ -126,34 +134,27 @@ export default function Home() {
         const ci = SECTIONS.findIndex((s) => s.id === active);
         if (e.key === "ArrowLeft" && ci > 0) { e.preventDefault(); setActive(SECTIONS[ci - 1].id); }
         else if (e.key === "ArrowRight" && ci < SECTIONS.length - 1) { e.preventDefault(); setActive(SECTIONS[ci + 1].id); }
+        else if (e.key === "F8") { e.preventDefault(); setNotifOpen((o) => !o); }
+        else if (e.key === "?") { e.preventDefault(); setShortcutsOpen((o) => !o); }
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [active]);
+  }, [active, cmdOpen]);
 
   const jump = useCallback((id: string) => { setActive(id as SectionId); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
 
+  const handlePaletteNavigate = useCallback((id: string) => {
+    setActive(id as SectionId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setCmdOpen(false);
+  }, []);
+
   const sectionContent = useMemo(() => {
-    switch (active) {
-      case "overview": return <OverviewSection onJump={jump} />;
-      case "studio": return <PolicyStudioSection />;
-      case "topology": return <DagTopologySection />;
-      case "merges": return <MergeReconciliationSection />;
-      case "shadow": return <ShadowBridgeSection />;
-      case "proofs": return <MmrProofsSection />;
-      case "miner": return <InvariantMinerSection />;
-      case "cli": return <CliTerminalSection />;
-      case "federation": return <FederationSection />;
-      case "timeline": return <TimelineSection />;
-      case "diff": return <PolicyDiffSection />;
-      case "zkcircuit": return <ZkCircuitSection />;
-      case "audit": return <AuditReportsSection />;
-      case "versions": return <PolicyVersioningSection />;
-      case "templates": return <TemplateLibrarySection onCreate={() => jump("studio")} />;
-      case "metrics": return <PerformanceMetricsSection />;
-      default: return null;
-    }
+    const Comp = SECTION_COMPONENTS[active];
+    const props: Record<string, any> = {};
+    if (active === "overview") props.onJump = jump;
+    return createElement(Comp, props);
   }, [active, jump]);
 
   return (
@@ -163,9 +164,14 @@ export default function Home() {
         <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6">
           <div className="flex items-center gap-3 h-14">
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg bg-verified/15 border border-verified/30 flex items-center justify-center glow-verified"><ShieldCheck className="h-4.5 w-4.5 text-verified" /></div>
+              <div className="h-8 w-8 rounded-lg bg-verified/15 border border-verified/30 flex items-center justify-center glow-verified">
+                <ShieldCheck className="h-4.5 w-4.5 text-verified" />
+              </div>
               <div className="leading-none">
-                <div className="flex items-center gap-2"><span className="text-sm font-semibold tracking-tight">Epistemic Runtime</span><span className="hidden sm:inline-flex items-center rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground">epistemic://</span></div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold tracking-tight">Epistemic Runtime</span>
+                  <span className="hidden sm:inline-flex items-center rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground">v0.4</span>
+                </div>
                 <span className="text-[10px] text-muted-foreground font-mono">invariant-enforced DAG · CRDT · ZK-merge</span>
               </div>
             </div>
@@ -174,11 +180,18 @@ export default function Home() {
                 <span className={"h-2 w-2 rounded-full " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing animate-epistemic-pulse" : "bg-violating animate-epistemic-pulse")} />
                 <span className="text-xs font-mono tabular-nums">{health === null ? "—" : `${health}%`} health</span>
               </div>
-              <NotificationCenter />
-              <button type="button" onClick={() => setSearchOpen(true)} className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"><Search className="h-3.5 w-3.5" /><span className="hidden sm:inline">Search</span></button>
-              <button type="button" onClick={() => setShortcutsOpen(true)} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"><Keyboard className="h-3.5 w-3.5" /></button>
+              <button type="button" onClick={() => setCmdOpen(true)} className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" title="Search sections (⌘K)">
+                <Search className="h-3.5 w-3.5" /><span className="hidden lg:inline">Search</span>
+                <kbd className="hidden lg:inline-flex items-center rounded border border-border/40 bg-muted/50 px-1 py-0.5 text-[9px] font-mono">⌘K</kbd>
+              </button>
+              <button type="button" onClick={() => setNotifOpen((o) => !o)} className="relative inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-verified/40 transition-colors" title="Notifications (F8)">
+                <Bell className="h-3.5 w-3.5" />
+                <kbd className="hidden lg:inline-flex items-center rounded border border-border/40 bg-muted/50 px-1 py-0.5 text-[9px] font-mono">F8</kbd>
+              </button>
+              <button type="button" onClick={() => setShortcutsOpen(true)} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" title="Keyboard shortcuts (?)">
+                <Keyboard className="h-3.5 w-3.5" />
+              </button>
               <ThemeToggleBtn />
-              <a href="#" onClick={(e) => e.preventDefault()} className="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"><BookOpen className="h-3.5 w-3.5" /> Spec</a>
             </div>
           </div>
           <nav className="relative flex items-center gap-1 overflow-x-auto pb-2 -mt-1 scrollbar-thin scroll-smooth" style={{ maskImage: "linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent)" }}>
@@ -223,14 +236,28 @@ export default function Home() {
         <div className="bg-grid-fine absolute inset-0 opacity-20 pointer-events-none" />
         <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 py-3">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime v0.3</span>
+            <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime v0.4</span>
             <span className="h-3 w-px bg-border/40" /><span className="font-mono">MMR · CRDT · ZK-STARK</span>
-            <span className="ml-auto"><span className="font-mono">policy DSL: <span className="text-verified">.epd</span></span></span>
+            <span className="h-3 w-px bg-border/40" /><span className="font-mono">{SECTIONS.length} sections</span>
+            <span className="h-3 w-px bg-border/40" /><span className="font-mono hidden sm:inline">SVG charts</span>
+            <span className="ml-auto flex items-center gap-3">
+              <span className="font-mono">policy DSL: <span className="text-verified">.epd</span></span>
+              <span className="h-3 w-px bg-border/40 hidden sm:inline" />
+              <span className="hidden sm:inline-flex items-center gap-1.5 font-mono"><span className="h-1.5 w-1.5 rounded-full bg-verified/60" />runtime active</span>
+            </span>
           </div>
         </div>
       </footer>
-      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} onNavigate={(section) => jump(section)} />
-      <KeyboardShortcutsPanel open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <CommandPalette
+        open={cmdOpen}
+        onClose={() => setCmdOpen(false)}
+        sections={SECTIONS}
+        onNavigate={handlePaletteNavigate}
+      />
+      <Suspense fallback={null}>
+        <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+      </Suspense>
+      <KeyboardShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }

@@ -17,7 +17,7 @@ import { timeAgo } from "@/lib/format";
 import type { PolicyRow } from "@/lib/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { GradientBorderCard, containerVariants, cardVariants, itemVariants } from "./primitives";
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
+import { MiniBar } from "./chart-primitives";
 
 type EventKind = "merge" | "shadow" | "violation";
 
@@ -252,20 +252,21 @@ export function TimelineSection() {
   );
 }
 
-function RechartsHistogram({ data, onHover, onSelect }: { data: { time: string; merge: number; shadow: number; violation: number; total: number; ts: number }[]; onHover: (idx: number | null) => void; onSelect: (idx: number) => void }) {
+function RechartsHistogram({ data }: { data: { time: string; merge: number; shadow: number; violation: number; total: number; ts: number }[]; onHover: (idx: number | null) => void; onSelect: (idx: number) => void }) {
   if (data.length === 0) return <div className="h-16 flex items-center justify-center text-xs text-muted-foreground">No data</div>;
   return (
-    <ResponsiveContainer width="100%" height={80}>
-      <BarChart data={data} barCategoryGap={1} barGap={0}>
-        <XAxis dataKey="time" tick={{ fontSize: 9, fill: "oklch(0.55 0.01 160)" }} axisLine={false} tickLine={false} interval={Math.max(0, Math.floor(data.length / 8))} />
-        <YAxis hide />
-        <RechartsTooltip contentStyle={{ backgroundColor: "oklch(0.22 0.014 168)", border: "1px solid oklch(0.32 0.014 165)", borderRadius: "6px", fontSize: "11px" }}
-          formatter={(value: number, name: string) => [value, name.charAt(0).toUpperCase() + name.slice(1)]} />
-        <Bar dataKey="violation" stackId="a" fill="oklch(0.64 0.21 25 / 0.7)" onMouseEnter={(_, idx) => onHover(idx)} onMouseLeave={() => onHover(null)} onClick={(_, idx) => onSelect(idx)} />
-        <Bar dataKey="shadow" stackId="a" fill="oklch(0.80 0.15 80 / 0.7)" />
-        <Bar dataKey="merge" stackId="a" fill="oklch(0.78 0.16 160 / 0.7)" radius={[2, 2, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div className="h-20 w-full">
+      <MiniBar
+        data={data.map((d) => ({
+          label: d.time.length > 5 ? d.time.slice(0, 4) + "…" : d.time,
+          value: d.total,
+          color: d.violation > d.merge && d.violation > d.shadow ? "violating" : d.shadow > d.merge ? "repairing" : "verified",
+        }))}
+        width={400}
+        height={75}
+        className="w-full"
+      />
+    </div>
   );
 }
 

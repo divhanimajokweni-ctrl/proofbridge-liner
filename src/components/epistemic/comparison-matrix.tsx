@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
-import { GradientBorderCard, containerVariants, cardVariants, itemVariants, StatusPill, GridOverlay, TopAccentBar, CHART_TOOLTIP_STYLE } from "./primitives";
+import { GradientBorderCard, containerVariants, cardVariants, itemVariants, StatusPill, GridOverlay, TopAccentBar } from "./primitives";
 
 type EnforcementMode = "strict" | "moderate" | "permissive";
 
@@ -49,37 +48,67 @@ function fmtRel(iso: string): string {
 
 interface Dim { key: keyof ComparisonPolicy; label: string; icon: React.ComponentType<{ className?: string }>; fmt: (v: unknown, p: ComparisonPolicy) => React.ReactNode; cmp: (v: unknown[]) => [number, number]; hi: boolean }
 
-const numCmp = (v: unknown[], hi: boolean) => { const n = v as number[]; return hi ? [n.indexOf(Math.max(...n)), n.indexOf(Math.min(...n))] : [n.indexOf(Math.min(...n)), n.indexOf(Math.max(...n))]; };
+const numCmp = (v: unknown[], hi: boolean): [number, number] => { const n = v as number[]; return hi ? [n.indexOf(Math.max(...n)), n.indexOf(Math.min(...n))] : [n.indexOf(Math.min(...n)), n.indexOf(Math.max(...n))] };
 const hc = (v: number) => v >= 85 ? "text-verified" : v >= 60 ? "text-repairing" : "text-violating";
 
 const DIMS: Dim[] = [
   { key: "invariantCount", label: "Invariant Count", icon: ShieldCheck, fmt: (v) => <span className="font-mono text-sm">{v as number}</span>, cmp: (v) => numCmp(v, true), hi: true },
   { key: "shardCount", label: "Shard Count", icon: Layers, fmt: (v) => <span className="font-mono text-sm">{v as number}</span>, cmp: (v) => numCmp(v, true), hi: true },
-  { key: "healthScore", label: "Health Score", icon: Activity, fmt: (v) => <span className={cn("font-mono text-sm font-semibold", hc(v as number))}>{v}%</span>, cmp: (v) => numCmp(v, true), hi: true },
+  { key: "healthScore", label: "Health Score", icon: Activity, fmt: (v) => <span className={cn("font-mono text-sm font-semibold", hc(v as number))}>{v as number}%</span>, cmp: (v) => numCmp(v, true), hi: true },
   { key: "mergeSuccessRate", label: "Merge Rate", icon: GitBranch, fmt: (v) => { const n = v as number; return <span className={cn("font-mono text-sm", n >= 90 ? "text-verified" : n >= 75 ? "text-repairing" : "text-violating")}>{n.toFixed(1)}%</span>; }, cmp: (v) => numCmp(v, true), hi: true },
-  { key: "shadowEnabled", label: "Shadow", icon: Gauge, fmt: (v) => v ? <StatusPill status="verified" label="Yes" className="text-[10px] px-2 py-0" /> : <StatusPill status="idle" label="No" className="text-[10px] px-2 py-0" />, cmp: (v) => { const b = v as boolean[]; return [b.indexOf(true) ?? 0, b.indexOf(false) ?? 0]; }, hi: true },
+  { key: "shadowEnabled", label: "Shadow", icon: Gauge, fmt: (v) => v ? <StatusPill status="verified" label="Yes" className="text-[10px] px-2 py-0" /> : <StatusPill status="idle" label="No" className="text-[10px] px-2 py-0" />, cmp: (v): [number, number] => { const b = v as boolean[]; return [b.indexOf(true) ?? 0, b.indexOf(false) ?? 0]; }, hi: true },
   { key: "activeViolations", label: "Violations", icon: AlertTriangle, fmt: (v, p) => <span className={cn("font-mono text-sm", (v as number) === 0 ? "text-verified" : p.violationSeverities.includes("critical") ? "text-violating" : "text-repairing")}>{v as number}</span>, cmp: (v) => numCmp(v, false), hi: false },
   { key: "avgDivergence", label: "Avg Divergence", icon: Activity, fmt: (v, p) => { const n = v as number; const T = p.divergenceTrend === "up" ? ArrowUpRight : p.divergenceTrend === "down" ? ArrowDownRight : Minus; return <span className="inline-flex items-center gap-1"><span className={cn("font-mono text-sm", n < 0.01 ? "text-verified" : n < 0.1 ? "text-repairing" : "text-violating")}>{n.toFixed(3)}</span><T className={cn("h-3 w-3", p.divergenceTrend === "down" ? "text-verified" : p.divergenceTrend === "up" ? "text-violating" : "text-muted-foreground")} /></span>; }, cmp: (v) => numCmp(v, false), hi: false },
   { key: "zkProofs", label: "ZK Proofs", icon: Lock, fmt: (v) => <span className="font-mono text-sm">{v as number}</span>, cmp: (v) => numCmp(v, true), hi: true },
-  { key: "lastModified", label: "Last Modified", icon: Clock, fmt: (v) => <span className="font-mono text-xs text-muted-foreground">{fmtRel(v as string)}</span>, cmp: (v) => { const t = (v as string[]).map(s => new Date(s).getTime()); return [t.indexOf(Math.max(...t)), t.indexOf(Math.min(...t))]; }, hi: true },
-  { key: "enforcementMode", label: "Enforcement", icon: ShieldCheck, fmt: (v) => { const c: Record<EnforcementMode, string> = { strict: "border-verified/30 bg-verified/10 text-verified", moderate: "border-repairing/30 bg-repairing/10 text-repairing", permissive: "border-violating/30 bg-violating/10 text-violating" }; return <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", c[v as EnforcementMode])}>{(v as string).charAt(0).toUpperCase() + (v as string).slice(1)}</span>; }, cmp: (v) => { const o: EnforcementMode[] = ["strict", "moderate", "permissive"]; const r = (v as EnforcementMode[]).map(x => o.indexOf(x)); return [r.indexOf(Math.min(...r)), r.indexOf(Math.max(...r))]; }, hi: true },
+  { key: "lastModified", label: "Last Modified", icon: Clock, fmt: (v) => <span className="font-mono text-xs text-muted-foreground">{fmtRel(v as string)}</span>, cmp: (v): [number, number] => { const t = (v as string[]).map(s => new Date(s).getTime()); return [t.indexOf(Math.max(...t)), t.indexOf(Math.min(...t))]; }, hi: true },
+  { key: "enforcementMode", label: "Enforcement", icon: ShieldCheck, fmt: (v) => { const c: Record<EnforcementMode, string> = { strict: "border-verified/30 bg-verified/10 text-verified", moderate: "border-repairing/30 bg-repairing/10 text-repairing", permissive: "border-violating/30 bg-violating/10 text-violating" }; return <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold", c[v as EnforcementMode])}>{(v as string).charAt(0).toUpperCase() + (v as string).slice(1)}</span>; }, cmp: (v): [number, number] => { const o: EnforcementMode[] = ["strict", "moderate", "permissive"]; const r = (v as EnforcementMode[]).map(x => o.indexOf(x)); return [r.indexOf(Math.min(...r)), r.indexOf(Math.max(...r))]; }, hi: true },
 ];
 
-function buildRadarData(policies: ComparisonPolicy[]) {
-  if (!policies.length) return [];
+/* ── Multi-series radar chart (pure SVG, no recharts) ── */
+const RADAR_AXES = [
+  { label: "Health", key: "healthScore" as const, max: 100 },
+  { label: "Merge Rate", key: "mergeSuccessRate" as const, max: 100 },
+  { label: "Inv. Cov.", key: "invariantCount" as const, max: 0 },
+  { label: "ZK Cov.", key: "zkProofs" as const, max: 0 },
+  { label: "Viol-Free", key: "violationFree" as const, max: 100 },
+];
+
+function MultiRadarOverlay({ policies, colors, size = 280 }: { policies: ComparisonPolicy[]; colors: string[]; size?: number }) {
   const maxInv = Math.max(...ALL_POLICIES.map(p => p.invariantCount));
   const maxZk = Math.max(...ALL_POLICIES.map(p => p.zkProofs));
-  return [
-    { axis: "Health", key: "healthScore" as const, max: 100 },
-    { axis: "Merge Rate", key: "mergeSuccessRate" as const, max: 100 },
-    { axis: "Invariant Cov.", key: "invariantCount" as const, max: maxInv },
-    { axis: "ZK Coverage", key: "zkProofs" as const, max: maxZk },
-    { axis: "Violation-Free", key: "violationFree" as const, max: 100 },
-  ].map(({ axis, key, max }) => {
-    const entry: Record<string, string | number> = { axis };
-    for (const p of policies) entry[p.name] = Math.round(((key === "violationFree" ? Math.max(0, 100 - p.activeViolations * 15) : p[key] as number) / max) * 100);
-    return entry;
-  });
+  const axes = RADAR_AXES.map(a => a.key === "invariantCount" ? { ...a, max: maxInv } : a.key === "zkProofs" ? { ...a, max: maxZk } : a);
+  const cx = size / 2, cy = size / 2, r = size / 2 - 26, n = axes.length, step = (2 * Math.PI) / n;
+  const pt = (a: number, rad: number) => ({ x: cx + rad * Math.cos(a - Math.PI / 2), y: cy + rad * Math.sin(a - Math.PI / 2) });
+  const ringPath = (pct: number) => axes.map((_, i) => `${i ? "L" : "M"}${pt(i * step, pct * r).x.toFixed(1)},${pt(i * step, pct * r).y.toFixed(1)}`).join(" ") + " Z";
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Multi-policy radar comparison">
+      {[0.25, 0.5, 0.75, 1].map((pct, ri) => (
+        <path key={ri} d={ringPath(pct)} fill="none" stroke="currentColor" strokeWidth={0.5} opacity={0.08 + ri * 0.04} strokeDasharray={ri < 3 ? "2 3" : undefined} />
+      ))}
+      {axes.map((_, i) => (
+        <line key={i} x1={cx} y1={cy} x2={pt(i * step, r).x} y2={pt(i * step, r).y} stroke="currentColor" strokeWidth={0.5} opacity={0.1} />
+      ))}
+      {policies.map((p, pi) => {
+        const pts = axes.map((a, i) => {
+          const val = a.key === "violationFree" ? Math.max(0, 100 - p.activeViolations * 15) : p[a.key] as number;
+          return pt(i * step, Math.min(val / a.max, 1) * r);
+        });
+        const d = pts.map((pp, i) => `${i ? "L" : "M"}${pp.x.toFixed(1)},${pp.y.toFixed(1)}`).join(" ") + " Z";
+        return (
+          <g key={p.id} style={{ transition: "fill .3s,stroke .3s" }}>
+            <path d={d} fill={colors[pi]} fillOpacity={0.08} stroke={colors[pi]} strokeWidth={1.5} strokeLinejoin="round" />
+            {pts.map((pp, i) => <circle key={i} cx={pp.x} cy={pp.y} r={2.5} fill={colors[pi]} style={{ transition: "fill .3s" }} />)}
+          </g>
+        );
+      })}
+      {axes.map((a, i) => (
+        <text key={i} x={pt(i * step, r + 14).x} y={pt(i * step, r + 14).y} textAnchor="middle" dominantBaseline="central" fill="currentColor" fontSize={8} opacity={0.5}>
+          {a.label}
+        </text>
+      ))}
+    </svg>
+  );
 }
 
 function generateDiffSummary(policies: ComparisonPolicy[]): string[] {
@@ -106,7 +135,7 @@ export function ComparisonMatrixSection() {
   const [selectedIds, setSelectedIds] = useState<string[]>([ALL_POLICIES[0].id, ALL_POLICIES[1].id, ALL_POLICIES[3].id]);
   const [selectorOpen, setSelectorOpen] = useState(false);
   const selectedPolicies = useMemo(() => ALL_POLICIES.filter(p => selectedIds.includes(p.id)), [selectedIds]);
-  const radarData = useMemo(() => buildRadarData(selectedPolicies), [selectedPolicies]);
+
   const diffSummary = useMemo(() => generateDiffSummary(selectedPolicies), [selectedPolicies]);
   const togglePolicy = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : prev.length >= MAX_SELECT ? prev : [...prev, id]);
 
@@ -210,16 +239,9 @@ export function ComparisonMatrixSection() {
             <div className="relative"><div className="noise-overlay rounded-lg" />
               <div className="relative rounded-xl bg-card/60 backdrop-blur-xl border border-border/30 p-4">
                 <div className="flex items-center gap-2 mb-3"><Activity className="h-4 w-4 text-repairing" /><h3 className="text-sm font-semibold">Normalized Radar</h3><span className="text-[10px] text-muted-foreground font-mono ml-auto">0–100</span></div>
-                <ResponsiveContainer width="100%" height={300}>
-                  <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="72%">
-                    <PolarGrid stroke="oklch(0.32 0.014 165 / 0.5)" strokeDasharray="2 3" />
-                    <PolarAngleAxis dataKey="axis" tick={{ fontSize: 10, fill: "oklch(0.68 0.015 160)" }} />
-                    <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 8, fill: "oklch(0.55 0.01 160)" }} tickCount={5} />
-                    {selectedPolicies.map((p, i) => <Radar key={p.id} name={p.name} dataKey={p.name} stroke={RADAR_COLORS[i]} fill={RADAR_COLORS[i]} fillOpacity={0.12} strokeWidth={2} dot={{ r: 3, fill: RADAR_COLORS[i], stroke: RADAR_COLORS[i], strokeWidth: 1 }} />)}
-                    <RechartsTooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [`${v}%`, ""]} />
-                    <Legend wrapperStyle={{ fontSize: 10 }} iconType="circle" iconSize={8} />
-                  </RadarChart>
-                </ResponsiveContainer>
+                <div className="flex items-center justify-center">
+                  <MultiRadarOverlay policies={selectedPolicies} colors={RADAR_COLORS} size={280} />
+                </div>
                 <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
                   {selectedPolicies.map((p, i) => <div key={p.id} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: RADAR_COLORS[i] }} /><span className="text-[10px] text-muted-foreground font-mono">{p.name}</span></div>)}
                 </div>

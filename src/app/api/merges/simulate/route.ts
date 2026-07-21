@@ -35,13 +35,13 @@ export async function POST(req: Request) {
       const ev = evaluateInvariant(inv, proposedState);
       return {
         name: inv.name,
-        description: inv.description,
+        description: inv.message,
         severity: inv.severity,
         soft: inv.soft,
         passed: ev.passed,
         actual: ev.actual,
         expected: ev.expected,
-        predicate: inv.predicateRaw ?? "",
+        predicate: inv.rawPredicate ?? "",
       };
     });
 

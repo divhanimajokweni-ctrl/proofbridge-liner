@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, AlertTriangle, XCircle, ShieldOff, Circle } from "lucide-react";
 import type { ShardStatus, Severity, MergeStatus } from "@/lib/types";
+import type { Variants } from "framer-motion";
 
 /* ─── Gradient-border card wrapper ─── */
 export function GradientBorderCard({
@@ -11,19 +12,28 @@ export function GradientBorderCard({
   className,
   gradientFrom,
   gradientTo,
+  gradient,
   ...props
 }: {
   children: React.ReactNode;
   className?: string;
   gradientFrom?: string;
   gradientTo?: string;
+  gradient?: string; // Tailwind gradient utility classes (e.g. "from-verified/40 via-repairing/20 to-violating/20").
+                      // Takes precedence over gradientFrom/gradientTo: inline style background always wins
+                      // over stylesheet classes, so when 'gradient' is supplied we must skip the inline style
+                      // entirely or the Tailwind classes would be silently overridden and never render.
 } & React.ComponentPropsWithoutRef<typeof Card>) {
   return (
     <div
-      className={cn("relative rounded-lg p-[1px]", className)}
-      style={{
-        background: `linear-gradient(135deg, ${gradientFrom ?? "oklch(0.78 0.16 160 / 0.25)"}, ${gradientTo ?? "oklch(0.32 0.014 165 / 0.15)"})`,
-      }}
+      className={cn("relative rounded-lg p-[1px]", gradient && `bg-gradient-to-br ${gradient}`, className)}
+      style={
+        gradient
+          ? undefined
+          : {
+              background: `linear-gradient(135deg, ${gradientFrom ?? "oklch(0.78 0.16 160 / 0.25)"}, ${gradientTo ?? "oklch(0.32 0.014 165 / 0.15)"})`,
+            }
+      }
     >
       <Card className="bg-card border-0 rounded-[7px] h-full" {...props}>
         {children}
@@ -33,15 +43,15 @@ export function GradientBorderCard({
 }
 
 /* ─── Shared framer-motion variants ─── */
-export const containerVariants = {
+export const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
 };
-export const cardVariants = {
+export const cardVariants: Variants = {
   hidden: { opacity: 0, y: 16, scale: 0.97 },
   visible: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 24 } },
 };
-export const itemVariants = {
+export const itemVariants: Variants = {
   hidden: { opacity: 0, x: -8 },
   visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 26 } },
 };

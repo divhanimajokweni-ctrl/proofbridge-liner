@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { SAMPLE_POLICIES, validateEpd, type PolicyNode, type InvariantNode } from "@/lib/epd";
 import { motion, AnimatePresence } from "framer-motion";
 import { GradientBorderCard, containerVariants, cardVariants, itemVariants } from "./primitives";
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts";
+import { MiniBar } from "./chart-primitives";
 
 type DiffStatus = "added" | "removed" | "changed" | "unchanged";
 
@@ -116,10 +116,10 @@ export function PolicyDiffSection() {
   }, [result, leftSource, rightSource]);
 
   const diffStatsData = useMemo(() => result ? [
-    { name: "Added", value: result.added, fill: "oklch(0.78 0.16 160 / 0.7)" },
-    { name: "Removed", value: result.removed, fill: "oklch(0.64 0.21 25 / 0.7)" },
-    { name: "Changed", value: result.changed, fill: "oklch(0.80 0.15 80 / 0.7)" },
-    { name: "Unchanged", value: result.unchanged, fill: "oklch(0.42 0.01 165 / 0.5)" },
+    { label: "Added", value: result.added, color: "verified" },
+    { label: "Removed", value: result.removed, color: "violating" },
+    { label: "Changed", value: result.changed, color: "repairing" },
+    { label: "Same", value: result.unchanged, color: "quarantined" },
   ] : [], [result]);
 
   return (
@@ -164,14 +164,8 @@ export function PolicyDiffSection() {
                   <DiffStat icon={AlertTriangle} label="Changed" value={result.changed} accent="repairing" />
                   <DiffStat icon={Equal} label="Unchanged" value={result.unchanged} accent="muted" />
                 </div>
-                <div className="h-[80px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={diffStatsData} layout="vertical" barCategoryGap={4}>
-                      <XAxis type="number" hide /><YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: "oklch(0.55 0.01 160)" }} axisLine={false} tickLine={false} width={65} />
-                      <RechartsTooltip contentStyle={{ backgroundColor: "oklch(0.22 0.014 168)", border: "1px solid oklch(0.32 0.014 165)", borderRadius: "6px", fontSize: "11px" }} />
-                      <Bar dataKey="value" radius={[0, 4, 4, 0]}>{diffStatsData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.fill} />)}</Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="h-[80px] flex items-center justify-center">
+                  <MiniBar data={diffStatsData} width={260} height={75} horizontal className="w-full" />
                 </div>
               </div>
             </GradientBorderCard>

@@ -1,0 +1,533 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useMemo, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import type { Variants } from "framer-motion";
+     6→import { SparkLine, DonutChart, MetricGauge } from "./chart-primitives";
+     7→import {
+     8→  Activity, GitBranch, ShieldCheck, Network, Boxes, KeyRound, Cpu,
+     9→  TrendingUp, AlertTriangle, Wrench, Sparkles, ArrowRight, Clock,
+    10→  LayoutGrid, FileText, Terminal, Globe2, CircuitBoard, History,
+    11→  GitCompare, FlaskConical, Library, GitGraph, Zap, Download, RefreshCw,
+    12→} from "lucide-react";
+    13→import { Card } from "@/components/ui/card";
+    14→import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+    15→import type { StatsResponse, ShardRow } from "@/lib/types";
+    16→import { StatusPill, Hash } from "./primitives";
+    17→
+    18→function generateSparkline(base: number, variance: number, length = 12): number[] {
+    19→  let seed = base * 7 + 31;
+    20→  const rand = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    21→  return Array.from({ length }, () => Math.max(0, Math.round((base + (rand() - 0.5) * 2 * variance) * 10) / 10));
+    22→}
+    23→
+    24→const cv = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
+    25→const cardV: Variants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 24 } } };
+    26→const secV = { hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+    27→
+    28→const CAPABILITY_ICONS: Record<string, typeof Activity> = {
+    29→  studio: GitBranch, templates: Library, topology: Network, dependencies: GitGraph,
+    30→  coverage: LayoutGrid, merges: Wrench, shadow: Cpu, proofs: KeyRound,
+    31→  zkcircuit: CircuitBoard, miner: Sparkles, timeline: Clock, diff: GitCompare,
+    32→  matrix: Activity, tests: FlaskConical, metrics: TrendingUp, versions: History,
+    33→  audit: FileText, cli: Terminal, federation: Globe2, overview: ShieldCheck,
+    34→};
+    35→
+    36→const ACT_CFG: Record<string, { icon: typeof Activity; color: string; bg: string; border: string; dot: string; label: string }> = {
+    37→  merge: { icon: GitBranch, color: "text-verified", bg: "bg-verified/10", border: "border-verified/20", dot: "bg-verified", label: "Merge" },
+    38→  shadow: { icon: Cpu, color: "text-repairing", bg: "bg-repairing/10", border: "border-repairing/20", dot: "bg-repairing", label: "Shadow" },
+    39→  violation: { icon: AlertTriangle, color: "text-violating", bg: "bg-violating/10", border: "border-violating/20", dot: "bg-violating", label: "Breach" },
+    40→};
+    41→
+    42→
+    43→function MetricChip({ label, value, color }: { label: string; value: string; color: string }) {
+    44→  return (
+    45→    <div className="rounded-md border border-border/40 bg-background/40 px-2.5 py-1.5">
+    46→      <div className="text-[9px] uppercase tracking-wide text-muted-foreground">{label}</div>
+    47→      <div className={`mt-0.5 font-mono text-sm font-semibold ${color}`}>{value}</div>
+    48→    </div>
+    49→  );
+    50→}
+    51→
+    52→function SeverityBar({ label, count, max, color }: { label: string; count: number; max: number; color: string }) {
+    53→  const pct = max > 0 ? (count / max) * 100 : 0;
+    54→  return (
+    55→    <div className="flex-1 min-w-0">
+    56→      <div className="flex items-center justify-between mb-0.5">
+    57→        <span className="text-[9px] text-muted-foreground font-mono uppercase">{label}</span>
+    58→        <span className="text-[9px] font-mono tabular-nums">{count}</span>
+    59→      </div>
+    60→      <div className="h-1.5 rounded-full bg-background/60 overflow-hidden">
+    61→        <motion.div className={`h-full rounded-full ${color}`} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5 }} />
+    62→      </div>
+    63→    </div>
+    64→  );
+    65→}
+    66→
+    67→function CardShell({ children, accent }: { children: React.ReactNode; accent?: string }) {
+    68→  return (
+    69→    <Card className="bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+    70→      {accent && <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: accent }} />}
+    71→      <div className="bg-grid-fine absolute inset-0 opacity-15" />
+    72→      <div className="relative">{children}</div>
+    73→    </Card>
+    74→  );
+    75→}
+    76→
+    77→function SectionHeader2({ icon: Icon, title, extra }: { icon: typeof Activity; title: string; extra?: React.ReactNode }) {
+    78→  return (
+    79→    <div className="flex items-center gap-2 mb-4">
+    80→      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-verified/10">
+    81→        <Icon className="h-3.5 w-3.5 text-verified" />
+    82→      </div>
+    83→      <h3 className="text-sm font-semibold">{title}</h3>
+    84→      {extra}
+    85→    </div>
+    86→  );
+    87→}
+    88→
+    89→const CAPABILITIES = [
+    90→  { id: "studio", label: "Policy DSL Studio", hint: ".epd → enforcers", g: "from-verified/8 to-verified/2" },
+    91→  { id: "templates", label: "Template Library", hint: "create from template", g: "from-verified/8 to-verified/2" },
+    92→  { id: "topology", label: "DAG Shard Topology", hint: "invariant-aware sharding", g: "from-verified/8 to-verified/2" },
+    93→  { id: "merges", label: "Self-Repairing Merges", hint: "least-divergent correction", g: "from-repairing/8 to-repairing/2" },
+    94→  { id: "shadow", label: "Shadow Bridge", hint: "digital-twin takeover", g: "from-repairing/8 to-repairing/2" },
+    95→  { id: "proofs", label: "MMR Ancestry Proofs", hint: "ZK verifiable history", g: "from-verified/8 to-verified/2" },
+    96→  { id: "zkcircuit", label: "ZK Proof Circuit", hint: "SNARK constraints", g: "from-verified/8 to-verified/2" },
+    97→  { id: "miner", label: "Invariant Miner", hint: "AI-mined candidates", g: "from-verified/8 to-verified/2" },
+    98→  { id: "timeline", label: "Replay Timeline", hint: "event scrubber", g: "from-repairing/8 to-repairing/2" },
+    99→  { id: "diff", label: "Policy Diff", hint: "compare .epd", g: "from-verified/8 to-verified/2" },
+   100→  { id: "metrics", label: "Performance Metrics", hint: "live charts", g: "from-verified/8 to-verified/2" },
+   101→  { id: "versions", label: "Policy Versioning", hint: "revision history", g: "from-verified/8 to-verified/2" },
+   102→  { id: "audit", label: "Audit Reports", hint: "compliance export", g: "from-repairing/8 to-repairing/2" },
+   103→  { id: "cli", label: "CLI Terminal", hint: "validate .epd files", g: "from-repairing/8 to-repairing/2" },
+   104→  { id: "federation", label: "epistemic:// Federation", hint: "multi-org reconciliation", g: "from-verified/8 to-verified/2" },
+   105→];
+   106→
+   107→export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
+   108→  const [stats, setStats] = useState<StatsResponse | null>(null);
+   109→  const [metrics, setMetrics] = useState<{
+   110→    timeSeries: { t: number; merges: number; violations: number; repairs: number }[];
+   111→    throughput: { successRate: number; avgDivergence: number; avgIterations: number };
+   112→    severityBreakdown: { critical: number; high: number; medium: number; low: number };
+   113→    latency: { p50: number; p95: number; p99: number };
+   114→  } | null>(null);
+   115→  const [loading, setLoading] = useState(true);
+   116→  const [shards, setShards] = useState<ShardRow[] | null>(null);
+   117→  const [autoRefresh, setAutoRefresh] = useState(true);
+   118→
+   119→  useEffect(() => {
+   120→    let alive = true;
+   121→    const load = () => fetch("/api/stats").then((r) => r.json()).then((d) => alive && (setStats(d), setLoading(false))).catch(() => alive && setLoading(false));
+   122→    load();
+   123→    const t = autoRefresh ? setInterval(load, 8000) : undefined;
+   124→    return () => { alive = false; if (t) clearInterval(t); };
+   125→  }, [autoRefresh]);
+   126→
+   127→  useEffect(() => {
+   128→    let alive = true;
+   129→    const load = () => fetch("/api/metrics").then((r) => r.json()).then((d) => alive && setMetrics(d)).catch(() => {});
+   130→    load();
+   131→    const t = autoRefresh ? setInterval(load, 15000) : undefined;
+   132→    return () => { alive = false; if (t) clearInterval(t); };
+   133→  }, [autoRefresh]);
+   134→
+   135→  useEffect(() => {
+   136→    let alive = true;
+   137→    const load = () => fetch("/api/shards").then((r) => r.json()).then((d) => alive && setShards(d.shards ?? [])).catch(() => {});
+   138→    load();
+   139→    const t = autoRefresh ? setInterval(load, 15000) : undefined;
+   140→    return () => { alive = false; if (t) clearInterval(t); };
+   141→  }, [autoRefresh]);
+   142→
+   143→  if (loading || !stats) {
+   144→    return (
+   145→      <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" initial="hidden" animate="visible" variants={cv}>
+   146→        {Array.from({ length: 8 }).map((_, i) => (
+   147→          <motion.div key={i} variants={cardV} className="h-32 rounded-xl bg-card/40 animate-pulse border border-border/30" />
+   148→        ))}
+   149→      </motion.div>
+   150→    );
+   151→  }
+   152→
+   153→  const healthScore = stats.shardHealth.healthScore;
+   154→  const healthStatus = healthScore >= 85 ? "healthy" : healthScore >= 60 ? "repairing" : "violating";
+   155→  const gaugeColor = healthStatus === "healthy" ? "var(--verified)" : healthStatus === "repairing" ? "var(--repairing)" : "var(--violating)";
+   156→
+   157→  const kpis = [
+   158→    { label: "Epistemic Health", value: `${healthScore}%`, numericValue: healthScore, sub: `${stats.shardHealth.healthy} ok · ${stats.shardHealth.repairing} fix · ${stats.shardHealth.violating} bad`, icon: ShieldCheck, status: healthStatus, sparkBase: healthScore, sparkVariance: 8, accentColor: gaugeColor },
+   159→    { label: "Policies", value: String(stats.counts.policies), numericValue: stats.counts.policies, sub: `${stats.counts.shards} shards`, icon: GitBranch, status: null, sparkBase: stats.counts.policies, sparkVariance: 2, accentColor: "var(--verified)" },
+   160→    { label: "Merge Success", value: `${stats.mergeHealth.successRate}%`, numericValue: stats.mergeHealth.successRate, sub: `${stats.mergeHealth.applied} applied · ${stats.mergeHealth.rejected} rejected`, icon: Wrench, status: null, sparkBase: stats.mergeHealth.successRate, sparkVariance: 6, accentColor: "var(--repairing)" },
+   161→    { label: "Anchored Proofs", value: `${stats.ancestry.anchoredRate}%`, numericValue: stats.ancestry.anchoredRate, sub: `${stats.ancestry.zkProofs}/${stats.ancestry.totalProofs} ZK`, icon: KeyRound, status: null, sparkBase: stats.ancestry.anchoredRate, sparkVariance: 5, accentColor: "var(--verified)" },
+   162→  ];
+   163→
+   164→  const activityItems = stats.activity.map((a, i) => {
+   165→    const kind = a.title.includes("breach") ? "violation" : a.kind;
+   166→    return { ...a, kind, config: ACT_CFG[kind] ?? ACT_CFG.merge };
+   167→  });
+   168→
+   169→  const inventory = [
+   170→    { icon: GitBranch, label: "Policies", value: stats.counts.policies, hint: "compiled .epd", max: Math.max(stats.counts.policies * 1.5, 10), color: "var(--verified)" },
+   171→    { icon: Network, label: "Shards", value: stats.counts.shards, hint: "partitions", max: Math.max(stats.counts.shards * 1.5, 10), color: "var(--verified)" },
+   172→    { icon: GitBranch, label: "Merge proposals", value: stats.counts.merges, hint: "cross-shard", max: Math.max(stats.counts.merges * 1.5, 10), color: "var(--repairing)" },
+   173→    { icon: KeyRound, label: "Ancestry proofs", value: stats.counts.proofs, hint: "MMR + ZK", max: Math.max(stats.counts.proofs * 1.5, 10), color: "var(--verified)" },
+   174→    { icon: AlertTriangle, label: "Drift violations", value: stats.counts.violations, hint: "miner feed", max: Math.max(stats.counts.violations * 1.5, 10), color: "var(--violating)" },
+   175→    { icon: Cpu, label: "Shadow events", value: stats.counts.shadowEvents, hint: "twin telemetry", max: Math.max(stats.counts.shadowEvents * 1.5, 10), color: "var(--repairing)" },
+   176→    { icon: Sparkles, label: "Mined invariants", value: stats.counts.mined, hint: "AI candidates", max: Math.max(stats.counts.mined * 1.5, 10), color: "var(--verified)" },
+   177→  ];
+   178→
+   179→  const COLOR_MAP: Record<string, string> = { healthy: "oklch(0.78 0.16 160)", repairing: "oklch(0.75 0.15 80)", violating: "oklch(0.65 0.2 25)" };
+   180→
+   181→  // Coverage ring data
+   182→  let passing = 0, violating = 0, softViolations = 0;
+   183→  if (shards && shards.length > 0) {
+   184→    for (const shard of shards) for (const ev of shard.invariantEvals) { if (ev.passed) passing++; else if (ev.soft) softViolations++; else violating++; }
+   185→  } else { passing = stats.shardHealth.healthy * 3; softViolations = stats.shardHealth.repairing * 2; violating = stats.shardHealth.violating * 2; }
+   186→  const totalInv = passing + violating + softViolations || 1;
+   187→  const ringData = [
+   188→    { name: "Passing", value: passing, fill: "oklch(0.78 0.16 160)" },
+   189→    { name: "Soft", value: softViolations, fill: "oklch(0.75 0.15 80)" },
+   190→    { name: "Violating", value: violating, fill: "oklch(0.65 0.2 25)" },
+   191→  ];
+   192→
+   193→  return (
+   194→    <motion.div className="space-y-5" initial="hidden" animate="visible" variants={cv}>
+   195→      {/* KPI strip */}
+   196→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+   197→        {kpis.map((k, idx) => <KpiCardWithSparkline key={k.label} kpi={k} idx={idx} />)}
+   198→        {/* Health gauge */}
+   199→        <motion.div variants={cardV} whileHover={{ scale: 1.02 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
+   200→          <Card className="relative overflow-hidden bg-card/60 backdrop-blur border-border/60 p-4 h-full">
+   201→            <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: `linear-gradient(90deg, ${gaugeColor}, transparent)` }} />
+   202→            <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   203→            <div className="relative flex flex-col items-center">
+   204→              <span className="text-xs uppercase tracking-wider text-muted-foreground mb-1">System Health</span>
+   205→              <MetricGauge value={healthScore} max={100} label={healthStatus} color={healthStatus === "healthy" ? "verified" : healthStatus === "repairing" ? "repairing" : "violating"} size={112} />
+   206→              <div className="flex items-center gap-1.5 mt-1">
+   207→                <span className="relative flex h-2 w-2">
+   208→                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-50" style={{ backgroundColor: gaugeColor }} />
+   209→                  <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: gaugeColor }} />
+   210→                </span>
+   211→                <span className="text-[10px] text-muted-foreground font-mono">system pulse</span>
+   212→              </div>
+   213→            </div>
+   214→          </Card>
+   215→        </motion.div>
+   216→      </div>
+   217→
+   218→      {/* Live System Pulse */}
+   219→      <motion.div variants={secV}>
+   220→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.75 0.15 80 / 0.3), oklch(0.65 0.2 25 / 0.2))">
+   221→          <SectionHeader2 icon={Activity} title="Live System Pulse" extra={
+   222→            <span className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
+   223→              <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-verified opacity-50" /><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-verified" /></span>
+   224→              24h · refresh 15s
+   225→            </span>
+   226→          } />
+   227→          {metrics ? (
+   228→            <>
+   229→              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+   230→                <MetricChip label="Success Rate" value={`${metrics.throughput.successRate}%`} color="text-verified" />
+   231→                <MetricChip label="Avg Divergence" value={metrics.throughput.avgDivergence.toFixed(2)} color="text-repairing" />
+   232→                <MetricChip label="Avg Iterations" value={metrics.throughput.avgIterations.toFixed(1)} color="text-verified" />
+   233→                <MetricChip label="P95 Latency" value={`${metrics.latency.p95}ms`} color="text-quarantined" />
+   234→              </div>
+   235→              <div className="w-full space-y-2">
+   236→                <div>
+   237→                  <div className="flex items-center gap-1.5 mb-0.5">
+   238→                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "oklch(0.78 0.16 160)" }} />
+   239→                    <span className="text-[9px] text-muted-foreground font-mono uppercase">Merges</span>
+   240→                  </div>
+   241→                  <SparkLine data={metrics.timeSeries.map(d => d.merges)} fill color="oklch(0.78 0.16 160)" width={320} height={40} />
+   242→                </div>
+   243→                <div>
+   244→                  <div className="flex items-center gap-1.5 mb-0.5">
+   245→                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "oklch(0.75 0.15 80)" }} />
+   246→                    <span className="text-[9px] text-muted-foreground font-mono uppercase">Repairs</span>
+   247→                  </div>
+   248→                  <SparkLine data={metrics.timeSeries.map(d => d.repairs)} fill color="oklch(0.75 0.15 80)" width={320} height={40} />
+   249→                </div>
+   250→                <div>
+   251→                  <div className="flex items-center gap-1.5 mb-0.5">
+   252→                    <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "oklch(0.65 0.2 25)" }} />
+   253→                    <span className="text-[9px] text-muted-foreground font-mono uppercase">Violations</span>
+   254→                  </div>
+   255→                  <SparkLine data={metrics.timeSeries.map(d => d.violations)} fill color="oklch(0.65 0.2 25)" width={320} height={40} />
+   256→                </div>
+   257→              </div>
+   258→              <div className="mt-3 flex items-center gap-3">
+   259→                <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide">Severity:</span>
+   260→                <div className="flex-1 flex items-center gap-2">
+   261→                  {(["critical", "high", "medium", "low"] as const).map((s, i) => {
+   262→                    const colors = ["bg-violating", "bg-repairing", "bg-quarantined", "bg-muted-foreground"];
+   263→                    const sevTotal = metrics.severityBreakdown.critical + metrics.severityBreakdown.high + metrics.severityBreakdown.medium + metrics.severityBreakdown.low;
+   264→                    return <SeverityBar key={s} label={s} count={metrics.severityBreakdown[s]} max={Math.max(sevTotal, 1)} color={colors[i]} />;
+   265→                  })}
+   266→                </div>
+   267→              </div>
+   268→            </>
+   269→          ) : (
+   270→            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
+   271→              <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-verified mr-2" />Loading live metrics…
+   272→            </div>
+   273→          )}
+   274→        </CardShell>
+   275→      </motion.div>
+   276→
+   277→      {/* Runtime Inventory + Activity */}
+   278→      <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4" variants={secV}>
+   279→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.75 0.15 80 / 0.3), transparent)">
+   280→          <SectionHeader2 icon={Boxes} title="Runtime Inventory" />
+   281→          <div className="space-y-3">
+   282→            {inventory.map((item) => {
+   283→              const Icon = item.icon;
+   284→              const pct = Math.min(100, (item.value / item.max) * 100);
+   285→              return (
+   286→                <div key={item.label} className="group/inv">
+   287→                  <div className="flex items-center gap-3">
+   288→                    <div className="h-7 w-7 rounded-md bg-background/60 border border-border/30 flex items-center justify-center group-hover/inv:border-border/60 transition-colors">
+   289→                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+   290→                    </div>
+   291→                    <div className="flex-1 min-w-0">
+   292→                      <div className="flex items-center justify-between">
+   293→                        <p className="text-sm">{item.label}</p>
+   294→                        <span className="text-lg font-semibold tabular-nums">{item.value}</span>
+   295→                      </div>
+   296→                      <div className="flex items-center gap-2 mt-0.5">
+   297→                        <div className="flex-1 h-1 rounded-full bg-background/60 overflow-hidden">
+   298→                          <motion.div className="h-full rounded-full" style={{ backgroundColor: item.color }} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6 }} />
+   299→                        </div>
+   300→                        <span className="text-[9px] text-muted-foreground font-mono shrink-0">{item.hint}</span>
+   301→                      </div>
+   302→                    </div>
+   303→                  </div>
+   304→                </div>
+   305→              );
+   306→            })}
+   307→          </div>
+   308→        </CardShell>
+   309→
+   310→        <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   311→          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-repairing/40 via-verified/30 to-transparent" />
+   312→          <div className="bg-grid-fine absolute inset-0 opacity-15" />
+   313→          <div className="relative">
+   314→            <div className="flex items-center gap-2 mb-4">
+   315→              <div className="flex h-6 w-6 items-center justify-center rounded-md bg-repairing/10"><Activity className="h-3.5 w-3.5 text-repairing" /></div>
+   316→              <h3 className="text-sm font-semibold">Live Epistemic Activity</h3>
+   317→              <span className="ml-auto flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono">
+   318→                <span className="relative flex h-1.5 w-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-verified opacity-50" /><span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-verified" /></span>
+   319→                refresh 8s
+   320→              </span>
+   321→            </div>
+   322→            <div className="max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+   323→              <AnimatePresence mode="popLayout">
+   324→                {activityItems.length === 0 && <p className="text-sm text-muted-foreground py-8 text-center">No recent activity.</p>}
+   325→                {activityItems.map((a, i) => {
+   326→                  const Cfg = a.config;
+   327→                  const ActIcon = Cfg.icon;
+   328→                  return (
+   329→                    <motion.div key={`${a.title}-${i}`} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.2, delay: i * 0.02 }}
+   330→                      className="relative flex items-start gap-3 rounded-lg border border-border/30 bg-background/30 px-3 py-2.5 mb-2 hover:border-border/60 hover:bg-background/50 transition-all group/act">
+   331→                      <div className={`mt-0.5 h-7 w-7 shrink-0 rounded-md flex items-center justify-center ${Cfg.bg} ${Cfg.border} border`}>
+   332→                        <ActIcon className={`h-3.5 w-3.5 ${Cfg.color}`} />
+   333→                      </div>
+   334→                      <div className="min-w-0 flex-1">
+   335→                        <div className="flex items-center gap-2">
+   336→                          <p className="text-sm font-medium truncate">{a.title}</p>
+   337→                          <span className={`ml-auto text-[9px] font-mono px-1.5 py-0.5 rounded-full shrink-0 ${Cfg.bg} ${Cfg.color}`}>{Cfg.label}</span>
+   338→                        </div>
+   339→                        <div className="flex items-center gap-2 mt-0.5">
+   340→                          <p className="text-xs text-muted-foreground truncate font-mono">{a.detail}</p>
+   341→                          <span className="ml-auto text-[10px] text-muted-foreground/70 font-mono shrink-0 flex items-center gap-1">
+   342→                            <Clock className="h-2.5 w-2.5" />{new Date(a.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+   343→                          </span>
+   344→                        </div>
+   345→                      </div>
+   346→                    </motion.div>
+   347→                  );
+   348→                })}
+   349→              </AnimatePresence>
+   350→            </div>
+   351→          </div>
+   352→        </Card>
+   353→      </motion.div>
+   354→
+   355→      {/* Shard Health Heatmap + Coverage Ring */}
+   356→      <motion.div className="grid grid-cols-1 lg:grid-cols-3 gap-4" variants={secV}>
+   357→        <Card className="lg:col-span-2 bg-card/60 backdrop-blur border-border/60 p-4 relative overflow-hidden">
+   358→          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/40 via-repairing/30 to-violating/20" />
+   359→          <div className="bg-grid-fine absolute inset-0 opacity-15" />
+   360→          <div className="relative">
+   361→            <SectionHeader2 icon={LayoutGrid} title="Shard Health Heatmap" extra={<span className="ml-auto text-[10px] text-muted-foreground font-mono">{shards ? `${shards.length} shards` : "loading…"}</span>} />
+   362→            {shards ? (
+   363→              <>
+   364→                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
+   365→                  {shards.map((shard, i) => (
+   366→                    <motion.div key={shard.id} title={`${shard.shardKey} (${shard.region}) — ${shard.invariantStatus}`}
+   367→                      className={`heatmap-cell h-8 w-full rounded cursor-default relative ${shard.invariantStatus === "violating" ? "animate-pulse" : ""}`}
+   368→                      style={{ backgroundColor: COLOR_MAP[shard.invariantStatus] ?? COLOR_MAP.healthy }}
+   369→                      initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.02, duration: 0.2 }} />
+   370→                  ))}
+   371→                </div>
+   372→                <div className="flex items-center gap-4 mt-3">
+   373→                  {[["Healthy", "oklch(0.78 0.16 160)"], ["Repairing", "oklch(0.75 0.15 80)"], ["Violating", "oklch(0.65 0.2 25)"]].map(([l, c]) => (
+   374→                    <div key={l} className="flex items-center gap-1.5">
+   375→                      <span className={`h-2.5 w-2.5 rounded-sm${l === "Violating" ? " animate-pulse" : ""}`} style={{ backgroundColor: c }} />
+   376→                      <span className="text-[9px] text-muted-foreground font-mono uppercase">{l}</span>
+   377→                    </div>
+   378→                  ))}
+   379→                </div>
+   380→              </>
+   381→            ) : <div className="h-24 flex items-center justify-center text-sm text-muted-foreground"><div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-verified mr-2" />Loading shards…</div>}
+   382→          </div>
+   383→        </Card>
+   384→
+   385→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.65 0.2 25 / 0.3), oklch(0.75 0.15 80 / 0.2))">
+   386→          <SectionHeader2 icon={ShieldCheck} title="Invariant Coverage" />
+   387→          <div className="flex items-center gap-4">
+   388→            <div className="relative shrink-0">
+   389→              <DonutChart data={ringData.map(d => ({ label: d.name, value: d.value, color: d.fill }))} size={112} thickness={16} />
+   390→              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+   391→                <div className="flex flex-col items-center justify-center h-16 w-16 rounded-full bg-card/90">
+   392→                  <span className="text-lg font-bold tabular-nums text-verified">{Math.round((passing / totalInv) * 100)}%</span>
+   393→                  <span className="text-[8px] text-muted-foreground uppercase tracking-wider">coverage</span>
+   394→                </div>
+   395→              </div>
+   396→            </div>
+   397→            <div className="flex-1 space-y-2.5">
+   398→              {ringData.map((item) => (
+   399→                <div key={item.name} className="flex items-center gap-2">
+   400→                  <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: item.fill }} />
+   401→                  <span className="text-xs text-muted-foreground flex-1">{item.name}</span>
+   402→                  <span className="text-sm font-semibold tabular-nums">{item.value}</span>
+   403→                  <span className="text-[9px] text-muted-foreground font-mono">({Math.round((item.value / totalInv) * 100)}%)</span>
+   404→                </div>
+   405→              ))}
+   406→            </div>
+   407→          </div>
+   408→        </CardShell>
+   409→      </motion.div>
+   410→
+   411→      {/* Policy Status Timeline */}
+   412→      <motion.div variants={secV}>
+   413→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.65 0.2 25 / 0.3), oklch(0.75 0.15 80 / 0.2))">
+   414→          <SectionHeader2 icon={Clock} title="Policy Status Timeline" extra={<span className="ml-auto text-[10px] text-muted-foreground font-mono">last 12h</span>} />
+   415→          <div className="relative h-16">
+   416→            <div className="absolute top-5 left-0 right-0 h-1 rounded-full bg-border/40" />
+   417→            <div className="absolute inset-x-0 top-4 flex justify-between">
+   418→              {Array.from({ length: 7 }).map((_, h) => {
+   419→                const hour = new Date(Date.now() - (12 - h * 2) * 3600000);
+   420→                return <div key={h} className="flex flex-col items-center"><span className="h-2 w-px bg-border/60" /><span className="text-[7px] text-muted-foreground/50 font-mono mt-0.5">{hour.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span></div>;
+   421→              })}
+   422→            </div>
+   423→            {stats.activity.map((event, i) => {
+   424→              const eventTime = new Date(event.at).getTime();
+   425→              const twelveHoursAgo = Date.now() - 12 * 3600000;
+   426→              const position = ((eventTime - twelveHoursAgo) / (12 * 3600000)) * 100;
+   427→              if (position < 0 || position > 100) return null;
+   428→              const isViolation = event.title.includes("breach");
+   429→              const isShadow = event.kind === "shadow" && !isViolation;
+   430→              const dotColor = isViolation ? "bg-violating" : isShadow ? "bg-repairing" : "bg-verified";
+   431→              return (
+   432→                <Tooltip key={`ev-${i}`}>
+   433→                  <TooltipTrigger asChild>
+   434→                    <motion.div className={`absolute top-4 -translate-y-1/2 h-3 w-3 rounded-full ${dotColor} ring-2 ring-background cursor-pointer z-10`}
+   435→                      style={{ left: `${position}%` }} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: i * 0.04, type: "spring", stiffness: 400 }} />
+   436→                  </TooltipTrigger>
+   437→                  <TooltipContent side="top" className="text-xs font-mono">
+   438→                    <span className="font-semibold">{event.title}</span><br />
+   439→                    <span className="text-muted-foreground">{event.detail}</span><br />
+   440→                    <span className="text-muted-foreground">{new Date(event.at).toLocaleString()}</span>
+   441→                  </TooltipContent>
+   442→                </Tooltip>
+   443→              );
+   444→            })}
+   445→          </div>
+   446→          <div className="flex items-center gap-4 mt-2">
+   447→            {[["Merge", "bg-verified"], ["Violation", "bg-violating"], ["Shadow", "bg-repairing"]].map(([l, c]) => (
+   448→              <div key={l} className="flex items-center gap-1.5"><span className={`h-2 w-2 rounded-full ${c}`} /><span className="text-[9px] text-muted-foreground font-mono uppercase">{l}</span></div>
+   449→            ))}
+   450→          </div>
+   451→        </CardShell>
+   452→      </motion.div>
+   453→
+   454→      {/* Quick Actions Bar */}
+   455→      <motion.div variants={secV}>
+   456→        <Card className="bg-card/60 backdrop-blur border-border/60 p-3 relative overflow-hidden">
+   457→          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/30 via-repairing/20 to-violating/10" />
+   458→          <div className="relative flex flex-wrap items-center gap-3">
+   459→            <motion.button className="card-hover-lift flex items-center gap-2 rounded-lg border border-verified/30 bg-verified/10 px-4 py-2 text-sm font-medium text-verified hover:bg-verified/20 transition-colors"
+   460→              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+   461→              onClick={() => { fetch("/api/shards").then(() => fetch("/api/stats").then((r) => r.json()).then((d) => setStats(d))); }}>
+   462→              <ShieldCheck className="h-4 w-4" />Run All Invariants
+   463→            </motion.button>
+   464→            <motion.button className="card-hover-lift flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 px-4 py-2 text-sm font-medium text-foreground hover:bg-background/60 transition-colors"
+   465→              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+   466→              onClick={() => { const data = JSON.stringify({ stats, metrics, exportedAt: new Date().toISOString() }, null, 2); const blob = new Blob([data], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `epistemic-dashboard-${Date.now()}.json`; a.click(); URL.revokeObjectURL(url); }}>
+   467→              <Download className="h-4 w-4" />Export Dashboard
+   468→            </motion.button>
+   469→            <motion.button className={`card-hover-lift flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${autoRefresh ? "border-verified/30 bg-verified/10 text-verified hover:bg-verified/20" : "border-border/60 bg-background/40 text-muted-foreground hover:bg-background/60"}`}
+   470→              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setAutoRefresh((v) => !v)}>
+   471→              <RefreshCw className={`h-4 w-4 ${autoRefresh ? "animate-spin" : ""}`} style={autoRefresh ? { animationDuration: "3s" } : undefined} />
+   472→              {autoRefresh ? "Auto-Refresh: ON" : "Auto-Refresh: OFF"}
+   473→            </motion.button>
+   474→          </div>
+   475→        </Card>
+   476→      </motion.div>
+   477→
+   478→      {/* Capability Map */}
+   479→      <motion.div variants={secV}>
+   480→        <CardShell accent="linear-gradient(90deg, oklch(0.78 0.16 160 / 0.4), oklch(0.75 0.15 80 / 0.3), oklch(0.65 0.2 25 / 0.2))">
+   481→          <SectionHeader2 icon={TrendingUp} title="Capability Map" extra={<span className="ml-auto text-[10px] text-muted-foreground font-mono">epistemic://</span>} />
+   482→          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+   483→            {CAPABILITIES.map((c, idx) => {
+   484→              const Icon = CAPABILITY_ICONS[c.id] ?? Activity;
+   485→              return (
+   486→                <motion.button key={c.id} onClick={() => onJump(c.id)}
+   487→                  className={`group text-left rounded-xl border border-border/40 bg-gradient-to-br ${c.g} p-3 hover:border-verified/40 hover:shadow-[0_0_16px_-4px_oklch(0.78_0.16_160/0.3)] transition-all relative overflow-hidden`}
+   488→                  whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.98 }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.02, duration: 0.25 }}>
+   489→                  <div className="flex items-center gap-2">
+   490→                    <div className="h-6 w-6 rounded-md bg-background/60 border border-border/30 flex items-center justify-center group-hover:border-verified/30 transition-colors">
+   491→                      <Icon className="h-3 w-3 text-muted-foreground group-hover:text-verified transition-colors" />
+   492→                    </div>
+   493→                    <ArrowRight className="h-3 w-3 text-muted-foreground/0 group-hover:text-verified/60 ml-auto transition-all" />
+   494→                  </div>
+   495→                  <p className="mt-2 text-sm font-medium leading-tight">{c.label}</p>
+   496→                  <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{c.hint}</p>
+   497→                </motion.button>
+   498→              );
+   499→            })}
+   500→          </div>
+   501→        </CardShell>
+   502→      </motion.div>
+   503→    </motion.div>
+   504→  );
+   505→}
+   506→
+   507→function KpiCardWithSparkline({ kpi, idx }: { kpi: { label: string; value: string; numericValue: number; sub: string; icon: typeof Activity; status: string | null; sparkBase: number; sparkVariance: number; accentColor: string }; idx: number }) {
+   508→  const Icon = kpi.icon;
+   509→  const sparkData = useMemo(() => generateSparkline(kpi.sparkBase, kpi.sparkVariance), [kpi.sparkBase, kpi.sparkVariance]);
+   510→  return (
+   511→    <motion.div variants={cardV} whileHover={{ scale: 1.02 }} transition={{ type: "spring", stiffness: 400, damping: 25 }}>
+   512→      <Card className="relative overflow-hidden bg-card/60 backdrop-blur border-border/60 p-4 h-full group cursor-default">
+   513→        <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: `linear-gradient(90deg, ${kpi.accentColor}, transparent)` }} />
+   514→        <div className="bg-grid-fine absolute inset-0 opacity-20" />
+   515→        <div className="relative">
+   516→          <div className="flex items-center justify-between">
+   517→            <span className="text-xs uppercase tracking-wider text-muted-foreground">{kpi.label}</span>
+   518→            <Icon className="h-4 w-4 text-muted-foreground" />
+   519→          </div>
+   520→          <div className="mt-2 flex items-end gap-2 flex-wrap">
+   521→            <span className="text-3xl font-semibold tabular-nums leading-none">{kpi.value}</span>
+   522→            {kpi.status && <StatusPill status={kpi.status as "healthy" | "repairing" | "violating"} />}
+   523→          </div>
+   524→          <p className="mt-1.5 text-xs text-muted-foreground leading-tight">{kpi.sub}</p>
+   525→          <div className="mt-2 w-full">
+   526→            <SparkLine data={sparkData} fill color={kpi.accentColor} width={200} height={32} />
+   527→          </div>
+   528→        </div>
+   529→      </Card>
+   530→    </motion.div>
+   531→  );
+   532→}
+   533→
