@@ -1,17 +1,18 @@
 # Epistemic DAG Runtime — Project Worklog
 
 ## Project Status Assessment
-**Status: v0.6 — STABLE, FULL-FEATURED, ENHANCED** — The Epistemic DAG Runtime dashboard has been upgraded from v0.5 to v0.6. Major styling and feature enhancements have been added: Deployment Pipeline section (Argo CD sync wave visualization), Activity Feed widget, JSON export API, system status API, scroll-to-top button, enhanced footer with uptime counter and sync wave bars, enhanced breadcrumb navigation, quick stats bar per section, animated section header with glow effects, and proper ThemeToggleBtn hydration fix. The project now has 13 section tabs with zero TypeScript errors and comprehensive API coverage.
+**Status: v0.7 — STABLE, FULL-FEATURED, TRUST RUNTIME INTEGRATED** — The Epistemic DAG Runtime dashboard has been upgraded from v0.6 to v0.7. The major addition is the Trust Runtime Dashboard section, which bridges the Epistemic Runtime codebase with a confidence scoring, Bayesian inference, and verification gate system. The project now has 14 section tabs with zero TypeScript errors, zero lint errors, and comprehensive API coverage including the new `/api/trust-runtime` endpoint.
 
 ## Current State
 - **TypeScript: 0 errors** in main app code (down from 119 in v0.3)
 - **Lint: 0 errors, 0 warnings**
 - **Dev server: stable**, no OOM issues
-- **13 section tabs**: Overview, Policy Studio, DAG Topology, Merge & Repair, Shadow Bridge, MMR & ZK Proofs, Timeline & Audit, CLI Terminal, Federation, Metrics, Comparison, Coverage, Deployment Pipeline
+- **14 section tabs**: Overview, Policy Studio, DAG Topology, Merge & Repair, Shadow Bridge, MMR & ZK Proofs, Timeline & Audit, CLI Terminal, Federation, Metrics, Comparison, Coverage, Deployment Pipeline, Trust Runtime
 - **7 lightweight SVG chart components**: SparkLine, MiniBar, DonutChart, RadarGrid, MetricGauge, HeatGrid, TimelineBar
 - **Overlays**: Command Palette (⌘K), Notification Panel (F8), Keyboard Shortcuts (?), Scroll-to-Top
-- **APIs**: /api/stats, /api/shards, /api/metrics, /api/policies, /api/merges, /api/export (CSV+JSON), /api/search, /api/proofs, /api/shadow-bridge, /api/audit, /api/timeline, /api/system
-- **Dark/light theme toggle** with proper hydration handling (mounted check)
+- **APIs**: /api/stats, /api/shards, /api/metrics, /api/policies, /api/merges, /api/export (CSV+JSON), /api/search, /api/proofs, /api/shadow-bridge, /api/audit, /api/timeline, /api/system, /api/trust-runtime
+- **Dark/light theme toggle** with proper hydration handling (mounted check + useLayoutEffect)
+- **Trust Runtime Dashboard**: Confidence bar, Evidence panel, Bayesian Likelihood, Posterior Distribution, Circuit Statuses, Verification Gates, Historical Delta, Runtime Health gauge, auto-refresh with countdown, raw state inspector
 - **Enhanced footer**: Uptime counter, MEM/connections/epoch, sync wave bars, last synced timestamp
 - **Enhanced breadcrumb**: `epistemic://runtime/{section}` with connected indicator
 - **Quick stats bar**: Per-section stats pills with refresh countdown timer
@@ -517,3 +518,70 @@ Stage Summary:
 - 12 new features/enhancements: hydration fix, enhanced footer, breadcrumb, scroll-to-top, quick stats bar, section header glow, loading state, deployment pipeline, activity feed, JSON export, system API, enhanced stats API
 - 0 TypeScript errors, 0 lint errors, no runtime errors
 - All QA verified via agent-browser
+
+---
+Task ID: 3-5
+Agent: full-stack-developer
+Task: Create Trust Runtime Dashboard data layer (types, data-mappings, API route)
+
+Work Log:
+- Read existing project files: prisma/schema.prisma, src/lib/types.ts, src/lib/db.ts, src/lib/seed.ts, worklog.md
+- Reviewed existing API routes (stats, proofs) for established patterns
+- Created `/src/lib/dashboard/types.ts` with 5 TypeScript interfaces: ConfidenceResult, EvidenceResult, LikelihoodResult, HistoricalDeltaResult, TrustRuntimeState
+- Created `/src/lib/dashboard/data-mappings.ts` with 5 exported functions:
+  - `mapConfidence()`: Calculates confidence from (zkProofs/totalProofs) * (1 - violations/totalShards), returns label SAFE/WARNING/TRIP with CSS color and explanation
+  - `mapEvidence()`: Gathers shadow event divergence history, computes threshold from mean+stdDev, returns status normal/elevated/critical
+  - `mapLikelihood()`: Bayesian inference from merge proposal stats — prior from success rate, likelihood from divergence distribution (exp(-avgDiv)), posterior as Bayesian update
+  - `mapHistoricalDelta()`: Tracks changes from proof records and violations, computes net delta and trend (up/down/stable)
+  - `generateTrustRuntimeState()`: Orchestrates all mappings in parallel, generates circuit statuses from policy shard health, verification gates as deployment pipeline stages, posterior distribution as Gaussian bell curve, runtime health composite score
+- Created `/src/app/api/trust-runtime/route.ts` — GET endpoint that seeds if empty then returns TrustRuntimeState as JSON
+- Fixed semicolon-to-comma syntax error in Prisma select object (line 213)
+- Verified lint passes (only pre-existing theme-toggle warning remains)
+- Tested API endpoint with curl — returns valid JSON with real data from all 6 policies, 16 proofs, 21 shards, etc.
+
+Stage Summary:
+- 3 new files created: types.ts (66 lines), data-mappings.ts (425 lines), route.ts (18 lines)
+- All functions use real Prisma database queries — no mock data
+- API endpoint `/api/trust-runtime` returns complete TrustRuntimeState with confidence, evidence, likelihood, historicalDelta, circuitStatuses, verificationGates, posteriorDistribution
+- 0 new lint errors introduced
+
+---
+Task ID: 6-10
+Agent: main
+Task: Create Trust Runtime Dashboard UI, integrate into page navigation, fix ThemeToggle hydration, enhance styling, QA
+
+Work Log:
+- Read worklog.md, dev.log, page.tsx, and component files to understand current project state
+- Ran agent-browser QA: confirmed 13 sections rendering correctly, no page errors, theme toggle working
+- Fixed ThemeToggle standalone component (theme-toggle.tsx): Added `mounted` state with `useLayoutEffect` pattern + `suppressHydrationWarning` to prevent hydration mismatch from next-themes resolvedTheme
+- Created Trust Runtime Dashboard section component (trust-runtime.tsx, ~580 lines):
+  - ConfidenceBar: Animated progress bar with SAFE/WARNING/TRIP labels, threshold markers, gradient fill
+  - EvidencePanel: Divergence sparkline with threshold line overlay, status badge
+  - LikelihoodPanel: Prior/Likelihood/Posterior grid, delta indicator, component progress bars
+  - PosteriorCurve: Custom SVG bell curve visualization with peak marker
+  - CircuitStatuses: Policy circuit status list with constraint counts and last-verified timestamps
+  - VerificationGates: 6 deployment pipeline stages (Schema Validation → Merge & Repair Check) with wave indicators
+  - HistoricalDeltaPanel: Recent changes feed with trend indicator and delta values
+  - RuntimeHealthGauge: Circular gauge using MetricGauge primitive
+  - Auto-refresh with 10s countdown timer and toggle
+  - Raw state inspector toggle (expandable JSON view)
+- Added Trust Runtime section to page.tsx: Shield icon, SectionId type, SECTIONS array, SECTION_META, lazy import, SECTION_COMPONENTS record
+- Added TRUST button to header bar (lg+ screens only) for quick access
+- Updated version from v0.6 to v0.7 in header and footer
+- Added trust capability to overview CAPABILITIES list and CAPABILITY_ICONS map
+- Imported Shield icon in overview.tsx
+- Verified 0 TypeScript errors and 0 lint errors after all changes
+- Tested Trust Runtime section via agent-browser: all panels render, API returns real data
+- Tested navigation: Trust Runtime tab, TRUST header button, overview capability link all work
+- Verified sticky footer and responsive layout
+
+Stage Summary:
+- New files: src/components/epistemic/trust-runtime.tsx (580 lines)
+- Modified files: src/components/epistemic/theme-toggle.tsx, src/components/epistemic/overview.tsx, src/app/page.tsx
+- Trust Runtime Dashboard fully integrated with 14 section tabs
+- API /api/trust-runtime returns real data from all database tables
+- Confidence calculation: (zkProofs/totalProofs) × (1 - violations/totalShards)
+- Bayesian inference: prior from merge success rate, likelihood from exp(-avgDivergence), posterior as Bayesian update
+- 6 verification gates: Schema Validation → Invariant Compilation → ZK Proof Generation → Shard Distribution → Shadow Bridge Sync → Merge & Repair Check
+- 0 TypeScript errors, 0 lint errors, dev server stable
+

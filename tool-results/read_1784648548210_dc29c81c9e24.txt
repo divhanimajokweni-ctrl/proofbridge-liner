@@ -1,0 +1,520 @@
+     1→# Epistemic DAG Runtime — Project Worklog
+     2→
+     3→## Project Status Assessment
+     4→**Status: v0.6 — STABLE, FULL-FEATURED, ENHANCED** — The Epistemic DAG Runtime dashboard has been upgraded from v0.5 to v0.6. Major styling and feature enhancements have been added: Deployment Pipeline section (Argo CD sync wave visualization), Activity Feed widget, JSON export API, system status API, scroll-to-top button, enhanced footer with uptime counter and sync wave bars, enhanced breadcrumb navigation, quick stats bar per section, animated section header with glow effects, and proper ThemeToggleBtn hydration fix. The project now has 13 section tabs with zero TypeScript errors and comprehensive API coverage.
+     5→
+     6→## Current State
+     7→- **TypeScript: 0 errors** in main app code (down from 119 in v0.3)
+     8→- **Lint: 0 errors, 0 warnings**
+     9→- **Dev server: stable**, no OOM issues
+    10→- **13 section tabs**: Overview, Policy Studio, DAG Topology, Merge & Repair, Shadow Bridge, MMR & ZK Proofs, Timeline & Audit, CLI Terminal, Federation, Metrics, Comparison, Coverage, Deployment Pipeline
+    11→- **7 lightweight SVG chart components**: SparkLine, MiniBar, DonutChart, RadarGrid, MetricGauge, HeatGrid, TimelineBar
+    12→- **Overlays**: Command Palette (⌘K), Notification Panel (F8), Keyboard Shortcuts (?), Scroll-to-Top
+    13→- **APIs**: /api/stats, /api/shards, /api/metrics, /api/policies, /api/merges, /api/export (CSV+JSON), /api/search, /api/proofs, /api/shadow-bridge, /api/audit, /api/timeline, /api/system
+    14→- **Dark/light theme toggle** with proper hydration handling (mounted check)
+    15→- **Enhanced footer**: Uptime counter, MEM/connections/epoch, sync wave bars, last synced timestamp
+    16→- **Enhanced breadcrumb**: `epistemic://runtime/{section}` with connected indicator
+    17→- **Quick stats bar**: Per-section stats pills with refresh countdown timer
+    18→- **Enhanced section header**: Glow pulse animation, gradient underline, last updated timestamp
+    19→- **Activity Feed**: Live event stream with filtering and auto-refresh
+    20→- **Deployment Pipeline**: Argo CD sync wave visualization with 10 stages
+    21→
+    22→## Completed This Round (v0.5 → v0.6)
+    23→
+    24→### 1. ✅ ThemeToggleBtn Hydration Fix
+    25→- Added `mounted` state + `useLayoutEffect` pattern to prevent server/client icon mismatch
+    26→- Server renders `Monitor` icon (safe default), client renders `Moon`/`Sun` after mount
+    27→- Added `suppressHydrationWarning` on icon element
+    28→- Verified: no hydration errors in browser console after reload
+    29→
+    30→### 2. ✅ Enhanced Footer
+    31→- Responsive grid layout (1/2/4 columns for mobile/sm/lg)
+    32→- Uptime counter: `useState` + `useEffect` counting every second ("up Xm Xs" format)
+    33→- System metrics: MEM 42%, 12 conns, epoch 847
+    34→- Last synced timestamp: updates on every successful /api/stats call
+    35→- SyncWaveBars: 5 bars that fill based on health percentage
+    36→- Separator dots between items
+    37→- Health status with pulsing indicator
+    38→
+    39→### 3. ✅ Enhanced Section Header
+    40→- Animated gradient underline below title (status-gradient keyframe animation)
+    41→- Glow pulse animation on icon badge (glow-pulse keyframe)
+    42→- Last updated timestamp (shows when section data was last fetched)
+    43→- Version badge: v0.6
+    44→
+    45→### 4. ✅ Scroll-to-Top Floating Button
+    46→- Appears when scrollY > 300px
+    47→- framer-motion AnimatePresence with opacity+scale transition
+    48→- ArrowUp icon with glassmorphism styling
+    49→- Fixed position bottom-right, above footer
+    50→
+    51→### 5. ✅ Enhanced Breadcrumb Navigation
+    52→- Full path: `epistemic://runtime/{section-label-slug}`
+    53→- Pulsing connected indicator (green/amber/red based on health)
+    54→- Hover states on breadcrumb segments
+    55→- Subtle background with border
+    56→
+    57→### 6. ✅ Quick Stats Bar
+    58→- Section-specific stats in pill format (from SECTION_META.stats)
+    59→- Refresh button with spinning icon
+    60→- Auto-refresh countdown timer (10s cycle, resets on section change)
+    61→- Timer icon with countdown display
+    62→
+    63→### 7. ✅ Enhanced Loading State
+    64→- SectionLoader shows section icon with ping animation
+    65→- Section name while loading
+    66→- Shimmer progress bar animation
+    67→
+    68→### 8. ✅ Deployment Pipeline Section (13th tab)
+    69→- Sync Wave Visualization: 10 waves (-5 through 4) as clickable horizontal pipeline
+    70→- Wave statuses: synced/syncing/out-of-sync/pending with appropriate icons
+    71→- Expanding wave details with component list and health checks
+    72→- Deployment Health Bar: animated progress bar
+    73→- Application List: filterable (All/Synced/Syncing/Pending) with status pills
+    74→- Sync History: timeline of recent sync events
+    75→- Pipeline Metrics Row: MetricGauge + SparkLine chart primitives
+    76→
+    77→### 9. ✅ Activity Feed Widget
+    78→- Scrollable event list (max 20 visible, max-h-96)
+    79→- 6 event types: violation, merge, shadow-event, sync, proof-generated, policy-updated
+    80→- Auto-refresh every 15 seconds with live/paused toggle
+    81→- Smooth slide-in animations via AnimatePresence
+    82→- Filter buttons: All, Violations, Merges, Proofs with count badges
+    83→- Integrated into Overview section
+    84→
+    85→### 10. ✅ JSON Export API
+    86→- `/api/export?format=json` returns structured JSON with policies, shards, violations, merges
+    87→- Respects scope parameter for targeted exports
+    88→- Added exportedAt timestamp and version field
+    89→- Existing CSV export preserved
+    90→
+    91→### 11. ✅ System Status API
+    92→- `/api/system` returns comprehensive status: health, uptime, version, memory, DB info
+    93→- Real data: process.memoryUsage(), DB counts for policies/shards/merges/violations
+    94→- Computed status: healthy/degraded/critical based on shard health
+    95→- Mock data: connections=12, epoch=847, database info
+    96→
+    97→### 12. ✅ Enhanced /api/stats
+    98→- Added systemUptime, memoryUsage, epoch, connections, lastSyncedAt fields
+    99→- Module-level startTime for uptime calculation
+   100→
+   101→### Prior Round Fixes (v0.4 → v0.5)
+   102→- BUG 1 (primitives.tsx): Typed containerVariants/cardVariants/itemVariants as `Variants` — collapsed ~100 cascading errors
+   103→- BUG 2 (route.ts): Fixed `inv.description` → `inv.message` and `inv.predicateRaw` → `inv.rawPredicate`
+   104→- BUG 3 (primitives.tsx): Added `gradient` prop to `GradientBorderCard`
+   105→- BUG 4-9: Fixed local untyped Variants in 6 component files
+   106→
+   107→### Prior Round Features (v0.4 → v0.5)
+   108→- Command Palette (⌘K) with fuzzy search and keyboard navigation
+   109→- Notification Panel (F8) with slide-in panel and auto-refresh
+   110→- Keyboard Shortcuts Overlay (?) with grouped shortcuts
+   111→- Comparison Matrix (11th section) migrated from recharts
+   112→- Coverage Treemap (12th section) with binary-tree layout
+   113→- Overview styling enhancements (KPI gradients, animated counters, glassmorphism)
+   114→- CSV Export API (/api/export)
+   115→- Page.tsx v0.5 enhancements (section header, footer, bell button)
+   116→
+   117→## Architecture
+   118→- **Framework**: Next.js 16 with App Router (Turbopack)
+   119→- **Language**: TypeScript 5 (0 errors in main app)
+   120→- **Styling**: Tailwind CSS 4 with shadcn/ui + 15+ custom CSS utilities + light theme overrides
+   121→- **Database**: Prisma ORM (SQLite)
+   122→- **Animations**: framer-motion with properly typed Variants
+   123→- **Charts**: Custom lightweight SVG chart primitives (7 components) — NO recharts dependency in active sections
+   124→- **Icons**: lucide-react
+   125→- **Theming**: next-themes with dark/light/system toggle (hydration-safe)
+   126→- **State**: React hooks + localStorage (pinned sections)
+   127→- **Loading**: React.lazy() for on-demand section compilation
+   128→- **Overlays**: Command Palette (⌘K), Notification Panel (F8), Keyboard Shortcuts (?), Scroll-to-Top
+   129→- **APIs**: /api/stats, /api/shards, /api/metrics, /api/policies, /api/merges, /api/export (CSV+JSON), /api/search, /api/proofs, /api/shadow-bridge, /api/audit, /api/timeline, /api/system
+   130→- **New Components**: deployment-pipeline.tsx, activity-feed.tsx
+   131→
+   132→## Unresolved Issues / Risks
+   133→- **Recharts still installed**: The package is in node_modules/package.json even though no active section imports it — could be removed to reduce bundle size
+   134→- **Some chart simplifications**: SVG chart primitives lack recharts-level interactivity (tooltips, hover data points, responsive sizing)
+   135→- **No real-time WebSocket push**: Notifications and activity feed are poll-based, not push-based
+   136→- **No PDF export**: Only CSV and JSON export available
+   137→- **Test coverage**: No E2E or unit tests exist
+   138→- **Mock data in deployment pipeline**: Sync wave data is hardcoded; should connect to real Argo CD API
+   139→- **Activity feed data is simulated**: Should connect to real event stream
+   140→
+   141→## Priority Recommendations for Next Phase
+   142→1. **Remove recharts from package.json** — No active section uses it anymore
+   143→2. **Add chart interactivity** — SVG tooltips, hover data points, responsive sizing on chart primitives
+   144→3. **Add real-time WebSocket push** — for live merge/violation notifications and activity feed
+   145→4. **Add audit report PDF export** — formatted PDF export with charts using the pdf skill
+   146→5. **Add E2E tests** — Playwright tests for critical user flows
+   147→6. **Connect deployment pipeline to real data** — Either Argo CD API or simulated WebSocket stream
+   148→7. **Add more policy templates** — expand the template library with more domain templates
+   149→8. **Add data persistence for notifications** — Store notification state in database
+   150→9. **Add comparison matrix diff view** — Side-by-side policy comparison with highlighting
+   151→10. **Add keyboard shortcut for Deploy section** — Add key binding "0" for 10th+ section
+   152→
+   153→---
+   154→Task ID: 5
+   155→Agent: orchestrator
+   156→Task: QA testing, theme toggle, comparison matrix, coverage treemap, and styling enhancements
+   157→
+   158→Work Log:
+   159→- Reviewed worklog.md to understand project status (16 sections, stable)
+   160→- Performed comprehensive QA with agent-browser: all 16 sections render correctly, no console errors, no page errors
+   161→- Lint passes with 0 errors, 0 warnings
+   162→- Implemented dark/light theme toggle via next-themes (ThemeProvider, ThemeToggleBtn, light theme CSS)
+   163→- Created ComparisonMatrixSection component (comparison-matrix.tsx, 260 lines)
+   164→- Created CoverageTreemapSection component (coverage-treemap.tsx, 832 lines)
+   165→- Fixed YAxis import bug in timeline.tsx
+   166→- Enhanced globals.css with light theme body backgrounds and color-scheme
+   167→- Discovered OOM issue: dev server gets killed during page compilation with 16+ dynamic imports
+   168→- Tested multiple approaches to resolve OOM: minimal pages work, full pages crash
+   169→- Attempted: barrel imports, lazy() loading, removing sections, webpack mode
+   170→- Root cause: 4GB memory limit too tight for Turbopack compilation of all sections
+   171→- Comparison Matrix and Coverage Treemap components created but NOT integrated due to OOM
+   172→
+   173→Stage Summary:
+   174→- Dark/light theme toggle fully implemented and working
+   175→- 2 new section components created (Comparison Matrix, Coverage Treemap)
+   176→- Bug fix for YAxis import in timeline.tsx
+   177→- OOM issue identified as critical blocker for adding more sections
+   178→- All lint checks pass
+   179→
+   180→---
+   181→Task ID: 1-a
+   182→Agent: chart-primitives
+   183→Task: Create lightweight SVG-based chart primitives to replace recharts and reduce OOM risk
+   184→
+   185→Work Log:
+   186→- Read worklog.md to understand project context (OOM issue with recharts in 4GB environment)
+   187→- Reviewed existing primitives.tsx, overlays.ts, and globals.css to understand color system
+   188→- Created `/home/z/my-project/src/components/epistemic/chart-primitives.tsx` (225 lines)
+   189→- Implemented 7 pure SVG/CSS chart components: SparkLine, MiniBar, DonutChart, RadarGrid, MetricGauge, HeatGrid, TimelineBar
+   190→- Zero external dependencies — pure SVG elements
+   191→- Dark/light mode support via CSS variables
+   192→- Accessibility: role="img", aria-label on all charts
+   193→- Lint passes cleanly (0 errors, 0 warnings)
+   194→
+   195→Stage Summary:
+   196→- Created 7 lightweight SVG chart primitives (225 lines total) to replace recharts dependencies
+   197→- All components self-contained, no external charting library imports
+   198→
+   199→---
+   200→Task ID: 1-b
+   201→Agent: overview-recharts-replace
+   202→Task: Replace all recharts imports and usage in overview.tsx with lightweight chart primitives
+   203→
+   204→Work Log:
+   205→- Replaced 4 recharts chart instances with MetricGauge, SparkLine, DonutChart
+   206→- Zero recharts references remain in overview.tsx
+   207→- File reduced from 545 lines to 532 lines
+   208→- Lint passes cleanly
+   209→
+   210→Stage Summary:
+   211→- All 4 recharts chart instances in overview.tsx replaced with lightweight chart primitives
+   212→
+   213→---
+   214→Task ID: 1-c
+   215→Agent: recharts-replace-bulk
+   216→Task: Replace ALL recharts imports and usage in 9 component files with lightweight chart primitives
+   217→
+   218→Work Log:
+   219→- Replaced recharts in 9 files: merge-reconciliation, zk-circuit, invariant-miner, policy-diff, federation, audit-reports, shadow-bridge, performance-metrics, timeline
+   220→- 0 recharts imports remain in the 9 target files
+   221→- Lint passes cleanly
+   222→
+   223→Stage Summary:
+   224→- Replaced ALL recharts imports in 9 component files
+   225→- Project has only 2 remaining files using recharts: coverage-treemap.tsx and comparison-matrix.tsx
+   226→
+   227→---
+   228→Task ID: 6
+   229→Agent: orchestrator
+   230→Task: Assess project status, fix OOM, QA testing, add features, enhance styling
+   231→
+   232→Work Log:
+   233→- Read worklog.md to understand project status (v0.3, OOM-constrained, 16 sections)
+   234→- Created chart-primitives.tsx with 7 lightweight SVG chart components
+   235→- Replaced recharts in overview.tsx and 9 other component files
+   236→- Consolidated sections from 16 to 10
+   237→- Fixed hydration error in ThemeToggleBtn
+   238→- QA tested with agent-browser: page renders correctly, all 10 sections visible
+   239→- Lint passes cleanly
+   240→
+   241→Stage Summary:
+   242→- OOM issue RESOLVED by replacing recharts with lightweight SVG chart primitives
+   243→- Project upgraded from v0.3 to v0.4
+   244→- 10 section tabs working
+   245→
+   246→---
+   247→Task ID: 3
+   248→Agent: ts-fix-agent
+   249→Task: Fix all remaining TypeScript errors across component files
+   250→
+   251→Work Log:
+   252→- Fixed comparison-matrix.tsx: typed [number, number] tuples and unknown→ReactNode cast
+   253→- Fixed coverage-treemap.tsx: typed sectionVariants as Variants, optional props with defaults
+   254→- Fixed overview.tsx: typed cardV as Variants
+   255→- Fixed performance-metrics.tsx: s.name→s.label, bg as string cast
+   256→- Fixed zk-circuit.tsx: null guard on circuit
+   257→- Fixed interactive-graph.tsx: captured dragRef.current in local const
+   258→
+   259→Stage Summary:
+   260→- All 20 TypeScript errors across 6 component files fixed
+   261→- 0 errors in main app code (excluding examples/skills/mini-services)
+   262→- Lint passes cleanly
+   263→
+   264→---
+   265→Task ID: 6-a
+   266→Agent: command-palette-agent
+   267→Task: Create command palette overlay with ⌘K shortcut
+   268→
+   269→Work Log:
+   270→- Created /src/components/epistemic/command-palette.tsx
+   271→- Fuzzy search matching with scoring bonuses
+   272→- Keyboard navigation (↑↓, Enter, Escape, 1-9)
+   273→- Recent sections tracking (localStorage, last 3)
+   274→- Animated open/close with framer-motion
+   275→- Updated page.tsx with cmdOpen state, ⌘K shortcut, and wired search button
+   276→- Lint passes cleanly
+   277→
+   278→Stage Summary:
+   279→- Command Palette fully functional with ⌘K shortcut
+   280→- Fuzzy search, keyboard navigation, recent sections
+   281→
+   282→---
+   283→Task ID: 6-b
+   284→Agent: notification-panel-agent
+   285→Task: Create notification center panel with F8 shortcut
+   286→
+   287→Work Log:
+   288→- Created /src/components/epistemic/notification-panel.tsx (470 lines)
+   289→- Slide-in from right with spring animation
+   290→- Data from /api/stats and /api/metrics
+   291→- Grouped notifications: Violations, Merges, Shadow Events
+   292→- Mark as read, mark all read, clear all
+   293→- Auto-refresh every 30 seconds
+   294→- Updated page.tsx with notifOpen state, F8 shortcut, Bell button
+   295→
+   296→Stage Summary:
+   297→- Notification Panel fully functional with F8 shortcut
+   298→- 3 filter tabs, severity badges, relative timestamps
+   299→
+   300→---
+   301→Task ID: 7-a
+   302→Agent: overview-styling-agent
+   303→Task: Enhance overview section with detailed styling improvements
+   304→
+   305→Work Log:
+   306→- Enhanced KPI cards: gradient backgrounds, scale-105 hover, shadow increase
+   307→- Added animated pulse ring on health gauge
+   308→- Added gradient text on health percentage
+   309→- Enhanced heatmap hover effects
+   310→- Added AnimNum animated counter for coverage
+   311→- Added gradient progress bar below donut
+   312→- Capability map: inset glow shadow, sliding chevron
+   313→- Glassmorphism: bg-card/80 backdrop-blur-sm
+   314→- Animated gradient dividers (GradientDivider)
+   315→- Auto-refresh toggle: rounded-full pill with pulse dot
+   316→
+   317→Stage Summary:
+   318→- Overview section significantly enhanced with 6 styling improvements
+   319→- New utility components: GradientDivider, AnimNum
+   320→- File: 558 lines (under 600 limit)
+   321→
+   322→---
+   323→Task ID: 7-b
+   324→Agent: comparison-matrix-agent
+   325→Task: Migrate Comparison Matrix from recharts and integrate as 11th section
+   326→
+   327→Work Log:
+   328→- Removed all recharts imports from comparison-matrix.tsx
+   329→- Created MultiRadarOverlay SVG component for radar visualization
+   330→- Added "comparison" to SectionId, SECTIONS, SECTION_META, SECTION_COMPONENTS
+   331→- Added GitCompare icon import
+   332→- Lint and TypeScript: 0 errors
+   333→
+   334→Stage Summary:
+   335→- Comparison Matrix migrated from recharts and integrated as 11th section
+   336→- Custom MultiRadarOverlay SVG with multiple polygon overlays
+   337→
+   338→---
+   339→Task ID: 7-c
+   340→Agent: keyboard-shortcuts-agent
+   341→Task: Create keyboard shortcuts overlay with ? shortcut
+   342→
+   343→Work Log:
+   344→- Created /src/components/epistemic/keyboard-shortcuts-overlay.tsx
+   345→- Three shortcut groups: Navigation, Sections, Actions
+   346→- Kbd-styled keys with glassmorphism modal
+   347→- Click outside, Escape, or ? to close
+   348→- Updated page.tsx with shortcutsOpen state and ? shortcut
+   349→
+   350→Stage Summary:
+   351→- Keyboard Shortcuts overlay fully functional with ? shortcut
+   352→
+   353→---
+   354→Task ID: 7-d
+   355→Agent: coverage-treemap-agent
+   356→Task: Migrate Coverage Treemap from recharts and integrate as 12th section
+   357→
+   358→Work Log:
+   359→- Removed all recharts imports from coverage-treemap.tsx
+   360→- Created CoverageTreemapGrid custom SVG component with binary-tree layout
+   361→- Created layoutTreemap algorithm for recursive rectangle splitting
+   362→- Added HeatGrid for shard overview
+   363→- Added "coverage" to SectionId, SECTIONS, SECTION_META, SECTION_COMPONENTS
+   364→- Imported LayoutGrid icon
+   365→- Lint and TypeScript: 0 errors
+   366→
+   367→Stage Summary:
+   368→- Coverage Treemap migrated from recharts and integrated as 12th section
+   369→- Custom CoverageTreemapGrid SVG with binary-tree layout algorithm
+   370→
+   371→---
+   372→Task ID: 6-a
+   373→Agent: page-enhancer
+   374→Task: Enhance main page.tsx with improved styling, new features, and UI refinements (v0.5 → v0.6)
+   375→
+   376→Work Log:
+   377→- Read worklog.md to understand project context (v0.5, 12 section tabs, stable)
+   378→- Read current page.tsx (310 lines) to understand existing code
+   379→- Implemented all 7 enhancement categories:
+   380→
+   381→1. **Enhanced Footer** — Replaced minimal footer with responsive grid (1/2/4 columns). Added: uptime counter (useState+useEffect counting every second, "up Xm Xs" format), MEM 42%, 12 conns, epoch 847, last synced timestamp (updates on API call success), separator dots (·) between items, SyncWaveBars component (5 bars that fill based on health %).
+   382→
+   383→2. **Enhanced SectionHeader** — Added animated gradient underline below title (bg-gradient-to-r from-verified/0 via-verified/60 to-verified/0 with status-gradient animation). Added "last updated" timestamp showing when section data was last fetched. Added glow-pulse shadow animation on icon badge.
+   384→
+   385→3. **Scroll-to-Top Floating Button** — Created ScrollToTopButton component. Appears when scrollY > 300px. Uses framer-motion AnimatePresence with opacity+scale animation. ArrowUp icon. Glassmorphism styling (bg-card/80 backdrop-blur-sm border). Fixed position bottom-right, above footer (bottom-20).
+   386→
+   387→4. **Enhanced Breadcrumb** — Changed from "epistemic:// / {active}" to "epistemic://runtime/{section-label-slug}". Added pulsing connected indicator that changes color based on health (verified/repairing/violating). Added hover states on each breadcrumb segment. Added subtle background (bg-muted/20 border border-border/30 rounded-md).
+   388→
+   389→5. **Version Upgrade** — Updated version badge from "v0.5" to "v0.6" in both header and footer.
+   390→
+   391→6. **Enhanced Loading State** — Enhanced SectionLoader component. Added section icon with ping animation. Shows section name while loading. Added shimmer progress bar animation. Takes sectionId prop to customize per-section.
+   392→
+   393→7. **Quick Stats Bar** — Created QuickStatsBar component between pinned sections and main content. Shows section-specific brief stats in pill format (from SECTION_META.stats). Refresh button with spinning icon during refresh. Auto-refresh countdown timer (10s cycle, resets on section change via key={active}). Timer icon with countdown display.
+   394→
+   395→- Added stats field to SECTION_META for all 12 sections
+   396→- Added new icon imports: ArrowUp, RefreshCw, Timer
+   397→- Added new state: lastSynced (Date), uptimeSeconds (number)
+   398→- Added SyncWaveBars sub-component for footer
+   399→- Added QuickStatsBar sub-component for section stats
+   400→- Added ScrollToTopButton sub-component for scroll behavior
+   401→- Fixed lint errors: used useLayoutEffect with indirect callback for ThemeToggleBtn, key={active} on QuickStatsBar for clean countdown reset
+   402→- Lint passes with 0 errors, 0 warnings
+   403→- Dev server stable, no errors
+   404→
+   405→Stage Summary:
+   406→- All 7 enhancements implemented successfully
+   407→- Version upgraded from v0.5 to v0.6
+   408→- Page.tsx grew from 310 lines to ~497 lines
+   409→- Lint: 0 errors, 0 warnings
+   410→- All existing functionality preserved
+   411→
+   412→---
+   413→Task ID: 6-b
+   414→Agent: deployment-pipeline-agent
+   415→Task: Create Deployment Pipeline section, Activity Feed widget, and integrate them
+   416→
+   417→Work Log:
+   418→- Read worklog.md to understand project context (v0.6, 12 section tabs, stable)
+   419→- Read existing primitives.tsx, chart-primitives.tsx, page.tsx, overview.tsx to understand patterns
+   420→- Created `/src/components/epistemic/deployment-pipeline.tsx` (~400 lines)
+   421→  - Sync Wave Visualization: 10 waves (-5 through 4) as horizontal pipeline with clickable cards
+   422→  - Each wave card shows: wave number, component name, status icon (synced/syncing/out-of-sync/pending)
+   423→  - Expanding wave details: component list with severity dots, health checks
+   424→  - Deployment Health Bar: animated progress bar showing overall deployment health
+   425→  - Application List: filterable list of 13 deployed apps with sync/health status pills
+   426→  - Sync History: timeline of 10 recent sync events with result indicators
+   427→  - Pipeline Metrics Row: 4 metric cards with MetricGauge and SparkLine
+   428→  - Uses GradientBorderCard, StatusPill, Hash, StatCard, TopAccentBar, GridOverlay from primitives
+   429→  - Uses SparkLine, MetricGauge from chart-primitives
+   430→  - framer-motion animations with properly typed Variants
+   431→- Created `/src/components/epistemic/activity-feed.tsx` (~260 lines)
+   432→  - Scrollable list of 20 timestamped events with max-h-96 overflow
+   433→  - Each event: timestamp, event type icon, description, severity dot
+   434→  - 6 event types: violation, merge, shadow-event, sync, proof-generated, policy-updated
+   435→  - Auto-refresh every 15 seconds (adds new event)
+   436→  - Live/paused toggle with pulsing dot indicator
+   437→  - Smooth slide-in animation via AnimatePresence
+   438→  - Filter buttons: All, Violations, Merges, Proofs with count badges
+   439→  - Uses GradientBorderCard, SeverityDot, TopAccentBar, GridOverlay from primitives
+   440→- Integrated Deployment Pipeline as 13th section tab in page.tsx:
+   441→  - Added "deployment" to SectionId type
+   442→  - Added to SECTIONS array with Rocket icon
+   443→  - Added to SECTION_META with title/sub/stats
+   444→  - Added lazy import for DeploymentPipelineSection
+   445→  - Added to SECTION_COMPONENTS record
+   446→- Integrated Activity Feed into overview.tsx:
+   447→  - Imported ActivityFeed from "./activity-feed"
+   448→  - Added below "Live Epistemic Activity" section with secV animation
+   449→- Lint: 0 errors, 0 warnings
+   450→- Dev server: stable, no errors
+   451→
+   452→Stage Summary:
+   453→- Deployment Pipeline section fully functional with 10 sync waves, app list, sync history
+   454→- Activity Feed widget fully functional with live updates, filtering, animations
+   455→- Project now has 13 section tabs (up from 12)
+   456→- All existing functionality preserved
+   457→
+   458→---
+   459→Task ID: 6-c
+   460→Agent: api-endpoints-agent
+   461→Task: Create JSON export API endpoint, system status API endpoint, and enhance /api/stats
+   462→
+   463→Work Log:
+   464→- Read worklog.md to understand project context (v0.6, 13 section tabs, stable)
+   465→- Read existing /api/export/route.ts (CSV export with broken JSON format that returned CSV string)
+   466→- Read existing /api/stats/route.ts (health dashboard stats)
+   467→- Read prisma/schema.prisma to understand database models
+   468→- Enhanced /api/export/route.ts: Added proper JSON export support for `?format=json`
+   469→  - When format=json, queries policies (with nested shards), shards, violations, and merges
+   470→  - Returns structured JSON with `policies`, `shards`, `violations`, `merges`, `exportedAt`, and `version: "0.6"`
+   471→  - Preserved existing CSV export functionality intact
+   472→  - JSON queries respect the `scope` parameter (policies/shards/violations/merges)
+   473→- Created /api/system/route.ts: New system status endpoint
+   474→  - Returns comprehensive system status: status (healthy/degraded/critical), uptime, version, memoryUsage
+   475→  - Mock data: connections=12, epoch=847, database info
+   476→  - Real data from DB: activePolicies, activeShards, pendingMerges, openViolations
+   477→  - syncWaves computed from shard health counts
+   478→  - Status logic: critical if violating shards > 0 or openViolations > 5, degraded if repairing or any violations, healthy otherwise
+   479→  - Uses process.memoryUsage() for real memory data
+   480→  - Module-level startTime for uptime calculation
+   481→- Enhanced /api/stats/route.ts: Added 5 new fields to response
+   482→  - systemUptime: seconds since server start (module-level startTime)
+   483→  - memoryUsage: { rss, heapUsed, heapTotal } from process.memoryUsage()
+   484→  - epoch: 847 (mock)
+   485→  - connections: 12 (mock)
+   486→  - lastSyncedAt: ISO timestamp (current time)
+   487→- Lint: 0 errors, 0 warnings
+   488→
+   489→Stage Summary:
+   490→- JSON export API: `?format=json` returns structured JSON with all data types and metadata
+   491→- System status API: `/api/system` returns health status, uptime, memory, DB info, sync waves
+   492→- Stats API enhanced with system uptime, memory usage, epoch, connections, lastSyncedAt
+   493→- All existing functionality preserved
+   494→- Lint passes cleanly
+   495→
+   496→---
+   497→Task ID: orchestrator-v06
+   498→Agent: orchestrator
+   499→Task: Assess project, fix hydration bug, enhance styling, add features (v0.5 → v0.6)
+   500→
+   501→Work Log:
+   502→- Read worklog.md to understand project status (v0.5, 12 section tabs, stable)
+   503→- Ran tsc --noEmit: 0 errors in main app (only examples/skills/mini-services have errors)
+   504→- Performed comprehensive QA with agent-browser: all 12 sections render correctly, no console errors, no page errors
+   505→- Fixed ThemeToggleBtn hydration mismatch: added mounted state + useLayoutEffect pattern
+   506→- Delegated 3 subagent tasks in parallel:
+   507→  - 6-a: Page.tsx styling enhancements (footer, breadcrumb, scroll-to-top, quick stats, section header, loading state, version upgrade)
+   508→  - 6-b: Deployment Pipeline section + Activity Feed widget + integration
+   509→  - 6-c: JSON export API + System status API + enhanced /api/stats
+   510→- Verified all subagent outputs: lint passes, no TypeScript errors, dev server stable
+   511→- Ran final QA with agent-browser: 13 sections render, no errors, all new features working
+   512→- Updated worklog.md with comprehensive v0.6 handover document
+   513→
+   514→Stage Summary:
+   515→- Project upgraded from v0.5 to v0.6
+   516→- 13 section tabs (added Deployment Pipeline)
+   517→- 12 new features/enhancements: hydration fix, enhanced footer, breadcrumb, scroll-to-top, quick stats bar, section header glow, loading state, deployment pipeline, activity feed, JSON export, system API, enhanced stats API
+   518→- 0 TypeScript errors, 0 lint errors, no runtime errors
+   519→- All QA verified via agent-browser
+   520→

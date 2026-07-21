@@ -9,6 +9,7 @@ import {
   TrendingUp, AlertTriangle, Wrench, Sparkles, Clock,
   LayoutGrid, FileText, Terminal, Globe2, CircuitBoard, History,
   GitCompare, FlaskConical, Library, GitGraph, Zap, Download, RefreshCw,
+  Shield,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -41,7 +42,7 @@ const CAPABILITY_ICONS: Record<string, typeof Activity> = {
   coverage: LayoutGrid, merges: Wrench, shadow: Cpu, proofs: KeyRound,
   zkcircuit: CircuitBoard, miner: Sparkles, timeline: Clock, diff: GitCompare,
   matrix: Activity, tests: FlaskConical, metrics: TrendingUp, versions: History,
-  audit: FileText, cli: Terminal, federation: Globe2, overview: ShieldCheck,
+  audit: FileText, cli: Terminal, federation: Globe2, overview: ShieldCheck, trust: Shield,
 };
 
 const ACT_CFG: Record<string, { icon: typeof Activity; color: string; bg: string; border: string; dot: string; label: string }> = {
@@ -113,6 +114,7 @@ const CAPABILITIES = [
   { id: "audit", label: "Audit Reports", hint: "compliance export", g: "from-repairing/8 to-repairing/2" },
   { id: "cli", label: "CLI Terminal", hint: "validate .epd files", g: "from-repairing/8 to-repairing/2" },
   { id: "federation", label: "epistemic:// Federation", hint: "multi-org reconciliation", g: "from-verified/8 to-verified/2" },
+  { id: "trust", label: "Trust Runtime Dashboard", hint: "confidence & Bayesian inference", g: "from-verified/8 to-verified/2" },
 ];
 
 export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {

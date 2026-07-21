@@ -5,7 +5,7 @@ import {
   ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
   Terminal, Boxes, Globe2, Zap, Search,
   Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare, LayoutGrid,
-  ArrowUp, RefreshCw, Timer, Rocket,
+  ArrowUp, RefreshCw, Timer, Rocket, Shield,
 } from "lucide-react";
 import { usePinnedSections } from "@/hooks/use-pinned-sections";
 import { AnimatePresence, motion } from "framer-motion";
@@ -13,7 +13,7 @@ import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/epistemic/command-palette";
 import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
 
-type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment";
+type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment" | "trust";
 
 const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
   { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
@@ -29,6 +29,7 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: 
   { id: "comparison", label: "Comparison", icon: GitCompare, hint: "Policy comparison" },
   { id: "coverage", label: "Coverage", icon: LayoutGrid, hint: "Invariant coverage" },
   { id: "deployment", label: "Deploy", icon: Rocket, hint: "Argo CD sync" },
+  { id: "trust", label: "Trust Runtime", icon: Shield, hint: "Confidence & Bayesian" },
 ];
 
 const SECTION_META: Record<SectionId, { title: string; sub: string; stats: string[] }> = {
@@ -45,6 +46,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string; stats: strin
   comparison: { title: "Policy Comparison Matrix", sub: "Compare policies across multiple dimensions with radar analysis", stats: ["4 policies", "6 dims", "2 diffs"] },
   coverage: { title: "Invariant Coverage Treemap", sub: "Visualize invariant coverage across policy dimensions", stats: ["87% covered", "3 gaps", "12 invariants"] },
   deployment: { title: "Deployment Pipeline", sub: "Argo CD App-of-Apps sync waves & verification gates", stats: ["5 synced", "1 syncing", "4 pending"] },
+  trust: { title: "Trust Runtime Dashboard", sub: "Confidence scoring, Bayesian inference & verification gates", stats: ["SAFE", "75% confidence", "6 gates"] },
 };
 
 function SectionLoader({ sectionId }: { sectionId: SectionId }) {
@@ -150,6 +152,7 @@ const PerformanceMetricsSection = lazy(() => import("@/components/epistemic/perf
 const ComparisonMatrixSection = lazy(() => import("@/components/epistemic/comparison-matrix").then(m => ({ default: m.ComparisonMatrixSection as ComponentType<any> })));
 const CoverageTreemapSection = lazy(() => import("@/components/epistemic/coverage-treemap").then(m => ({ default: m.CoverageTreemapSection as ComponentType<any> })));
 const DeploymentPipelineSection = lazy(() => import("@/components/epistemic/deployment-pipeline").then(m => ({ default: m.DeploymentPipelineSection as ComponentType<any> })));
+const TrustRuntimeSection = lazy(() => import("@/components/epistemic/trust-runtime").then(m => ({ default: m.TrustRuntimeSection as ComponentType<any> })));
 const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
 
 const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
@@ -166,6 +169,7 @@ const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
   comparison: ComparisonMatrixSection,
   coverage: CoverageTreemapSection,
   deployment: DeploymentPipelineSection,
+  trust: TrustRuntimeSection,
 };
 
 export default function Home() {
@@ -280,7 +284,7 @@ export default function Home() {
               <div className="leading-none">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold tracking-tight">Epistemic Runtime</span>
-                  <span className="hidden sm:inline-flex items-center rounded border border-verified/30 bg-verified/10 px-1.5 py-0.5 text-[9px] font-mono text-verified">v0.6</span>
+                  <span className="hidden sm:inline-flex items-center rounded border border-verified/30 bg-verified/10 px-1.5 py-0.5 text-[9px] font-mono text-verified">v0.7</span>
                 </div>
                 <span className="text-[10px] text-muted-foreground font-mono">invariant-enforced DAG · CRDT · ZK-merge</span>
               </div>
@@ -290,6 +294,9 @@ export default function Home() {
                 <span className={"h-2 w-2 rounded-full " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing animate-epistemic-pulse" : "bg-violating animate-epistemic-pulse")} />
                 <span className="text-xs font-mono tabular-nums">{health === null ? "—" : `${health}%`} health</span>
               </div>
+              <button type="button" onClick={() => setActive("trust")} className="hidden lg:inline-flex items-center gap-1.5 rounded-md border border-verified/20 bg-verified/5 px-2 py-1 text-xs text-verified/70 hover:text-verified hover:border-verified/40 transition-colors" title="Trust Runtime Dashboard">
+                <Shield className="h-3 w-3" /><span className="font-mono">TRUST</span>
+              </button>
               <button type="button" onClick={() => setCmdOpen(true)} className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" title="Search sections (⌘K)">
                 <Search className="h-3.5 w-3.5" /><span className="hidden lg:inline">Search</span>
                 <kbd className="hidden lg:inline-flex items-center rounded border border-border/40 bg-muted/50 px-1 py-0.5 text-[9px] font-mono">⌘K</kbd>
@@ -359,7 +366,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-y-2 gap-x-4 text-[11px] text-muted-foreground">
             {/* Column 1: Brand & version */}
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime <span className="text-verified">v0.6</span></span>
+              <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime <span className="text-verified">v0.7</span></span>
             </div>
             {/* Column 2: System metrics */}
             <div className="flex items-center gap-2 flex-wrap">
