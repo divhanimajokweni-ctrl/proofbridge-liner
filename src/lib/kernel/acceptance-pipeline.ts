@@ -16,6 +16,7 @@ import { MerkleMountainRange } from './mmr';
 import { DeterministicSequencer } from './sequencer';
 import { SchemaRegistry } from './schema-registry';
 import { evaluatePolicy } from './policy-evaluator';
+import { redactPII, STANDARD_PII_RULES, type PIIRule } from './redaction';
 
 export class AcceptancePipeline {
   private providers: RuntimeProviders;
@@ -23,34 +24,38 @@ export class AcceptancePipeline {
   private mmr: MerkleMountainRange;
   private schemaRegistry: SchemaRegistry;
   private policies: Map<string, PolicyRule> = new Map();
+  private piiRules: PIIRule[];
 
   constructor(
     providers: RuntimeProviders,
     sequencer: DeterministicSequencer,
     mmr: MerkleMountainRange,
     schemaRegistry: SchemaRegistry,
+    piiRules?: PIIRule[],
   ) {
     this.providers = providers;
     this.sequencer = sequencer;
     this.mmr = mmr;
     this.schemaRegistry = schemaRegistry;
+    this.piiRules = piiRules ?? STANDARD_PII_RULES;
   }
 
   /**
    * Submit an observation through the acceptance pipeline.
    * This is THE ONLY way to create a Fact.
    *
-   * Pipeline steps:
+   * Pipeline steps (CONTRACT: Observation → PII Redaction → Canonicalization → Hashing → Signing → Append):
    * 1. Schema validation
    * 2. Policy evaluation
-   * 3. Canonicalization (RFC 8785)
-   * 4. SHA-256 hashing
-   * 5. Fact ID computation
-   * 6. Sequencing
-   * 7. Signing
-   * 8. MMR insertion
-   * 9. Proof generation
-   * 10. WORM storage
+   * 3. PII redaction (BEFORE canonicalization — never hash raw regulated fields)
+   * 4. Canonicalization (RFC 8785)
+   * 5. SHA-256 hashing
+   * 6. Fact ID computation
+   * 7. Sequencing
+   * 8. Signing
+   * 9. MMR insertion
+   * 10. Proof generation
+   * 11. WORM storage
    */
   async submit(
     type: FactType,
@@ -85,26 +90,30 @@ export class AcceptancePipeline {
       };
     }
 
-    // Step 3: Canonicalization (RFC 8785)
-    const canonicalBytes = canonicalize({ type, body, submittedBy, schemaId });
+    // Step 3: PII redaction (BEFORE canonicalization — contract requirement)
+    // Never hash raw regulated fields. Redaction occurs before canonical bytes are computed.
+    const { redactedBody, redactedFields } = redactPII(body, this.piiRules);
 
-    // Step 4: SHA-256 hash
+    // Step 4: Canonicalization (RFC 8785) — on the REDACTED body
+    const canonicalBytes = canonicalize({ type, body: redactedBody, submittedBy, schemaId });
+
+    // Step 5: SHA-256 hash
     const hash = computeSHA256(canonicalBytes);
 
-    // Step 5: Fact ID (SHA-256 of canonical bytes)
+    // Step 6: Fact ID (SHA-256 of canonical bytes)
     const factId = computeFactId(canonicalBytes);
 
-    // Step 6: Sequencing
+    // Step 7: Sequencing
     const { sequence, timestamp } = this.sequencer.next();
 
-    // Step 7: Signing
+    // Step 8: Signing
     const signature = this.providers.signer.sign(canonicalBytes);
 
-    // Step 8: Build Fact
+    // Step 9: Build Fact
     const fact: Fact = {
       id: factId,
       type,
-      body,
+      body: redactedBody,
       canonicalBytes,
       hash,
       sequence,
@@ -115,10 +124,10 @@ export class AcceptancePipeline {
       schemaId,
     };
 
-    // Step 9: MMR insertion
+    // Step 10: MMR insertion
     const mmrIndex = this.mmr.append(factId, hash);
 
-    // Step 10: Proof generation
+    // Step 11: Proof generation
     const mmrProof = this.mmr.getInclusionProof(mmrIndex);
     const proof: Proof = {
       id: computeSHA256(`proof:${factId}:${this.providers.clock.now()}`),
@@ -131,7 +140,7 @@ export class AcceptancePipeline {
       timestamp: this.providers.clock.now(),
     };
 
-    // Step 11: WORM storage
+    // Step 12: WORM storage
     await this.providers.storage.append(fact);
     await this.providers.storage.appendProof(proof);
 

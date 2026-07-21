@@ -739,3 +739,41 @@ Stage Summary:
   - scripts/verify-kernel.ts
   - schemas/evidence-envelope.schema.json
   - src/components/epistemic/kernel-verification.tsx
+
+---
+Task ID: Execution-Contract-Ratification
+Agent: Main
+Task: Create the authoritative Execution Contract and fix all audit findings
+
+Work Log:
+- Conducted brutal audit of kernel against proposed contract — found 4 CRITICAL and 7 HIGH gaps
+- FIX1 (CRITICAL): Integrated PII redaction into AcceptancePipeline — redactPII() now called between policy evaluation and canonicalization (Step 3 of 12-step pipeline)
+- FIX2: Added RSA-PSS-SHA256 signer (src/signer/rsa-pss.ts) and ECDSA P-384 signer (src/signer/ecdsa-p384.ts) with @noble/curves/p384
+- FIX3 (HIGH): Added `default: throw` to policy evaluator switch — unknown opcodes now terminate evaluation
+- FIX4 (HIGH): Added LOOKUP opcode to PolicyOpcode type and evaluator with LOOKUP_TABLES registry
+- FIX5 (HIGH): Replaced all 6 hardcoded `passed: true` verification assertions with real checks:
+  - Acceptance Pipeline Universal: verify submit() exists
+  - No FNV Hashing: verify SHA-256 output length (64 hex chars)
+  - No Non-Deterministic APIs: verify all providers are injected
+  - Schema Validation Active: register strict schema, verify rejection of invalid observations
+  - RFC 8785 vs JSON.stringify: verify key sorting in canonical output
+  - All other assertions now use computeSHA256/canonicalize direct imports
+- Created EXECUTION_CONTRACT.md — the root contract document with:
+  - 15 architectural rules
+  - 12-step pipeline lifecycle specification
+  - 12 required verification checks with methods
+  - Kernel file map
+  - 20 deliverables table with status
+  - Known gaps (honest assessment)
+  - Final acceptance criteria
+- 12/12 assertions pass with real verification (not hardcoded)
+- Lint clean
+
+Stage Summary:
+- PII redaction is now IN the pipeline (was the #1 audit finding)
+- All 3 required signing algorithms implemented (Ed25519, RSA-PSS-SHA256, ECDSA P-384)
+- Policy evaluator rejects unknown opcodes (contract compliance)
+- LOOKUP opcode added for deterministic table-based decisions
+- All 12 verification assertions are real checks, not hardcoded true
+- EXECUTION_CONTRACT.md created as the single source of truth
+- Known gaps documented honestly: RFC 8785 edge cases, S3 stub, KMS stub, missing test suite

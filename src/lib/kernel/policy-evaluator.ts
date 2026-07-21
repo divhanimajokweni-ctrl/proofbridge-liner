@@ -5,6 +5,20 @@
 import type { PolicyRule, PolicyOpcode, PolicyResult, Severity } from './types';
 
 /**
+ * Registered lookup tables for the LOOKUP opcode.
+ * Tables must be deterministic — same key always returns same value.
+ * Register new tables before pipeline construction.
+ */
+export const LOOKUP_TABLES: Record<string, Record<string, unknown>> = {};
+
+/**
+ * Register a lookup table for use by the LOOKUP opcode.
+ */
+export function registerLookupTable(name: string, table: Record<string, unknown>): void {
+  LOOKUP_TABLES[name] = table;
+}
+
+/**
  * Evaluate a policy rule against a fact body.
  * Returns the policy result: 'accept', 'reject', or 'defer'.
  */
@@ -154,10 +168,28 @@ function executeOpcode(
       stack.push(values.some(v => v === true));
       break;
     }
+    case 'LOOKUP': {
+      // Deterministic table lookup — replaces dynamic code execution
+      // Look up a value from a named lookup table by key
+      // The lookup table must be registered at pipeline construction time
+      const lookupKey = stack.pop();
+      const table = LOOKUP_TABLES[opcode.table];
+      if (!table) {
+        throw new Error(`Unknown lookup table: ${opcode.table}. Evaluation terminated.`);
+      }
+      const result = table[String(lookupKey)] ?? table[opcode.key];
+      stack.push(result ?? null);
+      break;
+    }
     case 'RESULT': {
       // Push the policy result onto the stack
       stack.push(opcode.policy);
       break;
+    }
+    default: {
+      // CONTRACT: Unknown opcode must terminate evaluation.
+      // Never silently ignore unknown opcodes.
+      throw new Error(`Unknown policy opcode: ${(opcode as { op: string }).op}. Evaluation terminated.`);
     }
   }
 }

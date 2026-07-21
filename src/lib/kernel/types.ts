@@ -111,6 +111,7 @@ export type PolicyOpcode =
   | { op: 'NOT' }
   | { op: 'EVERY'; count: number }
   | { op: 'SOME'; count: number }
+  | { op: 'LOOKUP'; table: string; key: string }
   | { op: 'RESULT'; policy: PolicyResult };
 
 /** A Projection — how to consume. Derived view of facts. */
