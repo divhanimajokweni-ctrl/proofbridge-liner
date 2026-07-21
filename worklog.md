@@ -585,3 +585,26 @@ Stage Summary:
 - 6 verification gates: Schema Validation → Invariant Compilation → ZK Proof Generation → Shard Distribution → Shadow Bridge Sync → Merge & Repair Check
 - 0 TypeScript errors, 0 lint errors, dev server stable
 
+---
+Task ID: PDF-1
+Agent: main
+Task: Generate comprehensive end-to-end PDF reference document for the Epistemic Runtime
+
+Work Log:
+- Read PDF skill briefs (creative-flow.md, cover.md, palette.md, fonts.md, overflow.md, pagination.md)
+- Gathered live system data: stats (6 policies, 21 shards, 16 proofs), trust-runtime (confidence 22.9%, TRIP status)
+- Designed 19-page HTML document with cover + 15 chapters + ending page using Creative Flow pipeline
+- Chapters: Executive Overview, System Architecture, .epd Policy DSL, DAG Topology & Sharding, Self-Repairing Merges, ZK Proofs & MMR, Shadow Bridge, Trust Runtime Dashboard, Multi-Org Federation, GitOps Deployment Pipeline, Using the System, Autonomous Task Execution, Contributing, VVU Design System, Roadmap
+- Cover page with VVU brand tokens (Crimson #C41E3A, Gold #C9A84C, Near-Void #09090f)
+- Fixed font fallback validation errors (added sans-serif/serif/monospace fallbacks)
+- Converted HTML to PDF via html2pdf-next.js with Paged.js pagination (720x1020px)
+- Ran pdf_qa.py: all 8 critical checks pass, 8 warnings (punctuation rules, content fill ratio on 2 pages)
+- Added Z.ai metadata via pdf.py meta.brand
+
+Stage Summary:
+- Generated 19-page PDF: /home/z/my-project/epistemic-runtime-reference.pdf (395.2 KB)
+- HTML source: /home/z/my-project/epistemic-runtime-reference.html
+- ~4,003 words across all chapters with 5 tables
+- All critical QA checks pass (no blank pages, no overflow, full-bleed cover, symmetric margins, fonts embedded)
+- Document covers all specs for investors, academia, organizations, business, regulators, developers, fintech, engineers
+
