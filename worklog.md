@@ -633,3 +633,27 @@ Stage Summary:
 - **Comprehensive PDF specification generated**: 20 pages, 188KB, covers the entire Epistemic Runtime stack
 - All architectural gaps from the review are now represented in the dashboard
 - The dashboard now directly reflects the architectural review's findings
+
+---
+Task ID: v0.8-migration-spec
+Agent: Main Agent
+Task: Integrate v0.8 Final Integration Specification — Migration as Facts pattern
+
+Work Log:
+- Created MigrationSection component at `/src/components/epistemic/migration.tsx` with 8 panels: Evidence Kernel Architecture, Migration Adapter Flow, Migration Fact Types, Failure as Facts, Policy Time Travel, Projection Versioning, Specification Alignment Table, Deterministic Ordering
+- Created API endpoint `/api/migration/route.ts` with comprehensive mock data: 8 migration facts, 3 failure facts, 5 projections, 3 policies, 9 spec alignment items, metrics
+- Updated Architecture section: added "Deprecation Is Not Kernel" insight card, "THE KERNEL INVARIANT" callout box, "Migration Adapter" in adapters sub-components, updated Failure Facts gap status to "in_progress"
+- Updated page.tsx: added "migration" to SectionId type, added Migration tab (#17) with GitBranch icon, lazy import, section component mapping, meta entry
+- Total sections: 17 (was 16)
+- Zero lint errors, zero TypeScript errors, dev server stable
+- All sections verified via agent-browser
+
+Stage Summary:
+- **Project upgraded to v0.8+ with Migration as Facts integration**
+- New section: Migration (#17) — fully visualizes the migration-as-facts pattern
+- Architecture section enhanced with kernel invariant and deprecation-is-not-kernel concept
+- Key architectural insights now directly reflected in dashboard:
+  - "The kernel never knows what deprecation means. It only knows Facts."
+  - "The kernel may only know immutable facts, immutable policies, immutable proofs, immutable relations, and deterministic projections."
+  - "Everything else — including migration — is replaceable infrastructure."
+- Specification alignment table: 4/9 aligned (56%), 5/9 still required

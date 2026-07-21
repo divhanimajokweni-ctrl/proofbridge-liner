@@ -1,0 +1,706 @@
+     1→"use client";
+     2→
+     3→import { useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import type { Variants } from "framer-motion";
+     6→import {
+     7→  Layers, Box, ShieldCheck, FileCheck, Scale, Eye, ArrowDown,
+     8→  ArrowRight, ArrowLeft, CheckCircle2, Clock, AlertTriangle, XCircle,
+     9→  Cpu, GitBranch, KeyRound, Activity, Zap, Lock, Server,
+    10→  ChevronDown, ChevronUp, RotateCcw, Binary, Workflow, Cuboid,
+    11→  Network, HardDrive, Gauge, Puzzle, Sparkles,
+    12→} from "lucide-react";
+    13→import { Card } from "@/components/ui/card";
+    14→import {
+    15→  StatusPill, StatCard, GradientBorderCard, SectionHeader,
+    16→  containerVariants, cardVariants, itemVariants, TopAccentBar,
+    17→} from "./primitives";
+    18→import { RadarGrid, SparkLine, DonutChart, MetricGauge } from "./chart-primitives";
+    19→
+    20→/* ─── Animation Variants ─── */
+    21→const cv: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.07, delayChildren: 0.04 } } };
+    22→const cardV: Variants = { hidden: { opacity: 0, y: 16, scale: 0.97 }, visible: { opacity: 1, y: 0, scale: 1, transition: { type: "spring", stiffness: 260, damping: 24 } } };
+    23→const itemV: Variants = { hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 26 } } };
+    24→const fadeV: Variants = { hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } } };
+    25→
+    26→/* ─── Card Shell ─── */
+    27→function Shell({ children, accent, className }: { children: React.ReactNode; accent?: string; className?: string }) {
+    28→  return (
+    29→    <Card className={`bg-card/80 backdrop-blur-sm border-border/60 p-4 relative overflow-hidden ${className ?? ""}`}>
+    30→      {accent && <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: accent }} />}
+    31→      <div className="bg-grid-fine absolute inset-0 opacity-15" />
+    32→      <div className="relative">{children}</div>
+    33→    </Card>
+    34→  );
+    35→}
+    36→
+    37→/* ─── Section Header ─── */
+    38→function H3({ icon: Icon, title, extra }: { icon: typeof Activity; title: string; extra?: React.ReactNode }) {
+    39→  return (
+    40→    <div className="flex items-center gap-2 mb-3">
+    41→      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-verified/10">
+    42→        <Icon className="h-3.5 w-3.5 text-verified" />
+    43→      </div>
+    44→      <h3 className="text-sm font-semibold">{title}</h3>
+    45→      {extra}
+    46→    </div>
+    47→  );
+    48→}
+    49→
+    50→/* ─── Mock Data ─── */
+    51→const PRIMITIVES = [
+    52→  {
+    53→    name: "Fact",
+    54→    definition: "What happened",
+    55→    icon: Box,
+    56→    color: "var(--verified)",
+    57→    colorClass: "text-verified",
+    58→    bgClass: "bg-verified/10",
+    59→    borderClass: "border-verified/30",
+    60→    properties: ["Immutable record", "Content-addressed", "Append-only log"],
+    61→    relations: ["→ Proof validates", "→ Policy accepts/rejects", "→ Projection consumes"],
+    62→  },
+    63→  {
+    64→    name: "Proof",
+    65→    definition: "Why we believe it",
+    66→    icon: ShieldCheck,
+    67→    color: "var(--repairing)",
+    68→    colorClass: "text-repairing",
+    69→    bgClass: "bg-repairing/10",
+    70→    borderClass: "border-repairing/30",
+    71→    properties: ["Cryptographic signature", "Verifier identity", "Ed25519 / post-quantum"],
+    72→    relations: ["← Fact attested", "→ Policy gates on", "→ Identity derived"],
+    73→  },
+    74→  {
+    75→    name: "Policy",
+    76→    definition: "Whether it should be accepted",
+    77→    icon: Scale,
+    78→    color: "var(--quarantined)",
+    79→    colorClass: "text-quarantined",
+    80→    bgClass: "bg-quarantined/10",
+    81→    borderClass: "border-quarantined/30",
+    82→    properties: ["Deterministic rules", "Emits correction facts", "Version-controlled"],
+    83→    relations: ["← Fact evaluated", "← Proof verified", "→ Correction Fact → Projection"],
+    84→  },
+    85→  {
+    86→    name: "Projection",
+    87→    definition: "How humans consume it",
+    88→    icon: Eye,
+    89→    color: "var(--violating)",
+    90→    colorClass: "text-violating",
+    91→    bgClass: "bg-violating/10",
+    92→    borderClass: "border-violating/30",
+    93→    properties: ["Derived state", "View functions", "Consumer-specific"],
+    94→    relations: ["← Fact stream", "← Policy output", "→ Application API"],
+    95→  },
+    96→];
+    97→
+    98→const CORE_INSIGHTS = [
+    99→  {
+   100→    title: "Primitives are Orthogonal",
+   101→    description: "No overlap between Fact, Proof, Policy, Projection — each has a single, well-defined concern.",
+   102→    icon: Puzzle,
+   103→    status: "verified" as const,
+   104→  },
+   105→  {
+   106→    title: "State is Derived",
+   107→    description: "State(t) = Projection(…), not State += mutation. No in-place updates — every view is recomputed from facts.",
+   108→    icon: RotateCcw,
+   109→    status: "verified" as const,
+   110→  },
+   111→  {
+   112→    title: "Policies Emit Facts",
+   113→    description: "Policy → Correction Fact → Projection. Everything observable flows through the fact log.",
+   114→    icon: Zap,
+   115→    status: "verified" as const,
+   116→  },
+   117→  {
+   118→    title: "Identity is Derived",
+   119→    description: "Proof → Verifier → Public Key → Identity. No separate identity layer — trust is cryptographic.",
+   120→    icon: KeyRound,
+   121→    status: "repairing" as const,
+   122→  },
+   123→];
+   124→
+   125→const ARCHITECTURE_LAYERS = [
+   126→  { label: "Applications", icon: Cuboid, color: "var(--violating)", sub: [] },
+   127→  { label: "Projection API", icon: Eye, color: "var(--violating)", sub: [] },
+   128→  { label: "Projection Engine", icon: Workflow, color: "var(--violating)", sub: [] },
+   129→  { label: "Fact Log", icon: HardDrive, color: "var(--verified)", sub: [] },
+   130→  {
+   131→    label: "Acceptance Engine", icon: ShieldCheck, color: "var(--quarantined)",
+   132→    sub: ["Canonicalizer", "Proof Engine", "Policy Engine", "Sequencer", "Persistence"],
+   133→  },
+   134→  { label: "Adapters", icon: Network, color: "var(--repairing)", sub: ["Git", "K8s", "Argo", "CLI", "API"] },
+   135→  { label: "External Systems", icon: Server, color: "var(--repairing)", sub: [] },
+   136→];
+   137→
+   138→const GAPS = [
+   139→  { id: 1, name: "Acceptance Pipeline", description: "Full pipeline for fact acceptance with canonicalization, proof, and policy checks", status: "in-progress" as const, priority: "Critical" as const, impact: "Blocks v1.0 — core correctness" },
+   140→  { id: 2, name: "Fact Status/Lifecycle", description: "State machine for fact lifecycle: proposed → accepted → projected → archived", status: "in-progress" as const, priority: "Critical" as const, impact: "Required for audit compliance" },
+   141→  { id: 3, name: "Deterministic Ordering", description: "Guarantee same ordering across all nodes given same facts", status: "in-progress" as const, priority: "High" as const, impact: "Consistency guarantee" },
+   142→  { id: 4, name: "Canonical Serialization Interface", description: "Deterministic byte-level serialization for content addressing", status: "planned" as const, priority: "High" as const, impact: "Cross-node verification" },
+   143→  { id: 5, name: "Projection Versioning", description: "Version projection functions for reproducible state derivation", status: "planned" as const, priority: "High" as const, impact: "Audit & replay correctness" },
+   144→  { id: 6, name: "Policy Time Travel", description: "Evaluate facts against policy at any historical point-in-time", status: "planned" as const, priority: "Medium" as const, impact: "Compliance & debugging" },
+   145→  { id: 7, name: "Proof Aggregation (Graph)", description: "Construct and traverse proof dependency DAG for batch verification", status: "planned" as const, priority: "Medium" as const, impact: "Performance at scale" },
+   146→  { id: 8, name: "Snapshot Semantics", description: "Define what constitutes a consistent snapshot across shards", status: "planned" as const, priority: "Medium" as const, impact: "Backup & migration" },
+   147→  { id: 9, name: "Distributed Consensus Interface", description: "Pluggable consensus for multi-node fact ordering", status: "planned" as const, priority: "Low" as const, impact: "Multi-region deployments" },
+   148→  { id: 10, name: "Failure Facts", description: "Represent infrastructure failures as first-class facts in the log", status: "planned" as const, priority: "Low" as const, impact: "Observability & healing" },
+   149→];
+   150→
+   151→const REPLACEABLE = [
+   152→  { current: "SHA-256", future: "BLAKE3", area: "Hashing", reason: "Faster, parallelizable" },
+   153→  { current: "Ed25519", future: "Post-quantum sigs", area: "Signatures", reason: "Quantum resistance" },
+   154→  { current: "MMR", future: "Verkle", area: "Merkle structure", reason: "Smaller proofs" },
+   155→  { current: "Kubernetes", future: "Nomad", area: "Orchestration", reason: "Simpler ops" },
+   156→  { current: "Git", future: "Perforce", area: "Source control", reason: "Large mono-repos" },
+   157→  { current: "Argo", future: "Flux", area: "GitOps", reason: "CNCF native" },
+   158→];
+   159→
+   160→const ASSESSMENT = [
+   161→  { area: "Conceptual model", score: 95, rating: "Excellent" as const },
+   162→  { area: "Separation of concerns", score: 95, rating: "Excellent" as const },
+   163→  { area: "Event sourcing", score: 92, rating: "Excellent" as const },
+   164→  { area: "Replayability", score: 90, rating: "Excellent" as const },
+   165→  { area: "Cryptographic model", score: 75, rating: "Good" as const },
+   166→  { area: "Distributed systems", score: 35, rating: "Incomplete" as const },
+   167→  { area: "Version evolution", score: 30, rating: "Incomplete" as const },
+   168→  { area: "Storage model", score: 25, rating: "Incomplete" as const },
+   169→  { area: "Concurrency", score: 10, rating: "Missing" as const },
+   170→  { area: "Production readiness", score: 82, rating: "Good" as const },
+   171→];
+   172→
+   173→/* ─── Rating Color Helper ─── */
+   174→function ratingColor(rating: string) {
+   175→  switch (rating) {
+   176→    case "Excellent": return { text: "text-verified", bg: "bg-verified/10", border: "border-verified/30" };
+   177→    case "Good": return { text: "text-repairing", bg: "bg-repairing/10", border: "border-repairing/30" };
+   178→    case "Incomplete": return { text: "text-quarantined", bg: "bg-quarantined/10", border: "border-quarantined/30" };
+   179→    case "Missing": return { text: "text-violating", bg: "bg-violating/10", border: "border-violating/30" };
+   180→    default: return { text: "text-muted-foreground", bg: "bg-muted", border: "border-border/40" };
+   181→  }
+   182→}
+   183→
+   184→function statusColor(status: string) {
+   185→  switch (status) {
+   186→    case "in-progress": return { text: "text-repairing", bg: "bg-repairing/10", border: "border-repairing/30", icon: Clock };
+   187→    case "planned": return { text: "text-quarantined", bg: "bg-quarantined/10", border: "border-quarantined/30", icon: AlertTriangle };
+   188→    case "done": return { text: "text-verified", bg: "bg-verified/10", border: "border-verified/30", icon: CheckCircle2 };
+   189→    default: return { text: "text-muted-foreground", bg: "bg-muted", border: "border-border/40", icon: Clock };
+   190→  }
+   191→}
+   192→
+   193→function priorityColor(priority: string) {
+   194→  switch (priority) {
+   195→    case "Critical": return "text-violating";
+   196→    case "High": return "text-repairing";
+   197→    case "Medium": return "text-quarantined";
+   198→    case "Low": return "text-muted-foreground";
+   199→    default: return "text-muted-foreground";
+   200→  }
+   201→}
+   202→
+   203→/* ═══════════════════════════════════════════════════
+   204→   1. Four Primitives Panel
+   205→   ═══════════════════════════════════════════════════ */
+   206→function FourPrimitivesPanel() {
+   207→  return (
+   208→    <Shell accent="linear-gradient(to right, var(--verified)00, var(--verified)80, var(--verified)00)">
+   209→      <H3 icon={Box} title="Four Orthogonal Primitives" extra={
+   210→        <span className="ml-auto text-[9px] font-mono text-muted-foreground">core ontology</span>
+   211→      } />
+   212→      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+   213→        The runtime is built on four <span className="font-semibold text-foreground">orthogonal</span> primitives — each has a single, non-overlapping concern that composes into the full epistemic pipeline.
+   214→      </p>
+   215→
+   216→      {/* Primitive Cards */}
+   217→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+   218→        {PRIMITIVES.map((p, i) => {
+   219→          const Icon = p.icon;
+   220→          return (
+   221→            <motion.div key={p.name} variants={cardV} className="relative">
+   222→              <GradientBorderCard
+   223→                gradient={`from-verified/30 via-repairing/20 to-violating/20`}
+   224→                className="h-full"
+   225→              >
+   226→                <div className="p-3 space-y-3">
+   227→                  {/* Header */}
+   228→                  <div className="flex items-center gap-2">
+   229→                    <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${p.bgClass} border ${p.borderClass}`}>
+   230→                      <Icon className={`h-4 w-4 ${p.colorClass}`} />
+   231→                    </div>
+   232→                    <div>
+   233→                      <div className="text-sm font-bold">{p.name}</div>
+   234→                      <div className={`text-[10px] font-mono ${p.colorClass}`}>{p.definition}</div>
+   235→                    </div>
+   236→                  </div>
+   237→
+   238→                  {/* Properties */}
+   239→                  <div className="space-y-1">
+   240→                    {p.properties.map((prop) => (
+   241→                      <div key={prop} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+   242→                        <span className={`inline-block h-1 w-1 rounded-full ${p.bgClass}`} />
+   243→                        {prop}
+   244→                      </div>
+   245→                    ))}
+   246→                  </div>
+   247→
+   248→                  {/* Relations */}
+   249→                  <div className="border-t border-border/40 pt-2 space-y-0.5">
+   250→                    {p.relations.map((rel) => (
+   251→                      <div key={rel} className="text-[9px] font-mono text-muted-foreground/70">{rel}</div>
+   252→                    ))}
+   253→                  </div>
+   254→                </div>
+   255→              </GradientBorderCard>
+   256→            </motion.div>
+   257→          );
+   258→        })}
+   259→      </div>
+   260→
+   261→      {/* Flow Diagram */}
+   262→      <div className="flex items-center justify-center gap-1 flex-wrap py-3 px-2 rounded-lg bg-background/40 border border-border/30">
+   263→        {PRIMITIVES.map((p, i) => {
+   264→          const Icon = p.icon;
+   265→          return (
+   266→            <div key={p.name} className="flex items-center gap-1">
+   267→              <motion.div
+   268→                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border ${p.borderClass} ${p.bgClass}`}
+   269→                whileHover={{ scale: 1.05 }}
+   270→                transition={{ type: "spring", stiffness: 400 }}
+   271→              >
+   272→                <Icon className={`h-3.5 w-3.5 ${p.colorClass}`} />
+   273→                <span className={`text-xs font-semibold ${p.colorClass}`}>{p.name}</span>
+   274→              </motion.div>
+   275→              {i < PRIMITIVES.length - 1 && (
+   276→                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40" />
+   277→              )}
+   278→            </div>
+   279→          );
+   280→        })}
+   281→        <div className="ml-2 text-[9px] text-muted-foreground font-mono">→ loop: Policy → Correction Fact → Projection</div>
+   282→      </div>
+   283→    </Shell>
+   284→  );
+   285→}
+   286→
+   287→/* ═══════════════════════════════════════════════════
+   288→   2. Core Insights Panel
+   289→   ═══════════════════════════════════════════════════ */
+   290→function CoreInsightsPanel() {
+   291→  return (
+   292→    <Shell accent="linear-gradient(to right, var(--repairing)00, var(--repairing)80, var(--repairing)00)">
+   293→      <H3 icon={Sparkles} title="Core Architecture Insights" extra={
+   294→        <span className="ml-auto text-[9px] font-mono text-muted-foreground">what&apos;s exceptionally good</span>
+   295→      } />
+   296→      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+   297→        {CORE_INSIGHTS.map((insight, i) => {
+   298→          const Icon = insight.icon;
+   299→          const statusCfg = insight.status === "verified"
+   300→            ? { bg: "bg-verified/10", border: "border-verified/30", text: "text-verified", icon: CheckCircle2, label: "Proven" }
+   301→            : { bg: "bg-repairing/10", border: "border-repairing/30", text: "text-repairing", icon: Clock, label: "Evolving" };
+   302→          const StatusIcon = statusCfg.icon;
+   303→          return (
+   304→            <motion.div key={insight.title} variants={cardV}>
+   305→              <div className={`rounded-lg border ${statusCfg.border} ${statusCfg.bg} p-3 space-y-2`}>
+   306→                <div className="flex items-center gap-2">
+   307→                  <Icon className={`h-4 w-4 ${statusCfg.text}`} />
+   308→                  <span className="text-xs font-semibold">{insight.title}</span>
+   309→                  <span className={`ml-auto inline-flex items-center gap-1 text-[9px] font-semibold ${statusCfg.text}`}>
+   310→                    <StatusIcon className="h-3 w-3" />{statusCfg.label}
+   311→                  </span>
+   312→                </div>
+   313→                <p className="text-[11px] text-muted-foreground leading-relaxed">{insight.description}</p>
+   314→              </div>
+   315→            </motion.div>
+   316→          );
+   317→        })}
+   318→      </div>
+   319→
+   320→      {/* Key Equations */}
+   321→      <div className="mt-3 space-y-2">
+   322→        <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
+   323→          <div className="text-[10px] text-muted-foreground mb-1">State Derivation</div>
+   324→          <code className="text-xs font-mono text-verified">State(t) = Projection(Filter(FactLog, Policy), t)</code>
+   325→        </div>
+   326→        <div className="rounded-md border border-border/30 bg-background/40 px-3 py-2">
+   327→          <div className="text-[10px] text-muted-foreground mb-1">Identity Chain</div>
+   328→          <code className="text-xs font-mono text-repairing">Identity = PublicKey(Verifier(Proof(Fact)))</code>
+   329→        </div>
+   330→      </div>
+   331→    </Shell>
+   332→  );
+   333→}
+   334→
+   335→/* ═══════════════════════════════════════════════════
+   336→   3. Production Architecture Diagram
+   337→   ═══════════════════════════════════════════════════ */
+   338→function ArchitectureDiagram() {
+   339→  const [expandedLayer, setExpandedLayer] = useState<number | null>(4); // Acceptance Engine expanded by default
+   340→
+   341→  return (
+   342→    <Shell accent="linear-gradient(to right, var(--quarantined)00, var(--quarantined)80, var(--quarantined)00)">
+   343→      <H3 icon={Layers} title="Production Architecture" extra={
+   344→        <span className="ml-auto text-[9px] font-mono text-muted-foreground">layered diagram</span>
+   345→      } />
+   346→      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+   347→        The runtime is organized as strict layers — data flows downward through acceptance and upward through projection. Each layer has a single responsibility.
+   348→      </p>
+   349→
+   350→      <div className="space-y-0">
+   351→        {ARCHITECTURE_LAYERS.map((layer, i) => {
+   352→          const Icon = layer.icon;
+   353→          const isExpanded = expandedLayer === i;
+   354→          const hasSubs = layer.sub.length > 0;
+   355→
+   356→          return (
+   357→            <motion.div key={layer.label} variants={itemV}>
+   358→              {/* Layer block */}
+   359→              <button
+   360→                onClick={() => setExpandedLayer(isExpanded ? null : i)}
+   361→                className="w-full text-left"
+   362→                disabled={!hasSubs}
+   363→              >
+   364→                <div
+   365→                  className="relative flex items-center gap-2.5 px-3 py-2.5 border border-border/40 rounded-lg bg-background/40 hover:bg-background/60 transition-colors"
+   366→                  style={{ borderLeftColor: layer.color, borderLeftWidth: "3px" }}
+   367→                >
+   368→                  <Icon className="h-4 w-4 shrink-0" style={{ color: layer.color }} />
+   369→                  <span className="text-xs font-semibold">{layer.label}</span>
+   370→                  {hasSubs && (
+   371→                    <span className="ml-auto text-[9px] text-muted-foreground font-mono">
+   372→                      {layer.sub.length} components
+   373→                    </span>
+   374→                  )}
+   375→                  {hasSubs && (
+   376→                    <span className="shrink-0">
+   377→                      {isExpanded
+   378→                        ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+   379→                        : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+   380→                    </span>
+   381→                  )}
+   382→                </div>
+   383→              </button>
+   384→
+   385→              {/* Sub-components */}
+   386→              <AnimatePresence>
+   387→                {hasSubs && isExpanded && (
+   388→                  <motion.div
+   389→                    initial={{ height: 0, opacity: 0 }}
+   390→                    animate={{ height: "auto", opacity: 1 }}
+   391→                    exit={{ height: 0, opacity: 0 }}
+   392→                    transition={{ duration: 0.25 }}
+   393→                    className="overflow-hidden"
+   394→                  >
+   395→                    <div className="ml-4 pl-3 border-l-2 border-border/30 py-1.5 space-y-1">
+   396→                      {layer.sub.map((sub) => (
+   397→                        <div key={sub} className="flex items-center gap-2 px-2 py-1 rounded-md bg-background/30 text-[11px]">
+   398→                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: layer.color }} />
+   399→                          <span className="font-medium">{sub}</span>
+   400→                        </div>
+   401→                      ))}
+   402→                    </div>
+   403→                  </motion.div>
+   404→                )}
+   405→              </AnimatePresence>
+   406→
+   407→              {/* Connector arrow */}
+   408→              {i < ARCHITECTURE_LAYERS.length - 1 && (
+   409→                <div className="flex justify-center py-0.5">
+   410→                  <ArrowDown className="h-3.5 w-3.5 text-muted-foreground/30" />
+   411→                </div>
+   412→              )}
+   413→            </motion.div>
+   414→          );
+   415→        })}
+   416→      </div>
+   417→    </Shell>
+   418→  );
+   419→}
+   420→
+   421→/* ═══════════════════════════════════════════════════
+   422→   4. Gap Analysis Panel
+   423→   ═══════════════════════════════════════════════════ */
+   424→function GapAnalysisPanel() {
+   425→  const [showAll, setShowAll] = useState(false);
+   426→  const visibleGaps = showAll ? GAPS : GAPS.slice(0, 5);
+   427→
+   428→  const inProgressCount = GAPS.filter(g => g.status === "in-progress").length;
+   429→  const plannedCount = GAPS.filter(g => g.status === "planned").length;
+   430→
+   431→  return (
+   432→    <Shell accent="linear-gradient(to right, var(--repairing)00, var(--repairing)80, var(--repairing)00)">
+   433→      <H3 icon={AlertTriangle} title="Gap Analysis" extra={
+   434→        <div className="ml-auto flex items-center gap-2">
+   435→          <span className="inline-flex items-center gap-1 text-[9px] text-repairing font-mono">
+   436→            <Clock className="h-3 w-3" />{inProgressCount} in progress
+   437→          </span>
+   438→          <span className="inline-flex items-center gap-1 text-[9px] text-quarantined font-mono">
+   439→            <AlertTriangle className="h-3 w-3" />{plannedCount} planned
+   440→          </span>
+   441→        </div>
+   442→      } />
+   443→
+   444→      {/* Summary stats */}
+   445→      <div className="grid grid-cols-3 gap-2 mb-3">
+   446→        <StatCard label="In Progress" value={inProgressCount} color="text-repairing" bg="bg-repairing/5" border="border-repairing/30" />
+   447→        <StatCard label="Planned" value={plannedCount} color="text-quarantined" bg="bg-quarantined/5" border="border-quarantined/30" />
+   448→        <StatCard label="Total Gaps" value={GAPS.length} color="text-foreground" bg="bg-muted/20" border="border-border/60" />
+   449→      </div>
+   450→
+   451→      {/* Gap list */}
+   452→      <div className="space-y-2 max-h-96 overflow-y-auto scrollbar-thin">
+   453→        {visibleGaps.map((gap) => {
+   454→          const sc = statusColor(gap.status);
+   455→          const StatusIcon = sc.icon;
+   456→          return (
+   457→            <motion.div
+   458→              key={gap.id}
+   459→              variants={itemV}
+   460→              className={`rounded-lg border ${sc.border} ${sc.bg} p-3`}
+   461→            >
+   462→              <div className="flex items-start gap-2">
+   463→                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-background/60 text-[10px] font-mono font-bold text-muted-foreground shrink-0 mt-0.5">
+   464→                  {gap.id}
+   465→                </span>
+   466→                <div className="flex-1 min-w-0 space-y-1">
+   467→                  <div className="flex items-center gap-2 flex-wrap">
+   468→                    <span className="text-xs font-semibold">{gap.name}</span>
+   469→                    <StatusIcon className={`h-3 w-3 ${sc.text} shrink-0`} />
+   470→                    <span className={`text-[9px] font-semibold uppercase ${sc.text}`}>
+   471→                      {gap.status.replace("-", " ")}
+   472→                    </span>
+   473→                    <span className={`ml-auto text-[9px] font-semibold uppercase ${priorityColor(gap.priority)}`}>
+   474→                      {gap.priority}
+   475→                    </span>
+   476→                  </div>
+   477→                  <p className="text-[10px] text-muted-foreground leading-relaxed">{gap.description}</p>
+   478→                  <div className="text-[9px] text-muted-foreground/70 font-mono">Impact: {gap.impact}</div>
+   479→                </div>
+   480→              </div>
+   481→            </motion.div>
+   482→          );
+   483→        })}
+   484→      </div>
+   485→
+   486→      {/* Show more / less */}
+   487→      {!showAll && GAPS.length > 5 && (
+   488→        <button
+   489→          onClick={() => setShowAll(true)}
+   490→          className="mt-3 w-full text-center text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+   491→        >
+   492→          Show {GAPS.length - 5} more gaps…
+   493→        </button>
+   494→      )}
+   495→      {showAll && (
+   496→        <button
+   497→          onClick={() => setShowAll(false)}
+   498→          className="mt-3 w-full text-center text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+   499→        >
+   500→          Show less
+   501→        </button>
+   502→      )}
+   503→    </Shell>
+   504→  );
+   505→}
+   506→
+   507→/* ═══════════════════════════════════════════════════
+   508→   5. Long-term Stability Panel
+   509→   ═══════════════════════════════════════════════════ */
+   510→function StabilityPanel() {
+   511→  return (
+   512→    <Shell accent="linear-gradient(to right, var(--verified)00, var(--verified)80, var(--verified)00)">
+   513→      <H3 icon={Lock} title="Long-term Stability" extra={
+   514→        <span className="ml-auto text-[9px] font-mono text-muted-foreground">replaceable infra</span>
+   515→      } />
+   516→      <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+   517→        Infrastructure can be swapped — the kernel (Fact, Proof, Policy, Projection) remains stable regardless.
+   518→      </p>
+   519→
+   520→      {/* Stable kernel indicator */}
+   521→      <div className="mb-3 p-3 rounded-lg border border-verified/30 bg-verified/5">
+   522→        <div className="flex items-center gap-2 mb-2">
+   523→          <ShieldCheck className="h-4 w-4 text-verified" />
+   524→          <span className="text-xs font-semibold text-verified">Stable Kernel</span>
+   525→          <StatusPill status="verified" label="Immutable" />
+   526→        </div>
+   527→        <div className="flex items-center gap-1.5 flex-wrap">
+   528→          {PRIMITIVES.map((p, i) => (
+   529→            <div key={p.name} className="flex items-center gap-1">
+   530→              <span className={`text-[10px] font-mono font-bold ${p.colorClass}`}>{p.name}</span>
+   531→              {i < PRIMITIVES.length - 1 && <span className="text-[9px] text-muted-foreground/40">·</span>}
+   532→            </div>
+   533→          ))}
+   534→          <span className="text-[9px] text-muted-foreground ml-1">— these never change</span>
+   535→        </div>
+   536→      </div>
+   537→
+   538→      {/* Replaceable items */}
+   539→      <div className="space-y-2">
+   540→        {REPLACEABLE.map((item) => (
+   541→          <motion.div
+   542→            key={item.current}
+   543→            variants={itemV}
+   544→            className="flex items-center gap-2.5 rounded-md border border-border/30 bg-background/30 px-3 py-2"
+   545→          >
+   546→            <div className="flex items-center gap-2 min-w-0 flex-1">
+   547→              <div className="flex items-center gap-1.5">
+   548→                <span className="text-[10px] font-mono text-muted-foreground line-through opacity-60">{item.current}</span>
+   549→                <ArrowRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+   550→                <span className="text-[10px] font-mono font-semibold text-foreground">{item.future}</span>
+   551→              </div>
+   552→            </div>
+   553→            <div className="flex items-center gap-2 shrink-0">
+   554→              <span className="text-[9px] text-muted-foreground font-mono bg-muted/40 px-1.5 py-0.5 rounded">{item.area}</span>
+   555→              <span className="text-[9px] text-muted-foreground/60 hidden sm:inline">{item.reason}</span>
+   556→            </div>
+   557→          </motion.div>
+   558→        ))}
+   559→      </div>
+   560→    </Shell>
+   561→  );
+   562→}
+   563→
+   564→/* ═══════════════════════════════════════════════════
+   565→   6. Assessment Scorecard
+   566→   ═══════════════════════════════════════════════════ */
+   567→function AssessmentScorecard() {
+   568→  const radarData = ASSESSMENT.map(a => ({
+   569→    label: a.area.length > 10 ? a.area.slice(0, 9) + "…" : a.area,
+   570→    value: a.score,
+   571→    max: 100,
+   572→  }));
+   573→
+   574→  const excellentCount = ASSESSMENT.filter(a => a.rating === "Excellent").length;
+   575→  const goodCount = ASSESSMENT.filter(a => a.rating === "Good").length;
+   576→  const incompleteCount = ASSESSMENT.filter(a => a.rating === "Incomplete").length;
+   577→  const missingCount = ASSESSMENT.filter(a => a.rating === "Missing").length;
+   578→
+   579→  return (
+   580→    <Shell accent="linear-gradient(to right, var(--verified)00, var(--verified)60, var(--violating)80, var(--violating)00)">
+   581→      <H3 icon={Gauge} title="Assessment Scorecard" extra={
+   582→        <span className="ml-auto text-[9px] font-mono text-muted-foreground">~80–85% ready</span>
+   583→      } />
+   584→
+   585→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   586→        {/* Left: Radar Chart */}
+   587→        <div className="flex flex-col items-center gap-3">
+   588→          <RadarGrid data={radarData} size={200} color="verified" />
+   589→          <div className="flex items-center gap-3 flex-wrap justify-center">
+   590→            <span className="flex items-center gap-1 text-[9px] text-verified"><span className="h-1.5 w-1.5 rounded-full bg-verified" />Excellent</span>
+   591→            <span className="flex items-center gap-1 text-[9px] text-repairing"><span className="h-1.5 w-1.5 rounded-full bg-repairing" />Good</span>
+   592→            <span className="flex items-center gap-1 text-[9px] text-quarantined"><span className="h-1.5 w-1.5 rounded-full bg-quarantined" />Incomplete</span>
+   593→            <span className="flex items-center gap-1 text-[9px] text-violating"><span className="h-1.5 w-1.5 rounded-full bg-violating" />Missing</span>
+   594→          </div>
+   595→        </div>
+   596→
+   597→        {/* Right: Detailed bars */}
+   598→        <div className="space-y-2">
+   599→          {/* Summary counts */}
+   600→          <div className="grid grid-cols-4 gap-1.5 mb-2">
+   601→            <StatCard label="Excellent" value={excellentCount} color="text-verified" bg="bg-verified/5" border="border-verified/30" />
+   602→            <StatCard label="Good" value={goodCount} color="text-repairing" bg="bg-repairing/5" border="border-repairing/30" />
+   603→            <StatCard label="Incomplete" value={incompleteCount} color="text-quarantined" bg="bg-quarantined/5" border="border-quarantined/30" />
+   604→            <StatCard label="Missing" value={missingCount} color="text-violating" bg="bg-violating/5" border="border-violating/30" />
+   605→          </div>
+   606→
+   607→          {/* Progress bars */}
+   608→          <div className="space-y-1.5 max-h-64 overflow-y-auto scrollbar-thin">
+   609→            {ASSESSMENT.map((a) => {
+   610→              const rc = ratingColor(a.rating);
+   611→              return (
+   612→                <div key={a.area} className="space-y-0.5">
+   613→                  <div className="flex items-center justify-between">
+   614→                    <span className="text-[10px] text-muted-foreground">{a.area}</span>
+   615→                    <span className={`text-[9px] font-semibold uppercase ${rc.text}`}>{a.rating}</span>
+   616→                  </div>
+   617→                  <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
+   618→                    <motion.div
+   619→                      className="h-full rounded-full"
+   620→                      style={{
+   621→                        backgroundColor: a.rating === "Excellent" ? "var(--verified)"
+   622→                          : a.rating === "Good" ? "var(--repairing)"
+   623→                          : a.rating === "Incomplete" ? "var(--quarantined)"
+   624→                          : "var(--violating)",
+   625→                      }}
+   626→                      initial={{ width: 0 }}
+   627→                      animate={{ width: `${a.score}%` }}
+   628→                      transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
+   629→                    />
+   630→                  </div>
+   631→                </div>
+   632→              );
+   633→            })}
+   634→          </div>
+   635→        </div>
+   636→      </div>
+   637→
+   638→      {/* Overall readiness gauge */}
+   639→      <div className="mt-4 flex items-center justify-center gap-6">
+   640→        <MetricGauge value={82} max={100} label="Production Readiness" color="verified" size={110} />
+   641→        <div className="space-y-1.5 text-xs text-muted-foreground">
+   642→          <div className="flex items-center gap-2">
+   643→            <CheckCircle2 className="h-3.5 w-3.5 text-verified" />
+   644→            <span>Conceptual model is rock-solid</span>
+   645→          </div>
+   646→          <div className="flex items-center gap-2">
+   647→            <AlertTriangle className="h-3.5 w-3.5 text-repairing" />
+   648→            <span>Crypto &amp; distributed need work</span>
+   649→          </div>
+   650→          <div className="flex items-center gap-2">
+   651→            <XCircle className="h-3.5 w-3.5 text-violating" />
+   652→            <span>Concurrency model is undefined</span>
+   653→          </div>
+   654→        </div>
+   655→      </div>
+   656→    </Shell>
+   657→  );
+   658→}
+   659→
+   660→/* ═══════════════════════════════════════════════════
+   661→   Main Section Export
+   662→   ═══════════════════════════════════════════════════ */
+   663→export function ArchitectureSection() {
+   664→  return (
+   665→    <motion.div variants={cv} initial="hidden" animate="visible" className="space-y-6">
+   666→      {/* Section Header */}
+   667→      <SectionHeader
+   668→        icon={Layers}
+   669→        title="Architecture & Primitives"
+   670→        subtitle="Core ontology, production architecture, gap analysis & long-term stability"
+   671→        iconClass="border-verified/30 bg-verified/10 text-verified"
+   672→      />
+   673→
+   674→      {/* Row 1: Four Primitives (full width) */}
+   675→      <motion.div variants={cardV}>
+   676→        <FourPrimitivesPanel />
+   677→      </motion.div>
+   678→
+   679→      {/* Row 2: Core Insights + Architecture Diagram */}
+   680→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   681→        <motion.div variants={cardV}>
+   682→          <CoreInsightsPanel />
+   683→        </motion.div>
+   684→        <motion.div variants={cardV}>
+   685→          <ArchitectureDiagram />
+   686→        </motion.div>
+   687→      </div>
+   688→
+   689→      {/* Row 3: Gap Analysis (full width) */}
+   690→      <motion.div variants={cardV}>
+   691→        <GapAnalysisPanel />
+   692→      </motion.div>
+   693→
+   694→      {/* Row 4: Stability + Assessment */}
+   695→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   696→        <motion.div variants={cardV}>
+   697→          <StabilityPanel />
+   698→        </motion.div>
+   699→        <motion.div variants={cardV}>
+   700→          <AssessmentScorecard />
+   701→        </motion.div>
+   702→      </div>
+   703→    </motion.div>
+   704→  );
+   705→}
+   706→

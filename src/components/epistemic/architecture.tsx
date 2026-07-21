@@ -120,6 +120,12 @@ const CORE_INSIGHTS = [
     icon: KeyRound,
     status: "repairing" as const,
   },
+  {
+    title: "Deprecation Is Not Kernel",
+    description: "The kernel never knows what deprecation means. It only knows Facts. Deprecation, migration, and lifecycle management are all infrastructure that produce Facts. This keeps the kernel minimal and stable.",
+    icon: Binary,
+    status: "verified" as const,
+  },
 ];
 
 const ARCHITECTURE_LAYERS = [
@@ -131,7 +137,7 @@ const ARCHITECTURE_LAYERS = [
     label: "Acceptance Engine", icon: ShieldCheck, color: "var(--quarantined)",
     sub: ["Canonicalizer", "Proof Engine", "Policy Engine", "Sequencer", "Persistence"],
   },
-  { label: "Adapters", icon: Network, color: "var(--repairing)", sub: ["Git", "K8s", "Argo", "CLI", "API"] },
+  { label: "Adapters", icon: Network, color: "var(--repairing)", sub: ["Git", "K8s", "Argo", "CLI", "API", "Migration Adapter"] },
   { label: "External Systems", icon: Server, color: "var(--repairing)", sub: [] },
 ];
 
@@ -145,7 +151,7 @@ const GAPS = [
   { id: 7, name: "Proof Aggregation (Graph)", description: "Construct and traverse proof dependency DAG for batch verification", status: "planned" as const, priority: "Medium" as const, impact: "Performance at scale" },
   { id: 8, name: "Snapshot Semantics", description: "Define what constitutes a consistent snapshot across shards", status: "planned" as const, priority: "Medium" as const, impact: "Backup & migration" },
   { id: 9, name: "Distributed Consensus Interface", description: "Pluggable consensus for multi-node fact ordering", status: "planned" as const, priority: "Low" as const, impact: "Multi-region deployments" },
-  { id: 10, name: "Failure Facts", description: "Represent infrastructure failures as first-class facts in the log", status: "planned" as const, priority: "Low" as const, impact: "Observability & healing" },
+  { id: 10, name: "Failure Facts", description: "Represent infrastructure failures as first-class facts in the log", status: "in-progress" as const, priority: "Low" as const, impact: "Observability & healing" },
 ];
 
 const REPLACEABLE = [
@@ -315,6 +321,23 @@ function CoreInsightsPanel() {
             </motion.div>
           );
         })}
+      </div>
+
+      {/* Kernel Invariant Callout */}
+      <div className="mt-4 rounded-lg border-2 border-verified/50 bg-verified/5 dark:bg-verified/10 p-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-verified/0 via-verified to-verified/0" />
+        <div className="flex items-center gap-2 mb-2">
+          <Binary className="h-4 w-4 text-verified" />
+          <span className="text-xs font-bold uppercase tracking-wider text-verified">The Kernel Invariant</span>
+        </div>
+        <div className="space-y-1.5 text-[11px] leading-relaxed">
+          <p className="text-foreground font-medium">
+            The kernel may only know <span className="font-mono font-bold text-verified">immutable facts</span>, <span className="font-mono font-bold text-verified">immutable policies</span>, <span className="font-mono font-bold text-verified">immutable proofs</span>, <span className="font-mono font-bold text-verified">immutable relations</span>, and <span className="font-mono font-bold text-verified">deterministic projections</span>.
+          </p>
+          <p className="text-muted-foreground italic">
+            Everything else — including migration — is replaceable infrastructure.
+          </p>
+        </div>
       </div>
 
       {/* Key Equations */}

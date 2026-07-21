@@ -1,0 +1,707 @@
+     1→"use client";
+     2→
+     3→import { useMemo, useState, useCallback } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import type { Variants } from "framer-motion";
+     6→import {
+     7→  ArrowRight, ArrowDownRight, CheckCircle2, AlertTriangle, XCircle, Clock,
+     8→  Cpu, Shield, Hash as HashIcon, FileCheck, Signature, Scale, Layers,
+     9→  Database, Radio, Zap, Activity, ChevronDown, ChevronUp, Circle,
+    10→  RotateCcw, Timer, Gauge, TrendingDown, AlertOctagon, Copy, Ban,
+    11→  RefreshCw, AlertCircle, GitBranch, Binary,
+    12→} from "lucide-react";
+    13→import { Card } from "@/components/ui/card";
+    14→import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+    15→import { SparkLine, DonutChart, MetricGauge, MiniBar } from "./chart-primitives";
+    16→import {
+    17→  StatusPill, Hash, StatCard, SeverityDot, SeverityBadge,
+    18→  GradientBorderCard, SectionHeader, TopAccentBar,
+    19→  containerVariants, cardVariants, itemVariants,
+    20→} from "./primitives";
+    21→
+    22→/* ─── Animation Variants ─── */
+    23→const cv: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
+    24→const cardV: Variants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 24 } } };
+    25→const itemV: Variants = { hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 26 } } };
+    26→const pulseV: Variants = {
+    27→  pulse: { scale: [1, 1.05, 1], transition: { duration: 2, repeat: Infinity, ease: "easeInOut" } },
+    28→  idle: { scale: 1 },
+    29→};
+    30→
+    31→/* ─── Helpers ─── */
+    32→function fmtTime(iso: string): string {
+    33→  const d = Date.now() - new Date(iso).getTime();
+    34→  if (d < 60000) return `${Math.floor(d / 1000)}s ago`;
+    35→  if (d < 3600000) return `${Math.floor(d / 60000)}m ago`;
+    36→  if (d < 86400000) return `${Math.floor(d / 3600000)}h ago`;
+    37→  return `${Math.floor(d / 86400000)}d ago`;
+    38→}
+    39→
+    40→function fmtMs(ms: number): string {
+    41→  if (ms < 1) return `${(ms * 1000).toFixed(0)}μs`;
+    42→  if (ms < 1000) return `${ms.toFixed(1)}ms`;
+    43→  return `${(ms / 1000).toFixed(2)}s`;
+    44→}
+    45→
+    46→/* ─── Card Shell ─── */
+    47→function Shell({ children, accent, className }: { children: React.ReactNode; accent?: string; className?: string }) {
+    48→  return (
+    49→    <Card className={`bg-card/80 backdrop-blur-sm border-border/60 p-4 relative overflow-hidden ${className ?? ""}`}>
+    50→      {accent && <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: accent }} />}
+    51→      <div className="bg-grid-fine absolute inset-0 opacity-15" />
+    52→      <div className="relative">{children}</div>
+    53→    </Card>
+    54→  );
+    55→}
+    56→
+    57→/* ─── Section Header ─── */
+    58→function H3({ icon: Icon, title, extra }: { icon: typeof Activity; title: string; extra?: React.ReactNode }) {
+    59→  return (
+    60→    <div className="flex items-center gap-2 mb-3">
+    61→      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-verified/10">
+    62→        <Icon className="h-3.5 w-3.5 text-verified" />
+    63→      </div>
+    64→      <h3 className="text-sm font-semibold">{title}</h3>
+    65→      {extra}
+    66→    </div>
+    67→  );
+    68→}
+    69→
+    70→/* ─── Mock Data ─── */
+    71→const PIPELINE_STAGES = [
+    72→  { id: "incoming", name: "Incoming Fact", icon: Radio, status: "complete" as const, timeMs: 0.02, success: 14832, failure: 0 },
+    73→  { id: "canonicalize", name: "Canonicalize", icon: FileCheck, status: "complete" as const, timeMs: 0.15, success: 14830, failure: 2 },
+    74→  { id: "hash", name: "Hash", icon: HashIcon, status: "complete" as const, timeMs: 0.08, success: 14830, failure: 0 },
+    75→  { id: "schema", name: "Verify Schema", icon: Shield, status: "complete" as const, timeMs: 0.34, success: 14825, failure: 5 },
+    76→  { id: "signatures", name: "Verify Signatures", icon: Signature, status: "active" as const, timeMs: 1.12, success: 14810, failure: 15 },
+    77→  { id: "policies", name: "Evaluate Policies", icon: Scale, status: "idle" as const, timeMs: 2.87, success: 14780, failure: 30 },
+    78→  { id: "sequence", name: "Assign Sequence", icon: Layers, status: "idle" as const, timeMs: 0.03, success: 14780, failure: 0 },
+    79→  { id: "persist", name: "Persist", icon: Database, status: "idle" as const, timeMs: 3.41, success: 14778, failure: 2 },
+    80→  { id: "emit", name: "Emit Acceptance", icon: Zap, status: "idle" as const, timeMs: 0.11, success: 14778, failure: 0 },
+    81→];
+    82→
+    83→const FACT_LIFECYCLE_STATES = [
+    84→  { id: "accepted", label: "Accepted", count: 14778, color: "verified", icon: CheckCircle2 },
+    85→  { id: "rejected", label: "Rejected", count: 234, color: "violating", icon: XCircle },
+    86→  { id: "superseded", label: "Superseded", count: 891, color: "repairing", icon: RotateCcw },
+    87→  { id: "expired", label: "Expired", count: 156, color: "quarantined", icon: Clock },
+    88→  { id: "compensated", label: "Compensated", count: 43, color: "repairing", icon: ArrowDownRight },
+    89→];
+    90→
+    91→const FAILURE_FACTS = [
+    92→  { id: "FactRejected", count: 234, lastOccurrence: "2025-03-04T14:22:31Z", severity: "high" as const, description: "Fact failed policy evaluation or signature verification" },
+    93→  { id: "ProofExpired", count: 18, lastOccurrence: "2025-03-04T12:45:10Z", severity: "medium" as const, description: "Cryptographic proof exceeded validity window" },
+    94→  { id: "PolicyViolation", count: 89, lastOccurrence: "2025-03-04T15:01:47Z", severity: "critical" as const, description: "Fact violates one or more active policy invariants" },
+    95→  { id: "DuplicateFact", count: 312, lastOccurrence: "2025-03-04T15:03:22Z", severity: "low" as const, description: "Fact with identical canonical hash already persisted" },
+    96→  { id: "ReplayConflict", count: 7, lastOccurrence: "2025-03-04T09:17:55Z", severity: "high" as const, description: "Fact sequence conflicts with existing ordering" },
+    97→  { id: "ConsensusFailure", count: 3, lastOccurrence: "2025-03-03T22:34:12Z", severity: "critical" as const, description: "Cluster failed to reach consensus on fact ordering" },
+    98→  { id: "ProjectionFailure", count: 22, lastOccurrence: "2025-03-04T13:58:09Z", severity: "medium" as const, description: "Fact could not be projected onto target shard state" },
+    99→];
+   100→
+   101→const CANONICALIZATION_EXAMPLE = {
+   102→  before: '{"name":"Alice","age":30,"timestamp":"2025-03-04T15:03:22Z","id":"f7a2b9"}',
+   103→  after:  '{"age":30,"id":"f7a2b9","name":"Alice","timestamp":"2025-03-04T15:03:22Z"}',
+   104→  hash:   "sha256:a4f7c2e91b3d8f6e0c5a7d2b4e6f8a1c3d5e7f9b2d4a6c8e0f2b4d6a8c0e2f4",
+   105→};
+   106→
+   107→const SEQUENCE_DATA = {
+   108→  currentSequence: 14778,
+   109→  logicalTime: 9284471,
+   110→  vectorClock: [12, 8, 15, 3, 9],
+   111→  monotonicTime: "2025-03-04T15:03:22.4781291Z",
+   112→  epoch: 42,
+   113→};
+   114→
+   115→const METRICS = {
+   116→  throughput: 247.3,
+   117→  throughputHistory: [232, 245, 251, 238, 260, 255, 270, 247],
+   118→  avgLatencyMs: 8.34,
+   119→  latencyHistory: [9.1, 8.7, 8.4, 9.2, 7.8, 8.1, 8.0, 8.3],
+   120→  rejectionRate: 0.0158,
+   121→  rejectionHistory: [0.016, 0.015, 0.014, 0.018, 0.015, 0.016, 0.013, 0.016],
+   122→  policyEvalMs: 2.87,
+   123→  policyEvalHistory: [3.1, 2.9, 2.8, 3.0, 2.7, 2.9, 2.8, 2.9],
+   124→};
+   125→
+   126→/* ─── 1. Pipeline Visualization ─── */
+   127→function PipelineVisualization() {
+   128→  const [activeIdx, setActiveIdx] = useState(4); // "Verify Signatures" is active
+   129→
+   130→  const statusConfig: Record<string, { bg: string; text: string; border: string; dotColor: string }> = {
+   131→    complete: { bg: "bg-verified/10", text: "text-verified", border: "border-verified/30", dotColor: "bg-verified" },
+   132→    active: { bg: "bg-repairing/10", text: "text-repairing", border: "border-repairing/30", dotColor: "bg-repairing" },
+   133→    failed: { bg: "bg-violating/10", text: "text-violating", border: "border-violating/30", dotColor: "bg-violating" },
+   134→    idle: { bg: "bg-muted/20", text: "text-muted-foreground", border: "border-border/40", dotColor: "bg-muted-foreground" },
+   135→  };
+   136→
+   137→  return (
+   138→    <Shell accent="linear-gradient(to right, oklch(0.78 0.16 160 / 0), oklch(0.78 0.16 160 / 0.5), oklch(0.78 0.16 160 / 0))">
+   139→      <H3 icon={Cpu} title="Acceptance Pipeline" extra={
+   140→        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-repairing/30 bg-repairing/10 px-2.5 py-0.5 text-[10px] font-semibold text-repairing">
+   141→          <Activity className="h-3 w-3 animate-pulse" />
+   142→          PROCESSING
+   143→        </span>
+   144→      } />
+   145→      {/* Desktop: horizontal flow */}
+   146→      <div className="hidden lg:block">
+   147→        <div className="flex items-stretch gap-0 overflow-x-auto pb-2">
+   148→          {PIPELINE_STAGES.map((stage, i) => {
+   149→            const cfg = statusConfig[stage.status];
+   150→            const Icon = stage.icon;
+   151→            const isActive = stage.status === "active";
+   152→            return (
+   153→              <motion.div key={stage.id} variants={itemV} className="flex items-center shrink-0">
+   154→                <Tooltip>
+   155→                  <TooltipTrigger asChild>
+   156→                    <motion.button
+   157→                      onClick={() => setActiveIdx(i)}
+   158→                      className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 min-w-[100px] transition-colors ${cfg.border} ${cfg.bg} ${isActive ? "ring-2 ring-repairing/40" : ""}`}
+   159→                      animate={isActive ? { boxShadow: ["0 0 0px oklch(0.75 0.15 80 / 0)", "0 0 12px oklch(0.75 0.15 80 / 0.3)", "0 0 0px oklch(0.75 0.15 80 / 0)"] } : {}}
+   160→                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+   161→                    >
+   162→                      <div className="relative">
+   163→                        <Icon className={`h-4 w-4 ${cfg.text}`} />
+   164→                        {isActive && (
+   165→                          <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+   166→                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-repairing opacity-75" />
+   167→                            <span className="relative inline-flex rounded-full h-2 w-2 bg-repairing" />
+   168→                          </span>
+   169→                        )}
+   170→                      </div>
+   171→                      <span className={`text-[10px] font-medium text-center leading-tight ${cfg.text}`}>{stage.name}</span>
+   172→                      <span className="text-[9px] font-mono text-muted-foreground">{fmtMs(stage.timeMs)}</span>
+   173→                      <div className="flex items-center gap-1.5 text-[9px]">
+   174→                        <span className="text-verified">{stage.success}</span>
+   175→                        {stage.failure > 0 && <span className="text-violating">·{stage.failure}</span>}
+   176→                      </div>
+   177→                    </motion.button>
+   178→                  </TooltipTrigger>
+   179→                  <TooltipContent side="bottom" className="text-[10px]">
+   180→                    <div className="space-y-0.5">
+   181→                      <div className="font-semibold">{stage.name}</div>
+   182→                      <div>Latency: {fmtMs(stage.timeMs)}</div>
+   183→                      <div>Success: {stage.success.toLocaleString()}</div>
+   184→                      {stage.failure > 0 && <div>Failed: {stage.failure.toLocaleString()}</div>}
+   185→                    </div>
+   186→                  </TooltipContent>
+   187→                </Tooltip>
+   188→                {i < PIPELINE_STAGES.length - 1 && (
+   189→                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/40 mx-1 shrink-0" />
+   190→                )}
+   191→              </motion.div>
+   192→            );
+   193→          })}
+   194→        </div>
+   195→      </div>
+   196→      {/* Mobile: vertical flow */}
+   197→      <div className="lg:hidden space-y-1.5 max-h-80 overflow-y-auto scrollbar-thin">
+   198→        {PIPELINE_STAGES.map((stage, i) => {
+   199→          const cfg = statusConfig[stage.status];
+   200→          const Icon = stage.icon;
+   201→          const isActive = stage.status === "active";
+   202→          return (
+   203→            <motion.div
+   204→              key={stage.id}
+   205→              variants={itemV}
+   206→              className={`flex items-center gap-3 rounded-md border px-3 py-2 ${cfg.border} ${cfg.bg} ${isActive ? "ring-1 ring-repairing/40" : ""}`}
+   207→            >
+   208→              <div className="relative">
+   209→                <Icon className={`h-4 w-4 ${cfg.text}`} />
+   210→                {isActive && (
+   211→                  <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+   212→                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-repairing opacity-75" />
+   213→                    <span className="relative inline-flex rounded-full h-2 w-2 bg-repairing" />
+   214→                  </span>
+   215→                )}
+   216→              </div>
+   217→              <div className="flex-1 min-w-0">
+   218→                <div className="flex items-center gap-2">
+   219→                  <span className={`text-xs font-medium ${cfg.text}`}>{stage.name}</span>
+   220→                  <StatusPill status={stage.status === "active" ? "repairing" : stage.status === "complete" ? "verified" : "idle"} label={stage.status} />
+   221→                </div>
+   222→                <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground font-mono">
+   223→                  <span>{fmtMs(stage.timeMs)}</span>
+   224→                  <span className="text-border/50">·</span>
+   225→                  <span className="text-verified">✓{stage.success}</span>
+   226→                  {stage.failure > 0 && <span className="text-violating">✗{stage.failure}</span>}
+   227→                </div>
+   228→              </div>
+   229→            </motion.div>
+   230→          );
+   231→        })}
+   232→      </div>
+   233→    </Shell>
+   234→  );
+   235→}
+   236→
+   237→/* ─── 2. Fact Lifecycle Panel ─── */
+   238→function FactLifecyclePanel() {
+   239→  const [hoveredState, setHoveredState] = useState<string | null>(null);
+   240→
+   241→  const transitions = [
+   242→    { from: "accepted", to: "rejected", label: "policy fail", color: "text-violating" },
+   243→    { from: "accepted", to: "superseded", label: "new version", color: "text-repairing" },
+   244→    { from: "accepted", to: "expired", label: "TTL", color: "text-quarantined" },
+   245→    { from: "rejected", to: "compensated", label: "undo", color: "text-repairing" },
+   246→    { from: "superseded", to: "expired", label: "TTL", color: "text-quarantined" },
+   247→  ];
+   248→
+   249→  const totalFacts = FACT_LIFECYCLE_STATES.reduce((s, st) => s + st.count, 0);
+   250→
+   251→  return (
+   252→    <Shell accent="linear-gradient(to right, oklch(0.65 0.22 25 / 0), oklch(0.75 0.15 80 / 0.4), oklch(0.65 0.22 25 / 0))">
+   253→      <H3 icon={GitBranch} title="Fact Lifecycle" extra={
+   254→        <span className="ml-auto text-[9px] font-mono text-muted-foreground">{totalFacts.toLocaleString()} total facts</span>
+   255→      } />
+   256→      {/* State diagram - desktop */}
+   257→      <div className="hidden md:block">
+   258→        <div className="relative flex items-center justify-center gap-2 py-4">
+   259→          {FACT_LIFECYCLE_STATES.map((state, i) => {
+   260→            const Icon = state.icon;
+   261→            const isHovered = hoveredState === state.id;
+   262→            return (
+   263→              <motion.div
+   264→                key={state.id}
+   265→                className="flex items-center gap-2"
+   266→                onMouseEnter={() => setHoveredState(state.id)}
+   267→                onMouseLeave={() => setHoveredState(null)}
+   268→              >
+   269→                <motion.div
+   270→                  className={`flex flex-col items-center gap-1.5 rounded-lg border px-3 py-2.5 min-w-[80px] cursor-pointer transition-colors
+   271→                    ${state.color === "verified" ? "border-verified/30 bg-verified/5" :
+   272→                      state.color === "violating" ? "border-violating/30 bg-violating/5" :
+   273→                      state.color === "repairing" ? "border-repairing/30 bg-repairing/5" :
+   274→                      "border-quarantined/30 bg-quarantined/5"}`}
+   275→                  animate={isHovered ? { scale: 1.08, y: -4 } : { scale: 1, y: 0 }}
+   276→                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+   277→                >
+   278→                  <Icon className={`h-4 w-4 ${
+   279→                    state.color === "verified" ? "text-verified" :
+   280→                    state.color === "violating" ? "text-violating" :
+   281→                    state.color === "repairing" ? "text-repairing" :
+   282→                    "text-quarantined"
+   283→                  }`} />
+   284→                  <span className={`text-[10px] font-medium ${
+   285→                    state.color === "verified" ? "text-verified" :
+   286→                    state.color === "violating" ? "text-violating" :
+   287→                    state.color === "repairing" ? "text-repairing" :
+   288→                    "text-quarantined"
+   289→                  }`}>{state.label}</span>
+   290→                  <span className="text-[10px] font-mono text-muted-foreground">{state.count.toLocaleString()}</span>
+   291→                </motion.div>
+   292→                {i < FACT_LIFECYCLE_STATES.length - 1 && (
+   293→                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
+   294→                )}
+   295→              </motion.div>
+   296→            );
+   297→          })}
+   298→        </div>
+   299→        {/* Transition labels */}
+   300→        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+   301→          {transitions.map((t) => (
+   302→            <span key={`${t.from}-${t.to}`} className="text-[9px] text-muted-foreground">
+   303→              <span className="font-mono">{t.from}</span>
+   304→              <span className="mx-0.5">→</span>
+   305→              <span className="font-mono">{t.to}</span>
+   306→              <span className="ml-0.5 text-muted-foreground/60">({t.label})</span>
+   307→            </span>
+   308→          ))}
+   309→        </div>
+   310→      </div>
+   311→      {/* State list - mobile */}
+   312→      <div className="md:hidden space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
+   313→        {FACT_LIFECYCLE_STATES.map((state) => {
+   314→          const Icon = state.icon;
+   315→          const colorClass = state.color === "verified" ? "text-verified" :
+   316→            state.color === "violating" ? "text-violating" :
+   317→            state.color === "repairing" ? "text-repairing" : "text-quarantined";
+   318→          const bgClass = state.color === "verified" ? "bg-verified/10 border-verified/30" :
+   319→            state.color === "violating" ? "bg-violating/10 border-violating/30" :
+   320→            state.color === "repairing" ? "bg-repairing/10 border-repairing/30" : "bg-quarantined/10 border-quarantined/30";
+   321→          const pct = ((state.count / totalFacts) * 100).toFixed(1);
+   322→          return (
+   323→            <motion.div key={state.id} variants={itemV}
+   324→              className={`flex items-center gap-3 rounded-md border px-3 py-2 ${bgClass}`}
+   325→            >
+   326→              <Icon className={`h-4 w-4 ${colorClass}`} />
+   327→              <div className="flex-1 min-w-0">
+   328→                <div className="flex items-center justify-between">
+   329→                  <span className={`text-xs font-medium ${colorClass}`}>{state.label}</span>
+   330→                  <span className="text-xs font-mono font-semibold">{state.count.toLocaleString()}</span>
+   331→                </div>
+   332→                <div className="mt-1 h-1 rounded-full bg-muted/30 overflow-hidden">
+   333→                  <motion.div
+   334→                    className={`h-full rounded-full ${
+   335→                      state.color === "verified" ? "bg-verified/60" :
+   336→                      state.color === "violating" ? "bg-violating/60" :
+   337→                      state.color === "repairing" ? "bg-repairing/60" : "bg-quarantined/60"
+   338→                    }`}
+   339→                    initial={{ width: 0 }}
+   340→                    animate={{ width: `${pct}%` }}
+   341→                    transition={{ duration: 0.8, ease: "easeOut" }}
+   342→                  />
+   343→                </div>
+   344→              </div>
+   345→              <span className="text-[9px] font-mono text-muted-foreground">{pct}%</span>
+   346→            </motion.div>
+   347→          );
+   348→        })}
+   349→      </div>
+   350→      {/* Note about projections */}
+   351→      <p className="mt-3 text-[10px] text-muted-foreground/70 italic">
+   352→        State transitions are projections over metadata — the original fact is never mutated.
+   353→      </p>
+   354→    </Shell>
+   355→  );
+   356→}
+   357→
+   358→/* ─── 3. Canonicalizer Interface Panel ─── */
+   359→function CanonicalizerPanel() {
+   360→  const [showAfter, setShowAfter] = useState(true);
+   361→
+   362→  return (
+   363→    <Shell accent="linear-gradient(to right, oklch(0.78 0.16 160 / 0), oklch(0.75 0.15 80 / 0.4), oklch(0.78 0.16 160 / 0))">
+   364→      <H3 icon={Binary} title="Canonicalizer Interface" extra={
+   365→        <div className="ml-auto flex items-center gap-2">
+   366→          <StatusPill status="verified" label="RFC8785 JSON" />
+   367→          <span className="text-[9px] text-muted-foreground">Future: CBOR</span>
+   368→        </div>
+   369→      } />
+   370→
+   371→      {/* Interface definition */}
+   372→      <div className="rounded-md border border-border/40 bg-background/60 p-3 mb-3">
+   373→        <div className="text-[9px] uppercase tracking-wide text-muted-foreground mb-1.5">Interface</div>
+   374→        <pre className="text-[11px] font-mono text-verified/80 leading-relaxed">
+   375→{`interface Canonicalizer {
+   376→  serialize(): Uint8Array
+   377→  deserialize(bytes: Uint8Array): Fact
+   378→  hash(): FactID
+   379→}`}
+   380→        </pre>
+   381→      </div>
+   382→
+   383→      {/* Live example */}
+   384→      <div className="space-y-2">
+   385→        <div className="flex items-center justify-between">
+   386→          <span className="text-[9px] uppercase tracking-wide text-muted-foreground font-semibold">Live Canonicalization</span>
+   387→          <button
+   388→            onClick={() => setShowAfter(!showAfter)}
+   389→            className="inline-flex items-center gap-1 text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+   390→          >
+   391→            <Copy className="h-2.5 w-2.5" />
+   392→            {showAfter ? "Show Before" : "Show After"}
+   393→          </button>
+   394→        </div>
+   395→
+   396→        <div className="rounded-md border border-border/40 bg-background/60 p-2.5 overflow-x-auto">
+   397→          <AnimatePresence mode="wait">
+   398→            <motion.div
+   399→              key={showAfter ? "after" : "before"}
+   400→              initial={{ opacity: 0, y: 4 }}
+   401→              animate={{ opacity: 1, y: 0 }}
+   402→              exit={{ opacity: 0, y: -4 }}
+   403→              transition={{ duration: 0.2 }}
+   404→            >
+   405→              <div className="text-[9px] uppercase tracking-wide text-muted-foreground mb-1">
+   406→                {showAfter ? "After (RFC8785 canonical)" : "Before (original JSON)"}
+   407→              </div>
+   408→              <pre className="text-[10px] font-mono leading-relaxed break-all whitespace-pre-wrap">
+   409→                {showAfter ? CANONICALIZATION_EXAMPLE.after : CANONICALIZATION_EXAMPLE.before}
+   410→              </pre>
+   411→            </motion.div>
+   412→          </AnimatePresence>
+   413→        </div>
+   414→
+   415→        {/* Hash result */}
+   416→        <div className="flex items-center gap-2 rounded-md border border-verified/20 bg-verified/5 px-2.5 py-2">
+   417→          <HashIcon className="h-3.5 w-3.5 text-verified" />
+   418→          <span className="text-[9px] text-verified font-semibold shrink-0">SHA-256:</span>
+   419→          <Hash value={CANONICALIZATION_EXAMPLE.hash} length={40} className="text-verified/80" />
+   420→        </div>
+   421→
+   422→        {/* Properties */}
+   423→        <div className="grid grid-cols-3 gap-1.5 text-[9px]">
+   424→          <div className="rounded border border-border/30 bg-background/40 px-2 py-1.5 text-center">
+   425→            <div className="text-muted-foreground uppercase tracking-wide">Deterministic</div>
+   426→            <div className="mt-0.5 font-mono font-semibold text-verified">✓ Yes</div>
+   427→          </div>
+   428→          <div className="rounded border border-border/30 bg-background/40 px-2 py-1.5 text-center">
+   429→            <div className="text-muted-foreground uppercase tracking-wide">Encoding</div>
+   430→            <div className="mt-0.5 font-mono font-semibold">UTF-8</div>
+   431→          </div>
+   432→          <div className="rounded border border-border/30 bg-background/40 px-2 py-1.5 text-center">
+   433→            <div className="text-muted-foreground uppercase tracking-wide">Key Order</div>
+   434→            <div className="mt-0.5 font-mono font-semibold">Lexicographic</div>
+   435→          </div>
+   436→        </div>
+   437→      </div>
+   438→    </Shell>
+   439→  );
+   440→}
+   441→
+   442→/* ─── 4. Sequencer Panel ─── */
+   443→function SequencerPanel() {
+   444→  const { currentSequence, logicalTime, vectorClock, monotonicTime, epoch } = SEQUENCE_DATA;
+   445→
+   446→  return (
+   447→    <Shell accent="linear-gradient(to right, oklch(0.78 0.16 160 / 0), oklch(0.78 0.16 160 / 0.4), oklch(0.78 0.16 160 / 0))">
+   448→      <H3 icon={Layers} title="Deterministic Sequencer" />
+   449→
+   450→      {/* Ordering rule */}
+   451→      <div className="rounded-md border border-verified/20 bg-verified/5 px-3 py-2 mb-3">
+   452→        <div className="text-[9px] uppercase tracking-wide text-verified font-semibold mb-1">Total Order</div>
+   453→        <div className="font-mono text-xs text-foreground">
+   454→          Order = <span className="text-verified">LogicalSequence</span>
+   455→          <span className="text-muted-foreground mx-1">→</span>
+   456→          <span className="text-repairing">Timestamp</span>
+   457→          <span className="text-muted-foreground mx-1">→</span>
+   458→          <span className="text-quarantined">FactID</span>
+   459→        </div>
+   460→      </div>
+   461→
+   462→      {/* Key metrics */}
+   463→      <div className="grid grid-cols-2 gap-2 mb-3">
+   464→        <StatCard label="Sequence #" value={currentSequence.toLocaleString()} color="text-verified" bg="bg-verified/5" border="border-verified/20" />
+   465→        <StatCard label="Logical Time" value={logicalTime.toLocaleString()} color="text-repairing" bg="bg-repairing/5" border="border-repairing/20" />
+   466→        <StatCard label="Epoch" value={epoch} color="text-quarantined" bg="bg-quarantined/5" border="border-quarantined/20" />
+   467→        <StatCard label="Facts/Epoch" value="352" bg="bg-muted/20" border="border-border/60" />
+   468→      </div>
+   469→
+   470→      {/* Vector clock visualization */}
+   471→      <div className="space-y-2 mb-3">
+   472→        <div className="text-[9px] uppercase tracking-wide text-muted-foreground font-semibold">Vector Clock</div>
+   473→        <div className="flex items-end gap-1.5">
+   474→          {vectorClock.map((val, i) => {
+   475→            const maxVal = Math.max(...vectorClock, 1);
+   476→            const heightPct = (val / maxVal) * 100;
+   477→            const color = i === 0 ? "bg-verified/70" : i === 1 ? "bg-repairing/70" : i === 2 ? "bg-quarantined/70" : i === 3 ? "bg-violating/70" : "bg-verified/50";
+   478→            return (
+   479→              <div key={i} className="flex flex-col items-center gap-1 flex-1">
+   480→                <span className="text-[9px] font-mono text-muted-foreground">{val}</span>
+   481→                <div className="w-full max-w-[24px] rounded-sm bg-muted/20 overflow-hidden" style={{ height: 48 }}>
+   482→                  <motion.div
+   483→                    className={`w-full rounded-sm ${color}`}
+   484→                    initial={{ height: 0 }}
+   485→                    animate={{ height: `${heightPct}%` }}
+   486→                    transition={{ duration: 0.6, delay: i * 0.08, ease: "easeOut" }}
+   487→                  />
+   488→                </div>
+   489→                <span className="text-[8px] font-mono text-muted-foreground/60">N{i}</span>
+   490→              </div>
+   491→            );
+   492→          })}
+   493→        </div>
+   494→      </div>
+   495→
+   496→      {/* Monotonic time */}
+   497→      <div className="rounded-md border border-border/40 bg-background/60 px-2.5 py-2">
+   498→        <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Monotonic Time</div>
+   499→        <div className="mt-0.5 font-mono text-xs font-semibold text-foreground truncate">{monotonicTime}</div>
+   500→      </div>
+   501→    </Shell>
+   502→  );
+   503→}
+   504→
+   505→/* ─── 5. Failure Facts Panel ─── */
+   506→function FailureFactsPanel() {
+   507→  const [expanded, setExpanded] = useState<string | null>(null);
+   508→  const totalFailures = FAILURE_FACTS.reduce((s, f) => s + f.count, 0);
+   509→
+   510→  return (
+   511→    <Shell accent="linear-gradient(to right, oklch(0.65 0.22 25 / 0), oklch(0.65 0.22 25 / 0.4), oklch(0.65 0.22 25 / 0))">
+   512→      <H3 icon={AlertOctagon} title="Failure Facts" extra={
+   513→        <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-violating/30 bg-violating/10 px-2.5 py-0.5 text-[10px] font-semibold text-violating">
+   514→          <AlertTriangle className="h-3 w-3" />
+   515→          {totalFailures.toLocaleString()} failures
+   516→        </span>
+   517→      } />
+   518→      <p className="text-[10px] text-muted-foreground/70 italic mb-3">
+   519→        Errors are recorded as evidence facts — never thrown as exceptions.
+   520→      </p>
+   521→      <div className="space-y-1.5 max-h-80 overflow-y-auto scrollbar-thin">
+   522→        {FAILURE_FACTS.map((fact) => {
+   523→          const isExpanded = expanded === fact.id;
+   524→          const severityColor = fact.severity === "critical" ? "text-violating" :
+   525→            fact.severity === "high" ? "text-repairing" :
+   526→            fact.severity === "medium" ? "text-quarantined" : "text-muted-foreground";
+   527→          return (
+   528→            <motion.div key={fact.id} variants={itemV}>
+   529→              <button
+   530→                onClick={() => setExpanded(isExpanded ? null : fact.id)}
+   531→                className={`w-full flex items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition-colors
+   532→                  ${fact.severity === "critical" ? "border-violating/20 bg-violating/5 hover:bg-violating/10" :
+   533→                    fact.severity === "high" ? "border-repairing/20 bg-repairing/5 hover:bg-repairing/10" :
+   534→                    fact.severity === "medium" ? "border-quarantined/20 bg-quarantined/5 hover:bg-quarantined/10" :
+   535→                    "border-border/30 bg-muted/10 hover:bg-muted/20"}`}
+   536→              >
+   537→                <SeverityBadge severity={fact.severity} />
+   538→                <div className="flex-1 min-w-0">
+   539→                  <div className="flex items-center gap-2">
+   540→                    <span className="text-xs font-mono font-semibold">{fact.id}</span>
+   541→                  </div>
+   542→                </div>
+   543→                <span className={`text-xs font-mono font-semibold ${severityColor}`}>{fact.count}</span>
+   544→                {isExpanded ? <ChevronUp className="h-3 w-3 text-muted-foreground" /> : <ChevronDown className="h-3 w-3 text-muted-foreground" />}
+   545→              </button>
+   546→              <AnimatePresence>
+   547→                {isExpanded && (
+   548→                  <motion.div
+   549→                    initial={{ height: 0, opacity: 0 }}
+   550→                    animate={{ height: "auto", opacity: 1 }}
+   551→                    exit={{ height: 0, opacity: 0 }}
+   552→                    transition={{ duration: 0.2 }}
+   553→                    className="overflow-hidden"
+   554→                  >
+   555→                    <div className="px-3 py-2 ml-4 border-l-2 border-border/30 text-[10px] text-muted-foreground space-y-1.5">
+   556→                      <p>{fact.description}</p>
+   557→                      <div className="flex items-center gap-3 font-mono">
+   558→                        <span>Last: {fmtTime(fact.lastOccurrence)}</span>
+   559→                        <span className={`font-semibold ${severityColor}`}>{fact.severity}</span>
+   560→                      </div>
+   561→                    </div>
+   562→                  </motion.div>
+   563→                )}
+   564→              </AnimatePresence>
+   565→            </motion.div>
+   566→          );
+   567→        })}
+   568→      </div>
+   569→    </Shell>
+   570→  );
+   571→}
+   572→
+   573→/* ─── 6. Acceptance Metrics Panel ─── */
+   574→function AcceptanceMetrics() {
+   575→  return (
+   576→    <Shell accent="linear-gradient(to right, oklch(0.78 0.16 160 / 0), oklch(0.75 0.15 80 / 0.3), oklch(0.78 0.16 160 / 0))">
+   577→      <H3 icon={Gauge} title="Acceptance Metrics" extra={
+   578→        <span className="ml-auto inline-flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground">
+   579→          <Timer className="h-3 w-3" />
+   580→          last 5min
+   581→        </span>
+   582→      } />
+   583→
+   584→      {/* Throughput */}
+   585→      <div className="space-y-3 mb-4">
+   586→        <div className="flex items-center justify-between">
+   587→          <span className="text-xs font-medium">Throughput</span>
+   588→          <div className="flex items-center gap-2">
+   589→            <span className="text-lg font-bold font-mono tabular-nums text-verified">{METRICS.throughput}</span>
+   590→            <span className="text-[10px] text-muted-foreground">facts/sec</span>
+   591→          </div>
+   592→        </div>
+   593→        <SparkLine data={METRICS.throughputHistory} width={280} height={40} fill color="verified" />
+   594→      </div>
+   595→
+   596→      {/* Metrics grid */}
+   597→      <div className="grid grid-cols-2 gap-3">
+   598→        {/* Average latency */}
+   599→        <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2.5">
+   600→          <div className="flex items-center justify-between mb-2">
+   601→            <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Avg Latency</span>
+   602→            <span className="text-sm font-bold font-mono tabular-nums text-repairing">{fmtMs(METRICS.avgLatencyMs)}</span>
+   603→          </div>
+   604→          <SparkLine data={METRICS.latencyHistory} width={120} height={28} color="repairing" />
+   605→        </div>
+   606→
+   607→        {/* Rejection rate */}
+   608→        <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2.5">
+   609→          <div className="flex items-center justify-between mb-2">
+   610→            <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Rejection Rate</span>
+   611→            <span className="text-sm font-bold font-mono tabular-nums text-violating">{(METRICS.rejectionRate * 100).toFixed(2)}%</span>
+   612→          </div>
+   613→          <SparkLine data={METRICS.rejectionHistory} width={120} height={28} color="violating" />
+   614→        </div>
+   615→
+   616→        {/* Policy eval time */}
+   617→        <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2.5">
+   618→          <div className="flex items-center justify-between mb-2">
+   619→            <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Policy Eval</span>
+   620→            <span className="text-sm font-bold font-mono tabular-nums text-quarantined">{fmtMs(METRICS.policyEvalMs)}</span>
+   621→          </div>
+   622→          <SparkLine data={METRICS.policyEvalHistory} width={120} height={28} color="quarantined" />
+   623→        </div>
+   624→
+   625→        {/* Acceptance donut */}
+   626→        <div className="rounded-md border border-border/40 bg-background/40 px-3 py-2.5 flex flex-col items-center justify-center">
+   627→          <DonutChart
+   628→            data={[
+   629→              { label: "Accepted", value: 14778, color: "verified" },
+   630→              { label: "Rejected", value: 234, color: "violating" },
+   631→              { label: "Superseded", value: 891, color: "repairing" },
+   632→            ]}
+   633→            size={56}
+   634→            thickness={8}
+   635→            showLabels
+   636→          />
+   637→        </div>
+   638→      </div>
+   639→
+   640→      {/* Pipeline latency breakdown */}
+   641→      <div className="mt-3">
+   642→        <div className="text-[9px] uppercase tracking-wide text-muted-foreground font-semibold mb-2">Pipeline Latency Breakdown</div>
+   643→        <MiniBar
+   644→          data={PIPELINE_STAGES.filter(s => s.timeMs > 0).map(s => ({
+   645→            label: s.name.length > 8 ? s.name.slice(0, 7) + "…" : s.name,
+   646→            value: s.timeMs,
+   647→            color: s.status === "active" ? "repairing" : s.status === "complete" ? "verified" : "quarantined",
+   648→          }))}
+   649→          width={280}
+   650→          height={90}
+   651→          horizontal
+   652→        />
+   653→      </div>
+   654→    </Shell>
+   655→  );
+   656→}
+   657→
+   658→/* ─── Main Section Component ─── */
+   659→export function AcceptanceEngineSection() {
+   660→  return (
+   661→    <motion.div variants={cv} initial="hidden" animate="visible" className="space-y-4">
+   662→      {/* Section header */}
+   663→      <motion.div variants={cardV}>
+   664→        <div className="flex items-center gap-2.5 mb-1">
+   665→          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-verified/30 bg-verified/10">
+   666→            <Shield className="h-4.5 w-4.5 text-verified" />
+   667→          </div>
+   668→          <div>
+   669→            <h2 className="text-base font-semibold text-foreground">Acceptance Engine</h2>
+   670→            <p className="text-xs text-muted-foreground">Deterministic acceptance pipeline — the kernel of the Epistemic Runtime</p>
+   671→          </div>
+   672→        </div>
+   673→      </motion.div>
+   674→
+   675→      {/* Row 1: Pipeline (full width) */}
+   676→      <motion.div variants={cardV}>
+   677→        <PipelineVisualization />
+   678→      </motion.div>
+   679→
+   680→      {/* Row 2: Lifecycle + Sequencer */}
+   681→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   682→        <motion.div variants={cardV}>
+   683→          <FactLifecyclePanel />
+   684→        </motion.div>
+   685→        <motion.div variants={cardV}>
+   686→          <SequencerPanel />
+   687→        </motion.div>
+   688→      </div>
+   689→
+   690→      {/* Row 3: Canonicalizer + Metrics */}
+   691→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+   692→        <motion.div variants={cardV}>
+   693→          <CanonicalizerPanel />
+   694→        </motion.div>
+   695→        <motion.div variants={cardV}>
+   696→          <AcceptanceMetrics />
+   697→        </motion.div>
+   698→      </div>
+   699→
+   700→      {/* Row 4: Failure Facts (full width) */}
+   701→      <motion.div variants={cardV}>
+   702→        <FailureFactsPanel />
+   703→      </motion.div>
+   704→    </motion.div>
+   705→  );
+   706→}
+   707→
