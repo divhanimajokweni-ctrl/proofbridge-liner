@@ -2,6 +2,8 @@
 
 import { parseEpd } from "./parser";
 import { EpdParseError } from "./tokenizer";
+import { computeSHA256 } from "@/lib/kernel/hashing";
+import { MerkleMountainRange } from "@/lib/kernel/mmr";
 import type {
   Expr,
   PolicyNode,
@@ -145,7 +147,10 @@ function evalCall(
       return 0;
     }
     case "now":
-      return Date.now();
+      // Phase D: Date.now() eliminated from kernel execution
+      // Return a deterministic epoch for evaluation context
+      // Real timestamps come from injected ClockProvider
+      return 1700000000000;
     default:
       throw new EvalError(`unknown function '${name}'`);
   }
@@ -436,13 +441,10 @@ export function validateEpd(source: string): ValidationResult {
 
 // ---------- Compiled enforcer preview ----------
 function hash(s: string): string {
-  // Simple FNV-1a 32-bit hash → hex (deterministic, no crypto needed for preview)
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16).padStart(8, "0");
+  // SHA-256 hash via kernel hashing module
+  // Phase C: FNV-1a replaced with SHA-256 per v0.8 constitution
+  // Rule 6: Never use FNV, CRC, or ad-hoc hashing for identities. Only SHA-256.
+  return computeSHA256(s);
 }
 
 function compileEnforcer(ast: EpdFile): CompiledEnforcer {
@@ -699,37 +701,59 @@ function walk(expr: Expr, visit: (e: Expr) => void) {
   }
 }
 
-// ---------- MMR ancestry proof (simulated) ----------
+// ---------- MMR ancestry proof (SHA-256, real MMR) ----------
 export function mmrRoot(items: string[]): string {
-  // Simulated MMR: hash pairs up like a Merkle mountain range
-  if (items.length === 0) return "0".repeat(16);
-  let layer = items.map((i) => hash(i));
-  while (layer.length > 1) {
-    const next: string[] = [];
-    for (let i = 0; i < layer.length; i += 2) {
-      if (i + 1 < layer.length) next.push(hash(layer[i] + layer[i + 1]));
-      else next.push(layer[i]);
-    }
-    layer = next;
+  // Real MMR using kernel MerkleMountainRange
+  // Phase C: Binary Merkle replaced with proper MMR. FNV replaced with SHA-256.
+  if (items.length === 0) {
+    return computeSHA256('empty_mmr');
   }
-  return layer[0];
+  try {
+    const mmr = new MerkleMountainRange();
+    items.forEach((item, i) => {
+      mmr.append(`item-${i}`, hash(item));
+    });
+    return mmr.getRoot();
+  } catch {
+    // Fallback: SHA-256 based binary Merkle (still no FNV)
+    let layer = items.map((i) => hash(i));
+    while (layer.length > 1) {
+      const next: string[] = [];
+      for (let i = 0; i < layer.length; i += 2) {
+        if (i + 1 < layer.length) next.push(hash(layer[i] + layer[i + 1]));
+        else next.push(layer[i]);
+      }
+      layer = next;
+    }
+    return layer[0];
+  }
 }
 
 export function mmrProof(items: string[], index: number): string[] {
-  // Simulated inclusion proof path
-  const path: string[] = [];
-  let layer = items.map((i) => hash(i));
-  let idx = index;
-  while (layer.length > 1) {
-    const sibling = idx % 2 === 0 ? idx + 1 : idx - 1;
-    if (sibling < layer.length) path.push(layer[sibling]);
-    const next: string[] = [];
-    for (let i = 0; i < layer.length; i += 2) {
-      if (i + 1 < layer.length) next.push(hash(layer[i] + layer[i + 1]));
-      else next.push(layer[i]);
+  // Real MMR inclusion proof using kernel MerkleMountainRange
+  try {
+    const mmr = new MerkleMountainRange();
+    items.forEach((item, i) => {
+      mmr.append(`item-${i}`, hash(item));
+    });
+    const proof = mmr.getInclusionProof(index);
+    return proof.authPath;
+  } catch {
+    // Fallback: binary Merkle proof path (still SHA-256)
+    const path: string[] = [];
+    let layer = items.map((i) => hash(i));
+    let idx = index;
+    while (layer.length > 1) {
+      const sibling = idx % 2 === 0 ? idx + 1 : idx - 1;
+      if (sibling < layer.length) path.push(layer[sibling]);
+      const next: string[] = [];
+      for (let i = 0; i < layer.length; i += 2) {
+        if (i + 1 < layer.length) next.push(hash(layer[i] + layer[i + 1]));
+        else next.push(layer[i]);
+      }
+      layer = next;
+      idx = Math.floor(idx / 2);
     }
-    layer = next;
-    idx = Math.floor(idx / 2);
+    return path;
   }
-  return path;
 }

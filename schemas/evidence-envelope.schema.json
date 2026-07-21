@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "epistemic://runtime/v0.8/schemas/evidence-envelope",
+  "title": "EvidenceEnvelope",
+  "description": "The container for a fact and its proofs in the Epistemic Runtime v0.8",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hash of canonical bytes"
+    },
+    "fact": {
+      "$ref": "#/$defs/fact"
+    },
+    "proofs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/proof"
+      }
+    },
+    "state": {
+      "type": "string",
+      "enum": ["pending", "verified", "failed", "expired", "revoked"],
+      "description": "Evidence lifecycle state"
+    },
+    "redactedFields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "PII fields that were redacted before canonicalization"
+    },
+    "schemaId": {
+      "type": "string",
+      "description": "Schema that validated this envelope"
+    }
+  },
+  "required": ["id", "fact", "proofs", "state", "redactedFields", "schemaId"],
+  "additionalProperties": false,
+  "$defs": {
+    "fact": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Deterministic fact ID: SHA-256 of canonical bytes"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "observation",
+            "migration_plan",
+            "migration_execute",
+            "migration_verify",
+            "migration_complete",
+            "migration_rollback",
+            "projection_registered",
+            "projection_deprecated",
+            "schema_change",
+            "policy_change",
+            "identity_change",
+            "system"
+          ],
+          "description": "Type of fact"
+        },
+        "body": {
+          "type": "object",
+          "description": "The payload — what actually happened"
+        },
+        "canonicalBytes": {
+          "type": "string",
+          "description": "RFC 8785 canonical JSON"
+        },
+        "hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hash of canonicalBytes"
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Monotonically increasing sequence number"
+        },
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Logical timestamp from injected clock"
+        },
+        "submittedBy": {
+          "type": "string",
+          "description": "Identity that submitted this fact"
+        },
+        "signature": {
+          "type": "string",
+          "description": "Ed25519 signature over canonicalBytes"
+        },
+        "acceptedAt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "When the acceptance pipeline accepted this fact"
+        },
+        "schemaId": {
+          "type": "string",
+          "description": "Schema ID that validated this fact's body"
+        }
+      },
+      "required": ["id", "type", "body", "canonicalBytes", "hash", "sequence", "timestamp", "submittedBy", "signature", "acceptedAt", "schemaId"],
+      "additionalProperties": false
+    },
+    "proof": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "factId": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["ancestry", "inclusion", "consistency", "batch"]
+        },
+        "mmrRoot": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "proofPath": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mmrIndex": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "signature": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": ["id", "factId", "kind", "mmrRoot", "proofPath", "mmrIndex", "signature", "timestamp"],
+      "additionalProperties": false
+    }
+  }
+}

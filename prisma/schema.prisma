@@ -171,3 +171,25 @@ model MinedInvariant {
   accepted   Boolean  @default(false)
   createdAt  DateTime @default(now())
 }
+
+// Append-only Fact Log — the kernel's event store.
+// WORM: No updates, no deletes. Every fact that passes the AcceptancePipeline.
+model FactLog {
+  id             String   @id // SHA-256 of canonical bytes (deterministic)
+  type           String   // observation | migration_* | projection_* | etc.
+  body           String   // JSON — the fact payload
+  canonicalBytes String   // RFC 8785 canonical JSON
+  hash           String   // SHA-256 hash of canonicalBytes
+  sequence       Int      // Monotonically increasing
+  timestamp      Int      // Logical timestamp from injected clock
+  submittedBy    String   // Identity that submitted this fact
+  signature      String   // Ed25519 signature over canonicalBytes
+  acceptedAt     Int      // When the acceptance pipeline accepted this fact
+  schemaId       String   // Schema that validated this fact's body
+  mmrRoot        String?  // MMR root at time of insertion
+  createdAt      DateTime @default(now())
+
+  @@index([type])
+  @@index([sequence])
+  @@index([submittedBy])
+}

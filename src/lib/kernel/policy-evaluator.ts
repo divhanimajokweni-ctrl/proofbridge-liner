@@ -1,0 +1,270 @@
+// Epistemic Runtime v0.8 — Policy IR Evaluator
+// Deterministic evaluation. No scripting. No eval. No dynamic execution.
+// Only deterministic opcodes.
+
+import type { PolicyRule, PolicyOpcode, PolicyResult, Severity } from './types';
+
+/**
+ * Evaluate a policy rule against a fact body.
+ * Returns the policy result: 'accept', 'reject', or 'defer'.
+ */
+export function evaluatePolicy(
+  policy: PolicyRule,
+  body: Record<string, unknown>,
+): PolicyResult {
+  const stack: unknown[] = [];
+
+  for (const opcode of policy.ir) {
+    executeOpcode(opcode, stack, body);
+  }
+
+  // The final value on the stack is the result
+  if (stack.length === 0) return 'accept'; // Default: accept if no result
+
+  const result = stack[stack.length - 1];
+  if (typeof result === 'string' && (result === 'accept' || result === 'reject' || result === 'defer')) {
+    return result;
+  }
+
+  // Boolean result: true = accept, false = reject
+  if (typeof result === 'boolean') {
+    return result ? 'accept' : 'reject';
+  }
+
+  return 'accept'; // Default
+}
+
+/**
+ * Execute a single opcode, modifying the stack.
+ */
+function executeOpcode(
+  opcode: PolicyOpcode,
+  stack: unknown[],
+  body: Record<string, unknown>,
+): void {
+  switch (opcode.op) {
+    case 'LOAD_FIELD': {
+      const value = getNestedField(body, opcode.field);
+      stack.push(value);
+      break;
+    }
+    case 'LOAD_CONST': {
+      stack.push(opcode.value);
+      break;
+    }
+    case 'EQ': {
+      const b = stack.pop();
+      const a = stack.pop();
+      stack.push(a === b);
+      break;
+    }
+    case 'NEQ': {
+      const b = stack.pop();
+      const a = stack.pop();
+      stack.push(a !== b);
+      break;
+    }
+    case 'LT': {
+      const b = stack.pop() as number;
+      const a = stack.pop() as number;
+      stack.push(a < b);
+      break;
+    }
+    case 'LTE': {
+      const b = stack.pop() as number;
+      const a = stack.pop() as number;
+      stack.push(a <= b);
+      break;
+    }
+    case 'GT': {
+      const b = stack.pop() as number;
+      const a = stack.pop() as number;
+      stack.push(a > b);
+      break;
+    }
+    case 'GTE': {
+      const b = stack.pop() as number;
+      const a = stack.pop() as number;
+      stack.push(a >= b);
+      break;
+    }
+    case 'IN_RANGE': {
+      const value = stack.pop() as number;
+      stack.push(value >= opcode.lo && value <= opcode.hi);
+      break;
+    }
+    case 'NOT_IN_RANGE': {
+      const value = stack.pop() as number;
+      stack.push(value < opcode.lo || value > opcode.hi);
+      break;
+    }
+    case 'CONTAINS': {
+      const item = stack.pop();
+      const collection = stack.pop() as unknown[];
+      stack.push(Array.isArray(collection) && collection.includes(item));
+      break;
+    }
+    case 'NOT_CONTAINS': {
+      const item = stack.pop();
+      const collection = stack.pop() as unknown[];
+      stack.push(!Array.isArray(collection) || !collection.includes(item));
+      break;
+    }
+    case 'TYPE_IS': {
+      const value = stack.pop();
+      stack.push(typeof value === opcode.typeName);
+      break;
+    }
+    case 'AND': {
+      const b = stack.pop() as boolean;
+      const a = stack.pop() as boolean;
+      stack.push(a && b);
+      break;
+    }
+    case 'OR': {
+      const b = stack.pop() as boolean;
+      const a = stack.pop() as boolean;
+      stack.push(a || b);
+      break;
+    }
+    case 'NOT': {
+      const a = stack.pop() as boolean;
+      stack.push(!a);
+      break;
+    }
+    case 'EVERY': {
+      // Pop `count` boolean values from stack
+      // Return true if ALL are true
+      const count = opcode.count;
+      const values: boolean[] = [];
+      for (let i = 0; i < count; i++) {
+        values.push(stack.pop() as boolean);
+      }
+      stack.push(values.every(v => v === true));
+      break;
+    }
+    case 'SOME': {
+      // Pop `count` boolean values from stack
+      // Return true if AT LEAST ONE is true
+      const count = opcode.count;
+      const values: boolean[] = [];
+      for (let i = 0; i < count; i++) {
+        values.push(stack.pop() as boolean);
+      }
+      stack.push(values.some(v => v === true));
+      break;
+    }
+    case 'RESULT': {
+      // Push the policy result onto the stack
+      stack.push(opcode.policy);
+      break;
+    }
+  }
+}
+
+/**
+ * Get a nested field from an object using dot notation.
+ * e.g., "state.frequency" → body.state.frequency
+ */
+function getNestedField(obj: Record<string, unknown>, field: string): unknown {
+  const parts = field.split('.');
+  let current: unknown = obj;
+  for (const part of parts) {
+    if (current === null || current === undefined) return undefined;
+    if (typeof current === 'object' && !Array.isArray(current)) {
+      current = (current as Record<string, unknown>)[part];
+    } else {
+      return undefined;
+    }
+  }
+  return current;
+}
+
+/**
+ * Compile a simple policy from a human-readable description.
+ * This is a helper for creating PolicyRule instances.
+ */
+export function compilePolicy(config: {
+  id: string;
+  name: string;
+  severity: Severity;
+  appliesTo: import('./types').FactType[];
+  rules: Array<{
+    field: string;
+    operator: 'eq' | 'neq' | 'lt' | 'lte' | 'gt' | 'gte' | 'in_range' | 'not_in_range' | 'contains' | 'type_is';
+    value?: unknown;
+    lo?: number;
+    hi?: number;
+    typeName?: string;
+  }>;
+  quantifier?: 'every' | 'some';
+}): PolicyRule {
+  const ir: PolicyOpcode[] = [];
+
+  for (const rule of config.rules) {
+    ir.push({ op: 'LOAD_FIELD', field: rule.field });
+
+    switch (rule.operator) {
+      case 'eq':
+        ir.push({ op: 'LOAD_CONST', value: rule.value });
+        ir.push({ op: 'EQ' });
+        break;
+      case 'neq':
+        ir.push({ op: 'LOAD_CONST', value: rule.value });
+        ir.push({ op: 'NEQ' });
+        break;
+      case 'lt':
+        ir.push({ op: 'LOAD_CONST', value: rule.value });
+        ir.push({ op: 'LT' });
+        break;
+      case 'lte':
+        ir.push({ op: 'LOAD_CONST', value: rule.value });
+        ir.push({ op: 'LTE' });
+        break;
+      case 'gt':
+        ir.push({ op: 'LOAD_CONST', value: rule.value });
+        ir.push({ op: 'GT' });
+        break;
+      case 'gte':
+        ir.push({ op: 'LOAD_CONST', value: rule.value });
+        ir.push({ op: 'GTE' });
+        break;
+      case 'in_range':
+        ir.push({ op: 'IN_RANGE', lo: rule.lo!, hi: rule.hi! });
+        break;
+      case 'not_in_range':
+        ir.push({ op: 'NOT_IN_RANGE', lo: rule.lo!, hi: rule.hi! });
+        break;
+      case 'contains':
+        ir.push({ op: 'LOAD_CONST', value: rule.value });
+        ir.push({ op: 'CONTAINS' });
+        break;
+      case 'type_is':
+        ir.push({ op: 'TYPE_IS', typeName: rule.typeName! });
+        break;
+    }
+  }
+
+  // Apply quantifier
+  if (config.quantifier === 'every') {
+    ir.push({ op: 'EVERY', count: config.rules.length });
+  } else if (config.quantifier === 'some') {
+    ir.push({ op: 'SOME', count: config.rules.length });
+  } else {
+    // Default: AND all rules together
+    for (let i = 1; i < config.rules.length; i++) {
+      ir.push({ op: 'AND' });
+    }
+  }
+
+  return {
+    id: config.id,
+    name: config.name,
+    version: 1,
+    ir,
+    severity: config.severity,
+    appliesTo: config.appliesTo,
+    active: true,
+    createdAt: 0, // Will be set by injected clock
+  };
+}

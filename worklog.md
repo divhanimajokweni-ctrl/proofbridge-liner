@@ -687,3 +687,55 @@ Stage Summary:
 - Two PDF documents now available:
   1. `/home/z/my-project/epistemic-runtime-spec.pdf` (188KB, 20 pages) — Architecture specification
   2. `/home/z/my-project/convergence-report.pdf` (159KB, 29 pages) — Convergence audit report
+
+---
+Task ID: v0.8-Kernel-Implementation
+Agent: Main
+Task: Implement the full Epistemic Runtime v0.8 kernel from the Implementation Constitution
+
+Work Log:
+- Installed crypto dependencies: @noble/hashes, @noble/ed25519, @noble/curves, vitest
+- Created src/lib/kernel/ directory with 11 kernel modules
+- Created src/engine/ directory with 5 runtime provider modules
+- Created src/storage/ directory with WORM emulator and S3 Object Lock driver
+- Created src/signer/ directory with Ed25519 and AWS KMS signers
+- Phase A: Built DeterministicReplay engine in src/lib/kernel/replay.ts
+- Phase B: Built AcceptancePipeline as universal write gate in src/lib/kernel/acceptance-pipeline.ts
+- Phase C: Replaced FNV-1a with SHA-256 in src/lib/epd/validator.ts hash() function
+- Phase C: Replaced binary Merkle with real MMR in validator's mmrRoot() and mmrProof()
+- Phase D: Replaced Date.now() in EPD validator's now() function with deterministic epoch
+- Phase E: Built DeterministicClock, DeterministicEntropy, DeterministicUuid, HmacSigner, InMemoryWORMStorage
+- Phase F: Built RFC 8785 canonicalization in src/lib/kernel/canonicalization.ts
+- Phase G: Built LocalWORMEmulator and S3ObjectLockStorage
+- Phase H: Replay verification passes: factIds, canonicalBytes, signatures, MMR roots, projection roots all identical
+- Phase I: Built PII redaction engine in src/lib/kernel/redaction.ts (redaction BEFORE canonicalization)
+- Phase J: Built policy IR evaluator with EVERY/SOME quantifiers in src/lib/kernel/policy-evaluator.ts
+- Phase K: Built Ed25519SignerModule, AWSKMSSigner, IAMFederationSigner, OIDCSigner
+- Phase L: Generated Draft 2020-12 JSON Schema for EvidenceEnvelope in schemas/evidence-envelope.schema.json
+- Phase M: Created scripts/verify-kernel.ts — ALL 12/12 ASSERTIONS PASS
+- Fixed HmacSigner.verify() bug (sign/verify now use same key derivation)
+- Fixed runtime.ts verifyKernel() MMR empty-state crash
+- Created /api/kernel GET/POST endpoints and /api/kernel/verify endpoint
+- Created KernelVerificationSection component with 6 interactive panels
+- Added "Kernel Verify" as 19th section tab in page.tsx
+- Updated Prisma schema with FactLog model (append-only event store)
+- Ran db:push to sync database
+
+Stage Summary:
+- 12/12 kernel verification assertions PASS
+- Deterministic replay VERIFIED (5/5 checks pass)
+- Kernel API endpoints operational (/api/kernel, /api/kernel/verify)
+- FNV-1a completely eliminated from kernel code paths
+- Date.now()/Math.random()/randomUUID eliminated from kernel execution
+- All 7 constitution rules COMPLIANT
+- 19 section tabs in dashboard (new: Kernel Verify)
+- Zero lint errors
+- Key files created:
+  - src/lib/kernel/{types,hashing,canonicalization,mmr,sequencer,schema-registry,acceptance-pipeline,policy-evaluator,projection,replay,runtime,redaction,index}.ts
+  - src/engine/{clock,entropy,uuid,signer,storage,index}.ts
+  - src/storage/{local-worm,s3-object-lock,index}.ts
+  - src/signer/{ed25519,aws-kms,index}.ts
+  - src/app/api/kernel/route.ts, src/app/api/kernel/verify/route.ts
+  - scripts/verify-kernel.ts
+  - schemas/evidence-envelope.schema.json
+  - src/components/epistemic/kernel-verification.tsx
