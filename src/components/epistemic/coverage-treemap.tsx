@@ -3,16 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
-import {
-  Treemap,
-  BarChart,
-  Bar,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip as RTooltip,
-  Cell,
-} from "recharts";
+import { HeatGrid, MiniBar } from "./chart-primitives";
 import {
   GitGraph,
   TrendingUp,
@@ -42,10 +33,8 @@ import {
   StatusPill,
   Hash,
   SectionHeader,
-  StatCard,
   TopAccentBar,
   GridOverlay,
-  CHART_TOOLTIP_STYLE,
 } from "./primitives";
 import type { ShardStatus } from "@/lib/types";
 
@@ -101,18 +90,151 @@ function coverageTextClass(pct: number): string {
   return "text-violating";
 }
 
-function coverageBgClass(pct: number): string {
-  if (pct >= 80) return "bg-verified/10 border-verified/30";
-  if (pct >= 60) return "bg-emerald-500/10 border-emerald-500/30";
-  if (pct >= 40) return "bg-repairing/10 border-repairing/30";
-  if (pct >= 20) return "bg-orange-500/10 border-orange-500/30";
-  return "bg-violating/10 border-violating/30";
-}
-
 function gapSeverityClass(severity: "critical" | "high" | "medium"): string {
   if (severity === "critical") return "border-violating/40 bg-violating/10 text-violating";
   if (severity === "high") return "border-repairing/40 bg-repairing/10 text-repairing";
   return "border-quarantined/40 bg-quarantined/10 text-quarantined";
+}
+
+/* ─── Treemap Layout Algorithm ─── */
+interface TreemapInput {
+  name: string;
+  size: number;
+  coverage: number;
+}
+
+interface TreemapRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  name: string;
+  size: number;
+  coverage: number;
+}
+
+function layoutTreemap(
+  items: TreemapInput[],
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): TreemapRect[] {
+  if (items.length === 0) return [];
+  if (items.length === 1) {
+    return [{ x, y, w, h, ...items[0] }];
+  }
+
+  const sorted = [...items].sort((a, b) => b.size - a.size);
+  const total = sorted.reduce((s, i) => s + i.size, 0);
+  if (total === 0) return [];
+
+  // Find split point that divides total roughly in half
+  let acc = 0;
+  let splitIdx = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    acc += sorted[i].size;
+    if (acc >= total / 2) {
+      splitIdx = i + 1;
+      break;
+    }
+  }
+  splitIdx = Math.max(1, Math.min(sorted.length - 1, splitIdx));
+
+  const left = sorted.slice(0, splitIdx);
+  const right = sorted.slice(splitIdx);
+  const leftTotal = left.reduce((s, i) => s + i.size, 0);
+  const fraction = leftTotal / total;
+
+  // Split along the longer dimension for better aspect ratios
+  if (w >= h) {
+    const splitW = w * fraction;
+    return [
+      ...layoutTreemap(left, x, y, splitW, h),
+      ...layoutTreemap(right, x + splitW, y, w - splitW, h),
+    ];
+  } else {
+    const splitH = h * fraction;
+    return [
+      ...layoutTreemap(left, x, y, w, splitH),
+      ...layoutTreemap(right, x, y + splitH, w, h - splitH),
+    ];
+  }
+}
+
+/* ─── Custom SVG Treemap (chart-primitive style) ─── */
+interface CoverageTreemapGridProps {
+  data: TreemapInput[];
+  width?: number;
+  height?: number;
+  className?: string;
+}
+
+function CoverageTreemapGrid({ data, width = 600, height = 288, className }: CoverageTreemapGridProps) {
+  const rects = useMemo(
+    () => layoutTreemap(data, 0, 0, width, height),
+    [data, width, height],
+  );
+
+  if (!rects.length) return null;
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      className={cn("overflow-visible", className)}
+      role="img"
+      aria-label={`Coverage treemap, ${data.length} shards`}
+    >
+      {rects.map((r, i) => {
+        const fillColor = coverageColor(r.coverage);
+        const opacity = 0.15 + (r.coverage / 100) * 0.45;
+        return (
+          <g key={i} style={{ transition: "opacity .3s,fill .3s" }}>
+            <rect
+              x={r.x + 1}
+              y={r.y + 1}
+              width={Math.max(0, r.w - 2)}
+              height={Math.max(0, r.h - 2)}
+              fill={fillColor}
+              opacity={opacity}
+              rx={3}
+              stroke={fillColor}
+              strokeWidth={1}
+              strokeOpacity={0.5}
+            >
+              <title>{`${r.name}: ${r.coverage}% coverage, ${r.size} invariants`}</title>
+            </rect>
+            {r.w > 50 && r.h > 22 && (
+              <text
+                x={r.x + 8}
+                y={r.y + 15}
+                fill="var(--foreground)"
+                fontSize={9}
+                fontFamily="var(--font-geist-mono)"
+                opacity={0.9}
+              >
+                {r.name.length > 14 ? r.name.slice(0, 12) + "…" : r.name}
+              </text>
+            )}
+            {r.w > 50 && r.h > 36 && (
+              <text
+                x={r.x + 8}
+                y={r.y + 28}
+                fill={fillColor}
+                fontSize={10}
+                fontFamily="var(--font-geist-mono)"
+                fontWeight={600}
+              >
+                {r.coverage}% · {r.size}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
 }
 
 /* ─── Mock data generation ─── */
@@ -123,8 +245,6 @@ function generateCoverageData(): CoverageData {
     "ap-northeast-1-eta", "us-east-1-theta", "sa-east-1-iota",
     "eu-north-1-kappa", "us-west-1-lambda", "ap-southeast-1-mu",
   ];
-
-  const statuses: ShardStatus[] = ["healthy", "repairing", "violating"];
 
   const shards: ShardCoverage[] = shardNames.map((name, i) => {
     const coveragePct = Math.round(
@@ -168,25 +288,6 @@ function generateCoverageData(): CoverageData {
     fill: b.fill,
   }));
 
-  // Coverage gaps
-  const gaps: CoverageGap[] = [];
-  for (const shard of shards) {
-    if (shard.coveragePct < 40) {
-      const uncoveredCountForShard = Math.ceil(shard.invariantCount * (1 - shard.coveragePct / 100));
-      const count = Math.min(uncoveredCountForShard, 3);
-      for (let j = 0; j < count; j++) {
-        gaps.push({
-          id: `gap-${shard.id}-${j}`,
-          invariantName: `inv_${shard.name.replace(/-/g, "_")}_${["bounds_check", "state_integrity", "prop_constraint", "drift_limit", "hash_valid"][j % 5]}`,
-          shardName: shard.name,
-          shardHash: shard.hash,
-          coveragePct: Math.max(0, shard.coveragePct - Math.floor(Math.random() * 20)),
-          severity: shard.coveragePct < 10 ? "critical" : shard.coveragePct < 25 ? "high" : "medium",
-        });
-      }
-    }
-  }
-
   return {
     shards,
     totalInvariants,
@@ -196,51 +297,6 @@ function generateCoverageData(): CoverageData {
     distribution,
     generatedAt: Date.now(),
   };
-}
-
-/* ─── Custom Treemap Content ─── */
-function CoverageTreemapContent(props: {
-  x?: number; y?: number; width?: number; height?: number;
-  name?: string; size?: number; coverage?: number; depth?: number;
-}) {
-  const { x = 0, y = 0, width = 0, height = 0, name = "", size = 0, coverage = 0, depth = 0 } = props;
-  if (depth !== 1 || width < 20 || height < 16) return null;
-
-  const fillColor = coverageColor(coverage);
-  const opacity = 0.15 + (coverage / 100) * 0.35;
-
-  return (
-    <g>
-      <rect
-        x={x} y={y} width={width} height={height}
-        fill={fillColor} opacity={opacity} rx={3}
-        stroke={fillColor} strokeWidth={1} strokeOpacity={0.5}
-      />
-      {width > 50 && height > 22 && (
-        <text x={x + 6} y={y + 13} fill="var(--foreground)" fontSize={8} fontFamily="var(--font-geist-mono)" opacity={0.9}>
-          {name.length > 14 ? name.slice(0, 12) + "…" : name}
-        </text>
-      )}
-      {width > 50 && height > 36 && (
-        <text x={x + 6} y={y + 25} fill={fillColor} fontSize={9} fontFamily="var(--font-geist-mono)" fontWeight={600}>
-          {coverage}% · {size}
-        </text>
-      )}
-    </g>
-  );
-}
-
-/* ─── Custom tooltip for treemap ─── */
-function TreemapTooltip({ active, payload }: { active?: boolean; payload?: Array<{ name: string; value: number; payload: { name: string; size: number; coverage: number } }> }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return (
-    <div style={CHART_TOOLTIP_STYLE} className="p-2 space-y-1">
-      <div className="font-semibold text-[11px]">{d.name}</div>
-      <div className="text-[10px]">Invariants: <span className="font-mono">{d.size}</span></div>
-      <div className="text-[10px]">Coverage: <span className="font-mono" style={{ color: coverageColor(d.coverage) }}>{d.coverage}%</span></div>
-    </div>
-  );
 }
 
 /* ─── Section variants ─── */
@@ -280,6 +336,27 @@ export function CoverageTreemapSection() {
       name: sh.name,
       size: sh.invariantCount,
       coverage: sh.coveragePct,
+    }));
+  }, [data]);
+
+  const heatGridData = useMemo(() => {
+    if (!data) return [];
+    const sorted = [...data.shards].sort((a, b) => b.invariantCount - a.invariantCount);
+    const cols = 4;
+    return sorted.map((sh, i) => ({
+      x: i % cols,
+      y: Math.floor(i / cols),
+      value: sh.coveragePct,
+      label: `${sh.name}: ${sh.coveragePct}% (${sh.invariantCount} inv)`,
+    }));
+  }, [data]);
+
+  const miniBarData = useMemo(() => {
+    if (!data) return [];
+    return data.distribution.map((d) => ({
+      label: d.bucket,
+      value: d.count,
+      color: d.fill,
     }));
   }, [data]);
 
@@ -519,7 +596,7 @@ export function CoverageTreemapSection() {
 
       {/* ── 3. Treemap + Distribution ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Treemap */}
+        {/* Treemap — using custom SVG CoverageTreemapGrid (chart-primitive style) */}
         <motion.div variants={sectionVariants} className="lg:col-span-3">
           <Card className="relative overflow-hidden bg-card/40 backdrop-blur-xl border-border/60 p-5 h-full glass">
             <TopAccentBar color="oklch(0.78 0.16 160)" />
@@ -536,16 +613,7 @@ export function CoverageTreemapSection() {
                 </span>
               </div>
               <div className="h-72 w-full rounded-md border border-border/30 bg-background/20 overflow-hidden">
-                <ResponsiveContainer width="100%" height="100%">
-                  <Treemap
-                    data={treemapData}
-                    dataKey="size"
-                    nameKey="name"
-                    content={<CoverageTreemapContent />}
-                  >
-                    <RTooltip content={<TreemapTooltip />} />
-                  </Treemap>
-                </ResponsiveContainer>
+                <CoverageTreemapGrid data={treemapData} width={600} height={288} className="w-full h-full" />
               </div>
               {/* Legend */}
               <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] text-muted-foreground">
@@ -567,7 +635,7 @@ export function CoverageTreemapSection() {
           </Card>
         </motion.div>
 
-        {/* Distribution Bar Chart */}
+        {/* Distribution — using MiniBar chart primitive */}
         <motion.div variants={sectionVariants} className="lg:col-span-2">
           <Card className="relative overflow-hidden bg-card/60 backdrop-blur border-border/60 p-5 h-full">
             <TopAccentBar color="oklch(0.75 0.15 80)" />
@@ -579,30 +647,23 @@ export function CoverageTreemapSection() {
                 </div>
                 <h3 className="text-sm font-semibold">Coverage Distribution</h3>
               </div>
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.distribution} margin={{ top: 4, right: 8, left: -8, bottom: 0 }}>
-                    <XAxis
-                      dataKey="bucket"
-                      tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9, fontFamily: "var(--font-geist-mono)" }}
-                      stroke="oklch(0.3 0.01 168 / 0.5)"
-                      interval={0}
-                    />
-                    <YAxis
-                      tick={{ fill: "oklch(0.6 0.01 168)", fontSize: 9, fontFamily: "var(--font-geist-mono)" }}
-                      stroke="oklch(0.3 0.01 168 / 0.5)"
-                    />
-                    <RTooltip contentStyle={CHART_TOOLTIP_STYLE} />
-                    <Bar dataKey="count" name="Invariants" radius={[4, 4, 0, 0]} animationDuration={600}>
-                      {data.distribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} opacity={0.75} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="h-72 w-full flex items-center justify-center">
+                <MiniBar data={miniBarData} width={280} height={240} className="text-foreground" />
               </div>
               <div className="mt-2 text-center text-[10px] text-muted-foreground">
                 {data.distribution.reduce((s, d) => s + d.count, 0)} total invariants distributed across coverage buckets
+              </div>
+              {/* HeatGrid compact overview */}
+              <div className="mt-4 pt-3 border-t border-border/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-mono">Shard overview</span>
+                </div>
+                <HeatGrid
+                  data={heatGridData}
+                  rows={3}
+                  cols={4}
+                  colorScale={["oklch(0.65 0.2 25)", "oklch(0.78 0.16 160)"]}
+                />
               </div>
             </div>
           </Card>
@@ -821,9 +882,11 @@ export function CoverageTreemapSection() {
                 <TrendIcon className="h-3 w-3" />
                 {data.avgCoverage}% avg
               </span>
+              <span className="text-border/60">|</span>
+              <span>SVG charts</span>
             </div>
             <span className="text-muted-foreground/60">
-              epistemic://coverage-treemap · v0.2
+              epistemic://coverage-treemap · v0.3
             </span>
           </div>
         </Card>

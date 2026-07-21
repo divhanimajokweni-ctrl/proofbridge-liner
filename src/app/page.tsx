@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo, Suspense, lazy, ComponentTyp
 import {
   ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
   Terminal, Boxes, Globe2, Zap, Search,
-  Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare,
+  Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare, LayoutGrid,
 } from "lucide-react";
 import { usePinnedSections } from "@/hooks/use-pinned-sections";
 import { AnimatePresence, motion } from "framer-motion";
@@ -12,7 +12,7 @@ import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/epistemic/command-palette";
 import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
 
-type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison";
+type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage";
 
 const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
   { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
@@ -26,6 +26,7 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: 
   { id: "federation", label: "Federation", icon: Globe2, hint: "epistemic://" },
   { id: "metrics", label: "Metrics", icon: Activity, hint: "Live performance" },
   { id: "comparison", label: "Comparison", icon: GitCompare, hint: "Policy comparison" },
+  { id: "coverage", label: "Coverage", icon: LayoutGrid, hint: "Invariant coverage" },
 ];
 
 const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
@@ -40,6 +41,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
   federation: { title: "epistemic:// Federation", sub: "Multi-organization verifiable state reconciliation" },
   metrics: { title: "Performance Metrics", sub: "Real-time throughput, latency & violation analytics" },
   comparison: { title: "Policy Comparison Matrix", sub: "Compare policies across multiple dimensions with radar analysis" },
+  coverage: { title: "Invariant Coverage Treemap", sub: "Visualize invariant coverage across policy dimensions" },
 };
 
 function SectionLoader() {
@@ -74,6 +76,7 @@ const CliTerminalSection = lazy(() => import("@/components/epistemic/cli-termina
 const FederationSection = lazy(() => import("@/components/epistemic/federation").then(m => ({ default: m.FederationSection as ComponentType<any> })));
 const PerformanceMetricsSection = lazy(() => import("@/components/epistemic/performance-metrics").then(m => ({ default: m.PerformanceMetricsSection as ComponentType<any> })));
 const ComparisonMatrixSection = lazy(() => import("@/components/epistemic/comparison-matrix").then(m => ({ default: m.ComparisonMatrixSection as ComponentType<any> })));
+const CoverageTreemapSection = lazy(() => import("@/components/epistemic/coverage-treemap").then(m => ({ default: m.CoverageTreemapSection as ComponentType<any> })));
 const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
 
 const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
@@ -88,6 +91,7 @@ const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
   federation: FederationSection,
   metrics: PerformanceMetricsSection,
   comparison: ComparisonMatrixSection,
+  coverage: CoverageTreemapSection,
 };
 
 export default function Home() {
@@ -170,7 +174,7 @@ export default function Home() {
               <div className="leading-none">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold tracking-tight">Epistemic Runtime</span>
-                  <span className="hidden sm:inline-flex items-center rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground">v0.4</span>
+                  <span className="hidden sm:inline-flex items-center rounded border border-verified/30 bg-verified/10 px-1.5 py-0.5 text-[9px] font-mono text-verified">v0.5</span>
                 </div>
                 <span className="text-[10px] text-muted-foreground font-mono">invariant-enforced DAG · CRDT · ZK-merge</span>
               </div>
@@ -235,15 +239,23 @@ export default function Home() {
       <footer className="mt-auto border-t border-border/60 bg-background/80 backdrop-blur relative">
         <div className="bg-grid-fine absolute inset-0 opacity-20 pointer-events-none" />
         <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 py-3">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime v0.4</span>
-            <span className="h-3 w-px bg-border/40" /><span className="font-mono">MMR · CRDT · ZK-STARK</span>
-            <span className="h-3 w-px bg-border/40" /><span className="font-mono">{SECTIONS.length} sections</span>
-            <span className="h-3 w-px bg-border/40" /><span className="font-mono hidden sm:inline">SVG charts</span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime <span className="text-verified">v0.5</span></span>
+            <span className="h-3 w-px bg-border/40" />
+            <span className="font-mono">MMR · CRDT · ZK-STARK</span>
+            <span className="h-3 w-px bg-border/40" />
+            <span className="font-mono">{SECTIONS.length} sections</span>
+            <span className="h-3 w-px bg-border/40" />
+            <span className="font-mono hidden sm:inline">7 SVG charts</span>
+            <span className="h-3 w-px bg-border/40 hidden sm:inline" />
+            <span className="font-mono hidden sm:inline">⌘K search</span>
             <span className="ml-auto flex items-center gap-3">
               <span className="font-mono">policy DSL: <span className="text-verified">.epd</span></span>
               <span className="h-3 w-px bg-border/40 hidden sm:inline" />
-              <span className="hidden sm:inline-flex items-center gap-1.5 font-mono"><span className="h-1.5 w-1.5 rounded-full bg-verified/60" />runtime active</span>
+              <span className="hidden sm:inline-flex items-center gap-1.5 font-mono">
+                <span className={"h-1.5 w-1.5 rounded-full " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing animate-epistemic-pulse" : "bg-violating animate-epistemic-pulse")} />
+                {health === null ? "connecting" : health >= 85 ? "healthy" : health >= 60 ? "degraded" : "critical"}
+              </span>
             </span>
           </div>
         </div>
@@ -264,10 +276,26 @@ export default function Home() {
 
 function SectionHeader({ id, onTogglePin, isPinned, pinnedReady }: { id: SectionId; onTogglePin?: (id: string) => void; isPinned?: boolean; pinnedReady?: boolean }) {
   const m = SECTION_META[id];
+  const sectionIdx = SECTIONS.findIndex((s) => s.id === id);
+  const Icon = SECTIONS[sectionIdx]?.icon ?? Boxes;
   return (
     <div className="flex items-end justify-between gap-4 border-b border-border/40 pb-3">
-      <div className="min-w-0"><h1 className="text-lg font-semibold tracking-tight">{m.title}</h1><p className="text-xs text-muted-foreground mt-0.5">{m.sub}</p></div>
+      <div className="min-w-0 flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 shrink-0">
+          <Icon className="h-4.5 w-4.5 text-verified" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-semibold tracking-tight">{m.title}</h1>
+            <span className="inline-flex items-center justify-center h-4 w-4 rounded text-[8px] font-mono text-muted-foreground/50 bg-muted/20">{sectionIdx + 1}</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">{m.sub}</p>
+        </div>
+      </div>
       <div className="flex items-center gap-2 shrink-0">
+        <a href="/api/export?format=csv" download className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors" title="Export CSV">
+          <Zap className="h-3 w-3" />Export
+        </a>
         {pinnedReady && onTogglePin && (
           <button onClick={() => onTogglePin(id)} className={"inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] transition-colors " + (isPinned ? "border-verified/40 bg-verified/10 text-verified" : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground")} title={isPinned ? "Unpin" : "Pin"}>
             {isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
