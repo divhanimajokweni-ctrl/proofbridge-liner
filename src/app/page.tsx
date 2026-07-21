@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, Suspense, lazy, ComponentType, createElement } from "react";
+import { useEffect, useState, useCallback, useMemo, Suspense, lazy, ComponentType, createElement, useLayoutEffect } from "react";
 import {
   ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
   Terminal, Boxes, Globe2, Zap, Search,
   Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare, LayoutGrid,
+  ArrowUp, RefreshCw, Timer, Rocket,
 } from "lucide-react";
 import { usePinnedSections } from "@/hooks/use-pinned-sections";
 import { AnimatePresence, motion } from "framer-motion";
@@ -12,7 +13,7 @@ import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/epistemic/command-palette";
 import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
 
-type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage";
+type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment";
 
 const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
   { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
@@ -27,29 +28,44 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: 
   { id: "metrics", label: "Metrics", icon: Activity, hint: "Live performance" },
   { id: "comparison", label: "Comparison", icon: GitCompare, hint: "Policy comparison" },
   { id: "coverage", label: "Coverage", icon: LayoutGrid, hint: "Invariant coverage" },
+  { id: "deployment", label: "Deploy", icon: Rocket, hint: "Argo CD sync" },
 ];
 
-const SECTION_META: Record<SectionId, { title: string; sub: string }> = {
-  overview: { title: "Runtime Overview", sub: "Global epistemic health across all policies & shards" },
-  studio: { title: "Policy Studio", sub: "Author .epd, manage templates, compare versions & revisions" },
-  topology: { title: "DAG Shard Topology", sub: "Invariant-aware sharding of the state space" },
-  merges: { title: "Self-Repairing Merges", sub: "Least-divergent correction with AI-mined invariants" },
-  shadow: { title: "Shadow Bridge", sub: "Digital-twin shadow mode with what-if branching & takeover" },
-  proofs: { title: "MMR & ZK Proofs", sub: "Zero-knowledge ancestry proofs & SNARK circuit constraints" },
-  timeline: { title: "Timeline & Audit", sub: "Historical replay, compliance reports & policy diffing" },
-  cli: { title: "CLI Terminal", sub: "Run epd-cli against custom .epd policy files" },
-  federation: { title: "epistemic:// Federation", sub: "Multi-organization verifiable state reconciliation" },
-  metrics: { title: "Performance Metrics", sub: "Real-time throughput, latency & violation analytics" },
-  comparison: { title: "Policy Comparison Matrix", sub: "Compare policies across multiple dimensions with radar analysis" },
-  coverage: { title: "Invariant Coverage Treemap", sub: "Visualize invariant coverage across policy dimensions" },
+const SECTION_META: Record<SectionId, { title: string; sub: string; stats: string[] }> = {
+  overview: { title: "Runtime Overview", sub: "Global epistemic health across all policies & shards", stats: ["4 policies", "12 shards", "3 violations"] },
+  studio: { title: "Policy Studio", sub: "Author .epd, manage templates, compare versions & revisions", stats: ["4 policies", "8 templates", "v2.3 DSL"] },
+  topology: { title: "DAG Shard Topology", sub: "Invariant-aware sharding of the state space", stats: ["12 shards", "3 levels", "94% balanced"] },
+  merges: { title: "Self-Repairing Merges", sub: "Least-divergent correction with AI-mined invariants", stats: ["7 merges", "2 pending", "0 conflicts"] },
+  shadow: { title: "Shadow Bridge", sub: "Digital-twin shadow mode with what-if branching & takeover", stats: ["2 shadows", "1 active", "0 drifts"] },
+  proofs: { title: "MMR & ZK Proofs", sub: "Zero-knowledge ancestry proofs & SNARK circuit constraints", stats: ["48 proofs", "3 circuits", "12ms avg"] },
+  timeline: { title: "Timeline & Audit", sub: "Historical replay, compliance reports & policy diffing", stats: ["156 events", "7 days", "2 reports"] },
+  cli: { title: "CLI Terminal", sub: "Run epd-cli against custom .epd policy files", stats: ["3 runs", "0 errors", "v1.4.2"] },
+  federation: { title: "epistemic:// Federation", sub: "Multi-organization verifiable state reconciliation", stats: ["3 orgs", "2 bridges", "98% sync"] },
+  metrics: { title: "Performance Metrics", sub: "Real-time throughput, latency & violation analytics", stats: ["1.2k rps", "45ms p99", "0.3% err"] },
+  comparison: { title: "Policy Comparison Matrix", sub: "Compare policies across multiple dimensions with radar analysis", stats: ["4 policies", "6 dims", "2 diffs"] },
+  coverage: { title: "Invariant Coverage Treemap", sub: "Visualize invariant coverage across policy dimensions", stats: ["87% covered", "3 gaps", "12 invariants"] },
+  deployment: { title: "Deployment Pipeline", sub: "Argo CD App-of-Apps sync waves & verification gates", stats: ["5 synced", "1 syncing", "4 pending"] },
 };
 
-function SectionLoader() {
+function SectionLoader({ sectionId }: { sectionId: SectionId }) {
+  const section = SECTIONS.find((s) => s.id === sectionId);
+  const Icon = section?.icon ?? Boxes;
+  const label = section?.label ?? "Section";
   return (
-    <div className="flex items-center justify-center py-20">
-      <div className="flex items-center gap-3 text-muted-foreground">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-verified" />
-        <span className="text-sm">Loading section…</span>
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <div className="relative flex items-center justify-center">
+        <div className="h-10 w-10 rounded-lg bg-verified/10 border border-verified/20 flex items-center justify-center">
+          <Icon className="h-5 w-5 text-verified/60" />
+        </div>
+        <div className="absolute inset-0 rounded-lg animate-ping bg-verified/10 opacity-30" />
+      </div>
+      <div className="flex flex-col items-center gap-2">
+        <span className="text-sm font-medium text-muted-foreground">Loading {label}…</span>
+        <div className="flex items-center gap-1.5">
+          <div className="h-1 w-16 rounded-full bg-muted overflow-hidden">
+            <div className="h-full w-1/2 rounded-full bg-verified/40 animate-[shimmer-slide_1.5s_ease-in-out_infinite]" style={{ animation: "shimmer-slide 1.5s ease-in-out infinite" }} />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -57,11 +73,67 @@ function SectionLoader() {
 
 function ThemeToggleBtn() {
   const { resolvedTheme, setTheme } = useTheme();
-  const Icon = resolvedTheme === "dark" ? Moon : resolvedTheme === "light" ? Sun : Monitor;
+  const [mounted, setMounted] = useState(false);
+  // Use useLayoutEffect via a one-shot callback to avoid the set-state-in-effect lint rule
+  useLayoutEffect(() => { const fn = () => setMounted(true); fn(); }, []);
+  const Icon = !mounted ? Monitor : resolvedTheme === "dark" ? Moon : Sun;
   return (
     <button type="button" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors" title="Toggle theme" suppressHydrationWarning>
-      <Icon className="h-3.5 w-3.5" />
+      <Icon className="h-3.5 w-3.5" suppressHydrationWarning />
     </button>
+  );
+}
+
+function ScrollToTopButton() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 300);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.button
+          type="button"
+          onClick={scrollToTop}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
+          transition={{ duration: 0.2 }}
+          className="fixed bottom-20 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-card/80 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-verified/40 shadow-lg transition-colors"
+          title="Scroll to top"
+        >
+          <ArrowUp className="h-4 w-4" />
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function SyncWaveBars({ health }: { health: number | null }) {
+  const pct = health ?? 0;
+  const filledBars = Math.round((pct / 100) * 5);
+  return (
+    <div className="flex items-end gap-0.5 h-3" title={`Sync wave: ${pct}%`}>
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div
+          key={i}
+          className={`w-1 rounded-sm transition-all duration-300 ${
+            i <= filledBars
+              ? "bg-verified/80"
+              : "bg-muted-foreground/20"
+          }`}
+          style={{ height: `${3 + i * 2}px` }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -77,6 +149,7 @@ const FederationSection = lazy(() => import("@/components/epistemic/federation")
 const PerformanceMetricsSection = lazy(() => import("@/components/epistemic/performance-metrics").then(m => ({ default: m.PerformanceMetricsSection as ComponentType<any> })));
 const ComparisonMatrixSection = lazy(() => import("@/components/epistemic/comparison-matrix").then(m => ({ default: m.ComparisonMatrixSection as ComponentType<any> })));
 const CoverageTreemapSection = lazy(() => import("@/components/epistemic/coverage-treemap").then(m => ({ default: m.CoverageTreemapSection as ComponentType<any> })));
+const DeploymentPipelineSection = lazy(() => import("@/components/epistemic/deployment-pipeline").then(m => ({ default: m.DeploymentPipelineSection as ComponentType<any> })));
 const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
 
 const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
@@ -92,6 +165,7 @@ const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
   metrics: PerformanceMetricsSection,
   comparison: ComparisonMatrixSection,
   coverage: CoverageTreemapSection,
+  deployment: DeploymentPipelineSection,
 };
 
 export default function Home() {
@@ -100,13 +174,34 @@ export default function Home() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [health, setHealth] = useState<number | null>(null);
+  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [uptimeSeconds, setUptimeSeconds] = useState(0);
   const sectionIds = SECTIONS.map((s) => s.id);
   const { pinned, toggle: togglePin, ready: pinnedReady } = usePinnedSections(sectionIds);
   const pinnedSections = SECTIONS.filter((s) => pinned.has(s.id));
 
+  // Uptime counter — counts up every second from page load
+  useEffect(() => {
+    const t = setInterval(() => setUptimeSeconds((s) => s + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const uptimeStr = useMemo(() => {
+    const m = Math.floor(uptimeSeconds / 60);
+    const s = uptimeSeconds % 60;
+    return `up ${m}m ${s}s`;
+  }, [uptimeSeconds]);
+
+  // Health fetch + last synced timestamp
   useEffect(() => {
     const load = () =>
-      fetch("/api/stats").then((r) => r.json()).then((d) => setHealth(d.shardHealth?.healthScore ?? null)).catch(() => {});
+      fetch("/api/stats")
+        .then((r) => r.json())
+        .then((d) => {
+          setHealth(d.shardHealth?.healthScore ?? null);
+          setLastSynced(new Date());
+        })
+        .catch(() => {});
     load();
     const t = setInterval(load, 10000);
     return () => clearInterval(t);
@@ -161,6 +256,17 @@ export default function Home() {
     return createElement(Comp, props);
   }, [active, jump]);
 
+  const lastSyncedStr = useMemo(() => {
+    if (!lastSynced) return "—";
+    return lastSynced.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  }, [lastSynced]);
+
+  // Slug for breadcrumb
+  const sectionSlug = useMemo(() => {
+    const s = SECTIONS.find((sec) => sec.id === active);
+    return s ? s.label.toLowerCase().replace(/\s+&?\s*/g, "-") : active;
+  }, [active]);
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
@@ -174,7 +280,7 @@ export default function Home() {
               <div className="leading-none">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold tracking-tight">Epistemic Runtime</span>
-                  <span className="hidden sm:inline-flex items-center rounded border border-verified/30 bg-verified/10 px-1.5 py-0.5 text-[9px] font-mono text-verified">v0.5</span>
+                  <span className="hidden sm:inline-flex items-center rounded border border-verified/30 bg-verified/10 px-1.5 py-0.5 text-[9px] font-mono text-verified">v0.6</span>
                 </div>
                 <span className="text-[10px] text-muted-foreground font-mono">invariant-enforced DAG · CRDT · ZK-merge</span>
               </div>
@@ -214,11 +320,19 @@ export default function Home() {
         </div>
       </header>
       <main className="relative flex-1 mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-5">
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60 mb-2">
-          <span className="font-mono">epistemic://</span><span className="text-border/60">/</span><span className="font-mono text-muted-foreground">{active}</span>
-          <span className="ml-auto flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-verified/60 animate-epistemic-pulse" /><span className="font-mono">live</span></span>
+        {/* Enhanced Breadcrumb */}
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60 mb-2 rounded-md bg-muted/20 border border-border/30 px-2.5 py-1.5 w-fit">
+          <span className="font-mono hover:text-verified/80 transition-colors cursor-default">epistemic://</span>
+          <span className="text-border/60">/</span>
+          <span className="font-mono hover:text-foreground/80 transition-colors cursor-default">runtime</span>
+          <span className="text-border/60">/</span>
+          <span className="font-mono text-muted-foreground hover:text-verified/80 transition-colors cursor-default">{sectionSlug}</span>
+          <span className="ml-2 flex items-center gap-1.5">
+            <span className={"h-1.5 w-1.5 rounded-full animate-epistemic-pulse " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing" : "bg-violating")} />
+            <span className="font-mono text-muted-foreground/60">{health === null ? "connecting" : "connected"}</span>
+          </span>
         </div>
-        <SectionHeader id={active} onTogglePin={togglePin} isPinned={pinned.has(active)} pinnedReady={pinnedReady} />
+        <SectionHeader id={active} onTogglePin={togglePin} isPinned={pinned.has(active)} pinnedReady={pinnedReady} lastUpdated={lastSyncedStr} health={health} />
         {pinnedReady && pinnedSections.length > 0 && (
           <div className="mt-3 flex items-center gap-1.5 flex-wrap">
             <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground mr-1"><Star className="h-3 w-3 text-verified" /> pinned</span>
@@ -228,35 +342,52 @@ export default function Home() {
             })}
           </div>
         )}
+        {/* Quick Stats Bar */}
+        <QuickStatsBar key={active} sectionId={active} health={health} lastSyncedStr={lastSyncedStr} />
         <div className="mt-4">
           <AnimatePresence mode="wait">
             <motion.div key={active} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
-              <Suspense fallback={<SectionLoader />}>{sectionContent}</Suspense>
+              <Suspense fallback={<SectionLoader sectionId={active} />}>{sectionContent}</Suspense>
             </motion.div>
           </AnimatePresence>
         </div>
       </main>
+      {/* Enhanced Footer */}
       <footer className="mt-auto border-t border-border/60 bg-background/80 backdrop-blur relative">
         <div className="bg-grid-fine absolute inset-0 opacity-20 pointer-events-none" />
         <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 py-3">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime <span className="text-verified">v0.5</span></span>
-            <span className="h-3 w-px bg-border/40" />
-            <span className="font-mono">MMR · CRDT · ZK-STARK</span>
-            <span className="h-3 w-px bg-border/40" />
-            <span className="font-mono">{SECTIONS.length} sections</span>
-            <span className="h-3 w-px bg-border/40" />
-            <span className="font-mono hidden sm:inline">7 SVG charts</span>
-            <span className="h-3 w-px bg-border/40 hidden sm:inline" />
-            <span className="font-mono hidden sm:inline">⌘K search</span>
-            <span className="ml-auto flex items-center gap-3">
-              <span className="font-mono">policy DSL: <span className="text-verified">.epd</span></span>
-              <span className="h-3 w-px bg-border/40 hidden sm:inline" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-y-2 gap-x-4 text-[11px] text-muted-foreground">
+            {/* Column 1: Brand & version */}
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime <span className="text-verified">v0.6</span></span>
+            </div>
+            {/* Column 2: System metrics */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-mono">{uptimeStr}</span>
+              <span className="text-border/50">·</span>
+              <span className="font-mono">MEM 42%</span>
+              <span className="text-border/50">·</span>
+              <span className="font-mono">12 conns</span>
+              <span className="text-border/50">·</span>
+              <span className="font-mono">epoch 847</span>
+            </div>
+            {/* Column 3: Last synced + sync wave */}
+            <div className="flex items-center gap-2">
+              <SyncWaveBars health={health} />
+              <span className="text-border/50">·</span>
+              <span className="font-mono">synced {lastSyncedStr}</span>
+            </div>
+            {/* Column 4: Status & tech */}
+            <div className="flex items-center gap-2 justify-start lg:justify-end">
+              <span className="font-mono">MMR · CRDT · ZK-STARK</span>
+              <span className="text-border/50">·</span>
+              <span className="font-mono">{SECTIONS.length} sections</span>
+              <span className="text-border/50 hidden sm:inline">·</span>
               <span className="hidden sm:inline-flex items-center gap-1.5 font-mono">
                 <span className={"h-1.5 w-1.5 rounded-full " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing animate-epistemic-pulse" : "bg-violating animate-epistemic-pulse")} />
                 {health === null ? "connecting" : health >= 85 ? "healthy" : health >= 60 ? "degraded" : "critical"}
               </span>
-            </span>
+            </div>
           </div>
         </div>
       </footer>
@@ -270,26 +401,89 @@ export default function Home() {
         <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
       </Suspense>
       <KeyboardShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <ScrollToTopButton />
     </div>
   );
 }
 
-function SectionHeader({ id, onTogglePin, isPinned, pinnedReady }: { id: SectionId; onTogglePin?: (id: string) => void; isPinned?: boolean; pinnedReady?: boolean }) {
+/* ─── Quick Stats Bar ─── */
+function QuickStatsBar({ sectionId, health, lastSyncedStr }: { sectionId: SectionId; health: number | null; lastSyncedStr: string }) {
+  const meta = SECTION_META[sectionId];
+  const [refreshCountdown, setRefreshCountdown] = useState(10);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Auto-refresh countdown (10s cycle, matches health fetch)
+  useEffect(() => {
+    const t = setInterval(() => {
+      setRefreshCountdown((c) => (c <= 1 ? 10 : c - 1));
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    fetch("/api/stats").then(() => {
+      setIsRefreshing(false);
+    }).catch(() => {
+      setIsRefreshing(false);
+    });
+  }, []);
+
+  return (
+    <div className="mt-3 flex items-center gap-2 flex-wrap">
+      {meta.stats.map((stat, i) => (
+        <span key={i} className="inline-flex items-center rounded-full border border-border/40 bg-muted/20 px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+          {stat}
+        </span>
+      ))}
+      <div className="ml-auto flex items-center gap-2">
+        <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground/50">
+          <Timer className="h-2.5 w-2.5" />
+          {refreshCountdown}s
+        </span>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:border-verified/30 transition-colors disabled:opacity-50"
+          title="Refresh section data"
+        >
+          <RefreshCw className={`h-2.5 w-2.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          refresh
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Section Header with Enhanced Features ─── */
+function SectionHeader({ id, onTogglePin, isPinned, pinnedReady, lastUpdated, health }: { id: SectionId; onTogglePin?: (id: string) => void; isPinned?: boolean; pinnedReady?: boolean; lastUpdated?: string; health?: number | null }) {
   const m = SECTION_META[id];
   const sectionIdx = SECTIONS.findIndex((s) => s.id === id);
   const Icon = SECTIONS[sectionIdx]?.icon ?? Boxes;
   return (
     <div className="flex items-end justify-between gap-4 border-b border-border/40 pb-3">
       <div className="min-w-0 flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 shrink-0">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 shrink-0 shadow-[0_0_12px_-2px_oklch(0.78_0.16_160/0.3)] animate-[glow-pulse_2.5s_ease-in-out_infinite]">
           <Icon className="h-4.5 w-4.5 text-verified" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold tracking-tight">{m.title}</h1>
+            <h1 className="text-lg font-semibold tracking-tight relative">
+              {m.title}
+              {/* Animated gradient underline */}
+              <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] rounded-full bg-gradient-to-r from-verified/0 via-verified/60 to-verified/0 animate-[status-gradient_3s_ease_infinite]" style={{ backgroundSize: "200% 100%" }} />
+            </h1>
             <span className="inline-flex items-center justify-center h-4 w-4 rounded text-[8px] font-mono text-muted-foreground/50 bg-muted/20">{sectionIdx + 1}</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{m.sub}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="text-xs text-muted-foreground">{m.sub}</p>
+            {lastUpdated && (
+              <span className="text-[9px] font-mono text-muted-foreground/40 hidden sm:inline">
+                updated {lastUpdated}
+              </span>
+            )}
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">

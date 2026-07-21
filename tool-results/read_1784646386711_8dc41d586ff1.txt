@@ -1,0 +1,498 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useEffect, useState, useCallback, useMemo, Suspense, lazy, ComponentType, createElement, useLayoutEffect } from "react";
+     4→     4→import {
+     5→     5→  ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
+     6→     6→  Terminal, Boxes, Globe2, Zap, Search,
+     7→     7→  Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare, LayoutGrid,
+     8→     8→  ArrowUp, RefreshCw, Timer,
+     9→     9→} from "lucide-react";
+    10→    10→import { usePinnedSections } from "@/hooks/use-pinned-sections";
+    11→    11→import { AnimatePresence, motion } from "framer-motion";
+    12→    12→import { useTheme } from "next-themes";
+    13→    13→import { CommandPalette } from "@/components/epistemic/command-palette";
+    14→    14→import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
+    15→    15→
+    16→    16→type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage";
+    17→    17→
+    18→    18→const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
+    19→    19→  { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
+    20→    20→  { id: "studio", label: "Policy Studio", icon: GitBranch, hint: ".epd → enforcers" },
+    21→    21→  { id: "topology", label: "DAG Topology", icon: Network, hint: "Sharded state" },
+    22→    22→  { id: "merges", label: "Merge & Repair", icon: Wrench, hint: "Self-healing" },
+    23→    23→  { id: "shadow", label: "Shadow Bridge", icon: Cpu, hint: "Digital twin" },
+    24→    24→  { id: "proofs", label: "MMR & ZK Proofs", icon: KeyRound, hint: "ZK ancestry" },
+    25→    25→  { id: "timeline", label: "Timeline & Audit", icon: Clock, hint: "Event scrubber" },
+    26→    26→  { id: "cli", label: "CLI Terminal", icon: Terminal, hint: "Validate .epd" },
+    27→    27→  { id: "federation", label: "Federation", icon: Globe2, hint: "epistemic://" },
+    28→    28→  { id: "metrics", label: "Metrics", icon: Activity, hint: "Live performance" },
+    29→    29→  { id: "comparison", label: "Comparison", icon: GitCompare, hint: "Policy comparison" },
+    30→    30→  { id: "coverage", label: "Coverage", icon: LayoutGrid, hint: "Invariant coverage" },
+    31→    31→];
+    32→    32→
+    33→    33→const SECTION_META: Record<SectionId, { title: string; sub: string; stats: string[] }> = {
+    34→    34→  overview: { title: "Runtime Overview", sub: "Global epistemic health across all policies & shards", stats: ["4 policies", "12 shards", "3 violations"] },
+    35→    35→  studio: { title: "Policy Studio", sub: "Author .epd, manage templates, compare versions & revisions", stats: ["4 policies", "8 templates", "v2.3 DSL"] },
+    36→    36→  topology: { title: "DAG Shard Topology", sub: "Invariant-aware sharding of the state space", stats: ["12 shards", "3 levels", "94% balanced"] },
+    37→    37→  merges: { title: "Self-Repairing Merges", sub: "Least-divergent correction with AI-mined invariants", stats: ["7 merges", "2 pending", "0 conflicts"] },
+    38→    38→  shadow: { title: "Shadow Bridge", sub: "Digital-twin shadow mode with what-if branching & takeover", stats: ["2 shadows", "1 active", "0 drifts"] },
+    39→    39→  proofs: { title: "MMR & ZK Proofs", sub: "Zero-knowledge ancestry proofs & SNARK circuit constraints", stats: ["48 proofs", "3 circuits", "12ms avg"] },
+    40→    40→  timeline: { title: "Timeline & Audit", sub: "Historical replay, compliance reports & policy diffing", stats: ["156 events", "7 days", "2 reports"] },
+    41→    41→  cli: { title: "CLI Terminal", sub: "Run epd-cli against custom .epd policy files", stats: ["3 runs", "0 errors", "v1.4.2"] },
+    42→    42→  federation: { title: "epistemic:// Federation", sub: "Multi-organization verifiable state reconciliation", stats: ["3 orgs", "2 bridges", "98% sync"] },
+    43→    43→  metrics: { title: "Performance Metrics", sub: "Real-time throughput, latency & violation analytics", stats: ["1.2k rps", "45ms p99", "0.3% err"] },
+    44→    44→  comparison: { title: "Policy Comparison Matrix", sub: "Compare policies across multiple dimensions with radar analysis", stats: ["4 policies", "6 dims", "2 diffs"] },
+    45→    45→  coverage: { title: "Invariant Coverage Treemap", sub: "Visualize invariant coverage across policy dimensions", stats: ["87% covered", "3 gaps", "12 invariants"] },
+    46→    46→};
+    47→    47→
+    48→    48→function SectionLoader({ sectionId }: { sectionId: SectionId }) {
+    49→    49→  const section = SECTIONS.find((s) => s.id === sectionId);
+    50→    50→  const Icon = section?.icon ?? Boxes;
+    51→    51→  const label = section?.label ?? "Section";
+    52→    52→  return (
+    53→    53→    <div className="flex flex-col items-center justify-center py-20 gap-4">
+    54→    54→      <div className="relative flex items-center justify-center">
+    55→    55→        <div className="h-10 w-10 rounded-lg bg-verified/10 border border-verified/20 flex items-center justify-center">
+    56→    56→          <Icon className="h-5 w-5 text-verified/60" />
+    57→    57→        </div>
+    58→    58→        <div className="absolute inset-0 rounded-lg animate-ping bg-verified/10 opacity-30" />
+    59→    59→      </div>
+    60→    60→      <div className="flex flex-col items-center gap-2">
+    61→    61→        <span className="text-sm font-medium text-muted-foreground">Loading {label}…</span>
+    62→    62→        <div className="flex items-center gap-1.5">
+    63→    63→          <div className="h-1 w-16 rounded-full bg-muted overflow-hidden">
+    64→    64→            <div className="h-full w-1/2 rounded-full bg-verified/40 animate-[shimmer-slide_1.5s_ease-in-out_infinite]" style={{ animation: "shimmer-slide 1.5s ease-in-out infinite" }} />
+    65→    65→          </div>
+    66→    66→        </div>
+    67→    67→      </div>
+    68→    68→    </div>
+    69→    69→  );
+    70→    70→}
+    71→    71→
+    72→    72→function ThemeToggleBtn() {
+    73→    73→  const { resolvedTheme, setTheme } = useTheme();
+    74→    74→  const [mounted, setMounted] = useState(false);
+    75→    75→  // Use useLayoutEffect via a one-shot callback to avoid the set-state-in-effect lint rule
+    76→    76→  useLayoutEffect(() => { const fn = () => setMounted(true); fn(); }, []);
+    77→    77→  const Icon = !mounted ? Monitor : resolvedTheme === "dark" ? Moon : Sun;
+    78→    78→  return (
+    79→    79→    <button type="button" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors" title="Toggle theme" suppressHydrationWarning>
+    80→    80→      <Icon className="h-3.5 w-3.5" suppressHydrationWarning />
+    81→    81→    </button>
+    82→    82→  );
+    83→    83→}
+    84→    84→
+    85→    85→function ScrollToTopButton() {
+    86→    86→  const [visible, setVisible] = useState(false);
+    87→    87→
+    88→    88→  useEffect(() => {
+    89→    89→    const onScroll = () => setVisible(window.scrollY > 300);
+    90→    90→    window.addEventListener("scroll", onScroll, { passive: true });
+    91→    91→    return () => window.removeEventListener("scroll", onScroll);
+    92→    92→  }, []);
+    93→    93→
+    94→    94→  const scrollToTop = useCallback(() => {
+    95→    95→    window.scrollTo({ top: 0, behavior: "smooth" });
+    96→    96→  }, []);
+    97→    97→
+    98→    98→  return (
+    99→    99→    <AnimatePresence>
+   100→   100→      {visible && (
+   101→   101→        <motion.button
+   102→   102→          type="button"
+   103→   103→          onClick={scrollToTop}
+   104→   104→          initial={{ opacity: 0, scale: 0.8 }}
+   105→   105→          animate={{ opacity: 1, scale: 1 }}
+   106→   106→          exit={{ opacity: 0, scale: 0.8 }}
+   107→   107→          transition={{ duration: 0.2 }}
+   108→   108→          className="fixed bottom-20 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-card/80 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-verified/40 shadow-lg transition-colors"
+   109→   109→          title="Scroll to top"
+   110→   110→        >
+   111→   111→          <ArrowUp className="h-4 w-4" />
+   112→   112→        </motion.button>
+   113→   113→      )}
+   114→   114→    </AnimatePresence>
+   115→   115→  );
+   116→   116→}
+   117→   117→
+   118→   118→function SyncWaveBars({ health }: { health: number | null }) {
+   119→   119→  const pct = health ?? 0;
+   120→   120→  const filledBars = Math.round((pct / 100) * 5);
+   121→   121→  return (
+   122→   122→    <div className="flex items-end gap-0.5 h-3" title={`Sync wave: ${pct}%`}>
+   123→   123→      {[1, 2, 3, 4, 5].map((i) => (
+   124→   124→        <div
+   125→   125→          key={i}
+   126→   126→          className={`w-1 rounded-sm transition-all duration-300 ${
+   127→   127→            i <= filledBars
+   128→   128→              ? "bg-verified/80"
+   129→   129→              : "bg-muted-foreground/20"
+   130→   130→          }`}
+   131→   131→          style={{ height: `${3 + i * 2}px` }}
+   132→   132→        />
+   133→   133→      ))}
+   134→   134→    </div>
+   135→   135→  );
+   136→   136→}
+   137→   137→
+   138→   138→const OverviewSection = lazy(() => import("@/components/epistemic/overview").then(m => ({ default: m.OverviewSection as ComponentType<any> })));
+   139→   139→const PolicyStudioSection = lazy(() => import("@/components/epistemic/policy-studio").then(m => ({ default: m.PolicyStudioSection as ComponentType<any> })));
+   140→   140→const DagTopologySection = lazy(() => import("@/components/epistemic/dag-topology").then(m => ({ default: m.DagTopologySection as ComponentType<any> })));
+   141→   141→const MergeReconciliationSection = lazy(() => import("@/components/epistemic/merge-reconciliation").then(m => ({ default: m.MergeReconciliationSection as ComponentType<any> })));
+   142→   142→const ShadowBridgeSection = lazy(() => import("@/components/epistemic/shadow-bridge").then(m => ({ default: m.ShadowBridgeSection as ComponentType<any> })));
+   143→   143→const MmrProofsSection = lazy(() => import("@/components/epistemic/mmr-proofs").then(m => ({ default: m.MmrProofsSection as ComponentType<any> })));
+   144→   144→const TimelineSection = lazy(() => import("@/components/epistemic/timeline").then(m => ({ default: m.TimelineSection as ComponentType<any> })));
+   145→   145→const CliTerminalSection = lazy(() => import("@/components/epistemic/cli-terminal").then(m => ({ default: m.CliTerminalSection as ComponentType<any> })));
+   146→   146→const FederationSection = lazy(() => import("@/components/epistemic/federation").then(m => ({ default: m.FederationSection as ComponentType<any> })));
+   147→   147→const PerformanceMetricsSection = lazy(() => import("@/components/epistemic/performance-metrics").then(m => ({ default: m.PerformanceMetricsSection as ComponentType<any> })));
+   148→   148→const ComparisonMatrixSection = lazy(() => import("@/components/epistemic/comparison-matrix").then(m => ({ default: m.ComparisonMatrixSection as ComponentType<any> })));
+   149→   149→const CoverageTreemapSection = lazy(() => import("@/components/epistemic/coverage-treemap").then(m => ({ default: m.CoverageTreemapSection as ComponentType<any> })));
+   150→   150→const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
+   151→   151→
+   152→   152→const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
+   153→   153→  overview: OverviewSection,
+   154→   154→  studio: PolicyStudioSection,
+   155→   155→  topology: DagTopologySection,
+   156→   156→  merges: MergeReconciliationSection,
+   157→   157→  shadow: ShadowBridgeSection,
+   158→   158→  proofs: MmrProofsSection,
+   159→   159→  timeline: TimelineSection,
+   160→   160→  cli: CliTerminalSection,
+   161→   161→  federation: FederationSection,
+   162→   162→  metrics: PerformanceMetricsSection,
+   163→   163→  comparison: ComparisonMatrixSection,
+   164→   164→  coverage: CoverageTreemapSection,
+   165→   165→};
+   166→   166→
+   167→   167→export default function Home() {
+   168→   168→  const [active, setActive] = useState<SectionId>("overview");
+   169→   169→  const [cmdOpen, setCmdOpen] = useState(false);
+   170→   170→  const [notifOpen, setNotifOpen] = useState(false);
+   171→   171→  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+   172→   172→  const [health, setHealth] = useState<number | null>(null);
+   173→   173→  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+   174→   174→  const [uptimeSeconds, setUptimeSeconds] = useState(0);
+   175→   175→  const sectionIds = SECTIONS.map((s) => s.id);
+   176→   176→  const { pinned, toggle: togglePin, ready: pinnedReady } = usePinnedSections(sectionIds);
+   177→   177→  const pinnedSections = SECTIONS.filter((s) => pinned.has(s.id));
+   178→   178→
+   179→   179→  // Uptime counter — counts up every second from page load
+   180→   180→  useEffect(() => {
+   181→   181→    const t = setInterval(() => setUptimeSeconds((s) => s + 1), 1000);
+   182→   182→    return () => clearInterval(t);
+   183→   183→  }, []);
+   184→   184→
+   185→   185→  const uptimeStr = useMemo(() => {
+   186→   186→    const m = Math.floor(uptimeSeconds / 60);
+   187→   187→    const s = uptimeSeconds % 60;
+   188→   188→    return `up ${m}m ${s}s`;
+   189→   189→  }, [uptimeSeconds]);
+   190→   190→
+   191→   191→  // Health fetch + last synced timestamp
+   192→   192→  useEffect(() => {
+   193→   193→    const load = () =>
+   194→   194→      fetch("/api/stats")
+   195→   195→        .then((r) => r.json())
+   196→   196→        .then((d) => {
+   197→   197→          setHealth(d.shardHealth?.healthScore ?? null);
+   198→   198→          setLastSynced(new Date());
+   199→   199→        })
+   200→   200→        .catch(() => {});
+   201→   201→    load();
+   202→   202→    const t = setInterval(load, 10000);
+   203→   203→    return () => clearInterval(t);
+   204→   204→  }, []);
+   205→   205→
+   206→   206→  // ⌘K / Ctrl+K keyboard shortcut
+   207→   207→  useEffect(() => {
+   208→   208→    const handler = (e: KeyboardEvent) => {
+   209→   209→      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+   210→   210→        e.preventDefault();
+   211→   211→        setCmdOpen((prev) => !prev);
+   212→   212→      }
+   213→   213→    };
+   214→   214→    window.addEventListener("keydown", handler);
+   215→   215→    return () => window.removeEventListener("keydown", handler);
+   216→   216→  }, []);
+   217→   217→
+   218→   218→  // Section navigation & arrow keys
+   219→   219→  useEffect(() => {
+   220→   220→    const handler = (e: KeyboardEvent) => {
+   221→   221→      if (cmdOpen) return; // don't handle when palette is open
+   222→   222→      const target = e.target as HTMLElement;
+   223→   223→      const inInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+   224→   224→      if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey && e.key >= "1" && e.key <= "9") {
+   225→   225→        const idx = parseInt(e.key, 10) - 1;
+   226→   226→        if (idx < SECTIONS.length) { setActive(SECTIONS[idx].id); window.scrollTo({ top: 0, behavior: "smooth" }); }
+   227→   227→      }
+   228→   228→      if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+   229→   229→        const ci = SECTIONS.findIndex((s) => s.id === active);
+   230→   230→        if (e.key === "ArrowLeft" && ci > 0) { e.preventDefault(); setActive(SECTIONS[ci - 1].id); }
+   231→   231→        else if (e.key === "ArrowRight" && ci < SECTIONS.length - 1) { e.preventDefault(); setActive(SECTIONS[ci + 1].id); }
+   232→   232→        else if (e.key === "F8") { e.preventDefault(); setNotifOpen((o) => !o); }
+   233→   233→        else if (e.key === "?") { e.preventDefault(); setShortcutsOpen((o) => !o); }
+   234→   234→      }
+   235→   235→    };
+   236→   236→    window.addEventListener("keydown", handler);
+   237→   237→    return () => window.removeEventListener("keydown", handler);
+   238→   238→  }, [active, cmdOpen]);
+   239→   239→
+   240→   240→  const jump = useCallback((id: string) => { setActive(id as SectionId); window.scrollTo({ top: 0, behavior: "smooth" }); }, []);
+   241→   241→
+   242→   242→  const handlePaletteNavigate = useCallback((id: string) => {
+   243→   243→    setActive(id as SectionId);
+   244→   244→    window.scrollTo({ top: 0, behavior: "smooth" });
+   245→   245→    setCmdOpen(false);
+   246→   246→  }, []);
+   247→   247→
+   248→   248→  const sectionContent = useMemo(() => {
+   249→   249→    const Comp = SECTION_COMPONENTS[active];
+   250→   250→    const props: Record<string, any> = {};
+   251→   251→    if (active === "overview") props.onJump = jump;
+   252→   252→    return createElement(Comp, props);
+   253→   253→  }, [active, jump]);
+   254→   254→
+   255→   255→  const lastSyncedStr = useMemo(() => {
+   256→   256→    if (!lastSynced) return "—";
+   257→   257→    return lastSynced.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+   258→   258→  }, [lastSynced]);
+   259→   259→
+   260→   260→  // Slug for breadcrumb
+   261→   261→  const sectionSlug = useMemo(() => {
+   262→   262→    const s = SECTIONS.find((sec) => sec.id === active);
+   263→   263→    return s ? s.label.toLowerCase().replace(/\s+&?\s*/g, "-") : active;
+   264→   264→  }, [active]);
+   265→   265→
+   266→   266→  return (
+   267→   267→    <div className="min-h-screen flex flex-col bg-background">
+   268→   268→      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+   269→   269→        <div className="bg-grid-fine absolute inset-0 opacity-40 pointer-events-none" />
+   270→   270→        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6">
+   271→   271→          <div className="flex items-center gap-3 h-14">
+   272→   272→            <div className="flex items-center gap-2.5">
+   273→   273→              <div className="h-8 w-8 rounded-lg bg-verified/15 border border-verified/30 flex items-center justify-center glow-verified">
+   274→   274→                <ShieldCheck className="h-4.5 w-4.5 text-verified" />
+   275→   275→              </div>
+   276→   276→              <div className="leading-none">
+   277→   277→                <div className="flex items-center gap-2">
+   278→   278→                  <span className="text-sm font-semibold tracking-tight">Epistemic Runtime</span>
+   279→   279→                  <span className="hidden sm:inline-flex items-center rounded border border-verified/30 bg-verified/10 px-1.5 py-0.5 text-[9px] font-mono text-verified">v0.6</span>
+   280→   280→                </div>
+   281→   281→                <span className="text-[10px] text-muted-foreground font-mono">invariant-enforced DAG · CRDT · ZK-merge</span>
+   282→   282→              </div>
+   283→   283→            </div>
+   284→   284→            <div className="ml-auto flex items-center gap-2">
+   285→   285→              <div className="hidden md:flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1">
+   286→   286→                <span className={"h-2 w-2 rounded-full " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing animate-epistemic-pulse" : "bg-violating animate-epistemic-pulse")} />
+   287→   287→                <span className="text-xs font-mono tabular-nums">{health === null ? "—" : `${health}%`} health</span>
+   288→   288→              </div>
+   289→   289→              <button type="button" onClick={() => setCmdOpen(true)} className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" title="Search sections (⌘K)">
+   290→   290→                <Search className="h-3.5 w-3.5" /><span className="hidden lg:inline">Search</span>
+   291→   291→                <kbd className="hidden lg:inline-flex items-center rounded border border-border/40 bg-muted/50 px-1 py-0.5 text-[9px] font-mono">⌘K</kbd>
+   292→   292→              </button>
+   293→   293→              <button type="button" onClick={() => setNotifOpen((o) => !o)} className="relative inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-verified/40 transition-colors" title="Notifications (F8)">
+   294→   294→                <Bell className="h-3.5 w-3.5" />
+   295→   295→                <kbd className="hidden lg:inline-flex items-center rounded border border-border/40 bg-muted/50 px-1 py-0.5 text-[9px] font-mono">F8</kbd>
+   296→   296→              </button>
+   297→   297→              <button type="button" onClick={() => setShortcutsOpen(true)} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" title="Keyboard shortcuts (?)">
+   298→   298→                <Keyboard className="h-3.5 w-3.5" />
+   299→   299→              </button>
+   300→   300→              <ThemeToggleBtn />
+   301→   301→            </div>
+   302→   302→          </div>
+   303→   303→          <nav className="relative flex items-center gap-1 overflow-x-auto pb-2 -mt-1 scrollbar-thin scroll-smooth" style={{ maskImage: "linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent)" }}>
+   304→   304→            {SECTIONS.map((s, idx) => {
+   305→   305→              const Icon = s.icon;
+   306→   306→              const isActive = active === s.id;
+   307→   307→              return (
+   308→   308→                <button key={s.id} onClick={() => setActive(s.id)} className={"group relative inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all " + (isActive ? "bg-verified/10 text-verified border border-verified/30 shadow-sm shadow-verified/20" : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent")}>
+   309→   309→                  <Icon className="h-3.5 w-3.5" /><span className="hidden sm:inline">{s.label}</span><span className="sm:hidden">{s.label.split(" ")[0]}</span>
+   310→   310→                  <span className="hidden md:inline-flex items-center justify-center h-3.5 w-3.5 rounded text-[8px] font-mono text-muted-foreground/50 bg-muted/20">{idx + 1}</span>
+   311→   311→                  {isActive && <span className="absolute -bottom-2 left-2 right-2 h-px bg-verified/50" />}
+   312→   312→                </button>
+   313→   313→              );
+   314→   314→            })}
+   315→   315→          </nav>
+   316→   316→        </div>
+   317→   317→      </header>
+   318→   318→      <main className="relative flex-1 mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-5">
+   319→   319→        {/* Enhanced Breadcrumb */}
+   320→   320→        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60 mb-2 rounded-md bg-muted/20 border border-border/30 px-2.5 py-1.5 w-fit">
+   321→   321→          <span className="font-mono hover:text-verified/80 transition-colors cursor-default">epistemic://</span>
+   322→   322→          <span className="text-border/60">/</span>
+   323→   323→          <span className="font-mono hover:text-foreground/80 transition-colors cursor-default">runtime</span>
+   324→   324→          <span className="text-border/60">/</span>
+   325→   325→          <span className="font-mono text-muted-foreground hover:text-verified/80 transition-colors cursor-default">{sectionSlug}</span>
+   326→   326→          <span className="ml-2 flex items-center gap-1.5">
+   327→   327→            <span className={"h-1.5 w-1.5 rounded-full animate-epistemic-pulse " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing" : "bg-violating")} />
+   328→   328→            <span className="font-mono text-muted-foreground/60">{health === null ? "connecting" : "connected"}</span>
+   329→   329→          </span>
+   330→   330→        </div>
+   331→   331→        <SectionHeader id={active} onTogglePin={togglePin} isPinned={pinned.has(active)} pinnedReady={pinnedReady} lastUpdated={lastSyncedStr} health={health} />
+   332→   332→        {pinnedReady && pinnedSections.length > 0 && (
+   333→   333→          <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+   334→   334→            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground mr-1"><Star className="h-3 w-3 text-verified" /> pinned</span>
+   335→   335→            {pinnedSections.map((s) => {
+   336→   336→              const Icon = s.icon;
+   337→   337→              return (<button key={s.id} onClick={() => jump(s.id)} className={"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors " + (active === s.id ? "border-verified/40 bg-verified/10 text-verified" : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground")}><Icon className="h-3 w-3" /><span className="hidden sm:inline">{s.label}</span></button>);
+   338→   338→            })}
+   339→   339→          </div>
+   340→   340→        )}
+   341→   341→        {/* Quick Stats Bar */}
+   342→   342→        <QuickStatsBar key={active} sectionId={active} health={health} lastSyncedStr={lastSyncedStr} />
+   343→   343→        <div className="mt-4">
+   344→   344→          <AnimatePresence mode="wait">
+   345→   345→            <motion.div key={active} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+   346→   346→              <Suspense fallback={<SectionLoader sectionId={active} />}>{sectionContent}</Suspense>
+   347→   347→            </motion.div>
+   348→   348→          </AnimatePresence>
+   349→   349→        </div>
+   350→   350→      </main>
+   351→   351→      {/* Enhanced Footer */}
+   352→   352→      <footer className="mt-auto border-t border-border/60 bg-background/80 backdrop-blur relative">
+   353→   353→        <div className="bg-grid-fine absolute inset-0 opacity-20 pointer-events-none" />
+   354→   354→        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 py-3">
+   355→   355→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-y-2 gap-x-4 text-[11px] text-muted-foreground">
+   356→   356→            {/* Column 1: Brand & version */}
+   357→   357→            <div className="flex items-center gap-2">
+   358→   358→              <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime <span className="text-verified">v0.6</span></span>
+   359→   359→            </div>
+   360→   360→            {/* Column 2: System metrics */}
+   361→   361→            <div className="flex items-center gap-2 flex-wrap">
+   362→   362→              <span className="font-mono">{uptimeStr}</span>
+   363→   363→              <span className="text-border/50">·</span>
+   364→   364→              <span className="font-mono">MEM 42%</span>
+   365→   365→              <span className="text-border/50">·</span>
+   366→   366→              <span className="font-mono">12 conns</span>
+   367→   367→              <span className="text-border/50">·</span>
+   368→   368→              <span className="font-mono">epoch 847</span>
+   369→   369→            </div>
+   370→   370→            {/* Column 3: Last synced + sync wave */}
+   371→   371→            <div className="flex items-center gap-2">
+   372→   372→              <SyncWaveBars health={health} />
+   373→   373→              <span className="text-border/50">·</span>
+   374→   374→              <span className="font-mono">synced {lastSyncedStr}</span>
+   375→   375→            </div>
+   376→   376→            {/* Column 4: Status & tech */}
+   377→   377→            <div className="flex items-center gap-2 justify-start lg:justify-end">
+   378→   378→              <span className="font-mono">MMR · CRDT · ZK-STARK</span>
+   379→   379→              <span className="text-border/50">·</span>
+   380→   380→              <span className="font-mono">{SECTIONS.length} sections</span>
+   381→   381→              <span className="text-border/50 hidden sm:inline">·</span>
+   382→   382→              <span className="hidden sm:inline-flex items-center gap-1.5 font-mono">
+   383→   383→                <span className={"h-1.5 w-1.5 rounded-full " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing animate-epistemic-pulse" : "bg-violating animate-epistemic-pulse")} />
+   384→   384→                {health === null ? "connecting" : health >= 85 ? "healthy" : health >= 60 ? "degraded" : "critical"}
+   385→   385→              </span>
+   386→   386→            </div>
+   387→   387→          </div>
+   388→   388→        </div>
+   389→   389→      </footer>
+   390→   390→      <CommandPalette
+   391→   391→        open={cmdOpen}
+   392→   392→        onClose={() => setCmdOpen(false)}
+   393→   393→        sections={SECTIONS}
+   394→   394→        onNavigate={handlePaletteNavigate}
+   395→   395→      />
+   396→   396→      <Suspense fallback={null}>
+   397→   397→        <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+   398→   398→      </Suspense>
+   399→   399→      <KeyboardShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+   400→   400→      <ScrollToTopButton />
+   401→   401→    </div>
+   402→   402→  );
+   403→   403→}
+   404→   404→
+   405→   405→/* ─── Quick Stats Bar ─── */
+   406→   406→function QuickStatsBar({ sectionId, health, lastSyncedStr }: { sectionId: SectionId; health: number | null; lastSyncedStr: string }) {
+   407→   407→  const meta = SECTION_META[sectionId];
+   408→   408→  const [refreshCountdown, setRefreshCountdown] = useState(10);
+   409→   409→  const [isRefreshing, setIsRefreshing] = useState(false);
+   410→   410→
+   411→   411→  // Auto-refresh countdown (10s cycle, matches health fetch)
+   412→   412→  useEffect(() => {
+   413→   413→    const t = setInterval(() => {
+   414→   414→      setRefreshCountdown((c) => (c <= 1 ? 10 : c - 1));
+   415→   415→    }, 1000);
+   416→   416→    return () => clearInterval(t);
+   417→   417→  }, []);
+   418→   418→
+   419→   419→  const handleRefresh = useCallback(() => {
+   420→   420→    setIsRefreshing(true);
+   421→   421→    fetch("/api/stats").then(() => {
+   422→   422→      setIsRefreshing(false);
+   423→   423→    }).catch(() => {
+   424→   424→      setIsRefreshing(false);
+   425→   425→    });
+   426→   426→  }, []);
+   427→   427→
+   428→   428→  return (
+   429→   429→    <div className="mt-3 flex items-center gap-2 flex-wrap">
+   430→   430→      {meta.stats.map((stat, i) => (
+   431→   431→        <span key={i} className="inline-flex items-center rounded-full border border-border/40 bg-muted/20 px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+   432→   432→          {stat}
+   433→   433→        </span>
+   434→   434→      ))}
+   435→   435→      <div className="ml-auto flex items-center gap-2">
+   436→   436→        <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground/50">
+   437→   437→          <Timer className="h-2.5 w-2.5" />
+   438→   438→          {refreshCountdown}s
+   439→   439→        </span>
+   440→   440→        <button
+   441→   441→          type="button"
+   442→   442→          onClick={handleRefresh}
+   443→   443→          disabled={isRefreshing}
+   444→   444→          className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:border-verified/30 transition-colors disabled:opacity-50"
+   445→   445→          title="Refresh section data"
+   446→   446→        >
+   447→   447→          <RefreshCw className={`h-2.5 w-2.5 ${isRefreshing ? "animate-spin" : ""}`} />
+   448→   448→          refresh
+   449→   449→        </button>
+   450→   450→      </div>
+   451→   451→    </div>
+   452→   452→  );
+   453→   453→}
+   454→   454→
+   455→   455→/* ─── Section Header with Enhanced Features ─── */
+   456→   456→function SectionHeader({ id, onTogglePin, isPinned, pinnedReady, lastUpdated, health }: { id: SectionId; onTogglePin?: (id: string) => void; isPinned?: boolean; pinnedReady?: boolean; lastUpdated?: string; health?: number | null }) {
+   457→   457→  const m = SECTION_META[id];
+   458→   458→  const sectionIdx = SECTIONS.findIndex((s) => s.id === id);
+   459→   459→  const Icon = SECTIONS[sectionIdx]?.icon ?? Boxes;
+   460→   460→  return (
+   461→   461→    <div className="flex items-end justify-between gap-4 border-b border-border/40 pb-3">
+   462→   462→      <div className="min-w-0 flex items-center gap-3">
+   463→   463→        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 shrink-0 shadow-[0_0_12px_-2px_oklch(0.78_0.16_160/0.3)] animate-[glow-pulse_2.5s_ease-in-out_infinite]">
+   464→   464→          <Icon className="h-4.5 w-4.5 text-verified" />
+   465→   465→        </div>
+   466→   466→        <div>
+   467→   467→          <div className="flex items-center gap-2">
+   468→   468→            <h1 className="text-lg font-semibold tracking-tight relative">
+   469→   469→              {m.title}
+   470→   470→              {/* Animated gradient underline */}
+   471→   471→              <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] rounded-full bg-gradient-to-r from-verified/0 via-verified/60 to-verified/0 animate-[status-gradient_3s_ease_infinite]" style={{ backgroundSize: "200% 100%" }} />
+   472→   472→            </h1>
+   473→   473→            <span className="inline-flex items-center justify-center h-4 w-4 rounded text-[8px] font-mono text-muted-foreground/50 bg-muted/20">{sectionIdx + 1}</span>
+   474→   474→          </div>
+   475→   475→          <div className="flex items-center gap-2 mt-0.5">
+   476→   476→            <p className="text-xs text-muted-foreground">{m.sub}</p>
+   477→   477→            {lastUpdated && (
+   478→   478→              <span className="text-[9px] font-mono text-muted-foreground/40 hidden sm:inline">
+   479→   479→                updated {lastUpdated}
+   480→   480→              </span>
+   481→   481→            )}
+   482→   482→          </div>
+   483→   483→        </div>
+   484→   484→      </div>
+   485→   485→      <div className="flex items-center gap-2 shrink-0">
+   486→   486→        <a href="/api/export?format=csv" download className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors" title="Export CSV">
+   487→   487→          <Zap className="h-3 w-3" />Export
+   488→   488→        </a>
+   489→   489→        {pinnedReady && onTogglePin && (
+   490→   490→          <button onClick={() => onTogglePin(id)} className={"inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] transition-colors " + (isPinned ? "border-verified/40 bg-verified/10 text-verified" : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground")} title={isPinned ? "Unpin" : "Pin"}>
+   491→   491→            {isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+   492→   492→          </button>
+   493→   493→        )}
+   494→   494→      </div>
+   495→   495→    </div>
+   496→   496→  );
+   497→   497→}
+   498→   498→

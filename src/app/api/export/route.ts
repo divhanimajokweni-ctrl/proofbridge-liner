@@ -1,13 +1,70 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-// GET /api/export — Export dashboard data as CSV
+// GET /api/export — Export dashboard data as CSV or JSON
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const format = url.searchParams.get("format") ?? "csv";
   const scope = url.searchParams.get("scope") ?? "all";
 
   try {
+    // --- JSON export ---
+    if (format === "json") {
+      const [policies, shards, violations, merges] = await Promise.all([
+        (scope === "all" || scope === "policies")
+          ? db.policy.findMany({
+              select: {
+                id: true, name: true, domain: true, version: true, ok: true,
+                errorCount: true, warningCount: true, invariantCount: true,
+                shardCount: true, shardStrategy: true, repairStrategy: true,
+                zkEnabled: true, shadowEnabled: true, createdAt: true, updatedAt: true,
+                shards: {
+                  select: { id: true, shardKey: true, region: true, invariantStatus: true, peerCount: true },
+                },
+              },
+            })
+          : Promise.resolve([]),
+        (scope === "all" || scope === "shards")
+          ? db.shard.findMany({
+              select: {
+                id: true, shardKey: true, region: true, nodeId: true,
+                invariantStatus: true, peerCount: true, lastMergeAt: true,
+                createdAt: true, updatedAt: true,
+              },
+            })
+          : Promise.resolve([]),
+        (scope === "all" || scope === "violations")
+          ? db.invariantViolation.findMany({
+              select: {
+                id: true, invariant: true, severity: true, soft: true,
+                shardKey: true, actual: true, expected: true,
+                repaired: true, driftDelta: true, createdAt: true,
+              },
+              orderBy: { createdAt: "desc" },
+            })
+          : Promise.resolve([]),
+        (scope === "all" || scope === "merges")
+          ? db.mergeProposal.findMany({
+              select: {
+                id: true, sourceShardName: true, targetShard: true,
+                status: true, divergence: true, iterations: true, createdAt: true,
+              },
+              orderBy: { createdAt: "desc" },
+            })
+          : Promise.resolve([]),
+      ]);
+
+      return NextResponse.json({
+        policies,
+        shards,
+        violations,
+        merges,
+        exportedAt: new Date().toISOString(),
+        version: "0.6",
+      });
+    }
+
+    // --- CSV export (existing functionality) ---
     const csvParts: string[] = [];
 
     if (scope === "all" || scope === "policies") {
@@ -52,14 +109,6 @@ export async function GET(req: Request) {
     }
 
     const csvContent = csvParts.join("\n");
-
-    if (format === "json") {
-      return NextResponse.json({
-        exportedAt: new Date().toISOString(),
-        scope,
-        data: csvContent,
-      });
-    }
 
     return new NextResponse(csvContent, {
       status: 200,

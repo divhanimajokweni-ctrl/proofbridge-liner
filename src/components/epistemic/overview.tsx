@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { StatsResponse, ShardRow } from "@/lib/types";
 import { StatusPill, Hash } from "./primitives";
+import { ActivityFeed } from "./activity-feed";
 
 function generateSparkline(base: number, variance: number, length = 12): number[] {
   let seed = base * 7 + 31;
@@ -365,6 +366,11 @@ export function OverviewSection({ onJump }: { onJump: (id: string) => void }) {
             </div>
           </div>
         </Card>
+      </motion.div>
+
+      {/* Enhanced Activity Feed */}
+      <motion.div variants={secV}>
+        <ActivityFeed />
       </motion.div>
 
       {/* Shard Health Heatmap + Coverage Ring */}
