@@ -76,3 +76,7 @@ export const CoverageTreemapSection = dynamic(
   () => import("./coverage-treemap").then((m) => m.CoverageTreemapSection),
   { ssr: false }
 );
+export const ConvergenceSection = dynamic(
+  () => import("./convergence").then((m) => m.ConvergenceSection),
+  { ssr: false }
+);

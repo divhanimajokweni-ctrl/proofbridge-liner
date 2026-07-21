@@ -5,7 +5,7 @@ import {
   ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
   Terminal, Boxes, Globe2, Zap, Search,
   Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare, LayoutGrid,
-  ArrowUp, RefreshCw, Timer, Rocket, Shield, Workflow, Layers,
+  ArrowUp, RefreshCw, Timer, Rocket, Shield, Workflow, Layers, ShieldAlert,
 } from "lucide-react";
 import { usePinnedSections } from "@/hooks/use-pinned-sections";
 import { AnimatePresence, motion } from "framer-motion";
@@ -13,7 +13,7 @@ import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/epistemic/command-palette";
 import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
 
-type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment" | "trust" | "acceptance" | "architecture" | "migration";
+type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment" | "trust" | "acceptance" | "architecture" | "migration" | "convergence";
 
 const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
   { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
@@ -33,6 +33,7 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: 
   { id: "acceptance", label: "Acceptance", icon: Workflow, hint: "Fact acceptance pipeline" },
   { id: "architecture", label: "Architecture", icon: Layers, hint: "Primitives & gaps" },
   { id: "migration", label: "Migration", icon: GitBranch, hint: "Migration as Facts" },
+  { id: "convergence", label: "Convergence", icon: ShieldAlert, hint: "Spec vs reality audit" },
 ];
 
 const SECTION_META: Record<SectionId, { title: string; sub: string; stats: string[] }> = {
@@ -53,6 +54,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string; stats: strin
   acceptance: { title: "Acceptance Engine", sub: "Deterministic fact acceptance pipeline, lifecycle & failure evidence", stats: ["1.2k facts", "8.15ms avg", "2.3% reject"] },
   architecture: { title: "Architecture & Primitives", sub: "Core ontology, production architecture, gap analysis & stability principles", stats: ["4 primitives", "10 gaps", "82% ready"] },
   migration: { title: "Migration as Facts", sub: "Migration is NOT a kernel concept — it is infrastructure that produces Facts", stats: ["7 fact types", "5 steps", "56% spec"] },
+  convergence: { title: "Convergence Report", sub: "Brutally honest assessment: does the implementation match the specification?", stats: ["~8% spec", "20 components", "9 drifts"] },
 };
 
 function SectionLoader({ sectionId }: { sectionId: SectionId }) {
@@ -162,6 +164,7 @@ const TrustRuntimeSection = lazy(() => import("@/components/epistemic/trust-runt
 const AcceptanceEngineSection = lazy(() => import("@/components/epistemic/acceptance-engine").then(m => ({ default: m.AcceptanceEngineSection as ComponentType<any> })));
 const ArchitectureSection = lazy(() => import("@/components/epistemic/architecture").then(m => ({ default: m.ArchitectureSection as ComponentType<any> })));
 const MigrationSection = lazy(() => import("@/components/epistemic/migration").then(m => ({ default: m.MigrationSection as ComponentType<any> })));
+const ConvergenceSection = lazy(() => import("@/components/epistemic/convergence").then(m => ({ default: m.ConvergenceSection as ComponentType<any> })));
 const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
 
 const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
@@ -182,6 +185,7 @@ const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
   acceptance: AcceptanceEngineSection,
   architecture: ArchitectureSection,
   migration: MigrationSection,
+  convergence: ConvergenceSection,
 };
 
 export default function Home() {
