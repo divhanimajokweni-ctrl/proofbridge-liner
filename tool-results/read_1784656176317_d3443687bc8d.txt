@@ -1,0 +1,1415 @@
+     1→#!/usr/bin/env python3
+     2→"""
+     3→poster_validate.py — Pre- and post-generation quality checks for poster/creative PDFs.
+     4→
+     5→Usage:
+     6→    # Check HTML before PDF generation
+     7→    python3 poster_validate.py check-html poster.html [--fix] [--output fixed.html]
+     8→
+     9→    # Check PDF after generation
+    10→    python3 poster_validate.py check-pdf poster.pdf --source-html poster.html
+    11→
+    12→Both commands emit a JSON report to stdout:
+    13→    {"pass": bool, "source": "...", "check_type": "html"|"pdf",
+    14→     "errors": [...], "warnings": [...], "info": [...]}
+    15→
+    16→Exit codes:
+    17→    0  pass (no errors; warnings/info are OK)
+    18→    1  fail (at least one error)
+    19→    2  script-level failure (bad arguments, unreadable file, …)
+    20→"""
+    21→
+    22→from __future__ import annotations
+    23→
+    24→import argparse
+    25→import json
+    26→import math
+    27→import os
+    28→import re
+    29→import subprocess
+    30→import sys
+    31→from html.parser import HTMLParser
+    32→from pathlib import Path
+    33→from typing import Any
+    34→
+    35→# ---------------------------------------------------------------------------
+    36→# Constants
+    37→# ---------------------------------------------------------------------------
+    38→
+    39→GENERIC_FAMILIES = frozenset(
+    40→    ["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-serif",
+    41→     "ui-sans-serif", "ui-monospace", "ui-rounded", "math", "emoji", "fangsong"]
+    42→)
+    43→
+    44→SERIF_FONTS = frozenset(f.lower() for f in [
+    45→    "Playfair Display", "Georgia", "FreeSerif", "Times", "Noto Serif",
+    46→    "Noto Serif SC", "Noto Serif TC", "Noto Serif JP", "Noto Serif KR",
+    47→    "Source Serif Pro", "Source Serif 4", "Merriweather", "Lora", "PT Serif",
+    48→    "Libre Baskerville", "EB Garamond", "Cormorant Garamond", "Crimson Text",
+    49→    "LXGW WenKai", "Tinos",
+    50→])
+    51→
+    52→CHINESE_FONTS = frozenset(f.lower() for f in [
+    53→    "Noto Sans SC", "Noto Sans TC",
+    54→    "Noto Sans CJK SC", "Noto Sans CJK TC",
+    55→    "Source Han Sans SC", "Source Han Sans TC", "WenQuanYi Micro Hei",
+    56→    "WenQuanYi Zen Hei",
+    57→    "Noto Serif SC", "Noto Serif TC", "Noto Serif CJK SC",
+    58→    "Source Han Serif SC",
+    59→    "LXGW WenKai", "FreeSerif", "Sarasa Mono SC",
+    60→])
+    61→
+    62→# Selectors we treat as "main containers" whose overflow:hidden is dangerous.
+    63→# NOTE: .poster and .page are EXCLUDED because html2poster.js auto-injects
+    64→# overflow:hidden on them at render time. See SKILL.md Engine Selection Rules.
+    65→CONTAINER_SELECTORS = {"body", "html", ".slide",
+    66→                       "#app", "#root", ".container", ".wrapper", "main",
+    67→                       "section", "article"}
+    68→
+    69→# ---------------------------------------------------------------------------
+    70→# Helpers
+    71→# ---------------------------------------------------------------------------
+    72→
+    73→
+    74→def _issue(code: str, message: str, severity: str = "error", line: int | None = None) -> dict:
+    75→    d: dict[str, Any] = {"code": code, "message": message, "severity": severity}
+    76→    if line is not None:
+    77→        d["line"] = line
+    78→    return d
+    79→
+    80→
+    81→def _line_number(full_text: str, pos: int) -> int:
+    82→    """Return 1-based line number for character position *pos*."""
+    83→    return full_text.count("\n", 0, pos) + 1
+    84→
+    85→
+    86→# ---------------------------------------------------------------------------
+    87→# CSS regex helpers
+    88→# ---------------------------------------------------------------------------
+    89→
+    90→_RE_FONT_FAMILY = re.compile(
+    91→    r"font-family\s*:\s*([^;}\n]+)", re.IGNORECASE
+    92→)
+    93→
+    94→_RE_FONT_SIZE = re.compile(
+    95→    r"font-size\s*:\s*(\d+(?:\.\d+)?)\s*(px|pt|em|rem)", re.IGNORECASE
+    96→)
+    97→
+    98→_RE_PAGE_SIZE = re.compile(
+    99→    r"@page\s*\{[^}]*\bsize\s*:", re.IGNORECASE | re.DOTALL
+   100→)
+   101→
+   102→_RE_CSS_URL = re.compile(
+   103→    r"url\(\s*['\"]?(https?://[^'\")\s]+)['\"]?\s*\)", re.IGNORECASE
+   104→)
+   105→
+   106→_RE_OVERFLOW = re.compile(
+   107→    r"overflow\s*:\s*hidden", re.IGNORECASE
+   108→)
+   109→
+   110→_RE_BG_WHITE = re.compile(
+   111→    r"background(?:-color)?\s*:\s*(white|#fff(?:fff)?|transparent)\b", re.IGNORECASE
+   112→)
+   113→
+   114→_RE_COLOR_HEX = re.compile(r"#([0-9a-fA-F]{3,8})")
+   115→_RE_COLOR_RGB = re.compile(r"rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
+   116→
+   117→_RE_STYLE_BLOCK = re.compile(r"<style[^>]*>(.*?)</style>", re.IGNORECASE | re.DOTALL)
+   118→_RE_INLINE_STYLE = re.compile(r'style\s*=\s*["\']([^"\']*)["\']', re.IGNORECASE)
+   119→
+   120→_RE_CSS_RULE = re.compile(
+   121→    r"([^{]+)\{([^}]*)\}", re.DOTALL
+   122→)
+   123→
+   124→_RE_WIDTH_PX = re.compile(r"width\s*:\s*(\d+(?:\.\d+)?)\s*px", re.IGNORECASE)
+   125→
+   126→
+   127→def _parse_font_list(raw: str) -> list[str]:
+   128→    """Split a font-family value into individual font names (unquoted, stripped)."""
+   129→    fonts: list[str] = []
+   130→    for part in raw.split(","):
+   131→        name = part.strip().strip("'\"").strip()
+   132→        if name:
+   133→            fonts.append(name)
+   134→    return fonts
+   135→
+   136→
+   137→def _has_generic(fonts: list[str]) -> bool:
+   138→    return any(f.lower() in GENERIC_FAMILIES for f in fonts)
+   139→
+   140→
+   141→def _best_generic(fonts: list[str]) -> str:
+   142→    """Pick the best generic fallback for a list of named fonts."""
+   143→    lower = [f.lower() for f in fonts]
+   144→    if any(f in CHINESE_FONTS for f in lower):
+   145→        return "sans-serif"
+   146→    if any(f in SERIF_FONTS for f in lower):
+   147→        return "serif"
+   148→    return "sans-serif"
+   149→
+   150→
+   151→# ---------------------------------------------------------------------------
+   152→# Color / contrast helpers
+   153→# ---------------------------------------------------------------------------
+   154→
+   155→def _hex_to_rgb(h: str) -> tuple[int, int, int] | None:
+   156→    h = h.lstrip("#")
+   157→    if len(h) == 3:
+   158→        h = h[0]*2 + h[1]*2 + h[2]*2
+   159→    if len(h) == 4:
+   160→        h = h[0]*2 + h[1]*2 + h[2]*2  # ignore alpha
+   161→    if len(h) == 8:
+   162→        h = h[:6]  # strip alpha
+   163→    if len(h) != 6:
+   164→        return None
+   165→    try:
+   166→        return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+   167→    except ValueError:
+   168→        return None
+   169→
+   170→
+   171→def _relative_luminance(r: int, g: int, b: int) -> float:
+   172→    """WCAG 2.x relative luminance."""
+   173→    def _c(v: int) -> float:
+   174→        s = v / 255.0
+   175→        return s / 12.92 if s <= 0.03928 else ((s + 0.055) / 1.055) ** 2.4
+   176→    return 0.2126 * _c(r) + 0.7152 * _c(g) + 0.0722 * _c(b)
+   177→
+   178→
+   179→def _contrast_ratio(rgb1: tuple[int, int, int], rgb2: tuple[int, int, int]) -> float:
+   180→    l1 = _relative_luminance(*rgb1)
+   181→    l2 = _relative_luminance(*rgb2)
+   182→    lighter = max(l1, l2)
+   183→    darker = min(l1, l2)
+   184→    return (lighter + 0.05) / (darker + 0.05)
+   185→
+   186→
+   187→def _extract_color(css_text: str, prop: str) -> tuple[int, int, int] | None:
+   188→    """Try to extract an RGB color for a given CSS property from a rule body."""
+   189→    pat = re.compile(rf"{prop}\s*:\s*([^;]+)", re.IGNORECASE)
+   190→    m = pat.search(css_text)
+   191→    if not m:
+   192→        return None
+   193→    val = m.group(1).strip()
+   194→    # Named colours (just the common ones)
+   195→    named = {
+   196→        "white": (255, 255, 255), "black": (0, 0, 0), "red": (255, 0, 0),
+   197→        "green": (0, 128, 0), "blue": (0, 0, 255), "yellow": (255, 255, 0),
+   198→        "grey": (128, 128, 128), "gray": (128, 128, 128), "transparent": (255, 255, 255),
+   199→    }
+   200→    low = val.lower().split()[0].rstrip(";")
+   201→    if low in named:
+   202→        return named[low]
+   203→    m_rgb = _RE_COLOR_RGB.search(val)
+   204→    if m_rgb:
+   205→        return int(m_rgb.group(1)), int(m_rgb.group(2)), int(m_rgb.group(3))
+   206→    m_hex = _RE_COLOR_HEX.search(val)
+   207→    if m_hex:
+   208→        return _hex_to_rgb(m_hex.group(1))
+   209→    return None
+   210→
+   211→
+   212→# ---------------------------------------------------------------------------
+   213→# HTML visible text extractor (stdlib only)
+   214→# ---------------------------------------------------------------------------
+   215→
+   216→class _TextExtractor(HTMLParser):
+   217→    """Extract visible text from HTML, skipping <script>, <style>, etc."""
+   218→
+   219→    _SKIP_TAGS = frozenset(["script", "style", "noscript", "template", "svg"])
+   220→
+   221→    def __init__(self) -> None:
+   222→        super().__init__()
+   223→        self._skip_depth = 0
+   224→        self.parts: list[str] = []
+   225→
+   226→    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+   227→        if tag.lower() in self._SKIP_TAGS:
+   228→            self._skip_depth += 1
+   229→
+   230→    def handle_endtag(self, tag: str) -> None:
+   231→        if tag.lower() in self._SKIP_TAGS and self._skip_depth > 0:
+   232→            self._skip_depth -= 1
+   233→
+   234→    def handle_data(self, data: str) -> None:
+   235→        if self._skip_depth == 0:
+   236→            self.parts.append(data)
+   237→
+   238→    def get_text(self) -> str:
+   239→        return " ".join(self.parts)
+   240→
+   241→
+   242→def _html_visible_text(html: str) -> str:
+   243→    ext = _TextExtractor()
+   244→    try:
+   245→        ext.feed(html)
+   246→    except Exception:
+   247→        pass
+   248→    return ext.get_text()
+   249→
+   250→
+   251→# ---------------------------------------------------------------------------
+   252→# CHECK-HTML
+   253→# ---------------------------------------------------------------------------
+   254→
+   255→def check_html(html_path: str, *, fix: bool = False, output_path: str | None = None) -> dict:
+   256→    """Run all HTML pre-checks. Return the JSON-serialisable report dict."""
+   257→
+   258→    path = Path(html_path)
+   259→    if not path.is_file():
+   260→        return {"pass": False, "source": html_path, "check_type": "html",
+   261→                "errors": [_issue("FILE_NOT_FOUND", f"Cannot read '{html_path}'.")],
+   262→                "warnings": [], "info": []}
+   263→
+   264→    raw = path.read_text(encoding="utf-8", errors="replace")
+   265→    original = raw  # keep for line-number lookup
+   266→    # For fix mode: we collect all replacements and apply them at the end
+   267→    # using re.sub on the original to avoid offset corruption
+   268→    _all_fixes: list[tuple[str, str]] = []  # (old_text, new_text) applied in order
+   269→
+   270→    errors: list[dict] = []
+   271→    warnings: list[dict] = []
+   272→    info: list[dict] = []
+   273→
+   274→    # Collect all CSS text (style blocks + inline styles)
+   275→    all_css_positions: list[tuple[str, int]] = []  # (css_text, char_offset_in_raw)
+   276→    for m in _RE_STYLE_BLOCK.finditer(raw):
+   277→        all_css_positions.append((m.group(1), m.start(1)))
+   278→    for m in _RE_INLINE_STYLE.finditer(raw):
+   279→        all_css_positions.append((m.group(1), m.start(1)))
+   280→
+   281→    all_css = "\n".join(c for c, _ in all_css_positions)
+   282→
+   283→    # ---- 1. FONT_NO_FALLBACK ----
+   284→    for css_text, css_offset in all_css_positions:
+   285→        for m in _RE_FONT_FAMILY.finditer(css_text):
+   286→            fonts = _parse_font_list(m.group(1))
+   287→            if fonts and not _has_generic(fonts):
+   288→                abs_pos = css_offset + m.start()
+   289→                ln = _line_number(original, abs_pos)
+   290→                generic = _best_generic(fonts)
+   291→                errors.append(_issue(
+   292→                    "FONT_NO_FALLBACK",
+   293→                    f"font-family {', '.join(repr(f) for f in fonts)} has no generic fallback. "
+   294→                    f"Add '{generic}' at the end.",
+   295→                    line=ln
+   296→                ))
+   297→                if fix:
+   298→                    old_decl = m.group(0)  # e.g. "font-family: 'Montserrat'"
+   299→                    val_part = m.group(1).rstrip().rstrip(";").rstrip()
+   300→                    new_decl = f"font-family: {val_part}, {generic}"
+   301→                    _all_fixes.append((old_decl, new_decl))
+   302→
+   303→    # ---- 2. OVERFLOW_HIDDEN_CONTAINER ----
+   304→    for css_text, css_offset in all_css_positions:
+   305→        for rule_m in _RE_CSS_RULE.finditer(css_text):
+   306→            selector_raw = rule_m.group(1).strip()
+   307→            body = rule_m.group(2)
+   308→            if not _RE_OVERFLOW.search(body):
+   309→                continue
+   310→            # Check if this selector is a container
+   311→            selectors = [s.strip().lower() for s in selector_raw.split(",")]
+   312→            for sel in selectors:
+   313→                # Strip pseudo-classes/elements for matching
+   314→                base_sel = re.split(r"[:>\s+~]", sel)[0].strip()
+   315→                if base_sel in CONTAINER_SELECTORS:
+   316→                    # Check for width < 200px exemption
+   317→                    w_m = _RE_WIDTH_PX.search(body)
+   318→                    if w_m and float(w_m.group(1)) < 200:
+   319→                        continue
+   320→                    abs_pos = css_offset + rule_m.start()
+   321→                    ln = _line_number(original, abs_pos)
+   322→                    errors.append(_issue(
+   323→                        "OVERFLOW_HIDDEN_CONTAINER",
+   324→                        f"'{base_sel}' has 'overflow: hidden' which clips content in PDF rendering. "
+   325→                        "Remove it or use 'overflow: visible'.",
+   326→                        line=ln
+   327→                    ))
+   328→                    if fix:
+   329→                        old_rule = rule_m.group(0)
+   330→                        fixed_body = re.sub(r"overflow\s*:\s*hidden\s*;?\s*", "", body, flags=re.IGNORECASE)
+   331→                        new_rule = f"{rule_m.group(1)}{{{fixed_body}}}"
+   332→                        _all_fixes.append((old_rule, new_rule))
+   333→                    break  # only report once per rule
+   334→
+   335→    # Also check inline styles on body/html tags
+   336→    for tag_name in ("body", "html"):
+   337→        tag_pat = re.compile(rf"<{tag_name}([^>]*)>", re.IGNORECASE)
+   338→        for tm in tag_pat.finditer(raw):
+   339→            attrs_str = tm.group(1)
+   340→            style_m = re.search(r'style\s*=\s*["\']([^"\']*)["\']', attrs_str, re.IGNORECASE)
+   341→            if style_m and _RE_OVERFLOW.search(style_m.group(1)):
+   342→                ln = _line_number(original, tm.start())
+   343→                errors.append(_issue(
+   344→                    "OVERFLOW_HIDDEN_CONTAINER",
+   345→                    f"<{tag_name}> has inline 'overflow: hidden' which clips content. Remove it.",
+   346→                    line=ln
+   347→                ))
+   348→                if fix:
+   349→                    old_style = style_m.group(1)
+   350→                    new_style = re.sub(r"overflow\s*:\s*hidden\s*;?\s*", "", old_style, flags=re.IGNORECASE)
+   351→                    _all_fixes.append((old_style, new_style))
+   352→
+   353→    # ---- 2b. FIXED_SIZE_NO_SCREEN_ADAPT ----
+   354→    # For fixed-size single-page designs (poster, infographic, certificate, card),
+   355→    # check that @media screen auto-scale CSS is present.
+   356→    # Detect fixed-size pages: html/body with explicit px width+height
+   357→    _has_fixed_width = False
+   358→    _has_fixed_height = False
+   359→    _fixed_h_value = None
+   360→    for css_text, css_offset in all_css_positions:
+   361→        for rule_m in _RE_CSS_RULE.finditer(css_text):
+   362→            selector_raw = rule_m.group(1).strip().lower()
+   363→            body_text = rule_m.group(2)
+   364→            selectors = [s.strip() for s in selector_raw.split(",")]
+   365→            if any(s in ("body", "html", "html, body", "body, html") for s in selectors):
+   366→                if re.search(r"(?<!max-)(?<!min-)width\s*:\s*\d+(?:\.\d+)?\s*px", body_text, re.IGNORECASE):
+   367→                    _has_fixed_width = True
+   368→                h_m = re.search(r"(?<!max-)(?<!min-)height\s*:\s*(\d+(?:\.\d+)?)\s*px", body_text, re.IGNORECASE)
+   369→                if h_m:
+   370→                    _has_fixed_height = True
+   371→                    _fixed_h_value = h_m.group(1)
+   372→    # Also check .page / .poster containers
+   373→    for css_text, css_offset in all_css_positions:
+   374→        for rule_m in _RE_CSS_RULE.finditer(css_text):
+   375→            selector_raw = rule_m.group(1).strip().lower()
+   376→            body_text = rule_m.group(2)
+   377→            selectors = [s.strip() for s in selector_raw.split(",")]
+   378→            if any(s in (".page", ".poster", "#page", "#poster", ".slide") for s in selectors):
+   379→                if re.search(r"(?<!max-)(?<!min-)width\s*:\s*\d+(?:\.\d+)?\s*px", body_text, re.IGNORECASE):
+   380→                    _has_fixed_width = True
+   381→                h_m = re.search(r"(?<!max-)(?<!min-)height\s*:\s*(\d+(?:\.\d+)?)\s*px", body_text, re.IGNORECASE)
+   382→                if h_m:
+   383→                    _has_fixed_height = True
+   384→                    if not _fixed_h_value:
+   385→                        _fixed_h_value = h_m.group(1)
+   386→
+   387→    _is_fixed_size_page = _has_fixed_width and _has_fixed_height
+   388→
+   389→    if _is_fixed_size_page:
+   390→        # Check for @media screen rule
+   391→        _has_media_screen = bool(re.search(r"@media\s+screen\s*\{", all_css, re.IGNORECASE))
+   392→        if not _has_media_screen:
+   393→            _height_hint = _fixed_h_value or "1400"
+   394→            warnings.append(_issue(
+   395→                "FIXED_SIZE_NO_SCREEN_ADAPT",
+   396→                f"Fixed-size page detected ({_height_hint}px tall) but no @media screen rule found. "
+   397→                "Browser preview will require scrolling to see the full page. "
+   398→                "Add @media screen {{ html {{ height:auto; display:flex; justify-content:center; }} "
+   399→                f"body {{ transform-origin:top center; scale:min(1, calc(100vh / {_height_hint})); "
+   400→                "margin:0 auto; }} }} for auto-scaling preview.",
+   401→                severity="warning"
+   402→            ))
+   403→
+   404→        # Check for @media screen + scale/transform (more specific)
+   405→        if _has_media_screen:
+   406→            # Extract full @media screen block content (handles nested braces)
+   407→            _media_screen_content = ""
+   408→            _ms_match = re.search(r"@media\s+screen\s*\{", all_css, re.IGNORECASE)
+   409→            if _ms_match:
+   410→                # Find matching closing brace (count nested braces)
+   411→                _depth = 1
+   412→                _start = _ms_match.end()
+   413→                for _ci in range(_start, len(all_css)):
+   414→                    if all_css[_ci] == '{':
+   415→                        _depth += 1
+   416→                    elif all_css[_ci] == '}':
+   417→                        _depth -= 1
+   418→                        if _depth == 0:
+   419→                            _media_screen_content = all_css[_start:_ci]
+   420→                            break
+   421→            _has_scale = bool(re.search(
+   422→                r"(?:scale|transform|zoom)",
+   423→                _media_screen_content, re.IGNORECASE
+   424→            ))
+   425→            if not _has_scale:
+   426→                warnings.append(_issue(
+   427→                    "SCREEN_ADAPT_NO_SCALE",
+   428→                    "@media screen block exists but lacks scale/transform/zoom for auto-fitting. "
+   429→                    f"Add: body {{ scale: min(1, calc(100vh / {_fixed_h_value or '1400'})); }}",
+   430→                    severity="warning"
+   431→                ))
+   432→
+   433→    # ---- 3. REMOTE_IMAGE ----
+   434→    # <img src="http...">
+   435→    for m in re.finditer(r'<img\s[^>]*src\s*=\s*["\']?(https?://[^\s"\'>\)]+)', raw, re.IGNORECASE):
+   436→        url = m.group(1)
+   437→        ln = _line_number(original, m.start())
+   438→        warnings.append(_issue(
+   439→            "REMOTE_IMAGE",
+   440→            f"img src='{_truncate(url, 80)}' is a remote URL. "
+   441→            "Download to images/ subdirectory and use relative path (src=\"images/filename.jpg\").",
+   442→            severity="warning", line=ln
+   443→        ))
+   444→    # CSS url(http...)
+   445→    for css_text, css_offset in all_css_positions:
+   446→        for m in _RE_CSS_URL.finditer(css_text):
+   447→            url = m.group(1)
+   448→            abs_pos = css_offset + m.start()
+   449→            ln = _line_number(original, abs_pos)
+   450→            warnings.append(_issue(
+   451→                "REMOTE_IMAGE",
+   452→                f"CSS url('{_truncate(url, 80)}') is a remote URL. "
+   453→                "Download locally for reliable PDF generation.",
+   454→                severity="warning", line=ln
+   455→            ))
+   456→
+   457→    # ---- 3b. ABSOLUTE_PATH ----
+   458→    # <img src="file:///..." or src="/absolute/path">
+   459→    for m in re.finditer(r'<img\s[^>]*src\s*=\s*["\']?(file://[^\s"\'>\)]+|/[^\s"\'>\)]+)', raw, re.IGNORECASE):
+   460→        path_val = m.group(1)
+   461→        ln = _line_number(original, m.start())
+   462→        warnings.append(_issue(
+   463→            "ABSOLUTE_PATH",
+   464→            f"img src='{_truncate(path_val, 80)}' uses an absolute path. "
+   465→            "Use relative path (src=\"images/filename.jpg\") for portability.",
+   466→            severity="warning", line=ln
+   467→        ))
+   468→
+   469→    # ---- 4. NO_PAGE_SIZE ----
+   470→    if not _RE_PAGE_SIZE.search(all_css):
+   471→        warnings.append(_issue(
+   472→            "NO_PAGE_SIZE",
+   473→            "@page { size: ... } not found in CSS. Playwright will use default A4 "
+   474→            "which may not match the poster design. Add explicit page size.",
+   475→            severity="warning"
+   476→        ))
+   477→
+   478→    # ---- 4b. MISSING_MARGIN_RESET ----
+   479→    # Check if html/body has margin:0 reset (Chromium defaults to body { margin: 8px })
+   480→    has_margin_reset = bool(re.search(
+   481→        r'(?:html|body|\*)\s*(?:,\s*(?:html|body|\*)\s*)?{[^}]*margin\s*:\s*0',
+   482→        all_css, re.IGNORECASE
+   483→    ))
+   484→    if not has_margin_reset:
+   485→        warnings.append(_issue(
+   486→            "MISSING_MARGIN_RESET",
+   487→            "No 'margin: 0' found on html/body/*. Chromium's default body { margin: 8px } "
+   488→            "will cause black edges on top/left/bottom of the poster PDF. "
+   489→            "Add: html, body { margin: 0; padding: 0; }",
+   490→            severity="warning"
+   491→        ))
+   492→
+   493→    # ---- 4c. PAGE_SIZE_CSS_VAR ----
+   494→    # CSS variables are NOT resolved in @page rules — will silently fallback to A4
+   495→    page_size_var_match = re.search(
+   496→        r'@page\s*\{[^}]*\bsize\s*:[^;]*var\s*\(',
+   497→        all_css, re.IGNORECASE | re.DOTALL
+   498→    )
+   499→    if page_size_var_match:
+   500→            errors.append(_issue(
+   501→                "PAGE_SIZE_CSS_VAR",
+   502→                "@page { size } uses CSS variables (var(...)). Chromium does NOT resolve "
+   503→                "CSS variables in @page rules — the page size will silently fallback to A4, "
+   504→                "causing content to be off-center. Use concrete px values instead: "
+   505→                "@page { size: 720px 960px; }",
+   506→                severity="error"
+   507→            ))
+   508→
+   509→    # ---- 5. WHITE_BACKGROUND ----
+   510→    _has_styled_bg = False
+   511→    for css_text, _ in all_css_positions:
+   512→        for rule_m in _RE_CSS_RULE.finditer(css_text):
+   513→            selector_raw = rule_m.group(1).strip().lower()
+   514→            body = rule_m.group(2)
+   515→            selectors = [s.strip() for s in selector_raw.split(",")]
+   516→            if any(s in ("body", "html", ":root") for s in selectors):
+   517→                bg_m = re.search(r"background(?:-color)?\s*:\s*([^;]+)", body, re.IGNORECASE)
+   518→                if bg_m:
+   519→                    val = bg_m.group(1).strip().lower()
+   520→                    if val in ("white", "#fff", "#ffffff", "transparent", "rgba(0,0,0,0)",
+   521→                               "rgba(255,255,255,1)", "rgb(255,255,255)"):
+   522→                        pass  # still "white"-ish
+   523→                    else:
+   524→                        _has_styled_bg = True
+   525→    if not _has_styled_bg:
+   526→        warnings.append(_issue(
+   527→            "WHITE_BACKGROUND",
+   528→            "body/html has white, transparent, or no background. "
+   529→            "Posters typically need a styled background colour or gradient.",
+   530→            severity="warning"
+   531→        ))
+   532→
+   533→    # ---- 6. TINY_FONT ----
+   534→    for css_text, css_offset in all_css_positions:
+   535→        for m in _RE_FONT_SIZE.finditer(css_text):
+   536→            size = float(m.group(1))
+   537→            unit = m.group(2).lower()
+   538→            # Convert to rough px
+   539→            if unit == "pt":
+   540→                size_px = size * (4 / 3)
+   541→            elif unit in ("em", "rem"):
+   542→                size_px = size * 16  # assume base 16px
+   543→            else:
+   544→                size_px = size
+   545→            if size_px < 10:
+   546→                abs_pos = css_offset + m.start()
+   547→                ln = _line_number(original, abs_pos)
+   548→                warnings.append(_issue(
+   549→                    "TINY_FONT",
+   550→                    f"font-size: {m.group(1)}{m.group(2)} ({size_px:.0f}px) may be unreadable in PDF output.",
+   551→                    severity="warning", line=ln
+   552→                ))
+   553→
+   554→    # ---- 7. COLOR_CONTRAST ----
+   555→    _checked_pairs: set[tuple] = set()
+   556→    for css_text, css_offset in all_css_positions:
+   557→        for rule_m in _RE_CSS_RULE.finditer(css_text):
+   558→            body = rule_m.group(2)
+   559→            fg = _extract_color(body, "color")
+   560→            bg = _extract_color(body, "background(?:-color)?")
+   561→            if fg and bg:
+   562→                pair = (fg, bg)
+   563→                if pair not in _checked_pairs:
+   564→                    _checked_pairs.add(pair)
+   565→                    ratio = _contrast_ratio(fg, bg)
+   566→                    if ratio < 3.0:
+   567→                        abs_pos = css_offset + rule_m.start()
+   568→                        ln = _line_number(original, abs_pos)
+   569→                        warnings.append(_issue(
+   570→                            "COLOR_CONTRAST",
+   571→                            f"Text color rgb{fg} on background rgb{bg} has contrast ratio "
+   572→                            f"{ratio:.1f}:1 (< 3:1 minimum). May be hard to read.",
+   573→                            severity="warning", line=ln
+   574→                        ))
+   575→
+   576→    # ---- 8. MISSING_PRINT_BG_NOTE ----
+   577→    info.append(_issue(
+   578→        "MISSING_PRINT_BG_NOTE",
+   579→        "Remember to set print_background=True when calling page.pdf() in Playwright, "
+   580→        "otherwise CSS backgrounds won't render.",
+   581→        severity="info"
+   582→    ))
+   583→
+   584→    # ---- 9. OVERFLOW_DECORATION ----
+   585→    # Detect decorative position:absolute elements that might overflow body width
+   586→    # Look for patterns like: left: -50px, right: -100px, left: 120%, transform: translateX(...)
+   587→    _overflow_positions = re.findall(
+   588→        r'(?:left|right)\s*:\s*(-\d+(?:\.\d+)?(?:px|%|rem|em))\s*;',
+   589→        all_css, re.IGNORECASE
+   590→    ) if all_css else []
+   591→    for pos_val in _overflow_positions:
+   592→        if pos_val.startswith('-') or (pos_val.endswith('%') and float(re.match(r'-?[\d.]+', pos_val).group()) > 100):
+   593→            warnings.append(_issue(
+   594→                "OVERFLOW_DECORATION",
+   595→                f"CSS position '{pos_val}' may push decorative elements outside body width, "
+   596→                "causing black edges in PDF. Keep absolute-positioned elements within [0, body_width].",
+   597→                severity="warning"
+   598→            ))
+   599→            break  # Only warn once
+   600→
+   601→    # ---- 10. BG_COLOR_MISMATCH ----
+   602→    # Check if body/html background matches main content container background
+   603→    _body_bg = None
+   604→    _canvas_bg = None
+   605→    for css_text, css_offset in all_css_positions:
+   606→        for rule_m in _RE_CSS_RULE.finditer(css_text):
+   607→            selector_raw = rule_m.group(1).strip().lower()
+   608→            body_text = rule_m.group(2)
+   609→            selectors = [s.strip() for s in selector_raw.split(",")]
+   610→            bg_m = re.search(r"background(?:-color)?\s*:\s*([^;]+)", body_text, re.IGNORECASE)
+   611→            if bg_m:
+   612→                bg_val = bg_m.group(1).strip().lower()
+   613→                if any(s in ("body", "html") for s in selectors):
+   614→                    _body_bg = bg_val
+   615→                if any(s in (".canvas", ".poster", ".poster-container", ".page") for s in selectors):
+   616→                    _canvas_bg = bg_val
+   617→    # Helper: normalize a CSS background value to (r,g,b) for comparison.
+   618→    # Returns None if value uses var(), gradient, url(), or unparseable.
+   619→    def _bg_to_rgb(val: str):
+   620→        if not val:
+   621→            return None
+   622→        v = val.strip().lower()
+   623→        # Skip CSS variables, gradients, url() — can't compare reliably
+   624→        if v.startswith("var(") or "gradient" in v or "url(" in v:
+   625→            return None
+   626→        # Use _extract_color machinery: wrap as "background: <val>" and extract
+   627→        return _extract_color(f"background: {val};", "background")
+   628→
+   629→    _body_bg_rgb = _bg_to_rgb(_body_bg)
+   630→    _canvas_bg_rgb = _bg_to_rgb(_canvas_bg)
+   631→
+   632→    if _body_bg and _canvas_bg and _body_bg != _canvas_bg:
+   633→        # Skip if either uses CSS variables / gradients (can't reliably compare)
+   634→        if _body_bg_rgb is not None and _canvas_bg_rgb is not None:
+   635→            if _body_bg_rgb != _canvas_bg_rgb:
+   636→                warnings.append(_issue(
+   637→                    "BG_COLOR_MISMATCH",
+   638→                    f"body background '{_body_bg}' differs from content container background "
+   639→                    f"'{_canvas_bg}'. This may cause visible color borders in PDF output. "
+   640→                    "Ensure html/body background matches the poster canvas color.",
+   641→                    severity="warning"
+   642→                ))
+   643→        # else: unparseable (var/gradient/url) → skip, no warning
+   644→
+   645→    # ---- 10b. SCREEN_BG_MISMATCH ----
+   646→    # Check if @media screen html background matches body/canvas background
+   647→    # Parse @media screen independently (check 2b only runs for fixed-size pages)
+   648→    _screen_has_media = bool(re.search(r"@media\s+screen\s*\{", all_css, re.IGNORECASE))
+   649→    _screen_content = ""
+   650→    if _screen_has_media:
+   651→        _ms_m = re.search(r"@media\s+screen\s*\{", all_css, re.IGNORECASE)
+   652→        if _ms_m:
+   653→            _d = 1
+   654→            _s = _ms_m.end()
+   655→            for _ci in range(_s, len(all_css)):
+   656→                if all_css[_ci] == '{':
+   657→                    _d += 1
+   658→                elif all_css[_ci] == '}':
+   659→                    _d -= 1
+   660→                    if _d == 0:
+   661→                        _screen_content = all_css[_s:_ci]
+   662→                        break
+   663→    if _screen_has_media and _screen_content:
+   664→        _screen_html_bg = None
+   665→        for rule_m in _RE_CSS_RULE.finditer(_screen_content):
+   666→            selector_raw = rule_m.group(1).strip().lower()
+   667→            body_text = rule_m.group(2)
+   668→            selectors = [s.strip() for s in selector_raw.split(",")]
+   669→            if any(s in ("html",) for s in selectors):
+   670→                bg_m = re.search(r"background(?:-color)?\s*:\s*([^;]+)", body_text, re.IGNORECASE)
+   671→                if bg_m:
+   672→                    _screen_html_bg = bg_m.group(1).strip().lower()
+   673→        _ref_bg = _body_bg or _canvas_bg
+   674→        if _screen_html_bg and _ref_bg and _screen_html_bg != _ref_bg:
+   675→            # Normalize to RGB for comparison (skip if either is var/gradient/url)
+   676→            _screen_rgb = _bg_to_rgb(_screen_html_bg)
+   677→            _ref_rgb = _bg_to_rgb(_ref_bg)
+   678→            if _screen_rgb is not None and _ref_rgb is not None:
+   679→                if _screen_rgb != _ref_rgb:
+   680→                    warnings.append(_issue(
+   681→                        "SCREEN_BG_MISMATCH",
+   682→                        f"@media screen html background '{_screen_html_bg}' differs from "
+   683→                        f"body/canvas background '{_ref_bg}'. Browser preview will show "
+   684→                        "a different color border around the poster. "
+   685→                        "Set @media screen html background to match the poster background.",
+   686→                        severity="warning"
+   687→                    ))
+   688→            # else: unparseable (var/gradient) → skip
+   689→        if _is_fixed_size_page and not _screen_html_bg:
+   690→            # Check if body/html already sets background globally (would be inherited)
+   691→            # If so, @media screen doesn't need its own background
+   692→            if not _body_bg:
+   693→                warnings.append(_issue(
+   694→                    "SCREEN_NO_BG",
+   695→                    "@media screen block exists but html has no explicit background color "
+   696→                    "(neither globally nor in @media screen). "
+   697→                    "Browser preview may show white borders around the poster. "
+   698→                    "Add: @media screen { html { background: <poster-bg-color>; } }",
+   699→                    severity="warning"
+   700→                ))
+   701→    # ---- 10c. MULTIPAGE_BODY_BG_MISSING ----
+   702→    # Multi-page documents with dark/colored .page backgrounds but no body background
+   703→    # → sub-pixel gap between .page and @page reveals white body, causing white edges
+   704→    _has_colored_page = False
+   705→    # Resolve CSS variables from :root for var() expansion
+   706→    _css_vars = {}
+   707→    for css_text, _ in all_css_positions:
+   708→        for rule_m in _RE_CSS_RULE.finditer(css_text):
+   709→            sel = rule_m.group(1).strip().lower()
+   710→            if ":root" in sel:
+   711→                for vm in re.finditer(r"--(\w[\w-]*)\s*:\s*([^;]+)", rule_m.group(2)):
+   712→                    _css_vars[vm.group(1)] = vm.group(2).strip()
+   713→
+   714→    def _resolve_bg(val):
+   715→        """Resolve a CSS background value, expanding var() references once."""
+   716→        v = val.strip().lower()
+   717→        var_m = re.match(r"var\(--(\w[\w-]*)\)", v)
+   718→        if var_m and var_m.group(1) in _css_vars:
+   719→            return _css_vars[var_m.group(1)].strip().lower()
+   720→        return v
+   721→
+   722→    for css_text, css_offset in all_css_positions:
+   723→        for rule_m in _RE_CSS_RULE.finditer(css_text):
+   724→            selector_raw = rule_m.group(1).strip().lower()
+   725→            body_text = rule_m.group(2)
+   726→            selectors = [s.strip() for s in selector_raw.split(",")]
+   727→            if any(".page" in s for s in selectors):
+   728→                bg_m = re.search(r"background(?:-color)?\s*:\s*([^;]+)", body_text, re.IGNORECASE)
+   729→                if bg_m:
+   730→                    val = _resolve_bg(bg_m.group(1))
+   731→                    rgb = _bg_to_rgb(val)
+   732→                    if rgb is not None:
+   733→                        r_v, g_v, b_v = rgb
+   734→                        luminance = 0.299 * r_v + 0.587 * g_v + 0.114 * b_v
+   735→                        if luminance < 80:
+   736→                            _has_colored_page = True
+   737→                    elif "gradient" in val:
+   738→                        dark_hex = re.findall(r"#([0-9a-f]{3,6})", val)
+   739→                        for h in dark_hex:
+   740→                            if len(h) == 3:
+   741→                                h = h[0]*2 + h[1]*2 + h[2]*2
+   742→                            if len(h) == 6:
+   743→                                rv = int(h[0:2], 16)
+   744→                                gv = int(h[2:4], 16)
+   745→                                bv = int(h[4:6], 16)
+   746→                                if 0.299*rv + 0.587*gv + 0.114*bv < 80:
+   747→                                    _has_colored_page = True
+   748→                                    break
+   749→    _page_div_count = len(re.findall(r'class\s*=\s*["\'][^"\']*\bpage\b', original, re.IGNORECASE))
+   750→    if _page_div_count >= 2 and _has_colored_page and not _has_styled_bg:
+   751→        warnings.append(_issue(
+   752→            "MULTIPAGE_BODY_BG_MISSING",
+   753→            "Multi-page document has dark/colored .page backgrounds but html/body has no "
+   754→            "explicit background color. Playwright sub-pixel rounding creates <1px gaps "
+   755→            "at .page edges where body background shows through — white body = visible "
+   756→            "white edges on dark pages. Fix: set html,body { background: <darkest-page-color> }.",
+   757→            severity="warning"
+   758→        ))
+   759→    # ---- 11. HEIGHT_LOCKED ----
+   760→    # Check if content containers use height:100% instead of min-height
+   761→    _height_locked_selectors = set()
+   762→    # Selectors that are content containers (not SVG/img/shape)
+   763→    _content_containers = {".glass-canvas", ".shaped-canvas", ".process-list-container",
+   764→                           ".process-list", ".grid-item", ".stat-block", ".delta-widget"}
+   765→    for css_text, css_offset in all_css_positions:
+   766→        for rule_m in _RE_CSS_RULE.finditer(css_text):
+   767→            selector_raw = rule_m.group(1).strip()
+   768→            body_text = rule_m.group(2)
+   769→            # Check for height: 100% (not min-height)
+   770→            if re.search(r"(?<!min-)height\s*:\s*100%", body_text, re.IGNORECASE):
+   771→                selectors = [s.strip().lower() for s in selector_raw.split(",")]
+   772→                for sel in selectors:
+   773→                    base_sel = re.split(r"[:>\s+~]", sel)[0].strip()
+   774→                    # Skip non-content elements
+   775→                    if base_sel in (".bg-layer", "svg", "img", ".shape-float",
+   776→                                    ".shape-circle", ".shape-wave", ".shape-diagonal_slash",
+   777→                                    ".shape-diamond", ".shape-wedge_right"):
+   778→                        continue
+   779→                    if base_sel in _content_containers:
+   780→                        _height_locked_selectors.add(base_sel)
+   781→    # Also check inline styles
+   782→    for m in re.finditer(r'class\s*=\s*["\']([^"\']*)["\']\s*[^>]*style\s*=\s*["\']([^"\']*)["\']', raw, re.IGNORECASE):
+   783→        classes = m.group(1).lower().split()
+   784→        style = m.group(2)
+   785→        if re.search(r"(?<!min-)height\s*:\s*100%", style, re.IGNORECASE):
+   786→            for cls in classes:
+   787→                dotcls = f".{cls}"
+   788→                if dotcls in _content_containers:
+   789→                    _height_locked_selectors.add(dotcls)
+   790→    if _height_locked_selectors:
+   791→        warnings.append(_issue(
+   792→            "HEIGHT_LOCKED",
+   793→            f"Content containers {', '.join(sorted(_height_locked_selectors))} use 'height: 100%' "
+   794→            "instead of 'min-height: 100%'. This locks the container height and may clip content "
+   795→            "when it exceeds the allocated grid area. Use 'min-height: 100%' to allow content to grow.",
+   796→            severity="warning"
+   797→        ))
+   798→
+   799→    # ---- Apply all fixes (unified, avoids offset corruption) ----
+   800→    # Apply larger replacements (full CSS rules like overflow fixes) before smaller
+   801→    # ones (font-family declarations), so the larger match strings are still valid.
+   802→    # Sort by length of old_text descending to ensure this order.
+   803→    if fix and _all_fixes:
+   804→        _all_fixes.sort(key=lambda pair: len(pair[0]), reverse=True)
+   805→        for old_text, new_text in _all_fixes:
+   806→            if old_text in raw:
+   807→                raw = raw.replace(old_text, new_text, 1)
+   808→
+   809→    # ---- 12. COVER_OVERLAP_DETECTION (auto-trigger cover_validate.js) ----
+   810→    # If this HTML is a cover page (contains .cover or .cover-page class),
+   811→    # automatically run cover_validate.js for text collision detection.
+   812→    # This eliminates the need for the model to remember a separate step.
+   813→    _is_cover_html = bool(
+   814→        re.search(r'class\s*=\s*["\'][^"\']*\bcover\b', raw, re.IGNORECASE)
+   815→        or re.search(r'class\s*=\s*["\'][^"\']*\bcover-page\b', raw, re.IGNORECASE)
+   816→    )
+   817→    if _is_cover_html:
+   818→        _scripts_dir = os.path.dirname(os.path.abspath(__file__))
+   819→        _cv_script = os.path.join(_scripts_dir, 'cover_validate.js')
+   820→        if os.path.isfile(_cv_script):
+   821→            info.append(_issue(
+   822→                "COVER_DETECTED",
+   823→                "Cover page detected — running cover_validate.js for text collision detection.",
+   824→                severity="info",
+   825→            ))
+   826→            try:
+   827→                _cv_result = subprocess.run(
+   828→                    ['node', _cv_script, html_path],
+   829→                    capture_output=True, text=True, timeout=60,
+   830→                )
+   831→                _cv_stdout = _cv_result.stdout.strip()
+   832→                _cv_stderr = _cv_result.stderr.strip()
+   833→                _cv_output = _cv_stderr or _cv_stdout  # cover_validate.js prints to stderr on errors
+   834→
+   835→                if _cv_result.returncode == 1:
+   836→                    # Overlap detected — parse the output for specific issues
+   837→                    # Extract ERROR lines from output
+   838→                    _overlap_lines = [
+   839→                        line.strip() for line in _cv_output.split('\n')
+   840→                        if 'ERROR' in line or 'overlap' in line.lower() or 'overflow' in line.lower()
+   841→                    ]
+   842→                    _detail = '; '.join(_overlap_lines[:5]) if _overlap_lines else _cv_output[:500]
+   843→                    errors.append(_issue(
+   844→                        "COVER_TEXT_OVERLAP",
+   845→                        f"cover_validate.js detected text overlap/collision on the cover page. "
+   846→                        f"Details: {_detail}. "
+   847→                        f"Fix the cover HTML to resolve overlaps before rendering.",
+   848→                    ))
+   849→                elif _cv_result.returncode == 2:
+   850→                    # Script error (e.g., no Playwright) — warn but don't block
+   851→                    warnings.append(_issue(
+   852→                        "COVER_VALIDATE_UNAVAILABLE",
+   853→                        f"cover_validate.js could not run (exit code 2): {_cv_output[:200]}. "
+   854→                        f"Text collision detection was skipped. "
+   855→                        f"Install playwright to enable: npm install -g playwright",
+   856→                        severity="warning",
+   857→                    ))
+   858→                elif _cv_result.returncode == 0:
+   859→                    info.append(_issue(
+   860→                        "COVER_OVERLAP_PASS",
+   861→                        "cover_validate.js: No text overlaps detected ✓",
+   862→                        severity="info",
+   863→                    ))
+   864→            except subprocess.TimeoutExpired:
+   865→                warnings.append(_issue(
+   866→                    "COVER_VALIDATE_TIMEOUT",
+   867→                    "cover_validate.js timed out after 60s. Text collision detection was skipped.",
+   868→                    severity="warning",
+   869→                ))
+   870→            except FileNotFoundError:
+   871→                warnings.append(_issue(
+   872→                    "COVER_VALIDATE_NO_NODE",
+   873→                    "Node.js not found — cover_validate.js requires Node.js. "
+   874→                    "Text collision detection was skipped.",
+   875→                    severity="warning",
+   876→                ))
+   877→        else:
+   878→            info.append(_issue(
+   879→                "COVER_VALIDATE_MISSING",
+   880→                f"Cover page detected but cover_validate.js not found at {_cv_script}. "
+   881→                "Text collision detection was skipped.",
+   882→                severity="info",
+   883→            ))
+   884→
+   885→    # ---- Build report ----
+   886→    has_errors = len(errors) > 0
+   887→    report: dict[str, Any] = {
+   888→        "pass": not has_errors,
+   889→        "source": html_path,
+   890→        "check_type": "html",
+   891→        "errors": errors,
+   892→        "warnings": warnings,
+   893→        "info": info,
+   894→    }
+   895→
+   896→    # ---- Fix mode output ----
+   897→    if fix:
+   898→        if output_path:
+   899→            Path(output_path).write_text(raw, encoding="utf-8")
+   900→            report["fixed_file"] = output_path
+   901→        else:
+   902→            # Write fixed HTML to stdout after the JSON report to stderr
+   903→            report["fixed_output"] = "stdout"
+   904→            # We'll handle this in main()
+   905→
+   906→    report["_fixed_html"] = raw if fix else None
+   907→    return report
+   908→
+   909→
+   910→# ---------------------------------------------------------------------------
+   911→# CHECK-PDF
+   912→# ---------------------------------------------------------------------------
+   913→
+   914→def check_pdf(pdf_path: str, *, source_html: str | None = None, poster: bool = False) -> dict:
+   915→    """Run all PDF post-checks. Return the JSON-serialisable report dict."""
+   916→
+   917→    path = Path(pdf_path)
+   918→    errors: list[dict] = []
+   919→    warnings: list[dict] = []
+   920→    info: list[dict] = []
+   921→
+   922→    if not path.is_file():
+   923→        return {"pass": False, "source": pdf_path, "check_type": "pdf",
+   924→                "errors": [_issue("FILE_NOT_FOUND", f"Cannot read '{pdf_path}'.")],
+   925→                "warnings": [], "info": []}
+   926→
+   927→    # ---- 1. FILE_TOO_SMALL ----
+   928→    file_size = path.stat().st_size
+   929→    if file_size < 10 * 1024:
+   930→        errors.append(_issue(
+   931→            "FILE_TOO_SMALL",
+   932→            f"PDF is only {file_size} bytes ({file_size/1024:.1f} KB). "
+   933→            "Likely empty or broken.",
+   934→        ))
+   935→
+   936→    # ---- Import pdfplumber ----
+   937→    try:
+   938→        import pdfplumber
+   939→    except ImportError:
+   940→        errors.append(_issue(
+   941→            "DEPENDENCY_MISSING",
+   942→            "pdfplumber is not installed. Cannot perform PDF text checks. "
+   943→            "Install with: pip install pdfplumber",
+   944→        ))
+   945→        return {"pass": False, "source": pdf_path, "check_type": "pdf",
+   946→                "errors": errors, "warnings": warnings, "info": info}
+   947→
+   948→    # ---- Open PDF ----
+   949→    try:
+   950→        pdf = pdfplumber.open(str(path))
+   951→    except Exception as exc:
+   952→        errors.append(_issue(
+   953→            "PDF_UNREADABLE",
+   954→            f"Cannot open PDF: {exc}",
+   955→        ))
+   956→        return {"pass": False, "source": pdf_path, "check_type": "pdf",
+   957→                "errors": errors, "warnings": warnings, "info": info}
+   958→
+   959→    pages = pdf.pages
+   960→
+   961→    # ---- 2. TEXT_MISSING (requires source HTML) ----
+   962→    pdf_text_parts: list[str] = []
+   963→    page_char_counts: list[int] = []
+   964→
+   965→    for page in pages:
+   966→        try:
+   967→            txt = page.extract_text() or ""
+   968→        except Exception:
+   969→            txt = ""
+   970→        pdf_text_parts.append(txt)
+   971→        meaningful = len(re.sub(r"\s", "", txt))
+   972→        page_char_counts.append(meaningful)
+   973→
+   974→    pdf_chars = sum(page_char_counts)
+   975→
+   976→    if source_html:
+   977→        html_p = Path(source_html)
+   978→        if html_p.is_file():
+   979→            html_raw = html_p.read_text(encoding="utf-8", errors="replace")
+   980→            html_text = _html_visible_text(html_raw)
+   981→            html_chars = len(re.sub(r"\s", "", html_text))
+   982→
+   983→            if html_chars > 0 and pdf_chars < html_chars * 0.30:
+   984→                errors.append(_issue(
+   985→                    "TEXT_MISSING",
+   986→                    f"PDF contains only {pdf_chars} meaningful characters vs {html_chars} in "
+   987→                    f"source HTML ({pdf_chars/html_chars*100:.0f}%). "
+   988→                    "Fonts may have failed to load during rendering.",
+   989→                ))
+   990→        else:
+   991→            warnings.append(_issue(
+   992→                "SOURCE_HTML_NOT_FOUND",
+   993→                f"Source HTML '{source_html}' not found; skipping TEXT_MISSING check.",
+   994→                severity="warning"
+   995→            ))
+   996→
+   997→    # ---- 3. DIMENSIONS_UNREASONABLE ----
+   998→    for i, page in enumerate(pages):
+   999→        w = page.width   # in points
+  1000→        h = page.height
+  1001→        if w < 200 or h < 200:
+  1002→            warnings.append(_issue(
+  1003→                "DIMENSIONS_UNREASONABLE",
+  1004→                f"Page {i+1} dimensions are {w:.0f}×{h:.0f}pt "
+  1005→                f"({w/72:.1f}×{h/72:.1f}in). Unusually small for a poster.",
+  1006→                severity="warning"
+  1007→            ))
+  1008→            break  # only warn once
+  1009→
+  1010→    # ---- 4. ORPHAN_PAGE ----
+  1011→    # Skip for poster mode: seamlessly-paginated posters naturally have less content on the last page
+  1012→    if not poster and len(pages) > 1:
+  1013→        avg_chars = sum(page_char_counts[:-1]) / max(len(page_char_counts) - 1, 1)
+  1014→        last_chars = page_char_counts[-1]
+  1015→        if avg_chars > 0 and last_chars < avg_chars * 0.10:
+  1016→            warnings.append(_issue(
+  1017→                "ORPHAN_PAGE",
+  1018→                f"Last page (page {len(pages)}) has very little content "
+  1019→                f"({last_chars} chars vs avg {avg_chars:.0f}). "
+  1020→                "This may indicate accidental overflow. Check your page sizing.",
+  1021→                severity="warning"
+  1022→            ))
+  1023→
+  1024→    pdf.close()
+  1025→
+  1026→    has_errors = len(errors) > 0
+  1027→    return {
+  1028→        "pass": not has_errors,
+  1029→        "source": pdf_path,
+  1030→        "check_type": "pdf",
+  1031→        "errors": errors,
+  1032→        "warnings": warnings,
+  1033→        "info": info,
+  1034→    }
+  1035→
+  1036→
+  1037→# ---------------------------------------------------------------------------
+  1038→# Utilities
+  1039→# ---------------------------------------------------------------------------
+  1040→
+  1041→def _truncate(s: str, max_len: int = 80) -> str:
+  1042→    return s if len(s) <= max_len else s[:max_len - 3] + "..."
+  1043→
+  1044→
+  1045→# ---------------------------------------------------------------------------
+  1046→# CLI
+  1047→# ---------------------------------------------------------------------------
+  1048→# LaTeX .tex file checks
+  1049→# ---------------------------------------------------------------------------
+  1050→
+  1051→def check_tex(tex_path: str) -> dict:
+  1052→    """Check a LaTeX .tex file for common issues, especially table overflow in dual-column layouts."""
+  1053→    errors = []
+  1054→    warnings = []
+  1055→    info = []
+  1056→
+  1057→    if not os.path.exists(tex_path):
+  1058→        return {"pass": False, "source": tex_path, "check_type": "tex",
+  1059→                "errors": [_issue("FILE_NOT_FOUND", f"File not found: {tex_path}")], "warnings": [], "info": []}
+  1060→
+  1061→    with open(tex_path, "r", encoding="utf-8", errors="replace") as f:
+  1062→        content = f.read()
+  1063→
+  1064→    lines = content.split("\n")
+  1065→
+  1066→    # Detect if this is a two-column document
+  1067→    is_twocolumn = bool(re.search(
+  1068→        r"\\documentclass\[.*?twocolumn.*?\]"
+  1069→        r"|\\twocolumn"
+  1070→        r"|\\begin\{multicols\}"
+  1071→        r"|IEEEtran|acmart|sig-alternate",
+  1072→        content, re.IGNORECASE
+  1073→    ))
+  1074→
+  1075→    # ---- 1. BARE_TABULAR_IN_TWOCOLUMN ----
+  1076→    # Find \begin{tabular} not wrapped in resizebox/adjustbox/tabularx/tabular*
+  1077→    # and not inside a table* (full-width) environment
+  1078→    if is_twocolumn:
+  1079→        info.append(_issue("TWOCOLUMN_DETECTED",
+  1080→                           "Two-column layout detected. Checking tables for overflow risk.",
+  1081→                           severity="info"))
+  1082→
+  1083→    # Parse all tabular environments with line numbers
+  1084→    tabular_pattern = re.compile(r"\\begin\{tabular\}\s*\{([^}]*)\}", re.IGNORECASE)
+  1085→    for i, line in enumerate(lines, 1):
+  1086→        m = tabular_pattern.search(line)
+  1087→        if not m:
+  1088→            continue
+  1089→
+  1090→        col_spec = m.group(1)
+  1091→        # Count data columns (l, c, r, p{}, X — skip @{}, |, >{}, <{})
+  1092→        col_count = len(re.findall(r"[lcrX]|p\{[^}]*\}", col_spec))
+  1093→
+  1094→        # Check if this tabular is wrapped in protective environments
+  1095→        # Look backwards up to 10 lines for wrapping context
+  1096→        context_start = max(0, i - 11)
+  1097→        context = "\n".join(lines[context_start:i])
+  1098→        has_resizebox = bool(re.search(r"\\resizebox", context))
+  1099→        has_adjustbox = bool(re.search(r"\\adjustbox|\\begin\{adjustbox\}", context))
+  1100→        has_table_star = bool(re.search(r"\\begin\{table\*\}", context))
+  1101→        has_makebox = bool(re.search(r"\\makebox\[.*?\\textwidth\]", context))
+  1102→        is_protected = has_resizebox or has_adjustbox or has_table_star or has_makebox
+  1103→
+  1104→        if is_twocolumn and col_count >= 5 and not is_protected:
+  1105→            errors.append(_issue(
+  1106→                "BARE_TABULAR_OVERFLOW",
+  1107→                f"Line {i}: \\begin{{tabular}} with {col_count} columns in a two-column document, "
+  1108→                f"not wrapped in resizebox/adjustbox/table*. This WILL overflow \\columnwidth. "
+  1109→                f"Fix: use tabularx{{\\columnwidth}}, or wrap in \\resizebox{{\\columnwidth}}{{!}}{{...}}, "
+  1110→                f"or use table* for full-width.",
+  1111→                severity="error"
+  1112→            ))
+  1113→        elif is_twocolumn and col_count >= 4 and not is_protected:
+  1114→            warnings.append(_issue(
+  1115→                "TABULAR_OVERFLOW_RISK",
+  1116→                f"Line {i}: \\begin{{tabular}} with {col_count} columns in two-column layout. "
+  1117→                f"May overflow \\columnwidth depending on content width. "
+  1118→                f"Consider tabularx{{\\columnwidth}} or \\small font size.",
+  1119→                severity="warning"
+  1120→            ))
+  1121→        elif not is_twocolumn and col_count >= 7 and not is_protected:
+  1122→            warnings.append(_issue(
+  1123→                "TABULAR_WIDE",
+  1124→                f"Line {i}: \\begin{{tabular}} with {col_count} columns. "
+  1125→                f"May overflow \\textwidth. Consider tabularx or resizebox.",
+  1126→                severity="warning"
+  1127→            ))
+  1128→
+  1129→    # ---- 2. TABULAR_WITHOUT_TABLE ----
+  1130→    # tabular not inside table/table* environment (no caption, no float)
+  1131→    for i, line in enumerate(lines, 1):
+  1132→        if re.search(r"\\begin\{tabular\}", line):
+  1133→            context_start = max(0, i - 6)
+  1134→            context = "\n".join(lines[context_start:i])
+  1135→            if not re.search(r"\\begin\{table\*?\}", context):
+  1136→                warnings.append(_issue(
+  1137→                    "TABULAR_NO_FLOAT",
+  1138→                    f"Line {i}: \\begin{{tabular}} not inside a table/table* float environment. "
+  1139→                    f"Table will be inline (no caption, no \\label, no float positioning).",
+  1140→                    severity="warning"
+  1141→                ))
+  1142→
+  1143→    # ---- 3. PREFER_TABULARX ----
+  1144→    # Check if tabularx is loaded in preamble
+  1145→    has_tabularx_pkg = bool(re.search(r"\\usepackage.*\{tabularx\}", content))
+  1146→    tabular_count = len(re.findall(r"\\begin\{tabular\}", content))
+  1147→    tabularx_count = len(re.findall(r"\\begin\{tabularx\}", content))
+  1148→    tabular_star_count = len(re.findall(r"\\begin\{tabular\*\}", content))
+  1149→
+  1150→    if tabular_count > 0 and tabularx_count == 0 and tabular_star_count == 0:
+  1151→        if not has_tabularx_pkg:
+  1152→            warnings.append(_issue(
+  1153→                "TABULARX_NOT_LOADED",
+  1154→                f"Document has {tabular_count} tabular environment(s) but tabularx package is not loaded. "
+  1155→                f"Add \\usepackage{{tabularx}} to preamble for auto-width column support.",
+  1156→                severity="warning"
+  1157→            ))
+  1158→
+  1159→    # ---- 4. IMAGE_NO_WIDTH ----
+  1160→    # \includegraphics without width/max width constraint
+  1161→    img_pattern = re.compile(r"\\includegraphics\s*(\[[^\]]*\])?\s*\{")
+  1162→    for i, line in enumerate(lines, 1):
+  1163→        m = img_pattern.search(line)
+  1164→        if m:
+  1165→            opts = m.group(1) or ""
+  1166→            if not re.search(r"width|max width|scale|height", opts, re.IGNORECASE):
+  1167→                warnings.append(_issue(
+  1168→                    "IMAGE_NO_WIDTH",
+  1169→                    f"Line {i}: \\includegraphics without width/height constraint. "
+  1170→                    f"Add [max width=\\columnwidth] or [width=\\columnwidth] to prevent overflow.",
+  1171→                    severity="warning"
+  1172→                ))
+  1173→
+  1174→    # ---- 5. CJK_ASCII_QUOTES ----
+  1175→    # Detect ASCII " adjacent to CJK characters (common LLM mistake).
+  1176→    # LaTeX interprets " as right double quote, so "北漂" renders with two
+  1177→    # right quotes. Chinese text must use Unicode smart quotes “…”.
+  1178→    cjk_quote_pattern = re.compile(
+  1179→        r'[\u4e00-\u9fff\u3400-\u4dbf]"'
+  1180→        r'|"[\u4e00-\u9fff\u3400-\u4dbf]'
+  1181→    )
+  1182→    # Regex to strip inline command content that legitimately contains ASCII quotes
+  1183→    _inline_cmd_re = re.compile(
+  1184→        r'\\(?:texttt|url|path|lstinline)\{[^}]*\}'
+  1185→        r'|\\href\{[^}]*\}\{[^}]*\}'
+  1186→        r"|\\verb([|!@#])(.*?)\1"
+  1187→    )
+  1188→    # Track verbatim-like environments to skip
+  1189→    in_verbatim = False
+  1190→    for i, line in enumerate(lines, 1):
+  1191→        # Skip comment lines
+  1192→        if line.lstrip().startswith('%'):
+  1193→            continue
+  1194→        # Track verbatim/lstlisting/minted environments
+  1195→        if re.search(r'\\begin\{(verbatim|lstlisting|minted|Verbatim|lstcode)\}', line):
+  1196→            in_verbatim = True
+  1197→            continue
+  1198→        if re.search(r'\\end\{(verbatim|lstlisting|minted|Verbatim|lstcode)\}', line):
+  1199→            in_verbatim = False
+  1200→            continue
+  1201→        if in_verbatim:
+  1202→            continue
+  1203→        # Strip inline command arguments that may legitimately contain ASCII quotes
+  1204→        check_line = _inline_cmd_re.sub('', line)
+  1205→        if cjk_quote_pattern.search(check_line):
+  1206→            errors.append(_issue(
+  1207→                "CJK_ASCII_QUOTES",
+  1208→                f'Line {i}: ASCII \'"\' found adjacent to CJK characters. '
+  1209→                f'LaTeX interprets " as right double quote (\u201d), so "\u5317\u6f02" renders as \u201d\u5317\u6f02\u201d. '
+  1210→                f'Fix: use Unicode smart quotes \u201c\u5317\u6f02\u201d (U+201C / U+201D) for Chinese text. '
+  1211→                f'(This check skips verbatim/lstlisting/minted environments and '
+  1212→                f'\\texttt{{}}/\\url{{}}/\\href{{}}{{}}/\\verb|| inline commands.)',
+  1213→                severity="error"
+  1214→            ))
+  1215→            break  # One error is enough
+  1216→
+  1217→    # ---- 6. EQUATION_OVERFLOW_RISK ----
+  1218→    # Detect equations that are likely too wide for dual-column
+  1219→    if is_twocolumn:
+  1220→        in_equation = False
+  1221→        eq_start_line = 0
+  1222→        eq_content = ""
+  1223→        eq_env_name = ""
+  1224→        eq_envs = ["equation", "displaymath"]
+  1225→        for i, line in enumerate(lines, 1):
+  1226→            stripped = line.strip()
+  1227→            if stripped.startswith('%'):
+  1228→                continue
+  1229→            for env in eq_envs:
+  1230→                if f"\\begin{{{env}}}" in stripped:
+  1231→                    in_equation = True
+  1232→                    eq_start_line = i
+  1233→                    eq_content = ""
+  1234→                    eq_env_name = env
+  1235→                if f"\\end{{{env}}}" in stripped and in_equation:
+  1236→                    in_equation = False
+  1237→                    # Check for two equations joined by \quad on same line
+  1238→                    if re.search(r'\\quad\s*\\math', eq_content) or eq_content.count('=') >= 2:
+  1239→                        if '\\\\' not in eq_content and 'aligned' not in eq_content and 'split' not in eq_content:
+  1240→                            warnings.append(_issue(
+  1241→                                "EQUATION_DUAL_ON_LINE",
+  1242→                                f"Line {eq_start_line}: {eq_env_name} environment contains multiple equations "
+  1243→                                f"joined by \\quad (or 2+ '=' signs) without line breaks. "
+  1244→                                f"In dual-column format this will overflow. "
+  1245→                                f"Fix: use align/split/aligned environment with \\\\ line breaks.",
+  1246→                                severity="warning"
+  1247→                            ))
+  1248→                    # Check for very long equation content
+  1249→                    math_len = len(re.sub(r'\\[a-zA-Z]+|\s|\{|\}|\[|\]|\^|_', '', eq_content))
+  1250→                    if math_len > 80:
+  1251→                        warnings.append(_issue(
+  1252→                            "EQUATION_OVERFLOW_RISK",
+  1253→                            f"Line {eq_start_line}: {eq_env_name} has ~{math_len} math chars "
+  1254→                            f"(threshold 80). Likely overflows single column. "
+  1255→                            f"Consider split, multline, or factoring out sub-expressions.",
+  1256→                            severity="warning"
+  1257→                        ))
+  1258→            if in_equation:
+  1259→                eq_content += stripped + " "
+  1260→
+  1261→    # ---- 7. RESIZEBOX_TEXTWIDTH_IN_TWOCOLUMN ----
+  1262→    # \resizebox{\textwidth} inside table (not table*) in twocolumn
+  1263→    if is_twocolumn:
+  1264→        in_table_star = False
+  1265→        for i, line in enumerate(lines, 1):
+  1266→            stripped = line.strip()
+  1267→            if '\\begin{table*}' in stripped:
+  1268→                in_table_star = True
+  1269→            if '\\end{table*}' in stripped:
+  1270→                in_table_star = False
+  1271→            if not in_table_star and '\\resizebox' in stripped and '\\textwidth' in stripped:
+  1272→                errors.append(_issue(
+  1273→                    "RESIZEBOX_TEXTWIDTH",
+  1274→                    f"Line {i}: \\resizebox{{\\textwidth}} used inside single-column float. "
+  1275→                    f"In two-column layouts, \\textwidth = full page width (~504pt), but "
+  1276→                    f"a table float is only one column (~252pt). This causes ~50% overflow. "
+  1277→                    f"Fix: use \\resizebox{{\\columnwidth}}{{!}} for single-column, "
+  1278→                    f"or change to table* for full-width.",
+  1279→                    severity="error"
+  1280→                ))
+  1281→
+  1282→    # ---- 8. ALGORITHM_OVERFLOW_RISK ----
+  1283→    if is_twocolumn:
+  1284→        in_algo = False
+  1285→        algo_start = 0
+  1286→        has_small_font = False
+  1287→        for i, line in enumerate(lines, 1):
+  1288→            if '\\SetAlFnt' in line and '\\small' in line:
+  1289→                has_small_font = True
+  1290→            if '\\begin{algorithm}' in line and '\\begin{algorithm*}' not in line:
+  1291→                in_algo = True
+  1292→                algo_start = i
+  1293→            if '\\end{algorithm}' in line and in_algo:
+  1294→                in_algo = False
+  1295→                if not has_small_font:
+  1296→                    warnings.append(_issue(
+  1297→                        "ALGORITHM_NO_SMALL_FONT",
+  1298→                        f"Line {algo_start}: algorithm environment in dual-column without \\SetAlFnt{{\\small}}. "
+  1299→                        f"Algorithm text at default size frequently overflows narrow columns. "
+  1300→                        f"Add \\SetAlFnt{{\\small}} before the algorithm.",
+  1301→                        severity="warning"
+  1302→                    ))
+  1303→            # Check for very long KwInput/KwOutput lines
+  1304→            if in_algo and ('\\KwInput' in line or '\\KwOutput' in line or '\\KwIn' in line or '\\KwOut' in line):
+  1305→                content_len = len(line.strip())
+  1306→                if content_len > 120:
+  1307→                    warnings.append(_issue(
+  1308→                        "ALGORITHM_LONG_IO",
+  1309→                        f"Line {i}: Algorithm Input/Output line is {content_len} chars (threshold 120). "
+  1310→                        f"Long I/O lines overflow column width. Break into multiple lines with \\\\ or "
+  1311→                        f"abbreviate parameter names.",
+  1312→                        severity="warning"
+  1313→                    ))
+  1314→
+  1315→    # Summary info
+  1316→    info.append(_issue(
+  1317→        "TABLE_SUMMARY",
+  1318→        f"Tables: {tabular_count} tabular, {tabularx_count} tabularx, {tabular_star_count} tabular*. "
+  1319→        f"Two-column: {'yes' if is_twocolumn else 'no'}.",
+  1320→        severity="info"
+  1321→    ))
+  1322→
+  1323→    has_errors = any(e["severity"] == "error" for e in errors)
+  1324→    return {
+  1325→        "pass": not has_errors,
+  1326→        "source": tex_path,
+  1327→        "check_type": "tex",
+  1328→        "errors": errors,
+  1329→        "warnings": warnings,
+  1330→        "info": info,
+  1331→    }
+  1332→
+  1333→
+  1334→# ---------------------------------------------------------------------------
+  1335→
+  1336→def main() -> int:
+  1337→    parser = argparse.ArgumentParser(
+  1338→        description="Validate poster HTML/PDF for common quality issues."
+  1339→    )
+  1340→    sub = parser.add_subparsers(dest="command")
+  1341→
+  1342→    # -- check-html --
+  1343→    p_html = sub.add_parser("check-html", help="Pre-check an HTML file before PDF generation.")
+  1344→    p_html.add_argument("html_file", help="Path to the HTML file.")
+  1345→    p_html.add_argument("--fix", action="store_true",
+  1346→                        help="Auto-fix issues where possible and output corrected HTML.")
+  1347→    p_html.add_argument("--output", "-o", default=None,
+  1348→                        help="Write fixed HTML to this file (default: stdout).")
+  1349→
+  1350→    # -- check-pdf --
+  1351→    p_pdf = sub.add_parser("check-pdf", help="Post-check a generated PDF file.")
+  1352→    p_pdf.add_argument("pdf_file", help="Path to the PDF file.")
+  1353→    p_pdf.add_argument("--source-html", default=None,
+  1354→                       help="Path to the source HTML (enables TEXT_MISSING check).")
+  1355→    p_pdf.add_argument("--poster", action="store_true",
+  1356→                       help="Poster mode: suppress ORPHAN_PAGE for seamlessly-paginated posters.")
+  1357→
+  1358→    # -- check-tex --
+  1359→    p_tex = sub.add_parser("check-tex", help="Check a LaTeX .tex file for common issues (table overflow, etc.).")
+  1360→    p_tex.add_argument("tex_file", help="Path to the .tex file.")
+  1361→
+  1362→    args = parser.parse_args()
+  1363→
+  1364→    if not args.command:
+  1365→        parser.print_help()
+  1366→        return 2
+  1367→
+  1368→    try:
+  1369→        if args.command == "check-html":
+  1370→            report = check_html(
+  1371→                args.html_file,
+  1372→                fix=args.fix,
+  1373→                output_path=args.output,
+  1374→            )
+  1375→            fixed_html = report.pop("_fixed_html", None)
+  1376→
+  1377→            if args.fix and fixed_html and not args.output:
+  1378→                # JSON report goes to stderr, fixed HTML to stdout
+  1379→                print(json.dumps(report, indent=2, ensure_ascii=False), file=sys.stderr)
+  1380→                print(fixed_html)
+  1381→            else:
+  1382→                report.pop("_fixed_html", None)
+  1383→                print(json.dumps(report, indent=2, ensure_ascii=False))
+  1384→
+  1385→            return 0 if report["pass"] else 1
+  1386→
+  1387→        elif args.command == "check-pdf":
+  1388→            report = check_pdf(
+  1389→                args.pdf_file,
+  1390→                source_html=args.source_html,
+  1391→                poster=getattr(args, 'poster', False),
+  1392→            )
+  1393→            print(json.dumps(report, indent=2, ensure_ascii=False))
+  1394→            return 0 if report["pass"] else 1
+  1395→
+  1396→        elif args.command == "check-tex":
+  1397→            report = check_tex(args.tex_file)
+  1398→            print(json.dumps(report, indent=2, ensure_ascii=False))
+  1399→            return 0 if report["pass"] else 1
+  1400→
+  1401→    except Exception as exc:
+  1402→        err_report = {
+  1403→            "pass": False,
+  1404→            "error": f"Script error: {exc}",
+  1405→            "check_type": args.command.replace("check-", ""),
+  1406→        }
+  1407→        print(json.dumps(err_report, indent=2, ensure_ascii=False), file=sys.stderr)
+  1408→        return 2
+  1409→
+  1410→    return 0
+  1411→
+  1412→
+  1413→if __name__ == "__main__":
+  1414→    sys.exit(main())
+  1415→

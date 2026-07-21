@@ -5,7 +5,7 @@ import {
   ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
   Terminal, Boxes, Globe2, Zap, Search,
   Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare, LayoutGrid,
-  ArrowUp, RefreshCw, Timer, Rocket, Shield,
+  ArrowUp, RefreshCw, Timer, Rocket, Shield, Workflow, Layers,
 } from "lucide-react";
 import { usePinnedSections } from "@/hooks/use-pinned-sections";
 import { AnimatePresence, motion } from "framer-motion";
@@ -13,7 +13,7 @@ import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/epistemic/command-palette";
 import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
 
-type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment" | "trust";
+type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment" | "trust" | "acceptance" | "architecture";
 
 const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
   { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
@@ -30,6 +30,8 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: 
   { id: "coverage", label: "Coverage", icon: LayoutGrid, hint: "Invariant coverage" },
   { id: "deployment", label: "Deploy", icon: Rocket, hint: "Argo CD sync" },
   { id: "trust", label: "Trust Runtime", icon: Shield, hint: "Confidence & Bayesian" },
+  { id: "acceptance", label: "Acceptance", icon: Workflow, hint: "Fact acceptance pipeline" },
+  { id: "architecture", label: "Architecture", icon: Layers, hint: "Primitives & gaps" },
 ];
 
 const SECTION_META: Record<SectionId, { title: string; sub: string; stats: string[] }> = {
@@ -47,6 +49,8 @@ const SECTION_META: Record<SectionId, { title: string; sub: string; stats: strin
   coverage: { title: "Invariant Coverage Treemap", sub: "Visualize invariant coverage across policy dimensions", stats: ["87% covered", "3 gaps", "12 invariants"] },
   deployment: { title: "Deployment Pipeline", sub: "Argo CD App-of-Apps sync waves & verification gates", stats: ["5 synced", "1 syncing", "4 pending"] },
   trust: { title: "Trust Runtime Dashboard", sub: "Confidence scoring, Bayesian inference & verification gates", stats: ["SAFE", "75% confidence", "6 gates"] },
+  acceptance: { title: "Acceptance Engine", sub: "Deterministic fact acceptance pipeline, lifecycle & failure evidence", stats: ["1.2k facts", "8.15ms avg", "2.3% reject"] },
+  architecture: { title: "Architecture & Primitives", sub: "Core ontology, production architecture, gap analysis & stability principles", stats: ["4 primitives", "10 gaps", "82% ready"] },
 };
 
 function SectionLoader({ sectionId }: { sectionId: SectionId }) {
@@ -153,6 +157,8 @@ const ComparisonMatrixSection = lazy(() => import("@/components/epistemic/compar
 const CoverageTreemapSection = lazy(() => import("@/components/epistemic/coverage-treemap").then(m => ({ default: m.CoverageTreemapSection as ComponentType<any> })));
 const DeploymentPipelineSection = lazy(() => import("@/components/epistemic/deployment-pipeline").then(m => ({ default: m.DeploymentPipelineSection as ComponentType<any> })));
 const TrustRuntimeSection = lazy(() => import("@/components/epistemic/trust-runtime").then(m => ({ default: m.TrustRuntimeSection as ComponentType<any> })));
+const AcceptanceEngineSection = lazy(() => import("@/components/epistemic/acceptance-engine").then(m => ({ default: m.AcceptanceEngineSection as ComponentType<any> })));
+const ArchitectureSection = lazy(() => import("@/components/epistemic/architecture").then(m => ({ default: m.ArchitectureSection as ComponentType<any> })));
 const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
 
 const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
@@ -170,6 +176,8 @@ const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
   coverage: CoverageTreemapSection,
   deployment: DeploymentPipelineSection,
   trust: TrustRuntimeSection,
+  acceptance: AcceptanceEngineSection,
+  architecture: ArchitectureSection,
 };
 
 export default function Home() {
@@ -284,7 +292,7 @@ export default function Home() {
               <div className="leading-none">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold tracking-tight">Epistemic Runtime</span>
-                  <span className="hidden sm:inline-flex items-center rounded border border-verified/30 bg-verified/10 px-1.5 py-0.5 text-[9px] font-mono text-verified">v0.7</span>
+                  <span className="hidden sm:inline-flex items-center rounded border border-verified/30 bg-verified/10 px-1.5 py-0.5 text-[9px] font-mono text-verified">v0.8</span>
                 </div>
                 <span className="text-[10px] text-muted-foreground font-mono">invariant-enforced DAG · CRDT · ZK-merge</span>
               </div>
@@ -366,7 +374,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-y-2 gap-x-4 text-[11px] text-muted-foreground">
             {/* Column 1: Brand & version */}
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime <span className="text-verified">v0.7</span></span>
+              <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime <span className="text-verified">v0.8</span></span>
             </div>
             {/* Column 2: System metrics */}
             <div className="flex items-center gap-2 flex-wrap">

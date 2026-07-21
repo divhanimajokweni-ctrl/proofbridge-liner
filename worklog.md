@@ -608,3 +608,28 @@ Stage Summary:
 - All critical QA checks pass (no blank pages, no overflow, full-bleed cover, symmetric margins, fonts embedded)
 - Document covers all specs for investors, academia, organizations, business, regulators, developers, fintech, engineers
 
+
+---
+Task ID: v0.8-upgrade
+Agent: Main Agent
+Task: Upgrade to v0.8 — Add Acceptance Engine + Architecture sections and generate comprehensive PDF specification
+
+Work Log:
+- Created AcceptanceEngineSection component at `/src/components/epistemic/acceptance-engine.tsx` with 6 panels: Pipeline Visualization, Fact Lifecycle, Canonicalizer Interface, Sequencer, Failure Facts, Acceptance Metrics
+- Created ArchitectureSection component at `/src/components/epistemic/architecture.tsx` with 6 panels: Four Primitives, Core Insights, Production Architecture Diagram, Gap Analysis, Long-term Stability, Assessment Scorecard
+- Created API endpoints: `/api/acceptance-engine/route.ts` and `/api/architecture/route.ts` with comprehensive mock data
+- Updated `page.tsx`: added new SectionId types ("acceptance" | "architecture"), new section entries with Workflow and Layers icons, lazy imports, section component mappings, updated version to v0.8
+- Generated 20-page PDF specification document at `/home/z/my-project/epistemic-runtime-spec.pdf` (188KB) using ReportLab + Playwright cover
+- PDF includes: Cover page, Table of Contents, 10 chapters covering Introduction, Four Primitives, Core Insights, Acceptance Engine, Fact Lifecycle, Production Architecture, Gap Analysis, Long-term Stability, Assessment Scorecard, Conclusion
+- Verified all 16 sections render correctly via agent-browser
+- Verified both new API endpoints return correct JSON
+- Zero lint errors, zero TypeScript errors, dev server stable
+- Set up 15-minute webDevReview cron job (ID: 284610)
+
+Stage Summary:
+- **Project upgraded from v0.7 to v0.8** with 16 section tabs (was 14)
+- New sections: Acceptance Engine (#15), Architecture & Primitives (#16)
+- New APIs: /api/acceptance-engine, /api/architecture
+- **Comprehensive PDF specification generated**: 20 pages, 188KB, covers the entire Epistemic Runtime stack
+- All architectural gaps from the review are now represented in the dashboard
+- The dashboard now directly reflects the architectural review's findings

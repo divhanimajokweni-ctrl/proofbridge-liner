@@ -1,0 +1,580 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useMemo, useState, useCallback } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import type { Variants } from "framer-motion";
+     6→import {
+     7→  Shield, Activity, TrendingUp, TrendingDown, Minus, CheckCircle2,
+     8→  AlertTriangle, XCircle, Clock, Cpu, KeyRound, GitBranch,
+     9→  Zap, BarChart3, Target, Layers, ChevronDown, ChevronUp,
+    10→  ArrowUpRight, ArrowDownRight, RefreshCw, Eye, EyeOff,
+    11→} from "lucide-react";
+    12→import { Card } from "@/components/ui/card";
+    13→import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+    14→import { SparkLine, DonutChart, MetricGauge } from "./chart-primitives";
+    15→import type { TrustRuntimeState } from "@/lib/dashboard/types";
+    16→
+    17→/* ─── Animation Variants ─── */
+    18→const cv: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
+    19→const cardV: Variants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 24 } } };
+    20→const itemV: Variants = { hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 26 } } };
+    21→
+    22→/* ─── Helpers ─── */
+    23→function fmtTime(iso: string): string {
+    24→  const d = Date.now() - new Date(iso).getTime();
+    25→  if (d < 60000) return `${Math.floor(d / 1000)}s ago`;
+    26→  if (d < 3600000) return `${Math.floor(d / 60000)}m ago`;
+    27→  if (d < 86400000) return `${Math.floor(d / 3600000)}h ago`;
+    28→  return `${Math.floor(d / 86400000)}d ago`;
+    29→}
+    30→
+    31→function fmtPct(v: number): string {
+    32→  return `${(v * 100).toFixed(1)}%`;
+    33→}
+    34→
+    35→/* ─── Card Shell ─── */
+    36→function Shell({ children, accent, className }: { children: React.ReactNode; accent?: string; className?: string }) {
+    37→  return (
+    38→    <Card className={`bg-card/80 backdrop-blur-sm border-border/60 p-4 relative overflow-hidden ${className ?? ""}`}>
+    39→      {accent && <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: accent }} />}
+    40→      <div className="bg-grid-fine absolute inset-0 opacity-15" />
+    41→      <div className="relative">{children}</div>
+    42→    </Card>
+    43→  );
+    44→}
+    45→
+    46→/* ─── Section Header ─── */
+    47→function H3({ icon: Icon, title, extra }: { icon: typeof Activity; title: string; extra?: React.ReactNode }) {
+    48→  return (
+    49→    <div className="flex items-center gap-2 mb-3">
+    50→      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-verified/10">
+    51→        <Icon className="h-3.5 w-3.5 text-verified" />
+    52→      </div>
+    53→      <h3 className="text-sm font-semibold">{title}</h3>
+    54→      {extra}
+    55→    </div>
+    56→  );
+    57→}
+    58→
+    59→/* ─── Confidence Bar ─── */
+    60→function ConfidenceBar({ confidence, label, color, explanation }: {
+    61→  confidence: number; label: string; color: string; explanation: string;
+    62→}) {
+    63→  const pct = Math.round(confidence * 100);
+    64→  const labelConfig: Record<string, { bg: string; border: string; text: string; icon: typeof Shield }> = {
+    65→    SAFE: { bg: "bg-verified/10", border: "border-verified/30", text: "text-verified", icon: CheckCircle2 },
+    66→    WARNING: { bg: "bg-repairing/10", border: "border-repairing/30", text: "text-repairing", icon: AlertTriangle },
+    67→    TRIP: { bg: "bg-violating/10", border: "border-violating/30", text: "text-violating", icon: XCircle },
+    68→  };
+    69→  const cfg = labelConfig[label] ?? labelConfig.WARNING;
+    70→  const Icon = cfg.icon;
+    71→  return (
+    72→    <Shell accent={`linear-gradient(to right, ${color}00, ${color}80, ${color}00)`}>
+    73→      <H3 icon={Shield} title="Trust Confidence" extra={
+    74→        <span className={`ml-auto inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cfg.bg} ${cfg.border} ${cfg.text}`}>
+    75→          <Icon className="h-3 w-3" />{label}
+    76→        </span>
+    77→      } />
+    78→      <div className="space-y-3">
+    79→        {/* Big confidence number */}
+    80→        <div className="flex items-end gap-3">
+    81→          <div className="text-4xl font-bold font-mono tabular-nums" style={{ color }}>{pct}</div>
+    82→          <div className="text-sm text-muted-foreground mb-1">/ 100</div>
+    83→          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+    84→            <Activity className="h-3 w-3" />
+    85→            <span>live</span>
+    86→          </div>
+    87→        </div>
+    88→        {/* Progress bar */}
+    89→        <div className="relative h-3 rounded-full bg-muted/50 overflow-hidden">
+    90→          <motion.div
+    91→            className="absolute inset-y-0 left-0 rounded-full"
+    92→            style={{ background: `linear-gradient(90deg, ${color}40, ${color})` }}
+    93→            initial={{ width: 0 }}
+    94→            animate={{ width: `${pct}%` }}
+    95→            transition={{ duration: 1, ease: "easeOut" }}
+    96→          />
+    97→          {/* Threshold markers */}
+    98→          <div className="absolute top-0 bottom-0 w-px bg-repairing/50" style={{ left: "50%" }} title="WARNING threshold (50%)" />
+    99→          <div className="absolute top-0 bottom-0 w-px bg-violating/50" style={{ left: "80%" }} title="SAFE threshold (80%)" />
+   100→        </div>
+   101→        {/* Scale labels */}
+   102→        <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+   103→          <span>TRIP</span>
+   104→          <span>WARNING</span>
+   105→          <span>SAFE</span>
+   106→        </div>
+   107→        {/* Explanation */}
+   108→        <p className="text-xs text-muted-foreground leading-relaxed">{explanation}</p>
+   109→      </div>
+   110→    </Shell>
+   111→  );
+   112→}
+   113→
+   114→/* ─── Evidence Panel ─── */
+   115→function EvidencePanel({ currentValue, history, threshold, status }: {
+   116→  currentValue: number; history: Array<{ timestamp: string; value: number }>;
+   117→  threshold: number; status: string;
+   118→}) {
+   119→  const statusConfig: Record<string, { bg: string; text: string; icon: typeof Activity }> = {
+   120→    normal: { bg: "bg-verified/10", text: "text-verified", icon: CheckCircle2 },
+   121→    elevated: { bg: "bg-repairing/10", text: "text-repairing", icon: AlertTriangle },
+   122→    critical: { bg: "bg-violating/10", text: "text-violating", icon: XCircle },
+   123→  };
+   124→  const cfg = statusConfig[status] ?? statusConfig.normal;
+   125→  const Icon = cfg.icon;
+   126→  const sparkData = history.slice(0, 20).map(h => h.value).reverse();
+   127→  const maxVal = Math.max(...sparkData, threshold) * 1.2;
+   128→
+   129→  return (
+   130→    <Shell accent={status === "normal" ? "oklch(0.78 0.16 160 / 0.6)" : status === "elevated" ? "oklch(0.75 0.15 80 / 0.6)" : "oklch(0.65 0.22 25 / 0.6)"}>
+   131→      <H3 icon={Activity} title="Evidence Panel" extra={
+   132→        <span className={`ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cfg.bg} ${cfg.text}`}>
+   133→          <Icon className="h-3 w-3" />{status.toUpperCase()}
+   134→        </span>
+   135→      } />
+   136→      <div className="space-y-3">
+   137→        {/* Current value */}
+   138→        <div className="flex items-baseline gap-2">
+   139→          <span className="text-2xl font-bold font-mono tabular-nums">{currentValue.toFixed(3)}</span>
+   140→          <span className="text-xs text-muted-foreground">current divergence</span>
+   141→        </div>
+   142→        {/* Sparkline of divergence history */}
+   143→        <div className="relative">
+   144→          <SparkLine data={sparkData} width={280} height={48} fill />
+   145→          {/* Threshold line overlay */}
+   146→          <div
+   147→            className="absolute left-0 right-0 border-t border-dashed border-repairing/50"
+   148→            style={{ bottom: `${Math.max(0, Math.min(100, (1 - threshold / maxVal) * 100))}%` }}
+   149→          />
+   150→        </div>
+   151→        <div className="flex items-center justify-between text-[9px] text-muted-foreground font-mono">
+   152→          <span>threshold: {threshold.toFixed(3)}</span>
+   153→          <span>{history.length} observations</span>
+   154→        </div>
+   155→      </div>
+   156→    </Shell>
+   157→  );
+   158→}
+   159→
+   160→/* ─── Likelihood Panel ─── */
+   161→function LikelihoodPanel({ prior, likelihood, posterior, delta, components }: {
+   162→  prior: number; likelihood: number; posterior: number; delta: number;
+   163→  components: Array<{ name: string; value: number }>;
+   164→}) {
+   165→  const deltaPositive = delta >= 0;
+   166→  return (
+   167→    <Shell accent="oklch(0.75 0.15 80 / 0.5)">
+   168→      <H3 icon={Target} title="Bayesian Likelihood" />
+   169→      <div className="space-y-4">
+   170→        {/* Three key metrics */}
+   171→        <div className="grid grid-cols-3 gap-2">
+   172→          <div className="rounded-md border border-border/40 bg-background/40 px-2 py-2 text-center">
+   173→            <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Prior</div>
+   174→            <div className="mt-0.5 font-mono text-sm font-semibold text-muted-foreground">{fmtPct(prior)}</div>
+   175→          </div>
+   176→          <div className="rounded-md border border-border/40 bg-background/40 px-2 py-2 text-center">
+   177→            <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Likelihood</div>
+   178→            <div className="mt-0.5 font-mono text-sm font-semibold text-repairing">{fmtPct(likelihood)}</div>
+   179→          </div>
+   180→          <div className="rounded-md border border-verified/30 bg-verified/5 px-2 py-2 text-center">
+   181→            <div className="text-[9px] uppercase tracking-wide text-verified">Posterior</div>
+   182→            <div className="mt-0.5 font-mono text-sm font-semibold text-verified">{fmtPct(posterior)}</div>
+   183→          </div>
+   184→        </div>
+   185→        {/* Delta indicator */}
+   186→        <div className="flex items-center gap-2 text-xs">
+   187→          <span className="text-muted-foreground">Belief shift:</span>
+   188→          <span className={`inline-flex items-center gap-1 font-mono font-semibold ${deltaPositive ? "text-verified" : "text-violating"}`}>
+   189→            {deltaPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+   190→            {deltaPositive ? "+" : ""}{fmtPct(delta)}
+   191→          </span>
+   192→        </div>
+   193→        {/* Component bars */}
+   194→        <div className="space-y-2">
+   195→          {components.map((c) => (
+   196→            <div key={c.name} className="space-y-0.5">
+   197→              <div className="flex items-center justify-between text-[10px]">
+   198→                <span className="text-muted-foreground">{c.name}</span>
+   199→                <span className="font-mono tabular-nums">{fmtPct(c.value)}</span>
+   200→              </div>
+   201→              <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+   202→                <motion.div
+   203→                  className="h-full rounded-full bg-verified/60"
+   204→                  initial={{ width: 0 }}
+   205→                  animate={{ width: `${Math.min(100, c.value * 100)}%` }}
+   206→                  transition={{ duration: 0.6, ease: "easeOut" }}
+   207→                />
+   208→              </div>
+   209→            </div>
+   210→          ))}
+   211→        </div>
+   212→      </div>
+   213→    </Shell>
+   214→  );
+   215→}
+   216→
+   217→/* ─── Historical Delta ─── */
+   218→function HistoricalDeltaPanel({ recentChanges, trend, summary }: {
+   219→  recentChanges: Array<{ timestamp: string; delta: number; type: string }>;
+   220→  trend: string; summary: string;
+   221→}) {
+   222→  const trendConfig: Record<string, { icon: typeof TrendingUp; text: string; color: string }> = {
+   223→    up: { icon: TrendingUp, text: "Improving", color: "text-verified" },
+   224→    down: { icon: TrendingDown, text: "Degrading", color: "text-violating" },
+   225→    stable: { icon: Minus, text: "Stable", color: "text-muted-foreground" },
+   226→  };
+   227→  const cfg = trendConfig[trend] ?? trendConfig.stable;
+   228→  const Icon = cfg.icon;
+   229→
+   230→  return (
+   231→    <Shell>
+   232→      <H3 icon={GitBranch} title="Historical Δ" extra={
+   233→        <span className={`ml-auto inline-flex items-center gap-1 text-xs font-semibold ${cfg.color}`}>
+   234→          <Icon className="h-3.5 w-3.5" />{cfg.text}
+   235→        </span>
+   236→      } />
+   237→      <div className="space-y-2 max-h-64 overflow-y-auto scrollbar-thin">
+   238→        {recentChanges.slice(0, 12).map((change, i) => {
+   239→          const positive = change.delta >= 0;
+   240→          return (
+   241→            <motion.div
+   242→              key={i}
+   243→              variants={itemV}
+   244→              className="flex items-center gap-2 rounded-md border border-border/30 bg-background/30 px-2.5 py-1.5 text-xs"
+   245→            >
+   246→              <span className={`inline-flex items-center justify-center h-4 w-4 rounded-full ${positive ? "bg-verified/10 text-verified" : "bg-violating/10 text-violating"}`}>
+   247→                {positive ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
+   248→              </span>
+   249→              <span className="font-mono text-muted-foreground shrink-0">{fmtTime(change.timestamp)}</span>
+   250→              <span className={`font-mono font-semibold shrink-0 ${positive ? "text-verified" : "text-violating"}`}>
+   251→                {positive ? "+" : ""}{change.delta.toFixed(3)}
+   252→              </span>
+   253→              <span className="text-muted-foreground truncate text-[10px]">{change.type}</span>
+   254→            </motion.div>
+   255→          );
+   256→        })}
+   257→      </div>
+   258→      <p className="mt-2 text-[10px] text-muted-foreground leading-relaxed">{summary}</p>
+   259→    </Shell>
+   260→  );
+   261→}
+   262→
+   263→/* ─── Posterior Distribution Curve (SVG) ─── */
+   264→function PosteriorCurve({ data }: { data: Array<{ x: number; y: number }> }) {
+   265→  if (data.length < 2) return null;
+   266→  const width = 280, height = 60, pad = 4;
+   267→  const maxY = Math.max(...data.map(d => d.y), 0.001);
+   268→  const pts = data.map(d => ({
+   269→    x: pad + d.x * (width - pad * 2),
+   270→    y: pad + (1 - d.y / maxY) * (height - pad * 2),
+   271→  }));
+   272→  const line = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+   273→  const area = `${line} L${pts.at(-1)!.x.toFixed(1)},${height - pad} L${pts[0].x.toFixed(1)},${height - pad} Z`;
+   274→
+   275→  return (
+   276→    <div className="space-y-1">
+   277→      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible" role="img" aria-label="Posterior distribution curve">
+   278→        <path d={area} fill="oklch(0.78 0.16 160 / 0.1)" />
+   279→        <path d={line} fill="none" stroke="oklch(0.78 0.16 160 / 0.8)" strokeWidth={1.5} strokeLinecap="round" />
+   280→        {/* Peak marker */}
+   281→        {pts.length > 0 && (() => {
+   282→          const peak = pts.reduce((a, b) => b.y < a.y ? b : a);
+   283→          return <circle cx={peak.x} cy={peak.y} r={3} fill="oklch(0.78 0.16 160)" />;
+   284→        })()}
+   285→      </svg>
+   286→      <div className="flex justify-between text-[9px] text-muted-foreground font-mono">
+   287→        <span>0.0</span>
+   288→        <span>Posterior Distribution</span>
+   289→        <span>1.0</span>
+   290→      </div>
+   291→    </div>
+   292→  );
+   293→}
+   294→
+   295→/* ─── Circuit Status ─── */
+   296→function CircuitStatuses({ circuits }: { circuits: Array<{ id: string; name: string; status: string; constraints: number; lastVerified: string }> }) {
+   297→  const statusCfg: Record<string, { bg: string; text: string; border: string; icon: typeof CheckCircle2 }> = {
+   298→    active: { bg: "bg-verified/10", text: "text-verified", border: "border-verified/20", icon: CheckCircle2 },
+   299→    pending: { bg: "bg-repairing/10", text: "text-repairing", border: "border-repairing/20", icon: Clock },
+   300→    failed: { bg: "bg-violating/10", text: "text-violating", border: "border-violating/20", icon: XCircle },
+   301→  };
+   302→  return (
+   303→    <Shell>
+   304→      <H3 icon={Cpu} title="Circuit Statuses" />
+   305→      <div className="space-y-2">
+   306→        {circuits.map((c) => {
+   307→          const cfg = statusCfg[c.status] ?? statusCfg.pending;
+   308→          const Icon = cfg.icon;
+   309→          return (
+   310→            <div key={c.id} className={`flex items-center gap-2 rounded-md border ${cfg.border} ${cfg.bg} px-2.5 py-2`}>
+   311→              <Icon className={`h-3.5 w-3.5 ${cfg.text}`} />
+   312→              <div className="flex-1 min-w-0">
+   313→                <div className="flex items-center gap-2">
+   314→                  <span className="text-xs font-medium truncate">{c.name}</span>
+   315→                  <span className={`text-[9px] font-mono uppercase ${cfg.text}`}>{c.status}</span>
+   316→                </div>
+   317→                <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-0.5">
+   318→                  <span>{c.constraints} constraints</span>
+   319→                  <span className="text-border/50">·</span>
+   320→                  <span>verified {fmtTime(c.lastVerified)}</span>
+   321→                </div>
+   322→              </div>
+   323→            </div>
+   324→          );
+   325→        })}
+   326→      </div>
+   327→    </Shell>
+   328→  );
+   329→}
+   330→
+   331→/* ─── Verification Gates ─── */
+   332→function VerificationGates({ gates }: { gates: Array<{ name: string; wave: number; status: string; timestamp: string }> }) {
+   333→  const statusCfg: Record<string, { bg: string; text: string; icon: typeof CheckCircle2 }> = {
+   334→    passed: { bg: "bg-verified/10", text: "text-verified", icon: CheckCircle2 },
+   335→    pending: { bg: "bg-repairing/10", text: "text-repairing", icon: Clock },
+   336→    failed: { bg: "bg-violating/10", text: "text-violating", icon: XCircle },
+   337→  };
+   338→  return (
+   339→    <Shell>
+   340→      <H3 icon={Layers} title="Verification Gates" extra={
+   341→        <span className="ml-auto text-[9px] font-mono text-muted-foreground">{gates.filter(g => g.status === "passed").length}/{gates.length} passed</span>
+   342→      } />
+   343→      <div className="space-y-1.5">
+   344→        {gates.map((g) => {
+   345→          const cfg = statusCfg[g.status] ?? statusCfg.pending;
+   346→          const Icon = cfg.icon;
+   347→          return (
+   348→            <div key={g.name} className="flex items-center gap-2 text-xs">
+   349→              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full border border-border/40 bg-muted/30 text-[9px] font-mono text-muted-foreground">
+   350→                W{g.wave}
+   351→              </span>
+   352→              <Icon className={`h-3.5 w-3.5 ${cfg.text}`} />
+   353→              <span className="flex-1 truncate">{g.name}</span>
+   354→              <span className={`text-[10px] font-mono ${cfg.text}`}>{g.status}</span>
+   355→            </div>
+   356→          );
+   357→        })}
+   358→      </div>
+   359→    </Shell>
+   360→  );
+   361→}
+   362→
+   363→/* ─── Runtime Health Gauge ─── */
+   364→function RuntimeHealthGauge({ health }: { health: number }) {
+   365→  const pct = Math.round(health * 100);
+   366→  const color = health >= 0.7 ? "var(--verified)" : health >= 0.4 ? "var(--repairing)" : "var(--violating)";
+   367→  return (
+   368→    <div className="flex flex-col items-center gap-1">
+   369→      <MetricGauge value={pct} max={100} size={64} color={color} label="Health" />
+   370→      <span className="text-[9px] font-mono text-muted-foreground">{pct}% runtime health</span>
+   371→    </div>
+   372→  );
+   373→}
+   374→
+   375→/* ─── Main Section Component ─── */
+   376→export function TrustRuntimeSection() {
+   377→  const [state, setState] = useState<TrustRuntimeState | null>(null);
+   378→  const [loading, setLoading] = useState(true);
+   379→  const [error, setError] = useState<string | null>(null);
+   380→  const [autoRefresh, setAutoRefresh] = useState(true);
+   381→  const [countdown, setCountdown] = useState(10);
+   382→  const [showDetails, setShowDetails] = useState(false);
+   383→
+   384→  const fetchData = useCallback(async () => {
+   385→    try {
+   386→      const res = await fetch("/api/trust-runtime");
+   387→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   388→      const data: TrustRuntimeState = await res.json();
+   389→      setState(data);
+   390→      setError(null);
+   391→    } catch (err) {
+   392→      setError(err instanceof Error ? err.message : "Failed to load");
+   393→    } finally {
+   394→      setLoading(false);
+   395→    }
+   396→  }, []);
+   397→
+   398→  // Initial fetch + auto-refresh
+   399→  useEffect(() => {
+   400→    fetchData();
+   401→  }, [fetchData]);
+   402→
+   403→  useEffect(() => {
+   404→    if (!autoRefresh) return;
+   405→    const t = setInterval(() => {
+   406→      setCountdown(c => (c <= 1 ? 10 : c - 1));
+   407→      if (countdown <= 1) fetchData();
+   408→    }, 1000);
+   409→    return () => clearInterval(t);
+   410→  }, [autoRefresh, countdown, fetchData]);
+   411→
+   412→  if (loading) {
+   413→    return (
+   414→      <div className="flex flex-col items-center justify-center py-20 gap-4">
+   415→        <div className="relative flex items-center justify-center">
+   416→          <div className="h-10 w-10 rounded-lg bg-verified/10 border border-verified/20 flex items-center justify-center">
+   417→            <Shield className="h-5 w-5 text-verified/60" />
+   418→          </div>
+   419→          <div className="absolute inset-0 rounded-lg animate-ping bg-verified/10 opacity-30" />
+   420→        </div>
+   421→        <span className="text-sm text-muted-foreground">Loading Trust Runtime…</span>
+   422→      </div>
+   423→    );
+   424→  }
+   425→
+   426→  if (error || !state) {
+   427→    return (
+   428→      <div className="flex flex-col items-center justify-center py-20 gap-4">
+   429→        <XCircle className="h-8 w-8 text-violating" />
+   430→        <span className="text-sm text-violating">{error ?? "Failed to load Trust Runtime data"}</span>
+   431→        <button onClick={fetchData} className="text-xs text-muted-foreground hover:text-foreground underline">Retry</button>
+   432→      </div>
+   433→    );
+   434→  }
+   435→
+   436→  return (
+   437→    <motion.div variants={cv} initial="hidden" animate="visible" className="space-y-4">
+   438→      {/* Top row: Confidence + Runtime Health + Meta */}
+   439→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   440→        <motion.div variants={cardV} className="lg:col-span-2">
+   441→          <ConfidenceBar
+   442→            confidence={state.confidence.confidence}
+   443→            label={state.confidence.label}
+   444→            color={state.confidence.color}
+   445→            explanation={state.confidence.explanation}
+   446→          />
+   447→        </motion.div>
+   448→        <motion.div variants={cardV}>
+   449→          <Shell>
+   450→            <H3 icon={Zap} title="Runtime Meta" />
+   451→            <div className="flex items-center justify-center py-2">
+   452→              <RuntimeHealthGauge health={state.runtimeHealth} />
+   453→            </div>
+   454→            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+   455→              <div className="rounded-md border border-border/40 bg-background/40 px-2 py-1.5">
+   456→                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Epoch</div>
+   457→                <div className="font-mono text-xs font-semibold truncate">{state.epochId}</div>
+   458→              </div>
+   459→              <div className="rounded-md border border-border/40 bg-background/40 px-2 py-1.5">
+   460→                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Genesis</div>
+   461→                <div className="font-mono text-xs font-semibold truncate">{state.genesisId}</div>
+   462→              </div>
+   463→              <div className="rounded-md border border-border/40 bg-background/40 px-2 py-1.5">
+   464→                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Proof Chain</div>
+   465→                <div className="font-mono text-xs font-semibold">{state.proofChainLength} blocks</div>
+   466→              </div>
+   467→              <div className="rounded-md border border-border/40 bg-background/40 px-2 py-1.5">
+   468→                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Updated</div>
+   469→                <div className="font-mono text-xs font-semibold">{fmtTime(state.timestamp)}</div>
+   470→              </div>
+   471→            </div>
+   472→            {/* Auto-refresh control */}
+   473→            <div className="mt-3 flex items-center justify-between border-t border-border/30 pt-2">
+   474→              <button
+   475→                onClick={() => setAutoRefresh(!autoRefresh)}
+   476→                className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+   477→              >
+   478→                <RefreshCw className={`h-3 w-3 ${autoRefresh ? "animate-spin" : ""}`} style={{ animationDuration: "3s" }} />
+   479→                Auto-refresh: {autoRefresh ? "ON" : "OFF"}
+   480→              </button>
+   481→              {autoRefresh && (
+   482→                <span className="text-[10px] font-mono text-muted-foreground">{countdown}s</span>
+   483→              )}
+   484→            </div>
+   485→          </Shell>
+   486→        </motion.div>
+   487→      </div>
+   488→
+   489→      {/* Second row: Evidence + Likelihood + Posterior */}
+   490→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   491→        <motion.div variants={cardV}>
+   492→          <EvidencePanel
+   493→            currentValue={state.evidence.currentValue}
+   494→            history={state.evidence.history}
+   495→            threshold={state.evidence.threshold}
+   496→            status={state.evidence.status}
+   497→          />
+   498→        </motion.div>
+   499→        <motion.div variants={cardV}>
+   500→          <LikelihoodPanel
+   501→            prior={state.likelihood.prior}
+   502→            likelihood={state.likelihood.likelihood}
+   503→            posterior={state.likelihood.posterior}
+   504→            delta={state.likelihood.delta}
+   505→            components={state.likelihood.components}
+   506→          />
+   507→        </motion.div>
+   508→        <motion.div variants={cardV}>
+   509→          <Shell>
+   510→            <H3 icon={BarChart3} title="Posterior Distribution" />
+   511→            <div className="flex items-center justify-center py-3">
+   512→              <PosteriorCurve data={state.posteriorDistribution} />
+   513→            </div>
+   514→            <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+   515→              <div className="rounded-md border border-border/40 bg-background/40 px-2 py-1.5 text-center">
+   516→                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Mean</div>
+   517→                <div className="font-mono text-xs font-semibold">{state.likelihood.posterior.toFixed(3)}</div>
+   518→              </div>
+   519→              <div className="rounded-md border border-border/40 bg-background/40 px-2 py-1.5 text-center">
+   520→                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Prior</div>
+   521→                <div className="font-mono text-xs font-semibold">{state.likelihood.prior.toFixed(3)}</div>
+   522→              </div>
+   523→              <div className="rounded-md border border-border/40 bg-background/40 px-2 py-1.5 text-center">
+   524→                <div className="text-[9px] uppercase tracking-wide text-muted-foreground">Δ shift</div>
+   525→                <div className={`font-mono text-xs font-semibold ${state.likelihood.delta >= 0 ? "text-verified" : "text-violating"}`}>
+   526→                  {state.likelihood.delta >= 0 ? "+" : ""}{state.likelihood.delta.toFixed(3)}
+   527→                </div>
+   528→              </div>
+   529→            </div>
+   530→          </Shell>
+   531→        </motion.div>
+   532→      </div>
+   533→
+   534→      {/* Third row: Circuit Status + Verification Gates + Historical Delta */}
+   535→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   536→        <motion.div variants={cardV}>
+   537→          <CircuitStatuses circuits={state.circuitStatuses} />
+   538→        </motion.div>
+   539→        <motion.div variants={cardV}>
+   540→          <VerificationGates gates={state.verificationGates} />
+   541→        </motion.div>
+   542→        <motion.div variants={cardV}>
+   543→          <HistoricalDeltaPanel
+   544→            recentChanges={state.historicalDelta.recentChanges}
+   545→            trend={state.historicalDelta.trend}
+   546→            summary={state.historicalDelta.summary}
+   547→          />
+   548→        </motion.div>
+   549→      </div>
+   550→
+   551→      {/* Detailed view toggle */}
+   552→      <motion.div variants={cardV}>
+   553→        <Shell>
+   554→          <button
+   555→            onClick={() => setShowDetails(!showDetails)}
+   556→            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+   557→          >
+   558→            {showDetails ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+   559→            {showDetails ? "Hide" : "Show"} raw trust state
+   560→          </button>
+   561→          <AnimatePresence>
+   562→            {showDetails && (
+   563→              <motion.div
+   564→                initial={{ height: 0, opacity: 0 }}
+   565→                animate={{ height: "auto", opacity: 1 }}
+   566→                exit={{ height: 0, opacity: 0 }}
+   567→                className="overflow-hidden"
+   568→              >
+   569→                <pre className="mt-3 rounded-md border border-border/40 bg-background/60 p-3 text-[10px] font-mono text-muted-foreground overflow-x-auto max-h-80 scrollbar-thin">
+   570→                  {JSON.stringify(state, null, 2)}
+   571→                </pre>
+   572→              </motion.div>
+   573→            )}
+   574→          </AnimatePresence>
+   575→        </Shell>
+   576→      </motion.div>
+   577→    </motion.div>
+   578→  );
+   579→}
+   580→
