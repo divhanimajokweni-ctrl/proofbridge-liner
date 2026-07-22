@@ -13,7 +13,7 @@ import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/epistemic/command-palette";
 import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
 
-type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment" | "trust" | "acceptance" | "architecture" | "migration" | "convergence" | "kernel";
+type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment" | "trust" | "acceptance" | "architecture" | "migration" | "convergence" | "kernel" | "fortification";
 
 const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
   { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
@@ -35,6 +35,7 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: 
   { id: "migration", label: "Migration", icon: GitBranch, hint: "Migration as Facts" },
   { id: "convergence", label: "Convergence", icon: ShieldAlert, hint: "Spec vs reality audit" },
   { id: "kernel", label: "Kernel Verify", icon: ShieldCheck, hint: "Runtime verification" },
+  { id: "fortification", label: "Fortification", icon: ShieldAlert, hint: "10 strengthening recs" },
 ];
 
 const SECTION_META: Record<SectionId, { title: string; sub: string; stats: string[] }> = {
@@ -57,6 +58,7 @@ const SECTION_META: Record<SectionId, { title: string; sub: string; stats: strin
   migration: { title: "Migration as Facts", sub: "Migration is NOT a kernel concept — it is infrastructure that produces Facts", stats: ["7 fact types", "5 steps", "56% spec"] },
   convergence: { title: "Convergence Report", sub: "Brutally honest assessment: does the implementation match the specification?", stats: ["~8% spec", "20 components", "9 drifts"] },
   kernel: { title: "Kernel Verification", sub: "v0.8 Runtime — From hope to proof. From trust to verification.", stats: ["12/12 assertions", "4 primitives", "7 rules"] },
+  fortification: { title: "Runtime Fortification", sub: "10 architectural strengthening recommendations — institutional-grade evidence substrate", stats: ["10 concepts", "9 capabilities", "8 adapters", "replay certs"] },
 };
 
 function SectionLoader({ sectionId }: { sectionId: SectionId }) {
@@ -168,6 +170,7 @@ const ArchitectureSection = lazy(() => import("@/components/epistemic/architectu
 const MigrationSection = lazy(() => import("@/components/epistemic/migration").then(m => ({ default: m.MigrationSection as ComponentType<any> })));
 const ConvergenceSection = lazy(() => import("@/components/epistemic/convergence").then(m => ({ default: m.ConvergenceSection as ComponentType<any> })));
 const KernelVerificationSection = lazy(() => import("@/components/epistemic/kernel-verification").then(m => ({ default: m.KernelVerificationSection as ComponentType<any> })));
+const FortificationSection = lazy(() => import("@/components/epistemic/fortification").then(m => ({ default: m.FortificationSection as ComponentType<any> })));
 const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
 
 const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
@@ -190,6 +193,7 @@ const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
   migration: MigrationSection,
   convergence: ConvergenceSection,
   kernel: KernelVerificationSection,
+  fortification: FortificationSection,
 };
 
 export default function Home() {

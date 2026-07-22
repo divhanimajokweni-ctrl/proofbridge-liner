@@ -16,9 +16,11 @@ A deterministic evidence runtime that enforces cryptographic integrity, append-o
 | 7 Constitutional Rules | ✅ COMPLIANT |
 | Lint | ✅ ZERO ERRORS |
 | Schema Emitter | ✅ 10 schemas emitted |
+| Fortification Concepts | ✅ 10/10 Implemented |
 | S3 Object Lock Driver | ✅ Production-wired |
 | AWS KMS Signer | ✅ Production-wired |
 | IAM Federation Signer | ✅ Production-wired |
+| OIDC Signer | ✅ Production-wired |
 
 ---
 
@@ -89,6 +91,71 @@ A deterministic evidence runtime that enforces cryptographic integrity, append-o
 5. **No `JSON.stringify()`** for hashing — only RFC 8785
 6. **No FNV, CRC, or ad-hoc hashing** — only SHA-256
 7. **Evidence is append-only** — WORM storage, no delete, no update
+
+---
+
+## Runtime Fortification (10 Strengthening Concepts)
+
+Institutional-grade architecture strengthening — making the runtime durable across multiple automation ecosystems while preserving deterministic guarantees.
+
+| # | Concept | Status | Key Addition |
+|---|---------|--------|-------------|
+| 1 | Observation Versioning | ✅ Implemented | `schemaVersion`, `producer`, `producerVersion` on Fact |
+| 2 | Capability Sets | ✅ Implemented | 9 vendor-neutral capabilities (automation.review, etc.) |
+| 3 | Correlation Graph | ✅ Implemented | `causationId`, `correlationId`, `parentFactId` |
+| 4 | Confidence ≠ Evidence | ✅ Enforced | Trust scores are Projections, never Facts |
+| 5 | Typed Observation SDK | ✅ Implemented | `emitBotCommand()`, `emitReviewStarted()`, etc. |
+| 6 | Observation Authentication | ✅ Implemented | `ObservationAuth` with mTLS/OIDC/IAM-role |
+| 7 | Projection Manifest | ✅ Implemented | `ProjectionManifest` with deps, capabilities, hash |
+| 8 | Replay Certificates | ✅ Implemented | `ReplayCertificate` — first-class replay evidence |
+| 9 | Automation Provenance | ✅ Implemented | Prompt/Tool/Output hashes, not content |
+| 10 | Drift Facts | ✅ Implemented | `operational_drift_observed` fact type |
+
+### Observation Adapter Layer
+
+Vendor-neutral translation between external systems and ER:
+
+```
+Kilo/GitHub/GitLab/Jenkins/etc. → Observation Adapter → Collector → Acceptance → Fact Log
+```
+
+ER shouldn't know what Kilo is. It only understands observations.
+
+### Typed Observation SDK
+
+```typescript
+import { emitBotCommand, emitFixCreated, emitDriftObserved } from '@/lib/kernel/typed-observation-sdk';
+
+const obs = emitBotCommand({
+  command: '/review PR-123',
+  user: 'divhani',
+  platform: 'github',
+  responseHash: 'sha256:abc...',
+}, {
+  correlationId: 'workflow-123',
+  parentFactId: 'fact-001',
+});
+```
+
+Every function compiles into `VersionedObservation` internally — preventing schema drift.
+
+### Replay Certificates
+
+```typescript
+interface ReplayCertificate {
+  projection: string;        // "operationalState"
+  projectionHash: string;    // SHA-256 of projection state
+  factCount: number;         // Facts processed during replay
+  factRoot: string;          // MMR root after replay
+  runtimeVersion: string;    // "v0.8"
+  policyVersion: string;     // "1.0"
+  passed: boolean;           // Replay verification result
+  timestamp: number;         // Deterministic timestamp
+  signature: string;         // Signed over canonical certificate
+}
+```
+
+Auditors love this — first-class evidence of deterministic replay verification.
 
 ---
 
@@ -247,6 +314,8 @@ npx vitest run
 │   │   ├── projection-registry.ts # Lifecycle tracking
 │   │   ├── redaction.ts      # PII redaction (before canonicalization)
 │   │   ├── operational-collector.ts # External observation sources
+│   │   ├── observation-adapter.ts # Vendor-neutral observation adapters
+│   │   ├── typed-observation-sdk.ts # Typed emitter functions (no schema drift)
 │   │   ├── replay.ts         # Deterministic replay engine
 │   │   └── runtime.ts        # RuntimeKernel orchestrator
 │   ├── engine/               # Dependency-injected providers
@@ -269,6 +338,7 @@ npx vitest run
 ├── scripts/
 │   ├── verify-kernel.ts      # 12-assertion verification script
 │   ├── generate-schema.ts    # Schema emitter → schemas/*.json
+│   ├── push-to-main.sh       # Push to proofbridge-liner repo (with placeholders)
 │   └── state.sh              # Read-only projection client
 ├── schemas/                  # Generated Draft 2020-12 JSON Schemas
 │   ├── fact.schema.json
@@ -285,7 +355,9 @@ npx vitest run
 │   └── governance/adrs/      # Architecture Decision Records
 │       ├── ADR-001-event-sourcing.md
 │       ├── ADR-002-ed25519-signatures.md
-│       └── ADR-003-canonical-json.md
+│       ├── ADR-003-canonical-json.md
+│       ├── ADR-004-production-integrations.md
+│       └── ADR-005-runtime-fortification.md
 ├── EXECUTION_CONTRACT.md     # Root contract (authoritative)
 └── vitest.config.ts          # Test configuration
 ```

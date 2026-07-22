@@ -12,5 +12,7 @@ export * from './projection';
 export * from './projection-registry';
 export * from './operational-collector';
 export * from './replay';
+export * from './observation-adapter';
+export * from './typed-observation-sdk';
 export * from './runtime';
 export * from './redaction';

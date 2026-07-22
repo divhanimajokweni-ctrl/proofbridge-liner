@@ -6,7 +6,7 @@
 // CONTRACT: The registry NEVER writes facts directly. It returns
 // fact payloads that the caller submits through the AcceptancePipeline.
 
-import type { FactType, ClockProvider } from './types';
+import type { FactType, ClockProvider, ProjectionManifest } from './types';
 import type { ProjectionHandler } from './projection';
 import { computeSHA256 } from './hashing';
 
@@ -66,6 +66,7 @@ export interface ProjectionHistoryEntry {
 export class ProjectionRegistry {
   private projections: Map<string, ProjectionMeta> = new Map();
   private handlers: Map<string, ProjectionHandler> = new Map();
+  private manifests: Map<string, ProjectionManifest> = new Map();
   private history: ProjectionHistoryEntry[] = [];
 
   /**
@@ -258,11 +259,36 @@ export class ProjectionRegistry {
   }
 
   /**
+   * Register a projection with its manifest metadata.
+   */
+  registerWithManifest(handler: ProjectionHandler, manifest: ProjectionManifest): void {
+    // Note: The basic register() requires a ClockProvider; for manifest-only
+    // registration we store the manifest directly without lifecycle events.
+    // Callers should also call register() separately if they need lifecycle facts.
+    this.manifests.set(manifest.id, manifest);
+  }
+
+  /**
+   * Get the manifest for a projection.
+   */
+  getManifest(id: string): ProjectionManifest | undefined {
+    return this.manifests.get(id);
+  }
+
+  /**
+   * List all projection manifests.
+   */
+  listManifests(): ProjectionManifest[] {
+    return Array.from(this.manifests.values());
+  }
+
+  /**
    * Reset the registry for replay.
    */
   reset(): void {
     this.projections.clear();
     this.handlers.clear();
+    this.manifests.clear();
     this.history = [];
   }
 }

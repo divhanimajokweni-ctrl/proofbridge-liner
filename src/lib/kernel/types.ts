@@ -1,10 +1,19 @@
 // Epistemic Runtime v0.8 — Core Kernel Types
+// LAST ITERATION: 10 architectural strengthening recommendations integrated
+
+// ============================================================================
+// §1 — PRIMITIVE KINDS
+// ============================================================================
 
 /** The four orthogonal primitives */
 export type PrimitiveKind = 'fact' | 'proof' | 'policy' | 'projection';
 
+// ============================================================================
+// §2 — FACT TYPES (including drift detection)
+// ============================================================================
+
 /** Fact types that flow through the acceptance pipeline */
-export type FactType = 
+export type FactType =
   | 'observation'
   | 'migration_plan'
   | 'migration_execute'
@@ -16,7 +25,12 @@ export type FactType =
   | 'schema_change'
   | 'policy_change'
   | 'identity_change'
-  | 'system';
+  | 'system'
+  | 'operational_drift_observed';  // §6 — Drift Facts
+
+// ============================================================================
+// §3 — ENUMS & LEVELS
+// ============================================================================
 
 /** Severity levels for policy violations */
 export type Severity = 'critical' | 'high' | 'medium' | 'low' | 'info';
@@ -26,6 +40,73 @@ export type PolicyResult = 'accept' | 'reject' | 'defer';
 
 /** Evidence lifecycle states */
 export type EvidenceState = 'pending' | 'verified' | 'failed' | 'expired' | 'revoked';
+
+// ============================================================================
+// §4 — CAPABILITY SETS (§2 — Authorization)
+// ============================================================================
+
+/** Capability set for authorization — vendor-neutral */
+export type Capability =
+  | 'automation.review'
+  | 'automation.fix'
+  | 'automation.deploy'
+  | 'automation.triage'
+  | 'security.analysis'
+  | 'security.deep-analysis'
+  | 'vision.debug'
+  | 'webhook.ingest'
+  | 'app.build';
+
+/** Capability set attached to observations and projections */
+export type CapabilitySet = Capability[];
+
+// ============================================================================
+// §5 — OBSERVATION AUTHENTICATION (§7)
+// ============================================================================
+
+/** Authentication method used for observation submission */
+export type ObservationAuthMethod = 'mtls' | 'oidc' | 'iam-role' | 'api-key' | 'internal';
+
+/** Observation authentication metadata */
+export interface ObservationAuth {
+  /** How this observation was authenticated */
+  method: ObservationAuthMethod;
+  /** Identity of the submitter (verified by auth method) */
+  identity: string;
+  /** OIDC issuer (if method is oidc) */
+  issuer?: string;
+  /** IAM role ARN (if method is iam-role) */
+  roleArn?: string;
+  /** mTLS certificate fingerprint (if method is mtls) */
+  certFingerprint?: string;
+}
+
+// ============================================================================
+// §6 — AUTOMATION PROVENANCE (§5)
+// ============================================================================
+
+/** Provenance record for automation actions — stores hashes, not content */
+export interface AutomationProvenance {
+  /** Agent or service that produced this action */
+  agent: string;
+  /** SHA-256 of the prompt/instruction (NOT the prompt itself) */
+  promptHash: string;
+  /** SHA-256 hashes of tool calls made during execution */
+  toolCallHashes: string[];
+  /** SHA-256 of the output/result (NOT the output itself) */
+  outputHash: string;
+  /** Whether a human approved this action */
+  humanApproved: boolean;
+  /** Human approver identity (if approved) */
+  humanApprover?: string;
+}
+
+/** Provenance can be embedded in observation bodies */
+export type ProvenancedBody = Record<string, unknown> & { provenance?: AutomationProvenance };
+
+// ============================================================================
+// §7 — FACT (§1 Observation Versioning, §2 Capabilities, §3 Correlation, §7 Auth)
+// ============================================================================
 
 /** A Fact — what happened. Immutable, append-only. */
 export interface Fact {
@@ -51,7 +132,35 @@ export interface Fact {
   acceptedAt: number;
   /** Schema ID that validated this fact's body */
   schemaId: string;
+
+  // --- §1 — Observation Versioning ---
+  /** Version of the schema at validation time */
+  schemaVersion?: number;
+  /** Producer service name (e.g., "kilo-bot", "CodeReviewService") */
+  producer?: string;
+  /** Version of the producer service (e.g., "2.6.1") */
+  producerVersion?: string;
+
+  // --- §2 — Capability Sets ---
+  /** Capability set required/used for this observation */
+  capabilities?: CapabilitySet;
+
+  // --- §3 — Correlation Graph ---
+  /** What action caused this observation (direct parent) */
+  causationId?: string;
+  /** What workflow this observation belongs to (correlation scope) */
+  correlationId?: string;
+  /** Parent fact that triggered this observation */
+  parentFactId?: string;
+
+  // --- §7 — Observation Authentication ---
+  /** Authentication metadata for this observation */
+  auth?: ObservationAuth;
 }
+
+// ============================================================================
+// §8 — PROOF
+// ============================================================================
 
 /** A Proof — why we believe it. Cryptographic evidence. */
 export interface Proof {
@@ -71,6 +180,10 @@ export interface Proof {
   /** Timestamp from injected clock */
   timestamp: number;
 }
+
+// ============================================================================
+// §9 — POLICY
+// ============================================================================
 
 /** A Policy — whether to accept. Deterministic evaluation rules. */
 export interface PolicyRule {
@@ -114,6 +227,17 @@ export type PolicyOpcode =
   | { op: 'LOOKUP'; table: string; key: string }
   | { op: 'RESULT'; policy: PolicyResult };
 
+// ============================================================================
+// §10 — PROJECTION + CONFIDENCE INVARIANT (§4)
+// ============================================================================
+
+/**
+ * INVARIANT: Trust scores, confidence values, and Bayesian posteriors
+ * are NEVER stored as Facts. They are ALWAYS Projections.
+ * Only evidence events ("Review Passed", "Fix Accepted", "Rollback Occurred")
+ * become Facts. Confidence is derived, not observed.
+ */
+
 /** A Projection — how to consume. Derived view of facts. */
 export interface Projection {
   /** Deterministic ID derived from name + version */
@@ -137,6 +261,73 @@ export interface Projection {
   /** Whether deprecated */
   deprecated: boolean;
 }
+
+// ============================================================================
+// §11 — PROJECTION MANIFEST (§9)
+// ============================================================================
+
+/** Projection manifest — metadata for auditable projections */
+export interface ProjectionManifest {
+  id: string;
+  version: number;
+  /** Other projections this one depends on */
+  dependencies: string[];
+  /** Capability set required for this projection */
+  capabilitySet: CapabilitySet;
+  /** SHA-256 of the projection handler code */
+  projectionHash: string;
+  /** Whether this projection is deterministic */
+  deterministic: boolean;
+  /** Owner/team responsible */
+  owner: string;
+}
+
+// ============================================================================
+// §12 — REPLAY CERTIFICATE (§8)
+// ============================================================================
+
+/** Replay certificate — first-class evidence of deterministic replay verification */
+export interface ReplayCertificate {
+  /** Projection name that was replayed */
+  projection: string;
+  /** SHA-256 of the projection state */
+  projectionHash: string;
+  /** Number of facts processed during replay */
+  factCount: number;
+  /** MMR root after replay */
+  factRoot: string;
+  /** Runtime version used for replay */
+  runtimeVersion: string;
+  /** Policy version used for replay */
+  policyVersion: string;
+  /** Whether replay verification passed */
+  passed: boolean;
+  /** Timestamp from injected clock */
+  timestamp: number;
+  /** Signature over the certificate */
+  signature: string;
+}
+
+// ============================================================================
+// §13 — OBSERVATION ADAPTER (§10)
+// ============================================================================
+
+/** Observation adapter — vendor-neutral translation layer between external systems and ER */
+export interface ObservationAdapter {
+  /** Source system name (e.g., "github-actions", "gitlab-ci", "kilo-bot") */
+  sourceSystem: string;
+  /** Translate external event into ER observation format */
+  adapt(event: unknown): Promise<{
+    type: FactType;
+    body: Record<string, unknown>;
+    capabilities: CapabilitySet;
+    auth: ObservationAuth;
+  }>;
+}
+
+// ============================================================================
+// §14 — EVIDENCE ENVELOPE & ACCEPTANCE
+// ============================================================================
 
 /** Evidence envelope — the container for a fact + its proofs */
 export interface EvidenceEnvelope {
@@ -162,6 +353,10 @@ export interface AcceptanceResult {
   errors: string[];
   warnings: string[];
 }
+
+// ============================================================================
+// §15 — RUNTIME PROVIDERS
+// ============================================================================
 
 /** Runtime providers — all dependency-injected */
 export interface RuntimeProviders {
@@ -216,6 +411,10 @@ export interface StorageProvider {
   readonly isWORM: boolean;
 }
 
+// ============================================================================
+// §16 — MMR STRUCTURES
+// ============================================================================
+
 /** MMR Node */
 export interface MMRNode {
   /** Index in the MMR */
@@ -238,6 +437,10 @@ export interface MMRProof {
   peaks: string[];
 }
 
+// ============================================================================
+// §17 — SCHEMA & CONFIG
+// ============================================================================
+
 /** Schema definition */
 export interface SchemaDefinition {
   id: string;
@@ -259,6 +462,10 @@ export interface KernelConfig {
   /** Signer private key (hex) */
   signerPrivateKey: string;
 }
+
+// ============================================================================
+// §18 — VERIFICATION & REPLAY
+// ============================================================================
 
 /** Verification assertion result */
 export interface VerificationAssertion {

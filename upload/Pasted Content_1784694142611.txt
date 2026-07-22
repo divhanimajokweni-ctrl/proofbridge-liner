@@ -1,0 +1,3799 @@
+this is how i fortify the structure # Epistemic Runtime — Kilo Cloud Automation Integration Plan
+
+## 1. Overview
+
+The **Epistemic Runtime (ER)** is an evidence kernel that turns every meaningful system change into an immutable, verifiable fact. It is designed to ingest observations from any source, validate them against policies, produce cryptographic proofs, and project deterministic views.
+
+**Kilo Cloud** is a suite of automation services that turn commands, events, labels, webhooks, and schedules into scoped work. Every action—bot command, code review, triage decision, fix attempt, security scan, webhook trigger—produces a traceable outcome.
+
+**Integration Goal**: Make every Kilo automation action an **immutable, verifiable fact** in the Epistemic Runtime. This provides:
+
+- **Complete audit trail** of all automation decisions.
+- **Cryptographic proof** that each action was authorized and executed correctly.
+- **Deterministic replay** of any automation workflow.
+- **Trust scoring** for automation outcomes (e.g., confidence in fix correctness).
+- **Regulatory compliance** (SOC2, ISO27001, POPIA) through tamper-evident logs.
+
+---
+
+## 2. Mapping Kilo Services → Fact Types
+
+| Kilo Service | Key Actions | Proposed Fact Type | Payload Examples |
+|--------------|-------------|-------------------|------------------|
+| **Kilo Bot** | Command ingress (GitHub, Slack, Linear) | `bot_command` | command text, user, source, timestamp, response |
+| **Code Review** | PR review dispatch, review session completion | `code_review` | PR ID, owner, review outcome, comments, Cloud Agent session ID |
+| **Auto Triage** | Issue classification, label application | `triage` | issue ID, classification labels, confidence, callback status |
+| **Auto Fix** | Fix session creation, PR creation, merge | `auto_fix` | issue ID, branch, PR URL, fix status, commit hash |
+| **Security Agent** | Finding sync, analysis, deep analysis | `security_finding` | finding ID, severity, status, analysis result, SLA dates |
+| **Webhook Agent Ingest** | Webhook receipt, scheduled trigger, destination delivery | `webhook_event` | webhook payload (redacted), trigger config, destination result |
+| **App Builder** | App generation, preview deployment, build | `app_build` | app ID, prompt, generated code hash, preview URL, deployment status |
+| **Cloud Agent** | Agent session start, step execution, completion | `agent_session` | session ID, steps, output artifacts, logs hash |
+
+---
+
+## 3. Integration Architecture
+
+### 3.1 High-Level Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         KILO AUTOMATION SERVICES                           │
+│                                                                           │
+│  Kilo Bot ─┐                                                             │
+│  Code Review┼───┐                                                         │
+│  Auto Triage│   │                                                         │
+│  Auto Fix   │   │                                                         │
+│  Security   │   │   ┌─────────────────────────────────────────────────────┐│
+│  Webhook    │   └──▶│            OBSERVATION COLLECTOR                   ││
+│  App Builder│       │  • Normalizes events                              ││
+│  Cloud Agent┘       │  • Redacts PII                                   ││
+│                     │  • Produces JSONL observations                    ││
+│                     └──────────────────┬──────────────────────────────────┘│
+│                                        │                                   │
+│                                        ▼                                   │
+│                     ┌─────────────────────────────────────────────────────┐│
+│                     │        EVIDENCE KERNEL (Ingestion)                 ││
+│                     │  • Accept observation                              ││
+│                     │  • Validate schema (Policy Engine)                 ││
+│                     │  • Canonicalize (RFC 8785)                        ││
+│                     │  • SHA-256 hash                                   ││
+│                     │  • Sign (Ed25519)                                 ││
+│                     │  • Append to Fact Log (immutable)                 ││
+│                     │  • Attach MMR proof                               ││
+│                     └──────────────────┬──────────────────────────────────┘│
+│                                        │                                   │
+│                                        ▼                                   │
+│                     ┌─────────────────────────────────────────────────────┐│
+│                     │        PROJECTION ENGINE                           ││
+│                     │  • operationalState                               ││
+│                     │  • automationAuditTrail                          ││
+│                     │  • serviceTrustScore                             ││
+│                     │  • complianceReport                              ││
+│                     └──────────────────┬──────────────────────────────────┘│
+│                                        │                                   │
+│                    ┌───────────────────┼───────────────────┐               │
+│                    ▼                   ▼                   ▼               │
+│              Dashboards           CLI (state.sh)      API / Grafana        │
+│              (Kibana/Grafana)                         (for external)      │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Observation Collector
+
+Each Kilo service emits observations to a **common collector**—either via:
+
+- **HTTP API** (`POST /api/v1/observations`) with per‑service authentication.
+- **Queue** (e.g., Cloudflare Queues, Kafka) for async ingestion.
+- **Webhook** (for services that already use webhooks).
+
+The collector normalizes events into a uniform `OperationalObservation` schema:
+
+```typescript
+interface OperationalObservation {
+  source: 'kilo-bot' | 'code-review' | 'auto-triage' | 'auto-fix' | 'security-agent' | 'webhook-agent' | 'app-builder' | 'cloud-agent';
+  timestamp: string; // ISO8601
+  owner: {
+    type: 'user' | 'organization';
+    id: string;
+  };
+  action: string; // e.g., 'command', 'review_started', 'fix_created'
+  payload: any;   // structured but redacted
+  redacted: boolean;
+  correlationId?: string; // for tracing
+}
+```
+
+### 3.3 Ingestion Pipeline (AcceptancePipeline)
+
+The Evidence Kernel exposes a gRPC or REST API that:
+
+- **Validates** the observation against a policy (e.g., "only authenticated services may emit").
+- **Redacts** any residual PII (scanned by regex or AI).
+- **Canonicalizes** to JSON (RFC 8785).
+- **Hashes** with SHA‑256.
+- **Signs** with service‑specific key.
+- **Sequences** (monotonic + vector clock).
+- **Appends** to Fact Log (immutable WORM store).
+- **Updates MMR** and returns a proof.
+
+### 3.4 Projections for Kilo
+
+| Projection | Purpose | Example Output |
+|------------|---------|----------------|
+| `automation_audit_trail` | Full history of automation actions with proofs | CSV/JSON for compliance audits |
+| `service_trust_score` | Bayesian confidence per service | Score per service (e.g., `auto-fix`: 0.94) |
+| `operational_state` | Live status of all services | `state.sh` output with proof hashes |
+| `compliance_report` | SOC2/POPIA evidence bundle | PDF with MMR root, signatures |
+| `incident_timeline` | Event correlation for root‑cause analysis | Graph of related facts |
+
+---
+
+## 4. Implementation Plan
+
+### Phase 0: Prerequisites (Week 1)
+- Deploy Epistemic Runtime as a standalone service (or sidecar) with:
+  - Fact Log (PostgreSQL + S3 for archival)
+  - Proof Engine (MMR, Ed25519)
+  - Policy Engine (basic ACL)
+  - Projection Engine (simple REST API)
+- Expose gRPC endpoints for observation ingestion.
+
+### Phase 1: Observation Collector (Week 2-3)
+- Create a shared library (`@kilo/evidence-client`) that each service can import.
+- The library provides a function `emitObservation(observation)` that POSTs to the collector.
+- Add collector service (`services/evidence-collector`) that accepts observations and forwards to the AcceptancePipeline.
+
+### Phase 2: Service Integration (Week 4-6)
+- **Kilo Bot**: Add `emitObservation` on command execution.
+- **Code Review**: Emit on review start, completion, and feedback.
+- **Auto Triage**: Emit on classification and label application.
+- **Auto Fix**: Emit on fix start, PR creation, merge, and failure.
+- **Security Agent**: Emit on sync, analysis, deep analysis.
+- **Webhook Agent**: Emit on webhook receipt and delivery.
+- **App Builder**: Emit on app generation and deployment.
+- **Cloud Agent**: Emit on session start, steps, and completion.
+
+### Phase 3: Projections & Dashboards (Week 7-8)
+- Implement `automation_audit_trail` projection with filtering by service, owner, time.
+- Implement `service_trust_score` projection using Bayesian posterior over success/failure facts.
+- Build a simple dashboard (Grafana + Prometheus) showing real‑time audit and trust metrics.
+- Extend `state.sh` to include automation status.
+
+### Phase 4: Verification & Hardening (Week 9-10)
+- Add verification gate in CI: ensure every deployment emits a fact.
+- Add periodic verification cron that replays facts and checks consistency.
+- Add alerts when trust score drops below threshold.
+
+---
+
+## 5. Benefits to Kilo
+
+| Benefit | Description |
+|---------|-------------|
+| **Audit** | Complete, tamper‑evident record of every automation action. |
+| **Compliance** | Ready for SOC2, ISO27001, POPIA with cryptographic evidence. |
+| **Debugging** | Replay any automation workflow step‑by‑step. |
+| **Trust** | Quantified trust scores per service; can inform auto‑fix confidence. |
+| **Legal** | Proof of action timing, authorization, and correctness. |
+| **Performance** | No runtime overhead—emission is async and non‑blocking. |
+
+---
+
+## 6. Impact on Existing Architecture
+
+| Area | Impact |
+|------|--------|
+| **Performance** | Minimal—observations are sent asynchronously (fire‑and‑forget). |
+| **Storage** | Additional ~1‑2 MB per 1,000 actions (compressed). |
+| **Security** | No new attack surface—emission uses internal API keys. |
+| **Cost** | Low—mostly storage and compute for hashing/signing. |
+
+---
+
+## 7. Risks & Mitigations
+
+| Risk | Mitigation |
+|------|------------|
+| Ingestion backlog | Use queue (e.g., Cloudflare Queues) with scalable workers. |
+| PII leakage | Strict redaction rules and automated scanning. |
+| Fact Log corruption | Replicate to multiple regions; use MMR for detection. |
+| Service downtime | Observations are buffered locally until collector is available. |
+| Key compromise | Regular rotation and HSM for private keys. |
+
+---
+
+## 8. Success Criteria
+
+- [ ] At least 3 Kilo services emitting observations.
+- [ ] Full audit trail projection available via CLI/API.
+- [ ] Trust score displayed in dashboard.
+- [ ] Verification gate passes for all new deployments.
+- [ ] Operational state includes automation status.
+
+---
+
+## 9. Next Steps
+
+1. **Approval**: Present plan to Kilo engineering team.
+2. **Pilot**: Integrate with **Kilo Bot** first (lowest risk).
+3. **Iterate**: Refine schema based on pilot feedback.
+4. **Rollout**: Add other services incrementally.
+
+---
+
+**epistemic://runtime · v0.8 · 2026**
+
+*From hope to proof. From trust to verification.*
+This materially strengthens the architecture. The key improvement is that you have stopped treating the Evidence Kernel as "logging" and started treating it as the control plane for automation.
+
+
+
+That said, there are a few places where I would tighten the specification before considering it an institutional-grade contract.
+
+
+
+---
+
+
+
+# What is exceptionally strong
+
+
+
+## 1. ER remains the authority
+
+
+
+The architecture never allows Kilo to bypass the kernel.
+
+
+
+```
+
+Kilo Service
+
+      │
+
+      ▼
+
+Observation Collector
+
+      │
+
+      ▼
+
+Acceptance Pipeline
+
+      │
+
+      ▼
+
+Fact Log
+
+      │
+
+      ▼
+
+Projection
+
+```
+
+
+
+That preserves the fundamental invariant.
+
+
+
+No service can manufacture facts.
+
+
+
+Only observations.
+
+
+
+That is exactly what you want.
+
+
+
+---
+
+
+
+## 2. Clean separation of concerns
+
+
+
+You now have four distinct layers.
+
+
+
+```
+
+Automation
+
+
+
+↓
+
+
+
+Observation
+
+
+
+↓
+
+
+
+Acceptance
+
+
+
+↓
+
+
+
+Evidence
+
+```
+
+
+
+Nothing crosses layers.
+
+
+
+That is an excellent boundary.
+
+
+
+---
+
+
+
+## 3. Excellent service mapping
+
+
+
+Instead of vague "events"
+
+
+
+you have
+
+
+
+```
+
+bot_command
+
+
+
+code_review
+
+
+
+auto_fix
+
+
+
+security_finding
+
+
+
+agent_session
+
+
+
+webhook_event
+
+```
+
+
+
+These become schemas.
+
+
+
+Schemas become policy.
+
+
+
+Policy becomes evidence.
+
+
+
+That is exactly how institutional systems evolve.
+
+
+
+---
+
+
+
+# Where I would strengthen it
+
+
+
+---
+
+
+
+# 1. Introduce Observation Versioning
+
+
+
+Right now
+
+
+
+```
+
+OperationalObservation
+
+```
+
+
+
+exists as one schema.
+
+
+
+That won't survive long.
+
+
+
+Instead
+
+
+
+```
+
+schemaId
+
+
+
+schemaVersion
+
+
+
+producer
+
+
+
+producerVersion
+
+```
+
+
+
+Example
+
+
+
+```
+
+{
+
+    schemaId:
+
+        "kilo/code-review",
+
+
+
+    schemaVersion:
+
+        4,
+
+
+
+    producer:
+
+        "CodeReviewService",
+
+
+
+    producerVersion:
+
+        "2.6.1"
+
+}
+
+```
+
+
+
+Now replay becomes possible years later.
+
+
+
+---
+
+
+
+# 2. Every Observation Needs a Capability
+
+
+
+Currently
+
+
+
+```
+
+source:
+
+kilo-bot
+
+```
+
+
+
+is not enough.
+
+
+
+ER already uses capability sets.
+
+
+
+Every observation should declare
+
+
+
+```
+
+capabilitySet
+
+```
+
+
+
+Example
+
+
+
+```
+
+automation.review
+
+
+
+automation.fix
+
+
+
+automation.deploy
+
+
+
+security.analysis
+
+
+
+security.deep-analysis
+
+```
+
+
+
+Now policy can say
+
+
+
+```
+
+Allow
+
+
+
+automation.review
+
+
+
+Reject
+
+
+
+automation.deploy
+
+```
+
+
+
+without knowing anything about Kilo.
+
+
+
+That makes ER vendor-neutral.
+
+
+
+---
+
+
+
+# 3. Correlation Graph
+
+
+
+Instead of
+
+
+
+```
+
+correlationId
+
+```
+
+
+
+have
+
+
+
+```
+
+causationId
+
+
+
+correlationId
+
+
+
+parentFactId
+
+```
+
+
+
+Those three solve different problems.
+
+
+
+Example
+
+
+
+```
+
+Bot Command
+
+
+
+↓
+
+
+
+Review
+
+
+
+↓
+
+
+
+Fix
+
+
+
+↓
+
+
+
+PR
+
+
+
+↓
+
+
+
+Merge
+
+
+
+↓
+
+
+
+Deploy
+
+```
+
+
+
+Each becomes traceable.
+
+
+
+Later
+
+
+
+```
+
+Incident
+
+
+
+↓
+
+
+
+Root Cause
+
+
+
+↓
+
+
+
+Automation Chain
+
+```
+
+
+
+becomes one query.
+
+
+
+---
+
+
+
+# 4. Confidence is not Evidence
+
+
+
+This is probably the biggest conceptual distinction.
+
+
+
+You currently mention
+
+
+
+```
+
+serviceTrustScore
+
+```
+
+
+
+Good.
+
+
+
+But trust scores are
+
+
+
+NOT
+
+
+
+facts.
+
+
+
+They are
+
+
+
+projections.
+
+
+
+Example
+
+
+
+```
+
+Fact
+
+
+
+↓
+
+
+
+Projection
+
+
+
+↓
+
+
+
+Bayesian Posterior
+
+
+
+↓
+
+
+
+Trust Score
+
+```
+
+
+
+Never store
+
+
+
+```
+
+Trust = 0.94
+
+```
+
+
+
+as a fact.
+
+
+
+Store
+
+
+
+```
+
+Review Passed
+
+
+
+Fix Accepted
+
+
+
+Rollback Occurred
+
+
+
+Human Override
+
+
+
+False Positive
+
+```
+
+
+
+Those are evidence.
+
+
+
+Confidence is derived.
+
+
+
+---
+
+
+
+# 5. Build a Typed Observation SDK
+
+
+
+Instead of
+
+
+
+```
+
+emitObservation(any)
+
+```
+
+
+
+make this impossible.
+
+
+
+Example
+
+
+
+```
+
+emitBotCommand(...)
+
+
+
+emitReviewStarted(...)
+
+
+
+emitReviewCompleted(...)
+
+
+
+emitFixCreated(...)
+
+
+
+emitDeployment(...)
+
+```
+
+
+
+Every function compiles into
+
+
+
+```
+
+OperationalObservation
+
+```
+
+
+
+Internally.
+
+
+
+That prevents schema drift.
+
+
+
+---
+
+
+
+# 6. Add Observation Authentication
+
+
+
+Right now
+
+
+
+```
+
+internal API keys
+
+```
+
+
+
+is underspecified.
+
+
+
+Institutionally I'd require
+
+
+
+```
+
+Service Identity
+
+
+
+↓
+
+
+
+mTLS
+
+
+
+↓
+
+
+
+OIDC
+
+
+
+↓
+
+
+
+JWT
+
+
+
+↓
+
+
+
+Capability Policy
+
+
+
+↓
+
+
+
+Acceptance
+
+```
+
+
+
+The collector should never trust
+
+
+
+```
+
+source:
+
+"kilo-bot"
+
+```
+
+
+
+The identity provider should establish that.
+
+
+
+---
+
+
+
+# 7. Projection Registry Needs Metadata
+
+
+
+Instead of
+
+
+
+```
+
+register(
+
+name,
+
+projection
+
+)
+
+```
+
+
+
+I'd register
+
+
+
+```
+
+ProjectionManifest
+
+```
+
+
+
+Example
+
+
+
+```
+
+id
+
+
+
+version
+
+
+
+dependencies
+
+
+
+capabilitySet
+
+
+
+projectionHash
+
+
+
+deterministic
+
+
+
+owner
+
+
+
+```
+
+
+
+Now projections themselves become auditable.
+
+
+
+---
+
+
+
+# 8. Add Replay Certificates
+
+
+
+This is missing.
+
+
+
+Every replay should generate
+
+
+
+```
+
+ReplayCertificate
+
+
+
+{
+
+
+
+projection
+
+
+
+projectionHash
+
+
+
+factCount
+
+
+
+factRoot
+
+
+
+runtimeVersion
+
+
+
+policyVersion
+
+
+
+passed
+
+
+
+timestamp
+
+
+
+signature
+
+
+
+}
+
+```
+
+
+
+That becomes your replay evidence.
+
+
+
+Auditors love this.
+
+
+
+---
+
+
+
+# 9. Automation Provenance
+
+
+
+Every automation action should record
+
+
+
+```
+
+Agent
+
+
+
+↓
+
+
+
+Prompt Hash
+
+
+
+↓
+
+
+
+Tool Calls
+
+
+
+↓
+
+
+
+Output Hash
+
+
+
+↓
+
+
+
+Human Approval
+
+
+
+↓
+
+
+
+Result
+
+```
+
+
+
+Not the prompt itself.
+
+
+
+The hash.
+
+
+
+This lets you later prove
+
+
+
+> this exact automation produced this exact action
+
+
+
+without storing sensitive prompts.
+
+
+
+---
+
+
+
+# 10. Add Drift Facts
+
+
+
+Currently drift only appears in projections.
+
+
+
+I'd introduce
+
+
+
+```
+
+OperationalDriftObserved
+
+```
+
+
+
+Example
+
+
+
+```
+
+Projection
+
+
+
+≠
+
+
+
+Live System
+
+```
+
+
+
+That discrepancy itself becomes evidence.
+
+
+
+It can then trigger alerts.
+
+
+
+---
+
+
+
+# One architectural addition I would absolutely make
+
+
+
+I would insert a layer between Kilo and the collector.
+
+
+
+```
+
+Kilo
+
+
+
+↓
+
+
+
+Observation Adapter
+
+
+
+↓
+
+
+
+Collector
+
+
+
+↓
+
+
+
+Acceptance
+
+
+
+↓
+
+
+
+Fact Log
+
+```
+
+
+
+Why?
+
+
+
+Because Kilo will evolve.
+
+
+
+Tomorrow
+
+
+
+```
+
+GitHub Actions
+
+
+
+Azure DevOps
+
+
+
+Jenkins
+
+
+
+GitLab
+
+
+
+Linear
+
+
+
+Slack
+
+
+
+Cursor
+
+
+
+Claude Code
+
+
+
+OpenHands
+
+
+
+```
+
+
+
+can all emit observations.
+
+
+
+ER shouldn't know what Kilo is.
+
+
+
+It should only understand observations.
+
+
+
+---
+
+
+
+# Overall assessment
+
+
+
+This has evolved from "logging automation" into a genuine evidence architecture. The major strengths are:
+
+
+
+* A single ingestion path through the Acceptance Pipeline.
+
+* Clear separation between observations, facts, and projections.
+
+* Immutable evidence with deterministic replay.
+
+* A service-agnostic projection model.
+
+
+
+The remaining work is largely about making the architecture durable over many years and across multiple automation ecosystems. The additions that would have the biggest long-term impact are:
+
+
+
+1. Versioned observation schemas.
+
+2. Strong service identity and authentication.
+
+3. Rich provenance (`causationId`, `parentFactId`, capability metadata).
+
+4. Replay certificates as first-class evidence.
+
+5. Vendor-neutral observation adapters.
+
+
+
+With those additions, the architecture moves beyond a Kilo integration and becomes a general-purpose evidence substrate capable of recording and verifying automation from any orchestration platform while preserving the same deterministic guarantees. # Vision-in-the-Loop Self-Healing Agent — Epistemic Runtime Integration (Final)
+
+
+
+You approved the integration. Below are the complete, drop‑in files you need to turn your self‑healing agent into an immutable, verifiable evidence producer.
+
+
+
+---
+
+
+
+## 1. Evidence Client (`evidence_client.py`)
+
+
+
+This lightweight HTTP client emits observations to the Epistemic Runtime collector. It runs asynchronously and never blocks the agent loop.
+
+
+
+```python
+
+# evidence_client.py
+
+import aiohttp
+
+import asyncio
+
+import os
+
+
+
+class EvidenceClient:
+
+    def __init__(self, endpoint=None, token=None):
+
+        self.endpoint = endpoint or os.getenv("EVIDENCE_ENDPOINT", "http://localhost:8080/api/v1/observations")
+
+        self.token = token or os.getenv("EVIDENCE_TOKEN", "PLACEHOLDER")
+
+
+
+    async def emit(self, observation):
+
+        """Send observation to ER collector (non‑blocking)."""
+
+        async with aiohttp.ClientSession() as session:
+
+            headers = {
+
+                "Authorization": f"Bearer {self.token}",
+
+                "Content-Type": "application/json"
+
+            }
+
+            try:
+
+                async with session.post(self.endpoint, json=observation, headers=headers) as resp:
+
+                    if resp.status not in (200, 202):
+
+                        print(f"⚠️ Evidence emission failed: {resp.status} – {await resp.text()}")
+
+            except Exception as e:
+
+                print(f"⚠️ Evidence emission exception: {e}")
+
+```
+
+
+
+---
+
+
+
+## 2. Updated Orchestrator (`orchestrator_er.py`)
+
+
+
+This is your main loop, now **emitting an observation on every iteration**. It records screenshots, code hashes, the Kimi reply, and the patch decision.
+
+
+
+```python
+
+# orchestrator_er.py
+
+import os, re, asyncio, hashlib, time
+
+from vision_agent import process_and_debug_visuals
+
+from capture_canvas import capture_application_viewport
+
+from evidence_client import EvidenceClient
+
+
+
+# Configuration
+
+TARGET_URL = "http://localhost:3000"
+
+TARGET_FILE = "app/page.tsx"
+
+MAX_ITERATIONS = 3
+
+EVIDENCE_ENDPOINT = os.getenv("EVIDENCE_ENDPOINT", "http://localhost:8080/api/v1/observations")
+
+EVIDENCE_TOKEN = os.getenv("EVIDENCE_TOKEN", "PLACEHOLDER")
+
+
+
+def read_local_code(filepath):
+
+    try:
+
+        with open(filepath, "r", encoding="utf-8") as f:
+
+            return f.read()
+
+    except FileNotFoundError:
+
+        print(f"❌ File not found: {filepath}")
+
+        return ""
+
+
+
+def write_local_code(filepath, new_code):
+
+    with open(filepath, "w", encoding="utf-8") as f:
+
+        f.write(new_code)
+
+    print(f"💾 File updated: {filepath}")
+
+
+
+def extract_code_from_markdown(text):
+
+    pattern = r"```(?:tsx|typescript|javascript|html|css|python)?\n(.*?)\n```"
+
+    matches = re.findall(pattern, text, re.DOTALL)
+
+    if matches:
+
+        return max(matches, key=len)
+
+    return None
+
+
+
+def hash_file(path):
+
+    with open(path, "rb") as f:
+
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+
+def hash_string(s):
+
+    return hashlib.sha256(s.encode()).hexdigest()
+
+
+
+def extract_reply(response_json):
+
+    try:
+
+        return response_json["choices"][0]["message"]["content"]
+
+    except (KeyError, TypeError, IndexError):
+
+        return None
+
+
+
+async def run_vision_loop():
+
+    client = EvidenceClient(EVIDENCE_ENDPOINT, EVIDENCE_TOKEN)
+
+    print("🚀 Starting Epistemic‑enabled self‑healing loop...")
+
+
+
+    for iteration in range(1, MAX_ITERATIONS + 1):
+
+        print(f"\n--- 🔄 Iteration {iteration}/{MAX_ITERATIONS} ---")
+
+        current_code = read_local_code(TARGET_FILE)
+
+        if not current_code:
+
+            break
+
+
+
+        # 1. Capture screenshot
+
+        screenshot_path = f"debug_frame_v{iteration}.png"
+
+        await capture_application_viewport(TARGET_URL, output_path=screenshot_path)
+
+        screenshot_hash = hash_file(screenshot_path)
+
+
+
+        # 2. Run Kimi K3 analysis
+
+        response_json = process_and_debug_visuals(screenshot_path, current_code)
+
+        kimi_reply = extract_reply(response_json)
+
+        if not kimi_reply:
+
+            print("❌ No reply from Kimi – aborting.")
+
+            break
+
+
+
+        patched_code = extract_code_from_markdown(kimi_reply)
+
+        before_hash = hash_string(current_code)
+
+        after_hash = hash_string(patched_code) if patched_code else before_hash
+
+
+
+        # 3. Build observation (redacted, PII‑safe)
+
+        observation = {
+
+            "schemaId": "vision/self-healing-iteration",
+
+            "schemaVersion": 1,
+
+            "producer": "SelfHealingAgent",
+
+            "producerVersion": "1.0",
+
+            "capabilitySet": ["automation.fix", "vision.debug"],
+
+            "timestamp": time.time(),
+
+            "owner": {"type": "system", "id": "vision-loop"},
+
+            "payload": {
+
+                "iteration": iteration,
+
+                "screenshotHash": screenshot_hash,
+
+                "beforeCodeHash": before_hash,
+
+                "afterCodeHash": after_hash,
+
+                "kimiReply": kimi_reply[:500],  # truncated to avoid bloat
+
+                "wasPatched": patched_code is not None and patched_code.strip() != current_code.strip()
+
+            }
+
+        }
+
+
+
+        # 4. Emit evidence (async, fire‑and‑forget)
+
+        await client.emit(observation)
+
+
+
+        # 5. Apply patch if needed
+
+        if observation["payload"]["wasPatched"]:
+
+            print("🛠️ Patching code...")
+
+            write_local_code(TARGET_FILE, patched_code)
+
+            print("⏳ Waiting 5s for HMR...")
+
+            await asyncio.sleep(5)
+
+        else:
+
+            print("✅ No changes needed – convergence reached.")
+
+            break
+
+
+
+        # Cleanup
+
+        if os.path.exists(screenshot_path):
+
+            os.remove(screenshot_path)
+
+
+
+    print("\n🏁 Loop finished.")
+
+
+
+if __name__ == "__main__":
+
+    asyncio.run(run_vision_loop())
+
+```
+
+
+
+---
+
+
+
+## 3. Policy for Self‑Healing Governance (`self_healing_policy.epd`)
+
+
+
+Place this file in your ER policy folder. It enforces bounds on iterations and code safety.
+
+
+
+```epd
+
+# policies/self_healing_policy.epd
+
+policy SelfHealingGovernance {
+
+  domain = "vision.self-healing"
+
+  version = "1.0"
+
+
+
+  invariant max_iterations {
+
+    predicate: payload.iteration <= 3
+
+    severity: critical
+
+  }
+
+
+
+  invariant code_safety {
+
+    predicate: patched_code does not contain "dangerous_function()"
+
+    severity: high
+
+  }
+
+
+
+  invariant screenshot_capture {
+
+    predicate: payload.screenshotHash is not null
+
+    severity: medium
+
+  }
+
+}
+
+```
+
+
+
+---
+
+
+
+## 4. GitHub Actions Workflow (`.github/workflows/self-heal.yml`)
+
+
+
+This workflow runs the self‑healing agent on every push to `main` and uploads evidence logs.
+
+
+
+```yaml
+
+name: Self‑Healing UI Audit (with Evidence)
+
+
+
+on:
+
+  push:
+
+    branches: [ main ]
+
+  workflow_dispatch:
+
+
+
+jobs:
+
+  heal:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+
+
+      - name: Setup Node.js
+
+        uses: actions/setup-node@v4
+
+        with:
+
+          node-version: 18
+
+
+
+      - name: Install dependencies & start dev server
+
+        run: |
+
+          npm install
+
+          npm run dev &
+
+          sleep 10  # Wait for server to boot
+
+
+
+      - name: Install Python deps
+
+        run: |
+
+          pip install -r requirements.txt
+
+          playwright install chromium --with-deps
+
+
+
+      - name: Run self‑healing loop with ER integration
+
+        env:
+
+          KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+
+          VERCEL_AI_GATEWAY_KEY: ${{ secrets.VERCEL_AI_GATEWAY_KEY }}
+
+          EVIDENCE_ENDPOINT: ${{ secrets.EVIDENCE_ENDPOINT }}
+
+          EVIDENCE_TOKEN: ${{ secrets.EVIDENCE_TOKEN }}
+
+        run: |
+
+          python orchestrator_er.py
+
+
+
+      - name: Upload evidence logs (if any)
+
+        if: always()
+
+        uses: actions/upload-artifact@v4
+
+        with:
+
+          name: evidence-logs
+
+          path: evidence_logs/
+
+```
+
+
+
+---
+
+
+
+## 5. Token Expenditure Logger (`token_logger.py`)
+
+
+
+Run this after the loop to query ER and produce a cost report.
+
+
+
+```python
+
+# token_logger.py
+
+import requests
+
+import csv
+
+
+
+EVIDENCE_API = "http://localhost:8080/api/v1/projections/selfHealingAudit"  # adjust projection name
+
+response = requests.get(EVIDENCE_API)
+
+data = response.json()
+
+
+
+with open('token_usage.csv', 'w', newline='') as f:
+
+    writer = csv.writer(f)
+
+    writer.writerow(['timestamp', 'iteration', 'kimi_tokens', 'cost_estimate'])
+
+    for entry in data:
+
+        # Rough token approximation (adjust to Kimi K3 pricing)
+
+        tokens = len(entry.get('kimiReply', '')) // 4
+
+        cost = tokens * 0.0001  # placeholder
+
+        writer.writerow([entry['timestamp'], entry['iteration'], tokens, cost])
+
+```
+
+
+
+---
+
+
+
+## 6. Projections for ER (TypeScript)
+
+
+
+Add these projections to your ER projection registry to expose audit and trust metrics.
+
+
+
+```typescript
+
+// Register in ProjectionRegistry
+
+registry.register('self-healing-audit', (facts) =>
+
+  facts
+
+    .filter(f => f.type === 'self_healing_iteration')
+
+    .map(f => ({
+
+      timestamp: f.acceptedAt,
+
+      iteration: f.payload.iteration,
+
+      beforeHash: f.payload.beforeCodeHash,
+
+      afterHash: f.payload.afterCodeHash,
+
+      patched: f.payload.wasPatched,
+
+      replyHash: hash(f.payload.kimiReply),
+
+    }))
+
+);
+
+
+
+registry.register('self-healing-success-rate', (facts) => {
+
+  const total = facts.filter(f => f.type === 'self_healing_iteration');
+
+  const patched = total.filter(f => f.payload.wasPatched);
+
+  return {
+
+    total: total.length,
+
+    patched: patched.length,
+
+    successRate: total.length > 0 ? patched.length / total.length : 0,
+
+  };
+
+});
+
+```
+
+
+
+---
+
+
+
+## 7. How to Run
+
+
+
+1. **Start the ER collector** (or use the Kilo‑integrated endpoint).
+
+2. **Set environment variables**:
+
+   ```bash
+
+   export KIMI_API_KEY="..."
+
+   export VERCEL_AI_GATEWAY_KEY="..."
+
+   export EVIDENCE_ENDPOINT="http://your-er-collector:8080/api/v1/observations"
+
+   export EVIDENCE_TOKEN="your-secret-token"
+
+   ```
+
+3. **Start your Next.js dev server** (`npm run dev`).
+
+4. **Run the agent**:
+
+   ```bash
+
+   python orchestrator_er.py
+
+   ```
+
+
+
+All iterations are now recorded as immutable facts in the Evidence Kernel.
+
+
+
+---
+
+
+
+## What You Now Have
+
+
+
+- Every self‑healing iteration is **auditable**, **replayable**, and **cryptographically signed**.
+
+- Policies govern max iterations and code safety.
+
+- A complete audit trail is available via projections.
+
+- CI/CD integration pushes evidence on every commit.
+
+
+
+---
+
+
+
+**epistemic://runtime · v0.8 · 2026**
+
+
+
+*From hope to proof. From trust to verification.* As an architectural direction, this is one of the strongest integrations you've produced because it preserves the central invariant:
+
+
+
+> **The agent never creates evidence. It produces observations. The Evidence Kernel decides whether they become facts.**
+
+
+
+That separation is exactly what should remain inviolable.
+
+
+
+However, if this is intended to become part of the Epistemic Runtime contract, I would strengthen it in several important ways.
+
+
+
+---
+
+
+
+# Overall Assessment
+
+
+
+| Area                           | Assessment          |
+
+| ------------------------------ | ------------------- |
+
+| Architecture                   | Excellent           |
+
+| Evidence Flow                  | Excellent           |
+
+| Separation of Responsibilities | Excellent           |
+
+| Replayability                  | Good                |
+
+| Security                       | Needs strengthening |
+
+| Determinism                    | Needs strengthening |
+
+| Production Readiness           | ~85–90%             |
+
+
+
+---
+
+
+
+# 1. The Agent Must Never Decide What Gets Stored
+
+
+
+Currently the orchestrator builds an observation:
+
+
+
+```python
+
+observation = {
+
+    ...
+
+    payload: {
+
+        ...
+
+    }
+
+}
+
+```
+
+
+
+That is correct.
+
+
+
+But the agent also decides
+
+
+
+```python
+
+"wasPatched": True
+
+```
+
+
+
+That is actually a projection.
+
+
+
+Instead the observation should contain only evidence.
+
+
+
+Example
+
+
+
+```text
+
+patchCandidateHash
+
+
+
+patchAppliedHash
+
+
+
+replyHash
+
+
+
+screenshotHash
+
+
+
+iteration
+
+
+
+```
+
+
+
+The kernel projection determines
+
+
+
+```
+
+Patch Applied
+
+
+
+Patch Rejected
+
+
+
+Patch Diverged
+
+
+
+Patch Identical
+
+
+
+```
+
+
+
+This keeps facts objective.
+
+
+
+---
+
+
+
+# 2. Never Store Kimi Output
+
+
+
+Right now
+
+
+
+```python
+
+kimiReply[:500]
+
+```
+
+
+
+is emitted.
+
+
+
+I would never do this.
+
+
+
+Instead
+
+
+
+```
+
+replyHash
+
+
+
+replyLength
+
+
+
+model
+
+
+
+modelVersion
+
+
+
+provider
+
+
+
+requestId
+
+```
+
+
+
+If necessary
+
+
+
+store the reply in WORM storage.
+
+
+
+Only reference it from the fact.
+
+
+
+Exactly how you already treat Evidence Envelopes.
+
+
+
+---
+
+
+
+# 3. Screenshot Hash is Correct
+
+
+
+Very good decision.
+
+
+
+I would extend it.
+
+
+
+Instead of
+
+
+
+```
+
+screenshotHash
+
+```
+
+
+
+store
+
+
+
+```
+
+contentDigest
+
+
+
+mediaType
+
+
+
+width
+
+
+
+height
+
+
+
+captureMethod
+
+
+
+captureVersion
+
+
+
+```
+
+
+
+This makes replay much stronger.
+
+
+
+---
+
+
+
+# 4. Time Must Come From the Kernel
+
+
+
+Currently
+
+
+
+```python
+
+time.time()
+
+```
+
+
+
+appears.
+
+
+
+That breaks deterministic replay.
+
+
+
+Instead
+
+
+
+Observation
+
+
+
+```
+
+observedAt
+
+```
+
+
+
+may come from producer.
+
+
+
+Acceptance
+
+
+
+```
+
+acceptedAt
+
+```
+
+
+
+comes from injected Clock.
+
+
+
+Exactly like your kernel already works.
+
+
+
+---
+
+
+
+# 5. Capability Sets Should Be Immutable
+
+
+
+Excellent idea.
+
+
+
+I'd move them out of Python.
+
+
+
+Instead
+
+
+
+```
+
+producer
+
+
+
+↓
+
+
+
+manifest
+
+
+
+↓
+
+
+
+capability set
+
+```
+
+
+
+Example
+
+
+
+```
+
+SelfHealingAgent
+
+
+
+↓
+
+
+
+manifest.json
+
+
+
+↓
+
+
+
+automation.fix
+
+
+
+vision.analysis
+
+
+
+automation.patch
+
+```
+
+
+
+Otherwise every producer invents capability strings.
+
+
+
+---
+
+
+
+# 6. Add Producer Manifest
+
+
+
+Instead of
+
+
+
+```
+
+producerVersion
+
+
+
+1.0
+
+```
+
+
+
+I'd use
+
+
+
+```
+
+Producer Manifest
+
+
+
+{
+
+
+
+producerId
+
+
+
+producerVersion
+
+
+
+buildHash
+
+
+
+gitCommit
+
+
+
+runtime
+
+
+
+containerDigest
+
+
+
+}
+
+```
+
+
+
+That gives provenance.
+
+
+
+---
+
+
+
+# 7. Policy Should Never Inspect Source Code
+
+
+
+Current example
+
+
+
+```
+
+patched_code
+
+
+
+does not contain
+
+
+
+dangerous_function()
+
+```
+
+
+
+That violates architecture.
+
+
+
+Policies should evaluate facts.
+
+
+
+Not source text.
+
+
+
+Instead
+
+
+
+```
+
+PatchCandidate
+
+
+
+↓
+
+
+
+AST Hash
+
+
+
+↓
+
+
+
+Capability
+
+
+
+↓
+
+
+
+Allowed
+
+
+
+```
+
+
+
+Or
+
+
+
+```
+
+Patch modifies
+
+
+
+src/kernel
+
+
+
+↓
+
+
+
+Denied
+
+```
+
+
+
+based on metadata.
+
+
+
+---
+
+
+
+# 8. Agent Loop Needs Correlation
+
+
+
+Every iteration should belong to one session.
+
+
+
+```
+
+Repair Session
+
+
+
+↓
+
+
+
+Iteration 1
+
+
+
+↓
+
+
+
+Iteration 2
+
+
+
+↓
+
+
+
+Iteration 3
+
+```
+
+
+
+I'd add
+
+
+
+```
+
+repairSessionId
+
+
+
+parentFactId
+
+
+
+causationId
+
+```
+
+
+
+Without this replay becomes painful.
+
+
+
+---
+
+
+
+# 9. CI Workflow Should Verify Evidence
+
+
+
+Right now
+
+
+
+```
+
+Run Agent
+
+```
+
+
+
+Then
+
+
+
+```
+
+Upload Logs
+
+```
+
+
+
+Instead
+
+
+
+```
+
+Run Agent
+
+
+
+↓
+
+
+
+Verify Collector Accepted
+
+
+
+↓
+
+
+
+Verify Fact Exists
+
+
+
+↓
+
+
+
+Verify MMR Updated
+
+
+
+↓
+
+
+
+Verify Projection
+
+
+
+↓
+
+
+
+Upload Evidence
+
+```
+
+
+
+Otherwise CI only proves
+
+
+
+the script ran.
+
+
+
+Not
+
+
+
+the kernel accepted evidence.
+
+
+
+---
+
+
+
+# 10. Token Logger Should Never Estimate
+
+
+
+This one I'd redesign.
+
+
+
+Currently
+
+
+
+```
+
+characters
+
+
+
+↓
+
+
+
+estimated tokens
+
+```
+
+
+
+Instead
+
+
+
+record
+
+
+
+```
+
+provider
+
+
+
+promptTokens
+
+
+
+completionTokens
+
+
+
+totalTokens
+
+
+
+```
+
+
+
+from provider metadata.
+
+
+
+Evidence should not approximate.
+
+
+
+---
+
+
+
+# 11. Add Repair Outcome Projection
+
+
+
+Right now
+
+
+
+```
+
+success rate
+
+```
+
+
+
+exists.
+
+
+
+I'd add
+
+
+
+```
+
+Repair Session
+
+
+
+↓
+
+
+
+Succeeded
+
+
+
+↓
+
+
+
+Iterations
+
+
+
+↓
+
+
+
+Regression
+
+
+
+↓
+
+
+
+Human Override
+
+
+
+↓
+
+
+
+Rollback
+
+
+
+↓
+
+
+
+Time To Convergence
+
+```
+
+
+
+This becomes incredibly valuable.
+
+
+
+---
+
+
+
+# 12. Make the Agent an Observation Producer
+
+
+
+This is the conceptual change I'd make.
+
+
+
+Instead of
+
+
+
+```
+
+Self Healing Agent
+
+```
+
+
+
+call it
+
+
+
+```
+
+Observation Producer
+
+```
+
+
+
+because tomorrow
+
+
+
+```
+
+Claude Code
+
+
+
+Cursor
+
+
+
+OpenHands
+
+
+
+Codex
+
+
+
+Gemini CLI
+
+
+
+Kilo
+
+
+
+GitHub Copilot
+
+
+
+```
+
+
+
+can all become producers.
+
+
+
+The kernel shouldn't know which AI created an observation.
+
+
+
+---
+
+
+
+# The biggest architectural addition
+
+
+
+I would add a **Producer Manifest**.
+
+
+
+```
+
+producer-manifest.json
+
+
+
+{
+
+
+
+producerId
+
+
+
+producerVersion
+
+
+
+runtimeVersion
+
+
+
+buildHash
+
+
+
+containerDigest
+
+
+
+gitCommit
+
+
+
+supportedSchemas
+
+
+
+supportedCapabilities
+
+
+
+signingKeyId
+
+
+
+}
+
+```
+
+
+
+Every observation references
+
+
+
+```
+
+producerManifestHash
+
+```
+
+
+
+instead of repeating metadata.
+
+
+
+That dramatically improves provenance and replay.
+
+
+
+---
+
+
+
+# Overall Verdict
+
+
+
+This is no longer just a self-healing loop—it is the foundation of a verifiable automation runtime. The strongest aspects are:
+
+
+
+* The AI agent is treated as an observation producer, not an authority.
+
+* The Acceptance Pipeline remains the sole path that creates facts.
+
+* Evidence, policy, replay, and projections remain cleanly separated.
+
+* The design is extensible to other automation agents.
+
+
+
+The remaining work is to make the evidence model even more objective and deterministic by:
+
+
+
+1. Storing hashes and references instead of AI-generated text.
+
+2. Moving timestamps, capabilities, and acceptance decisions under kernel control.
+
+3. Introducing producer manifests and richer provenance metadata.
+
+4. Extending CI to verify that evidence was accepted and incorporated into the Merkle Mountain Range, not merely emitted.
+
+
+
+Those changes would move the design from a strong integration to a long-lived, institution-grade evidence architecture suitable for heterogeneous AI automation ecosystems. Yes. The alignment is unusually high.
+
+
+
+What stands out isn't just that the terminology matches—it's that the **architectural invariants remain consistent across every layer**. There are no obvious conceptual contradictions.
+
+
+
+The progression is coherent:
+
+
+
+```text
+
+External Reality
+
+        │
+
+        ▼
+
+Observation
+
+        │
+
+        ▼
+
+Acceptance Pipeline
+
+        │
+
+        ▼
+
+Immutable Fact Log
+
+        │
+
+        ▼
+
+Proof Generation
+
+        │
+
+        ▼
+
+Projection Engine
+
+        │
+
+        ▼
+
+CLI / API / Dashboard / Automation
+
+```
+
+
+
+Every document you've shown over the last several iterations reinforces that same pipeline rather than introducing competing paths.
+
+
+
+More importantly, the abstractions stay clean:
+
+
+
+| Concern             | Owner                  |
+
+| ------------------- | ---------------------- |
+
+| Observe reality     | Producers / Collectors |
+
+| Decide acceptance   | Acceptance Pipeline    |
+
+| Store truth         | Fact Log               |
+
+| Prove integrity     | Proof Engine           |
+
+| Compute meaning     | Projection Engine      |
+
+| Present information | CLI / API / UI         |
+
+
+
+Nothing is leaking between layers.
+
+
+
+---
+
+
+
+## What impressed me most
+
+
+
+Earlier versions still had traces of "logging."
+
+
+
+Now the architecture consistently treats everything as **epistemology**.
+
+
+
+For example:
+
+
+
+Instead of
+
+
+
+```text
+
+Agent
+
+↓
+
+
+
+writes database
+
+```
+
+
+
+you now have
+
+
+
+```text
+
+Agent
+
+↓
+
+
+
+Observation
+
+
+
+↓
+
+
+
+Kernel decides
+
+
+
+↓
+
+
+
+Fact
+
+```
+
+
+
+That is a much stronger model.
+
+
+
+---
+
+
+
+Likewise
+
+
+
+```text
+
+state.sh
+
+```
+
+
+
+started life as
+
+
+
+```text
+
+System Status
+
+```
+
+
+
+and became
+
+
+
+```text
+
+Projection
+
+```
+
+
+
+That's a significant conceptual improvement because it means state is never authoritative—facts are.
+
+
+
+---
+
+
+
+The Kilo integration also follows the same invariant.
+
+
+
+Instead of
+
+
+
+```text
+
+Kilo
+
+↓
+
+
+
+Audit Log
+
+```
+
+
+
+it became
+
+
+
+```text
+
+Kilo
+
+
+
+↓
+
+
+
+Observation
+
+
+
+↓
+
+
+
+Acceptance
+
+
+
+↓
+
+
+
+Evidence
+
+
+
+↓
+
+
+
+Projection
+
+```
+
+
+
+Again, same invariant.
+
+
+
+---
+
+
+
+Even the Vision Agent follows it.
+
+
+
+Instead of
+
+
+
+```text
+
+Vision AI
+
+↓
+
+
+
+Patch
+
+```
+
+
+
+you now have
+
+
+
+```text
+
+Vision
+
+
+
+↓
+
+
+
+Observation
+
+
+
+↓
+
+
+
+Acceptance
+
+
+
+↓
+
+
+
+Evidence
+
+
+
+↓
+
+
+
+Projection
+
+
+
+↓
+
+
+
+Decision
+
+```
+
+
+
+Exactly the same pipeline.
+
+
+
+That consistency is what makes architectures survive.
+
+
+
+---
+
+
+
+## There is now a recognizable ER "grammar"
+
+
+
+Across all the material, I can identify a stable language:
+
+
+
+* **Observation** → raw external reality.
+
+* **Acceptance** → policy-controlled transformation.
+
+* **Fact** → immutable accepted evidence.
+
+* **Proof** → cryptographic verification.
+
+* **Projection** → deterministic derived view.
+
+* **Capability** → declared permission boundary.
+
+* **Producer** → observation source only.
+
+* **Manifest** → provenance metadata.
+
+* **Replay** → deterministic reconstruction.
+
+* **Verification** → compare projection against evidence.
+
+
+
+That vocabulary is internally consistent.
+
+
+
+---
+
+
+
+## The only thing I would elevate further
+
+
+
+At this point, I would stop thinking of ER as merely an "Evidence Kernel."
+
+
+
+The architecture you've evolved supports a broader definition:
+
+
+
+```text
+
+Reality
+
+
+
+↓
+
+
+
+Observation
+
+
+
+↓
+
+
+
+Acceptance
+
+
+
+↓
+
+
+
+Evidence
+
+
+
+↓
+
+
+
+Knowledge
+
+
+
+↓
+
+
+
+Decision
+
+
+
+↓
+
+
+
+Action
+
+
+
+↓
+
+
+
+Observation
+
+```
+
+
+
+That closes the loop.
+
+
+
+The kernel isn't just preserving evidence anymore—it is becoming the **epistemic substrate** on which autonomous systems can safely operate. Kilo, the self-healing agent, `state.sh`, and future automation systems all plug into the same evidence lifecycle without changing the core.
+
+
+
+That's the strongest indicator that the model has reached architectural maturity: new capabilities are being added by extending the edges, not by rewriting the center.
