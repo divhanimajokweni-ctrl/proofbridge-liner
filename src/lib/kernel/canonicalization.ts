@@ -88,16 +88,21 @@ function serializeString(s: string): string {
           // Control characters: \uXXXX
           parts.push('\\u' + code.toString(16).padStart(4, '0'));
         } else if (code >= 0xd800 && code <= 0xdbff) {
-          // Surrogate pair
+          // High surrogate of a UTF-16 surrogate pair
           const hi = code;
           const lo = s.charCodeAt(++i);
           if (lo >= 0xdc00 && lo <= 0xdfff) {
-            const cp = (hi - 0xd800) * 0x400 + (lo - 0xdc00) + 0x10000;
-            parts.push('\\u' + cp.toString(16).padStart(4, '0'));
+            // Valid surrogate pair — RFC 8785 requires encoding as \uXXXX\uXXXX
+            parts.push('\\u' + hi.toString(16).padStart(4, '0'));
+            parts.push('\\u' + lo.toString(16).padStart(4, '0'));
           } else {
+            // Lone high surrogate — encode as-is
             parts.push('\\u' + hi.toString(16).padStart(4, '0'));
             i--;
           }
+        } else if (code >= 0xdc00 && code <= 0xdfff) {
+          // Lone low surrogate — encode as-is
+          parts.push('\\u' + code.toString(16).padStart(4, '0'));
         } else {
           parts.push(s[i]);
         }

@@ -9,6 +9,8 @@ export * from './schema-registry';
 export * from './acceptance-pipeline';
 export * from './policy-evaluator';
 export * from './projection';
+export * from './projection-registry';
+export * from './operational-collector';
 export * from './replay';
 export * from './runtime';
 export * from './redaction';

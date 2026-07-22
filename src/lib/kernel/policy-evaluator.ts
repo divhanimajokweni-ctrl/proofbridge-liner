@@ -1,196 +1,210 @@
 // Epistemic Runtime v0.8 — Policy IR Evaluator
 // Deterministic evaluation. No scripting. No eval. No dynamic execution.
 // Only deterministic opcodes.
+//
+// CONTRACT: No mutable global state. Lookup tables are injected via constructor.
 
-import type { PolicyRule, PolicyOpcode, PolicyResult, Severity } from './types';
-
-/**
- * Registered lookup tables for the LOOKUP opcode.
- * Tables must be deterministic — same key always returns same value.
- * Register new tables before pipeline construction.
- */
-export const LOOKUP_TABLES: Record<string, Record<string, unknown>> = {};
+import type { PolicyRule, PolicyOpcode, PolicyResult } from './types';
 
 /**
- * Register a lookup table for use by the LOOKUP opcode.
+ * PolicyEvaluator — deterministic stack-based IR policy evaluator.
+ *
+ * Lookup tables are injected via the constructor, NOT stored in a global.
+ * This satisfies the contract rule: "No mutable global state inside the kernel."
  */
-export function registerLookupTable(name: string, table: Record<string, unknown>): void {
-  LOOKUP_TABLES[name] = table;
-}
+export class PolicyEvaluator {
+  private lookupTables: Record<string, Record<string, unknown>>;
 
-/**
- * Evaluate a policy rule against a fact body.
- * Returns the policy result: 'accept', 'reject', or 'defer'.
- */
-export function evaluatePolicy(
-  policy: PolicyRule,
-  body: Record<string, unknown>,
-): PolicyResult {
-  const stack: unknown[] = [];
-
-  for (const opcode of policy.ir) {
-    executeOpcode(opcode, stack, body);
+  constructor(lookupTables?: Record<string, Record<string, unknown>>) {
+    this.lookupTables = lookupTables ?? {};
   }
 
-  // The final value on the stack is the result
-  if (stack.length === 0) return 'accept'; // Default: accept if no result
-
-  const result = stack[stack.length - 1];
-  if (typeof result === 'string' && (result === 'accept' || result === 'reject' || result === 'defer')) {
-    return result;
+  /**
+   * Register a lookup table for use by the LOOKUP opcode.
+   * Tables must be deterministic — same key always returns same value.
+   */
+  registerLookupTable(name: string, table: Record<string, unknown>): void {
+    this.lookupTables[name] = table;
   }
 
-  // Boolean result: true = accept, false = reject
-  if (typeof result === 'boolean') {
-    return result ? 'accept' : 'reject';
+  /**
+   * Evaluate a policy rule against a fact body.
+   * Returns the policy result: 'accept', 'reject', or 'defer'.
+   */
+  evaluate(policy: PolicyRule, body: Record<string, unknown>): PolicyResult {
+    const stack: unknown[] = [];
+
+    for (const opcode of policy.ir) {
+      this.executeOpcode(opcode, stack, body);
+    }
+
+    // The final value on the stack is the result
+    if (stack.length === 0) return 'accept'; // Default: accept if no result
+
+    const result = stack[stack.length - 1];
+    if (typeof result === 'string' && (result === 'accept' || result === 'reject' || result === 'defer')) {
+      return result;
+    }
+
+    // Boolean result: true = accept, false = reject
+    if (typeof result === 'boolean') {
+      return result ? 'accept' : 'reject';
+    }
+
+    return 'accept'; // Default
   }
 
-  return 'accept'; // Default
-}
+  /**
+   * Execute a single opcode, modifying the stack.
+   */
+  private executeOpcode(
+    opcode: PolicyOpcode,
+    stack: unknown[],
+    body: Record<string, unknown>,
+  ): void {
+    switch (opcode.op) {
+      case 'LOAD_FIELD': {
+        const value = getNestedField(body, opcode.field);
+        stack.push(value);
+        break;
+      }
+      case 'LOAD_CONST': {
+        stack.push(opcode.value);
+        break;
+      }
+      case 'EQ': {
+        const b = stack.pop();
+        const a = stack.pop();
+        stack.push(a === b);
+        break;
+      }
+      case 'NEQ': {
+        const b = stack.pop();
+        const a = stack.pop();
+        stack.push(a !== b);
+        break;
+      }
+      case 'LT': {
+        const b = stack.pop() as number;
+        const a = stack.pop() as number;
+        stack.push(a < b);
+        break;
+      }
+      case 'LTE': {
+        const b = stack.pop() as number;
+        const a = stack.pop() as number;
+        stack.push(a <= b);
+        break;
+      }
+      case 'GT': {
+        const b = stack.pop() as number;
+        const a = stack.pop() as number;
+        stack.push(a > b);
+        break;
+      }
+      case 'GTE': {
+        const b = stack.pop() as number;
+        const a = stack.pop() as number;
+        stack.push(a >= b);
+        break;
+      }
+      case 'IN_RANGE': {
+        const value = stack.pop() as number;
+        stack.push(value >= opcode.lo && value <= opcode.hi);
+        break;
+      }
+      case 'NOT_IN_RANGE': {
+        const value = stack.pop() as number;
+        stack.push(value < opcode.lo || value > opcode.hi);
+        break;
+      }
+      case 'CONTAINS': {
+        const item = stack.pop();
+        const collection = stack.pop() as unknown[];
+        stack.push(Array.isArray(collection) && collection.includes(item));
+        break;
+      }
+      case 'NOT_CONTAINS': {
+        const item = stack.pop();
+        const collection = stack.pop() as unknown[];
+        stack.push(!Array.isArray(collection) || !collection.includes(item));
+        break;
+      }
+      case 'TYPE_IS': {
+        const value = stack.pop();
+        stack.push(typeof value === opcode.typeName);
+        break;
+      }
+      case 'AND': {
+        const b = stack.pop() as boolean;
+        const a = stack.pop() as boolean;
+        stack.push(a && b);
+        break;
+      }
+      case 'OR': {
+        const b = stack.pop() as boolean;
+        const a = stack.pop() as boolean;
+        stack.push(a || b);
+        break;
+      }
+      case 'NOT': {
+        const a = stack.pop() as boolean;
+        stack.push(!a);
+        break;
+      }
+      case 'EVERY': {
+        const count = opcode.count;
+        const values: boolean[] = [];
+        for (let i = 0; i < count; i++) {
+          values.push(stack.pop() as boolean);
+        }
+        stack.push(values.every(v => v === true));
+        break;
+      }
+      case 'SOME': {
+        const count = opcode.count;
+        const values: boolean[] = [];
+        for (let i = 0; i < count; i++) {
+          values.push(stack.pop() as boolean);
+        }
+        stack.push(values.some(v => v === true));
+        break;
+      }
+      case 'LOOKUP': {
+        // Deterministic table lookup — replaces dynamic code execution
+        const lookupKey = stack.pop();
+        const table = this.lookupTables[opcode.table];
+        if (!table) {
+          throw new Error(`Unknown lookup table: ${opcode.table}. Evaluation terminated.`);
+        }
+        const result = table[String(lookupKey)] ?? table[opcode.key];
+        stack.push(result ?? null);
+        break;
+      }
+      case 'RESULT': {
+        stack.push(opcode.policy);
+        break;
+      }
+      default: {
+        // CONTRACT: Unknown opcode must terminate evaluation.
+        // Never silently ignore unknown opcodes.
+        throw new Error(`Unknown policy opcode: ${(opcode as { op: string }).op}. Evaluation terminated.`);
+      }
+    }
+  }
 
-/**
- * Execute a single opcode, modifying the stack.
- */
-function executeOpcode(
-  opcode: PolicyOpcode,
-  stack: unknown[],
-  body: Record<string, unknown>,
-): void {
-  switch (opcode.op) {
-    case 'LOAD_FIELD': {
-      const value = getNestedField(body, opcode.field);
-      stack.push(value);
-      break;
-    }
-    case 'LOAD_CONST': {
-      stack.push(opcode.value);
-      break;
-    }
-    case 'EQ': {
-      const b = stack.pop();
-      const a = stack.pop();
-      stack.push(a === b);
-      break;
-    }
-    case 'NEQ': {
-      const b = stack.pop();
-      const a = stack.pop();
-      stack.push(a !== b);
-      break;
-    }
-    case 'LT': {
-      const b = stack.pop() as number;
-      const a = stack.pop() as number;
-      stack.push(a < b);
-      break;
-    }
-    case 'LTE': {
-      const b = stack.pop() as number;
-      const a = stack.pop() as number;
-      stack.push(a <= b);
-      break;
-    }
-    case 'GT': {
-      const b = stack.pop() as number;
-      const a = stack.pop() as number;
-      stack.push(a > b);
-      break;
-    }
-    case 'GTE': {
-      const b = stack.pop() as number;
-      const a = stack.pop() as number;
-      stack.push(a >= b);
-      break;
-    }
-    case 'IN_RANGE': {
-      const value = stack.pop() as number;
-      stack.push(value >= opcode.lo && value <= opcode.hi);
-      break;
-    }
-    case 'NOT_IN_RANGE': {
-      const value = stack.pop() as number;
-      stack.push(value < opcode.lo || value > opcode.hi);
-      break;
-    }
-    case 'CONTAINS': {
-      const item = stack.pop();
-      const collection = stack.pop() as unknown[];
-      stack.push(Array.isArray(collection) && collection.includes(item));
-      break;
-    }
-    case 'NOT_CONTAINS': {
-      const item = stack.pop();
-      const collection = stack.pop() as unknown[];
-      stack.push(!Array.isArray(collection) || !collection.includes(item));
-      break;
-    }
-    case 'TYPE_IS': {
-      const value = stack.pop();
-      stack.push(typeof value === opcode.typeName);
-      break;
-    }
-    case 'AND': {
-      const b = stack.pop() as boolean;
-      const a = stack.pop() as boolean;
-      stack.push(a && b);
-      break;
-    }
-    case 'OR': {
-      const b = stack.pop() as boolean;
-      const a = stack.pop() as boolean;
-      stack.push(a || b);
-      break;
-    }
-    case 'NOT': {
-      const a = stack.pop() as boolean;
-      stack.push(!a);
-      break;
-    }
-    case 'EVERY': {
-      // Pop `count` boolean values from stack
-      // Return true if ALL are true
-      const count = opcode.count;
-      const values: boolean[] = [];
-      for (let i = 0; i < count; i++) {
-        values.push(stack.pop() as boolean);
-      }
-      stack.push(values.every(v => v === true));
-      break;
-    }
-    case 'SOME': {
-      // Pop `count` boolean values from stack
-      // Return true if AT LEAST ONE is true
-      const count = opcode.count;
-      const values: boolean[] = [];
-      for (let i = 0; i < count; i++) {
-        values.push(stack.pop() as boolean);
-      }
-      stack.push(values.some(v => v === true));
-      break;
-    }
-    case 'LOOKUP': {
-      // Deterministic table lookup — replaces dynamic code execution
-      // Look up a value from a named lookup table by key
-      // The lookup table must be registered at pipeline construction time
-      const lookupKey = stack.pop();
-      const table = LOOKUP_TABLES[opcode.table];
-      if (!table) {
-        throw new Error(`Unknown lookup table: ${opcode.table}. Evaluation terminated.`);
-      }
-      const result = table[String(lookupKey)] ?? table[opcode.key];
-      stack.push(result ?? null);
-      break;
-    }
-    case 'RESULT': {
-      // Push the policy result onto the stack
-      stack.push(opcode.policy);
-      break;
-    }
-    default: {
-      // CONTRACT: Unknown opcode must terminate evaluation.
-      // Never silently ignore unknown opcodes.
-      throw new Error(`Unknown policy opcode: ${(opcode as { op: string }).op}. Evaluation terminated.`);
-    }
+  /**
+   * Get the current lookup tables (for testing/inspection).
+   */
+  getLookupTables(): Readonly<Record<string, Record<string, unknown>>> {
+    return this.lookupTables;
+  }
+
+  /**
+   * Reset the evaluator (for replay).
+   */
+  reset(lookupTables?: Record<string, Record<string, unknown>>): void {
+    this.lookupTables = lookupTables ?? {};
   }
 }
 
@@ -219,7 +233,7 @@ function getNestedField(obj: Record<string, unknown>, field: string): unknown {
 export function compilePolicy(config: {
   id: string;
   name: string;
-  severity: Severity;
+  severity: import('./types').Severity;
   appliesTo: import('./types').FactType[];
   rules: Array<{
     field: string;
@@ -299,4 +313,45 @@ export function compilePolicy(config: {
     active: true,
     createdAt: 0, // Will be set by injected clock
   };
+}
+
+// ──────────────────────────────────────────────────
+// Backward-compatible module-level functions
+// These use a default evaluator instance. For strict
+// contract compliance, use the PolicyEvaluator class.
+// ──────────────────────────────────────────────────
+
+const defaultEvaluator = new PolicyEvaluator();
+
+/**
+ * @deprecated Use `new PolicyEvaluator(lookupTables).evaluate(policy, body)` instead.
+ * Module-level function for backward compatibility.
+ */
+export const LOOKUP_TABLES: Record<string, Record<string, unknown>> = new Proxy({} as Record<string, Record<string, unknown>>, {
+  get(_target, prop: string) {
+    return defaultEvaluator.getLookupTables()[prop];
+  },
+  set(_target, prop: string, value: Record<string, unknown>) {
+    defaultEvaluator.registerLookupTable(prop, value);
+    return true;
+  },
+});
+
+/**
+ * @deprecated Use `new PolicyEvaluator().evaluate(policy, body)` instead.
+ * Module-level function for backward compatibility.
+ */
+export function evaluatePolicy(
+  policy: PolicyRule,
+  body: Record<string, unknown>,
+): PolicyResult {
+  return defaultEvaluator.evaluate(policy, body);
+}
+
+/**
+ * @deprecated Use `new PolicyEvaluator().registerLookupTable(name, table)` instead.
+ * Module-level function for backward compatibility.
+ */
+export function registerLookupTable(name: string, table: Record<string, unknown>): void {
+  defaultEvaluator.registerLookupTable(name, table);
 }

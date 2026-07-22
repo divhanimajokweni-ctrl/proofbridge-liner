@@ -1,46 +1,50 @@
 // Epistemic Runtime v0.8 — AWS KMS Signer Module
 // Phase K: Signer Providers — AWS KMS, IAM Federation, OIDC
+//
+// CONTRACT: These are production signer interfaces. They require
+// AWS SDK integration and valid credentials. Until integrated,
+// all methods throw NOT_CONFIGURED errors rather than returning
+// fake hashes (which could create a false sense of security).
 
 import type { SignerProvider } from '@/lib/kernel/types';
-import { computeSHA256 } from '@/lib/kernel/hashing';
 
 /**
  * AWS KMS Signer.
- * 
- * Uses AWS KMS for signing operations.
- * No static credentials — uses IAM role or OIDC federation.
- * 
- * Note: This is a stub implementation. In production, configure with
- * actual AWS KMS key ARN and SDK client.
+ *
+ * Uses AWS KMS for signing operations. No static credentials —
+ * uses IAM role or OIDC federation.
+ *
+ * IMPORTANT: This signer is NOT functional without AWS SDK integration.
+ * It throws on all operations to prevent silent security failures.
  */
 export class AWSKMSSigner implements SignerProvider {
   private keyArn: string;
-  private publicKeyCache: string | null = null;
 
   constructor(config: { keyArn: string }) {
     this.keyArn = config.keyArn;
   }
 
-  sign(canonicalBytes: string): string {
-    // Production: Call KMS Sign API
-    // The hash of canonical bytes is signed by KMS
-    const digest = computeSHA256(canonicalBytes);
-    // Stub: In production, this would call AWS KMS
-    console.log(`[KMS] Would sign with key ${this.keyArn}`);
-    return computeSHA256(`kms:${this.keyArn}:${digest}`);
+  private notConfigured(): never {
+    throw new Error(
+      `AWSKMSSigner is not configured. ` +
+      `Install @aws-sdk/client-kms and integrate with key ARN: ${this.keyArn}. ` +
+      `For development, use HmacSigner instead.`
+    );
   }
 
-  verify(canonicalBytes: string, signature: string, publicKey: string): boolean {
+  sign(_canonicalBytes: string): string {
+    // Production: Call KMS Sign API with the hash of canonicalBytes
+    this.notConfigured();
+  }
+
+  verify(_canonicalBytes: string, _signature: string, _publicKey: string): boolean {
     // Production: Call KMS Verify API or verify locally with public key
-    const expected = computeSHA256(`kms:${this.keyArn}:${computeSHA256(canonicalBytes)}`);
-    return expected === signature;
+    this.notConfigured();
   }
 
   getPublicKey(): string {
-    if (this.publicKeyCache) return this.publicKeyCache;
     // Production: Call KMS GetPublicKey API
-    this.publicKeyCache = computeSHA256(`kms-pubkey:${this.keyArn}`);
-    return this.publicKeyCache;
+    this.notConfigured();
   }
 
   getAlgorithm(): string {
@@ -51,6 +55,8 @@ export class AWSKMSSigner implements SignerProvider {
 /**
  * IAM Federation Signer.
  * Uses AWS IAM federation for identity-based signing.
+ *
+ * IMPORTANT: This signer is NOT functional without AWS SDK integration.
  */
 export class IAMFederationSigner implements SignerProvider {
   private roleArn: string;
@@ -61,18 +67,24 @@ export class IAMFederationSigner implements SignerProvider {
     this.sessionName = config.sessionName;
   }
 
-  sign(canonicalBytes: string): string {
-    // Production: Assume role, get temporary credentials, sign
-    return computeSHA256(`iam:${this.roleArn}:${this.sessionName}:${computeSHA256(canonicalBytes)}`);
+  private notConfigured(): never {
+    throw new Error(
+      `IAMFederationSigner is not configured. ` +
+      `Install @aws-sdk/client-sts and integrate with role: ${this.roleArn}. ` +
+      `For development, use HmacSigner instead.`
+    );
   }
 
-  verify(canonicalBytes: string, signature: string, publicKey: string): boolean {
-    const expected = computeSHA256(`iam:${this.roleArn}:${this.sessionName}:${computeSHA256(canonicalBytes)}`);
-    return expected === signature;
+  sign(_canonicalBytes: string): string {
+    this.notConfigured();
+  }
+
+  verify(_canonicalBytes: string, _signature: string, _publicKey: string): boolean {
+    this.notConfigured();
   }
 
   getPublicKey(): string {
-    return computeSHA256(`iam-pubkey:${this.roleArn}:${this.sessionName}`);
+    this.notConfigured();
   }
 
   getAlgorithm(): string {
@@ -83,6 +95,8 @@ export class IAMFederationSigner implements SignerProvider {
 /**
  * OIDC Signer.
  * Uses OIDC token-based signing.
+ *
+ * IMPORTANT: This signer is NOT functional without OIDC provider integration.
  */
 export class OIDCSigner implements SignerProvider {
   private issuer: string;
@@ -93,18 +107,24 @@ export class OIDCSigner implements SignerProvider {
     this.audience = config.audience;
   }
 
-  sign(canonicalBytes: string): string {
-    // Production: Get OIDC token from provider, sign with it
-    return computeSHA256(`oidc:${this.issuer}:${this.audience}:${computeSHA256(canonicalBytes)}`);
+  private notConfigured(): never {
+    throw new Error(
+      `OIDCSigner is not configured. ` +
+      `Integrate with OIDC provider: ${this.issuer} (audience: ${this.audience}). ` +
+      `For development, use HmacSigner instead.`
+    );
   }
 
-  verify(canonicalBytes: string, signature: string, publicKey: string): boolean {
-    const expected = computeSHA256(`oidc:${this.issuer}:${this.audience}:${computeSHA256(canonicalBytes)}`);
-    return expected === signature;
+  sign(_canonicalBytes: string): string {
+    this.notConfigured();
+  }
+
+  verify(_canonicalBytes: string, _signature: string, _publicKey: string): boolean {
+    this.notConfigured();
   }
 
   getPublicKey(): string {
-    return computeSHA256(`oidc-pubkey:${this.issuer}:${this.audience}`);
+    this.notConfigured();
   }
 
   getAlgorithm(): string {

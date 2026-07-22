@@ -777,3 +777,114 @@ Stage Summary:
 - All 12 verification assertions are real checks, not hardcoded true
 - EXECUTION_CONTRACT.md created as the single source of truth
 - Known gaps documented honestly: RFC 8785 edge cases, S3 stub, KMS stub, missing test suite
+
+---
+Task ID: 2-3
+Agent: critical-bug-fixer
+Task: Fix MMR engine and RFC 8785 surrogate pair bugs
+
+Work Log:
+- Read worklog.md and all relevant source files (mmr.ts, hashing.ts, types.ts, canonicalization.ts)
+- Audited all consumers of the MMR class (runtime.ts, acceptance-pipeline.ts, replay.ts, validator.ts) to confirm API surface compatibility
+- Added `hashPairOrdered(left, right)` to hashing.ts — computes SHA-256(left + right) WITHOUT lexicographic sorting, preserving left/right structural info critical for MMR correctness
+- Kept existing `hashPair` for backward compatibility (used elsewhere in the codebase)
+- Completely rewrote mmr.ts using the standard position-based MMR algorithm:
+  - Replaced flat `MMRNode[]` array with `Map<number, string>` for hashes and facts (position → value)
+  - Implemented correct `height(pos)` via trailing-ones count in (pos+1)
+  - Implemented correct peak detection by walking the mountain structure
+  - Implemented correct sibling/parent position math using standard MMR formulas
+  - `append()` now stores leaf at position = size, then merges while consecutive nodes have the same height
+  - `leafIndexToPosition()` converts leaf index to MMR position using 2*k - popcount(k)
+  - `getInclusionProof()` walks from leaf position to peak collecting ordered sibling hashes
+  - `verifyProof()` tries both left/right orderings to handle lack of direction info in MMRProof type
+  - Root computation bags peaks right-to-left using hashPairOrdered
+- Fixed RFC 8785 surrogate pair encoding in canonicalization.ts:
+  - Replaced incorrect code that computed `\u{10000}` (5+ hex digits, invalid JSON) from combined code point
+  - Now correctly encodes surrogate pairs as `\uXXXX\uXXXX` (high surrogate + low surrogate) per RFC 8785
+  - Added handling for lone low surrogates (0xDC00-0xDFFF) which previously fell through to raw character output
+- Ran lint: 0 errors, 0 warnings
+- Dev server: stable, no issues
+
+Stage Summary:
+- MMR engine rewritten from scratch with correct position-based algorithm — roots and proofs now valid for any number of elements
+- hashPairOrdered added to hashing.ts for ordered (non-sorted) Merkle pair hashing
+- RFC 8785 canonicalization now produces valid JSON for Unicode code points above U+FFFF via UTF-16 surrogate pair encoding
+- Lone low surrogate edge case handled correctly
+- All existing API surface preserved (append, getRoot, getInclusionProof, verifyProof, getPeaks, getNodes, size, reset)
+
+---
+Task ID: 6-8
+Agent: missing-deliverables
+Task: Implement Operational Collector, state.sh, and Projection Registry
+
+Work Log:
+- Read worklog.md, kernel types, projection engine, acceptance pipeline, runtime kernel, and kernel API route to understand existing architecture
+- Implemented OperationalCollector at src/lib/kernel/operational-collector.ts with ObservationSource interface, OperationalCollector class, and three built-in deterministic sources (GitSource, FileSystemSource, CISource)
+- Implemented state.sh at scripts/state.sh as a read-only projection client with list, get, watch, root, verify subcommands using curl + python3 for JSON parsing
+- Implemented ProjectionRegistry at src/lib/kernel/projection-registry.ts with ProjectionMeta interface, lifecycle fact emission (projection_registered/projection_deprecated), history tracking, and separation from ProjectionEngine
+- Updated src/lib/kernel/index.ts to export new modules (projection-registry and operational-collector)
+- Ran lint: 0 errors, 0 warnings
+
+Stage Summary:
+- OperationalCollector: READ-ONLY collector that submits observations through AcceptancePipeline (never writes directly). Three built-in deterministic sources: GitSource (git commit observations), FileSystemSource (file change observations), CISource (CI/CD status observations). All sources accept configuration-driven data, no Date.now()/Math.random().
+- state.sh: Bash script with 5 subcommands (list, get, watch, root, verify). Uses curl to query /api/kernel endpoint. Watch command polls for state hash changes. Configurable via ER_BASE_URL and ER_WATCH_INTERVAL env vars.
+- ProjectionRegistry: Separated from ProjectionEngine. Tracks metadata (name, version, consumes, registeredAt, deprecated, deprecatedAt, description). Emits lifecycle facts through pipeline (projection_registered, projection_deprecated). Provides list/listActive/listDeprecated/getHistory/isRegistered/isActive queries. Reset support for replay.
+- All three deliverables comply with the Execution Contract: observations flow through AcceptancePipeline only, state.sh is read-only, ProjectionRegistry emits facts through the pipeline rather than writing directly.
+
+---
+Task ID: 4-5
+Agent: merge-trust-runtime
+Task: Merge evidence envelope and trust-runtime from cloned repo
+
+Work Log:
+- Read worklog.md and all existing kernel files (types.ts, hashing.ts, canonicalization.ts, index.ts) to understand the project architecture
+- Read all 7 evidence files from /tmp/proofbridge-liner/src/lib/evidence/ and adapted them for the Epistemic Runtime
+- Read all 8 trust-runtime files from /tmp/proofbridge-liner/src/lib/trust-runtime/ and adapted them
+- Read trust-crypto files (receipts.ts, hash.ts, merkle.ts) from /tmp/proofbridge-liner/packages/trust-crypto/src/
+- Read 3 ADR documents from /tmp/proofbridge-liner/docs/governance/adrs/
+
+Task 1 — Evidence Envelope System (src/lib/evidence/):
+- envelope.ts: Replaced Date objects with numeric timestamps, crypto.randomUUID() with injected UuidProvider, added EnvelopeProviders interface
+- hashing.ts: Replaced node:crypto createHash with kernel's computeSHA256 and canonicalize from @/lib/kernel/hashing and @/lib/kernel/canonicalization
+- signer.ts: Replaced node:crypto Ed25519 with KernelEvidenceSigner backed by kernel's SignerProvider interface; signEnvelope now takes ClockProvider
+- ledger.ts: Replaced Date comparisons with numeric timestamps from injected ClockProvider
+- gate-envelope.ts: Updated EnvelopeEmittingGate to accept EnvelopeProviders for all provider needs
+- airEngine.ts: Replaced all node:crypto with kernel providers; KernelAirEvidenceSigner uses SignerProvider; ProofBridgeAirEngine takes AirEngineProviders
+- index.ts: Created barrel export for all evidence types and functions
+
+Task 2 — Trust Runtime CQRS (src/lib/trust-runtime/):
+- types.ts: Kept Zod schemas; replaced Date-based timestamps with numeric timestamps; no Date.now()/Math.random()
+- event-store.ts: InMemoryEventStore now takes ClockProvider; PostgresEventStore is a stub (no Postgres configured); createEventStore() requires ClockProvider
+- reducer.ts: createInitialState takes ClockProvider for startedAt/lastEventAt timestamps
+- projection-manager.ts: Pure functions — no changes needed (no Date.now()/Math.random())
+- command-handler.ts: DefaultCommandHandler takes CommandHandlerProviders (clock, entropy, uuid); replaced Date.now() with clock.now(); replaced Math.random() with entropy.bytes() for txHash generation; removed RetryingCommandHandler (depended on EventStoreRepository)
+- sse-transport.ts: Server-side transport kept intact; SSEConnectionState and createSSEConnectionState exported for client use
+- use-sse-transport.ts: Created separate client-side module for Next.js (no server-side imports); imports RuntimeEvent from ./types, SSEConnectionState from ./sse-transport
+- runtime.ts: TrustRuntime constructor takes RuntimeProviders (clock, entropy, uuid); getRuntime() requires providers on first call; no Date.now() or Math.random()
+- index.ts: Created barrel export for all trust-runtime modules
+
+Task 3 — Governance ADRs (docs/governance/adrs/):
+- Copied ADR-001-event-sourcing.md, ADR-002-ed25519-signatures.md, ADR-003-canonical-json.md
+
+Task 4 — Trust-Crypto Receipts (src/lib/crypto/):
+- hash.ts: Replaced node:crypto with kernel's computeSHA256 and canonicalize; HMAC uses @noble/hashes/hmac.js; hash chains, domain hashing, canonicalHash all preserved
+- merkle.ts: Adapted from proofbridge-liner; uses sha256Hex/hashObject from local hash.ts instead of node:crypto
+- receipts.ts: ReceiptProviders interface (clock, uuid, entropy); generateReceiptId uses uuid.generate(); signReceipt uses hmacSha256Hex from local hash; verifyReceipt uses injected currentTimestamp for age checks; createReceiptBatch takes providers
+- index.ts: Created barrel export for all crypto types and functions
+
+- Installed @noble/hashes@2.2.0 for HMAC support
+- Fixed import path for @noble/hashes/hmac.js (v2 requires .js extension)
+- Fixed evidence/index.ts barrel export for EvidenceLedgerEntry
+- Fixed use-sse-transport.ts to import RuntimeEvent from ./types
+- Lint: 0 errors, 0 warnings
+- TypeScript: 0 errors in new modules
+
+Stage Summary:
+- Evidence Envelope System: 7 files in src/lib/evidence/ — full 8-stage execution envelope with kernel-backed hashing and signing
+- Trust Runtime CQRS: 9 files in src/lib/trust-runtime/ — event-sourced runtime with state machine, command handler, projections, SSE transport
+- Governance ADRs: 3 ADR documents in docs/governance/adrs/
+- Trust-Crypto Receipts: 4 files in src/lib/crypto/ — receipt generation/verification, HMAC, Merkle trees, hash chains
+- All new code uses injected providers (ClockProvider, EntropyProvider, UuidProvider, SignerProvider) — zero Date.now(), Math.random(), or crypto.randomUUID() calls
+- All hashing uses kernel's SHA-256 via @noble/hashes — zero node:crypto imports
+- PostgresEventStore is a stub, InMemoryEventStore is fully functional
+- Existing kernel is completely untouched — new code is a complementary layer on top

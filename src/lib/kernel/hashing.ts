@@ -47,3 +47,12 @@ export function hashPair(a: string, b: string): string {
   const [first, second] = a < b ? [a, b] : [b, a];
   return computeSHA256(first + second);
 }
+
+/**
+ * Hash two values together preserving left/right ordering (for MMR computation).
+ * Unlike hashPair, this does NOT sort — it computes SHA-256(left + right).
+ * This is critical for MMR correctness where structural position matters.
+ */
+export function hashPairOrdered(left: string, right: string): string {
+  return computeSHA256(left + right);
+}

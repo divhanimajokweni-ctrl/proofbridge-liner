@@ -1,5 +1,10 @@
 // Epistemic Runtime v0.8 — Runtime Kernel
 // The orchestrator that ties all kernel components together.
+//
+// CONTRACT: Provider injection is supported for both development
+// and production. RuntimeKernel.create() uses deterministic dev
+// providers. RuntimeKernel.createWithProviders() accepts custom
+// providers for production (S3, KMS, etc.).
 
 import type {
   Fact,
@@ -17,9 +22,11 @@ import { MerkleMountainRange } from './mmr';
 import { DeterministicSequencer } from './sequencer';
 import { SchemaRegistry } from './schema-registry';
 import { ProjectionEngine, type ProjectionHandler } from './projection';
+import { ProjectionRegistry } from './projection-registry';
 import { DeterministicReplay } from './replay';
 import { computeSHA256 } from './hashing';
 import { canonicalize } from './canonicalization';
+import { PolicyEvaluator } from './policy-evaluator';
 import { DeterministicClock } from '@/engine/clock';
 import { DeterministicEntropy } from '@/engine/entropy';
 import { DeterministicUuid } from '@/engine/uuid';
@@ -40,6 +47,8 @@ export class RuntimeKernel {
   private sequencer: DeterministicSequencer;
   private schemaRegistry: SchemaRegistry;
   private projectionEngine: ProjectionEngine;
+  private projectionRegistry: ProjectionRegistry;
+  private policyEvaluator: PolicyEvaluator;
   private providers: RuntimeProviders;
   private config: KernelConfig;
 
@@ -51,6 +60,8 @@ export class RuntimeKernel {
     sequencer: DeterministicSequencer,
     schemaRegistry: SchemaRegistry,
     projectionEngine: ProjectionEngine,
+    projectionRegistry: ProjectionRegistry,
+    policyEvaluator: PolicyEvaluator,
   ) {
     this.config = config;
     this.providers = providers;
@@ -59,10 +70,13 @@ export class RuntimeKernel {
     this.sequencer = sequencer;
     this.schemaRegistry = schemaRegistry;
     this.projectionEngine = projectionEngine;
+    this.projectionRegistry = projectionRegistry;
+    this.policyEvaluator = policyEvaluator;
   }
 
   /**
-   * Create a deterministic kernel from config.
+   * Create a deterministic kernel from config using dev providers.
+   * For production, use createWithProviders() instead.
    */
   static create(config: KernelConfig): RuntimeKernel {
     const clock = new DeterministicClock(config.initialClockTime, 1000);
@@ -73,15 +87,26 @@ export class RuntimeKernel {
 
     const providers: RuntimeProviders = { clock, entropy, uuid, signer, storage };
 
-    const sequencer = new DeterministicSequencer(clock, 0);
+    return RuntimeKernel.createWithProviders(config, providers);
+  }
+
+  /**
+   * Create a kernel with custom providers for production use.
+   * This is the DI entry point — pass S3 storage, KMS signer, etc.
+   */
+  static createWithProviders(config: KernelConfig, providers: RuntimeProviders): RuntimeKernel {
+    const sequencer = new DeterministicSequencer(providers.clock, 0);
     const mmr = new MerkleMountainRange();
     const schemaRegistry = new SchemaRegistry();
+    const projectionEngine = new ProjectionEngine();
+    const projectionRegistry = new ProjectionRegistry();
+    const policyEvaluator = new PolicyEvaluator();
 
     const pipeline = new AcceptancePipeline(providers, sequencer, mmr, schemaRegistry);
-    const projectionEngine = new ProjectionEngine();
 
     return new RuntimeKernel(
-      config, providers, pipeline, mmr, sequencer, schemaRegistry, projectionEngine,
+      config, providers, pipeline, mmr, sequencer,
+      schemaRegistry, projectionEngine, projectionRegistry, policyEvaluator,
     );
   }
 
@@ -104,9 +129,13 @@ export class RuntimeKernel {
 
   /**
    * Register a projection handler.
+   * Also registers it with the ProjectionRegistry for lifecycle tracking.
    */
-  registerProjection(handler: ProjectionHandler): void {
+  registerProjection(handler: ProjectionHandler, description?: string): void {
     this.projectionEngine.register(handler);
+    // Register in the registry — lifecycle fact is returned but we don't
+    // auto-submit it (the caller can choose to submit it through the pipeline)
+    this.projectionRegistry.register(handler, this.providers.clock, description);
   }
 
   /**
@@ -121,6 +150,13 @@ export class RuntimeKernel {
    */
   registerPolicy(policy: PolicyRule): void {
     this.pipeline.registerPolicy(policy);
+  }
+
+  /**
+   * Register a lookup table for the policy evaluator.
+   */
+  registerLookupTable(name: string, table: Record<string, unknown>): void {
+    this.policyEvaluator.registerLookupTable(name, table);
   }
 
   /**
@@ -166,6 +202,27 @@ export class RuntimeKernel {
   }
 
   /**
+   * Get the projection registry.
+   */
+  getProjectionRegistry(): ProjectionRegistry {
+    return this.projectionRegistry;
+  }
+
+  /**
+   * Get the policy evaluator.
+   */
+  getPolicyEvaluator(): PolicyEvaluator {
+    return this.policyEvaluator;
+  }
+
+  /**
+   * Get the schema registry.
+   */
+  getSchemaRegistry(): SchemaRegistry {
+    return this.schemaRegistry;
+  }
+
+  /**
    * Verify deterministic replay.
    */
   async verifyReplay(observations: Array<{
@@ -181,19 +238,24 @@ export class RuntimeKernel {
       replay.addSchemaRegistration(schema);
     }
 
-    // Copy projection handlers from current projections
+    // Copy projection handlers — use REAL registered handlers, not simplified ones
     for (const proj of this.projectionEngine.getAll()) {
-      // Use a simple passthrough handler for verification
-      replay.addProjectionHandler({
-        name: proj.name,
-        consumes: proj.consumes,
-        initialState: {},
-        apply: (state, fact) => {
-          const newState = { ...state };
-          newState[`fact_${fact.sequence}`] = fact.hash;
-          return newState;
-        },
-      });
+      const handler = this.projectionRegistry.getHandler(proj.name);
+      if (handler) {
+        replay.addProjectionHandler(handler);
+      } else {
+        // Fallback: use a passthrough handler if the handler is not in the registry
+        replay.addProjectionHandler({
+          name: proj.name,
+          consumes: proj.consumes,
+          initialState: {},
+          apply: (state, fact) => {
+            const newState = { ...state };
+            newState[`fact_${fact.sequence}`] = fact.hash;
+            return newState;
+          },
+        });
+      }
     }
 
     // Add observations
@@ -222,7 +284,6 @@ export class RuntimeKernel {
     });
 
     // 2. SHA-256 hashing
-    const { computeSHA256 } = await import('./hashing');
     const hash1 = computeSHA256('test');
     const hash2 = computeSHA256('test');
     assertions.push({
@@ -232,7 +293,6 @@ export class RuntimeKernel {
     });
 
     // 3. RFC 8785 Canonicalization
-    const { canonicalize } = await import('./canonicalization');
     const canon1 = canonicalize({ b: 2, a: 1 });
     const canon2 = canonicalize({ a: 1, b: 2 });
     assertions.push({
@@ -242,7 +302,6 @@ export class RuntimeKernel {
     });
 
     // 4. Acceptance Pipeline Universal — verify no direct storage writes
-    // Check that the pipeline is the only path to create facts
     const pipelineUniversal = typeof this.pipeline.submit === 'function';
     assertions.push({
       name: 'Acceptance Pipeline Universal',
@@ -253,7 +312,6 @@ export class RuntimeKernel {
     });
 
     // 5. No FNV hashing — verify kernel uses only SHA-256
-    // Test that the hash function produces 64-char hex (SHA-256 output)
     const testHash = computeSHA256('fnv-check');
     const noFnv = testHash.length === 64 && /^[a-f0-9]+$/.test(testHash);
     assertions.push({
@@ -282,16 +340,19 @@ export class RuntimeKernel {
     });
 
     // 7. Evidence immutability (WORM)
-    const wormStorage = this.providers.storage as InMemoryWORMStorage;
+    const wormStorage = this.providers.storage;
     let wormVerified = true;
-    if (wormStorage.factCount > 0) {
-      const facts = await wormStorage.getFacts();
-      if (facts.length > 0) {
-        try {
-          await wormStorage.append(facts[0]); // Should throw
-          wormVerified = false;
-        } catch {
-          wormVerified = true; // Expected: WORM violation
+    if ('factCount' in wormStorage) {
+      const fc = (wormStorage as unknown as { factCount: number }).factCount;
+      if (fc > 0) {
+        const facts = await wormStorage.getFacts();
+        if (facts.length > 0) {
+          try {
+            await wormStorage.append(facts[0]); // Should throw
+            wormVerified = false;
+          } catch {
+            wormVerified = true; // Expected: WORM violation
+          }
         }
       }
     }
@@ -313,12 +374,12 @@ export class RuntimeKernel {
       message: mmrVerified ? `MMR root: ${this.mmr.getRoot()}` : 'MMR proof verification failed',
     });
 
-    // 9. Schema validation active — test that schema registry rejects invalid observations
-    // Register a strict schema with higher version, then validate against it
-    this.schemaRegistry.register({
+    // 9. Schema validation active
+    const schemaRegistry = new SchemaRegistry(); // Use a fresh registry for testing
+    schemaRegistry.register({
       id: '__verify-strict-schema',
       name: 'Verification Strict Schema',
-      version: 999, // Highest version — will be used for validation
+      version: 999,
       factType: 'observation',
       jsonSchema: {
         type: 'object',
@@ -330,8 +391,8 @@ export class RuntimeKernel {
       },
       createdAt: this.providers.clock.now(),
     });
-    const strictResult = this.schemaRegistry.validate('observation', { wrongField: 'test' });
-    const schemaActive = !strictResult.valid; // Should reject — missing required field + additionalProperties false
+    const strictResult = schemaRegistry.validate('observation', { wrongField: 'test' });
+    const schemaActive = !strictResult.valid;
     assertions.push({
       name: 'Schema Validation Active',
       passed: schemaActive,
@@ -341,7 +402,6 @@ export class RuntimeKernel {
     });
 
     // 10. Policy engine deterministic
-    const { evaluatePolicy } = await import('./policy-evaluator');
     const testPolicy: import('./types').PolicyRule = {
       id: 'test-policy',
       name: 'Test Policy',
@@ -356,8 +416,8 @@ export class RuntimeKernel {
       active: true,
       createdAt: 0,
     };
-    const policyResult1 = evaluatePolicy(testPolicy, { value: 42 });
-    const policyResult2 = evaluatePolicy(testPolicy, { value: 42 });
+    const policyResult1 = this.policyEvaluator.evaluate(testPolicy, { value: 42 });
+    const policyResult2 = this.policyEvaluator.evaluate(testPolicy, { value: 42 });
     assertions.push({
       name: 'Policy Engine Deterministic',
       passed: policyResult1 === policyResult2,
@@ -367,25 +427,19 @@ export class RuntimeKernel {
     });
 
     // 11. Canonicalization uses RFC 8785, not JSON.stringify
-    // Verify that canonicalization produces different output than JSON.stringify
-    // for the same input (RFC 8785 sorts keys, JSON.stringify doesn't guarantee order)
     const canonTestObj = { z: 1, a: 2, m: 3 };
     const rfc8785Result = canonicalize(canonTestObj);
-    const jsonStringifyResult = JSON.stringify(canonTestObj);
-    // RFC 8785 must sort keys: {"a":2,"m":3,"z":1}
-    // JSON.stringify may or may not sort keys depending on engine
     const usesRFC8785 = rfc8785Result === '{"a":2,"m":3,"z":1}';
     assertions.push({
       name: 'RFC 8785 Canonicalization (not JSON.stringify)',
       passed: usesRFC8785,
       message: usesRFC8785
         ? `Canonical output is RFC 8785 sorted: ${rfc8785Result}`
-        : `Canonical output differs from expected RFC 8785: ${rfc8785Result} (JSON.stringify: ${jsonStringifyResult})`,
+        : `Canonical output differs from expected RFC 8785: ${rfc8785Result}`,
     });
 
     // 12. Signature verification
-    const { canonicalize: canonicalizeMod } = await import('./canonicalization');
-    const testCanonical = canonicalizeMod({ test: 'signature' });
+    const testCanonical = canonicalize({ test: 'signature' });
     const signature = this.providers.signer.sign(testCanonical);
     const sigVerified = this.providers.signer.verify(
       testCanonical,
