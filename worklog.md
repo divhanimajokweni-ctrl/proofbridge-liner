@@ -888,3 +888,38 @@ Stage Summary:
 - All hashing uses kernel's SHA-256 via @noble/hashes — zero node:crypto imports
 - PostgresEventStore is a stub, InMemoryEventStore is fully functional
 - Existing kernel is completely untouched — new code is a complementary layer on top
+
+---
+Task ID: 1-12
+Agent: main-orchestrator
+Task: Execute EXECUTION_CONTRACT.md — Full v0.8 Implementation with proofbridge-liner merge
+
+Work Log:
+- Cloned proofbridge-liner repo from GitHub
+- Conducted comprehensive gap analysis comparing existing implementation against Execution Contract
+- Identified 2 critical bugs (MMR engine, RFC 8785 surrogate pairs), 3 missing deliverables, 4 contract violations
+- Created EXECUTION_CONTRACT.md as the root contract document
+- Fixed MMR engine: Complete rewrite using correct peak-stack algorithm (old conflated leaf/internal nodes)
+- Fixed RFC 8785: Surrogate pairs now encode as \uXXXX\uXXXX instead of invalid 5+ hex digits
+- Added hashPairOrdered() to hashing.ts (preserves left/right structure for MMR)
+- Converted PolicyEvaluator from module-level LOOKUP_TABLES global to class-based with constructor injection
+- Added RuntimeKernel.createWithProviders() for production DI support
+- Changed S3/KMS stubs to throw NOT_CONFIGURED instead of silently returning fake data
+- Implemented OperationalCollector with GitSource, FileSystemSource, CISource
+- Implemented state.sh read-only projection client CLI
+- Implemented ProjectionRegistry with lifecycle tracking and fact emission
+- Merged Evidence Envelope System (8-stage execution envelope)
+- Merged Trust Runtime (CQRS event-sourcing with injected providers)
+- Merged Trust-Crypto (HMAC, hash chains, Merkle tree, receipts)
+- Merged Governance ADRs (Event Sourcing, Ed25519, Canonical JSON)
+- Created full vitest test suite (57 tests, all 12 required verifications)
+- Updated kernel API with contract compliance data
+
+Stage Summary:
+- 57/57 vitest tests PASS
+- 12/12 kernel verification assertions PASS
+- Zero lint errors
+- Deterministic replay VERIFIED (bit-for-bit identical)
+- 17/17 Execution Contract deliverables implemented
+- Branch `epistemic-runtime-v0.8` ready for PR (local commit only — GitHub push requires credentials)
+- Key risks: S3/KMS are interface-only (throws on use), no GitHub credentials for push
