@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "epistemic://runtime/v0.8/schemas/projection",
+  "title": "Projection",
+  "description": "A Projection — how to consume. Derived view of facts. Read-only from the client perspective.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Deterministic ID derived from name + version"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Version — incremented by ProjectionRegistered facts"
+    },
+    "consumes": {
+      "type": "array",
+      "items": {
+        "$ref": "epistemic://runtime/v0.8/schemas/fact-types"
+      },
+      "description": "The fact types this projection consumes"
+    },
+    "state": {
+      "type": "object",
+      "description": "Current state derived from consumed facts",
+      "additionalProperties": true
+    },
+    "factRoot": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 root of all facts that contributed to this projection"
+    },
+    "stateHash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the projection state (RFC 8785 canonicalized)"
+    },
+    "registeredAt": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Registration timestamp from injected ClockProvider"
+    },
+    "updatedAt": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Last update timestamp from injected ClockProvider"
+    },
+    "deprecated": {
+      "type": "boolean",
+      "description": "Whether this projection has been deprecated"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "version",
+    "consumes",
+    "state",
+    "factRoot",
+    "stateHash",
+    "registeredAt",
+    "updatedAt",
+    "deprecated"
+  ],
+  "additionalProperties": false
+}
