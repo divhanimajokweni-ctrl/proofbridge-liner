@@ -6,7 +6,7 @@ import type { Variants } from "framer-motion";
 import {
   FileText, Layers, Shield, Lock, Network, GitBranch, Scale, Brain,
   Code, Braces, KeyRound, Fingerprint, ClipboardCheck, FileCheck,
-  Award, BadgeCheck, Eye, Telescope, AlertTriangle, Wave,
+  Award, BadgeCheck, Eye, Telescope, AlertTriangle, Waves,
   CheckCircle2, XCircle, ArrowRight, ChevronRight, Hash, Signature,
   Activity, RefreshCw, Terminal, Cpu, Database, CircleDot,
   Boxes, ShieldCheck, ShieldAlert,
@@ -98,7 +98,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   "Eye": Eye,
   "Telescope": Telescope,
   "AlertTriangle": AlertTriangle,
-  "Wave": Wave,
+  "Wave": Waves,
 };
 
 /* ─── Status Color Map ─── */

@@ -1,0 +1,755 @@
+     1→"use client";
+     2→
+     3→import { useEffect, useState, useCallback } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import type { Variants } from "framer-motion";
+     6→import {
+     7→  FileText, Layers, Shield, Lock, Network, GitBranch, Scale, Brain,
+     8→  Code, Braces, KeyRound, Fingerprint, ClipboardCheck, FileCheck,
+     9→  Award, BadgeCheck, Eye, Telescope, AlertTriangle, Wave,
+    10→  CheckCircle2, XCircle, ArrowRight, ChevronRight, Hash, Signature,
+    11→  Activity, RefreshCw, Terminal, Cpu, Database, CircleDot,
+    12→  Boxes, ShieldCheck, ShieldAlert,
+    13→} from "lucide-react";
+    14→import { Card } from "@/components/ui/card";
+    15→import {
+    16→  StatusPill, StatCard, GradientBorderCard,
+    17→  containerVariants, cardVariants, itemVariants,
+    18→  TopAccentBar, GridOverlay, Hash as HashComp,
+    19→} from "./primitives";
+    20→import { MetricGauge, DonutChart } from "./chart-primitives";
+    21→
+    22→/* ─── Types ─── */
+    23→interface Concept {
+    24→  id: number;
+    25→  name: string;
+    26→  status: "implemented" | "enforced" | "partial" | "planned";
+    27→  description: string;
+    28→  icon: string;
+    29→}
+    30→
+    31→interface CorrelationNode {
+    32→  fact: string;
+    33→  causationId: string | null;
+    34→  correlationId: string;
+    35→  parentFactId?: string;
+    36→}
+    37→
+    38→interface ProvenanceFlow {
+    39→  agent: string;
+    40→  promptHash: string;
+    41→  toolCallHashes: string[];
+    42→  outputHash: string;
+    43→  humanApproved: boolean;
+    44→  result: string;
+    45→}
+    46→
+    47→interface ReplayCertificate {
+    48→  projection: string;
+    49→  projectionHash: string;
+    50→  factCount: number;
+    51→  factRoot: string;
+    52→  runtimeVersion: string;
+    53→  policyVersion: string;
+    54→  passed: boolean;
+    55→  timestamp: number;
+    56→  signature: string;
+    57→}
+    58→
+    59→interface AdapterEntry {
+    60→  sourceSystem: string;
+    61→  capabilities: string[];
+    62→}
+    63→
+    64→interface FortificationData {
+    65→  version: string;
+    66→  concepts: Concept[];
+    67→  capabilities: string[];
+    68→  adapters: AdapterEntry[];
+    69→  correlationChain: CorrelationNode[];
+    70→  replayCertificate: ReplayCertificate;
+    71→  provenanceFlow: ProvenanceFlow;
+    72→}
+    73→
+    74→/* ─── Animation Variants ─── */
+    75→const cv: Variants = { hidden: {}, visible: { transition: { staggerChildren: 0.06 } } };
+    76→const cardV: Variants = { hidden: { opacity: 0, y: 14 }, visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 24 } } };
+    77→const itemV: Variants = { hidden: { opacity: 0, x: -8 }, visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 26 } } };
+    78→const fadeV: Variants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: 0.4 } } };
+    79→
+    80→/* ─── Icon Map ─── */
+    81→const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+    82→  "FileText": FileText,
+    83→  "Layers": Layers,
+    84→  "Shield": Shield,
+    85→  "Lock": Lock,
+    86→  "Network": Network,
+    87→  "GitBranch": GitBranch,
+    88→  "Scale": Scale,
+    89→  "Brain": Brain,
+    90→  "Code": Code,
+    91→  "Braces": Braces,
+    92→  "KeyRound": KeyRound,
+    93→  "Fingerprint": Fingerprint,
+    94→  "ClipboardCheck": ClipboardCheck,
+    95→  "FileCheck": FileCheck,
+    96→  "Award": Award,
+    97→  "BadgeCheck": BadgeCheck,
+    98→  "Eye": Eye,
+    99→  "Telescope": Telescope,
+   100→  "AlertTriangle": AlertTriangle,
+   101→  "Wave": Wave,
+   102→};
+   103→
+   104→/* ─── Status Color Map ─── */
+   105→const STATUS_CONFIG: Record<string, { color: string; text: string; icon: typeof CheckCircle2; label: string }> = {
+   106→  implemented: { color: "border-verified/30 bg-verified/10", text: "text-verified", icon: CheckCircle2, label: "Implemented" },
+   107→  enforced: { color: "border-verified/30 bg-verified/10", text: "text-verified", icon: ShieldCheck, label: "Enforced" },
+   108→  partial: { color: "border-repairing/30 bg-repairing/10", text: "text-repairing", icon: Activity, label: "Partial" },
+   109→  planned: { color: "border-violating/30 bg-violating/10", text: "text-violating", icon: AlertTriangle, label: "Planned" },
+   110→};
+   111→
+   112→/* ─── Card Shell ─── */
+   113→function Shell({ children, accent, className }: { children: React.ReactNode; accent?: string; className?: string }) {
+   114→  return (
+   115→    <Card className={`bg-card/80 backdrop-blur-sm border-border/60 p-4 relative overflow-hidden ${className ?? ""}`}>
+   116→      {accent && <div className="absolute top-0 left-0 right-0 h-0.5 opacity-60" style={{ background: accent }} />}
+   117→      <div className="bg-grid-fine absolute inset-0 opacity-15" />
+   118→      <div className="relative">{children}</div>
+   119→    </Card>
+   120→  );
+   121→}
+   122→
+   123→/* ─── Sub-section Header ─── */
+   124→function H3({ icon: Icon, title, extra }: { icon: typeof Activity; title: string; extra?: React.ReactNode }) {
+   125→  return (
+   126→    <div className="flex items-center gap-2 mb-3">
+   127→      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-verified/10">
+   128→        <Icon className="h-3.5 w-3.5 text-verified" />
+   129→      </div>
+   130→      <h3 className="text-sm font-semibold">{title}</h3>
+   131→      {extra}
+   132→    </div>
+   133→  );
+   134→}
+   135→
+   136→/* ─── Mock Data ─── */
+   137→const MOCK_DATA: FortificationData = {
+   138→  version: "v0.8",
+   139→  concepts: [
+   140→    { id: 1, name: "Observation Versioning", status: "implemented", description: "schemaId + schemaVersion + producer + producerVersion. Makes replay possible years later.", icon: "Layers" },
+   141→    { id: 2, name: "Capability Sets", status: "implemented", description: "Vendor-neutral authorization. automation.review, automation.fix, automation.deploy, etc. ER is vendor-neutral.", icon: "Shield" },
+   142→    { id: 3, name: "Correlation Graph", status: "implemented", description: "causationId + correlationId + parentFactId. Bot Command → Review → Fix → PR → Merge → Deploy becomes traceable.", icon: "Network" },
+   143→    { id: 4, name: "Confidence ≠ Evidence", status: "enforced", description: "Trust scores are projections, NOT facts. Store \"Review Passed\" not \"Trust = 0.94\". Confidence is derived.", icon: "Scale" },
+   144→    { id: 5, name: "Typed Observation SDK", status: "implemented", description: "emitBotCommand(), emitReviewStarted(), emitFixCreated() instead of emitObservation(any). Prevents schema drift.", icon: "Code" },
+   145→    { id: 6, name: "Observation Authentication", status: "implemented", description: "Service Identity → mTLS → OIDC → JWT → Capability Policy → Acceptance. The collector never trusts \"source:kilo-bot\".", icon: "KeyRound" },
+   146→    { id: 7, name: "Projection Manifest", status: "implemented", description: "id, version, dependencies, capabilitySet, projectionHash, deterministic, owner. Projections become auditable.", icon: "ClipboardCheck" },
+   147→    { id: 8, name: "Replay Certificates", status: "implemented", description: "projection, projectionHash, factCount, factRoot, runtimeVersion, policyVersion, passed, timestamp, signature. Auditors love this.", icon: "BadgeCheck" },
+   148→    { id: 9, name: "Automation Provenance", status: "implemented", description: "Agent → Prompt Hash → Tool Call Hashes → Output Hash → Human Approval → Result. Not the prompt itself. The hash.", icon: "Eye" },
+   149→    { id: 10, name: "Drift Facts", status: "implemented", description: "OperationalDriftObserved: Projection ≠ Live System. Discrepancy becomes evidence and triggers alerts.", icon: "AlertTriangle" },
+   150→  ],
+   151→  capabilities: [
+   152→    "automation.review", "automation.fix", "automation.deploy", "automation.triage",
+   153→    "security.analysis", "security.deep-analysis", "vision.debug", "webhook.ingest", "app.build"
+   154→  ],
+   155→  adapters: [
+   156→    { sourceSystem: "kilo-bot", capabilities: ["automation.review"] },
+   157→    { sourceSystem: "code-review", capabilities: ["automation.review"] },
+   158→    { sourceSystem: "auto-fix", capabilities: ["automation.fix"] },
+   159→    { sourceSystem: "security-agent", capabilities: ["security.analysis", "security.deep-analysis"] },
+   160→    { sourceSystem: "github-actions", capabilities: ["automation.deploy"] },
+   161→  ],
+   162→  correlationChain: [
+   163→    { fact: "bot_command", causationId: null, correlationId: "workflow-123" },
+   164→    { fact: "code_review", causationId: "bot_command-456", correlationId: "workflow-123", parentFactId: "fact-bot-001" },
+   165→    { fact: "auto_fix", causationId: "code_review-789", correlationId: "workflow-123", parentFactId: "fact-review-002" },
+   166→    { fact: "merge", causationId: "auto_fix-012", correlationId: "workflow-123", parentFactId: "fact-fix-003" },
+   167→    { fact: "deploy", causationId: "merge-345", correlationId: "workflow-123", parentFactId: "fact-merge-004" },
+   168→  ],
+   169→  replayCertificate: {
+   170→    projection: "operationalState",
+   171→    projectionHash: "sha256:a3f2b8c9d1e4...",
+   172→    factCount: 1200,
+   173→    factRoot: "mmr_root_hash_8f3a2b1c",
+   174→    runtimeVersion: "v0.8",
+   175→    policyVersion: "1.0",
+   176→    passed: true,
+   177→    timestamp: 1710000000,
+   178→    signature: "replay-cert:sha256:a3f2b8c9...",
+   179→  },
+   180→  provenanceFlow: {
+   181→    agent: "AutoFixService",
+   182→    promptHash: "sha256:7f8a9b2c...",
+   183→    toolCallHashes: ["sha256:tool1-a1b2", "sha256:tool2-c3d4"],
+   184→    outputHash: "sha256:e5f6g7h8...",
+   185→    humanApproved: false,
+   186→    result: "fix-accepted",
+   187→  },
+   188→};
+   189→
+   190→/* ─── Capability category colors ─── */
+   191→const CAP_CATEGORY: Record<string, { bg: string; border: string; text: string }> = {
+   192→  automation: { bg: "bg-verified/10", border: "border-verified/30", text: "text-verified" },
+   193→  security: { bg: "bg-repairing/10", border: "border-repairing/30", text: "text-repairing" },
+   194→  vision: { bg: "bg-quarantined/10", border: "border-quarantined/30", text: "text-quarantined" },
+   195→  webhook: { bg: "bg-muted/30", border: "border-border/60", text: "text-muted-foreground" },
+   196→  app: { bg: "bg-[var(--verified)]/5", border: "border-[var(--verified)]/20", text: "text-foreground" },
+   197→};
+   198→
+   199→function getCapCategory(cap: string): string {
+   200→  return cap.split(".")[0];
+   201→}
+   202→
+   203→/* ─── Main Component ─── */
+   204→export function FortificationSection() {
+   205→  const [data, setData] = useState<FortificationData>(MOCK_DATA);
+   206→  const [loading, setLoading] = useState(false);
+   207→  const [activeConcept, setActiveConcept] = useState<number | null>(null);
+   208→  const [refreshCountdown, setRefreshCountdown] = useState(10);
+   209→
+   210→  // Auto-refresh countdown
+   211→  useEffect(() => {
+   212→    const t = setInterval(() => setRefreshCountdown((c) => (c <= 1 ? 10 : c - 1)), 1000);
+   213→    return () => clearInterval(t);
+   214→  }, []);
+   215→
+   216→  // Fetch data from API
+   217→  const loadData = useCallback(() => {
+   218→    setLoading(true);
+   219→    fetch("/api/fortification")
+   220→      .then((r) => r.json())
+   221→      .then((d) => setData(d))
+   222→      .catch(() => setData(MOCK_DATA))
+   223→      .finally(() => setLoading(false));
+   224→  }, []);
+   225→
+   226→  useEffect(() => {
+   227→    fetch("/api/fortification")
+   228→      .then((r) => r.json())
+   229→      .then((d) => setData(d))
+   230→      .catch(() => { /* fallback to mock data */ });
+   231→  }, []);
+   232→
+   233→  const implementedCount = data.concepts.filter((c) => c.status === "implemented" || c.status === "enforced").length;
+   234→  const allImplemented = implementedCount === 10;
+   235→
+   236→  return (
+   237→    <motion.div variants={cv} initial="hidden" animate="visible" className="space-y-5">
+   238→
+   239→      {/* ── Header Banner ── */}
+   240→      <motion.div variants={cardV}>
+   241→        <Shell accent="oklch(0.78 0.16 160)">
+   242→          <div className="flex items-center gap-3 mb-2">
+   243→            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-verified/15 border border-verified/30 glow-verified">
+   244→              <ShieldAlert className="h-4 w-4 text-verified" />
+   245→            </div>
+   246→            <div>
+   247→              <h2 className="text-base font-semibold">Runtime Fortification</h2>
+   248→              <p className="text-xs text-muted-foreground">10 architectural strengthening recommendations — LAST ITERATION</p>
+   249→            </div>
+   250→            <div className="ml-auto flex items-center gap-2">
+   251→              {allImplemented && (
+   252→                <StatusPill status="verified" label="All 10 implemented" />
+   253→              )}
+   254→              <span className="inline-flex items-center rounded-full border border-border/40 bg-muted/20 px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+   255→                {data.version}
+   256→              </span>
+   257→            </div>
+   258→          </div>
+   259→          {/* Mini stats */}
+   260→          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
+   261→            <StatCard label="Concepts" value={data.concepts.length} color="text-verified" />
+   262→            <StatCard label="Capabilities" value={data.capabilities.length} color="text-verified" />
+   263→            <StatCard label="Adapters" value={data.adapters.length} color="text-repairing" />
+   264→            <StatCard label="Replay Certs" value="✓" color={data.replayCertificate.passed ? "text-verified" : "text-violating"} bg={data.replayCertificate.passed ? "bg-verified/10" : "bg-violating/10"} />
+   265→          </div>
+   266→        </Shell>
+   267→      </motion.div>
+   268→
+   269→      {/* ── 10 Concept Cards Grid ── */}
+   270→      <div>
+   271→        <H3 icon={Boxes} title="10 Strengthening Concepts" extra={<span className="text-[10px] font-mono text-muted-foreground ml-1">{implementedCount}/10 implemented</span>} />
+   272→        <motion.div variants={cv} initial="hidden" animate="visible" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+   273→          {data.concepts.map((concept) => {
+   274→            const Icon = ICON_MAP[concept.icon] ?? FileText;
+   275→            const sCfg = STATUS_CONFIG[concept.status] ?? STATUS_CONFIG.planned;
+   276→            const StatusIcon = sCfg.icon;
+   277→            const isActive = activeConcept === concept.id;
+   278→
+   279→            return (
+   280→              <motion.div
+   281→                key={concept.id}
+   282→                variants={cardV}
+   283→                className={isActive ? "ring-2 ring-verified/40" : ""}
+   284→              >
+   285→                <Shell
+   286→                  accent={concept.status === "implemented" || concept.status === "enforced" ? "oklch(0.78 0.16 160)" : concept.status === "partial" ? "oklch(0.80 0.15 80)" : "oklch(0.64 0.21 25)"}
+   287→                  className="cursor-pointer hover:border-verified/40 transition-colors"
+   288→                >
+   289→                  <button
+   290→                    type="button"
+   291→                    onClick={() => setActiveConcept(isActive ? null : concept.id)}
+   292→                    className="w-full text-left"
+   293→                  >
+   294→                    <div className="flex items-start gap-3">
+   295→                      <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${sCfg.color}`}>
+   296→                        <Icon className={`h-4 w-4 ${sCfg.text}`} />
+   297→                      </div>
+   298→                      <div className="min-w-0 flex-1">
+   299→                        <div className="flex items-center gap-2 mb-1">
+   300→                          <span className="text-sm font-semibold">{concept.name}</span>
+   301→                          <span className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${sCfg.color} ${sCfg.text}`}>
+   302→                            <StatusIcon className="h-2.5 w-2.5" />
+   303→                            {sCfg.label}
+   304→                          </span>
+   305→                          <span className="text-[9px] font-mono text-muted-foreground/50">#{concept.id}</span>
+   306→                        </div>
+   307→                        <p className="text-xs text-muted-foreground line-clamp-2">{concept.description}</p>
+   308→                      </div>
+   309→                    </div>
+   310→                    {/* Expanded detail */}
+   311→                    <AnimatePresence>
+   312→                      {isActive && (
+   313→                        <motion.div
+   314→                          initial={{ opacity: 0, height: 0 }}
+   315→                          animate={{ opacity: 1, height: "auto" }}
+   316→                          exit={{ opacity: 0, height: 0 }}
+   317→                          transition={{ duration: 0.25 }}
+   318→                          className="mt-3 pt-3 border-t border-border/40"
+   319→                        >
+   320→                          <div className="text-xs text-muted-foreground">{concept.description}</div>
+   321→                          <div className="mt-2 flex items-center gap-1.5">
+   322→                            <span className="text-[9px] font-mono text-muted-foreground/50">status:</span>
+   323→                            <StatusPill status={concept.status === "enforced" ? "verified" : concept.status === "implemented" ? "healthy" : concept.status} />
+   324→                          </div>
+   325→                        </motion.div>
+   326→                      )}
+   327→                    </AnimatePresence>
+   328→                  </button>
+   329→                </Shell>
+   330→              </motion.div>
+   331→            );
+   332→          })}
+   333→        </motion.div>
+   334→      </div>
+   335→
+   336→      {/* ── Capability Set Explorer ── */}
+   337→      <div>
+   338→        <H3 icon={Shield} title="Vendor-Neutral Capability Sets" extra={<span className="text-[10px] font-mono text-muted-foreground ml-1">{data.capabilities.length} capabilities</span>} />
+   339→        <motion.div variants={cardV}>
+   340→          <Shell accent="oklch(0.78 0.16 160)">
+   341→            <div className="flex flex-wrap gap-2 mb-3">
+   342→              {data.capabilities.map((cap) => {
+   343→                const cat = getCapCategory(cap);
+   344→                const catStyle = CAP_CATEGORY[cat] ?? CAP_CATEGORY.webhook;
+   345→                return (
+   346→                  <span
+   347→                    key={cap}
+   348→                    className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-mono ${catStyle.bg} ${catStyle.border} ${catStyle.text}`}
+   349→                  >
+   350→                    <span className="text-[8px] opacity-50">{cat}</span>
+   351→                    <span>{cap.split(".")[1]}</span>
+   352→                  </span>
+   353→                );
+   354→              })}
+   355→            </div>
+   356→            {/* Adapter mapping table */}
+   357→            <div className="mt-3 space-y-2">
+   358→              <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Adapter Mapping — Source → Capabilities</div>
+   359→              {data.adapters.map((adapter) => (
+   360→                <motion.div key={adapter.sourceSystem} variants={itemV} className="flex items-center gap-2 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+   361→                  <Terminal className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+   362→                  <span className="text-xs font-mono text-foreground shrink-0">{adapter.sourceSystem}</span>
+   363→                  <ArrowRight className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+   364→                  <div className="flex items-center gap-1 flex-wrap">
+   365→                    {adapter.capabilities.map((cap) => {
+   366→                      const cat = getCapCategory(cap);
+   367→                      const catStyle = CAP_CATEGORY[cat] ?? CAP_CATEGORY.webhook;
+   368→                      return (
+   369→                        <span key={cap} className={`inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-mono ${catStyle.text} ${catStyle.bg}`}>
+   370→                          {cap}
+   371→                        </span>
+   372→                      );
+   373→                    })}
+   374→                  </div>
+   375→                </motion.div>
+   376→              ))}
+   377→            </div>
+   378→            {/* Observation Adapter layer note */}
+   379→            <div className="mt-3 rounded-md border border-verified/20 bg-verified/5 px-3 py-2">
+   380→              <div className="flex items-center gap-2">
+   381→                <Cpu className="h-3.5 w-3.5 text-verified/70" />
+   382→                <span className="text-xs text-verified/80 font-medium">Observation Adapter Layer</span>
+   383→              </div>
+   384→              <p className="text-xs text-muted-foreground mt-1">
+   385→                Kilo → Observation Adapter → Collector → Acceptance → Fact Log. ER shouldn&apos;t know what Kilo is. It only understands observations.
+   386→              </p>
+   387→            </div>
+   388→          </Shell>
+   389→        </motion.div>
+   390→      </div>
+   391→
+   392→      {/* ── Correlation Graph ── */}
+   393→      <div>
+   394→        <H3 icon={Network} title="Correlation Graph — causationId → correlationId → parentFactId" />
+   395→        <motion.div variants={cardV}>
+   396→          <Shell accent="oklch(0.74 0.13 190)">
+   397→            <div className="text-xs text-muted-foreground mb-3">
+   398→              Full traceability chain: each fact links to its cause and parent, enabling end-to-end audit trails.
+   399→            </div>
+   400→            {/* Pipeline visualization */}
+   401→            <div className="flex items-center gap-0 overflow-x-auto pb-2">
+   402→              {data.correlationChain.map((node, idx) => (
+   403→                <motion.div key={node.fact} variants={itemV} className="flex items-center shrink-0">
+   404→                  {/* Node */}
+   405→                  <div className="relative flex flex-col items-center gap-1.5 rounded-lg border border-verified/30 bg-verified/10 px-3 py-2 min-w-[100px]">
+   406→                    <div className="absolute -top-0.5 left-0 right-0 h-0.5 bg-gradient-to-r from-verified/0 via-verified/60 to-verified/0" />
+   407→                    <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">{idx === 0 ? "origin" : `step ${idx + 1}`}</span>
+   408→                    <span className="text-xs font-semibold text-verified">{node.fact}</span>
+   409→                    {node.causationId && (
+   410→                      <span className="text-[8px] font-mono text-muted-foreground/60 truncate max-w-[80px]">← {node.causationId}</span>
+   411→                    )}
+   412→                    <span className="text-[8px] font-mono text-muted-foreground/40 truncate max-w-[80px]">wf: {node.correlationId}</span>
+   413→                    {node.parentFactId && (
+   414→                      <span className="text-[8px] font-mono text-muted-foreground/40 truncate max-w-[80px]">parent: {node.parentFactId}</span>
+   415→                    )}
+   416→                  </div>
+   417→                  {/* Arrow between nodes */}
+   418→                  {idx < data.correlationChain.length - 1 && (
+   419→                    <div className="flex items-center px-1 shrink-0">
+   420→                      <div className="h-px w-6 bg-verified/30" />
+   421→                      <ChevronRight className="h-3 w-3 text-verified/50" />
+   422→                    </div>
+   423→                  )}
+   424→                </motion.div>
+   425→              ))}
+   426→            </div>
+   427→            {/* Correlation detail */}
+   428→            <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+   429→              <StatCard label="correlationId" value="workflow-123" color="text-verified" />
+   430→              <StatCard label="Chain Length" value={data.correlationChain.length} color="text-foreground" />
+   431→              <StatCard label="Origin Fact" value={data.correlationChain[0]?.fact ?? "—"} color="text-verified" />
+   432→            </div>
+   433→          </Shell>
+   434→        </motion.div>
+   435→      </div>
+   436→
+   437→      {/* ── Automation Provenance ── */}
+   438→      <div>
+   439→        <H3 icon={Eye} title="Automation Provenance — Agent → Prompt Hash → Tool Calls → Output Hash → Approval → Result" />
+   440→        <motion.div variants={cardV}>
+   441→          <Shell accent="oklch(0.78 0.16 160)">
+   442→            <div className="text-xs text-muted-foreground mb-3">
+   443→              Not the prompt itself — the hash. This preserves privacy while maintaining full auditability.
+   444→            </div>
+   445→            {/* Provenance Pipeline */}
+   446→            <div className="flex items-center gap-1 overflow-x-auto pb-2">
+   447→              {/* Agent */}
+   448→              <motion.div variants={itemV} className="flex flex-col items-center gap-1 rounded-lg border border-verified/30 bg-verified/10 px-3 py-2 min-w-[90px] shrink-0">
+   449→                <Cpu className="h-3.5 w-3.5 text-verified" />
+   450→                <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">agent</span>
+   451→                <span className="text-xs font-semibold">{data.provenanceFlow.agent}</span>
+   452→              </motion.div>
+   453→              <ArrowRight className="h-3 w-3 text-verified/40 shrink-0" />
+   454→              {/* Prompt Hash */}
+   455→              <motion.div variants={itemV} className="flex flex-col items-center gap-1 rounded-lg border border-repairing/30 bg-repairing/10 px-3 py-2 min-w-[90px] shrink-0">
+   456→                <Hash className="h-3.5 w-3.5 text-repairing" />
+   457→                <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">prompt hash</span>
+   458→                <span className="text-xs font-mono text-repairing truncate max-w-[80px]">{data.provenanceFlow.promptHash}</span>
+   459→              </motion.div>
+   460→              <ArrowRight className="h-3 w-3 text-verified/40 shrink-0" />
+   461→              {/* Tool Call Hashes */}
+   462→              <motion.div variants={itemV} className="flex flex-col items-center gap-1 rounded-lg border border-quarantined/30 bg-quarantined/10 px-3 py-2 min-w-[100px] shrink-0">
+   463→                <Braces className="h-3.5 w-3.5 text-quarantined" />
+   464→                <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">tool calls</span>
+   465→                <div className="flex flex-col gap-0.5">
+   466→                  {data.provenanceFlow.toolCallHashes.map((tc, i) => (
+   467→                    <span key={i} className="text-[8px] font-mono text-quarantined truncate max-w-[80px]">{tc}</span>
+   468→                  ))}
+   469→                </div>
+   470→              </motion.div>
+   471→              <ArrowRight className="h-3 w-3 text-verified/40 shrink-0" />
+   472→              {/* Output Hash */}
+   473→              <motion.div variants={itemV} className="flex flex-col items-center gap-1 rounded-lg border border-verified/30 bg-verified/10 px-3 py-2 min-w-[90px] shrink-0">
+   474→                <FileCheck className="h-3.5 w-3.5 text-verified" />
+   475→                <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">output hash</span>
+   476→                <span className="text-xs font-mono text-verified truncate max-w-[80px]">{data.provenanceFlow.outputHash}</span>
+   477→              </motion.div>
+   478→              <ArrowRight className="h-3 w-3 text-verified/40 shrink-0" />
+   479→              {/* Human Approval */}
+   480→              <motion.div variants={itemV} className="flex flex-col items-center gap-1 rounded-lg border px-3 py-2 min-w-[90px] shrink-0" style={{ borderColor: data.provenanceFlow.humanApproved ? "oklch(0.78 0.16 160 / 0.3)" : "oklch(0.64 0.21 25 / 0.3)", backgroundColor: data.provenanceFlow.humanApproved ? "oklch(0.78 0.16 160 / 0.1)" : "oklch(0.64 0.21 25 / 0.1)" }}>
+   481→                {data.provenanceFlow.humanApproved ? <CheckCircle2 className="h-3.5 w-3.5 text-verified" /> : <AlertTriangle className="h-3.5 w-3.5 text-violating" />}
+   482→                <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">human</span>
+   483→                <span className={`text-xs font-semibold ${data.provenanceFlow.humanApproved ? "text-verified" : "text-violating"}`}>
+   484→                  {data.provenanceFlow.humanApproved ? "Approved" : "Auto"}
+   485→                </span>
+   486→              </motion.div>
+   487→              <ArrowRight className="h-3 w-3 text-verified/40 shrink-0" />
+   488→              {/* Result */}
+   489→              <motion.div variants={itemV} className="flex flex-col items-center gap-1 rounded-lg border border-verified/30 bg-verified/10 px-3 py-2 min-w-[90px] shrink-0">
+   490→                <BadgeCheck className="h-3.5 w-3.5 text-verified" />
+   491→                <span className="text-[9px] font-mono text-muted-foreground/50 uppercase">result</span>
+   492→                <span className="text-xs font-semibold text-verified">{data.provenanceFlow.result}</span>
+   493→              </motion.div>
+   494→            </div>
+   495→          </Shell>
+   496→        </motion.div>
+   497→      </div>
+   498→
+   499→      {/* ── Replay Certificate ── */}
+   500→      <div>
+   501→        <H3 icon={BadgeCheck} title="Replay Certificate — First-class deterministic replay evidence" />
+   502→        <motion.div variants={cardV}>
+   503→          <GradientBorderCard gradient="from-verified/40 via-repairing/20 to-quarantined/20">
+   504→            <div className="p-4">
+   505→              <div className="flex items-center gap-3 mb-3">
+   506→                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-verified/15 border border-verified/30 glow-verified">
+   507→                  <Award className="h-5 w-5 text-verified" />
+   508→                </div>
+   509→                <div>
+   510→                  <div className="flex items-center gap-2">
+   511→                    <span className="text-sm font-semibold">Replay Certificate</span>
+   512→                    {data.replayCertificate.passed ? (
+   513→                      <StatusPill status="verified" label="PASSED" />
+   514→                    ) : (
+   515→                      <StatusPill status="violating" label="FAILED" />
+   516→                    )}
+   517→                  </div>
+   518→                  <span className="text-xs text-muted-foreground">Auditors love this — deterministic replay verification</span>
+   519→                </div>
+   520→              </div>
+   521→              {/* Certificate fields */}
+   522→              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+   523→                {[
+   524→                  { key: "projection", value: data.replayCertificate.projection, icon: Layers },
+   525→                  { key: "projectionHash", value: data.replayCertificate.projectionHash, icon: Hash },
+   526→                  { key: "factCount", value: String(data.replayCertificate.factCount), icon: Database },
+   527→                  { key: "factRoot", value: data.replayCertificate.factRoot, icon: GitBranch },
+   528→                  { key: "runtimeVersion", value: data.replayCertificate.runtimeVersion, icon: Cpu },
+   529→                  { key: "policyVersion", value: data.replayCertificate.policyVersion, icon: Shield },
+   530→                  { key: "timestamp", value: new Date(data.replayCertificate.timestamp * 1000).toISOString().slice(0, 19), icon: Activity },
+   531→                  { key: "signature", value: data.replayCertificate.signature, icon: Signature },
+   532→                ].map((field) => {
+   533→                  const FIcon = field.icon;
+   534→                  return (
+   535→                    <motion.div key={field.key} variants={itemV} className="flex items-center gap-2 rounded-md border border-border/40 bg-muted/20 px-2.5 py-1.5">
+   536→                      <FIcon className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+   537→                      <span className="text-[9px] font-mono text-muted-foreground uppercase shrink-0">{field.key}</span>
+   538→                      <span className="ml-auto text-xs font-mono text-foreground truncate">{field.value}</span>
+   539→                    </motion.div>
+   540→                  );
+   541→                })}
+   542→              </div>
+   543→            </div>
+   544→          </GradientBorderCard>
+   545→        </motion.div>
+   546→      </div>
+   547→
+   548→      {/* ── Drift Detection Status ── */}
+   549→      <div>
+   550→        <H3 icon={AlertTriangle} title="Drift Detection — Projection ≠ Live System" />
+   551→        <motion.div variants={cardV}>
+   552→          <Shell accent="oklch(0.80 0.15 80)">
+   553→            <div className="text-xs text-muted-foreground mb-3">
+   554→              OperationalDriftObserved: When the projection diverges from the live system, the discrepancy becomes evidence and triggers alerts. No silent failures.
+   555→            </div>
+   556→            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+   557→              {/* Drift status */}
+   558→              <div className="rounded-md border border-verified/30 bg-verified/10 p-3 flex flex-col items-center gap-2">
+   559→                <ShieldCheck className="h-6 w-6 text-verified" />
+   560→                <span className="text-xs font-semibold text-verified">No Active Drifts</span>
+   561→                <span className="text-[9px] font-mono text-muted-foreground">Last checked: just now</span>
+   562→              </div>
+   563→              {/* Drift count */}
+   564→              <div className="rounded-md border border-border/40 bg-muted/20 p-3 flex flex-col items-center gap-2">
+   565→                <Database className="h-6 w-6 text-muted-foreground" />
+   566→                <span className="text-xs font-semibold">0 drift facts emitted</span>
+   567→                <span className="text-[9px] font-mono text-muted-foreground">OperationalDriftObserved count</span>
+   568→              </div>
+   569→              {/* Alert status */}
+   570→              <div className="rounded-md border border-verified/30 bg-verified/10 p-3 flex flex-col items-center gap-2">
+   571→                <CheckCircle2 className="h-6 w-6 text-verified" />
+   572→                <span className="text-xs font-semibold text-verified">Alerts: Clear</span>
+   573→                <span className="text-[9px] font-mono text-muted-foreground">No active drift alerts</span>
+   574→              </div>
+   575→            </div>
+   576→            {/* Drift detection pipeline */}
+   577→            <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1">
+   578→              {[
+   579→                { label: "Live System", icon: Cpu, color: "verified" },
+   580→                { label: "Projection", icon: Layers, color: "verified" },
+   581→                { label: "Compare", icon: GitBranch, color: "repairing" },
+   582→                { label: "Drift?", icon: AlertTriangle, color: "violating" },
+   583→                { label: "Evidence", icon: FileText, color: "verified" },
+   584→                { label: "Alert", icon: Activity, color: "repairing" },
+   585→              ].map((step, idx) => (
+   586→                <div key={step.label} className="flex items-center shrink-0">
+   587→                  <div className={`flex items-center gap-1.5 rounded-md border px-2 py-1 ${step.color === "verified" ? "border-verified/30 bg-verified/10" : step.color === "repairing" ? "border-repairing/30 bg-repairing/10" : "border-violating/30 bg-violating/10"}`}>
+   588→                    <step.icon className={`h-3 w-3 ${step.color === "verified" ? "text-verified" : step.color === "repairing" ? "text-repairing" : "text-violating"}`} />
+   589→                    <span className={`text-[9px] font-mono ${step.color === "verified" ? "text-verified" : step.color === "repairing" ? "text-repairing" : "text-violating"}`}>{step.label}</span>
+   590→                  </div>
+   591→                  {idx < 5 && <ArrowRight className="h-2.5 w-2.5 text-muted-foreground/30 shrink-0 mx-0.5" />}
+   592→                </div>
+   593→              ))}
+   594→            </div>
+   595→          </Shell>
+   596→        </motion.div>
+   597→      </div>
+   598→
+   599→      {/* ── Confidence ≠ Evidence Summary ── */}
+   600→      <div>
+   601→        <H3 icon={Scale} title="Confidence ≠ Evidence — Trust is derived, not stored" />
+   602→        <motion.div variants={cardV}>
+   603→          <Shell accent="oklch(0.78 0.16 160)">
+   604→            <div className="flex items-start gap-3 mb-3">
+   605→              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-verified/15 border border-verified/30 shrink-0">
+   606→                <Brain className="h-4 w-4 text-verified" />
+   607→              </div>
+   608→              <div className="text-xs text-muted-foreground">
+   609→                <p className="mb-2">
+   610→                  Trust scores are <span className="text-verified font-semibold">projections</span>, NOT facts. 
+   611→                  Store &quot;Review Passed&quot; not &quot;Trust = 0.94&quot;. Confidence is <span className="text-verified font-semibold">derived</span> from evidence, never stored as a primitive.
+   612→                </p>
+   613→                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+   614→                  <div className="rounded-md border border-violating/30 bg-violating/10 px-3 py-2">
+   615→                    <div className="flex items-center gap-1.5 mb-1">
+   616→                      <XCircle className="h-3 w-3 text-violating" />
+   617→                      <span className="text-xs font-semibold text-violating">Wrong: Store trust score</span>
+   618→                    </div>
+   619→                    <code className="text-[10px] font-mono text-violating/70">trust_score: 0.94</code>
+   620→                  </div>
+   621→                  <div className="rounded-md border border-verified/30 bg-verified/10 px-3 py-2">
+   622→                    <div className="flex items-center gap-1.5 mb-1">
+   623→                      <CheckCircle2 className="h-3 w-3 text-verified" />
+   624→                      <span className="text-xs font-semibold text-verified">Right: Store evidence</span>
+   625→                    </div>
+   626→                    <code className="text-[10px] font-mono text-verified/70">review_passed: true</code>
+   627→                  </div>
+   628→                </div>
+   629→              </div>
+   630→            </div>
+   631→          </Shell>
+   632→        </motion.div>
+   633→      </div>
+   634→
+   635→      {/* ── Observation Authentication Chain ── */}
+   636→      <div>
+   637→        <H3 icon={KeyRound} title="Observation Authentication — Never trust source claims" />
+   638→        <motion.div variants={cardV}>
+   639→          <Shell accent="oklch(0.74 0.13 190)">
+   640→            <div className="text-xs text-muted-foreground mb-3">
+   641→              Service Identity → mTLS → OIDC → JWT → Capability Policy → Acceptance. The collector never trusts &quot;source:kilo-bot&quot;.
+   642→            </div>
+   643→            {/* Authentication chain */}
+   644→            <div className="flex items-center gap-1 overflow-x-auto pb-2">
+   645→              {[
+   646→                { label: "Service Identity", icon: Fingerprint, color: "verified" },
+   647→                { label: "mTLS", icon: Lock, color: "verified" },
+   648→                { label: "OIDC", icon: Shield, color: "repairing" },
+   649→                { label: "JWT", icon: KeyRound, color: "verified" },
+   650→                { label: "Capability Policy", icon: ClipboardCheck, color: "repairing" },
+   651→                { label: "Acceptance", icon: CheckCircle2, color: "verified" },
+   652→              ].map((step, idx) => (
+   653→                <div key={step.label} className="flex items-center shrink-0">
+   654→                  <div className={`flex flex-col items-center gap-1 rounded-lg border px-2.5 py-1.5 min-w-[70px] ${step.color === "verified" ? "border-verified/30 bg-verified/10" : "border-repairing/30 bg-repairing/10"}`}>
+   655→                    <step.icon className={`h-3.5 w-3.5 ${step.color === "verified" ? "text-verified" : "text-repairing"}`} />
+   656→                    <span className={`text-[9px] font-mono text-center ${step.color === "verified" ? "text-verified" : "text-repairing"}`}>{step.label}</span>
+   657→                  </div>
+   658→                  {idx < 5 && <ArrowRight className="h-2.5 w-2.5 text-muted-foreground/30 shrink-0 mx-0.5" />}
+   659→                </div>
+   660→              ))}
+   661→            </div>
+   662→          </Shell>
+   663→        </motion.div>
+   664→      </div>
+   665→
+   666→      {/* ── Projection Manifest ── */}
+   667→      <div>
+   668→        <H3 icon={ClipboardCheck} title="Projection Manifest — Projections become auditable" />
+   669→        <motion.div variants={cardV}>
+   670→          <Shell accent="oklch(0.78 0.16 160)">
+   671→            <div className="text-xs text-muted-foreground mb-2">
+   672→              Every projection declares its manifest: id, version, dependencies, capabilitySet, projectionHash, deterministic, owner.
+   673→            </div>
+   674→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+   675→              {[
+   676→                { key: "id", value: "operational-state-v0.8", icon: Layers },
+   677→                { key: "version", value: "0.8.0", icon: GitBranch },
+   678→                { key: "dependencies", value: "mmr, trust-runtime", icon: Boxes },
+   679→                { key: "capabilitySet", value: "automation.review", icon: Shield },
+   680→                { key: "projectionHash", value: "sha256:a3f2b8c9...", icon: Hash },
+   681→                { key: "deterministic", value: "true", icon: CheckCircle2 },
+   682→                { key: "owner", value: "epistemic-runtime", icon: Cpu },
+   683→              ].map((field) => {
+   684→                const FIcon = field.icon;
+   685→                const isVerified = field.value === "true";
+   686→                return (
+   687→                  <div key={field.key} className="flex items-center gap-2 rounded-md border border-border/40 bg-muted/20 px-2.5 py-1.5">
+   688→                    <FIcon className={`h-3 w-3 shrink-0 ${isVerified ? "text-verified" : "text-muted-foreground/50"}`} />
+   689→                    <span className="text-[9px] font-mono text-muted-foreground uppercase shrink-0">{field.key}</span>
+   690→                    <span className={`ml-auto text-xs font-mono truncate ${isVerified ? "text-verified" : "text-foreground"}`}>{field.value}</span>
+   691→                  </div>
+   692→                );
+   693→              })}
+   694→            </div>
+   695→          </Shell>
+   696→        </motion.div>
+   697→      </div>
+   698→
+   699→      {/* ── Typed Observation SDK ── */}
+   700→      <div>
+   701→        <H3 icon={Code} title="Typed Observation SDK — Prevents schema drift" />
+   702→        <motion.div variants={cardV}>
+   703→          <Shell accent="oklch(0.78 0.16 160)">
+   704→            <div className="text-xs text-muted-foreground mb-3">
+   705→              emitBotCommand(), emitReviewStarted(), emitFixCreated() instead of emitObservation(any). Type-safe emission prevents schema drift at compile time.
+   706→            </div>
+   707→            <div className="rounded-md border border-border/40 bg-muted/20 p-3">
+   708→              <div className="flex items-center gap-1.5 mb-2">
+   709→                <Terminal className="h-3.5 w-3.5 text-verified" />
+   710→                <span className="text-xs font-semibold text-verified">Typed SDK Methods</span>
+   711→              </div>
+   712→              <div className="space-y-1.5">
+   713→                {[
+   714→                  "emitBotCommand(payload: BotCommandPayload)",
+   715→                  "emitReviewStarted(payload: ReviewStartedPayload)",
+   716→                  "emitFixCreated(payload: FixCreatedPayload)",
+   717→                  "emitMergeProposed(payload: MergeProposedPayload)",
+   718→                  "emitDeployInitiated(payload: DeployInitiatedPayload)",
+   719→                  "emitDriftObserved(payload: DriftObservedPayload)",
+   720→                ].map((method) => (
+   721→                  <div key={method} className="flex items-center gap-2 text-[10px] font-mono">
+   722→                    <CheckCircle2 className="h-2.5 w-2.5 text-verified shrink-0" />
+   723→                    <span className="text-foreground">{method}</span>
+   724→                  </div>
+   725→                ))}
+   726→              </div>
+   727→              <div className="mt-2 rounded border border-violating/30 bg-violating/10 px-2 py-1 flex items-center gap-1.5">
+   728→                <XCircle className="h-3 w-3 text-violating shrink-0" />
+   729→                <span className="text-[9px] font-mono text-violating">Rejected: emitObservation(any) — untyped, schema drift risk</span>
+   730→              </div>
+   731→            </div>
+   732→          </Shell>
+   733→        </motion.div>
+   734→      </div>
+   735→
+   736→      {/* ── Refresh indicator ── */}
+   737→      <motion.div variants={fadeV} className="flex items-center justify-center gap-2 pt-2">
+   738→        <span className="text-[10px] font-mono text-muted-foreground/50">
+   739→          {loading ? "Refreshing…" : `Auto-refresh in ${refreshCountdown}s`}
+   740→        </span>
+   741→        <button
+   742→          type="button"
+   743→          onClick={loadData}
+   744→          disabled={loading}
+   745→          className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:border-verified/30 transition-colors disabled:opacity-50"
+   746→          title="Refresh fortification data"
+   747→        >
+   748→          <RefreshCw className={`h-2.5 w-2.5 ${loading ? "animate-spin" : ""}`} />
+   749→          refresh
+   750→        </button>
+   751→      </motion.div>
+   752→    </motion.div>
+   753→  );
+   754→}
+   755→
