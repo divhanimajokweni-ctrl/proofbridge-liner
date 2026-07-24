@@ -1,0 +1,29 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: vvu-runtime
+namePrefix: vvu-
+resources:
+  - ../base
+patches:
+  - path: live-patches.yaml
+configMapGenerator:
+  - name: vvu-validation-config
+    behavior: merge
+    literals:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+images:
+  - name: vvu/epistemic-runtime
+    newTag: VAL-001
+  - name: vvu/air-kernel
+    newTag: VAL-001
+  - name: vvu/telemetry-generator
+    newTag: VAL-001
+  - name: vvu/security-injector
+    newTag: VAL-001
+  - name: vvu/headless-streaming-service
+    newTag: VAL-001
+  - name: vvu/outreach-engine
+    newTag: VAL-001
+  - name: bitnami/kubectl
+    newTag: 1.28

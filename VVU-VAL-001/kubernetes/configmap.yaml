@@ -1,0 +1,17 @@
+# VVU-VAL-001 · Validation Default ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vvu-validation-config
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+data:
+  NODE_ENV: "rehearsal"
+  RUNTIME_NS: "vvu-runtime"
+  EVIDENCE_NS: "evidence"
+  MONITORING_NS: "monitoring"
+  STREAMING_NS: "streaming"
+  OUTREACH_NS: "outreach"
+  LOG_LEVEL: "debug"
+  TELEMETRY_DEFAULT_RATE: "1"

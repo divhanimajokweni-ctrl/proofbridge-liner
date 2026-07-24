@@ -1,39 +1,68 @@
-# VVU-VAL-001 · Outreach Namespace (Layer 2 — KILLABLE)
-#
-# The outreach engine consumes signed milestone events from the evidence bus.
-# This namespace is KILLABLE — if it crashes or is deleted, the 72-hour
-# validation continues unaffected. The evidence bundles still archive hourly.
+# VVU-VAL-001 · Outreach Namespace
+# Layer 2 killable namespace; consumes milestone events from Layer 1 NATS.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: outreach-registry
+  namespace: outreach
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+data:
+  milestones.yaml: |
+    milestones: []
+  recipients.yaml: |
+    recipients: []
+  stages.yaml: |
+    stages: []
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: outreach-engine
   namespace: outreach
-  labels: { app: outreach-engine, killable: "true" }
+  labels:
+    app.kubernetes.io/name: outreach-engine
+    killable: "true"
+    priority-tier: low
 spec:
   replicas: 1
-  selector: { matchLabels: { app: outreach-engine } }
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: outreach-engine
   template:
-    metadata: { labels: { app: outreach-engine, killable: "true" } }
+    metadata:
+      labels:
+        app.kubernetes.io/name: outreach-engine
+        killable: "true"
+        priority-tier: low
     spec:
+      priorityClassName: validation-low
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: outreach
-          image: vvu/outreach-engine:VAL-001
+          image: vvu/outreach-engine:PLACEHOLDER  # pin-to-digest by freeze-build.sh
           env:
             - { name: EVIDENCE_BUS, value: "nats://nats.vvu-runtime:4222" }
             - { name: REGISTRY_DIR, value: "/registry" }
             - { name: STAGES_FILE, value: "/registry/stages.yaml" }
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           volumeMounts:
             - { name: registry, mountPath: /registry, readOnly: true }
       volumes:
         - { name: registry, configMap: { name: outreach-registry } }
----
-apiVersion: v1
-kind: ConfigMap
-metadata: { name: outreach-registry, namespace: outreach }
-data:
-  milestones.yaml: |
-    # see validation/VVU-VAL-001/outreach/milestones.yaml
-  recipients.yaml: |
-    # see validation/VVU-VAL-001/outreach/recipients.yaml
-  stages.yaml: |
-    # see validation/VVU-VAL-001/outreach/stages.yaml

@@ -1,0 +1,44 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: validation-critical
+value: 1000000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: Critical priority for validation runtime and messaging during the 72-hour event.
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: validation-high
+value: 500000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: High priority for monitoring workloads.
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: validation-normal
+value: 250000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: Normal priority for supporting validation workloads.
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: validation-low
+value: 1000
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: Low priority for Layer 2 outreach.
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: validation-lowest
+value: 1
+preemptionPolicy: PreemptLowerPriority
+globalDefault: false
+description: Lowest priority for non-essential streaming service.

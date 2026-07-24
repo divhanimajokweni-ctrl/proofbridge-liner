@@ -1,51 +1,71 @@
 # VVU-VAL-001 · Evidence Namespace
 # Hourly evidence archiver CronJob + PVC for bundle storage.
+# Security: SecurityContext + default-deny NetworkPolicy apply in this namespace.
 apiVersion: v1
 kind: PersistentVolumeClaim
-metadata: { name: evidence-pvc, namespace: evidence }
+metadata:
+  name: evidence-pvc
+  namespace: evidence
 spec:
   accessModes: ["ReadWriteOnce"]
-  resources: { requests: { storage: 100Gi } }
+  resources:
+    requests:
+      storage: 100Gi
+  volumeMode: Filesystem
 ---
 apiVersion: v1
 kind: ServiceAccount
-metadata: { name: evidence-collector, namespace: evidence }
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata: { name: evidence-collector }
-rules:
-  - apiGroups: [""]
-    resources: ["pods", "pods/log", "namespaces", "nodes", "events"]
-    verbs: ["get", "list"]
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get", "list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata: { name: evidence-collector }
-roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: evidence-collector }
-subjects: [{ kind: ServiceAccount, name: evidence-collector, namespace: evidence }]
+metadata:
+  name: evidence-collector
+  namespace: evidence
+automountServiceAccountToken: false
 ---
 apiVersion: batch/v1
 kind: CronJob
-metadata: { name: evidence-archiver, namespace: evidence }
+metadata:
+  name: evidence-archiver
+  namespace: evidence
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
 spec:
-  schedule: "0 * * * *"  # hourly
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 6
+  failedJobsHistoryLimit: 6
   jobTemplate:
     spec:
+      backoffLimit: 2
       template:
         spec:
           restartPolicy: OnFailure
           serviceAccountName: evidence-collector
+          priorityClassName: validation-normal
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: archiver
               image: bitnami/kubectl:1.28
               command: ["/bin/bash", "/scripts/bundle.sh"]
+              args: ["${HOUR}"]
               env:
                 - { name: RUNTIME_NS, value: "vvu-runtime" }
                 - { name: EVIDENCE_NS, value: "evidence" }
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
               volumeMounts:
                 - { name: scripts, mountPath: /scripts, readOnly: true }
                 - { name: evidence, mountPath: /bundles }

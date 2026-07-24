@@ -1,0 +1,231 @@
+# VVU-VAL-001 · AIR Kernel + NATS JetStream
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: air-kernel
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/name: air-kernel
+    app.kubernetes.io/component: kernel
+    priority-tier: critical
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: air-kernel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: air-kernel
+        priority-tier: critical
+    spec:
+      priorityClassName: validation-critical
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: air
+          image: vvu/air-kernel:PLACEHOLDER  # pin-to-digest by freeze-build.sh
+          env:
+            - { name: NATS_URL, value: "nats://nats.vvu-runtime:4222" }
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 20
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/component: queue
+    priority-tier: critical
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nats
+        priority-tier: critical
+    spec:
+      priorityClassName: validation-critical
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: nats
+          image: nats:2.10
+          args:
+            [
+              "-js",
+              "-sd",
+              "/data",
+            ]
+          ports:
+            - { containerPort: 4222 }
+            - { containerPort: 8222 }
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - { name: nats-data, mountPath: /data }
+          readinessProbe:
+            tcpSocket:
+              port: 4222
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8222
+            periodSeconds: 20
+      volumes:
+        - { name: nats-data, persistentVolumeClaim: { claimName: nats-pvc } }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nats-pvc
+  namespace: vvu-runtime
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  volumeMode: Filesystem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats
+  namespace: vvu-runtime
+spec:
+  selector:
+    app.kubernetes.io/name: nats
+  ports:
+    - { name: client, port: 4222, targetPort: 4222 }
+    - { name: monitor, port: 8222, targetPort: 8222 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-generator
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/name: telemetry-generator
+    app.kubernetes.io/component: load
+    priority-tier: normal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: telemetry-generator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: telemetry-generator
+        priority-tier: normal
+    spec:
+      priorityClassName: validation-normal
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gen
+          image: vvu/telemetry-generator:PLACEHOLDER  # pin-to-digest by freeze-build.sh
+          env:
+            - { name: TARGET, value: "http://epistemic-runtime.vvu-runtime:3000/v1/telemetry" }
+            - { name: RATE_MULT, value: "1" }
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security-injector
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/name: security-injector
+    app.kubernetes.io/component: security
+    priority-tier: normal
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: security-injector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: security-injector
+        priority-tier: normal
+    spec:
+      priorityClassName: validation-normal
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: inj
+          image: vvu/security-injector:PLACEHOLDER  # pin-to-digest by freeze-build.sh
+          env:
+            - { name: TARGET, value: "http://epistemic-runtime.vvu-runtime:3000/v1/telemetry" }
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL

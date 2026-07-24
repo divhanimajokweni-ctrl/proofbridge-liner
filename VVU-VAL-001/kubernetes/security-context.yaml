@@ -1,0 +1,24 @@
+# VVU-VAL-001 · Default Pod Security Context
+# Applied via pod-level securityContext in workload manifests.
+# Container-level overrides mount writable PVC/tmpfs where required.
+pod:
+  runAsNonRoot: true
+  runAsUser: 10001
+  seccompProfile:
+    type: RuntimeDefault
+  automountServiceAccountToken: false
+container:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+exceptions:
+  - workload: nats
+    reason: "JetStream data dir requires writable mount; root fs writable via mounted PVC"
+    fsPaths:
+      - /data
+  - workload: evidence-archiver
+    reason: "Entrypoint script mounted read-only only at /scripts; writes to mounted PVC"
+    fsPaths:
+      - /bundles

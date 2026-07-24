@@ -1,0 +1,39 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - runtime.yaml
+  - nats.yaml
+  - monitoring.yaml
+  - evidence.yaml
+  - streaming.yaml
+  - outreach.yaml
+  - networkpolicy.yaml
+  - security-context.yaml
+  - pdbs.yaml
+  - secrets.yaml
+images:
+  - name: vvu/epistemic-runtime
+    newName: vvu/epistemic-runtime
+    newTag: PLACEHOLDER
+  - name: vvu/air-kernel
+    newName: vvu/air-kernel
+    newTag: PLACEHOLDER
+  - name: vvu/telemetry-generator
+    newName: vvu/telemetry-generator
+    newTag: PLACEHOLDER
+  - name: vvu/security-injector
+    newName: vvu/security-injector
+    newTag: PLACEHOLDER
+  - name: vvu/headless-streaming-service
+    newName: vvu/headless-streaming-service
+    newTag: PLACEHOLDER
+  - name: vvu/outreach-engine
+    newName: vvu/outreach-engine
+    newTag: PLACEHOLDER
+  - name: bitnami/kubectl
+    newName: bitnami/kubectl
+    newTag: 1.28
+commonLabels:
+  app.kubernetes.io/part-of: VVU-VAL-001
+  app.kubernetes.io/managed-by: argocd

@@ -1,0 +1,45 @@
+# VVU-VAL-001 · Pod Disruption Budgets
+# Ensures at least one critical instance remains available during voluntary disruptions.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vvu-runtime
+  namespace: vvu-runtime
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: epistemic-runtime
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vvu-nats
+  namespace: vvu-runtime
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vvu-prometheus
+  namespace: monitoring
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vvu-grafana
+  namespace: monitoring
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grafana

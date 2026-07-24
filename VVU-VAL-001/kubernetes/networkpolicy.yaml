@@ -1,0 +1,250 @@
+# VVU-VAL-001 · Validation Namespace Network Policies
+# Default-deny ingress and egress; explicitly allow required flows only.
+# sync-wave: -2 (before pods)
+
+# Default deny ingress + egress to all pods in validation namespaces
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Allow runtime -> NATS client port
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-runtime-to-nats
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: epistemic-runtime
+      ports:
+        - protocol: TCP
+          port: 4222
+---
+# Allow air-kernel -> NATS monitor and client for health/logging
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-air-to-nats
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: nats
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: air-kernel
+      ports:
+        - protocol: TCP
+          port: 4222
+        - protocol: TCP
+          port: 8222
+---
+# Allow evidence collector -> runtime HTTP for health/metrics in same namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-evidence-to-runtime
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: epistemic-runtime
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: evidence
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+# Allow monitoring -> runtime metrics export
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-to-runtime
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: epistemic-runtime
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 3000
+---
+# Allow egress DNS + HTTPS for all validation pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-validation-egress
+  namespace: vvu-runtime
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              layer: validation
+      ports:
+        - protocol: TCP
+          port: 4222
+---
+# Evidence namespace default-deny + allow runtime/metrics fetch
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-evidence
+  namespace: evidence
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-evidence-collector
+  namespace: evidence
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: evidence-collector
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: vvu-runtime
+      ports:
+        - protocol: TCP
+          port: 3000
+        - protocol: TCP
+          port: 4222
+---
+# Monitoring namespace allow Prometheus scrape targets + Grafana->Prometheus
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-monitoring
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prometheus-ingress
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+---
+# Streaming namespace allow only egress for recording upload
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-streaming
+  namespace: streaming
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-streaming-egress
+  namespace: streaming
+  labels:
+    app.kubernetes.io/part-of: VVU-VAL-001
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: streaming-service
+  policyTypes:
+    - Egress
+  egress:
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
