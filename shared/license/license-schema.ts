@@ -16,10 +16,13 @@
 //
 // Defines the license tier system, payload structure, and signed license
 // format used across all VVU EARTH TECH modules (both open-source and
-// commercial).
+// commercial). Aligned with the Master Implementation Blueprint.
 //
-// Open-source modules are available without a license (Apache 2.0).
-// Commercial modules require a SignedLicense with the appropriate tier.
+// Tier Structure (per Blueprint):
+// - OPEN_SOURCE: Free, Apache 2.0. All OSS modules.
+// - PRO: R5,000/mo. TEE + Compliance Automation.
+// - ENTERPRISE: R25,000/mo. Multi-node, TEE, ZK, SSO.
+// - GOVERNANCE: R100k+/mo. Full autonomy, tokenization, 60/30/10.
 // ============================================================================
 
 // ---------------------------------------------------------------------------
@@ -28,37 +31,59 @@
 
 /**
  * License tiers for the VVU EARTH TECH platform.
- *
- * - `community` — Free, Apache 2.0. Access to all open-source modules.
- *   No commercial module activation.
- * - `professional` — Paid tier. Access to TEE Attestation and
- *   Compliance Automation.
- * - `enterprise` — Full access. All commercial modules including
- *   ZK Prover GPU and Enterprise SSO.
+ * Aligned with the Master Implementation Blueprint's commercial tier structure.
  */
-export type LicenseTier = 'community' | 'professional' | 'enterprise';
+export type LicenseTier = 'OPEN_SOURCE' | 'PRO' | 'ENTERPRISE' | 'GOVERNANCE';
 
 /**
  * Human-readable tier descriptions.
  */
 export const TIER_DESCRIPTIONS: Record<LicenseTier, string> = {
-  community: 'Free tier — Apache 2.0. Access to all open-source modules (air-kernel, epistemic-runtime, safe-krypte-basic, safe-liner-basic, hbk-adapter). No commercial module activation.',
-  professional: 'Professional tier — Access to TEE Attestation and Compliance Automation. Requires a valid signed license.',
-  enterprise: 'Enterprise tier — Full access to all modules including ZK Prover GPU (MI300X) and Enterprise SSO (SAML/OIDC). Requires a valid signed license.',
+  OPEN_SOURCE: 'Free tier — Apache 2.0. Access to all open-source modules (air-kernel, epistemic-runtime, safe-krypte-basic, safe-liner-basic, hbk-adapter). No commercial features.',
+  PRO: 'Professional tier (R5,000/mo) — 1 Gateway lease, basic HBK detection, TEE Attestation, Compliance Automation.',
+  ENTERPRISE: 'Enterprise tier (R25,000/mo) — Multi-node, TEE attestation, ZK proofs (MI300X), Enterprise SSO (SAML/OIDC).',
+  GOVERNANCE: 'Governance tier (R100k+/mo) — Full autonomy, tokenization, 60/30/10 revenue share, all commercial features.',
+};
+
+// ---------------------------------------------------------------------------
+// §2 — Feature Flags (per Blueprint §4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Feature flags that map to commercial module capabilities.
+ * These are the feature names used by the requireFeature() decorator.
+ */
+export type LicenseFeature =
+  | 'TEE_ATTESTATION'
+  | 'ZK_PROVER_GPU'
+  | 'COMPLIANCE_AUTOMATION'
+  | 'ENTERPRISE_SSO'
+  | 'TOKENIZATION'
+  | 'MULTI_NODE'
+  | 'GOVERNANCE_ENGINE';
+
+/**
+ * Features available per tier.
+ */
+export const TIER_FEATURES: Record<LicenseTier, LicenseFeature[]> = {
+  OPEN_SOURCE: [],
+  PRO: ['TEE_ATTESTATION', 'COMPLIANCE_AUTOMATION'],
+  ENTERPRISE: ['TEE_ATTESTATION', 'ZK_PROVER_GPU', 'COMPLIANCE_AUTOMATION', 'ENTERPRISE_SSO', 'MULTI_NODE'],
+  GOVERNANCE: ['TEE_ATTESTATION', 'ZK_PROVER_GPU', 'COMPLIANCE_AUTOMATION', 'ENTERPRISE_SSO', 'TOKENIZATION', 'MULTI_NODE', 'GOVERNANCE_ENGINE'],
 };
 
 /**
  * Modules available per tier.
  */
 export const TIER_MODULES: Record<LicenseTier, string[]> = {
-  community: [
+  OPEN_SOURCE: [
     'air-kernel',
     'epistemic-runtime',
     'safe-krypte-basic',
     'safe-liner-basic',
     'hbk-adapter',
   ],
-  professional: [
+  PRO: [
     'air-kernel',
     'epistemic-runtime',
     'safe-krypte-basic',
@@ -67,7 +92,7 @@ export const TIER_MODULES: Record<LicenseTier, string[]> = {
     'tee-attestation',
     'compliance-automation',
   ],
-  enterprise: [
+  ENTERPRISE: [
     'air-kernel',
     'epistemic-runtime',
     'safe-krypte-basic',
@@ -78,36 +103,48 @@ export const TIER_MODULES: Record<LicenseTier, string[]> = {
     'zk-prover-gpu',
     'enterprise-sso',
   ],
+  GOVERNANCE: [
+    'air-kernel',
+    'epistemic-runtime',
+    'safe-krypte-basic',
+    'safe-liner-basic',
+    'hbk-adapter',
+    'tee-attestation',
+    'compliance-automation',
+    'zk-prover-gpu',
+    'enterprise-sso',
+    'tokenization',
+  ],
 };
 
 // ---------------------------------------------------------------------------
-// §2 — License Payload
+// §3 — License Payload (per Blueprint §4)
 // ---------------------------------------------------------------------------
 
 /**
  * License payload — the unsigned content of a license.
  *
- * This is the data that gets signed by the VVU EARTH TECH license authority
- * to produce a SignedLicense. The payload contains all the information needed
- * to determine what modules and features are available.
+ * Aligned with Master Blueprint: includes tier, features array,
+ * expiresAt, and optional hardwareFingerprint for air-gapped
+ * municipal environments.
  */
 export interface LicensePayload {
   /** Unique license identifier */
   licenseId: string;
-  /** License tier */
+  /** License tier (OPEN_SOURCE, PRO, ENTERPRISE, GOVERNANCE) */
   tier: LicenseTier;
-  /** Organization name */
-  organization: string;
-  /** Organization ID (internal reference) */
+  /** Organization ID */
   organizationId: string;
-  /** License issue timestamp (epoch ms) */
-  issuedAt: number;
-  /** License expiration timestamp (epoch ms) */
-  expiresAt: number;
-  /** Number of authorized users/seats */
+  /** ISO 8601 timestamp when license was issued */
+  issuedAt: string;
+  /** ISO 8601 timestamp when license expires */
+  expiresAt: string;
+  /** Feature flags authorized for this license */
+  features: LicenseFeature[];
+  /** Hardware fingerprint for air-gapped environments (SHA-256 of system identifiers) */
+  hardwareFingerprint?: string;
+  /** Number of authorized nodes/gateways */
   seats: number;
-  /** Modules explicitly authorized for this license */
-  authorizedModules: string[];
   /** Geographic region(s) for compliance (e.g., 'ZA' for South Africa) */
   regions: string[];
   /** Whether this is a trial license */
@@ -119,7 +156,7 @@ export interface LicensePayload {
 }
 
 // ---------------------------------------------------------------------------
-// §3 — Signed License
+// §4 — Signed License
 // ---------------------------------------------------------------------------
 
 /**
@@ -128,11 +165,12 @@ export interface LicensePayload {
  *
  * The signature is computed over the RFC 8785 canonicalized JSON of the
  * LicensePayload, ensuring deterministic verification.
+ * Offline-first: no phone-home server required (per Blueprint §4).
  */
 export interface SignedLicense {
   /** The unsigned license payload */
   payload: LicensePayload;
-  /** Ed25519 signature over canonicalized payload */
+  /** Base64 encoded Ed25519 signature over canonicalized payload */
   signature: string;
   /** Ed25519 public key of the license authority */
   authorityPublicKey: string;
@@ -143,7 +181,7 @@ export interface SignedLicense {
 }
 
 // ---------------------------------------------------------------------------
-// §4 — License Validation Result
+// §5 — License Validation Result
 // ---------------------------------------------------------------------------
 
 /**
@@ -151,15 +189,19 @@ export interface SignedLicense {
  */
 export interface LicenseValidationResult {
   /** Whether the license is valid */
-  valid: boolean;
+  isValid: boolean;
   /** The validated tier (if valid) */
-  tier: LicenseTier | null;
+  tier: LicenseTier;
+  /** List of authorized features (if valid) */
+  features: LicenseFeature[];
   /** List of authorized modules (if valid) */
   authorizedModules: string[];
   /** Error messages (if invalid) */
   errors: string[];
   /** Warning messages */
   warnings: string[];
+  /** Failure reason (if invalid) — used by feature gate HF-006 */
+  failureReason?: string;
   /** Whether the license is expired */
   expired: boolean;
   /** Whether the license is a trial */
@@ -169,13 +211,44 @@ export interface LicenseValidationResult {
 }
 
 // ---------------------------------------------------------------------------
-// §5 — License Authority Configuration
+// §6 — Hard Failure Codes (per Blueprint)
 // ---------------------------------------------------------------------------
 
 /**
- * Configuration for the license authority.
- * The public key is used to verify license signatures.
- * The current authority public key is embedded in the validator.
+ * Hard Failure codes used by the feature gate and evidence compiler.
+ * These are the authoritative error codes that halt execution.
  */
+export const HARD_FAILURE_CODES = {
+  HF_001: 'Mock boolean detected (No TEE Verifier injected)',
+  HF_002: 'ZK Proof verification unavailable (No ZK Prover injected)',
+  HF_003: 'Evidence integrity failure',
+  HF_004: 'Non-deterministic API detected',
+  HF_005: 'WORM violation',
+  HF_006: 'Feature BLOCKED (Commercial tier required)',
+  HF_007: 'Tenant Boundary Violation',
+  HF_008: 'Canonicalization mismatch',
+  HF_009: 'Replay divergence',
+  HF_010: 'Policy violation',
+  HF_011: 'Thermal state suboptimal (DTR failure)',
+  HF_012: 'HBK telemetry hash mismatch',
+} as const;
+
+export type HardFailureCode = keyof typeof HARD_FAILURE_CODES;
+
+// ---------------------------------------------------------------------------
+// §7 — Constants
+// ---------------------------------------------------------------------------
+
 export const LICENSE_SCHEMA_VERSION = 1;
 export const SIGNATURE_VERSION = 1;
+
+/**
+ * Confidence penalty applied when no TEE Verifier is injected (per Blueprint §2).
+ * 0.31 = maximum mathematical penalty for unverified TEE attestation.
+ */
+export const TEE_CONFIDENCE_PENALTY = 0.31;
+
+/**
+ * Maximum confidence score when all verifiers are properly injected.
+ */
+export const MAX_CONFIDENCE_SCORE = 1.0;

@@ -25,3 +25,11 @@
 // ============================================================================
 
 export * from '../../src/lib/kernel';
+
+// Decision 6 — Knowledge Graph, ADR Generator, Release Gate
+export * from './knowledge-graph';
+export * from './adr-generator';
+export * from './release-gate';
+
+// Decision 10 — Proof Package Generator (smart contract payload)
+export * from './proof-package-generator';

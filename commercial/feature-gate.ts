@@ -1,27 +1,44 @@
-// Epistemic Runtime v0.8 — VVU EARTH TECH Feature Gate Decorator
-// Task 6-d: Cryptographic License Validation Framework
+/**
+ * @license
+ * VVU EARTH TECH - AIR Kernel
+ * Copyright (c) 2026 Venture Vision Ubuntu
+ *
+ * LICENSE: Apache-2.0 (Open Source) OR Commercial (Enterprise)
+ * See LICENSE and COMMERCIAL_LICENSE.md for details.
+ *
+ * This file is part of the VVU EARTH TECH horizontal infrastructure.
+ * It contains no product-specific logic (Golden Rule).
+ */
+
+// ============================================================================
+// VVU EARTH TECH — Feature Gate Decorator (Commercial)
+// ============================================================================
 //
-// The feature gate is the runtime enforcement layer that bridges
-// the LicenseValidator with commercial module access control.
+// Offline-first feature gate (per Master Blueprint §4).
 // At boot time, loadLicense() validates and caches the result.
 // requireFeature() decorates async functions with a license check.
+//
+// If the license is invalid or lacks the feature, it immediately throws
+// HF-006, halting execution before any commercial code runs.
+// ============================================================================
 
 import { LicenseValidator } from '../shared/license/validator';
-import type { SignedLicense } from '../shared/license/license-schema';
+import type { SignedLicense, LicenseFeature } from '../shared/license/license-schema';
+import { HARD_FAILURE_CODES } from '../shared/license/license-schema';
 
 /**
  * Cached validation result from boot-time license initialization.
  * Once set, this persists for the lifetime of the process.
  * If null, no license has been loaded — all feature-gated calls will fail.
  */
-let CACHED_VALIDATION: ReturnType<typeof LicenseValidator.validate> | null = null;
+let CACHED_VALIDATION: ReturnType<typeof LicenseValidator.prototype.validate> | null = null;
 
 /**
  * Load and validate a signed license at boot time.
  * This MUST be called before any feature-gated commercial module is invoked.
  *
  * @param license — The SignedLicense blob to validate and cache
- * @throws Error if the license signature is invalid or expired
+ * @param authorityPublicKey — Optional Ed25519 PEM public key for verification
  *
  * Example usage (server-side bootstrap):
  * ```ts
@@ -32,16 +49,20 @@ let CACHED_VALIDATION: ReturnType<typeof LicenseValidator.validate> | null = nul
  * loadLicense(licenseJson); // Validates signature + caches result
  * ```
  */
-export function loadLicense(license: SignedLicense): void {
-  CACHED_VALIDATION = LicenseValidator.validate(license);
+export function loadLicense(license: SignedLicense, authorityPublicKey?: string): void {
+  const validator = authorityPublicKey
+    ? new LicenseValidator(authorityPublicKey)
+    : new LicenseValidator();
+
+  CACHED_VALIDATION = validator.validate(license);
 
   if (!CACHED_VALIDATION.isValid) {
-    console.error(`VVU License Validation FAILED: ${CACHED_VALIDATION.failureReason}`);
-    // In production, this should halt boot. For now, we log and continue.
-    // The requireFeature() decorator will enforce the block at call time.
+    console.error(
+      `[VVU] License Validation FAILED: ${CACHED_VALIDATION.failureReason}`
+    );
   } else {
     console.info(
-      `VVU License Valid: tier=${CACHED_VALIDATION.tier}, features=${CACHED_VALIDATION.features.join(', ')}`,
+      `[VVU] License Valid: tier=${CACHED_VALIDATION.tier}, features=${CACHED_VALIDATION.features.join(', ')}`,
     );
   }
 }
@@ -54,7 +75,7 @@ export function loadLicense(license: SignedLicense): void {
  * 3. The license includes the required feature name
  *
  * If any condition fails, the decorated function throws with
- * error code HF-006 (Hard Fail — feature blocked).
+ * error code HF-006 (Hard Fail — feature blocked by commercial tier).
  *
  * @param featureName — The feature flag to check (e.g., 'TEE_ATTESTATION')
  * @returns A decorator that wraps the target async function
@@ -63,27 +84,30 @@ export function loadLicense(license: SignedLicense): void {
  * ```ts
  * import { requireFeature } from '@/commercial/feature-gate';
  *
- * const runTEEAttestation = requireFeature('TEE_ATTESTATION')(
- *   async (report: AttestationRequest) => { // implementation }
+ * const verifyTEEAttestation = requireFeature('TEE_ATTESTATION')(
+ *   async (quote: Buffer) => { ... }
  * );
  *
- * // If license lacks 'TEE_ATTESTATION', calling runTEEAttestation() throws:
- * // "HF-006: Feature 'TEE_ATTESTATION' requires higher tier."
+ * // If license lacks 'TEE_ATTESTATION', calling verifyTEEAttestation() throws:
+ * // "HF-006: Feature 'TEE_ATTESTATION' is BLOCKED..."
  * ```
  */
-export function requireFeature(featureName: string) {
+export function requireFeature(featureName: LicenseFeature | string) {
   return function <T extends (...args: any[]) => Promise<any>>(target: T): T {
     return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
       if (!CACHED_VALIDATION) {
-        throw new Error('FATAL: License not initialized at boot.');
+        throw new Error('FATAL: License not initialized at boot. Call loadLicense() first.');
       }
       if (!CACHED_VALIDATION.isValid) {
         throw new Error(
-          `HF-006: Feature '${featureName}' BLOCKED. ${CACHED_VALIDATION.failureReason}`,
+          `${HARD_FAILURE_CODES.HF_006}: Feature '${featureName}' BLOCKED. ${CACHED_VALIDATION.failureReason}`,
         );
       }
-      if (!CACHED_VALIDATION.features.includes(featureName)) {
-        throw new Error(`HF-006: Feature '${featureName}' requires higher tier.`);
+      if (!CACHED_VALIDATION.features.includes(featureName as LicenseFeature)) {
+        throw new Error(
+          `${HARD_FAILURE_CODES.HF_006}: Feature '${featureName}' requires higher tier. ` +
+          `Current tier: ${CACHED_VALIDATION.tier}. Available features: ${CACHED_VALIDATION.features.join(', ')}`,
+        );
       }
       return target(...args);
     }) as T;
@@ -94,6 +118,13 @@ export function requireFeature(featureName: string) {
  * Get the current cached validation result (for diagnostic/audit purposes).
  * Returns null if no license has been loaded.
  */
-export function getLicenseStatus(): ReturnType<typeof LicenseValidator.validate> | null {
+export function getLicenseStatus(): ReturnType<typeof LicenseValidator.prototype.validate> | null {
   return CACHED_VALIDATION;
+}
+
+/**
+ * Reset the cached license (for testing/replay purposes).
+ */
+export function resetLicense(): void {
+  CACHED_VALIDATION = null;
 }
