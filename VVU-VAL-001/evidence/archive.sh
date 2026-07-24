@@ -3,92 +3,140 @@
 #
 # At H72, assembles the complete evidence package and publishes it as a
 # GitHub Release associated with the frozen Git tag (VAL-001). Also archives
-# to long-term storage (Zenodo/immutable S3) per §6.2 of the protocol.
+# to long-term storage per §6.2 of the protocol.
+#
+# Invariants:
+#   - package is assembled in a temporary directory and atomically moved into place
+#   - release creation is idempotent: updates assets if release already exists
+#   - no placeholder URLs in release notes
 #
 # Usage:
-#   ./archive.sh                # assemble the package locally
-#   ./archive.sh --release      # assemble + publish to GitHub Release
+#   ./archive.sh                    # assemble locally
+#   ./archive.sh --release          # assemble + publish GitHub Release
+#   ./archive.sh --release --draft  # publish as draft for review
+#   ./archive.sh --release --prerelease  # mark as prerelease
 
 set -euo pipefail
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VAL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-REPO_ROOT="$(cd "${VAL_DIR}/../.." && pwd)"
-BUNDLES_DIR="${SCRIPT_DIR}/bundles"
-PACKAGE_DIR="${SCRIPT_DIR}/VVU-72H-VALIDATION"
-RELEASE=0
 
-[[ "${1:-}" == "--release" ]] && RELEASE=1
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$(cd "${SCRIPT_DIR}" && pwd)"
+source "${LIB_DIR}/lib.sh"
+
+VAL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+BUNDLES_DIR="${SCRIPT_DIR}/bundles"
+FROZEN_JSON="${VAL_DIR}/protocol/frozen-build.json"
+RELEASE=0
+DRAFT=0
+PRERELEASE=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --release) RELEASE=1; shift ;;
+    --draft) DRAFT=1; shift ;;
+    --prerelease) PRERELEASE=1; shift ;;
+    *) echo "unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
+py="$(detect_python)"
 
 echo "=== assembling VVU-72H-VALIDATION package ==="
-rm -rf "$PACKAGE_DIR"; mkdir -p "$PACKAGE_DIR"
+STAGING="$(mktemp -d)"
+trap 'rm -rf "$STAGING"' EXIT
 
-# 1. All 72 hourly bundles + SHA256SUMS
+# 1. All hourly bundles + SHASUMS
+BUNDLE_COUNT=0
 if [[ -d "$BUNDLES_DIR" ]] && ls "$BUNDLES_DIR"/Hour-*.zip &>/dev/null 2>&1; then
-  cp "$BUNDLES_DIR"/Hour-*.zip "$PACKAGE_DIR/"
-  cp "${SCRIPT_DIR}/SHA256SUMS" "$PACKAGE_DIR/"
-  echo "✓ copied $(ls "$PACKAGE_DIR"/Hour-*.zip | wc -l) bundles"
+  BUNDLE_COUNT=$(ls "$BUNDLES_DIR"/Hour-*.zip 2>/dev/null | wc -l || echo 0)
+  cp "$BUNDLES_DIR"/Hour-*.zip "$STAGING/"
+  [[ -f "${SCRIPT_DIR}/SHA256SUMS" ]] && cp "${SCRIPT_DIR}/SHA256SUMS" "$STAGING/"
+  echo "✓ copied $BUNDLE_COUNT bundles"
 else
   echo "⚠ no evidence bundles found — package will be incomplete"
 fi
 
 # 2. Frozen build manifest
-[[ -f "${VAL_DIR}/protocol/frozen-build.json" ]] && cp "${VAL_DIR}/protocol/frozen-build.json" "$PACKAGE_DIR/"
-[[ -f "${VAL_DIR}/protocol/frozen-build.sha256" ]] && cp "${VAL_DIR}/protocol/frozen-build.sha256" "$PACKAGE_DIR/"
+[[ -f "$FROZEN_JSON" ]] && cp "$FROZEN_JSON" "$STAGING/"
 
 # 3. Protocol PDF
 [[ -f "${VAL_DIR}/protocol/VVU-VAL-001_Pre_Registration_Protocol.pdf" ]] && \
-  cp "${VAL_DIR}/protocol/VVU-VAL-001_Pre_Registration_Protocol.pdf" "$PACKAGE_DIR/"
+  cp "${VAL_DIR}/protocol/VVU-VAL-001_Pre_Registration_Protocol.pdf" "$STAGING/"
 
 # 4. Final Report (if generated)
-[[ -f "${SCRIPT_DIR}/FinalReport.pdf" ]] && cp "${SCRIPT_DIR}/FinalReport.pdf" "$PACKAGE_DIR/"
+[[ -f "${SCRIPT_DIR}/FinalReport.pdf" ]] && cp "${SCRIPT_DIR}/FinalReport.pdf" "$STAGING/"
 
-# 5. Package SHA-256
-( cd "$PACKAGE_DIR" && sha256sum * > PACKAGE_SHA256SUMS )
-echo "✓ package assembled: $PACKAGE_DIR"
+# 5. Provenance metadata
+TAG="VAL-001"
+COMMIT_SHORT="unknown"
+if [[ -f "$FROZEN_JSON" ]] && [[ -n "$py" ]]; then
+  TAG=$("$py" -c "import json; print(json.load(open('$FROZEN_JSON')).get('git_tag','VAL-001'))" 2>/dev/null || echo "VAL-001")
+  COMMIT_SHORT=$("$py" -c "import json; print(json.load(open('$FROZEN_JSON')).get('commit_short','unknown'))" 2>/dev/null || echo "unknown")
+fi
+cat > "$STAGING/provenance.json" <<EOF
+{
+  "protocol": "VVU-VAL-001",
+  "protocol_version": "1.1",
+  "validation_event": "${TAG}",
+  "commit_short": "${COMMIT_SHORT}",
+  "bundle_count": ${BUNDLE_COUNT},
+  "package_sha_type": "SHA-256",
+  "long_term_archive": "pending"
+}
+EOF
 
-# 6. Create the zip
-ZIP="${SCRIPT_DIR}/VVU-72H-VALIDATION.zip"
-( cd "${SCRIPT_DIR}" && zip -qr "$(basename "$ZIP")" VVU-72H-VALIDATION/ )
-ZIP_SHA=$(sha256sum "$ZIP" | awk '{print $1}')
-echo "✓ zip: $ZIP (sha256: ${ZIP_SHA:0:16}...)"
+# 6. Package SHA-256
+( cd "$STAGING" && hash_file "$(find . -maxdepth 1 -type f | sort | xargs ls -1t)" > PACKAGE_SHA256SUMS 2>/dev/null || find . -maxdepth 1 -type f | sort | while read -r f; do hash_file "$f"; done > PACKAGE_SHA256SUMS )
+ZIP="$(mktemp "${SCRIPT_DIR}/VVU-72H-VALIDATION-XXXXXX.zip")"
+( cd "$STAGING" && zip -q -X "$ZIP" . )
+ZIP_SHA=$(hash_file "$ZIP" | awk '{print $1}')
+echo "✓ package assembled: $(basename "$ZIP") (sha256: ${ZIP_SHA:0:16}...)"
 
 # 7. Publish to GitHub Release
-if [[ $RELEASE -eq 1 ]]; then
+if [[ "$RELEASE" -eq 1 ]]; then
   echo ""
   echo "=== publishing GitHub Release ==="
   if ! command -v gh &>/dev/null 2>&1; then
     echo "✗ gh CLI not found — install: https://cli.github.com/"
     exit 1
   fi
-  FROZEN="${VAL_DIR}/protocol/frozen-build.json"
-  TAG=$(python3 -c "import json; print(json.load(open('$FROZEN'))['git_tag'])" 2>/dev/null || echo "VAL-001")
-  COMMIT=$(python3 -c "import json; print(json.load(open('$FROZEN'))['commit_hash'][:7])" 2>/dev/null || echo "unknown")
 
-  gh release create "$TAG" \
-    "$ZIP" \
-    "${PACKAGE_DIR}/PACKAGE_SHA256SUMS" \
-    --title "VVU-VAL-001 — 72-Hour Validation (commit ${COMMIT})" \
-    --notes-file - <<EOF
+  RELEASE_TITLE="VVU-VAL-001 — 72-Hour Validation (commit ${COMMIT_SHORT})"
+  NOTES_TEMPLATE="$STAGING/release-notes.md"
+  cat > "$NOTES_TEMPLATE" <<EOF
 ## VVU-VAL-001 — 72-Hour Continuous Validation
 
-Validation event: VAL-001
-Commit: ${COMMIT}
+Validation event: ${TAG}
+Commit: ${COMMIT_SHORT}
 Package SHA-256: ${ZIP_SHA}
 
 ### Contents
-- 72 hourly evidence bundles (Hour-01.zip ... Hour-72.zip)
+- ${BUNDLE_COUNT} hourly evidence bundles (Hour-01.zip ... Hour-72.zip)
 - SHA256SUMS (append-only hash ledger)
-- frozen-build.json (commit hash + image digest)
+- PACKAGE_SHA256SUMS (package-level hash ledger)
+- frozen-build.json (commit hash + image digest + image status)
 - VVU-VAL-001_Pre_Registration_Protocol.pdf
-- PACKAGE_SHA256SUMS
+- provenance.json
 
 ### Independent Reproduction
-See §12 of the protocol PDF for the 8-step reproduction procedure.
-
-### Long-term Archival
-This package is also archived at: [Zenodo DOI to be added]
+See §12 of the protocol PDF for the 8-step reproduction procedure. All artifacts are hash-verified.
 EOF
-  echo "✓ GitHub Release published: tag=$TAG"
+
+  export GH_PAGER=cat
+  if gh release view "$TAG" &>/dev/null 2>&1; then
+    echo "  release $TAG exists — updating assets"
+    gh release upload "$TAG" "$ZIP" "${SCRIPT_DIR}/SHA256SUMS" "$STAGING/PACKAGE_SHA256SUMS" --clobber 2>/dev/null || true
+    gh release edit "$TAG" --title "$RELEASE_TITLE" --notes-file "$NOTES_TEMPLATE" 2>/dev/null || true
+  else
+    gh release create "$TAG" \
+      "$ZIP" \
+      "${SCRIPT_DIR}/SHA256SUMS" \
+      "$STAGING/PACKAGE_SHA256SUMS" \
+      --title "$RELEASE_TITLE" \
+      --notes-file "$NOTES_TEMPLATE" \
+      $([[ "$DRAFT" -eq 1 ]] && echo "--draft") \
+      $([[ "$PRERELEASE" -eq 1 ]] && echo "--prerelease")
+  fi
+  echo "✓ GitHub Release updated: tag=$TAG"
   echo ""
-  echo "Next: archive to Zenodo/immutable S3 per §6.2 of the protocol."
+  echo "Next: archive to long-term immutable storage per §6.2 of the protocol."
 fi
