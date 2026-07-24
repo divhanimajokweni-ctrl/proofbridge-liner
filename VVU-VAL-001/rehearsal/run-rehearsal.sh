@@ -14,8 +14,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VAL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-REPO_ROOT="$(cd "${VAL_DIR}/../.." && pwd)"
+REPO_ROOT="$(git_root "${VAL_DIR}/..")"
+LIB_DIR="$(cd "${SCRIPT_DIR}" && pwd)"
+# shellcheck disable=SC1090
+source "${LIB_DIR}/lib.sh"
+
 SCHEDULE="${VAL_DIR}/chaos/schedule.yaml"
+EVIDENCE_DIR="${VAL_DIR}/evidence"
 REALTIME=0
 PHASE_ONLY=""
 
@@ -39,106 +44,133 @@ echo "║  Mode: $([[ $REALTIME -eq 0 ]] && echo "COMPRESSED (72h in ~2min)" || 
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# ── Step 1: Verify frozen build ──
+# ── Step 1: Verify frozen build ────────────────────────────────────────────
 echo "=== Step 1: Verify frozen build ==="
 FROZEN="${VAL_DIR}/protocol/frozen-build.json"
 if [[ ! -f "$FROZEN" ]]; then
-  echo "⚠ frozen-build.json not found — run freeze-build.sh first"
-  echo "  for rehearsal, proceeding with current HEAD (unfrozen)"
+  warn "frozen-build.json not found — proceeding with current HEAD (unfrozen)"
   COMMIT=$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo "unknown")
 else
-  COMMIT=$(python3 -c "import json; print(json.load(open('$FROZEN'))['commit_hash'])" 2>/dev/null || echo "unknown")
+  COMMIT=$(detect_python)
+  if [[ -n "$COMMIT" ]]; then
+    COMMIT=$(python -c "import json; print(json.load(open('${FROZEN}'))['commit_hash'])" 2>/dev/null || echo "unknown")
+  else
+    warn "python not available; cannot read frozen commit from JSON. Defaulting to unknown."
+    COMMIT="unknown"
+  fi
   echo "frozen commit: $COMMIT"
   if [[ "$COMMIT" != "unknown" ]]; then
-    git -C "$REPO_ROOT" rev-parse --verify "$COMMIT" &>/dev/null && \
-      echo "✓ commit verified in repository" || \
-      echo "⚠ commit not found in repository"
+    if git -C "$REPO_ROOT" rev-parse --verify "$COMMIT" &>/dev/null; then
+      echo "✓ commit verified in repository"
+    else
+      warn "commit not found in repository"
+    fi
   fi
 fi
 echo ""
 
-# ── Step 2: Ensure k3s cluster ──
+# ── Step 2: Ensure k3s cluster ─────────────────────────────────────────────
 echo "=== Step 2: Ensure k3s cluster ==="
 if ! command -v kubectl &>/dev/null; then
-  echo "kubectl not found — install kubectl first" >&2; exit 2
+  fatal "kubectl not found — install kubectl first"
 fi
 if ! kubectl get nodes &>/dev/null 2>&1; then
-  echo "no cluster reachable — install k3s:"
-  echo "  curl -sfL https://get.k3s.io | sh -"
-  echo "  export KUBECONFIG=/etc/rancher/k3s/k3s.yaml"
-  exit 2
+  fatal "no cluster reachable — install k3s or configure KUBECONFIG"
 fi
 echo "cluster ready: $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}')"
 echo ""
 
-# ── Step 3: Deploy the validation stack ──
+# ── Step 3: Deploy the validation stack ────────────────────────────────────
 echo "=== Step 3: Deploy validation stack ==="
-kubectl apply -f "${VAL_DIR}/kubernetes/namespace.yaml"
-kubectl apply -f "${VAL_DIR}/kubernetes/runtime.yaml"
-kubectl apply -f "${VAL_DIR}/kubernetes/monitoring.yaml"
-kubectl apply -f "${VAL_DIR}/kubernetes/evidence.yaml"
-kubectl apply -f "${VAL_DIR}/kubernetes/streaming.yaml"
-kubectl apply -f "${VAL_DIR}/kubernetes/outreach.yaml"
-echo "waiting for pods to be ready..."
+for MANIFEST in "${VAL_DIR}/kubernetes/"*.yaml; do
+  [[ -f "$MANIFEST" ]] || continue
+  info "applying $(basename "$MANIFEST")"
+  kubectl apply -f "$MANIFEST"
+done
+echo "waiting for vvu-runtime pods to be ready..."
 kubectl -n vvu-runtime wait --for=condition=ready pod -l app=runtime --timeout=120s 2>/dev/null || \
-  echo "  (runtime pod not ready within 120s — continuing for rehearsal)"
+  warn "runtime pod not ready within 120s — continuing for rehearsal"
 echo ""
 
-# ── Step 4: Drive the failure-injection schedule ──
+# ── Step 4: Drive the failure-injection schedule ───────────────────────────
 PHASES=("P1" "P2" "P3" "P4" "P5" "P6" "P7")
 if [[ -n "$PHASE_ONLY" ]]; then
   PHASES=("$PHASE_ONLY")
 fi
 
-OVERALL_PASS=0
+OVERALL_FAIL=0
 for P in "${PHASES[@]}"; do
   echo "=== Phase $P ==="
   case "$P" in
-    P1) echo "  (nominal — no injection) ;;
+    P1) echo "  (nominal — no injection)" ;;
     P2) echo "  (telemetry flood — ramping load generator)"
        kubectl -n vvu-runtime set env deploy/telemetry-generator RATE_MULT=100 2>/dev/null || true ;;
     P3) bash "${VAL_DIR}/chaos/inject-network.sh --loss 25 --latency 1000 --dup 5" || true ;;
     P4) bash "${VAL_DIR}/chaos/inject-storage.sh --fill 90 --iops 500" || true ;;
     P5) for T in runtime nats worker api scheduler; do
           POD=$(kubectl -n vvu-runtime get pods -l "app=$T" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-          [[ -n "$POD" ]] && kubectl -n vvu-runtime delete pod "$POD" --grace-period=0 --force 2>/dev/null || true
+          if [[ -n "$POD" ]]; then
+            echo "  (evicting $T/$POD)"
+            kubectl -n vvu-runtime delete pod "$POD" --grace-period=0 --force 2>/dev/null || true
+          fi
         done ;;
     P6) bash "${VAL_DIR}/chaos/inject-security.sh" || true ;;
-    P7) bash "${VAL_DIR}/chaos/inject-partition.sh --action partition"
+    P7) bash "${VAL_DIR}/chaos/inject-partition.sh --action partition" || true
         sleep 2
-        bash "${VAL_DIR}/chaos/inject-partition.sh --action reconnect"
-        bash "${VAL_DIR}/chaos/inject-partition.sh --action merge" ;;
+        bash "${VAL_DIR}/chaos/inject-partition.sh --action reconnect" || true
+        bash "${VAL_DIR}/chaos/inject-partition.sh --action merge" || true ;;
   esac
   sleep "$DWELL"
 
   # Archive a bundle for this phase's end hour + verify replay
-  HOUR=$(case "$P" in P1) echo 12;; P2) echo 24;; P3) echo 36;; P4) echo 48;; P5) echo 60;; P6) echo 66;; P7) echo 72;; esac)
-  echo "  → archiving evidence for hour $HOUR"
-  HOUR="$HOUR" bash "${VAL_DIR}/evidence/bundle.sh" "$HOUR" 2>/dev/null || \
-    echo "  ⚠ evidence bundle for hour $HOUR failed"
-  BUNDLE="${VAL_DIR}/evidence/bundles/Hour-$(printf "%02d" "$HOUR").zip"
-  [[ -f "$BUNDLE" ]] && bash "${VAL_DIR}/evidence/replay.sh" --bundle "$BUNDLE" 2>/dev/null || \
-    echo "  ⚠ replay verification for hour $HOUR did not pass"
+  HOUR="$(phase_to_hour "$P")"
+  if [[ -n "$HOUR" ]]; then
+    echo "  → archiving evidence for hour $HOUR"
+    if ! HOUR="$HOUR" bash "${VAL_DIR}/evidence/bundle.sh" "$HOUR" 2>/dev/null; then
+      warn "evidence bundle for hour $HOUR failed"
+      OVERALL_FAIL=1
+    fi
+    BUNDLE="${VAL_DIR}/evidence/bundles/Hour-$(printf "%02d" "$HOUR").zip"
+    if [[ -f "$BUNDLE" ]]; then
+      if ! bash "${VAL_DIR}/evidence/replay.sh" --bundle "$BUNDLE" 2>/dev/null; then
+        warn "replay verification for hour $HOUR did not pass"
+        OVERALL_FAIL=1
+      fi
+    else
+      warn "bundle not found for hour $HOUR"
+      OVERALL_FAIL=1
+    fi
+  fi
   echo ""
 done
 
-# ── Step 5: Compute final Validation Index ──
+# ── Step 5: Compute final Validation Index ─────────────────────────────────
 echo "=== Step 5: Final Validation Index ==="
 FINAL_METRICS="${VAL_DIR}/evidence/bundles/Hour-72/metrics/ledger-status.json"
 if [[ -f "$FINAL_METRICS" ]]; then
-  python3 "${VAL_DIR}/evidence/validation-index.py" --metrics "$FINAL_METRICS" || true
+  if command -v detect_python &>/dev/null; then
+    validation_index "$FINAL_METRICS" json || true
+  else
+    warn "python not available; skipping Validation Index recomputation"
+  fi
 else
-  echo "  (final metrics not available — rehearsal used stubs)"
+  warn "final metrics not available — rehearsal used stubs"
 fi
 echo ""
 
-# ── Step 6: Report ──
+# ── Step 6: Report ─────────────────────────────────────────────────────────
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║  REHEARSAL COMPLETE                                            ║"
 echo "║  Commit: $COMMIT"
 echo "║"
-echo "║  Next steps if PASS:                                           ║"
-echo "║    1. Run freeze-build.sh to freeze the build                  ║"
-echo "║    2. Publish the protocol PDF with the frozen commit hash     ║"
+echo "║  Next steps if clean pass:                                    ║"
+echo "║    1. Run freeze-build.sh to freeze the build                 ║"
+echo "║    2. Publish the protocol PDF with the frozen commit hash    ║"
 echo "║    3. Schedule the public 72-hour run (run-rehearsal.sh --realtime) ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
+
+if [[ "$OVERALL_FAIL" -ne 0 ]]; then
+  warn "rehearsal completed with failures"
+  exit 1
+fi
+exit 0

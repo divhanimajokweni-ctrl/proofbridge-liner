@@ -50,5 +50,14 @@ test
 prompt
 
 server.log
+
+# VVU validation generated artifacts / evidence / releases
+# Evidence is NEVER committed. These should be ignored unless explicitly published.
+VVU-VAL-001/release/
+VVU-VAL-001/evidence/bundles/
+VVU-VAL-001/evidence/SHA256SUMS
+VVU-VAL-001/evidence/*.zip
+*.log
+
 # Skills directory
 /skills/
