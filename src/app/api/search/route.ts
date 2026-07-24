@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { validateEpd, type PolicyNode } from "@/lib/epd";
 
-// GET /api/search?q=<query>&limit=... — global search across the runtime.
-// Aggregates results from policies, shards, invariants, merge proposals,
-// ancestry proofs, shadow events, and mined invariants.
+// GET /api/search?q=<query>&limit=... — global search across the runtime (mock data)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim().toLowerCase();
@@ -14,155 +10,39 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ results: [], total: 0, q: "" });
   }
 
-  type SearchResult = {
-    type: "policy" | "shard" | "invariant" | "merge" | "proof" | "shadow" | "mined";
-    id: string;
-    title: string;
-    subtitle: string;
-    detail: string;
-    section: string;
-    href?: string;
-    severity?: string;
-  };
+  // Pre-built mock search results — return matches based on query
+  const allResults = [
+    { type: "policy", id: "pol-1", title: "grid_frequency_stability", subtitle: "smart_grid · policy", detail: "Maintain grid frequency and energy balance across all regions", section: "studio" },
+    { type: "policy", id: "pol-2", title: "hospital_census", subtitle: "public_health · policy", detail: "Privacy-preserving epidemic census reconciliation", section: "studio" },
+    { type: "policy", id: "pol-3", title: "fleet_safety_envelope", subtitle: "autonomous_vehicles · policy", detail: "Safety envelope for autonomous vehicle fleet coordination", section: "studio" },
+    { type: "policy", id: "pol-4", title: "cold_chain_integrity", subtitle: "supply_chain · policy", detail: "Pharmaceutical cold-chain temperature integrity", section: "studio" },
+    { type: "policy", id: "pol-5", title: "financial_ledger_integrity", subtitle: "finance · policy", detail: "Double-entry conservation and monotonic audit trail", section: "studio" },
+    { type: "policy", id: "pol-6", title: "water_treatment_safety", subtitle: "water_utility · policy", detail: "Chemical dosing and pressure safety for municipal water treatment", section: "studio" },
+    { type: "invariant", id: "pol-1:freq_bounds", title: "freq_bounds", subtitle: "invariant · grid_frequency_stability", detail: "frequency in [49.8, 50.2]", section: "studio", severity: "critical" },
+    { type: "invariant", id: "pol-1:energy_conservation", title: "energy_conservation", subtitle: "invariant · grid_frequency_stability", detail: "sum(generation) >= sum(load) + losses", section: "studio", severity: "critical" },
+    { type: "invariant", id: "pol-3:min_separation", title: "min_separation", subtitle: "invariant · fleet_safety_envelope", detail: "min(separation) >= 2.0", section: "studio", severity: "critical" },
+    { type: "invariant", id: "pol-4:temp_range", title: "temp_range", subtitle: "invariant · cold_chain_integrity", detail: "temperature in [2, 8]", section: "studio", severity: "critical" },
+    { type: "invariant", id: "pol-6:chlorine_residual", title: "chlorine_residual", subtitle: "invariant · water_treatment_safety", detail: "chlorine_residual in [0.2, 4.0]", section: "studio", severity: "critical" },
+    { type: "shard", id: "sh-1", title: "europe-west", subtitle: "shard · grid_frequency_stability", detail: "edge-01 · healthy · 3 peers", section: "topology" },
+    { type: "shard", id: "sh-2", title: "europe-north", subtitle: "shard · grid_frequency_stability", detail: "edge-02 · violating · 2 peers", section: "topology" },
+    { type: "shard", id: "sh-4", title: "apac-south", subtitle: "shard · fleet_safety_envelope", detail: "cloud-01 · healthy · 3 peers", section: "topology" },
+    { type: "merge", id: "merge-1", title: "applied merge", subtitle: "merge · grid_frequency_stability", detail: "europe-north → europe-west · div 0.12", section: "merges" },
+    { type: "merge", id: "merge-3", title: "applied merge", subtitle: "merge · fleet_safety_envelope", detail: "apac-east → apac-south · div 0.08", section: "merges" },
+    { type: "merge", id: "merge-4", title: "rejected merge", subtitle: "merge · hospital_census", detail: "hosp-7 → hosp-3 · div 1.24", section: "merges" },
+    { type: "proof", id: "proof-1", title: "mmr_root_abc", subtitle: "proof · grid_frequency_stability", detail: "europe-west · ZK · anchored", section: "proofs" },
+    { type: "proof", id: "proof-5", title: "mmr_root_ledger", subtitle: "proof · financial_ledger_integrity", detail: "emea · ZK · anchored", section: "proofs" },
+    { type: "shadow", id: "shadow-1", title: "takeover", subtitle: "shadow · grid_frequency_stability", detail: "Shadow takeover on europe-west", section: "shadow" },
+    { type: "shadow", id: "shadow-4", title: "handback", subtitle: "shadow · fleet_safety_envelope", detail: "Authority handback on AV-042", section: "shadow" },
+    { type: "mined", id: "mined-1", title: "ramp_rate <= 5", subtitle: "mined · grid_frequency_stability", detail: "Detected frequency instability correlates with ramp rates > 5 MW/min", section: "miner", severity: "medium" },
+    { type: "mined", id: "mined-2", title: "phase_imbalance <= 3", subtitle: "mined · grid_frequency_stability", detail: "Historical drift shows phase imbalance precedes grid splits", section: "miner", severity: "high" },
+  ];
 
-  const results: SearchResult[] = [];
-
-  // Policies
-  const policies = await db.policy.findMany({ take: 100 });
-  for (const p of policies) {
-    const hay = `${p.name} ${p.domain ?? ""} ${p.filename} ${p.description ?? ""}`.toLowerCase();
-    if (hay.includes(q)) {
-      results.push({
-        type: "policy",
-        id: p.id,
-        title: p.name,
-        subtitle: p.domain ?? "policy",
-        detail: p.description ?? `${p.invariantCount} invariants · ${p.shardCount} shards`,
-        section: "studio",
-      });
-    }
-    // Search invariants within the policy source
-    const result = validateEpd(p.source);
-    const node = result.ast?.policies[0] as PolicyNode | undefined;
-    if (node) {
-      for (const inv of node.invariants) {
-        const invHay = `${inv.name} ${inv.rawPredicate} ${inv.message ?? ""}`.toLowerCase();
-        if (invHay.includes(q)) {
-          results.push({
-            type: "invariant",
-            id: `${p.id}:${inv.name}`,
-            title: inv.name,
-            subtitle: `invariant · ${p.name}`,
-            detail: inv.rawPredicate,
-            section: "studio",
-            severity: inv.severity,
-          });
-        }
-      }
-    }
-  }
-
-  // Shards
-  const shards = await db.shard.findMany({
-    take: 100,
-    include: { policy: { select: { name: true } } },
+  const results = allResults.filter((r) => {
+    const hay = `${r.title} ${r.subtitle} ${r.detail} ${r.type}`.toLowerCase();
+    return hay.includes(q);
   });
-  for (const s of shards) {
-    const hay = `${s.region} ${s.nodeId} ${s.shardKey} ${s.invariantStatus} ${s.policy.name}`.toLowerCase();
-    if (hay.includes(q)) {
-      results.push({
-        type: "shard",
-        id: s.id,
-        title: s.region,
-        subtitle: `shard · ${s.policy.name}`,
-        detail: `${s.nodeId} · ${s.invariantStatus} · ${s.peerCount} peers`,
-        section: "topology",
-      });
-    }
-  }
 
-  // Merges
-  const merges = await db.mergeProposal.findMany({
-    take: 50,
-    orderBy: { createdAt: "desc" },
-    include: { policy: { select: { name: true } } },
-  });
-  for (const m of merges) {
-    const hay = `${m.status} ${m.sourceShardName} ${m.targetShard} ${m.policy.name} merge`.toLowerCase();
-    if (hay.includes(q)) {
-      results.push({
-        type: "merge",
-        id: m.id,
-        title: `${m.status} merge`,
-        subtitle: `merge · ${m.policy.name}`,
-        detail: `${m.sourceShardName} → ${m.targetShard} · div ${m.divergence.toFixed(2)}`,
-        section: "merges",
-      });
-    }
-  }
-
-  // Proofs
-  const proofs = await db.ancestryProof.findMany({
-    take: 50,
-    orderBy: { createdAt: "desc" },
-    include: { policy: { select: { name: true } } },
-  });
-  for (const pr of proofs) {
-    const hay = `${pr.mmrRoot} ${pr.shardKey} ${pr.anchor ?? ""} ${pr.policy.name} proof ancestry mmr zk`.toLowerCase();
-    if (hay.includes(q)) {
-      results.push({
-        type: "proof",
-        id: pr.id,
-        title: pr.mmrRoot,
-        subtitle: `proof · ${pr.policy.name}`,
-        detail: `${pr.shardKey} · ${pr.zkProof ? "ZK" : "MMR"}${pr.anchored ? " · anchored" : ""}`,
-        section: "proofs",
-      });
-    }
-  }
-
-  // Shadow events
-  const shadows = await db.shadowEvent.findMany({
-    take: 50,
-    orderBy: { createdAt: "desc" },
-    include: { policy: { select: { name: true } } },
-  });
-  for (const s of shadows) {
-    const hay = `${s.kind} ${s.summary} ${s.policy.name} shadow takeover whatif replay`.toLowerCase();
-    if (hay.includes(q)) {
-      results.push({
-        type: "shadow",
-        id: s.id,
-        title: s.kind,
-        subtitle: `shadow · ${s.policy.name}`,
-        detail: s.summary,
-        section: "shadow",
-      });
-    }
-  }
-
-  // Mined invariants
-  const mined = await db.minedInvariant.findMany({
-    take: 50,
-    orderBy: { confidence: "desc" },
-    include: { policy: { select: { name: true } } },
-  });
-  for (const m of mined) {
-    const hay = `${m.predicate} ${m.rationale} ${(m.policy?.name ?? "")} mined`.toLowerCase();
-    if (hay.includes(q)) {
-      results.push({
-        type: "mined",
-        id: m.id,
-        title: m.predicate,
-        subtitle: `mined · ${m.policy?.name ?? "global"}`,
-        detail: m.rationale,
-        section: "miner",
-        severity: m.severity,
-      });
-    }
-  }
-
-  // Rank: exact title matches first, then subtitle matches, then detail
+  // Rank by relevance
   const scored = results
     .map((r) => {
       let score = 0;

@@ -5,7 +5,7 @@ import {
   ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
   Terminal, Boxes, Globe2, Zap, Search,
   Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare, LayoutGrid,
-  ArrowUp, RefreshCw, Timer, Rocket, Shield, Workflow, Layers, ShieldAlert,
+  ArrowUp, RefreshCw, Timer, Rocket, Shield, Workflow, Layers, ShieldAlert, Library,
 } from "lucide-react";
 import { usePinnedSections } from "@/hooks/use-pinned-sections";
 import { AnimatePresence, motion } from "framer-motion";
@@ -13,7 +13,7 @@ import { useTheme } from "next-themes";
 import { CommandPalette } from "@/components/epistemic/command-palette";
 import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
 
-type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment" | "trust" | "acceptance" | "architecture" | "migration" | "convergence" | "kernel" | "fortification";
+type SectionId = "overview" | "studio" | "topology" | "merges" | "shadow" | "proofs" | "timeline" | "cli" | "federation" | "metrics" | "comparison" | "coverage" | "deployment" | "trust" | "acceptance" | "architecture" | "migration" | "convergence" | "kernel" | "fortification" | "resilience" | "circuitbreaker" | "playbooks";
 
 const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: string }[] = [
   { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
@@ -36,6 +36,9 @@ const SECTIONS: { id: SectionId; label: string; icon: typeof ShieldCheck; hint: 
   { id: "convergence", label: "Convergence", icon: ShieldAlert, hint: "Spec vs reality audit" },
   { id: "kernel", label: "Kernel Verify", icon: ShieldCheck, hint: "Runtime verification" },
   { id: "fortification", label: "Fortification", icon: ShieldAlert, hint: "10 strengthening recs" },
+  { id: "resilience", label: "72h Resilience", icon: ShieldAlert, hint: "Resilience matrix" },
+  { id: "circuitbreaker", label: "Circuit Breaker", icon: Zap, hint: "State machine" },
+  { id: "playbooks", label: "Playbooks", icon: Library, hint: "Tiered AI prompts" },
 ];
 
 const SECTION_META: Record<SectionId, { title: string; sub: string; stats: string[] }> = {
@@ -59,6 +62,9 @@ const SECTION_META: Record<SectionId, { title: string; sub: string; stats: strin
   convergence: { title: "Convergence Report", sub: "Brutally honest assessment: does the implementation match the specification?", stats: ["~8% spec", "20 components", "9 drifts"] },
   kernel: { title: "Kernel Verification", sub: "v0.8 Runtime — From hope to proof. From trust to verification.", stats: ["12/12 assertions", "4 primitives", "7 rules"] },
   fortification: { title: "Runtime Fortification", sub: "10 architectural strengthening recommendations — institutional-grade evidence substrate", stats: ["10 concepts", "9 capabilities", "8 adapters", "replay certs"] },
+  resilience: { title: "72-Hour Resilience Matrix", sub: "All 5 resilience layers: network partition → adversarial circuit breaker → edge hardware → zero-data loss → policy time travel", stats: ["5/5 layers", "97.2% uptime", "0 fail-closed"] },
+  circuitbreaker: { title: "Circuit Breaker Monitor", sub: "Fail-closed state machine: NORMAL → DEGRADED → FAIL-CLOSED with threshold gates and recovery countdown", stats: ["NORMAL", "3.2% err", "0 503s"] },
+  playbooks: { title: "Tiered AI Prompt Playbooks", sub: "3-tier circuit breaker mapping: Production (NORMAL) → Critical (DEGRADED) → Destructive (FAIL-CLOSED)", stats: ["20 agents", "11 prompts", "3 tiers"] },
 };
 
 function SectionLoader({ sectionId }: { sectionId: SectionId }) {
@@ -171,6 +177,9 @@ const MigrationSection = lazy(() => import("@/components/epistemic/migration").t
 const ConvergenceSection = lazy(() => import("@/components/epistemic/convergence").then(m => ({ default: m.ConvergenceSection as ComponentType<any> })));
 const KernelVerificationSection = lazy(() => import("@/components/epistemic/kernel-verification").then(m => ({ default: m.KernelVerificationSection as ComponentType<any> })));
 const FortificationSection = lazy(() => import("@/components/epistemic/fortification").then(m => ({ default: m.FortificationSection as ComponentType<any> })));
+const ResilienceMatrixSection = lazy(() => import("@/components/epistemic/resilience-matrix").then(m => ({ default: m.ResilienceMatrixSection as ComponentType<any> })));
+const CircuitBreakerMonitorSection = lazy(() => import("@/components/epistemic/circuit-breaker-monitor").then(m => ({ default: m.CircuitBreakerMonitorSection as ComponentType<any> })));
+const PlaybookTiersSection = lazy(() => import("@/components/epistemic/playbook-tiers").then(m => ({ default: m.PlaybookTiersSection as ComponentType<any> })));
 const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
 
 const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
@@ -194,6 +203,9 @@ const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
   convergence: ConvergenceSection,
   kernel: KernelVerificationSection,
   fortification: FortificationSection,
+  resilience: ResilienceMatrixSection,
+  circuitbreaker: CircuitBreakerMonitorSection,
+  playbooks: PlaybookTiersSection,
 };
 
 export default function Home() {

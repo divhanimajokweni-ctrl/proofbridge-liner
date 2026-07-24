@@ -80,3 +80,15 @@ export const ConvergenceSection = dynamic(
   () => import("./convergence").then((m) => m.ConvergenceSection),
   { ssr: false }
 );
+export const ResilienceMatrixSection = dynamic(
+  () => import("./resilience-matrix").then((m) => m.ResilienceMatrixSection),
+  { ssr: false }
+);
+export const CircuitBreakerMonitorSection = dynamic(
+  () => import("./circuit-breaker-monitor").then((m) => m.CircuitBreakerMonitorSection),
+  { ssr: false }
+);
+export const PlaybookTiersSection = dynamic(
+  () => import("./playbook-tiers").then((m) => m.PlaybookTiersSection),
+  { ssr: false }
+);

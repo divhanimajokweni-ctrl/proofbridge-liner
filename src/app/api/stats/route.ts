@@ -1,151 +1,65 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { seedIfEmpty } from "@/lib/seed";
 
 const startTime = Date.now();
 
-// GET /api/stats — global epistemic health dashboard stats
+// GET /api/stats — global epistemic health dashboard stats (mock data)
 export async function GET() {
-  try {
-    await seedIfEmpty();
-  } catch {
-    /* ignore */
-  }
-
-  const [
-    policies,
-    shards,
-    merges,
-    proofs,
-    violations,
-    shadowEvents,
-    mined,
-    healthyShards,
-    repairingShards,
-    violatingShards,
-    appliedMerges,
-    rejectedMerges,
-    zkProofs,
-    shadowEnabledPolicies,
-  ] = await Promise.all([
-    db.policy.count(),
-    db.shard.count(),
-    db.mergeProposal.count(),
-    db.ancestryProof.count(),
-    db.invariantViolation.count(),
-    db.shadowEvent.count(),
-    db.minedInvariant.count(),
-    db.shard.count({ where: { invariantStatus: "healthy" } }),
-    db.shard.count({ where: { invariantStatus: "repairing" } }),
-    db.shard.count({ where: { invariantStatus: "violating" } }),
-    db.mergeProposal.count({ where: { status: "applied" } }),
-    db.mergeProposal.count({ where: { status: "rejected" } }),
-    db.ancestryProof.count({ where: { NOT: { zkProof: null } } }),
-    db.policy.count({ where: { shadowEnabled: true } }),
-  ]);
-
-  const totalShards = shards || 1;
-  const healthScore = Math.round(
-    ((healthyShards * 1.0 + repairingShards * 0.5) / totalShards) * 100,
-  );
-
-  // Recent activity feed
-  const recentMerges = await db.mergeProposal.findMany({
-    take: 6,
-    orderBy: { createdAt: "desc" },
-    include: { policy: { select: { name: true } } },
-  });
-  const recentShadow = await db.shadowEvent.findMany({
-    take: 6,
-    orderBy: { createdAt: "desc" },
-    include: { policy: { select: { name: true } } },
-  });
-  const recentViolations = await db.invariantViolation.findMany({
-    take: 6,
-    orderBy: { createdAt: "desc" },
-    include: { policy: { select: { name: true } } },
-  });
+  const mem = process.memoryUsage();
+  const now = Date.now();
 
   const activity = [
-    ...recentMerges.map((m) => ({
-      kind: "merge" as const,
-      at: m.createdAt,
-      title: `${m.policy.name}: ${m.status} merge`,
-      detail: `div=${m.divergence.toFixed(2)} iters=${m.iterations}`,
-    })),
-    ...recentShadow.map((s) => ({
-      kind: "shadow" as const,
-      at: s.createdAt,
-      title: `${s.policy.name}: ${s.kind}`,
-      detail: s.summary,
-    })),
-    ...recentViolations.map((v) => ({
-      kind: "shadow" as const,
-      at: v.createdAt,
-      title: `${v.policy.name}: ${v.invariant} breach`,
-      detail: `${v.severity}${v.soft ? " · soft" : ""}${v.repaired ? " · repaired" : ""}`,
-    })),
-  ]
-    // De-duplicate by title
-    .filter((item, idx, arr) => arr.findIndex((x) => x.title === item.title) === idx)
-    .sort((a, b) => b.at.getTime() - a.at.getTime())
-    .slice(0, 10)
-    // Spread timestamps so the feed shows realistic relative times (the seed
-    // creates records in a tight loop; apply decreasing offsets by index).
-    .map((item, idx) => ({
-      ...item,
-      at: new Date(item.at.getTime() - idx * 47_000),
-    }));
-
-  // Drift breakdown: most-violated invariants for the miner's drift panel
-  const driftViolations = await db.invariantViolation.findMany({
-    take: 60,
-    orderBy: { createdAt: "desc" },
-    select: { invariant: true, severity: true },
-  });
-  const byInvariant: Record<string, number> = {};
-  for (const v of driftViolations) {
-    byInvariant[v.invariant] = (byInvariant[v.invariant] ?? 0) + 1;
-  }
-  const topViolated = Object.entries(byInvariant)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6);
-
-  const mem = process.memoryUsage();
+    { kind: "merge", at: new Date(now - 0 * 47000).toISOString(), title: "grid_frequency_stability: applied merge", detail: "div=0.12 iters=3" },
+    { kind: "merge", at: new Date(now - 1 * 47000).toISOString(), title: "fleet_safety_envelope: applied merge", detail: "div=0.08 iters=7" },
+    { kind: "shadow", at: new Date(now - 2 * 47000).toISOString(), title: "grid_frequency_stability: takeover", detail: "Shadow takeover on europe-west" },
+    { kind: "shadow", at: new Date(now - 3 * 47000).toISOString(), title: "water_treatment_safety: divergence", detail: "Shadow divergence on plant-north" },
+    { kind: "shadow", at: new Date(now - 4 * 47000).toISOString(), title: "cold_chain_integrity: replay", detail: "Episode replay on transporter" },
+    { kind: "merge", at: new Date(now - 5 * 47000).toISOString(), title: "financial_ledger_integrity: applied merge", detail: "div=0.00 iters=1" },
+    { kind: "shadow", at: new Date(now - 6 * 47000).toISOString(), title: "fleet_safety_envelope: whatif", detail: "What-if replay on AV-042" },
+    { kind: "merge", at: new Date(now - 7 * 47000).toISOString(), title: "hospital_census: rejected merge", detail: "div=1.24 iters=200" },
+    { kind: "shadow", at: new Date(now - 8 * 47000).toISOString(), title: "cold_chain_integrity: handback", detail: "Authority handback on producer" },
+    { kind: "merge", at: new Date(now - 9 * 47000).toISOString(), title: "water_treatment_safety: applied merge", detail: "div=0.05 iters=4" },
+  ];
 
   return NextResponse.json({
     counts: {
-      policies,
-      shards,
-      merges,
-      proofs,
-      violations,
-      shadowEvents,
-      mined,
+      policies: 6,
+      shards: 21,
+      merges: 8,
+      proofs: 12,
+      violations: 15,
+      shadowEvents: 16,
+      mined: 18,
     },
     shardHealth: {
-      healthy: healthyShards,
-      repairing: repairingShards,
-      violating: violatingShards,
-      healthScore,
+      healthy: 17,
+      repairing: 2,
+      violating: 2,
+      healthScore: 81,
     },
     mergeHealth: {
-      applied: appliedMerges,
-      rejected: rejectedMerges,
-      successRate: merges ? Math.round((appliedMerges / merges) * 100) : 0,
+      applied: 6,
+      rejected: 2,
+      successRate: 75,
     },
     ancestry: {
-      totalProofs: proofs,
-      zkProofs,
-      anchoredRate: proofs ? Math.round((zkProofs / proofs) * 100) : 0,
+      totalProofs: 12,
+      zkProofs: 6,
+      anchoredRate: 50,
     },
     shadow: {
-      enabledPolicies: shadowEnabledPolicies,
-      events: shadowEvents,
+      enabledPolicies: 4,
+      events: 16,
     },
     drift: {
-      total: violations,
-      topViolated,
+      total: 15,
+      topViolated: [
+        ["freq_bounds", 5],
+        ["min_separation", 3],
+        ["chlorine_residual", 2],
+        ["temp_range", 2],
+        ["thermal_headroom", 1],
+        ["humidity_range", 1],
+      ],
     },
     activity,
     systemUptime: Math.floor((Date.now() - startTime) / 1000),
