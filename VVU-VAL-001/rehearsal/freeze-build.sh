@@ -23,6 +23,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VAL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${VAL_DIR}/.." && pwd)"
+# Normalize MSYS-style /c/... to C:/... for git -C on Windows Git Bash
+if [[ "$REPO_ROOT" == /c/* ]]; then
+  REPO_ROOT="C:${REPO_ROOT#/c}"
+fi
 FROZEN_JSON="${VAL_DIR}/protocol/frozen-build.json"
 IMAGE="vvu/epistemic-runtime"
 VAL_TAG="VAL-001"

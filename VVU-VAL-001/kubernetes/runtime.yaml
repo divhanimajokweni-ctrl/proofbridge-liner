@@ -41,7 +41,7 @@ spec:
     spec:
       containers:
         - name: runtime
-          image: vvu/epistemic-runtime:VAL-001  # → @sha256:... after freeze
+          image: vvu/epistemic-runtime@unknown (no container runtime)
           ports: [{ containerPort: 3000 }]
           env:
             - { name: NATS_URL, value: "nats://nats:4222" }

@@ -1,19 +1,13 @@
 {
   "validation_event": "VAL-001",
   "protocol_version": "1.1",
-  "frozen_at": "2026-07-24T21:22:44Z",
-  "commit_hash": "77ddf22d40ef05eb95444eabc917bd941ed5720e",
-  "commit_short": "77ddf22",
-  "software_version": "unknown",
+  "frozen_at": "2026-07-24T21:31:40Z",
+  "commit_hash": "9f8e46c7424ca99eb259da45739769ee271e6fc1",
+  "commit_short": "9f8e46c",
+  "software_version": "VAL-001",
   "image_tag": "vvu/epistemic-runtime:VAL-001",
-  "image_digest": "sha256:unknown-no-container-runtime-in-this-environment",
-  "pinned_manifests": [
-    "VVU-VAL-001/kubernetes/namespace.yaml",
-    "VVU-VAL-001/kubernetes/runtime.yaml",
-    "VVU-VAL-001/kubernetes/monitoring.yaml",
-    "VVU-VAL-001/kubernetes/evidence.yaml",
-    "VVU-VAL-001/kubernetes/streaming.yaml",
-    "VVU-VAL-001/kubernetes/outreach.yaml"
-  ],
-  "status": "frozen"
+  "image_digest": "unknown (no container runtime)",
+  "git_tag": "VAL-001",
+  "frozen_by": "s217665446",
+  "frozen_on_host": "BIRDSC-040"
 }
