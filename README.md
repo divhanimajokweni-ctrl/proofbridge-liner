@@ -1,338 +1,199 @@
-# Epistemic Runtime (ER) v0.8
+# VVU Validation Suite
 
-**From hope to proof. From trust to verification.**
+> **A public, reproducible validation event — not another specification.**
+> Pre-registered protocol, published failure schedule, live Mission Control scoreboard, immutable hourly evidence bundles, and a dress-rehearsal requirement. The evidence leads the conversation.
 
-A deterministic evidence runtime that enforces cryptographic integrity, append-only immutability, and bit-identical replay across all observations.
+This directory is a Git-ready validation subsystem. It is structured as a production project, versioned independently from software releases. Evidence bundles are NEVER committed to the repository — they are published as GitHub Release assets associated with the frozen Git tag for each validation run.
 
----
-
-## Status
-
-| Check | Result |
-|-------|--------|
-| 12/12 Kernel Assertions | ✅ ALL PASS |
-| 57/57 Vitest Tests | ✅ ALL PASS |
-| Deterministic Replay | ✅ VERIFIED (5/5 checks) |
-| 7 Constitutional Rules | ✅ COMPLIANT |
-| Lint | ✅ ZERO ERRORS |
-| Schema Emitter | ✅ 10 schemas emitted |
-| S3 Object Lock Driver | ✅ Production-wired |
-| AWS KMS Signer | ✅ Production-wired |
-| IAM Federation Signer | ✅ Production-wired |
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Epistemic Runtime v0.8                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Observation ──▶ AcceptancePipeline ──▶ Fact ──▶ Projection │
-│       │               │ 11-step gate │           │          │
-│       │               ├──────────────┤           │          │
-│       │               │ 1. Schema    │           │          │
-│       │               │ 2. Policy    │           │          │
-│       │               │ 3. PII Redact│           │          │
-│       │               │ 4. RFC 8785  │           │          │
-│       │               │ 5. SHA-256   │           │          │
-│       │               │ 6. Fact ID   │           │          │
-│       │               │ 7. Sequence  │           │          │
-│       │               │ 8. Sign      │           │          │
-│       │               │ 9. MMR Insert│           │          │
-│       │               │10. Proof Gen │           │          │
-│       │               │11. WORM Store│           │          │
-│       │               └──────────────┘           │          │
-│       │                                          │          │
-│  ┌────┴──────────────────────────────────────────┴─────┐   │
-│  │              RuntimeKernel (Orchestrator)            │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌───────────┐           │   │
-│  │  │   MMR    │ │ Sequencer│ │  Schema   │           │   │
-│  │  │ Mountain │ │  Determ. │ │ Registry  │           │   │
-│  │  │  Range   │ │          │ │           │           │   │
-│  │  └──────────┘ └──────────┘ └───────────┘           │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌───────────┐           │   │
-│  │  │ Policy   │ │Projection│ │  Replay   │           │   │
-│  │  │ Evaluator│ │  Engine  │ │  Engine   │           │   │
-│  │  └──────────┘ └──────────┘ └───────────┘           │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌─────────────────── Providers (DI) ───────────────────┐  │
-│  │ Clock │ Entropy │ UUID │ Signer │ Storage            │  │
-│  │  Dev: Deterministic  │  Dev: InMemoryWORM            │  │
-│  │  Prod: SystemClock   │  Prod: S3 Object Lock         │  │
-│  │  Prod: HmacSigner    │  Prod: AWS KMS / IAM / OIDC   │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Four Primitives
-
-| Primitive | Purpose | Identity | Storage |
-|-----------|---------|----------|---------|
-| **Fact** | What happened | `SHA-256(canonicalBytes)` | Append-only (WORM) |
-| **Proof** | Why we believe it | `SHA-256(proof:factId:timestamp)` | Append-only (WORM) |
-| **Policy** | Whether to accept | Deterministic IR opcodes | Registered, not stored |
-| **Projection** | How to consume | `SHA-256(name:version)` | Mutable (NOT WORM) |
-
----
-
-## Constitutional Rules
-
-1. **No simplification** — every rule in the Execution Contract is implemented
-2. **No redesign** — no shortcuts, no "better ideas"
-3. **No guessing** — if uncertain, re-read the contract
-4. **No `Math.random()` / `Date.now()` / `crypto.randomUUID()`** in the kernel
-5. **No `JSON.stringify()`** for hashing — only RFC 8785
-6. **No FNV, CRC, or ad-hoc hashing** — only SHA-256
-7. **Evidence is append-only** — WORM storage, no delete, no update
-
----
-
-## Production Integrations
-
-### S3 Object Lock Storage
-
-```typescript
-import { S3ObjectLockStorage } from '@/storage';
-
-const storage = new S3ObjectLockStorage({
-  bucket: 'epistemic-evidence-lock',
-  prefix: 'runtime/v0.8',
-  region: 'af-south-1',
-  // credentials: optional — uses IAM role if omitted
-});
-
-// WORM enforced at infrastructure level via COMPLIANCE Object Lock
-// 100-year retention period on facts and proofs
-// Projections stored WITHOUT Object Lock (they are mutable)
-```
-
-### AWS KMS Signer
-
-```typescript
-import { AWSKMSSigner } from '@/signer';
-
-const signer = new AWSKMSSigner({
-  keyArn: 'arn:aws:kms:af-south-1:123456789012:key/abcd-efgh',
-  region: 'af-south-1',
-  // credentials: optional — uses IAM role if omitted
-});
-
-// Auto-detects signing algorithm from key type:
-// RSA → RSASSA_PKCS1_V1_5_SHA_256
-// ECC → ECDSA_SHA_256
-```
-
-### IAM Federation Signer
-
-```typescript
-import { IAMFederationSigner } from '@/signer';
-
-const signer = new IAMFederationSigner({
-  roleArn: 'arn:aws:iam::123456789012:role/EpistemicSigner',
-  sessionName: 'epistemic-runtime-prod',
-  keyArn: 'arn:aws:kms:af-south-1:123456789012:key/abcd-efgh',
-  region: 'af-south-1',
-});
-
-// Assumes role via STS, delegates signing to KMS
-// Caches credentials, re-assumes on expiry
-```
-
-### OIDC Signer
-
-```typescript
-import { OIDCSigner } from '@/signer';
-
-const signer = new OIDCSigner({
-  issuer: 'https://auth.example.com',
-  audience: 'epistemic-runtime',
-  oidcToken: '<jwt-from-oidc-provider>',
-});
-
-// Deterministic HMAC-SHA256 signature tied to OIDC identity
-// Public key fingerprint = SHA-256(issuer:audience)
-```
-
----
-
-## Schema Emitter
-
-Generates portable Draft 2020-12 JSON Schema `.json` files from runtime type definitions:
+## Quick Start
 
 ```bash
-npx tsx scripts/generate-schema.ts
-# Output: schemas/*.schema.json (10 files)
+# List all targets
+make help
 
-npx tsx scripts/generate-schema.ts --outdir ./dist/schemas
-# Custom output directory
+# Run the private dress rehearsal (compressed 72h in ~2min)
+make rehearsal
+
+# Freeze the build (git tag + container digest pin)
+make freeze
+
+# Run the public 72-hour validation (real-time, requires frozen build)
+make validate
+
+# Generate a single hourly evidence bundle
+make evidence HOUR=12
+
+# Verify replay determinism
+make verify BUNDLE=validation/VVU-VAL-001/evidence/bundles/Hour-12.zip
+
+# Publish the evidence package as a GitHub Release
+make release
 ```
 
-| Schema | Description |
-|--------|-------------|
-| `fact-types.schema.json` | Enumeration of all 12 fact types |
-| `fact.schema.json` | Fact primitive (11 required fields) |
-| `proof.schema.json` | Proof primitive (8 required fields) |
-| `policy-opcode.schema.json` | All 20 policy IR opcodes |
-| `policy-rule.schema.json` | PolicyRule definition |
-| `projection.schema.json` | Projection primitive |
-| `evidence-envelope.schema.json` | Fact + proofs container |
-| `kernel-config.schema.json` | Deterministic config for replay |
-| `acceptance-result.schema.json` | Pipeline acceptance result |
-| `replay-verification.schema.json` | 5-way replay comparison |
-
----
-
-## Kernel Verification
-
-### 12-Assertion Check
-
+If you have [Taskfile](https://taskfile.dev) installed, `task` works identically:
 ```bash
-npx tsx scripts/verify-kernel.ts
+task rehearsal
+task freeze
+task validate
 ```
 
-| # | Assertion | What It Verifies |
-|---|-----------|-----------------|
-| 01 | Deterministic Replay | Bit-identical output across runs |
-| 02 | SHA-256 Determinism | Same input → same hash |
-| 03 | RFC 8785 Canonicalization | Key-order independent serialization |
-| 04 | Acceptance Pipeline Universal | All writes through the gate |
-| 05 | No FNV Hashing | Only SHA-256 for identities |
-| 06 | No Non-Deterministic APIs | All providers injected |
-| 07 | Evidence Immutability (WORM) | Duplicate append rejected |
-| 08 | MMR Proof Verification | Inclusion proof matches root |
-| 09 | Schema Validation Active | Invalid observations rejected |
-| 10 | Policy Engine Deterministic | Same policy + input → same result |
-| 11 | RFC 8785 (not JSON.stringify) | Sorted keys, not native order |
-| 12 | Signature Verification | Sign/verify round-trip succeeds |
+## Directory Structure
 
-### Vitest Test Suite
+```
+validation/
+├── .gitignore                         ← excludes evidence, logs, recordings, secrets
+├── Makefile                           ← universal task runner (zero dependencies)
+├── Taskfile.yml                       ← modern task runner (optional)
+├── README.md                          ← this file
+└── VVU-VAL-001/
+    ├── protocol/
+    │   ├── VVU-VAL-001_Pre_Registration_Protocol.pdf   ← frozen protocol (16 pages, v1.1)
+    │   └── protocol.md                                  ← Markdown source
+    ├── chaos/
+    │   ├── schedule.yaml               ← 6-phase gate-mapped schedule (published before T=0)
+    │   ├── inject-network.sh           ← P3: packet loss / latency / dup
+    │   ├── inject-storage.sh           ← P4: disk fill / IO throttle
+    │   ├── inject-security.sh          ← P6: bad signatures / spoofed / bad ZK / contradictory
+    │   └── inject-partition.sh         ← P7: cluster partition + HLC merge
+    ├── rehearsal/
+    │   ├── run-rehearsal.sh            ← mandatory private dress rehearsal
+    │   ├── verify.sh                   ← full verification suite
+    │   └── freeze-build.sh             ← git tag + container digest pin
+    ├── kubernetes/
+    │   ├── namespace.yaml              ← 8 namespaces (provider-agnostic k3s)
+    │   ├── runtime.yaml                ← Epistemic Runtime + AIR Kernel + NATS + generator + injector
+    │   ├── monitoring.yaml             ← Prometheus + Grafana
+    │   ├── evidence.yaml               ← hourly evidence archiver CronJob
+    │   ├── streaming.yaml              ← headless streaming service (implementation-agnostic)
+    │   └── outreach.yaml               ← Layer 2 outreach engine (killable)
+    ├── evidence/
+    │   ├── bundle.sh                   ← hourly evidence-bundle archival
+    │   ├── validation-index.py         ← published 6-dimension formula
+    │   ├── archive.sh                  ← H72 package assembly + GitHub Release
+    │   └── replay.sh                   ← replay verification pipeline
+    ├── scoreboard/
+    │   ├── dashboard.json              ← scoreboard config schema
+    │   ├── metrics-schema.json         ← metrics JSON schema
+    │   └── overlay-config.json         ← stream overlay config
+    ├── outreach/
+    │   ├── milestones.yaml             ← milestone event registry
+    │   ├── recipients.yaml             ← recipient registry (no addresses in code)
+    │   ├── stages.yaml                 ← staged-release enforcement
+    │   └── templates/                  ← scaffold templates (no pre-written copy)
+    ├── github/
+    │   ├── validation.yml              ← Layer 1: hourly collect + archive + milestone
+    │   ├── rehearsal.yml               ← private rehearsal workflow
+    │   └── release.yml                 ← H72 evidence package + GitHub Release
+    └── docs/
+        ├── observer-guide.md           ← independent observer instructions
+        ├── operator-runbook.md         ← on-call operator constraints + log format
+        ├── threat-model.md             ← validated vs NOT validated
+        └── publication-checklist.md    ← every item to complete before T=0
+```
 
+## Validation Events vs Software Releases
+
+Validation events are versioned **independently** from software releases:
+
+```
+Validation Events:     VAL-001, VAL-002, VAL-003, ...
+Software Releases:     v1.0.0, v1.1.0, v2.0.0, ...
+```
+
+This separation lets you compare multiple validation runs against different software versions without conflating the validation protocol with the product release history.
+
+## Evidence Bundles — NOT Committed
+
+Evidence bundles, recordings, logs, and secrets are **never committed** to the repository. The `.gitignore` excludes them. Instead:
+
+- The repository holds source code, manifests, protocols, and workflows.
+- Evidence bundles are published as **GitHub Release assets** (or immutable object storage) associated with the frozen Git tag for that validation run.
+
+```
+Git Tag: VAL-001
+├── Source Code (in repo)
+├── Protocol PDF (in repo)
+├── Kubernetes Manifests (in repo)
+└── Release Assets (NOT in repo — published as Release assets)
+    ├── VVU-72H-VALIDATION.zip
+    ├── SHA256SUMS
+    ├── FinalReport.pdf
+    ├── ReplayDataset.tar.zst
+    └── 72-hour-recording.mp4
+```
+
+## Image Pinning (Tag + Digest)
+
+At freeze time, `freeze-build.sh` performs **both**:
+
+1. **Tags** the container image: `vvu/epistemic-runtime:VAL-001`
+2. **Records the digest**: `sha256:abc123...`
+3. **Patches the k8s manifests** to pin by digest: `image: vvu/epistemic-runtime@sha256:abc123...`
+4. **Records both** in `frozen-build.json` for the release notes
+
+This is belt-and-braces: the tag is human-readable; the digest is cryptographically airtight and cannot be moved.
+
+## The 6-Phase Gate-Mapped Schedule
+
+| Phase | Hours | Gate | Injected |
+|-------|-------|------|----------|
+| P1 Nominal | 0–12 | Baseline | Normal traffic |
+| P2 Flood | 12–24 | Acceptance Capacity | 10× → 100× rate |
+| P3 Network Chaos | 24–36 | HLC Ordering | Packet loss / latency / dup |
+| P4 Storage Pressure | 36–48 | Append-Only Integrity | Disk fill / IO throttle |
+| P5 Node Failure | 48–60 | Recovery | Random pod kills |
+| P6 Security | 60–66 | HF-001/002/005 | Bad sigs / bad ZK / contradictory / spoofed |
+| P7 Partition + Recovery | 66–72 | LVL-17 (72h Blackout) | Disconnect → reconnect → HLC merge |
+
+## The Validation Index (Published Formula)
+
+```
+Index = Σ ( weightᵢ × dimensionᵢ )    weights sum to 1.0; each dimension 0–100
+```
+
+| Dimension | Weight | Measurement |
+|-----------|--------|-------------|
+| Replay Determinism | 0.20 | 100 if live == replay else 0 |
+| Evidence Integrity | 0.20 | 100 × verified / total bundles |
+| TEE Attestation | 0.15 | 100 × (1 − accepted_bad / spoofed) |
+| Policy Conformance | 0.15 | max(0, 100 − 4 × unhandled) |
+| Merge Correctness | 0.15 | 100 if 0 conflicts else scaled |
+| Availability | 0.15 | 100 × (1 − fail_closed_s / elapsed_s) |
+
+PASS requires: zero Critical failures AND final index ≥ 90.0. See §7.1 (weight rationale) and §7.2 (threshold rationale) in the protocol PDF.
+
+## How to Run
+
+### 1. Private dress rehearsal
 ```bash
-npx vitest run
+make rehearsal                    # compressed (72h in ~2min)
+# or single phase for fast iteration:
+bash VVU-VAL-001/rehearsal/run-rehearsal.sh --phase-only P6
 ```
+Repeat until clean pass. Then freeze.
 
-57 tests across 12 describe blocks covering all kernel components.
-
-### Projection Client (Read-Only)
-
+### 2. Freeze the build
 ```bash
-./scripts/state.sh list       # List all projections
-./scripts/state.sh get <name> # Get projection state
-./scripts/state.sh watch <n>  # Poll for changes
-./scripts/state.sh root       # Get MMR root
-./scripts/state.sh verify     # Kernel verification status
+make freeze
+# → creates git tag VAL-001
+# → builds container image, records tag + digest
+# → patches k8s manifests to pin digest
+# → writes protocol/frozen-build.json
 ```
 
----
-
-## Project Structure
-
-```
-├── src/
-│   ├── lib/kernel/           # Core deterministic kernel
-│   │   ├── types.ts          # Four primitives + interfaces
-│   │   ├── hashing.ts        # SHA-256 engine (@noble/hashes)
-│   │   ├── canonicalization.ts # RFC 8785 JCS
-│   │   ├── mmr.ts            # Merkle Mountain Range
-│   │   ├── sequencer.ts      # Deterministic sequence numbers
-│   │   ├── schema-registry.ts # Schema validation
-│   │   ├── acceptance-pipeline.ts # Universal write gate
-│   │   ├── policy-evaluator.ts # Stack-based IR evaluator
-│   │   ├── projection.ts     # Projection engine
-│   │   ├── projection-registry.ts # Lifecycle tracking
-│   │   ├── redaction.ts      # PII redaction (before canonicalization)
-│   │   ├── operational-collector.ts # External observation sources
-│   │   ├── replay.ts         # Deterministic replay engine
-│   │   └── runtime.ts        # RuntimeKernel orchestrator
-│   ├── engine/               # Dependency-injected providers
-│   │   ├── clock.ts          # DeterministicClock / SystemClock
-│   │   ├── entropy.ts        # DeterministicEntropy (xorshift128+)
-│   │   ├── uuid.ts           # DeterministicUuid (SHA-256-based)
-│   │   ├── signer.ts         # HmacSigner / Ed25519Signer
-│   │   └── storage.ts        # InMemoryWORMStorage
-│   ├── storage/              # Storage drivers
-│   │   ├── local-worm.ts     # Dev: in-memory WORM emulator
-│   │   └── s3-object-lock.ts # Prod: S3 Object Lock (COMPLIANCE)
-│   ├── signer/               # Production signer modules
-│   │   ├── ed25519.ts        # Ed25519 (@noble/curves)
-│   │   ├── ecdsa-p384.ts     # ECDSA P-384 (@noble/curves)
-│   │   ├── rsa-pss.ts        # RSA-PSS-SHA256 (Web Crypto)
-│   │   └── aws-kms.ts        # AWS KMS / IAM Federation / OIDC
-│   └── __tests__/            # Full deterministic test suite
-│       └── kernel/
-│           └── deterministic-suite.test.ts
-├── scripts/
-│   ├── verify-kernel.ts      # 12-assertion verification script
-│   ├── generate-schema.ts    # Schema emitter → schemas/*.json
-│   └── state.sh              # Read-only projection client
-├── schemas/                  # Generated Draft 2020-12 JSON Schemas
-│   ├── fact.schema.json
-│   ├── proof.schema.json
-│   ├── policy-opcode.schema.json
-│   ├── policy-rule.schema.json
-│   ├── projection.schema.json
-│   ├── evidence-envelope.schema.json
-│   ├── kernel-config.schema.json
-│   ├── acceptance-result.schema.json
-│   ├── replay-verification.schema.json
-│   └── fact-types.schema.json
-├── docs/
-│   └── governance/adrs/      # Architecture Decision Records
-│       ├── ADR-001-event-sourcing.md
-│       ├── ADR-002-ed25519-signatures.md
-│       └── ADR-003-canonical-json.md
-├── EXECUTION_CONTRACT.md     # Root contract (authoritative)
-└── vitest.config.ts          # Test configuration
+### 3. Public run (after rehearsal passes + freeze)
+```bash
+make validate                     # true 72-hour real-time run
 ```
 
----
-
-## Dependency Injection
-
-All non-deterministic operations are injected through provider interfaces:
-
-```typescript
-interface RuntimeProviders {
-  clock: ClockProvider;      // DeterministicClock | SystemClock
-  entropy: EntropyProvider;  // DeterministicEntropy | SystemEntropy
-  uuid: UuidProvider;        // DeterministicUuid | SystemUuid
-  signer: SignerProvider;    // HmacSigner | Ed25519 | KMS | IAM | OIDC
-  storage: StorageProvider;  // InMemoryWORM | S3ObjectLock
-}
+### 4. Publish evidence
+```bash
+make release                      # assembles + publishes GitHub Release
 ```
 
-Development uses deterministic providers. Production swaps them via `RuntimeKernel.createWithProviders()`.
+## See Also
 
----
-
-## Policy IR Opcodes
-
-20 deterministic opcodes — no `eval()`, no scripting, no dynamic execution:
-
-| Opcode | Stack Effect | Description |
-|--------|-------------|-------------|
-| `LOAD_FIELD` | +1 | Push nested field from body |
-| `LOAD_CONST` | +1 | Push constant value |
-| `EQ` | -1 | Equality comparison |
-| `NEQ` | -1 | Inequality comparison |
-| `LT`, `LTE`, `GT`, `GTE` | -1 | Numeric comparisons |
-| `IN_RANGE`, `NOT_IN_RANGE` | -1 | Range checks |
-| `CONTAINS`, `NOT_CONTAINS` | -1 | Collection membership |
-| `TYPE_IS` | -1 | Type check |
-| `AND`, `OR`, `NOT` | -1 | Boolean logic |
-| `EVERY`, `SOME` | -(n-1) | Quantifiers |
-| `LOOKUP` | 0 | Deterministic table lookup |
-| `RESULT` | +1 | Set accept/reject/defer |
-
-Unknown opcodes **terminate evaluation** — never silently ignored.
-
----
-
-## License
-
-Proprietary. See EXECUTION_CONTRACT.md for governance.
+- **`VVU-VAL-001/protocol/VVU-VAL-001_Pre_Registration_Protocol.pdf`** — the frozen protocol (16 pages, v1.1 reviewer-revised)
+- **`VVU-VAL-001/docs/`** — observer guide, operator runbook, threat model, publication checklist
+- **`VVU-VAL-001/chaos/schedule.yaml`** — the gate-mapped failure schedule
+- **`VVU-VAL-001/evidence/validation-index.py`** — the published Validation Index formula
