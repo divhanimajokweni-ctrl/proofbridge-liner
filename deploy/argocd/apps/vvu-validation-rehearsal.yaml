@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: vvu-namespace
+  name: vvu-validation-rehearsal
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -9,15 +9,24 @@ spec:
   project: vvu
   source:
     repoURL: https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
-    targetRevision: main
-    path: deploy/argocd/base
+    targetRevision: feature/vvu-val-001
+    path: deploy/argocd/validation/overlays/rehearsal
   destination:
     server: https://kubernetes.default.svc
-    namespace: vvu-dashboard
+    namespace: vvu-runtime
   syncPolicy:
     automated:
-      prune: false
+      prune: true
       selfHeal: true
+      allowEmpty: false
     syncOptions:
       - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
   revisionHistoryLimit: 10

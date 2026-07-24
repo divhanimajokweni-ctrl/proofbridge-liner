@@ -4,8 +4,6 @@ namespace: vvu-runtime
 namePrefix: vvu-
 resources:
   - ../base
-patches:
-  - path: live-patches.yaml
 configMapGenerator:
   - name: vvu-validation-config
     behavior: merge

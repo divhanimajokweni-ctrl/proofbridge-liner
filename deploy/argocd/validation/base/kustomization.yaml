@@ -1,17 +1,19 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - namespace.yaml
-  - runtime.yaml
-  - nats.yaml
-  - monitoring.yaml
-  - evidence.yaml
-  - streaming.yaml
-  - outreach.yaml
-  - networkpolicy.yaml
-  - security-context.yaml
-  - pdbs.yaml
-  - secrets.yaml
+  - ../../../VVU-VAL-001/kubernetes/namespace.yaml
+  - ../../../VVU-VAL-001/kubernetes/runtime.yaml
+  - ../../../VVU-VAL-001/kubernetes/nats.yaml
+  - ../../../VVU-VAL-001/kubernetes/monitoring.yaml
+  - ../../../VVU-VAL-001/kubernetes/evidence.yaml
+  - ../../../VVU-VAL-001/kubernetes/streaming.yaml
+  - ../../../VVU-VAL-001/kubernetes/outreach.yaml
+  - ../../../VVU-VAL-001/kubernetes/networkpolicy.yaml
+  - ../../../VVU-VAL-001/kubernetes/security-context.yaml
+  - ../../../VVU-VAL-001/kubernetes/pdbs.yaml
+  - ../../../VVU-VAL-001/kubernetes/secrets.yaml
+  - ../../../VVU-VAL-001/kubernetes/configmap.yaml
+  - ../../../VVU-VAL-001/kubernetes/priorityclasses.yaml
 images:
   - name: vvu/epistemic-runtime
     newName: vvu/epistemic-runtime

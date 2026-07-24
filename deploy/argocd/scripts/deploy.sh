@@ -10,7 +10,7 @@ set -euo pipefail
 
 ENV="${1:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 if [[ -z "$ENV" ]]; then
   echo "usage: $0 <staging|production|install>"
@@ -36,6 +36,16 @@ case "$ENV" in
 
   staging|production)
     echo "=== Deploying VVU Dashboard to $ENV ==="
+    echo "→ running promotion gate checks"
+    if [[ -x "${SCRIPT_DIR}/promote.sh" ]]; then
+      bash "${SCRIPT_DIR}/promote.sh" validation >/dev/null 2>&1 || {
+        echo "✗ validation gate failed"
+        exit 1
+      }
+      echo "✓ validation gate passed"
+    else
+      echo "⚠ promote.sh not found; skipping validation gate"
+    fi
 
     # Check Argo CD is installed
     if ! kubectl get namespace argocd &>/dev/null 2>&1; then
@@ -55,7 +65,7 @@ case "$ENV" in
 
     # Wait for sync
     echo "→ waiting for Argo CD sync..."
-    sleep 5
+    sleep 10
 
     # Check status
     echo ""
@@ -67,12 +77,12 @@ case "$ENV" in
     NS=$([[ "$ENV" == "staging" ]] && echo "vvu-staging" || echo "vvu-dashboard")
     echo "=== Pods in $NS ==="
     kubectl get pods -n "$NS" 2>/dev/null || echo "(no pods yet — Argo CD is syncing...)"
-
     echo ""
     echo "=== Next steps ==="
     echo "1. Monitor: kubectl get application -n argocd -w"
     echo "2. Argo CD UI: kubectl -n argocd port-forward svc/argocd-server 8080:443"
-    echo "3. Check sync: argocd app get vvu-dashboard-$ENV"
+    echo "3. Rollback: bash deploy/argocd/scripts/rollback.sh $ENV"
+    echo "4. Promote:   bash deploy/argocd/scripts/promote.sh production"
     ;;
 
   *)

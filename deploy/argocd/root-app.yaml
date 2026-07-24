@@ -1,6 +1,10 @@
 # VVU Production Dashboard — Root App-of-Apps
 # Apply this first: kubectl apply -f deploy/argocd/root-app.yaml
 # Argo CD will then automatically create all child applications.
+#
+# Promotion flow:
+#   rehearsal → freeze → validation → staging → production
+# Each stage is gated by the prior stage's successful completion.
 
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -12,7 +16,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/vvu/proofbridge-liner.git
+    repoURL: https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
     targetRevision: main
     path: deploy/argocd/apps
   destination:
@@ -25,23 +29,34 @@ spec:
     syncOptions:
       - CreateNamespace=true
 ---
-# Project for VVU applications
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: vvu
   namespace: argocd
 spec:
-  description: Venture Vision Ubuntu — Production Dashboard
+  description: Venture Vision Ubuntu — Production Dashboard + Validation
   sourceRepos:
-    - https://github.com/vvu/proofbridge-liner.git
+    - https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
   destinations:
     - server: https://kubernetes.default.svc
       namespace: vvu-dashboard
     - server: https://kubernetes.default.svc
+      namespace: vvu-staging
+    - server: https://kubernetes.default.svc
       namespace: vvu-monitoring
     - server: https://kubernetes.default.svc
-      namespace: vvu-staging
+      namespace: vvu-runtime
+    - server: https://kubernetes.default.svc
+      namespace: vvu-evidence
+    - server: https://kubernetes.default.svc
+      namespace: vvu-air
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: streaming
+    - server: https://kubernetes.default.svc
+      namespace: outreach
   clusterResourceWhitelist:
     - group: ''
       kind: Namespace
@@ -49,6 +64,8 @@ spec:
       kind: ClusterRole
     - group: rbac.authorization.k8s.io
       kind: ClusterRoleBinding
+    - group: scheduling.k8s.io
+      kind: PriorityClass
   namespaceResourceWhitelist:
     - group: '*'
       kind: '*'

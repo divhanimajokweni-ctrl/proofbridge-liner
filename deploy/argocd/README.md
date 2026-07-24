@@ -6,7 +6,7 @@ This directory contains a complete Argo CD + Kubernetes deployment package for t
 
 ```bash
 # 1. Push the VVU dashboard code to your Git repo
-git remote add origin https://github.com/vvu/proofbridge-liner.git
+git remote add origin https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
 git push -u origin main
 
 # 2. Install Argo CD on your cluster
