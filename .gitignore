@@ -36,7 +36,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
@@ -57,8 +56,9 @@ VVU-VAL-001/release/
 VVU-VAL-001/evidence/bundles/
 VVU-VAL-001/evidence/SHA256SUMS
 VVU-VAL-001/evidence/*.zip
+VVU-VAL-001/protocol/frozen-build.json
+VVU-VAL-001/protocol/frozen-build.sha256
 *.log
 
 # Skills directory
-/skills/VVU-VAL-001/protocol/frozen-build.json
-VVU-VAL-001/protocol/frozen-build.sha256
+/skills/
