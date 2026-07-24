@@ -1,0 +1,19 @@
+{
+  "validation_event": "VAL-001",
+  "protocol_version": "1.1",
+  "frozen_at": "2026-07-24T21:22:44Z",
+  "commit_hash": "77ddf22d40ef05eb95444eabc917bd941ed5720e",
+  "commit_short": "77ddf22",
+  "software_version": "unknown",
+  "image_tag": "vvu/epistemic-runtime:VAL-001",
+  "image_digest": "sha256:unknown-no-container-runtime-in-this-environment",
+  "pinned_manifests": [
+    "VVU-VAL-001/kubernetes/namespace.yaml",
+    "VVU-VAL-001/kubernetes/runtime.yaml",
+    "VVU-VAL-001/kubernetes/monitoring.yaml",
+    "VVU-VAL-001/kubernetes/evidence.yaml",
+    "VVU-VAL-001/kubernetes/streaming.yaml",
+    "VVU-VAL-001/kubernetes/outreach.yaml"
+  ],
+  "status": "frozen"
+}

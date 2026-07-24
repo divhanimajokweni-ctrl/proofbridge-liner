@@ -22,7 +22,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VAL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-REPO_ROOT="$(cd "${VAL_DIR}/../.." && pwd)"
+REPO_ROOT="$(cd "${VAL_DIR}/.." && pwd)"
 FROZEN_JSON="${VAL_DIR}/protocol/frozen-build.json"
 IMAGE="vvu/epistemic-runtime"
 VAL_TAG="VAL-001"
