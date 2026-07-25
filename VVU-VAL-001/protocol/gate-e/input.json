@@ -1,0 +1,21 @@
+{
+  "gate": "E",
+  "name": "CI/CD / Bootstrap",
+  "operator": "",
+  "timestamp_utc": "",
+  "workflow_run_id": "",
+  "workflow_run_url": "",
+  "workflow_conclusion": "",
+  "environments_verified": [
+    "rehearsal",
+    "validation",
+    "release"
+  ],
+  "secrets_provisioned": [
+    "VVU_VAL_KUBECONFIG"
+  ],
+  "evidence_log_path": "evidence/run-<RUN_ID>.log",
+  "evidence_log_sha256": "",
+  "attestation_signature": "",
+  "notes": ""
+}
