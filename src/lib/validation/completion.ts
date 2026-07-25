@@ -303,7 +303,7 @@ function safeBool(value: any): boolean | null {
 
 function runCommand(command: string, args: string[], options: any) {
   return new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
-    const child = require("node:child_process").spawn(command, args, { ...options, shell: false });
+    const child = spawn(command, args, { ...options, shell: false });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (data) => { stdout += data.toString(); });

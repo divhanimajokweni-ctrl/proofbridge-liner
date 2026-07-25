@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 export interface EvidenceEnvelope {
   artifact: string;
   version: string;
@@ -11,8 +14,6 @@ export interface EvidenceEnvelope {
 
 export function readEnvelope(root: string, name: string): EvidenceEnvelope | null {
   try {
-    const path = require("node:path");
-    const fs = require("node:fs");
     const file = path.join(root, name);
     if (!fs.existsSync(file)) return null;
     return JSON.parse(fs.readFileSync(file, "utf8"));
