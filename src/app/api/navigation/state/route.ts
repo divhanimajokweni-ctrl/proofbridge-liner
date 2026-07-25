@@ -1,9 +1,10 @@
-export const dynamic = "force-static";
-export const revalidate = 5;
-
 import fs from "node:fs";
 import path from "node:path";
+
 import { DEFAULT_LIFECYCLE } from "@/lib/validation/state";
+
+export const dynamic = "force-static";
+export const revalidate = 5;
 
 function readJsonSafe(filePath: string) {
   try {
@@ -21,11 +22,13 @@ export async function GET() {
   const replayFile = path.join(root, "evidence", "replay-result.json");
   const archiveFile = path.join(root, "release", "manifest.json");
   const evidenceDir = path.join(root, "evidence");
+  const runtimeHealthFile = path.join(root, "release", "runtime-health.json");
 
   const state = readJsonSafe(stateFile) ?? {};
   const frozen = readJsonSafe(frozenFile);
   const replay = readJsonSafe(replayFile);
   const archive = readJsonSafe(archiveFile);
+  const runtimeHealth = readJsonSafe(runtimeHealthFile);
 
   const hasFrozen = !!frozen?.frozen_at;
   let lifecycle: typeof DEFAULT_LIFECYCLE = { ...DEFAULT_LIFECYCLE };
@@ -54,7 +57,7 @@ export async function GET() {
   lifecycle.replayPassed = typeof replay?.status === "string" ? replay.status.toLowerCase() === "pass" : typeof replay?.passed === "boolean" ? replay.passed : null;
   lifecycle.deploymentReady = safeBool(archive?.status) ?? (!!archive && (archive.hours ?? 0) >= 72) ?? null;
   lifecycle.productionPublished = safeBool(archive?.production_published) ?? null;
-  lifecycle.runtimeHealthy = readJsonSafe(path.join(root, "release", "runtime-health.json"))?.healthy ?? null;
+  lifecycle.runtimeHealthy = runtimeHealth?.healthy ?? null;
 
   if (lifecycle.state === "RUNNING") {
     const archiveReady = lifecycle.deploymentReady === true;
@@ -69,7 +72,7 @@ export async function GET() {
 }
 
 function safeBool(value: any): boolean | null {
-  if (value === true || value === "true" || value === "PASS" || value === "archived") return true;
+  if (value === true || value === "true" || value === "PASS" || value === true) return true;
   if (value === false || value === "false" || value === "FAIL" || value === "INVALID") return false;
   return null;
 }
