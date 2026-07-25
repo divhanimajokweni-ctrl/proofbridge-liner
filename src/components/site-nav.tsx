@@ -4,49 +4,62 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-type NavState = {
+type Lifecycle = {
   state: string;
-  frozen: { validation_event?: string; frozen_at?: string; commit_short?: string; image_status?: string } | null;
+  currentHour?: number | null;
+  currentPhase?: string | null;
+  validationIndex?: number | null;
+  runtimeHealthy?: boolean | null;
+  evidenceReady?: boolean | null;
+  deploymentReady?: boolean | null;
+  productionPublished?: boolean | null;
 };
 
-const NAV_ITEMS = [
-  { href: "/overview", label: "Overview", always: true },
-  { href: "/validation", label: "Validation", show: "showValidation" },
-  { href: "/rehearsal", label: "Rehearsal", show: "showRehearsal" },
-  { href: "/evidence", label: "Evidence", show: "showEvidence" },
-  { href: "/research", label: "Research", always: true },
-  { href: "/runtime", label: "Runtime", show: "showRuntime" },
-  { href: "/deployments", label: "Deployments", show: "showDeployments" },
-  { href: "/administration", label: "Administration", show: "showAdministration" },
-];
+const ROLE_ITEMS: Record<string, { label: string; href: string; show: (lifecycle: Lifecycle) => boolean }[]> = {
+  observer: [
+    { label: "Overview", href: "/overview", show: () => true },
+    { label: "Evidence", href: "/evidence", show: (lc) => (lc.evidenceReady === true || lc.state === "COMPLETE" || lc.state === "ARCHIVED") },
+    { label: "Research", href: "/research", show: () => true },
+  ],
+  validation_observer: [
+    { label: "Overview", href: "/overview", show: () => true },
+    { label: "Validation", href: "/validation", show: (lc) => lc.state === "RUNNING" || lc.state === "VERIFYING" },
+    { label: "Evidence", href: "/evidence", show: (lc) => (lc.evidenceReady === true || lc.state === "COMPLETE" || lc.state === "ARCHIVED") },
+    { label: "Research", href: "/research", show: () => true },
+  ],
+  operator: [
+    { label: "Overview", href: "/overview", show: () => true },
+    { label: "Validation", href: "/validation", show: (lc) => lc.state === "RUNNING" || lc.state === "VERIFYING" },
+    { label: "Runtime", href: "/runtime", show: () => true },
+    { label: "Deployments", href: "/deployments", show: () => true },
+    { label: "Administration", href: "/administration", show: () => true },
+  ],
+  administrator: [
+    { label: "Overview", href: "/overview", show: () => true },
+    { label: "Validation", href: "/validation", show: () => true },
+    { label: "Evidence", href: "/evidence", show: () => true },
+    { label: "Research", href: "/research", show: () => true },
+    { label: "Runtime", href: "/runtime", show: () => true },
+    { label: "Deployments", href: "/deployments", show: () => true },
+    { label: "Administration", href: "/administration", show: () => true },
+  ],
+};
 
 export function SiteNav() {
   const pathname = usePathname();
-  const [navState, setNavState] = useState<NavState | null>(null);
+  const [lifecycle, setLifecycle] = useState<Lifecycle | null>(null);
+  const [role, setRole] = useState<string>("observer");
 
   useEffect(() => {
     fetch("/api/navigation/state")
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then(setNavState)
-      .catch(() => setNavState({ state: "REHEARSAL", frozen: null }));
+      .then(setLifecycle)
+      .catch(() => setLifecycle({ state: "REHEARSAL" }));
   }, []);
 
-  const stateStr = navState?.state ?? "REHEARSAL";
-  const isRehearsal = stateStr === "REHEARSAL";
-  const isRunning = stateStr === "RUNNING";
-  const isComplete = stateStr === "COMPLETE";
-  const isArchived = stateStr === "ARCHIVED";
-
-  const visibility = {
-    showRehearsal: isRehearsal || isRunning,
-    showValidation: isRunning,
-    showEvidence: isComplete || isArchived,
-    showRuntime: isRunning || isComplete || isArchived,
-    showDeployments: isComplete || isArchived,
-    showAdministration: isRunning || isComplete || isArchived,
-  } as const;
-
-  const visible = NAV_ITEMS.filter((item) => item.always || visibility[item.show as keyof typeof visibility]);
+  const baseLifecycle = lifecycle ?? { state: "REHEARSAL" } as Lifecycle;
+  const navItems = ROLE_ITEMS[role] ?? ROLE_ITEMS.observer;
+  const visible = navItems.filter((item) => item.show(baseLifecycle));
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
@@ -58,28 +71,43 @@ export function SiteNav() {
             </div>
             <div className="leading-none">
               <div className="text-sm font-semibold tracking-tight">Venture Vision Ubuntu</div>
-              <div className="text-[10px] text-muted-foreground font-mono">Validation Platform · {stateStr}</div>
+              <div className="text-[10px] text-muted-foreground font-mono">Validation Platform · {baseLifecycle.state}</div>
             </div>
           </div>
-          <nav className="ml-auto flex items-center gap-1 overflow-x-auto">
-            {visible.map((item) => {
-              const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={
-                    "inline-flex shrink-0 items-center rounded-md px-2.5 py-1.5 text-xs font-medium transition-all " +
-                    (isActive
-                      ? "bg-verified/10 text-verified border border-verified/30 shadow-sm shadow-verified/20"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent")
-                  }
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-1">
+              {visible.map((item) => {
+                const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={
+                      "inline-flex shrink-0 items-center rounded-md px-2.5 py-1.5 text-xs font-medium transition-all " +
+                      (isActive
+                        ? "bg-verified/10 text-verified border border-verified/30 shadow-sm shadow-verified/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent")
+                    }
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+
+            <select
+              aria-label="Access role"
+              className="h-7 rounded-md border border-border/60 bg-muted/40 px-2 text-[10px] text-muted-foreground"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+            >
+              <option value="observer">Public Observer</option>
+              <option value="validation_observer">Validation Observer</option>
+              <option value="operator">Operator</option>
+              <option value="administrator">Administrator</option>
+            </select>
+          </div>
         </div>
       </div>
     </header>

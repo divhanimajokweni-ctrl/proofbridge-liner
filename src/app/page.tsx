@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
-import { deriveValidationState } from "@/lib/validation/state";
 
 export default function Page() {
-  const { primaryRoute } = deriveValidationState();
-  redirect(primaryRoute);
+  redirect("/overview");
 }

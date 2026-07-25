@@ -3,6 +3,7 @@ export const revalidate = 5;
 
 import fs from "node:fs";
 import path from "node:path";
+import { DEFAULT_LIFECYCLE } from "@/lib/validation/state";
 
 function readJsonSafe(filePath: string) {
   try {
@@ -13,38 +14,64 @@ function readJsonSafe(filePath: string) {
   }
 }
 
+function safeBool(value: any): boolean | null {
+  if (value === true || value === "true" || value === "PASS" || value === true) return true;
+  if (value === false || value === "false" || value === "FAIL" || value === "INVALID") return false;
+  return null;
+}
+
 export async function GET() {
-  const stateFile = path.join(process.cwd(), "VVU-VAL-001", "protocol", "state.json");
-  const frozenFile = path.join(process.cwd(), "VVU-VAL-001", "protocol", "frozen-build.json");
-  const replay = path.join(process.cwd(), "VVU-VAL-001", "evidence", "replay-result.json");
-  const archive = path.join(process.cwd(), "VVU-VAL-001", "release", "manifest.json");
+  const root = path.join(process.cwd(), "VVU-VAL-001");
+  const stateFile = path.join(root, "protocol", "state.json");
+  const frozenFile = path.join(root, "protocol", "frozen-build.json");
+  const replayFile = path.join(root, "evidence", "replay-result.json");
+  const archiveFile = path.join(root, "release", "manifest.json");
+  const evidenceDir = path.join(root, "evidence");
 
-  const state = readJsonSafe(stateFile);
+  const state = readJsonSafe(stateFile) ?? {};
   const frozen = readJsonSafe(frozenFile);
-  const replayResult = readJsonSafe(replay);
-  const release = readJsonSafe(archive);
+  const replay = readJsonSafe(replayFile);
+  const archive = readJsonSafe(archiveFile);
 
-  const hasFrozen = !!frozen;
-  const replayPasses = typeof replayResult?.passed === "boolean" ? replayResult.passed : typeof replayResult?.status === "string" ? replayResult.status.toLowerCase() === "pass" : false;
-  const archiveReady = !!release && (release.status === "archived" || (typeof release.hours === "number" && release.hours >= 72));
-  const thresholdPass = hasFrozen ? (() => { const threshold = frozen.threshold ?? 0.95; const value = frozen.value ?? frozen.validation_index ?? frozen.index ?? 0; return typeof value === "number" && value >= threshold; })() : false;
-  const phaseComplete = hasFrozen ? (() => { const frozenAt = new Date(frozen.frozen_at).getTime(); return !Number.isNaN(frozenAt) && Date.now() - frozenAt >= 72 * 60 * 60 * 1000; })() : false;
+  const hasFrozen = !!frozen && !!frozen.frozen_at;
+  let lifecycle: typeof DEFAULT_LIFECYCLE = { ...DEFAULT_LIFECYCLE };
 
-  let derivedState = "REHEARSAL";
-  if (state?.state && ["REHEARSAL","RUNNING","COMPLETE","FAILED","ARCHIVED"].includes(state.state)) {
-    derivedState = state.state;
+  if (state.state && ["REHEARSAL", "RUNNING", "VERIFYING", "COMPLETE", "FAILED", "ARCHIVED"].includes(state.state)) {
+    lifecycle.state = state.state;
   } else if (!hasFrozen) {
-    derivedState = "REHEARSAL";
-  } else if (state?.state === "FAILED" || !replayPasses) {
-    derivedState = "FAILED";
-  } else if (phaseComplete && archiveReady && thresholdPass) {
-    derivedState = "COMPLETE";
+    lifecycle.state = "REHEARSAL";
   } else {
-    derivedState = "RUNNING";
+    lifecycle.state = "RUNNING";
+    lifecycle.currentHour = typeof frozen.current_hour === "number" ? frozen.current_hour : null;
+    lifecycle.currentPhase = frozen.phase ?? null;
+    lifecycle.validationIndex = typeof frozen.validation_index === "number" ? frozen.validation_index : null;
   }
 
-  return Response.json({
-    state: derivedState,
-    frozen: frozen ? { validation_event: frozen.validation_event, frozen_at: frozen.frozen_at, commit_short: frozen.commit_short, image_status: frozen.image_status } : null,
-  });
+  // Derive evidence ready from hour bundle directories
+  let hourCount = 0;
+  try {
+    if (fs.existsSync(evidenceDir)) {
+      hourCount = fs.readdirSync(evidenceDir, { withFileTypes: true }).filter((entry) => /^Hour-\d{2}$/.test(entry.name) && entry.isDirectory()).length;
+    }
+  } catch {
+    hourCount = 0;
+  }
+  lifecycle.evidenceReady = hourCount > 0;
+
+  const replayPassed = typeof replay?.status === "string" ? replay.status.toLowerCase() === "pass" : typeof replay?.passed === "boolean" ? replay.passed : null;
+  lifecycle.replayPassed = replayPassed;
+  lifecycle.deploymentReady = safeBool(archive?.status) ?? (!!archive && (archive.hours ?? 0) >= 72) ?? null;
+  lifecycle.productionPublished = safeBool(archive?.production_published) ?? null;
+  lifecycle.runtimeHealthy = archive?.runtime_healthy ?? null;
+
+  if (lifecycle.state === "RUNNING") {
+    const archiveReady = lifecycle.deploymentReady === true;
+    if (archiveReady && lifecycle.evidenceReady && lifecycle.productionPublished === true) {
+      lifecycle.state = "COMPLETE";
+    } else if (lifecycle.replayPassed === false || lifecycle.state === "FAILED") {
+      lifecycle.state = "FAILED";
+    }
+  }
+
+  return Response.json(lifecycle);
 }
