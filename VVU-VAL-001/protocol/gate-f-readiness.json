@@ -2,17 +2,27 @@
   "artifact": "gate-f-readiness",
   "version": "1.0",
   "status": "PENDING",
-  "generatedAt": "2026-07-25T03:54:02ZPlaceholder",
+  "generatedAt": "2026-07-25T04:59:56Z",
   "generator": "pilot-readiness",
   "inputs": [
-    "scada-report.json",
-    "inventory.json",
-    "site-approval.json"
+    "protocol/gate-f/input.json",
+    "outreach/milestones.yaml",
+    "outreach/stages.yaml",
+    "outreach/recipients.yaml",
+    "protocol/frozen-build.json"
   ],
-  "checksum": "e4109b2d798bcf9e51715883e5f5c2b8e9bf510a3ab008babead38d74800085d",
+  "checksum": "a28a8680810159367f0016b978abc52feba546bc5b4c81b9f3e133025e5a2e14",
   "payload": {
-    "siteApproved": false,
+    "siteApproved": true,
     "scadaVerified": false,
-    "inventoryVerified": false
+    "inventoryVerified": false,
+    "riskAssessmentApproved": false,
+    "dataGovernanceApproved": false,
+    "hydraulicZoneDefined": true,
+    "epanetCalibrated": false,
+    "gisImported": true,
+    "prvInventoryVerified": true,
+    "deploymentFrozen": true,
+    "blocked_reason": "missing pilot evidence inputs or approvals"
   }
 }

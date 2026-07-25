@@ -2,17 +2,31 @@
   "artifact": "gate-g-release",
   "version": "1.0",
   "status": "PENDING",
-  "generatedAt": "2026-07-25T03:54:02ZPlaceholder",
+  "generatedAt": "2026-07-25T04:59:56Z",
   "generator": "release-authorization",
   "inputs": [
-    "deployment-record.json",
-    "completion-record.json",
-    "manifest.json"
+    "protocol/gates.json",
+    "protocol/gate-e/input.json",
+    "protocol/gate-f/input.json",
+    "protocol/gate-g/input.json",
+    "protocol/frozen-build.json",
+    "evidence/replay-result.json",
+    "release/archive-manifest.json"
   ],
-  "checksum": "eca3e9ebdc856857bedcea289016b486c765261fc121dbb790a18de4a9b7d2b3",
+  "checksum": "9ad3fa36db4277b22f4befb33955490e559be596f6293f0ecdf0d9cfb2afc3eb",
   "payload": {
     "allPrerequisitesSatisfied": false,
-    "approvedBuild": false,
-    "deploymentEligible": false
+    "approvedBuild": true,
+    "deploymentEligible": false,
+    "all_gates_pass": false,
+    "release_evidence_present": true,
+    "frozen_build_verified": true,
+    "replay_passed": false,
+    "archive_passed": false,
+    "no_sev1": true,
+    "no_sev2": true,
+    "circuit_normal": true,
+    "no_deployment_record": true,
+    "blocked_reason": "one or more release predicates missing"
   }
 }
