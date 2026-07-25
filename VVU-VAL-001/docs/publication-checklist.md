@@ -58,7 +58,7 @@ Complete every item before announcing T=0. Items marked **[FREEZE]** are perform
 - [ ] `outreach/milestones.yaml` published
 - [ ] `outreach/recipients.yaml` published (all addresses marked "to-be-confirmed" until verified)
 - [ ] `outreach/stages.yaml` published
-- [ ] GitHub Actions workflows enabled (`github/validation.yml`, `github/rehearsal.yml`, `github/release.yml`)
+- [ ] GitHub Actions workflows enabled (`.github/workflows/validation.yml`, `.github/workflows/rehearsal.yml`, `.github/workflows/release.yml`)
 - [ ] Staged-release enforcement tested (outreach engine halts if `stages.yaml` is missing)
 
 ## Final Checks

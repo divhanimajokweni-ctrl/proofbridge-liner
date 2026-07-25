@@ -21,7 +21,7 @@ Generated after attempting `freeze-build.sh` and `run-rehearsal.sh` in the curre
 | Chaos schedules | ✅ COMPLETE | `schedule.yaml` + 4 inject scripts |
 | Rehearsal scripts | ⚠️ PARTIAL | freeze-build.sh has Git Bash path translation issue on Windows |
 | Evidence scripts | ✅ COMPLETE | bundle, archive, replay, validation-index.py present |
-| GitHub workflows | ✅ COMPLETE | 3 workflows in `VVU-VAL-001/github/` |
+| GitHub workflows | ✅ COMPLETE | 3 workflows in `.github/workflows/` |
 | Scoreboard configs | ✅ COMPLETE | dashboard.json, metrics-schema.json, overlay-config.json |
 | Outreach scaffolds | ✅ COMPLETE | milestones, recipients, stages + 6 templates |
 | Documentation | ✅ COMPLETE | 4 docs + protocol.md |

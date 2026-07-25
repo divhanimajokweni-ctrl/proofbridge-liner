@@ -27,14 +27,14 @@ openssl genpkey -algorithm Ed25519 -out operator-key.pem
 openssl pkey -in operator-key.pem -pubout -out operator-public-key.pem
 
 # Publish the public key (commit to the repo)
-cp operator-public-key.pem validation/VVU-VAL-001/protocol/operator-public-key.pem
-git add validation/VVU-VAL-001/protocol/operator-public-key.pem
+cp operator-public-key.pem VVU-VAL-001/protocol/operator-public-key.pem
+git add VVU-VAL-001/protocol/operator-public-key.pem
 git commit -m "operator: publish public key for VAL-001"
 ```
 
 ## Operator Log Format
 
-Every action is logged to `validation/VVU-VAL-001/evidence/operator.log` (append-only):
+Every action is logged to `VVU-VAL-001/evidence/operator.log` (append-only):
 
 ```
 [2026-XX-XX T+HH:MM:SS] [signed] Operator SSH session opened

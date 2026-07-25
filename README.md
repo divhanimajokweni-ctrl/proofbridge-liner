@@ -24,7 +24,7 @@ make validate
 make evidence HOUR=12
 
 # Verify replay determinism
-make verify BUNDLE=validation/VVU-VAL-001/evidence/bundles/Hour-12.zip
+make verify BUNDLE=VVU-VAL-001/evidence/bundles/Hour-12.zip
 
 # Publish the evidence package as a GitHub Release
 make release

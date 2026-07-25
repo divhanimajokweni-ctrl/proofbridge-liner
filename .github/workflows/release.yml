@@ -33,13 +33,8 @@ jobs:
       - name: Trigger outreach engine (Layer 2)
         run: |
           echo "Triggering outreach engine for milestone ${{ github.event.inputs.milestone }}"
-          # The outreach engine is a SEPARATE workflow that enforces staged release.
-          # It is killable and does not affect the validation.
-          gh workflow run VVU-VAL-001/github/outreach-engine.yml \
-            -f milestone="${{ github.event.inputs.milestone }}" || \
-            echo "outreach engine not triggered (may be disabled — validation unaffected)"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          echo "NOTE: Layer 2 outreach workflow is intentionally a stub until Gate G authorization."
+          echo "Replace this step with an actual workflow dispatch when mailing/staging governance is approved."
 
       - name: Reminder — long-term archival
         run: |

@@ -35,7 +35,7 @@ This attestation is what moves the validation from a self-reported demonstration
    ```
 3. **Run the Independent Reproduction procedure** (§12 of the protocol):
    ```bash
-   bash validation/VVU-VAL-001/rehearsal/verify.sh --observer-mode
+   bash VVU-VAL-001/rehearsal/verify.sh --observer-mode
    ```
 4. **Publish your attestation letter** using the format in §10.3 of the protocol. The letter states whether the published artifacts match what you observed. It does NOT assess the runtime's quality.
 
