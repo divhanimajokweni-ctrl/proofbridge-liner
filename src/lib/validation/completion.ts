@@ -1,6 +1,8 @@
+import { NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { spawn } from "node:child_process";
 
 import { DEFAULT_LIFECYCLE, DEFAULT_GATES, type GateResult, type ValidationLifecycle } from "./state";
 import { readEnvelope, envelopeStatus } from "./envelope";
@@ -199,6 +201,7 @@ export async function evaluateGates(): Promise<{ lifecycle: ValidationLifecycle;
   }
 
   if (lifecycle.state === "DEPLOY_PENDING") {
+    const deploymentRecordPath = path.join(root, "release", "deployment-record.json");
     const record = existsJson(deploymentRecordPath);
     if (record?.status === "deploying") {
       lifecycle.state = "DEPLOYING";
@@ -236,6 +239,10 @@ export async function executeProductionDeploy() {
   }
 
   const root = path.join(process.cwd(), "VVU-VAL-001");
+  const frozenPath = path.join(root, "protocol", "frozen-build.json");
+  const archivePath = path.join(root, "release", "manifest.json");
+  const replayPath = path.join(root, "evidence", "replay-result.json");
+  const gatesPath = path.join(root, "protocol", "gates.json");
   const recordPath = path.join(root, "release", "deployment-record.json");
 
   fs.mkdirSync(path.dirname(recordPath), { recursive: true });

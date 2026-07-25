@@ -15,6 +15,7 @@ export interface ValidationLifecycle {
   state: ValidationLifecycleState;
   phase: string | null;
   activeGate: string | null;
+  currentGate: string | null;
   score: number | null;
   elapsed: number | null;
   runtimeHealthy: boolean | null;
@@ -38,6 +39,7 @@ export const DEFAULT_LIFECYCLE: ValidationLifecycle = {
   state: "REHEARSAL",
   phase: null,
   activeGate: null,
+  currentGate: null,
   score: null,
   elapsed: null,
   runtimeHealthy: null,
