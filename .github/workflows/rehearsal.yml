@@ -25,27 +25,27 @@ jobs:
 
       - name: Run rehearsal
         run: |
-          chmod +x validation/VVU-VAL-001/rehearsal/run-rehearsal.sh
+          chmod +x VVU-VAL-001/rehearsal/run-rehearsal.sh
           if [ -n "${{ github.event.inputs.phase_only }}" ]; then
-            bash validation/VVU-VAL-001/rehearsal/run-rehearsal.sh --phase-only "${{ github.event.inputs.phase_only }}"
+            bash VVU-VAL-001/rehearsal/run-rehearsal.sh --phase-only "${{ github.event.inputs.phase_only }}"
           else
-            bash validation/VVU-VAL-001/rehearsal/run-rehearsal.sh
+            bash VVU-VAL-001/rehearsal/run-rehearsal.sh
           fi
 
       - name: Run verification
         run: |
-          chmod +x validation/VVU-VAL-001/rehearsal/verify.sh
-          bash validation/VVU-VAL-001/rehearsal/verify.sh || echo "::warning::verification reported issues"
+          chmod +x VVU-VAL-001/rehearsal/verify.sh
+          bash VVU-VAL-001/rehearsal/verify.sh || echo "::warning::verification reported issues"
 
       - name: Freeze build (if rehearsal passed)
         if: success()
         run: |
-          chmod +x validation/VVU-VAL-001/rehearsal/freeze-build.sh
-          bash validation/VVU-VAL-001/rehearsal/freeze-build.sh
+          chmod +x VVU-VAL-001/rehearsal/freeze-build.sh
+          bash VVU-VAL-001/rehearsal/freeze-build.sh
 
       - name: Upload frozen-build.json
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: frozen-build
-          path: validation/VVU-VAL-001/protocol/frozen-build.json
+          path: VVU-VAL-001/protocol/frozen-build.json

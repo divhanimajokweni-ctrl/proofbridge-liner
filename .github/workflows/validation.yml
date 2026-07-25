@@ -41,21 +41,21 @@ jobs:
 
       - name: Build evidence bundle
         run: |
-          chmod +x validation/VVU-VAL-001/evidence/bundle.sh
-          RUNTIME_NS=vvu-runtime bash validation/VVU-VAL-001/evidence/bundle.sh "${{ steps.hour.outputs.h }}"
+          chmod +x VVU-VAL-001/evidence/bundle.sh
+          RUNTIME_NS=vvu-runtime bash VVU-VAL-001/evidence/bundle.sh "${{ steps.hour.outputs.h }}"
 
       - name: Compute Validation Index
         run: |
-          python3 validation/VVU-VAL-001/evidence/validation-index.py \
-            --metrics validation/VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}")/metrics/ledger-status.json \
+          python3 VVU-VAL-001/evidence/validation-index.py \
+            --metrics VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}")/metrics/ledger-status.json \
             --json > validation-index.json
           cat validation-index.json
 
       - name: Verify replay determinism
         run: |
-          chmod +x validation/VVU-VAL-001/evidence/replay.sh
-          bash validation/VVU-VAL-001/evidence/replay.sh \
-            --bundle "validation/VVU-VAL-001/evidence/bundles/Hour-$(printf '%02d' '${{ steps.hour.outputs.h }}').zip" || \
+          chmod +x VVU-VAL-001/evidence/replay.sh
+          bash VVU-VAL-001/evidence/replay.sh \
+            --bundle "VVU-VAL-001/evidence/bundles/Hour-$(printf '%02d' '${{ steps.hour.outputs.h }}').zip" || \
             echo "::warning::replay verification did not pass for this hour"
 
       - name: Emit milestone event
@@ -66,6 +66,6 @@ jobs:
         with:
           name: Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}")
           path: |
-            validation/VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}").zip
-            validation/VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}").sha256
+            VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}").zip
+            VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}").sha256
             validation-index.json

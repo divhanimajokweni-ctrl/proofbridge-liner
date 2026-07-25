@@ -22,20 +22,20 @@ jobs:
 
       - name: Assemble evidence package
         run: |
-          chmod +x validation/VVU-VAL-001/evidence/archive.sh
-          bash validation/VVU-VAL-001/evidence/archive.sh
+          chmod +x VVU-VAL-001/evidence/archive.sh
+          bash VVU-VAL-001/evidence/archive.sh
 
       - name: Publish GitHub Release
         run: |
-          chmod +x validation/VVU-VAL-001/evidence/archive.sh
-          bash validation/VVU-VAL-001/evidence/archive.sh --release
+          chmod +x VVU-VAL-001/evidence/archive.sh
+          bash VVU-VAL-001/evidence/archive.sh --release
 
       - name: Trigger outreach engine (Layer 2)
         run: |
           echo "Triggering outreach engine for milestone ${{ github.event.inputs.milestone }}"
           # The outreach engine is a SEPARATE workflow that enforces staged release.
           # It is killable and does not affect the validation.
-          gh workflow run validation/VVU-VAL-001/github/outreach-engine.yml \
+          gh workflow run VVU-VAL-001/github/outreach-engine.yml \
             -f milestone="${{ github.event.inputs.milestone }}" || \
             echo "outreach engine not triggered (may be disabled — validation unaffected)"
         env:
