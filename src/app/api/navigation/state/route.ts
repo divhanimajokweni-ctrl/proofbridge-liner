@@ -14,12 +14,6 @@ function readJsonSafe(filePath: string) {
   }
 }
 
-function safeBool(value: any): boolean | null {
-  if (value === true || value === "true" || value === "PASS" || value === true) return true;
-  if (value === false || value === "false" || value === "FAIL" || value === "INVALID") return false;
-  return null;
-}
-
 export async function GET() {
   const root = path.join(process.cwd(), "VVU-VAL-001");
   const stateFile = path.join(root, "protocol", "state.json");
@@ -33,7 +27,7 @@ export async function GET() {
   const replay = readJsonSafe(replayFile);
   const archive = readJsonSafe(archiveFile);
 
-  const hasFrozen = !!frozen && !!frozen.frozen_at;
+  const hasFrozen = !!frozen?.frozen_at;
   let lifecycle: typeof DEFAULT_LIFECYCLE = { ...DEFAULT_LIFECYCLE };
 
   if (state.state && ["REHEARSAL", "RUNNING", "VERIFYING", "COMPLETE", "FAILED", "ARCHIVED"].includes(state.state)) {
@@ -47,7 +41,6 @@ export async function GET() {
     lifecycle.validationIndex = typeof frozen.validation_index === "number" ? frozen.validation_index : null;
   }
 
-  // Derive evidence ready from hour bundle directories
   let hourCount = 0;
   try {
     if (fs.existsSync(evidenceDir)) {
@@ -56,13 +49,12 @@ export async function GET() {
   } catch {
     hourCount = 0;
   }
-  lifecycle.evidenceReady = hourCount > 0;
 
-  const replayPassed = typeof replay?.status === "string" ? replay.status.toLowerCase() === "pass" : typeof replay?.passed === "boolean" ? replay.passed : null;
-  lifecycle.replayPassed = replayPassed;
+  lifecycle.evidenceReady = hourCount > 0;
+  lifecycle.replayPassed = typeof replay?.status === "string" ? replay.status.toLowerCase() === "pass" : typeof replay?.passed === "boolean" ? replay.passed : null;
   lifecycle.deploymentReady = safeBool(archive?.status) ?? (!!archive && (archive.hours ?? 0) >= 72) ?? null;
   lifecycle.productionPublished = safeBool(archive?.production_published) ?? null;
-  lifecycle.runtimeHealthy = archive?.runtime_healthy ?? null;
+  lifecycle.runtimeHealthy = readJsonSafe(path.join(root, "release", "runtime-health.json"))?.healthy ?? null;
 
   if (lifecycle.state === "RUNNING") {
     const archiveReady = lifecycle.deploymentReady === true;
@@ -74,4 +66,10 @@ export async function GET() {
   }
 
   return Response.json(lifecycle);
+}
+
+function safeBool(value: any): boolean | null {
+  if (value === true || value === "true" || value === "PASS" || value === "archived") return true;
+  if (value === false || value === "false" || value === "FAIL" || value === "INVALID") return false;
+  return null;
 }
