@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { deriveValidationState } from "@/lib/validation/state";
 
 type Summary = {
   state: { state?: string };
@@ -11,6 +10,10 @@ type Summary = {
     commit_short?: string;
     image_status?: string;
   };
+  index?: any;
+  replay?: any;
+  release?: any;
+  hours?: string[];
 };
 
 export default function ValidationPage() {
@@ -18,14 +21,9 @@ export default function ValidationPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/validation/state").then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
-      fetch("/api/validation/frozen-build").then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
-      fetch("/api/validation/summary").then((r) => (r.ok ? r.json() : Promise.reject(r.status))),
-    ])
-      .then(([state, frozen, summaryData]) => {
-        setSummary({ state, frozen: frozen.frozen_build ?? frozen, ...summaryData });
-      })
+    fetch("/api/navigation/state")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => setSummary((prev) => ({ ...prev, state: data, frozen: data.frozen })))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
@@ -43,11 +41,11 @@ export default function ValidationPage() {
         <div className="mt-4 rounded-md border border-violating/40 bg-violating/10 p-3 text-xs text-violating">{error}</div>
       )}
 
-      {summary && (
+      {summary?.frozen && (
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <Kpi label="State" value={summary.state?.state ?? "—"} sub="Current lifecycle state" />
-          <Kpi label="Frozen At" value={summary.frozen?.frozen_at ?? "—"} sub={`Commit ${summary.frozen?.commit_short ?? "—"}`} />
-          <Kpi label="Image Status" value={summary.frozen?.image_status ?? "—"} sub={summary.frozen?.validation_event ?? "—"} />
+          <Kpi label="Event" value={summary.frozen?.validation_event ?? "—"} sub="Validation event id" />
+          <Kpi label="Commit" value={summary.frozen?.commit_short ?? "—"} sub={summary.frozen?.frozen_at ?? "—"} />
+          <Kpi label="Image Status" value={summary.frozen?.image_status ?? "—"} sub={summary.state?.state ?? "—"} />
         </div>
       )}
 

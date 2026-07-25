@@ -161,7 +161,7 @@ export async function GET() {
         },
         {
           id: 'proj-005',
-          projectionId: 'legacy-dashboard-v0',
+          projectionId: 'previous-dashboard-v0',
           version: '0.9.0',
           schema: 'projection-dashboard/v0',
           effectiveFrom: '2025-01-01T00:00:00Z',
@@ -189,7 +189,7 @@ export async function GET() {
         },
         {
           id: 'pol-003',
-          name: 'legacy-migration-policy',
+          name: 'previous-migration-policy',
           version: '0.9.0',
           effectiveFrom: '2025-01-01T00:00:00Z',
           effectiveTo: '2025-06-01T00:00:00Z',

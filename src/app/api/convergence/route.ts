@@ -30,9 +30,9 @@ export async function GET() {
         { component: 'Git Adapter', architectureStatus: 'ARCHITECTURAL_ONLY', implementationStatus: 'NOT_IMPLEMENTED', readiness: 0, file: 'N/A' },
         { component: 'Kubernetes Adapter', architectureStatus: 'ARCHITECTURAL_ONLY', implementationStatus: 'NOT_IMPLEMENTED', readiness: 0, file: 'N/A' },
         { component: 'Argo Adapter', architectureStatus: 'ARCHITECTURAL_ONLY', implementationStatus: 'NOT_IMPLEMENTED', readiness: 0, file: 'N/A' },
-        { component: 'CLI', architectureStatus: 'MOCK', implementationStatus: 'BROWSER_TERMINAL', readiness: 5, file: 'components/epistemic/cli-terminal.tsx' },
+        { component: 'CLI', architectureStatus: 'MOCK', implementationStatus: 'BROWSER_TERMINAL', readiness: 5, file: 'cli-terminal (retired)' },
         { component: 'Dashboard', architectureStatus: 'IMPLEMENTED', implementationStatus: 'FULLY_FUNCTIONAL', readiness: 90, file: 'page.tsx + 37 components' },
-        { component: 'Replay', architectureStatus: 'PARTIALLY_IMPLEMENTED', implementationStatus: 'UI_ONLY', readiness: 10, file: 'components/epistemic/timeline.tsx' },
+        { component: 'Replay', architectureStatus: 'PARTIALLY_IMPLEMENTED', implementationStatus: 'UI_ONLY', readiness: 10, file: 'timeline (retired)' },
         { component: 'QA', architectureStatus: 'UNKNOWN', implementationStatus: 'NOT_IMPLEMENTED', readiness: 0, file: 'N/A' },
       ],
       determinismAudit: {
