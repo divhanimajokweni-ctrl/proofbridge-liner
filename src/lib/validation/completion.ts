@@ -20,6 +20,9 @@ export async function shouldAttemptCompletion(): Promise<CompletionResult> {
   const archivePath = path.join(root, "release", "manifest.json");
   const statePath = path.join(root, "protocol", "state.json");
   const gatesPath = path.join(root, "protocol", "gates.json");
+  const incidentsPath = path.join(root, "release", "incidents.json");
+  const circuitPath = path.join(root, "release", "circuit-breaker.json");
+  const deploymentRecordPath = path.join(root, "release", "deployment-record.json");
 
   const exists = (p: string) => fs.existsSync(p);
 
@@ -95,6 +98,31 @@ export async function shouldAttemptCompletion(): Promise<CompletionResult> {
     }
   }
 
+  const incidents = exists(incidentsPath) ? safeReadJson(incidentsPath) : null;
+  const unresolvedSev1 = Array.isArray(incidents?.sev1) && incidents.sev1.length > 0;
+  const unresolvedSev2 = Array.isArray(incidents?.sev2) && incidents.sev2.length > 0;
+  if (unresolvedSev1) {
+    missing.push("incidents-sev1");
+    reasons.push("Unresolved SEV-1 incidents present.");
+  }
+  if (unresolvedSev2) {
+    missing.push("incidents-sev2");
+    reasons.push("Unresolved SEV-2 incidents present.");
+  }
+
+  const circuitBreaker = exists(circuitPath) ? safeReadJson(circuitPath) : null;
+  const circuitOpen = circuitBreaker?.open === true;
+  if (circuitOpen) {
+    missing.push("circuit-breaker");
+    reasons.push("Circuit breaker is active.");
+  }
+
+  const deploymentRecordExists = exists(deploymentRecordPath);
+  if (deploymentRecordExists) {
+    missing.push("deployment-record-exists");
+    reasons.push("deployment-record.json already exists.");
+  }
+
   const shouldAttempt = missing.length === 0;
 
   if (shouldAttempt) {
@@ -128,7 +156,7 @@ export async function evaluateGates(): Promise<{ lifecycle: ValidationLifecycle;
   const hasFrozen = !!frozen?.frozen_at;
   let lifecycle: ValidationLifecycle = { ...DEFAULT_LIFECYCLE };
 
-  if (state.state && ["REHEARSAL", "RUNNING", "VERIFYING", "COMPLETE", "FAILED", "ARCHIVED", "DEPLOY_PENDING", "DEPLOYING", "DEPLOYED", "HEALTH_CHECK", "PRODUCTION_ACTIVE"].includes(state.state)) {
+  if (state.state && ["REHEARSAL","RUNNING","VERIFYING","COMPLETE","FAILED","ARCHIVED","DEPLOY_PENDING","DEPLOYING","DEPLOYED","HEALTH_CHECK","PRODUCTION_ACTIVE"].includes(state.state)) {
     lifecycle.state = state.state;
   } else if (!hasFrozen) {
     lifecycle.state = "REHEARSAL";
@@ -150,25 +178,32 @@ export async function evaluateGates(): Promise<{ lifecycle: ValidationLifecycle;
 
   lifecycle.evidenceReady = hourCount > 0;
   lifecycle.replayPassed = typeof replay?.status === "string" ? replay.status.toLowerCase() === "pass" : typeof replay?.passed === "boolean" ? replay.passed : null;
+  lifecycle.archivePassed = typeof archive?.status === "string" ? archive.status.toLowerCase() === "archived" : (archive?.hours ?? 0) >= 72;
+  lifecycle.frozenBuildVerified = !!frozen?.frozen_at;
   lifecycle.deploymentReady = safeBool(archive?.status) ?? (!!archive && (archive.hours ?? 0) >= 72) ?? null;
   lifecycle.productionPublished = safeBool(archive?.production_published) ?? null;
   lifecycle.runtimeHealthy = runtimeHealth?.healthy ?? null;
   lifecycle.currentGate = gateResults.find((g) => !g.passed)?.gate ?? (allGatesPassed ? "ALL" : null);
   lifecycle.gatePassed = allGatesPassed;
 
+  const incidents = safeReadJson(path.join(root, "release", "incidents.json"));
+  const unresolvedSev1 = Array.isArray(incidents?.sev1) && incidents.sev1.length > 0;
+  const unresolvedSev2 = Array.isArray(incidents?.sev2) && incidents.sev2.length > 0;
+  const circuitBreaker = safeReadJson(path.join(root, "release", "circuit-breaker.json"));
+  const circuitOpen = circuitBreaker?.open === true;
+  const deploymentRecordExists = fs.existsSync(path.join(root, "release", "deployment-record.json"));
+
+  lifecycle.deploymentEligible = allGatesPassed && !unresolvedSev1 && !unresolvedSev2 && !circuitOpen && !deploymentRecordExists && lifecycle.archivePassed && lifecycle.replayPassed && lifecycle.frozenBuildVerified;
+  lifecycle.productionDeployed = lifecycle.deploymentReady === true && lifecycle.productionPublished === true;
+
   const archiveReady = lifecycle.deploymentReady === true;
   if (lifecycle.state === "RUNNING" || lifecycle.state === "COMPLETE") {
-    if (!archiveReady || !lifecycle.evidenceReady || lifecycle.productionPublished !== true) {
-      if (allGatesPassed && hasFrozen && archiveReady && hourCount >= 72) {
-        lifecycle.state = "DEPLOY_PENDING";
-        lifecycle.deployPhase = "Pending deployment";
-      } else if (allGatesPassed) {
-        lifecycle.state = "COMPLETE";
-        lifecycle.deployPhase = "Awaiting archive";
-      }
-    } else if (archiveReady && lifecycle.evidenceReady && lifecycle.productionPublished === true) {
-      lifecycle.state = "PRODUCTION_ACTIVE";
-      lifecycle.deployPhase = "Published";
+    if (lifecycle.deploymentEligible) {
+      lifecycle.state = "DEPLOY_PENDING";
+      lifecycle.deployPhase = "Pending deployment";
+    } else if (allGatesPassed && archiveReady && hourCount >= 72) {
+      lifecycle.state = "COMPLETE";
+      lifecycle.deployPhase = "Awaiting operator trigger";
     }
   }
 
@@ -190,6 +225,17 @@ export async function evaluateGates(): Promise<{ lifecycle: ValidationLifecycle;
         lifecycle.deployPhase = "Published";
       }
     }
+  }
+
+  if (lifecycle.phase == null && frozen?.phase) lifecycle.phase = frozen.phase;
+  if (lifecycle.activeGate == null) lifecycle.activeGate = lifecycle.currentGate;
+  if (lifecycle.score == null && typeof lifecycle.validationIndex === "number") lifecycle.score = lifecycle.validationIndex;
+  if (lifecycle.elapsed == null && frozen?.frozen_at) {
+    const frozenAt = new Date(frozen.frozen_at).getTime();
+    if (!Number.isNaN(frozenAt)) lifecycle.elapsed = Date.now() - frozenAt;
+  }
+  if (!lifecycle.nextAction) {
+    lifecycle.nextAction = lifecycle.deploymentEligible ? "Deploy validation" : lifecycle.state === "PRODUCTION_ACTIVE" ? "Observe production" : "Continue evidence collection";
   }
 
   return { lifecycle, gates: gateResults };

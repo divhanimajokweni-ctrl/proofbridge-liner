@@ -13,30 +13,46 @@ export type ValidationLifecycleState =
 
 export interface ValidationLifecycle {
   state: ValidationLifecycleState;
+  phase: string | null;
+  activeGate: string | null;
+  score: number | null;
+  elapsed: number | null;
+  runtimeHealthy: boolean | null;
+  replayPassed: boolean | null;
+  archivePassed: boolean | null;
+  frozenBuildVerified: boolean | null;
+  deploymentEligible: boolean | null;
+  productionDeployed: boolean | null;
+  nextAction: string | null;
   currentHour: number | null;
   currentPhase: string | null;
   validationIndex: number | null;
-  runtimeHealthy: boolean | null;
   evidenceReady: boolean | null;
-  replayPassed: boolean | null;
   deploymentReady: boolean | null;
   productionPublished: boolean | null;
-  currentGate: string | null;
   gatePassed: boolean | null;
   deployPhase: string | null;
 }
 
 export const DEFAULT_LIFECYCLE: ValidationLifecycle = {
   state: "REHEARSAL",
+  phase: null,
+  activeGate: null,
+  score: null,
+  elapsed: null,
+  runtimeHealthy: null,
+  replayPassed: null,
+  archivePassed: null,
+  frozenBuildVerified: null,
+  deploymentEligible: null,
+  productionDeployed: null,
+  nextAction: null,
   currentHour: null,
   currentPhase: null,
   validationIndex: null,
-  runtimeHealthy: null,
   evidenceReady: null,
-  replayPassed: null,
   deploymentReady: null,
   productionPublished: null,
-  currentGate: null,
   gatePassed: null,
   deployPhase: null,
 };
@@ -54,6 +70,7 @@ export const DEFAULT_GATES: GateResult[] = [
   { gate: "D", passed: false, detail: "GitOps" },
   { gate: "E", passed: false, detail: "CI/CD" },
   { gate: "F", passed: false, detail: "Documentation" },
+  { gate: "G", passed: false, detail: "Release" },
 ];
 
 export function lifecycleSummary(lifecycle: ValidationLifecycle) {
