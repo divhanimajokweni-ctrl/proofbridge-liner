@@ -21,7 +21,7 @@ export default function ValidationPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/navigation/state")
+    fetch("/api/app-state")
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((data) => setSummary((prev) => ({ ...prev, state: data, frozen: data.frozen })))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));

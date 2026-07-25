@@ -7,7 +7,7 @@ export const revalidate = 5;
 async function getLifecycle(): Promise<any> {
   try {
     const base = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-    const res = await fetch(`${base}/api/navigation/state`, { next: { revalidate: 5 } });
+    const res = await fetch(`${base}/api/app-state`, { next: { revalidate: 5 } });
     if (!res.ok) throw new Error("Navigation state unavailable");
     return res.json();
   } catch {

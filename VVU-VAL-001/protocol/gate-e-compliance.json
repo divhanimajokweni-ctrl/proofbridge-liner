@@ -1,0 +1,14 @@
+{
+  "artifact": "gate-e-compliance",
+  "version": "1.0",
+  "status": "PENDING",
+  "generatedAt": "2026-07-25T03:55:00Z",
+  "generator": "compliance-audit",
+  "inputs": ["popia-audit-report.json", "security-audit-report.json", "operator-verification.json"],
+  "checksum": "PENDING",
+  "payload": {
+    "informationOfficerVerified": false,
+    "popiaAudit": "PENDING",
+    "securityAudit": "PENDING"
+  }
+}

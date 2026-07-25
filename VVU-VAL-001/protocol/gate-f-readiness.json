@@ -1,0 +1,14 @@
+{
+  "artifact": "gate-f-readiness",
+  "version": "1.0",
+  "status": "PENDING",
+  "generatedAt": "2026-07-25T03:55:00Z",
+  "generator": "pilot-readiness",
+  "inputs": ["scada-report.json", "inventory.json", "site-approval.json"],
+  "checksum": "PENDING",
+  "payload": {
+    "siteApproved": false,
+    "scadaVerified": false,
+    "inventoryVerified": false
+  }
+}

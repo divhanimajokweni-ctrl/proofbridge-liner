@@ -1,13 +1,15 @@
 import fs from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 
 import { DEFAULT_LIFECYCLE, DEFAULT_GATES, type GateResult, type ValidationLifecycle } from "./state";
+import { readEnvelope, envelopeStatus } from "./envelope";
 
 export interface CompletionResult {
   shouldAttempt: boolean;
   reasons: string[];
   missing: string[];
+  gateResults: GateResult[];
 }
 
 export async function shouldAttemptCompletion(): Promise<CompletionResult> {
@@ -24,55 +26,30 @@ export async function shouldAttemptCompletion(): Promise<CompletionResult> {
   const circuitPath = path.join(root, "release", "circuit-breaker.json");
   const deploymentRecordPath = path.join(root, "release", "deployment-record.json");
 
-  const exists = (p: string) => fs.existsSync(p);
+  const frozen = existsJson(frozenPath);
+  const replay = existsJson(replayPath);
+  const archive = existsJson(archivePath);
+  const state = existsJson(statePath) ?? {};
+  const gates = existsJson(gatesPath);
 
-  if (!exists(frozenPath)) {
+  if (!frozen?.frozen_at) {
     missing.push("frozen-build");
     reasons.push("Freeze metadata missing.");
   }
 
-  const frozen = exists(frozenPath) ? safeReadJson(frozenPath) : null;
-  if (!frozen?.frozen_at) {
-    missing.push("frozen-build-metadata");
-    reasons.push("Freeze metadata incomplete.");
+  const replayPass = typeof replay?.passed === "boolean" ? replay.passed : typeof replay?.status === "string" ? replay.status.toLowerCase() === "pass" : false;
+  if (!replayPass) {
+    missing.push("replay-failed");
+    reasons.push("Replay verification did not pass.");
   }
 
-  if (!exists(replayPath)) {
-    missing.push("replay-result");
-    reasons.push("Replay verification missing.");
-  } else {
-    const replay = safeReadJson(replayPath);
-    const replayPass = typeof replay?.passed === "boolean" ? replay.passed : typeof replay?.status === "string" ? replay.status.toLowerCase() === "pass" : false;
-    if (!replayPass) {
-      missing.push("replay-failed");
-      reasons.push("Replay verification did not pass.");
-    }
+  const archived = typeof archive?.status === "string" ? archive.status.toLowerCase() === "archived" : false;
+  const hoursReady = typeof archive?.hours === "number" ? archive.hours >= 72 : false;
+  if (!archived && !hoursReady) {
+    missing.push("archive-incomplete");
+    reasons.push("Evidence archive not complete.");
   }
 
-  if (!exists(archivePath)) {
-    missing.push("archive");
-    reasons.push("Evidence archive missing.");
-  } else {
-    const archive = safeReadJson(archivePath);
-    const archived = typeof archive?.status === "string" ? archive.status.toLowerCase() === "archived" : false;
-    const hoursReady = typeof archive?.hours === "number" ? archive.hours >= 72 : false;
-    if (!archived && !hoursReady) {
-      missing.push("archive-incomplete");
-      reasons.push("Evidence archive not complete.");
-    }
-  }
-
-  if (!exists(statePath)) {
-    missing.push("state");
-    reasons.push("Validation state file missing.");
-  }
-
-  if (!exists(gatesPath)) {
-    missing.push("gates");
-    reasons.push("Gate results missing.");
-  }
-
-  const gates = exists(gatesPath) ? safeReadJson(gatesPath) : null;
   const gateResults = normalizeGates(gates);
   const allPassed = gateResults.every((g) => g.passed);
   if (!allPassed) {
@@ -98,7 +75,7 @@ export async function shouldAttemptCompletion(): Promise<CompletionResult> {
     }
   }
 
-  const incidents = exists(incidentsPath) ? safeReadJson(incidentsPath) : null;
+  const incidents = existsJson(incidentsPath);
   const unresolvedSev1 = Array.isArray(incidents?.sev1) && incidents.sev1.length > 0;
   const unresolvedSev2 = Array.isArray(incidents?.sev2) && incidents.sev2.length > 0;
   if (unresolvedSev1) {
@@ -110,21 +87,19 @@ export async function shouldAttemptCompletion(): Promise<CompletionResult> {
     reasons.push("Unresolved SEV-2 incidents present.");
   }
 
-  const circuitBreaker = exists(circuitPath) ? safeReadJson(circuitPath) : null;
+  const circuitBreaker = existsJson(circuitPath);
   const circuitOpen = circuitBreaker?.open === true;
   if (circuitOpen) {
     missing.push("circuit-breaker");
     reasons.push("Circuit breaker is active.");
   }
 
-  const deploymentRecordExists = exists(deploymentRecordPath);
-  if (deploymentRecordExists) {
+  if (fs.existsSync(deploymentRecordPath)) {
     missing.push("deployment-record-exists");
     reasons.push("deployment-record.json already exists.");
   }
 
   const shouldAttempt = missing.length === 0;
-
   if (shouldAttempt) {
     reasons.push("All protocol gates passed.");
     reasons.push("Ready to execute ProductionDeploy().");
@@ -141,14 +116,17 @@ export async function evaluateGates(): Promise<{ lifecycle: ValidationLifecycle;
   const archivePath = path.join(root, "release", "manifest.json");
   const runtimeHealthPath = path.join(root, "release", "runtime-health.json");
   const gatesPath = path.join(root, "protocol", "gates.json");
+  const gateEEvidence = readEnvelope(root, "protocol/gate-e-compliance.json");
+  const gateFEvidence = readEnvelope(root, "protocol/gate-f-readiness.json");
+  const gateGEvidence = readEnvelope(root, "protocol/gate-g-release.json");
   const evidenceDir = path.join(root, "evidence");
 
-  const state = safeReadJson(statePath) ?? {};
-  const frozen = safeReadJson(frozenPath);
-  const replay = safeReadJson(replayPath);
-  const archive = safeReadJson(archivePath);
-  const runtimeHealth = safeReadJson(runtimeHealthPath);
-  const gates = safeReadJson(gatesPath);
+  const state = existsJson(statePath) ?? {};
+  const frozen = existsJson(frozenPath);
+  const replay = existsJson(replayPath);
+  const archive = existsJson(archivePath);
+  const runtimeHealth = existsJson(runtimeHealthPath);
+  const gates = existsJson(gatesPath);
 
   const gateResults = normalizeGates(gates);
   const allGatesPassed = gateResults.every((g) => g.passed);
@@ -186,14 +164,18 @@ export async function evaluateGates(): Promise<{ lifecycle: ValidationLifecycle;
   lifecycle.currentGate = gateResults.find((g) => !g.passed)?.gate ?? (allGatesPassed ? "ALL" : null);
   lifecycle.gatePassed = allGatesPassed;
 
-  const incidents = safeReadJson(path.join(root, "release", "incidents.json"));
+  const incidents = existsJson(path.join(root, "release", "incidents.json"));
   const unresolvedSev1 = Array.isArray(incidents?.sev1) && incidents.sev1.length > 0;
   const unresolvedSev2 = Array.isArray(incidents?.sev2) && incidents.sev2.length > 0;
-  const circuitBreaker = safeReadJson(path.join(root, "release", "circuit-breaker.json"));
+  const circuitBreaker = existsJson(path.join(root, "release", "circuit-breaker.json"));
   const circuitOpen = circuitBreaker?.open === true;
   const deploymentRecordExists = fs.existsSync(path.join(root, "release", "deployment-record.json"));
 
-  lifecycle.deploymentEligible = allGatesPassed && !unresolvedSev1 && !unresolvedSev2 && !circuitOpen && !deploymentRecordExists && lifecycle.archivePassed && lifecycle.replayPassed && lifecycle.frozenBuildVerified;
+  const gateEComplete = envelopeStatus(gateEEvidence) === "PASS";
+  const gateFComplete = envelopeStatus(gateFEvidence) === "PASS";
+  const gateGComplete = envelopeStatus(gateGEvidence) === "PASS";
+
+  lifecycle.deploymentEligible = allGatesPassed && gateEComplete && gateFComplete && gateGComplete && !unresolvedSev1 && !unresolvedSev2 && !circuitOpen && !deploymentRecordExists && lifecycle.archivePassed && lifecycle.replayPassed && lifecycle.frozenBuildVerified;
   lifecycle.productionDeployed = lifecycle.deploymentReady === true && lifecycle.productionPublished === true;
 
   const archiveReady = lifecycle.deploymentReady === true;
@@ -203,27 +185,24 @@ export async function evaluateGates(): Promise<{ lifecycle: ValidationLifecycle;
       lifecycle.deployPhase = "Pending deployment";
     } else if (allGatesPassed && archiveReady && hourCount >= 72) {
       lifecycle.state = "COMPLETE";
-      lifecycle.deployPhase = "Awaiting operator trigger";
+      lifecycle.deployPhase = "Awaiting deployment";
     }
   }
 
   if (lifecycle.state === "DEPLOY_PENDING") {
-    const deploymentRecordPath = path.join(root, "release", "deployment-record.json");
-    if (fs.existsSync(deploymentRecordPath)) {
-      const record = safeReadJson(deploymentRecordPath);
-      if (record?.status === "deploying") {
-        lifecycle.state = "DEPLOYING";
-        lifecycle.deployPhase = "Deploying";
-      } else if (record?.status === "deployed") {
-        lifecycle.state = "DEPLOYED";
-        lifecycle.deployPhase = "Deployed";
-      } else if (record?.status === "healthy") {
-        lifecycle.state = "HEALTH_CHECK";
-        lifecycle.deployPhase = "Health check";
-      } else if (record?.status === "production") {
-        lifecycle.state = "PRODUCTION_ACTIVE";
-        lifecycle.deployPhase = "Published";
-      }
+    const record = existsJson(deploymentRecordPath);
+    if (record?.status === "deploying") {
+      lifecycle.state = "DEPLOYING";
+      lifecycle.deployPhase = "Deploying";
+    } else if (record?.status === "deployed") {
+      lifecycle.state = "DEPLOYED";
+      lifecycle.deployPhase = "Deployed";
+    } else if (record?.status === "healthy") {
+      lifecycle.state = "HEALTH_CHECK";
+      lifecycle.deployPhase = "Health check";
+    } else if (record?.status === "production") {
+      lifecycle.state = "PRODUCTION_ACTIVE";
+      lifecycle.deployPhase = "Published";
     }
   }
 
@@ -262,6 +241,7 @@ export async function executeProductionDeploy() {
       shouldAttempt: false,
       reasons: ["ProductionDeploy() failed.", (result.stderr || result.stdout || "").trim()],
       missing: ["deploy-execution"],
+      gateResults: check.gateResults,
     };
   }
 
@@ -270,10 +250,10 @@ export async function executeProductionDeploy() {
   const completionRecord = {
     event: "ProductionDeploy",
     executed_at: new Date().toISOString(),
-    frozen: safeReadJson(path.join(root, "protocol", "frozen-build.json")),
-    archive: safeReadJson(path.join(root, "release", "manifest.json")),
-    replay: safeReadJson(path.join(root, "evidence", "replay-result.json")),
-    gates: normalizeGates(safeReadJson(path.join(root, "protocol", "gates.json"))),
+    frozen: existsJson(frozenPath),
+    archive: existsJson(archivePath),
+    replay: existsJson(replayPath),
+    gates: normalizeGates(existsJson(gatesPath)),
   };
 
   const target = path.join(root, "release", "completion-record.json");
@@ -284,6 +264,7 @@ export async function executeProductionDeploy() {
     shouldAttempt: true,
     reasons: ["ProductionDeploy() executed.", "Deployment record written."],
     missing: [],
+    gateResults: check.gateResults,
   };
 }
 
@@ -296,13 +277,7 @@ function normalizeGates(gates: any): GateResult[] {
   }));
 }
 
-function safeBool(value: any): boolean | null {
-  if (value === true || value === "true" || value === "PASS" || value === true) return true;
-  if (value === false || value === "false" || value === "FAIL" || value === "INVALID") return false;
-  return null;
-}
-
-function safeReadJson(filePath: string) {
+function existsJson(filePath: string) {
   try {
     if (!fs.existsSync(filePath)) return null;
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -311,9 +286,15 @@ function safeReadJson(filePath: string) {
   }
 }
 
+function safeBool(value: any): boolean | null {
+  if (value === true || value === "true" || value === "PASS" || value === "archived") return true;
+  if (value === false || value === "false" || value === "FAIL" || value === "INVALID") return false;
+  return null;
+}
+
 function runCommand(command: string, args: string[], options: any) {
   return new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
-    const child = spawn(command, args, { ...options, shell: false });
+    const child = require("node:child_process").spawn(command, args, { ...options, shell: false });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (data) => { stdout += data.toString(); });
