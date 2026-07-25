@@ -8,9 +8,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Epistemic Runtime — Invariant-Enforced DAG Control Plane",
-  description: "Verifiable, real-time shared-reality engine: a Policy DSL (.epd), invariant-aware sharded CRDTs, self-repairing merges, MMR ancestry proofs, and a Shadow Bridge for cyber-physical systems.",
-  icons: { icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg" },
+  title: "VVU Validation Dashboard",
+  description: "VVU-VAL-001 Validation Event: 72-hour rehearsal, evidence pipeline, gate status, and production dashboard.",
+  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
