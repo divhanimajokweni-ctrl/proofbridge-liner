@@ -1,15 +1,15 @@
 {
   "artifact": "gate-b-evidence",
   "version": "1.0",
-  "status": "PENDING",
-  "generatedAt": "2026-07-25T03:55:00Z",
+  "status": "FAIL",
+  "generatedAt": "2026-07-25T03:20:00ZPlaceholder",
   "generator": "evidence-audit",
   "inputs": [
-    "replay-report.json",
+    "replay-result.json",
     "archive-manifest.json",
     "validation-index.json"
   ],
-  "checksum": "25ac755b2adfa4bf05b5b75a27ab8515d3eabdbaa97c9aa4efdb6eea177ac653",
+  "checksum": "4e662c754e5713471f8bfa2df6208d067fbad45b5dbe9f96b40c3ae6f45503b6",
   "payload": {
     "replayPassed": false,
     "archiveComplete": false,

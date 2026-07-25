@@ -1,14 +1,15 @@
 {
   "artifact": "gate-d-gitops",
   "version": "1.0",
-  "status": "PENDING",
-  "generatedAt": "2026-07-25T03:55:00Z",
+  "status": "FAIL",
+  "generatedAt": "2026-07-25T03:20:00ZPlaceholder",
   "generator": "gitops-audit",
   "inputs": [
     "deploy/argocd/root-app.yaml",
-    "deploy/argocd/apps/*.yaml"
+    "deploy/argocd/apps/*.yaml",
+    "deploy/argocd/scripts/seal-secrets.sh"
   ],
-  "checksum": "e0a3dbfeaa8367b7f0090d8f0f78a5a718b55006b44f256c873a86e3cc9c430a",
+  "checksum": "8377f23ac1878d8cb953bb280ffb95a1fe147ffafcec5da8bd7cb2e93fe45095",
   "payload": {
     "repoURLCorrect": false,
     "sealedSecretsApplied": false,

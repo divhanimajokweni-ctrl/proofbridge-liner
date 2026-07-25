@@ -1,16 +1,18 @@
 {
   "artifact": "gate-a-rehearsal",
   "version": "1.0",
-  "status": "PENDING",
-  "generatedAt": "2026-07-25T03:55:00Z",
+  "status": "FAIL",
+  "generatedAt": "2026-07-25T03:20:00ZPlaceholder",
   "generator": "rehearsal-audit",
   "inputs": [
     "rehearsal-report.json",
-    "freeze-build.json"
+    "freeze-build.json",
+    "lint-report.json",
+    "test-report.json"
   ],
-  "checksum": "7abe4c693cdc0e0a2203f053dc353f80a48cde72197f1d7236264f1136d429dc",
+  "checksum": "57b2dbb77c9ca7642093a031f82fa847154d20d1d0d6d0bcc11a21f513a18154",
   "payload": {
-    "freezeBuildVerified": false,
+    "freezeBuildVerified": true,
     "lintPassed": false,
     "testsPassed": false,
     "observerVerified": false
