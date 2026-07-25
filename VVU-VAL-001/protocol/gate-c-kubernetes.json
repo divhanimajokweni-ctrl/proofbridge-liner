@@ -1,0 +1,20 @@
+{
+  "artifact": "gate-c-kubernetes",
+  "version": "1.0",
+  "status": "PENDING",
+  "generatedAt": "2026-07-25T03:55:00Z",
+  "generator": "kubernetes-audit",
+  "inputs": [
+    "runtime.yaml",
+    "nats.yaml",
+    "networkpolicy.yaml",
+    "pdbs.yaml"
+  ],
+  "checksum": "49e84d1dbdbf9ebffe4370cf8418568ca84eb9fb5ed1f7654e267a3bd68dd270",
+  "payload": {
+    "securityContextsApplied": false,
+    "networkPolicyApplied": false,
+    "resourceRequestsSet": false,
+    "pdbApplied": false
+  }
+}

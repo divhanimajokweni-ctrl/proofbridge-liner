@@ -129,7 +129,16 @@ export async function evaluateGates(): Promise<{ lifecycle: ValidationLifecycle;
   const gates = existsJson(gatesPath);
 
   const gateResults = normalizeGates(gates);
-  const allGatesPassed = gateResults.every((g) => g.passed);
+  const gateA = readEnvelope(root, "protocol/gate-a-rehearsal.json");
+  const gateB = readEnvelope(root, "protocol/gate-b-evidence.json");
+  const gateC = readEnvelope(root, "protocol/gate-c-kubernetes.json");
+  const gateD = readEnvelope(root, "protocol/gate-d-gitops.json");
+  const allGatesPassed =
+    gateResults.every((g) => g.passed) &&
+    envelopeStatus(gateA) === "PASS" &&
+    envelopeStatus(gateB) === "PASS" &&
+    envelopeStatus(gateC) === "PASS" &&
+    envelopeStatus(gateD) === "PASS";
 
   const hasFrozen = !!frozen?.frozen_at;
   let lifecycle: ValidationLifecycle = { ...DEFAULT_LIFECYCLE };

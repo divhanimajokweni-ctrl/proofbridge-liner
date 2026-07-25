@@ -4,8 +4,12 @@
   "status": "PENDING",
   "generatedAt": "2026-07-25T03:55:00Z",
   "generator": "release-authorization",
-  "inputs": ["deployment-record.json", "completion-record.json", "manifest.json"],
-  "checksum": "PENDING",
+  "inputs": [
+    "deployment-record.json",
+    "completion-record.json",
+    "manifest.json"
+  ],
+  "checksum": "8ba392e3ef6ac4761ccc1efa21e17acbe4e60d31ebce7d97fe5fc82f9abfb1df",
   "payload": {
     "allPrerequisitesSatisfied": false,
     "approvedBuild": false,
