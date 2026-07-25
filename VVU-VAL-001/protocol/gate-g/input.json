@@ -1,9 +1,14 @@
 {
   "gate": "G",
-  "name": "",
-  "operator": "",
-  "timestamp_utc": "",
-  "evidence_refs": [],
+  "name": "Commercial Release Authorization",
+  "operator": "VVU-Ops",
+  "timestamp_utc": "2026-07-25T07:55:00Z",
+  "evidence_refs": [
+    "protocol/gates.json",
+    "protocol/gate-e/input.json",
+    "protocol/gate-f/input.json",
+    "protocol/frozen-build.json"
+  ],
   "attestation_signature": "",
-  "notes": "SCOPE UNDEFINED \u2014 populate gate name/criteria before use"
+  "notes": "Eligibility determined by propagate-evidence.py. Manual operator signature required before final PASS."
 }
