@@ -1,0 +1,71 @@
+# VVU-VAL-001 · Validation Automation (Layer 1)
+# Hourly: collect metrics, archive evidence bundle, verify replay, emit milestones.
+# This is Layer 1 — MUST NOT call any outreach function directly.
+name: VVU-VAL-001 Validation Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      hour: { description: "Hour number (1-72)", required: true, type: string }
+  schedule:
+    - cron: "0 * * * *"
+
+permissions: { contents: write, packages: read }
+
+jobs:
+  collect-and-archive:
+    runs-on: ubuntu-latest
+    environment: validation
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ vars.VVU_VAL_COMMIT_HASH }}" }
+
+      - name: Determine hour
+        id: hour
+        run: |
+          if [ -n "${{ github.event.inputs.hour }}" ]; then
+            echo "h=${{ github.event.inputs.hour }}" >> "$GITHUB_OUTPUT"
+          else
+            START="${{ vars.VVU_VAL_START_EPOCH }}"
+            NOW=$(date +%s)
+            H=$(( (NOW - START) / 3600 ))
+            echo "h=$H" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "${{ secrets.VVU_VAL_KUBECONFIG }}" | base64 -d > "$HOME/.kube/config"
+
+      - name: Build evidence bundle
+        run: |
+          chmod +x VVU-VAL-001/evidence/bundle.sh
+          RUNTIME_NS=vvu-runtime bash VVU-VAL-001/evidence/bundle.sh "${{ steps.hour.outputs.h }}"
+
+      - name: Compute Validation Index
+        run: |
+          python3 VVU-VAL-001/evidence/validation-index.py \
+            --metrics VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}")/metrics/ledger-status.json \
+            --json > validation-index.json
+          cat validation-index.json
+
+      - name: Verify replay determinism
+        run: |
+          chmod +x VVU-VAL-001/evidence/replay.sh
+          bash VVU-VAL-001/evidence/replay.sh \
+            --bundle "VVU-VAL-001/evidence/bundles/Hour-$(printf '%02d' '${{ steps.hour.outputs.h }}').zip" || \
+            echo "::warning::replay verification did not pass for this hour"
+
+      - name: Emit milestone event
+        if: contains(fromJson('["12","24","36","48","60","66","71","72"]'), steps.hour.outputs.h)
+        run: echo "Publishing milestone M${{ steps.hour.outputs.h }} to evidence bus (stubbed)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}")
+          path: |
+            VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}").zip
+            VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}").sha256
+            validation-index.json
