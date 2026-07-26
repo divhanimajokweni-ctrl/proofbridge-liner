@@ -1,4 +1,3 @@
-import { createServerClient } from '@supabase/ssr';
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -22,92 +21,10 @@ async function isCircuitTripped(): Promise<boolean> {
   }
 }
 
-function validateVVUSession(cookieHeader: string): { userId: string; tier: string } | null {
-  try {
-    const cookies: Record<string, string> = {};
-    cookieHeader.split(';').forEach(pair => {
-      const [key, ...rest] = pair.split('=');
-      if (key) cookies[key.trim()] = decodeURIComponent(rest.join('=').trim());
-    });
-
-    const sessionValue = cookies['vvu_session'];
-    if (!sessionValue) return null;
-
-    const parts = sessionValue.split('.');
-    if (parts.length !== 2) return null;
-
-    const [payload, signature] = parts;
-    const crypto = require('crypto');
-    const secret = process.env.VVU_SESSION_SECRET;
-    if (!secret) return null;
-
-    const expectedSig = crypto
-      .createHmac('sha256', secret)
-      .update(payload)
-      .digest('base64url');
-
-    const sigBuf = Buffer.from(signature, 'base64url');
-    const expBuf = Buffer.from(expectedSig, 'base64url');
-
-    if (sigBuf.length !== expBuf.length) return null;
-    if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
-
-    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
-    if (Date.now() > data.expiresAt) return null;
-
-    return { userId: data.userId, tier: data.tier };
-  } catch {
-    return null;
-  }
-}
-
 const PROTECTED_PREFIXES = ['/dashboard', '/safekrypte', '/pools', '/api/pools'];
 const PUBLIC_PREFIXES = ['/login', '/session', '/clerk', '/api/health', '/api/verify'];
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 type AuthUser = { id: string; metadata: Record<string, unknown> };
-
-async function trySupabaseAuth(req: NextRequest): Promise<{
-  res: NextResponse;
-  user: AuthUser | null;
-}> {
-  let res = NextResponse.next({ request: req });
-
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return { res, user: null };
-  }
-
-  const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    cookies: {
-      getAll() {
-        return req.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
-        res = NextResponse.next({ request: req });
-        cookiesToSet.forEach(({ name, value, options }) =>
-          res.cookies.set(name, value, options),
-        );
-      },
-    },
-  });
-
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      return { res, user: { id: user.id, metadata: { ...user.user_metadata, ...user.app_metadata } } };
-    }
-    return { res, user: null };
-  } catch {
-    return { res, user: null };
-  }
-}
 
 async function tryClerkAuth(): Promise<AuthUser | null> {
   if (!isClerkServerConfigured()) return null;
@@ -133,12 +50,7 @@ function redirectUnauthorized(
   }
 
   const url = req.nextUrl.clone();
-
-  if (isClerkServerConfigured()) {
-    url.pathname = '/clerk/sign-in';
-  } else {
-    url.pathname = '/login';
-  }
+  url.pathname = '/login';
   url.searchParams.set('redirect', pathname);
   const loopedResponse = NextResponse.redirect(url);
   loopedResponse.headers.set('x-vvu-redirect-count', (redirectCount + 1).toString());
@@ -174,22 +86,17 @@ export default clerkMiddleware(async (_auth, req) => {
     (p) => pathname === p || pathname.startsWith(p + '/'),
   );
 
-  const { res: supabaseRes, user: supabaseUser } = await trySupabaseAuth(req);
-
-  if (supabaseUser) {
-    return injectTenantHeaders(supabaseRes, supabaseUser.metadata);
-  }
-
   const clerkUser = await tryClerkAuth();
   if (clerkUser) {
-    return injectTenantHeaders(supabaseRes, clerkUser.metadata);
+    const res = NextResponse.next();
+    return injectTenantHeaders(res, clerkUser.metadata);
   }
 
   if (isProtected) {
     return redirectUnauthorized(req, pathname);
   }
 
-  return supabaseRes;
+  return NextResponse.next();
 });
 
 export const config = {
