@@ -24,13 +24,14 @@ jobs:
         id: hour
         run: |
           if [ -n "${{ github.event.inputs.hour }}" ]; then
-            echo "h=${{ github.event.inputs.hour }}" >> "$GITHUB_OUTPUT"
+            h="${{ github.event.inputs.hour }}"
           else
             START="${{ vars.VVU_VAL_START_EPOCH }}"
             NOW=$(date +%s)
-            H=$(( (NOW - START) / 3600 ))
-            echo "h=$H" >> "$GITHUB_OUTPUT"
+            h="$(( (NOW - START) / 3600 ))"
           fi
+          echo "h=$h" >> "$GITHUB_OUTPUT"
+          echo "h_padded=$(printf '%02d' "$h")" >> "$GITHUB_OUTPUT"
 
       - uses: azure/setup-kubectl@v4
 
@@ -46,8 +47,9 @@ jobs:
 
       - name: Compute Validation Index
         run: |
-          python3 VVU-VAL-001/evidence/validation-index.py \
-            --metrics VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}")/metrics/ledger-status.json \
+          PY=$(command -v python3 || command -v python || echo python3)
+          $PY VVU-VAL-001/evidence/validation-index.py \
+            --metrics VVU-VAL-001/evidence/bundles/Hour-${{ steps.hour.outputs.h_padded }}/metrics/ledger-status.json \
             --json > validation-index.json
           cat validation-index.json
 
@@ -55,7 +57,7 @@ jobs:
         run: |
           chmod +x VVU-VAL-001/evidence/replay.sh
           bash VVU-VAL-001/evidence/replay.sh \
-            --bundle "VVU-VAL-001/evidence/bundles/Hour-$(printf '%02d' '${{ steps.hour.outputs.h }}').zip" || \
+            --bundle "VVU-VAL-001/evidence/bundles/Hour-${{ steps.hour.outputs.h_padded }}.zip" || \
             echo "::warning::replay verification did not pass for this hour"
 
       - name: Emit milestone event
@@ -64,8 +66,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}")
+          name: Hour-${{ steps.hour.outputs.h_padded }}
           path: |
-            VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}").zip
-            VVU-VAL-001/evidence/bundles/Hour-$(printf "%02d" "${{ steps.hour.outputs.h }}").sha256
+            VVU-VAL-001/evidence/bundles/Hour-${{ steps.hour.outputs.h_padded }}.zip
+            VVU-VAL-001/evidence/bundles/Hour-${{ steps.hour.outputs.h_padded }}.sha256
             validation-index.json
