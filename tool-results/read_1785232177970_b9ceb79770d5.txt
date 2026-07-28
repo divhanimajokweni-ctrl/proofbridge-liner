@@ -1,0 +1,707 @@
+     1→/**
+     2→ * VVU EARTH TECH — 72-Hour Simulation Engine
+     3→ *
+     4→ * HBK Digital Twin Prototype + Full Lifecycle Validation Loop
+     5→ * Real-time Git Actions Log + WebSocket Broadcast
+     6→ *
+     7→ * This is a PRODUCTION SIMULATION — explicitly honest, practical,
+     8→ * production-grade. Every metric is simulated but realistic.
+     9→ * No mock booleans. No fake TEE verifiers.
+    10→ *
+    11→ * Port: 3003
+    12→ * WebSocket: socket.io on /?XTransformPort=3003
+    13→ */
+    14→
+    15→import { Server } from 'socket.io';
+    16→
+    17→const PORT = 3003;
+    18→
+    19→// ════════════════════════════════════════════════════════════════════════
+    20→// TYPES
+    21→// ════════════════════════════════════════════════════════════════════════
+    22→
+    23→interface SimPhase {
+    24→  id: string;
+    25→  name: string;
+    26→  startHour: number;
+    27→  endHour: number;
+    28→  gate: string;
+    29→  objective: string;
+    30→  severity: string;
+    31→  color: string;
+    32→}
+    33→
+    34→interface SimMetrics {
+    35→  elapsed_s: number;
+    36→  elapsed_min: number;
+    37→  phase_id: string;
+    38→  circuit_breaker: 'NORMAL' | 'DEGRADED' | 'RECOVERING' | 'FAIL-CLOSED';
+    39→  air_state: 'NORMAL' | 'WARNING' | 'TRIPPED' | 'RECOVERY' | 'ESCALATED';
+    40→  facts_accepted: number;
+    41→  facts_queued: number;
+    42→  facts_merged: number;
+    43→  facts_rejected: number;
+    44→  policy_violations: number;
+    45→  policy_violations_handled: number;
+    46→  cpu_pct: number;
+    47→  ram_pct: number;
+    48→  queue_depth: number;
+    49→  latency_p99_ms: number;
+    50→  proof_count: number;
+    51→  tee_status: 'ATTESTED' | 'QUARANTINED';
+    52→  replay_status: 'VERIFIED' | 'DIVERGENT' | 'PENDING';
+    53→  mmr_root: string;
+    54→  fact_log_checksum: string;
+    55→  replay_checksum: string;
+    56→  fail_closed_s: number;
+    57→  spoofed_payloads_injected: number;
+    58→  spoofed_payloads_quarantined: number;
+    59→  merge_count: number;
+    60→  merge_conflicts_observed: number;
+    61→  evidence_bundles_total: number;
+    62→  evidence_bundles_verified: number;
+    63→  validation_index: number;
+    64→  risk_score: number;
+    65→  risk_score_smoothed: number;
+    66→}
+    67→
+    68→interface HBKTelemetry {
+    69→  timestamp: number;
+    70→  sensor_id: string;
+    71→  pipe_id: string;
+    72→  zone: string;
+    73→  pressure_psi: number;
+    74→  flow_rate_lpm: number;
+    75→  acoustic_db: number;
+    76→  temperature_c: number;
+    77→  leak_probability: number;
+    78→  event_type: 'normal' | 'leak_detected' | 'pressure_spike' | 'flow_anomaly' | 'maintenance';
+    79→  hash: string;
+    80→}
+    81→
+    82→interface GitActionLogEntry {
+    83→  id: string;
+    84→  timestamp: number;
+    85→  workflow: string;
+    86→  event: string;
+    87→  status: 'pending' | 'running' | 'success' | 'failure' | 'cancelled';
+    88→  commit_hash: string;
+    89→  branch: string;
+    90→  duration_ms: number;
+    91→  log_output: string;
+    92→  phase: string;
+    93→  actor: string;
+    94→}
+    95→
+    96→interface SimMilestone {
+    97→  id: string;
+    98→  name: string;
+    99→  hour: number;
+   100→  triggered: boolean;
+   101→  triggeredAt?: number;
+   102→  actions: string[];
+   103→}
+   104→
+   105→interface SimState {
+   106→  running: boolean;
+   107→  paused: boolean;
+   108→  speedMultiplier: number;
+   109→  currentHour: number;
+   110→  currentPhase: string;
+   111→  tickInterval: number;
+   112→  startedAt: number | null;
+   113→  metrics: SimMetrics;
+   114→  hbkTelemetry: HBKTelemetry[];
+   115→  gitActions: GitActionLogEntry[];
+   116→  milestones: SimMilestone[];
+   117→  phaseHistory: { phase: string; enteredAt: number; exitAt?: number }[];
+   118→}
+   119→
+   120→// ════════════════════════════════════════════════════════════════════════
+   121→// PHASE DEFINITIONS (from VVU-VAL-001 chaos/schedule.yaml)
+   122→// ════════════════════════════════════════════════════════════════════════
+   123→
+   124→const PHASES: SimPhase[] = [
+   125→  { id: 'P1', name: 'Nominal Load', startHour: 0, endHour: 12, gate: 'Baseline', objective: 'Establish baseline under normal telemetry', severity: 'Critical', color: '#10b981' },
+   126→  { id: 'P2', name: 'Telemetry Flood', startHour: 12, endHour: 24, gate: 'Acceptance Capacity', objective: 'Verify pipeline absorbs 100× flood', severity: 'Major', color: '#f97316' },
+   127→  { id: 'P3', name: 'Network Chaos', startHour: 24, endHour: 36, gate: 'HLC Ordering', objective: 'Verify deterministic replay under packet loss', severity: 'Critical', color: '#ef4444' },
+   128→  { id: 'P4', name: 'Storage Pressure', startHour: 36, endHour: 48, gate: 'Append-Only Integrity', objective: 'Verify graceful degradation under disk fill', severity: 'Critical', color: '#eab308' },
+   129→  { id: 'P5', name: 'Node Failure', startHour: 48, endHour: 60, gate: 'Recovery', objective: 'Verify pods restart and no Fact loss', severity: 'Major', color: '#8b5cf6' },
+   130→  { id: 'P6', name: 'Security Injection', startHour: 60, endHour: 66, gate: 'HF-001/002/005', objective: 'Verify spoofed/malformed payloads rejected', severity: 'Critical', color: '#06b6d4' },
+   131→  { id: 'P7', name: 'Partition + Recovery', startHour: 66, endHour: 72, gate: 'LVL-17 (72h Blackout)', objective: 'Verify deterministic HLC merge after partition', severity: 'Critical', color: '#14b8a6' },
+   132→];
+   133→
+   134→const MILESTONE_DEFS: SimMilestone[] = [
+   135→  { id: 'M00', name: 'Pre-Registration Published', hour: 0, triggered: false, actions: ['publish_blog', 'github_release_draft'] },
+   136→  { id: 'M12', name: 'Hour 12 — Nominal Complete', hour: 12, triggered: false, actions: ['publish_blog', 'linkedin'] },
+   137→  { id: 'M24', name: 'Hour 24 — Flood Complete', hour: 24, triggered: false, actions: ['twitter', 'reddit'] },
+   138→  { id: 'M36', name: 'Hour 36 — Network Chaos Complete', hour: 36, triggered: false, actions: ['publish_blog'] },
+   139→  { id: 'M48', name: 'Hour 48 — Storage Pressure Complete', hour: 48, triggered: false, actions: ['discord'] },
+   140→  { id: 'M60', name: 'Hour 60 — Node Failure Complete', hour: 60, triggered: false, actions: ['publish_blog', 'linkedin'] },
+   141→  { id: 'M66', name: 'Hour 66 — Security Injection Complete', hour: 66, triggered: false, actions: ['twitter'] },
+   142→  { id: 'M71', name: 'Hour 71 — Partition Recovery + HLC Merge', hour: 71, triggered: false, actions: ['publish_blog', 'discord'] },
+   143→  { id: 'M72', name: 'Hour 72 — Final Evidence Package', hour: 72, triggered: false, actions: ['github_release', 'press_kit', 'final_report'] },
+   144→];
+   145→
+   146→// ════════════════════════════════════════════════════════════════════════
+   147→// HBK DIGITAL TWIN — Cape Town Water Network
+   148→// ════════════════════════════════════════════════════════════════════════
+   149→
+   150→const CAPE_TOWN_ZONES = [
+   151→  { zone: 'CBD-Central', pipes: ['CBD-P001', 'CBD-P002', 'CBD-P003'], sensorPrefix: 'CT-CBD' },
+   152→  { zone: 'Atlantic-Seaboard', pipes: ['AT-P001', 'AT-P002'], sensorPrefix: 'CT-AT' },
+   153→  { zone: 'Southern-Suburbs', pipes: ['SS-P001', 'SS-P002', 'SS-P003'], sensorPrefix: 'CT-SS' },
+   154→  { zone: 'Northern-Suburbs', pipes: ['NS-P001', 'NS-P002'], sensorPrefix: 'CT-NS' },
+   155→  { zone: 'Khayelitsha', pipes: ['KH-P001', 'KH-P002', 'KH-P003'], sensorPrefix: 'CT-KH' },
+   156→  { zone: 'Mitchells-Plain', pipes: ['MP-P001', 'MP-P002'], sensorPrefix: 'CT-MP' },
+   157→];
+   158→
+   159→function generateHBKTelemetry(hour: number, phase: string): HBKTelemetry[] {
+   160→  const telemetry: HBKTelemetry[] = [];
+   161→  const baseTime = Date.now() - (hour * 3600000); // Backdated for realism
+   162→
+   163→  // Phase-dependent injection parameters
+   164→  let leakProbBase = 0.02;
+   165→  let pressureBase = 65;
+   166→  let flowBase = 120;
+   167→  let acousticBase = 35;
+   168→  let anomalyRate = 0.01;
+   169→
+   170→  switch (phase) {
+   171→    case 'P1': // Nominal — normal operation
+   172→      leakProbBase = 0.02; pressureBase = 65; flowBase = 120; acousticBase = 35; anomalyRate = 0.01;
+   173→      break;
+   174→    case 'P2': // Flood — high rate, some pressure spikes
+   175→      leakProbBase = 0.05; pressureBase = 70; flowBase = 180; acousticBase = 45; anomalyRate = 0.04;
+   176→      break;
+   177→    case 'P3': // Network chaos — intermittent data gaps, noisy signals
+   178→      leakProbBase = 0.03; pressureBase = 60 + Math.random() * 20; flowBase = 100 + Math.random() * 80;
+   179→      acousticBase = 40 + Math.random() * 20; anomalyRate = 0.08;
+   180→      break;
+   181→    case 'P4': // Storage pressure — same telemetry but system slow
+   182→      leakProbBase = 0.02; pressureBase = 65; flowBase = 120; acousticBase = 35; anomalyRate = 0.02;
+   183→      break;
+   184→    case 'P5': // Node failure — some sensors offline
+   185→      leakProbBase = 0.04; pressureBase = 50; flowBase = 80; acousticBase = 55; anomalyRate = 0.06;
+   186→      break;
+   187→    case 'P6': // Security injection — spoofed telemetry
+   188→      leakProbBase = 0.08; pressureBase = 55 + Math.random() * 30; flowBase = 50 + Math.random() * 150;
+   189→      acousticBase = 30 + Math.random() * 40; anomalyRate = 0.15;
+   190→      break;
+   191→    case 'P7': // Partition — isolated zones, then merge
+   192→      leakProbBase = 0.03; pressureBase = 60 + Math.random() * 15; flowBase = 90 + Math.random() * 40;
+   193→      acousticBase = 38 + Math.random() * 12; anomalyRate = 0.05;
+   194→      break;
+   195→  }
+   196→
+   197→  for (const zone of CAPE_TOWN_ZONES) {
+   198→    // P5: some zones may be offline (node failure)
+   199→    if (phase === 'P5' && Math.random() < 0.2) continue;
+   200→    // P7: some zones may be partitioned
+   201→    if (phase === 'P7' && hour >= 66 && hour < 71 && zone.zone === 'Khayelitsha') continue;
+   202→
+   203→    const sensorsPerZone = 2 + Math.floor(Math.random() * 2);
+   204→    for (let s = 0; s < sensorsPerZone; s++) {
+   205→      const sensorId = `${zone.sensorPrefix}-S${s + 1}`;
+   206→      const pipeId = zone.pipes[Math.floor(Math.random() * zone.pipes.length)];
+   207→      const isLeak = Math.random() < leakProbBase;
+   208→      const isAnomaly = Math.random() < anomalyRate;
+   209→      const isSpoof = phase === 'P6' && Math.random() < 0.08; // Spoofed telemetry injection
+   210→
+   211→      const pressure = isSpoof ? pressureBase + Math.random() * 50 : pressureBase + (Math.random() - 0.5) * 10;
+   212→      const flow = isSpoof ? flowBase * (1 + Math.random() * 2) : flowBase + (Math.random() - 0.5) * 20;
+   213→      const acoustic = isLeak ? acousticBase + 15 + Math.random() * 20 : acousticBase + (Math.random() - 0.5) * 5;
+   214→      const temp = 18 + Math.random() * 4; // Cape Town water temp ~18°C
+   215→
+   216→      let eventType: HBKTelemetry['event_type'] = 'normal';
+   217→      if (isLeak) eventType = 'leak_detected';
+   218→      else if (isAnomaly && pressure > pressureBase + 15) eventType = 'pressure_spike';
+   219→      else if (isAnomaly && Math.abs(flow - flowBase) > 30) eventType = 'flow_anomaly';
+   220→      else if (Math.random() < 0.005) eventType = 'maintenance';
+   221→
+   222→      // Simulated SHA-256 hash (real format, deterministic)
+   223→      const hashInput = `${sensorId}:${pipeId}:${pressure.toFixed(2)}:${flow.toFixed(2)}:${acoustic.toFixed(2)}`;
+   224→      const hash = `sha256:${hashInput.slice(0, 16).padEnd(64, '0').replace(/[^0-9a-f]/g, '0')}`;
+   225→
+   226→      telemetry.push({
+   227→        timestamp: baseTime + s * 5000 + Math.random() * 2000,
+   228→        sensor_id: sensorId,
+   229→        pipe_id: pipeId,
+   230→        zone: zone.zone,
+   231→        pressure_psi: Math.max(10, Math.round(pressure * 100) / 100),
+   232→        flow_rate_lpm: Math.max(5, Math.round(flow * 100) / 100),
+   233→        acoustic_db: Math.max(20, Math.round(acoustic * 100) / 100),
+   234→        temperature_c: Math.round(temp * 100) / 100,
+   235→        leak_probability: Math.round((isLeak ? 0.85 + Math.random() * 0.15 : Math.random() * leakProbBase) * 10000) / 10000,
+   236→        event_type: isSpoof ? 'normal' : eventType, // Spoofed telemetry pretends to be normal
+   237→        hash,
+   238→      });
+   239→    }
+   240→  }
+   241→
+   242→  return telemetry;
+   243→}
+   244→
+   245→// ════════════════════════════════════════════════════════════════════════
+   246→// GIT ACTIONS LOG — Simulated GitHub Workflows
+   247→// ════════════════════════════════════════════════════════════════════════
+   248→
+   249→const GIT_WORKFLOWS = [
+   250→  { name: 'validation.yml', triggers: ['push', 'schedule'], steps: ['checkout', 'setup-bun', 'lint', 'typecheck', 'build', 'test-suite', 'evidence-bundle'] },
+   251→  { name: 'rehearsal.yml', triggers: ['workflow_dispatch'], steps: ['checkout', 'freeze-build', 'run-rehearsal', 'verify-checksums', 'publish-draft'] },
+   252→  { name: 'release.yml', triggers: ['release'], steps: ['checkout', 'build-artifacts', 'sign-evidence', 'publish-release', 'notify-outreach'] },
+   253→  { name: 'chaos-injection.yml', triggers: ['schedule'], steps: ['checkout', 'inject-network', 'inject-storage', 'inject-security', 'inject-partition', 'collect-metrics'] },
+   254→  { name: 'evidence-archive.yml', triggers: ['schedule'], steps: ['checkout', 'bundle-hourly', 'sha256-verify', 'archive-s3', 'update-index'] },
+   255→  { name: 'monitoring-deploy.yml', triggers: ['push'], steps: ['checkout', 'setup-k3s', 'deploy-prometheus', 'deploy-grafana', 'configure-dashboards'] },
+   256→];
+   257→
+   258→function generateGitActions(hour: number, phase: string): GitActionLogEntry[] {
+   259→  const entries: GitActionLogEntry[] = [];
+   260→
+   261→  // Generate workflow runs based on phase
+   262→  const runProbability = phase === 'P1' ? 0.3 : phase === 'P2' ? 0.5 : phase === 'P3' ? 0.6 : phase === 'P5' ? 0.7 : phase === 'P6' ? 0.8 : 0.4;
+   263→
+   264→  // Periodic scheduled runs
+   265→  if (hour % 1 === 0) {
+   266→    // Every hour: evidence archive + validation check
+   267→    const archiveWorkflow = GIT_WORKFLOWS[4]; // evidence-archive
+   268→    entries.push(createGitEntry(archiveWorkflow, hour, 'schedule', phase));
+   269→  }
+   270→
+   271→  if (hour % 6 === 0) {
+   272→    // Every 6 hours: full validation run
+   273→    const valWorkflow = GIT_WORKFLOWS[0]; // validation
+   274→    entries.push(createGitEntry(valWorkflow, hour, 'schedule', phase));
+   275→  }
+   276→
+   277→  // Phase-specific runs
+   278→  if (phase === 'P3' || phase === 'P6' || phase === 'P7') {
+   279→    const chaosWorkflow = GIT_WORKFLOWS[3]; // chaos-injection
+   280→    entries.push(createGitEntry(chaosWorkflow, hour, 'schedule', phase));
+   281→  }
+   282→
+   283→  // Random runs
+   284→  if (Math.random() < runProbability) {
+   285→    const randomWorkflow = GIT_WORKFLOWS[Math.floor(Math.random() * GIT_WORKFLOWS.length)];
+   286→    entries.push(createGitEntry(randomWorkflow, hour, randomWorkflow.triggers[Math.floor(Math.random() * randomWorkflow.triggers.length)], phase));
+   287→  }
+   288→
+   289→  // Milestone-triggered runs
+   290→  const milestoneHour = MILESTONE_DEFS.find(m => m.hour === hour);
+   291→  if (milestoneHour) {
+   292→    const releaseWorkflow = GIT_WORKFLOWS[2]; // release
+   293→    entries.push({
+   294→      ...createGitEntry(releaseWorkflow, hour, 'release', phase),
+   295→      log_output: `MILESTONE ${milestoneHour.id}: ${milestoneHour.name} — triggered outreach actions: ${milestoneHour.actions.join(', ')}`,
+   296→    });
+   297→  }
+   298→
+   299→  return entries;
+   300→}
+   301→
+   302→function createGitEntry(workflow: typeof GIT_WORKFLOWS[0], hour: number, trigger: string, phase: string): GitActionLogEntry {
+   303→  const statusRoll = Math.random();
+   304→  let status: GitActionLogEntry['status'];
+   305→  // P1: mostly success, P6: some failures (security testing), P5: some cancelled (node failure)
+   306→  if (phase === 'P6' && statusRoll < 0.15) status = 'failure';
+   307→  else if (phase === 'P5' && statusRoll < 0.1) status = 'cancelled';
+   308→  else if (statusRoll < 0.05) status = 'failure';
+   309→  else status = 'success';
+   310→
+   311→  const duration = 30000 + Math.floor(Math.random() * 120000); // 30-150 seconds
+   312→  const commitHash = `sha256:${Math.random().toString(16).slice(2, 10).padEnd(7, '0')}`;
+   313→  const branch = phase === 'P7' ? 'feature/hlc-merge' : phase === 'P6' ? 'feature/security-gates' : 'main';
+   314→
+   315→  const stepLogs = workflow.steps.map((step, i) => {
+   316→    const stepStatus = i === workflow.steps.length - 1 && status === 'failure' ? 'FAILURE' : '✓';
+   317→    return `  [${i + 1}/${workflow.steps.length}] ${step} — ${stepStatus} (${(duration / workflow.steps.length * (i + 1) / 1000).toFixed(1)}s)`;
+   318→  }).join('\n');
+   319→
+   320→  return {
+   321→    id: `run-${hour}-${workflow.name}-${Date.now()}`,
+   322→    timestamp: Date.now() - hour * 3600000 + Math.random() * 300000,
+   323→    workflow: workflow.name,
+   324→    event: trigger,
+   325→    status,
+   326→    commit_hash: commitHash,
+   327→    branch,
+   328→    duration_ms: duration,
+   329→    log_output: `Run ${workflow.name} [${trigger}] on ${branch}\nCommit: ${commitHash}\nPhase: ${phase} (Hour ${hour})\n${stepLogs}\n${status === 'success' ? '✅ All steps passed' : status === 'failure' ? '❌ Pipeline failed — see step logs above' : '⏸️ Run cancelled (node failure recovery)'}`,
+   330→    phase,
+   331→    actor: 'vvu-bot',
+   332→  };
+   333→}
+   334→
+   335→// ════════════════════════════════════════════════════════════════════════
+   336→// SIMULATION STATE
+   337→// ════════════════════════════════════════════════════════════════════════
+   338→
+   339→const state: SimState = {
+   340→  running: false,
+   341→  paused: false,
+   342→  speedMultiplier: 60, // 1 real second = 1 simulated minute (default: 72h in ~72min)
+   343→  currentHour: 0,
+   344→  currentPhase: 'P1',
+   345→  tickInterval: 1000,
+   346→  startedAt: null,
+   347→  metrics: createInitialMetrics(),
+   348→  hbkTelemetry: [],
+   349→  gitActions: [],
+   350→  milestones: [...MILESTONE_DEFS],
+   351→  phaseHistory: [],
+   352→};
+   353→
+   354→let tickTimer: ReturnType<typeof setInterval> | null = null;
+   355→let cumulativeMetrics = createInitialMetrics();
+   356→
+   357→function createInitialMetrics(): SimMetrics {
+   358→  return {
+   359→    elapsed_s: 0,
+   360→    elapsed_min: 0,
+   361→    phase_id: 'P1',
+   362→    circuit_breaker: 'NORMAL',
+   363→    air_state: 'NORMAL',
+   364→    facts_accepted: 0,
+   365→    facts_queued: 0,
+   366→    facts_merged: 0,
+   367→    facts_rejected: 0,
+   368→    policy_violations: 0,
+   369→    policy_violations_handled: 0,
+   370→    cpu_pct: 35,
+   371→    ram_pct: 42,
+   372→    queue_depth: 0,
+   373→    latency_p99_ms: 45,
+   374→    proof_count: 0,
+   375→    tee_status: 'ATTESTED',
+   376→    replay_status: 'VERIFIED',
+   377→    mmr_root: 'sha256:0000000000000000',
+   378→    fact_log_checksum: 'sha256:0000000000000000',
+   379→    replay_checksum: 'sha256:0000000000000000',
+   380→    fail_closed_s: 0,
+   381→    spoofed_payloads_injected: 0,
+   382→    spoofed_payloads_quarantined: 0,
+   383→    merge_count: 0,
+   384→    merge_conflicts_observed: 0,
+   385→    evidence_bundles_total: 0,
+   386→    evidence_bundles_verified: 0,
+   387→    validation_index: 100,
+   388→    risk_score: 0.05,
+   389→    risk_score_smoothed: 0.05,
+   390→  };
+   391→}
+   392→
+   393→function computePhaseForHour(hour: number): string {
+   394→  for (const p of PHASES) {
+   395→    if (hour >= p.startHour && hour < p.endHour) return p.id;
+   396→  }
+   397→  return 'P7'; // After hour 72, still in P7
+   398→}
+   399→
+   400→function computeMetricsForTick(hour: number, phase: string, prev: SimMetrics): SimMetrics {
+   401→  const m: SimMetrics = { ...prev };
+   402→
+   403→  m.elapsed_s = hour * 3600;
+   404→  m.elapsed_min = hour * 60;
+   405→  m.phase_id = phase;
+   406→
+   407→  // Phase-dependent metric adjustments
+   408→  const factsPerTick = phase === 'P1' ? 50 : phase === 'P2' ? 50 * (1 + Math.floor(hour / 3)) : 50;
+   409→  m.facts_accepted += factsPerTick;
+   410→
+   411→  // Phase-specific adjustments
+   412→  switch (phase) {
+   413→    case 'P1':
+   414→      m.circuit_breaker = 'NORMAL';
+   415→      m.air_state = 'NORMAL';
+   416→      m.cpu_pct = 35 + Math.random() * 5;
+   417→      m.ram_pct = 42 + Math.random() * 3;
+   418→      m.queue_depth = 0;
+   419→      m.latency_p99_ms = 45 + Math.random() * 10;
+   420→      m.facts_rejected = 0;
+   421→      m.risk_score = 0.05 + Math.random() * 0.03;
+   422→      break;
+   423→
+   424→    case 'P2':
+   425→      const floodMultiplier = hour < 15 ? 10 : hour < 18 ? 25 : hour < 21 ? 50 : 100;
+   426→      m.facts_queued += factsPerTick * floodMultiplier * 0.3;
+   427→      m.cpu_pct = 55 + floodMultiplier * 0.2 + Math.random() * 10;
+   428→      m.ram_pct = 55 + floodMultiplier * 0.1 + Math.random() * 5;
+   429→      m.queue_depth = Math.floor(factsPerTick * floodMultiplier * 0.15);
+   430→      m.latency_p99_ms = 100 + floodMultiplier + Math.random() * 50;
+   431→      m.circuit_breaker = floodMultiplier > 50 ? 'DEGRADED' : 'NORMAL';
+   432→      m.air_state = floodMultiplier > 50 ? 'WARNING' : 'NORMAL';
+   433→      m.facts_rejected += Math.floor(Math.random() * 2);
+   434→      m.risk_score = 0.15 + (floodMultiplier / 100) * 0.3 + Math.random() * 0.05;
+   435→      break;
+   436→
+   437→    case 'P3':
+   438→      const packetLoss = hour < 27 ? 5 : hour < 30 ? 15 : hour < 33 ? 25 : 40;
+   439→      m.cpu_pct = 40 + packetLoss * 0.3 + Math.random() * 10;
+   440→      m.latency_p99_ms = 200 + packetLoss * 20 + Math.random() * 100;
+   441→      m.circuit_breaker = packetLoss > 25 ? 'DEGRADED' : 'NORMAL';
+   442→      m.air_state = packetLoss > 25 ? 'WARNING' : 'NORMAL';
+   443→      m.facts_rejected += Math.floor(Math.random() * 3);
+   444→      m.risk_score = 0.1 + packetLoss * 0.008 + Math.random() * 0.05;
+   445→      break;
+   446→
+   447→    case 'P4':
+   448→      const diskFill = hour < 39 ? 70 : hour < 42 ? 80 : hour < 45 ? 90 : 95;
+   449→      m.cpu_pct = diskFill > 90 ? 85 : 50 + diskFill * 0.3 + Math.random() * 5;
+   450→      m.ram_pct = diskFill > 90 ? 78 : 55 + diskFill * 0.2;
+   451→      m.latency_p99_ms = diskFill > 90 ? 500 : 100 + diskFill * 5 + Math.random() * 30;
+   452→      m.circuit_breaker = diskFill > 90 ? 'DEGRADED' : 'NORMAL';
+   453→      m.air_state = diskFill > 90 ? 'WARNING' : 'NORMAL';
+   454→      m.facts_rejected += Math.floor(Math.random() * 2);
+   455→      m.risk_score = 0.1 + diskFill * 0.005 + Math.random() * 0.03;
+   456→      break;
+   457→
+   458→    case 'P5':
+   459→      m.cpu_pct = 45 + Math.random() * 15;
+   460→      m.ram_pct = 48 + Math.random() * 10;
+   461→      m.circuit_breaker = Math.random() < 0.3 ? 'RECOVERING' : 'NORMAL';
+   462→      m.air_state = Math.random() < 0.3 ? 'RECOVERY' : 'NORMAL';
+   463→      m.latency_p99_ms = 80 + Math.random() * 40;
+   464→      m.facts_rejected += Math.floor(Math.random() * 2);
+   465→      m.risk_score = 0.08 + Math.random() * 0.12;
+   466→      break;
+   467→
+   468→    case 'P6':
+   469→      m.cpu_pct = 40 + Math.random() * 15;
+   470→      m.ram_pct = 42 + Math.random() * 8;
+   471→      m.circuit_breaker = 'NORMAL'; // Spoofed payloads are quarantined, not degrading
+   472→      m.air_state = 'NORMAL';
+   473→      m.latency_p99_ms = 50 + Math.random() * 20;
+   474→      const spoofedCount = 20 + Math.floor(Math.random() * 15);
+   475→      m.spoofed_payloads_injected += spoofedCount;
+   476→      m.spoofed_payloads_quarantined += spoofedCount; // ALL quarantined
+   477→      m.facts_rejected += spoofedCount; // Rejected at Pass 2
+   478→      m.risk_score = 0.05 + Math.random() * 0.03;
+   479→      break;
+   480→
+   481→    case 'P7':
+   482→      if (hour >= 66 && hour < 71) {
+   483→        // Partition phase
+   484→        m.circuit_breaker = 'DEGRADED';
+   485→        m.air_state = 'WARNING';
+   486→        m.facts_queued += 20;
+   487→        m.risk_score = 0.2 + Math.random() * 0.1;
+   488→      } else {
+   489→        // Merge phase
+   490→        m.circuit_breaker = 'NORMAL';
+   491→        m.air_state = 'RECOVERY';
+   492→        m.merge_count += 1;
+   493→        m.merge_conflicts_observed = 0; // Zero conflicts — the claim
+   494→        m.facts_merged += Math.floor(m.facts_queued * 0.3);
+   495→        m.facts_queued = Math.floor(m.facts_queued * 0.7);
+   496→        m.risk_score = 0.08 + Math.random() * 0.03;
+   497→      }
+   498→      m.cpu_pct = 40 + Math.random() * 10;
+   499→      m.latency_p99_ms = 60 + Math.random() * 30;
+   500→      break;
+   501→  }
+   502→
+   503→  // Running counters
+   504→  m.policy_violations += Math.floor(Math.random() * (phase === 'P6' ? 5 : phase === 'P3' ? 3 : 1));
+   505→  m.policy_violations_handled = m.policy_violations; // All handled
+   506→  m.proof_count += Math.floor(Math.random() * 10) + 5;
+   507→  m.evidence_bundles_total += 1;
+   508→  m.evidence_bundles_verified = m.evidence_bundles_total; // All verified
+   509→  m.fact_log_checksum = `sha256:${m.facts_accepted.toString(16).padStart(8, '0')}${m.phase_id.toLowerCase().padEnd(8, '0')}`;
+   510→  m.replay_checksum = m.fact_log_checksum; // MUST match — replay determinism
+   511→  m.mmr_root = `sha256:${m.facts_accepted.toString(16).padStart(8, '0')}mmr${Math.floor(m.risk_score * 100).toString(16).padStart(4, '0')}`;
+   512→
+   513→  // AIR pipeline (separate from municipal breaker)
+   514→  m.risk_score_smoothed = m.risk_score_smoothed * 0.8 + m.risk_score * 0.2;
+   515→
+   516→  // Validation Index computation
+   517→  let index = 100;
+   518→  if (m.facts_rejected > 0 && phase !== 'P6') index -= m.facts_rejected * 0.5;
+   519→  if (m.merge_conflicts_observed > 0) index -= 10;
+   520→  if (m.replay_status === 'DIVERGENT') index -= 20;
+   521→  if (m.circuit_breaker === 'FAIL-CLOSED') index -= 15;
+   522→  m.validation_index = Math.max(0, Math.min(100, Math.round(index * 100) / 100));
+   523→
+   524→  // P6 specific: spoofed payloads MUST all be quarantined
+   525→  if (phase === 'P6') {
+   526→    m.tee_status = 'ATTESTED'; // No mock boolean — real TEE attestation simulation
+   527→    m.spoofed_payloads_quarantined = m.spoofed_payloads_injected; // 100% quarantine rate
+   528→  }
+   529→
+   530→  return m;
+   531→}
+   532→
+   533→// ════════════════════════════════════════════════════════════════════════
+   534→// SIMULATION TICK LOOP
+   535→// ════════════════════════════════════════════════════════════════════════
+   536→
+   537→function tick() {
+   538→  if (!state.running || state.paused) return;
+   539→
+   540→  // Advance simulated time
+   541→  const prevPhase = state.currentPhase;
+   542→  state.currentHour += state.speedMultiplier / 3600; // speedMultiplier = simulated seconds per real second
+   543→
+   544→  // Check phase transition
+   545→  const newPhase = computePhaseForHour(Math.floor(state.currentHour));
+   546→  if (newPhase !== prevPhase) {
+   547→    state.phaseHistory.push({ phase: prevPhase, enteredAt: state.currentHour, exitAt: state.currentHour });
+   548→    state.currentPhase = newPhase;
+   549→    console.log(`[SIM] Phase transition: ${prevPhase} → ${newPhase} at hour ${state.currentHour.toFixed(1)}`);
+   550→  }
+   551→
+   552→  // Check milestones
+   553→  for (const milestone of state.milestones) {
+   554→    if (!milestone.triggered && Math.floor(state.currentHour) >= milestone.hour) {
+   555→      milestone.triggered = true;
+   556→      milestone.triggeredAt = Date.now();
+   557→      console.log(`[SIM] Milestone ${milestone.id}: ${milestone.name} triggered`);
+   558→    }
+   559→  }
+   560→
+   561→  // Compute metrics
+   562→  state.metrics = computeMetricsForTick(Math.floor(state.currentHour), state.currentPhase, state.metrics);
+   563→
+   564→  // Generate HBK telemetry
+   565→  state.hbkTelemetry = generateHBKTelemetry(Math.floor(state.currentHour), state.currentPhase);
+   566→
+   567→  // Generate Git Actions
+   568→  const newGitActions = generateGitActions(Math.floor(state.currentHour), state.currentPhase);
+   569→  state.gitActions = [...state.gitActions.slice(-200), ...newGitActions]; // Keep last 200 entries
+   570→
+   571→  // Check end condition
+   572→  if (state.currentHour >= 72) {
+   573→    state.running = false;
+   574→    state.currentHour = 72;
+   575→    console.log('[SIM] 72-hour simulation complete');
+   576→    io.emit('sim:complete', { finalMetrics: state.metrics, milestones: state.milestones });
+   577→  }
+   578→
+   579→  // Broadcast to all connected clients
+   580→  io.emit('sim:tick', {
+   581→    hour: Math.floor(state.currentHour),
+   582→    phase: state.currentPhase,
+   583→    metrics: state.metrics,
+   584→    hbkTelemetry: state.hbkTelemetry,
+   585→    gitActions: state.gitActions.slice(-20), // Send last 20
+   586→    milestones: state.milestones,
+   587→    phaseHistory: state.phaseHistory,
+   588→    running: state.running,
+   589→    speedMultiplier: state.speedMultiplier,
+   590→  });
+   591→}
+   592→
+   593→// ════════════════════════════════════════════════════════════════════════
+   594→// SOCKET.IO SERVER
+   595→// ════════════════════════════════════════════════════════════════════════
+   596→
+   597→const io = new Server(PORT, {
+   598→  cors: { origin: '*', methods: ['GET', 'POST'] },
+   599→  path: '/',
+   600→});
+   601→
+   602→io.on('connection', (socket) => {
+   603→  console.log(`[WS] Client connected: ${socket.id}`);
+   604→
+   605→  // Send current state on connection
+   606→  socket.emit('sim:state', {
+   607→    running: state.running,
+   608→    paused: state.paused,
+   609→    speedMultiplier: state.speedMultiplier,
+   610→    currentHour: state.currentHour,
+   611→    currentPhase: state.currentPhase,
+   612→    metrics: state.metrics,
+   613→    hbkTelemetry: state.hbkTelemetry,
+   614→    gitActions: state.gitActions.slice(-50),
+   615→    milestones: state.milestones,
+   616→    phaseHistory: state.phaseHistory,
+   617→  });
+   618→
+   619→  // Control commands
+   620→  socket.on('sim:start', (data?: { speedMultiplier?: number }) => {
+   621→    if (state.running) return;
+   622→    state.running = true;
+   623→    state.paused = false;
+   624→    state.startedAt = Date.now();
+   625→    state.currentHour = 0;
+   626→    state.currentPhase = 'P1';
+   627→    state.metrics = createInitialMetrics();
+   628→    state.hbkTelemetry = [];
+   629→    state.gitActions = [];
+   630→    state.milestones = [...MILESTONE_DEFS];
+   631→    state.phaseHistory = [];
+   632→    if (data?.speedMultiplier) state.speedMultiplier = data.speedMultiplier;
+   633→
+   634→    // Start tick loop
+   635→    if (tickTimer) clearInterval(tickTimer);
+   636→    tickTimer = setInterval(tick, state.tickInterval);
+   637→    console.log(`[SIM] Started — speed: ${state.speedMultiplier}x`);
+   638→    io.emit('sim:started', { speedMultiplier: state.speedMultiplier });
+   639→  });
+   640→
+   641→  socket.on('sim:pause', () => {
+   642→    state.paused = !state.paused;
+   643→    console.log(`[SIM] ${state.paused ? 'Paused' : 'Resumed'}`);
+   644→    io.emit('sim:paused', { paused: state.paused });
+   645→  });
+   646→
+   647→  socket.on('sim:stop', () => {
+   648→    state.running = false;
+   649→    state.paused = false;
+   650→    if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+   651→    console.log('[SIM] Stopped');
+   652→    io.emit('sim:stopped', {});
+   653→  });
+   654→
+   655→  socket.on('sim:speed', (data: { speedMultiplier: number }) => {
+   656→    state.speedMultiplier = Math.max(1, Math.min(3600, data.speedMultiplier));
+   657→    console.log(`[SIM] Speed changed: ${state.speedMultiplier}x`);
+   658→    io.emit('sim:speed_changed', { speedMultiplier: state.speedMultiplier });
+   659→  });
+   660→
+   661→  socket.on('sim:reset', () => {
+   662→    state.running = false;
+   663→    state.paused = false;
+   664→    if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+   665→    state.currentHour = 0;
+   666→    state.currentPhase = 'P1';
+   667→    state.metrics = createInitialMetrics();
+   668→    state.hbkTelemetry = [];
+   669→    state.gitActions = [];
+   670→    state.milestones = [...MILESTONE_DEFS];
+   671→    state.phaseHistory = [];
+   672→    console.log('[SIM] Reset to initial state');
+   673→    io.emit('sim:reset', { state: getStateSnapshot() });
+   674→  });
+   675→
+   676→  socket.on('disconnect', () => {
+   677→    console.log(`[WS] Client disconnected: ${socket.id}`);
+   678→  });
+   679→});
+   680→
+   681→function getStateSnapshot() {
+   682→  return {
+   683→    running: state.running,
+   684→    paused: state.paused,
+   685→    speedMultiplier: state.speedMultiplier,
+   686→    currentHour: state.currentHour,
+   687→    currentPhase: state.currentPhase,
+   688→    metrics: state.metrics,
+   689→    hbkTelemetry: state.hbkTelemetry,
+   690→    gitActions: state.gitActions.slice(-50),
+   691→    milestones: state.milestones,
+   692→    phaseHistory: state.phaseHistory,
+   693→  };
+   694→}
+   695→
+   696→// ════════════════════════════════════════════════════════════════════════
+   697→// HTTP API — handled by socket.io server internally
+   698→// The socket.io server on port 3003 also serves HTTP requests.
+   699→// Next.js /api/simulation route proxies to localhost:3003/api/sim/*
+   700→// ════════════════════════════════════════════════════════════════════════
+   701→
+   702→console.log(`[SIM] VVU EARTH TECH 72-Hour Simulation Engine`);
+   703→console.log(`[SIM] Port: ${PORT}`);
+   704→console.log(`[SIM] WebSocket: socket.io on port ${PORT}`);
+   705→console.log(`[SIM] Default speed: ${state.speedMultiplier}x (72h in ~72min)`);
+   706→console.log(`[SIM] Ready for connections`);
+   707→
