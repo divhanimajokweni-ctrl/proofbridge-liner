@@ -30,7 +30,7 @@ export const HBK_CAD_MODULES: CADModule[] = [
     position: { x: 0, y: 0, z: 0 },
     color: "#C0C0C0", colorRGB: [0.75, 0.75, 0.75],
     status: "OPERATIONAL", tempC: 22, loadPct: 0,
-    description: "Anodized aluminum structural base — 460×360mm working volume",
+    description: "Anodized aluminum structural base — 460×360mm working volume (3.0mm CNC 6061-T6 tray)",
   },
   {
     id: "amd-compute",
@@ -40,7 +40,7 @@ export const HBK_CAD_MODULES: CADModule[] = [
     position: { x: 160, y: 120, z: 3 },
     color: "#1A9933", colorRGB: [0.1, 0.6, 0.2],
     status: "OPERATIONAL", tempC: 58, loadPct: 72,
-    description: "Unified Memory Architecture — Edge compute with Ryzen AI APU",
+    description: "Unified Memory Architecture — Edge compute with Ryzen AI APU (diagonal separation >170mm from PMU)",
   },
   {
     id: "sensor-interface",
@@ -50,27 +50,47 @@ export const HBK_CAD_MODULES: CADModule[] = [
     position: { x: 20, y: 180, z: 3 },
     color: "#3366CC", colorRGB: [0.2, 0.3, 0.8],
     status: "OPERATIONAL", tempC: 31, loadPct: 45,
-    description: "Acoustic filtering — isolated analog sensor interface (X=20, Y=180)",
+    description: "Acoustic filtering — isolated analog sensor interface (≥15mm EMI/RFI clearance zone enforced)",
   },
   {
     id: "power-bms",
     name: "Power_BMS_Module",
-    label: "Power Distribution & BMS",
+    label: "PM-01 Power Distribution & Daly 8S 20A BMS",
     length: 110, width: 140, height: 38,
     position: { x: 20, y: 20, z: 3 },
     color: "#CC3333", colorRGB: [0.8, 0.2, 0.2],
     status: "OPERATIONAL", tempC: 38, loadPct: 61,
-    description: "Battery Management System — 12V/24V distribution",
+    description: "Daly 8S 20A BMS — 25.6V/12V distribution with synchronous buck-boost regulators",
+  },
+  {
+    id: "battery-8s",
+    name: "Battery_8S_32700_Pack",
+    label: "8S4P 32700 LiFePO₄ Pack (25.6V, 20Ah)",
+    length: 150, width: 85, height: 80,
+    position: { x: 140, y: 20, z: 3 },
+    color: "#E67300", colorRGB: [0.9, 0.45, 0.0],
+    status: "OPERATIONAL", tempC: 28, loadPct: 82,
+    description: "32× IFR-32700 cells (8S4P) — 614Wh, 15% ruggedization overhead (busbars, holders, epoxy potting)",
+  },
+  {
+    id: "aerogel-shield",
+    name: "Aerogel_Thermal_Barrier",
+    label: "Pyrogel XTE Aerogel Thermal Isolation",
+    length: 160, width: 95, height: 85,
+    position: { x: 135, y: 15, z: 3 },
+    color: "#E8E8E8", colorRGB: [0.91, 0.91, 0.91],
+    status: "OPERATIONAL", tempC: 25, loadPct: 0,
+    description: "0.015 W/m·K thermal isolation — shields LiFePO₄ cells from AMD SoC radiant heat",
   },
   {
     id: "storage-bay",
     name: "NVMe_Storage_Bay",
     label: "NVMe Storage Bay",
     length: 40, width: 90, height: 15,
-    position: { x: 160, y: 40, z: 3 },
+    position: { x: 320, y: 60, z: 3 },
     color: "#808080", colorRGB: [0.5, 0.5, 0.5],
     status: "OPERATIONAL", tempC: 34, loadPct: 28,
-    description: "Vibration-dampened NVMe assembly — local data storage",
+    description: "Vibration-dampened NVMe assembly — repositioned to X=320 for battery clearance",
   },
   {
     id: "comms-routing",
@@ -669,9 +689,246 @@ export const VALIDATION_PHASES: ValidationPhase[] = [
   },
 ];
 
-// ── HBK Dashboard Tabs (updated for Consortium Model) ────────────────────
+// ── Phase 2: Power Architecture ──────────────────────────────────────────
 
-export type HbkTabId = "consortium" | "ownership" | "contracts" | "ip" | "roadmap" | "twin" | "resources" | "simulation" | "timeline" | "gitlog";
+export interface BatterySpecification {
+  chemistry: string;
+  format: string;
+  configuration: string;
+  seriesCells: number;
+  parallelCells: number;
+  totalCells: number;
+  nominalVoltage: number;
+  capacityAh: number;
+  totalEnergyWh: number;
+  bms: string;
+  cellModel: string;
+  bmsModel: string;
+  estimatedWeight: string;
+  ruggedizationOverhead: string;
+  pottingMaterial: string;
+  shiftDuration: string;
+  thermalAdvantage: string;
+}
+
+export const BATTERY_SPEC: BatterySpecification = {
+  chemistry: "LiFePO₄ (Lithium Iron Phosphate)",
+  format: "32700 Cylindrical",
+  configuration: "8S4P",
+  seriesCells: 8,
+  parallelCells: 4,
+  totalCells: 32,
+  nominalVoltage: 25.6,
+  capacityAh: 20,
+  totalEnergyWh: 614,
+  bms: "Daly 8S 20A BMS",
+  cellModel: "IFR-32700",
+  bmsModel: "Daly BMS-8S20A",
+  estimatedWeight: "~5.2 kg (cells + potting + busbars)",
+  ruggedizationOverhead: "15% (busbars, holders, epoxy potting resin)",
+  pottingMaterial: "Epoxy Resin (structural potting for vibration/field shock)",
+  shiftDuration: "8 hours continuous field operation",
+  thermalAdvantage: "8S (25.6V) halves current draw vs 4S — I²R resistive heating reduced by ~75% in BMS and PM-01 wiring harness",
+};
+
+// ── Phase 2: Star Ground Wiring Protocol (P0–P3) ─────────────────────────
+
+export interface WiringRail {
+  id: string;
+  name: string;
+  designation: string;
+  gauge: string;
+  voltage: string;
+  purpose: string;
+  route: string;
+  isolationClass: string;
+  color: string;
+}
+
+export const WIRING_RAILS: WiringRail[] = [
+  {
+    id: "P0",
+    name: "Main Power Rail",
+    designation: "P0 — High Current",
+    gauge: "10 AWG",
+    voltage: "25.6V DC (Battery → BMS → PM-01)",
+    purpose: "Primary DC distribution from battery pack through BMS to PM-01 power management unit",
+    route: "Battery_8S_32700_Pack (X:140, Y:20) → Power_BMS_Module (X:20, Y:20) — shortest possible run",
+    isolationClass: "EMI-HIGH",
+    color: "#CC3333",
+  },
+  {
+    id: "P1",
+    name: "System Power Rail",
+    designation: "P1 — Compute Power",
+    gauge: "14 AWG",
+    voltage: "12V / 5V (PM-01 → AMD Compute / NVMe / Comms)",
+    purpose: "Regulated power from PM-01 to AMD Ryzen SoC, NVMe storage, and comms routing node",
+    route: "PM-01 (X:20, Y:20) → AMD Compute (X:160, Y:120) → NVMe (X:320, Y:60) → Comms (X:340, Y:200)",
+    isolationClass: "EMI-MEDIUM",
+    color: "#F59E0B",
+  },
+  {
+    id: "P2",
+    name: "Clean Power Rail",
+    designation: "P2 — Clean Rail (Galvanically Isolated)",
+    gauge: "18 AWG",
+    voltage: "±12.0V / 5.0V (with galvanic isolator)",
+    purpose: "Ultra-clean power for analog sensor interface — galvanically isolated from BMS switching noise",
+    route: "PM-01 (X:20, Y:20) → Sensor Interface (X:20, Y:180) — dedicated isolation path",
+    isolationClass: "CLEAN-ISO",
+    color: "#3366CC",
+  },
+  {
+    id: "P3",
+    name: "Signal Rail",
+    designation: "P3 — Signal (Shielded Twisted Pair)",
+    gauge: "Shielded Twisted Pair",
+    voltage: "Analog / Digital Signal Lines",
+    purpose: "All sensor data lines — routed away from BMS and power rails via shielded twisted pair",
+    route: "Sensor Interface (X:20, Y:180) → AMD Compute (X:160, Y:120) — physically separated from P0/P1",
+    isolationClass: "SIGNAL-GUARD",
+    color: "#10b981",
+  },
+];
+
+// ── Phase 2: Epistemic Thermal Governance ─────────────────────────────────
+
+export interface ThermalThreshold {
+  level: string;
+  tempC: number;
+  action: string;
+  runtimeLog: string;
+  color: string;
+  icon: string;
+  erRule: string;
+}
+
+export const THERMAL_THRESHOLDS: ThermalThreshold[] = [
+  {
+    level: "NORMAL",
+    tempC: 65,
+    action: "Full operation — all inference loops active, sensor polling at full rate",
+    runtimeLog: "No thermal event — continuous operation logged as periodic Fact",
+    color: "#10b981",
+    icon: "CheckCircle2",
+    erRule: "Rule 4 (No Non-Determinism) — deterministic duty cycling at all times",
+  },
+  {
+    level: "WARNING",
+    tempC: 65,
+    action: "ECO mode engaged — AMD APU clock reduced, sensor polling interval doubled",
+    runtimeLog: "Thermal spike logged as append-only Fact (SHA-256 canonical) → WORM storage before ECO mode engagement",
+    color: "#F59E0B",
+    icon: "AlertTriangle",
+    erRule: "Rule 7 (Append-Only Evidence) — temperature event is immutable Fact before any throttling",
+  },
+  {
+    level: "CRITICAL",
+    tempC: 75,
+    action: "Wake-on-Acoustic loop — APU enters low-power state, analog sensor interface acts as deterministic hardware interrupt",
+    runtimeLog: "Critical thermal event logged as Fact → APU enters wake-on-interrupt loop → trigger logged as verified Proof",
+    color: "#EF4444",
+    icon: "XCircle",
+    erRule: "Rule 7 + Rule 4 — if the system misses a leak because inference was terminated at 75°C, engineers have mathematically reproducible proof of why the system was offline",
+  },
+  {
+    level: "EMERGENCY",
+    tempC: 85,
+    action: "Full system shutdown — battery disconnected via BMS hard-cut, all evidence flushed to NVMe",
+    runtimeLog: "Emergency shutdown logged as Fact → final state snapshot → WORM commit → BMS disconnect",
+    color: "#DC2626",
+    icon: "ShieldAlert",
+    erRule: "Rule 7 — final evidence preservation before hardware disconnect. No data loss.",
+  },
+];
+
+// ── Phase 2: Thermal Containment Architecture ────────────────────────────
+
+export interface ThermalContainmentLayer {
+  id: string;
+  name: string;
+  material: string;
+  conductivity: string;
+  purpose: string;
+  fromComponent: string;
+  toComponent: string;
+  color: string;
+}
+
+export const THERMAL_CONTAINMENT: ThermalContainmentLayer[] = [
+  {
+    id: "tc1",
+    name: "TIM Phase-Change Layer",
+    material: "5–7 W/m·K Phase-Change Material (PCM)",
+    conductivity: "5–7 W/m·K",
+    purpose: "Thermal bridge between Ryzen die and custom copper heat block",
+    fromComponent: "AMD Ryzen APU die",
+    toComponent: "Copper heat block",
+    color: "#F59E0B",
+  },
+  {
+    id: "tc2",
+    name: "Structural Conduction Path",
+    material: "Thermal gap pads (6061-T6 mainboard → Denel enclosure bosses)",
+    conductivity: "3–5 W/m·K",
+    purpose: "Conduct heat from mainboard tray to aluminum enclosure shell (passive radiator)",
+    fromComponent: "6061-T6 Mainboard Tray",
+    toComponent: "Denel aluminum enclosure (IP67 shell)",
+    color: "#CC3333",
+  },
+  {
+    id: "tc3",
+    name: "Aerogel Battery Isolation",
+    material: "Pyrogel XTE Aerogel (0.015 W/m·K)",
+    conductivity: "0.015 W/m·K",
+    purpose: "Shield LiFePO₄ cells from AMD SoC radiant heat — reclaim 10mm of internal volume",
+    fromComponent: "AMD Ryzen APU thermal zone",
+    toComponent: "Battery_8S_32700_Pack",
+    color: "#3366CC",
+  },
+  {
+    id: "tc4",
+    name: "External CNC Fin Array",
+    material: "CNC aluminum cooling fins (optional)",
+    conductivity: "Aluminum (167 W/m·K)",
+    purpose: "If ambient Eastern Cape environment demands it — external fins at APU Z-axis coordinate overhead",
+    fromComponent: "Denel enclosure exterior",
+    toComponent: "Ambient air",
+    color: "#10b981",
+  },
+];
+
+// ── Phase 2: BOM (Bill of Materials) ─────────────────────────────────────
+
+export interface BOMItem {
+  id: string;
+  component: string;
+  specification: string;
+  quantity: string;
+  source: string;
+  category: string;
+  status: "specified" | "sourced" | "ordered" | "received";
+}
+
+export const PHASE2_BOM: BOMItem[] = [
+  { id: "bom-1", component: "IFR-32700 LiFePO₄ Cells", specification: "32700 cylindrical, 3.2V nominal", quantity: "32", source: "Battery supplier", category: "battery", status: "specified" },
+  { id: "bom-2", component: "Daly 8S 20A BMS", specification: "BMS-8S20A, 25.6V nominal", quantity: "1", source: "Daly Electronics", category: "battery", status: "specified" },
+  { id: "bom-3", component: "Pyrogel XTE Aerogel", specification: "0.015 W/m·K, 5mm thickness", quantity: "1 sheet (160×95mm)", source: "Aspen Aerogels", category: "thermal", status: "specified" },
+  { id: "bom-4", component: "Epoxy Potting Resin", specification: "Structural potting for vibration/field shock", quantity: "1 kit", source: "Epoxy supplier", category: "battery", status: "specified" },
+  { id: "bom-5", component: "PCM Thermal Interface", specification: "5–7 W/m·K phase-change material", quantity: "1 pad", source: "TIM supplier", category: "thermal", status: "specified" },
+  { id: "bom-6", component: "Thermal Gap Pads", specification: "3–5 W/m·K, mainboard-to-enclosure", quantity: "4 pads", source: "TIM supplier", category: "thermal", status: "specified" },
+  { id: "bom-7", component: "10 AWG P0 Power Wire", specification: "High-current DC rail (Battery→BMS)", quantity: "200mm", source: "Wire supplier", category: "wiring", status: "specified" },
+  { id: "bom-8", component: "14 AWG P1 System Wire", specification: "Compute power distribution", quantity: "500mm", source: "Wire supplier", category: "wiring", status: "specified" },
+  { id: "bom-9", component: "18 AWG P2 Clean Wire", specification: "Galvanically isolated clean rail", quantity: "300mm", source: "Wire supplier", category: "wiring", status: "specified" },
+  { id: "bom-10", component: "Shielded Twisted Pair (P3)", specification: "Signal lines — physically separated from P0/P1", quantity: "400mm", source: "Signal cable supplier", category: "wiring", status: "specified" },
+  { id: "bom-11", component: "Galvanic Isolator (P2)", specification: "DC-DC isolated converter ±12V/5V", quantity: "1", source: "Isolation component supplier", category: "wiring", status: "specified" },
+  { id: "bom-12", component: "Copper Heat Block", specification: "Custom AMD Ryzen APU heat spreader", quantity: "1", source: "CNC machining", category: "thermal", status: "specified" },
+];
+
+// ── HBK Dashboard Tabs (updated for Consortium Model + Phase 2) ───────────
+
+export type HbkTabId = "consortium" | "ownership" | "contracts" | "ip" | "roadmap" | "power-thermal" | "twin" | "resources" | "simulation" | "timeline" | "gitlog";
 
 export interface HbkTab {
   id: HbkTabId;
@@ -686,6 +943,7 @@ export const HBK_TABS: HbkTab[] = [
   { id: "contracts", label: "Contract Model", icon: "FileCheck2", description: "Partnership through contracts, not equity" },
   { id: "ip", label: "IP Boundaries", icon: "Lock", description: "VVU-owned core technology vs joint research outputs" },
   { id: "roadmap", label: "3-Phase Roadmap", icon: "Route", description: "Research Enablement → Industrial Validation → Commercialisation" },
+  { id: "power-thermal", label: "Power & Thermal", icon: "Zap", description: "Phase 2: 8S4P battery, Star Ground wiring, Epistemic thermal governance" },
   { id: "twin", label: "Digital Twin", icon: "Cpu", description: "HBK Mk-II 3D CAD layout and module status" },
   { id: "resources", label: "Resource Register", icon: "ClipboardList", description: "Live tracking of commitments and gaps" },
   { id: "simulation", label: "72h Validation", icon: "Activity", description: "Full 72-hour validation loop with digital twin" },

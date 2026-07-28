@@ -1,0 +1,1715 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Cpu, ClipboardList, Activity, Calendar, GitBranch,
+     7→  ChevronRight, ChevronDown, ArrowDown, ArrowRight,
+     8→  Thermometer, Zap, HardDrive,
+     9→  Shield, CheckCircle2, AlertTriangle, XCircle, Clock, Play,
+    10→  Pause, RotateCcw, GitCommit, GitMerge, Rocket, TestTube,
+    11→  FlaskConical, Box, Eye, Droplets, Battery, Radio,
+    12→  Monitor, Server, CircuitBoard, MemoryStick,
+    13→  Building2, GraduationCap, Landmark,
+    14→  Globe, Wrench,
+    15→  Target, Handshake, Star,
+    16→  Network, Lock, Route, FileCheck2, FileText,
+    17→  Users, CircleDot, Sparkles, Crown, Briefcase,
+    18→  Scale, Medal, BookOpen, Lightbulb, Gem,
+    19→} from "lucide-react";
+    20→import {
+    21→  Card, CardHeader, CardContent, CardTitle, CardDescription,
+    22→} from "@/components/ui/card";
+    23→import {
+    24→  HBK_CAD_MODULES, OWNERSHIP_STRUCTURE, CONSORTIUM_PARTNERS,
+    25→  CONSORTIUM_ARCHITECTURE, IP_OWNERSHIP, ROADMAP_PHASES,
+    26→  SPONSORSHIP_PACKAGES, RESOURCE_REGISTER, PROGRAMME_TIMELINE,
+    27→  VALIDATION_PHASES, HBK_TABS,
+    28→  type HbkTabId, type CADModule, type GitAction,
+    29→  type ResourceItem, type ValidationPhase,
+    30→  type OwnershipEntry, type ConsortiumPartner,
+    31→  type ConsortiumArchitecture, type IPCategory, type RoadmapPhase,
+    32→} from "@/lib/hbk/types";
+    33→
+    34→// ════════════════════════════════════════════════════════════════════════
+    35→// HELPERS
+    36→// ════════════════════════════════════════════════════════════════════════
+    37→
+    38→const statusColor = (s: string) => {
+    39→  switch (s) {
+    40→    case "OPERATIONAL": return "#10b981";
+    41→    case "STANDBY": return "#F59E0B";
+    42→    case "DIAGNOSTIC": return "#3B82F6";
+    43→    case "OFFLINE": return "#EF4444";
+    44→    default: return "#6B7280";
+    45→  }
+    46→};
+    47→
+    48→const gitActionIcon = (a: string) => {
+    49→  switch (a) {
+    50→    case "commit": return <GitCommit className="h-3.5 w-3.5" />;
+    51→    case "push": return <GitBranch className="h-3.5 w-3.5" />;
+    52→    case "merge": return <GitMerge className="h-3.5 w-3.5" />;
+    53→    case "deploy": return <Rocket className="h-3.5 w-3.5" />;
+    54→    case "test": return <TestTube className="h-3.5 w-3.5" />;
+    55→    case "validate": return <FlaskConical className="h-3.5 w-3.5" />;
+    56→    default: return <GitCommit className="h-3.5 w-3.5" />;
+    57→  }
+    58→};
+    59→
+    60→const gitActionColor = (a: string) => {
+    61→  switch (a) {
+    62→    case "commit": return "#10b981";
+    63→    case "push": return "#3B82F6";
+    64→    case "merge": return "#8B5CF6";
+    65→    case "deploy": return "#F59E0B";
+    66→    case "test": return "#EC4899";
+    67→    case "validate": return "#C9A84C";
+    68→    default: return "#6B7280";
+    69→  }
+    70→};
+    71→
+    72→const resourceStatusColor = (s: string) => {
+    73→  switch (s) {
+    74→    case "secured": return "#10b981";
+    75→    case "in_progress": return "#3B82F6";
+    76→    case "open": return "#F59E0B";
+    77→    case "urgent": return "#EF4444";
+    78→    default: return "#6B7280";
+    79→  }
+    80→};
+    81→
+    82→const validationStatusIcon = (s: string) => {
+    83→  switch (s) {
+    84→    case "complete": return <CheckCircle2 className="h-4 w-4" style={{ color: "#10b981" }} />;
+    85→    case "active": return <Activity className="h-4 w-4" style={{ color: "#3B82F6" }} />;
+    86→    case "pending": return <Clock className="h-4 w-4" style={{ color: "#6B7280" }} />;
+    87→    case "failed": return <XCircle className="h-4 w-4" style={{ color: "#EF4444" }} />;
+    88→    default: return null;
+    89→  }
+    90→};
+    91→
+    92→const partnerStatusColor = (s: string) => {
+    93→  switch (s) {
+    94→    case "active_outreach": return "#F59E0B";
+    95→    case "negotiating": return "#3B82F6";
+    96→    case "agreement_draft": return "#8B5CF6";
+    97→    case "executed": return "#10b981";
+    98→    default: return "#6B7280";
+    99→  }
+   100→};
+   101→
+   102→const partnerStatusLabel = (s: string) => {
+   103→  switch (s) {
+   104→    case "active_outreach": return "Active Outreach";
+   105→    case "negotiating": return "Negotiating";
+   106→    case "agreement_draft": return "Agreement Draft";
+   107→    case "executed": return "Executed";
+   108→    default: return s;
+   109→  }
+   110→};
+   111→
+   112→const partnerIcon = (iconName: string) => {
+   113→  switch (iconName) {
+   114→    case "GraduationCap": return <GraduationCap className="h-5 w-5" />;
+   115→    case "Landmark": return <Landmark className="h-5 w-5" />;
+   116→    case "Building2": return <Building2 className="h-5 w-5" />;
+   117→    case "Cpu": return <Cpu className="h-5 w-5" />;
+   118→    default: return <Users className="h-5 w-5" />;
+   119→  }
+   120→};
+   121→
+   122→const tabIcon = (iconName: string) => {
+   123→  switch (iconName) {
+   124→    case "Network": return <Network className="h-3.5 w-3.5" />;
+   125→    case "Shield": return <Shield className="h-3.5 w-3.5" />;
+   126→    case "FileCheck2": return <FileCheck2 className="h-3.5 w-3.5" />;
+   127→    case "Lock": return <Lock className="h-3.5 w-3.5" />;
+   128→    case "Route": return <Route className="h-3.5 w-3.5" />;
+   129→    case "Cpu": return <Cpu className="h-3.5 w-3.5" />;
+   130→    case "ClipboardList": return <ClipboardList className="h-3.5 w-3.5" />;
+   131→    case "Activity": return <Activity className="h-3.5 w-3.5" />;
+   132→    case "Calendar": return <Calendar className="h-3.5 w-3.5" />;
+   133→    case "GitBranch": return <GitBranch className="h-3.5 w-3.5" />;
+   134→    default: return <Cpu className="h-3.5 w-3.5" />;
+   135→  }
+   136→};
+   137→
+   138→const ipIcon = (iconName: string) => {
+   139→  switch (iconName) {
+   140→    case "Shield": return <Shield className="h-5 w-5" />;
+   141→    case "FileCheck2": return <FileCheck2 className="h-5 w-5" />;
+   142→    default: return <FileText className="h-5 w-5" />;
+   143→  }
+   144→};
+   145→
+   146→const roadmapIcon = (iconName: string) => {
+   147→  switch (iconName) {
+   148→    case "FlaskConical": return <FlaskConical className="h-5 w-5" />;
+   149→    case "Wrench": return <Wrench className="h-5 w-5" />;
+   150→    case "Rocket": return <Rocket className="h-5 w-5" />;
+   151→    default: return <Target className="h-5 w-5" />;
+   152→  }
+   153→};
+   154→
+   155→const roadmapStatusColor = (s: string) => {
+   156→  switch (s) {
+   157→    case "active": return "#10b981";
+   158→    case "upcoming": return "#3B82F6";
+   159→    case "future": return "#C9A84C";
+   160→    default: return "#6B7280";
+   161→  }
+   162→};
+   163→
+   164→// ════════════════════════════════════════════════════════════════════════
+   165→// SIMULATED GIT ACTIONS GENERATOR
+   166→// ════════════════════════════════════════════════════════════════════════
+   167→
+   168→function generateGitActions(count: number): GitAction[] {
+   169→  const actions: GitAction["action"][] = ["commit", "push", "merge", "deploy", "test", "validate"];
+   170→  const branches = ["main", "hbk/mk-ii", "hbk/bayesian-engine", "hbk/sensor-cal", "hbk/cad-layout", "hbk/consortium"];
+   171→  const messages = [
+   172→    "feat: add AMD Ryzen AI compute module bounding box",
+   173→    "fix: sensor isolation distance verified at X=20, Y=180",
+   174→    "refactor: BMS power distribution routing updated",
+   175→    "feat: NVMe storage bay vibration dampening mounts",
+   176→    "chore: IP67 transit shell envelope clearance check",
+   177→    "test: Bayesian inference engine MCMC convergence",
+   178→    "feat: Comms routing node Cellular/GNSS integration",
+   179→    "validate: 72h validation phase V3 metrics passing",
+   180→    "deploy: HBK Mk-II chassis layout to FreeCAD workspace",
+   181→    "merge: hbk/sensor-cal → main (acoustic filtering verified)",
+   182→    "feat: VVU 100% ownership model embedded in metadata",
+   183→    "fix: analog isolation clearance zone expanded",
+   184→    "test: Kria SoM edge-compute integration",
+   185→    "validate: Brier Score ≤ 0.02 threshold check",
+   186→    "feat: consortium architecture hierarchy definition",
+   187→    "chore: resource register initial data migration",
+   188→  ];
+   189→  const authors = ["eng-lead", "cad-operator", "bayesian-eng", "sensor-tech", "field-ops", "devops"];
+   190→  const result: GitAction[] = [];
+   191→  const now = Date.now();
+   192→  for (let i = 0; i < count; i++) {
+   193→    const action = actions[Math.floor(Math.random() * actions.length)];
+   194→    const hash = Math.random().toString(16).slice(2, 9);
+   195→    result.push({
+   196→      id: `ga-${i}`,
+   197→      timestamp: new Date(now - (count - i) * 180000 + Math.random() * 60000).toISOString(),
+   198→      action,
+   199→      branch: branches[Math.floor(Math.random() * branches.length)],
+   200→      message: messages[Math.floor(Math.random() * messages.length)],
+   201→      author: authors[Math.floor(Math.random() * authors.length)],
+   202→      status: Math.random() > 0.08 ? "success" : Math.random() > 0.5 ? "running" : "failed",
+   203→      hash,
+   204→    });
+   205→  }
+   206→  return result;
+   207→}
+   208→
+   209→// ════════════════════════════════════════════════════════════════════════
+   210→// MAIN COMPONENT
+   211→// ════════════════════════════════════════════════════════════════════════
+   212→
+   213→export function HbkDashboard() {
+   214→  const [activeTab, setActiveTab] = useState<HbkTabId>("consortium");
+   215→  const [selectedModule, setSelectedModule] = useState<string | null>(null);
+   216→  const [gitActions] = useState<GitAction[]>(() => generateGitActions(24));
+   217→  const [simRunning, setSimRunning] = useState(false);
+   218→  const [simElapsed, setSimElapsed] = useState(0);
+   219→  const [hoveredModule, setHoveredModule] = useState<string | null>(null);
+   220→  const simIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+   221→
+   222→  // Simulation timer
+   223→  useEffect(() => {
+   224→    if (simRunning) {
+   225→      simIntervalRef.current = setInterval(() => {
+   226→        setSimElapsed(prev => prev + 1);
+   227→      }, 1000);
+   228→    } else if (simIntervalRef.current) {
+   229→      clearInterval(simIntervalRef.current);
+   230→    }
+   231→    return () => { if (simIntervalRef.current) clearInterval(simIntervalRef.current); };
+   232→  }, [simRunning]);
+   233→
+   234→  const simHours = Math.floor(simElapsed / 3600);
+   235→  const simMins = Math.floor((simElapsed % 3600) / 60);
+   236→  const simSecs = simElapsed % 60;
+   237→
+   238→  // ── TAB RENDERING ──────────────────────────────────────────────────────
+   239→
+   240→  const renderTabContent = () => {
+   241→    switch (activeTab) {
+   242→      case "consortium": return <ConsortiumTab />;
+   243→      case "ownership": return <OwnershipTab />;
+   244→      case "contracts": return <ContractsTab />;
+   245→      case "ip": return <IPBoundariesTab />;
+   246→      case "roadmap": return <RoadmapTab />;
+   247→      case "twin": return <DigitalTwinTab selectedModule={selectedModule} setSelectedModule={setSelectedModule} hoveredModule={hoveredModule} setHoveredModule={setHoveredModule} />;
+   248→      case "resources": return <ResourcesTab />;
+   249→      case "simulation": return <SimulationTab simRunning={simRunning} setSimRunning={setSimRunning} simElapsed={simElapsed} setSimElapsed={setSimElapsed} simHours={simHours} simMins={simMins} simSecs={simSecs} />;
+   250→      case "timeline": return <TimelineTab />;
+   251→      case "gitlog": return <GitLogTab gitActions={gitActions} />;
+   252→    }
+   253→  };
+   254→
+   255→  return (
+   256→    <div className="flex h-full flex-col overflow-hidden">
+   257→      {/* TOP BAR */}
+   258→      <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-4 py-2.5 sm:px-6" style={{ background: "rgba(15,15,24,0.5)" }}>
+   259→        <div className="flex items-center gap-3">
+   260→          <div className="flex h-8 w-8 items-center justify-center rounded-lg border" style={{ borderColor: "#C9A84C40", background: "#C9A84C10" }}>
+   261→            <Cpu className="h-4 w-4" style={{ color: "#C9A84C" }} />
+   262→          </div>
+   263→          <div>
+   264→            <h2 className="text-sm font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>HBK Mk-II Research Consortium</h2>
+   265→            <p className="font-mono text-[9px] text-muted-foreground/70">VVU 100% Ownership · Contract-Based Partnerships · Multi-Institution Programme</p>
+   266→          </div>
+   267→        </div>
+   268→        <div className="flex items-center gap-2">
+   269→          <span className="hidden items-center gap-1.5 rounded-full border px-2 py-1 font-mono text-[9px] sm:inline-flex" style={{ borderColor: "#10b98140", background: "#10b98110", color: "#10b981" }}>
+   270→            <span className="h-1.5 w-1.5 rounded-full bg-current" style={{ animation: "vvu-live-pulse 2s ease-in-out infinite" }} />
+   271→            LIVE
+   272→          </span>
+   273→          <span className="rounded-full border px-2.5 py-1 font-mono text-[9px] font-bold" style={{ borderColor: "#C9A84C60", background: "#C9A84C15", color: "#C9A84C" }}>
+   274→            VVU 100%
+   275→          </span>
+   276→        </div>
+   277→      </div>
+   278→
+   279→      {/* TABS */}
+   280→      <div className="flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-white/[0.06] px-3 sm:px-5" style={{ background: "rgba(15,15,24,0.3)" }}>
+   281→        {HBK_TABS.map((tab) => {
+   282→          const isActive = activeTab === tab.id;
+   283→          return (
+   284→            <button
+   285→              key={tab.id}
+   286→              onClick={() => setActiveTab(tab.id)}
+   287→              className={`relative flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 font-mono text-[10.5px] transition-all ${isActive ? "border-[#C9A84C] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+   288→              title={tab.description}
+   289→            >
+   290→              {isActive && <motion.span layoutId="hbk-tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#C9A84C" }} />}
+   291→              <span style={{ color: isActive ? "#C9A84C" : undefined }}>{tab.label}</span>
+   292→            </button>
+   293→          );
+   294→        })}
+   295→      </div>
+   296→
+   297→      {/* CONTENT */}
+   298→      <div className="min-h-0 flex-1 overflow-auto">
+   299→        <AnimatePresence mode="wait">
+   300→          <motion.div
+   301→            key={activeTab}
+   302→            initial={{ opacity: 0, y: 4 }}
+   303→            animate={{ opacity: 1, y: 0 }}
+   304→            exit={{ opacity: 0, y: -4 }}
+   305→            transition={{ duration: 0.2 }}
+   306→            className="p-4 sm:p-6"
+   307→          >
+   308→            {renderTabContent()}
+   309→          </motion.div>
+   310→        </AnimatePresence>
+   311→      </div>
+   312→    </div>
+   313→  );
+   314→}
+   315→
+   316→// ════════════════════════════════════════════════════════════════════════
+   317→// CONSORTIUM ARCHITECTURE TAB
+   318→// ════════════════════════════════════════════════════════════════════════
+   319→
+   320→function ConsortiumTab() {
+   321→  const arch = CONSORTIUM_ARCHITECTURE;
+   322→
+   323→  return (
+   324→    <div className="space-y-6">
+   325→      {/* Pitch Statement */}
+   326→      <motion.div
+   327→        className="rounded-xl border border-[#C9A84C]/20 p-5"
+   328→        style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,15,24,0.6))" }}
+   329→        initial={{ opacity: 0, y: 10 }}
+   330→        animate={{ opacity: 1, y: 0 }}
+   331→        transition={{ duration: 0.4 }}
+   332→      >
+   333→        <div className="flex items-start gap-4">
+   334→          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#C9A84C]/30" style={{ background: "#C9A84C15" }}>
+   335→            <Crown className="h-6 w-6" style={{ color: "#C9A84C" }} />
+   336→          </div>
+   337→          <div className="flex-1">
+   338→            <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>
+   339→              {arch.programme}
+   340→            </h3>
+   341→            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+   342→              {arch.pitchStatement}
+   343→            </p>
+   344→            <div className="mt-3 flex flex-wrap gap-2">
+   345→              <span className="rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-3 py-1 font-mono text-[9px] text-[#C9A84C]">VVU Coordinator</span>
+   346→              <span className="rounded-full border border-[#3B82F6]/30 bg-[#3B82F6]/10 px-3 py-1 font-mono text-[9px] text-[#3B82F6]">Contract-Based</span>
+   347→              <span className="rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1 font-mono text-[9px] text-[#10b981]">No Equity Dilution</span>
+   348→            </div>
+   349→          </div>
+   350→        </div>
+   351→      </motion.div>
+   352→
+   353→      {/* Narrative Shift */}
+   354→      <motion.div
+   355→        className="rounded-xl border border-white/[0.06] p-5"
+   356→        style={{ background: "rgba(15,15,24,0.6)" }}
+   357→        initial={{ opacity: 0, y: 10 }}
+   358→        animate={{ opacity: 1, y: 0 }}
+   359→        transition={{ duration: 0.4, delay: 0.1 }}
+   360→      >
+   361→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Narrative Shift</h3>
+   362→        <div className="grid gap-4 sm:grid-cols-2">
+   363→          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+   364→            <div className="mb-2 flex items-center gap-2">
+   365→              <XCircle className="h-4 w-4 text-red-400/60" />
+   366→              <span className="font-mono text-[9px] uppercase tracking-wider text-red-400/60">Old Narrative</span>
+   367→            </div>
+   368→            <p className="text-sm text-muted-foreground">&ldquo;{arch.narrativeShift.old}&rdquo;</p>
+   369→          </div>
+   370→          <div className="rounded-lg border border-[#10b981]/20 bg-[#10b981]/5 p-4">
+   371→            <div className="mb-2 flex items-center gap-2">
+   372→              <Sparkles className="h-4 w-4" style={{ color: "#10b981" }} />
+   373→              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: "#10b981" }}>New Narrative</span>
+   374→            </div>
+   375→            <p className="text-sm text-foreground">&ldquo;{arch.narrativeShift.new}&rdquo;</p>
+   376→          </div>
+   377→        </div>
+   378→      </motion.div>
+   379→
+   380→      {/* Consortium Hierarchy */}
+   381→      <motion.div
+   382→        className="rounded-xl border border-white/[0.06] p-5"
+   383→        style={{ background: "rgba(15,15,24,0.6)" }}
+   384→        initial={{ opacity: 0, y: 10 }}
+   385→        animate={{ opacity: 1, y: 0 }}
+   386→        transition={{ duration: 0.4, delay: 0.2 }}
+   387→      >
+   388→        <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-foreground">Consortium Architecture</h3>
+   389→        <div className="relative space-y-0">
+   390→          {/* VVU — Coordinator Level */}
+   391→          <div className="flex items-center gap-4">
+   392→            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-[#C9A84C]/50" style={{ background: "#C9A84C20" }}>
+   393→              <Crown className="h-7 w-7" style={{ color: "#C9A84C" }} />
+   394→            </div>
+   395→            <div className="flex-1 rounded-lg border border-[#C9A84C]/30 p-3" style={{ background: "#C9A84C08" }}>
+   396→              <div className="flex items-center gap-2">
+   397→                <span className="text-sm font-bold" style={{ color: "#C9A84C" }}>VVU</span>
+   398→                <span className="rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-2 py-0.5 font-mono text-[8px]" style={{ color: "#C9A84C" }}>Coordinator</span>
+   399→              </div>
+   400→              <p className="font-mono text-[9px] text-muted-foreground">{arch.hierarchy[0]?.description}</p>
+   401→            </div>
+   402→          </div>
+   403→
+   404→          {/* Arrow down */}
+   405→          <div className="flex justify-center py-1">
+   406→            <ArrowDown className="h-5 w-5 text-[#C9A84C]/40" />
+   407→          </div>
+   408→
+   409→          {/* HBK Research Consortium — Programme Level */}
+   410→          <div className="flex items-center gap-4">
+   411→            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 border-[#3B82F6]/50" style={{ background: "#3B82F620" }}>
+   412→              <Network className="h-6 w-6" style={{ color: "#3B82F6" }} />
+   413→            </div>
+   414→            <div className="flex-1 rounded-lg border border-[#3B82F6]/30 p-3" style={{ background: "#3B82F608" }}>
+   415→              <div className="flex items-center gap-2">
+   416→                <span className="text-sm font-bold" style={{ color: "#3B82F6" }}>HBK Research Consortium</span>
+   417→                <span className="rounded-full border border-[#3B82F6]/30 bg-[#3B82F6]/10 px-2 py-0.5 font-mono text-[8px]" style={{ color: "#3B82F6" }}>Programme</span>
+   418→              </div>
+   419→              <p className="font-mono text-[9px] text-muted-foreground">{arch.hierarchy[1]?.description}</p>
+   420→            </div>
+   421→          </div>
+   422→
+   423→          {/* Arrow down */}
+   424→          <div className="flex justify-center py-1">
+   425→            <ArrowDown className="h-5 w-5 text-[#3B82F6]/40" />
+   426→          </div>
+   427→
+   428→          {/* Partner Types — Grid */}
+   429→          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+   430→            {arch.hierarchy.slice(2).map((level) => {
+   431→              const partner = CONSORTIUM_PARTNERS.find(p => p.tier === level.level);
+   432→              const color = partner?.color || "#6B7280";
+   433→              const icon = partner ? partnerIcon(partner.icon) : <Users className="h-5 w-5" />;
+   434→              return (
+   435→                <motion.div
+   436→                  key={level.level}
+   437→                  className="rounded-lg border p-3 text-center"
+   438→                  style={{ borderColor: `${color}30`, background: `${color}08` }}
+   439→                  whileHover={{ borderColor: `${color}60` }}
+   440→                >
+   441→                  <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: `${color}15`, color }}>
+   442→                    {icon}
+   443→                  </div>
+   444→                  <div className="text-xs font-bold" style={{ color }}>{level.entity}</div>
+   445→                  <p className="mt-1 font-mono text-[8px] text-muted-foreground/70">{level.description}</p>
+   446→                  {partner && (
+   447→                    <span className="mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${partnerStatusColor(partner.status)}30`, background: `${partnerStatusColor(partner.status)}10`, color: partnerStatusColor(partner.status) }}>
+   448→                      <span className="h-1 w-1 rounded-full" style={{ background: partnerStatusColor(partner.status) }} />
+   449→                      {partnerStatusLabel(partner.status)}
+   450→                    </span>
+   451→                  )}
+   452→                </motion.div>
+   453→              );
+   454→            })}
+   455→          </div>
+   456→        </div>
+   457→      </motion.div>
+   458→
+   459→      {/* Key Principles */}
+   460→      <motion.div
+   461→        className="rounded-xl border border-white/[0.06] p-5"
+   462→        style={{ background: "rgba(15,15,24,0.6)" }}
+   463→        initial={{ opacity: 0, y: 10 }}
+   464→        animate={{ opacity: 1, y: 0 }}
+   465→        transition={{ duration: 0.4, delay: 0.3 }}
+   466→      >
+   467→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Key Principles</h3>
+   468→        <div className="grid gap-3 sm:grid-cols-3">
+   469→          {[
+   470→            { icon: <Shield className="h-4 w-4" />, title: "VVU 100% Ownership", desc: "All core technology remains VVU property. No equity transfer through any agreement.", color: "#C9A84C" },
+   471→            { icon: <FileCheck2 className="h-4 w-4" />, title: "Contract-Based Access", desc: "Partners access the programme through specific contracts — not equity stakes.", color: "#3B82F6" },
+   472→            { icon: <Scale className="h-4 w-4" />, title: "Co-authorship ≠ Ownership", desc: "Joint research outputs are shared. Platform ownership stays with VVU.", color: "#10b981" },
+   473→          ].map((p) => (
+   474→            <div key={p.title} className="rounded-lg border p-4 text-center" style={{ borderColor: `${p.color}20`, background: `${p.color}05` }}>
+   475→              <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${p.color}15`, color: p.color }}>{p.icon}</div>
+   476→              <div className="text-xs font-bold" style={{ color: p.color }}>{p.title}</div>
+   477→              <p className="mt-1 font-mono text-[9px] text-muted-foreground">{p.desc}</p>
+   478→            </div>
+   479→          ))}
+   480→        </div>
+   481→      </motion.div>
+   482→    </div>
+   483→  );
+   484→}
+   485→
+   486→// ════════════════════════════════════════════════════════════════════════
+   487→// VVU 100% OWNERSHIP TAB
+   488→// ════════════════════════════════════════════════════════════════════════
+   489→
+   490→function OwnershipTab() {
+   491→  return (
+   492→    <div className="space-y-6">
+   493→      {/* VVU 100% Badge — Visually dominant */}
+   494→      <motion.div
+   495→        className="flex flex-col items-center justify-center rounded-xl border border-[#C9A84C]/20 p-8 sm:p-12"
+   496→        style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.12), rgba(15,15,24,0.7))" }}
+   497→        initial={{ opacity: 0, scale: 0.9 }}
+   498→        animate={{ opacity: 1, scale: 1 }}
+   499→        transition={{ duration: 0.5 }}
+   500→      >
+   501→        {/* Large circular badge */}
+   502→        <motion.div
+   503→          className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-full border-4"
+   504→          style={{ borderColor: "#C9A84C", background: "radial-gradient(circle, #C9A84C25 0%, #C9A84C08 70%, transparent 100%)" }}
+   505→          initial={{ scale: 0.8 }}
+   506→          animate={{ scale: 1 }}
+   507→          transition={{ duration: 0.6, ease: "easeOut" }}
+   508→        >
+   509→          <motion.div
+   510→            className="absolute inset-0 rounded-full"
+   511→            style={{ border: "2px solid #C9A84C40" }}
+   512→            animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.6, 0.3] }}
+   513→            transition={{ duration: 3, repeat: Infinity }}
+   514→          />
+   515→          <div className="text-center">
+   516→            <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#C9A84C80" }}>Owner</div>
+   517→            <div className="text-2xl sm:text-3xl font-black" style={{ color: "#C9A84C", fontFamily: "var(--font-geist-sans)" }}>VVU</div>
+   518→            <div className="font-mono text-xl sm:text-2xl font-bold" style={{ color: "#C9A84C" }}>100%</div>
+   519→          </div>
+   520→        </motion.div>
+   521→
+   522→        <h3 className="mt-6 text-xl font-bold tracking-tight text-center" style={{ fontFamily: "var(--font-geist-sans)" }}>
+   523→          Venture Vision Ubuntu — Sole Owner
+   524→        </h3>
+   525→        <p className="mt-2 text-sm text-muted-foreground text-center max-w-lg">
+   526→          The capitalisation table stays clean. All core technology, platform IP, and manufacturing rights remain solely owned by VVU. No equity transfer through any partnership agreement.
+   527→        </p>
+   528→        <div className="mt-4 flex flex-wrap justify-center gap-2">
+   529→          <span className="rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-3 py-1 font-mono text-[9px]" style={{ color: "#C9A84C" }}>Clean Cap Table</span>
+   530→          <span className="rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1 font-mono text-[9px]" style={{ color: "#10b981" }}>No Equity Dilution</span>
+   531→          <span className="rounded-full border border-[#3B82F6]/30 bg-[#3B82F6]/10 px-3 py-1 font-mono text-[9px]" style={{ color: "#3B82F6" }}>Contract-Based Only</span>
+   532→        </div>
+   533→      </motion.div>
+   534→
+   535→      {/* Ownership Details */}
+   536→      <motion.div
+   537→        className="rounded-xl border border-white/[0.06] p-5"
+   538→        style={{ background: "rgba(15,15,24,0.6)" }}
+   539→        initial={{ opacity: 0 }}
+   540→        animate={{ opacity: 1 }}
+   541→        transition={{ duration: 0.4, delay: 0.2 }}
+   542→      >
+   543→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Ownership Structure</h3>
+   544→        {OWNERSHIP_STRUCTURE.map((entry) => (
+   545→          <div key={entry.holder} className="rounded-lg border border-[#C9A84C]/20 p-4" style={{ background: "#C9A84C08" }}>
+   546→            <div className="flex items-center justify-between">
+   547→              <div className="flex items-center gap-2">
+   548→                <div className="h-3 w-3 rounded-full" style={{ background: entry.color }} />
+   549→                <span className="font-mono text-xs font-bold" style={{ color: entry.color }}>{entry.holder}</span>
+   550→              </div>
+   551→              <span className="font-mono text-lg font-bold" style={{ color: entry.color }}>{entry.pct}%</span>
+   552→            </div>
+   553→            <div className="mt-2 h-3 w-full rounded-full bg-white/[0.06]">
+   554→              <motion.div
+   555→                className="h-full rounded-full"
+   556→                style={{ background: `linear-gradient(90deg, ${entry.color}, ${entry.color}80)` }}
+   557→                initial={{ width: 0 }}
+   558→                animate={{ width: "100%" }}
+   559→                transition={{ duration: 1.2, ease: "easeOut" }}
+   560→              />
+   561→            </div>
+   562→            <p className="mt-2 font-mono text-[9px] text-muted-foreground">{entry.description}</p>
+   563→          </div>
+   564→        ))}
+   565→      </motion.div>
+   566→
+   567→      {/* Why 100% Matters */}
+   568→      <motion.div
+   569→        className="rounded-xl border border-white/[0.06] p-5"
+   570→        style={{ background: "rgba(15,15,24,0.6)" }}
+   571→        initial={{ opacity: 0 }}
+   572→        animate={{ opacity: 1 }}
+   573→        transition={{ duration: 0.4, delay: 0.3 }}
+   574→      >
+   575→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Why 100% Ownership Matters</h3>
+   576→        <div className="grid gap-3 sm:grid-cols-2">
+   577→          {[
+   578→            { icon: <Gem className="h-4 w-4" />, title: "Negotiate from Strength", desc: "When you own 100%, you negotiate partnerships from a position of strength — not desperation.", color: "#C9A84C" },
+   579→            { icon: <Shield className="h-4 w-4" />, title: "Protect Core IP", desc: "All hardware architecture, software, and manufacturing rights stay under VVU control.", color: "#10b981" },
+   580→            { icon: <Lightbulb className="h-4 w-4" />, title: "Decide Later", desc: "You can always decide to raise equity later — from a validated position with published results.", color: "#3B82F6" },
+   581→            { icon: <Scale className="h-4 w-4" />, title: "Clean Legal Framework", desc: "Contract-based partnerships are simpler, faster, and don't require complex shareholder agreements.", color: "#8B5CF6" },
+   582→          ].map((item) => (
+   583→            <div key={item.title} className="rounded-lg border p-4" style={{ borderColor: `${item.color}20`, background: `${item.color}05` }}>
+   584→              <div className="flex items-center gap-2 mb-2">
+   585→                <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: `${item.color}15`, color: item.color }}>{item.icon}</div>
+   586→                <span className="text-xs font-bold" style={{ color: item.color }}>{item.title}</span>
+   587→              </div>
+   588→              <p className="font-mono text-[9px] text-muted-foreground">{item.desc}</p>
+   589→            </div>
+   590→          ))}
+   591→        </div>
+   592→      </motion.div>
+   593→    </div>
+   594→  );
+   595→}
+   596→
+   597→// ════════════════════════════════════════════════════════════════════════
+   598→// CONTRACT-BASED PARTNERSHIPS TAB
+   599→// ════════════════════════════════════════════════════════════════════════
+   600→
+   601→function ContractsTab() {
+   602→  const [expandedPartner, setExpandedPartner] = useState<string | null>(null);
+   603→
+   604→  return (
+   605→    <div className="space-y-6">
+   606→      {/* Header */}
+   607→      <motion.div
+   608→        className="rounded-xl border border-[#3B82F6]/20 p-5"
+   609→        style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(15,15,24,0.6))" }}
+   610→        initial={{ opacity: 0, y: 10 }}
+   611→        animate={{ opacity: 1, y: 0 }}
+   612→        transition={{ duration: 0.4 }}
+   613→      >
+   614→        <div className="flex items-start gap-4">
+   615→          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#3B82F6]/30" style={{ background: "#3B82F615" }}>
+   616→            <FileCheck2 className="h-6 w-6" style={{ color: "#3B82F6" }} />
+   617→          </div>
+   618→          <div className="flex-1">
+   619→            <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>
+   620→              Partnership Through Contracts, Not Equity
+   621→            </h3>
+   622→            <p className="mt-1 text-sm text-muted-foreground">
+   623→              Each partner type engages through a specific agreement that defines their benefits, obligations, and targets — without any equity transfer.
+   624→            </p>
+   625→          </div>
+   626→        </div>
+   627→      </motion.div>
+   628→
+   629→      {/* Partner Cards */}
+   630→      <div className="grid gap-4 sm:grid-cols-2">
+   631→        {CONSORTIUM_PARTNERS.map((partner) => {
+   632→          const isExpanded = expandedPartner === partner.id;
+   633→          const statusCol = partnerStatusColor(partner.status);
+   634→          return (
+   635→            <motion.div
+   636→              key={partner.id}
+   637→              className="rounded-xl border p-5 cursor-pointer transition-all"
+   638→              style={{ borderColor: `${partner.color}30`, background: "rgba(15,15,24,0.6)" }}
+   639→              onClick={() => setExpandedPartner(isExpanded ? null : partner.id)}
+   640→              whileHover={{ borderColor: `${partner.color}60` }}
+   641→            >
+   642→              {/* Header */}
+   643→              <div className="flex items-start justify-between mb-3">
+   644→                <div className="flex items-center gap-3">
+   645→                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ background: `${partner.color}15`, color: partner.color }}>
+   646→                    {partnerIcon(partner.icon)}
+   647→                  </div>
+   648→                  <div>
+   649→                    <h4 className="text-sm font-bold" style={{ color: partner.color }}>{partner.name}</h4>
+   650→                    <span className="font-mono text-[9px] text-muted-foreground">{partner.agreementLabel}</span>
+   651→                  </div>
+   652→                </div>
+   653→                <div className="flex items-center gap-2">
+   654→                  <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${statusCol}30`, background: `${statusCol}10`, color: statusCol }}>
+   655→                    <span className="h-1 w-1 rounded-full" style={{ background: statusCol }} />
+   656→                    {partnerStatusLabel(partner.status)}
+   657→                  </span>
+   658→                  <ChevronDown className={`h-4 w-4 text-muted-foreground/50 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+   659→                </div>
+   660→              </div>
+   661→
+   662→              {/* Agreement type badge */}
+   663→              <div className="rounded-lg border p-2 mb-3" style={{ borderColor: `${partner.color}20`, background: `${partner.color}05` }}>
+   664→                <div className="flex items-center gap-2">
+   665→                  <FileText className="h-3.5 w-3.5" style={{ color: partner.color }} />
+   666→                  <span className="font-mono text-[9px] font-bold" style={{ color: partner.color }}>Agreement: {partner.agreementLabel}</span>
+   667→                </div>
+   668→              </div>
+   669→
+   670→              {/* Targets */}
+   671→              <div className="mb-3">
+   672→                <div className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-1">Target Institutions</div>
+   673→                <div className="flex flex-wrap gap-1.5">
+   674→                  {partner.targets.map((t) => (
+   675→                    <span key={t} className="rounded-md border border-white/[0.06] px-2 py-0.5 font-mono text-[9px] text-foreground/80" style={{ background: "rgba(15,15,24,0.4)" }}>{t}</span>
+   676→                  ))}
+   677→                </div>
+   678→              </div>
+   679→
+   680→              {/* Rationale */}
+   681→              <div className="rounded-lg border border-white/[0.04] p-2" style={{ background: "rgba(10,10,18,0.4)" }}>
+   682→                <p className="font-mono text-[9px] text-muted-foreground">{partner.rationale}</p>
+   683→              </div>
+   684→
+   685→              {/* Expanded content */}
+   686→              <AnimatePresence>
+   687→                {isExpanded && (
+   688→                  <motion.div
+   689→                    initial={{ height: 0, opacity: 0 }}
+   690→                    animate={{ height: "auto", opacity: 1 }}
+   691→                    exit={{ height: 0, opacity: 0 }}
+   692→                    transition={{ duration: 0.25 }}
+   693→                    className="overflow-hidden"
+   694→                  >
+   695→                    <div className="mt-4 space-y-4 border-t border-white/[0.06] pt-4">
+   696→                      {/* Benefits */}
+   697→                      <div>
+   698→                        <div className="font-mono text-[8px] uppercase tracking-wider mb-2" style={{ color: "#10b981" }}>Benefits</div>
+   699→                        <div className="space-y-1.5">
+   700→                          {partner.benefits.map((b) => (
+   701→                            <div key={b} className="flex items-center gap-2">
+   702→                              <CheckCircle2 className="h-3 w-3 flex-none" style={{ color: "#10b981" }} />
+   703→                              <span className="font-mono text-[9px] text-foreground">{b}</span>
+   704→                            </div>
+   705→                          ))}
+   706→                        </div>
+   707→                      </div>
+   708→
+   709→                      {/* Obligations */}
+   710→                      <div>
+   711→                        <div className="font-mono text-[8px] uppercase tracking-wider mb-2" style={{ color: "#3B82F6" }}>Obligations</div>
+   712→                        <div className="space-y-1.5">
+   713→                          {partner.obligations.map((o) => (
+   714→                            <div key={o} className="flex items-center gap-2">
+   715→                              <ClipboardList className="h-3 w-3 flex-none" style={{ color: "#3B82F6" }} />
+   716→                              <span className="font-mono text-[9px] text-foreground">{o}</span>
+   717→                            </div>
+   718→                          ))}
+   719→                        </div>
+   720→                      </div>
+   721→                    </div>
+   722→                  </motion.div>
+   723→                )}
+   724→              </AnimatePresence>
+   725→            </motion.div>
+   726→          );
+   727→        })}
+   728→      </div>
+   729→
+   730→      {/* Comparison Table */}
+   731→      <motion.div
+   732→        className="rounded-xl border border-white/[0.06] p-5"
+   733→        style={{ background: "rgba(15,15,24,0.6)" }}
+   734→        initial={{ opacity: 0 }}
+   735→        animate={{ opacity: 1 }}
+   736→        transition={{ duration: 0.4, delay: 0.2 }}
+   737→      >
+   738→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Agreement Comparison</h3>
+   739→        <div className="overflow-x-auto">
+   740→          <table className="w-full">
+   741→            <thead>
+   742→              <tr className="border-b border-white/[0.06]">
+   743→                <th className="px-3 py-2 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Partner Type</th>
+   744→                <th className="px-3 py-2 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Agreement</th>
+   745→                <th className="px-3 py-2 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Equity?</th>
+   746→                <th className="px-3 py-2 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Status</th>
+   747→              </tr>
+   748→            </thead>
+   749→            <tbody>
+   750→              {CONSORTIUM_PARTNERS.map((p) => (
+   751→                <tr key={p.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+   752→                  <td className="px-3 py-2 font-mono text-[10px]" style={{ color: p.color }}>{p.name}</td>
+   753→                  <td className="px-3 py-2 font-mono text-[10px] text-foreground">{p.agreementLabel}</td>
+   754→                  <td className="px-3 py-2 font-mono text-[10px] font-bold" style={{ color: "#10b981" }}>None</td>
+   755→                  <td className="px-3 py-2">
+   756→                    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9px]" style={{ borderColor: `${partnerStatusColor(p.status)}30`, background: `${partnerStatusColor(p.status)}10`, color: partnerStatusColor(p.status) }}>
+   757→                      {partnerStatusLabel(p.status)}
+   758→                    </span>
+   759→                  </td>
+   760→                </tr>
+   761→              ))}
+   762→            </tbody>
+   763→          </table>
+   764→        </div>
+   765→      </motion.div>
+   766→    </div>
+   767→  );
+   768→}
+   769→
+   770→// ════════════════════════════════════════════════════════════════════════
+   771→// IP BOUNDARIES TAB
+   772→// ════════════════════════════════════════════════════════════════════════
+   773→
+   774→function IPBoundariesTab() {
+   775→  return (
+   776→    <div className="space-y-6">
+   777→      {/* Statement Banner */}
+   778→      <motion.div
+   779→        className="rounded-xl border border-[#C9A84C]/20 p-5 text-center"
+   780→        style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,15,24,0.6))" }}
+   781→        initial={{ opacity: 0, y: 10 }}
+   782→        animate={{ opacity: 1, y: 0 }}
+   783→        transition={{ duration: 0.4 }}
+   784→      >
+   785→        <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-full border-2 border-[#C9A84C]/40" style={{ background: "#C9A84C15" }}>
+   786→          <Scale className="h-7 w-7" style={{ color: "#C9A84C" }} />
+   787→        </div>
+   788→        <h3 className="mt-4 text-lg font-bold" style={{ fontFamily: "var(--font-geist-sans)", color: "#C9A84C" }}>
+   789→          Co-authorship ≠ ownership transfer
+   790→        </h3>
+   791→        <p className="mt-2 text-sm text-muted-foreground max-w-lg mx-auto">
+   792→          Joint research outputs can be co-authored without transferring ownership of the VVU platform. Clear IP boundaries protect core technology while enabling collaborative research.
+   793→        </p>
+   794→      </motion.div>
+   795→
+   796→      {/* IP Categories */}
+   797→      <div className="grid gap-6 lg:grid-cols-2">
+   798→        {IP_OWNERSHIP.map((cat) => (
+   799→          <motion.div
+   800→            key={cat.id}
+   801→            className="rounded-xl border p-5"
+   802→            style={{ borderColor: `${cat.color}30`, background: "rgba(15,15,24,0.6)" }}
+   803→            initial={{ opacity: 0, y: 10 }}
+   804→            animate={{ opacity: 1, y: 0 }}
+   805→            transition={{ duration: 0.4 }}
+   806→          >
+   807→            {/* Header */}
+   808→            <div className="flex items-center gap-3 mb-4">
+   809→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border" style={{ borderColor: `${cat.color}40`, background: `${cat.color}15`, color: cat.color }}>
+   810→                {ipIcon(cat.icon)}
+   811→              </div>
+   812→              <div className="flex-1">
+   813→                <h4 className="text-sm font-bold" style={{ color: cat.color }}>{cat.label}</h4>
+   814→                <div className="flex items-center gap-2 mt-1">
+   815→                  <span className="rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${cat.color}30`, background: `${cat.color}10`, color: cat.color }}>
+   816→                    {cat.owner === "vvu" ? "VVU Sole Owner" : "Joint Outputs"}
+   817→                  </span>
+   818→                </div>
+   819→              </div>
+   820→            </div>
+   821→
+   822→            {/* Description */}
+   823→            <p className="mb-4 font-mono text-[9px] text-muted-foreground">{cat.description}</p>
+   824→
+   825→            {/* Items */}
+   826→            <div className="space-y-2">
+   827→              {cat.items.map((item) => (
+   828→                <motion.div
+   829→                  key={item}
+   830→                  className="flex items-center gap-2 rounded-lg border border-white/[0.04] p-2.5"
+   831→                  style={{ background: `${cat.color}05` }}
+   832→                  initial={{ opacity: 0, x: -10 }}
+   833→                  animate={{ opacity: 1, x: 0 }}
+   834→                  transition={{ duration: 0.2 }}
+   835→                >
+   836→                  {cat.owner === "vvu" ? (
+   837→                    <Lock className="h-3.5 w-3.5 flex-none" style={{ color: "#C9A84C" }} />
+   838→                  ) : (
+   839→                    <BookOpen className="h-3.5 w-3.5 flex-none" style={{ color: "#3B82F6" }} />
+   840→                  )}
+   841→                  <span className="font-mono text-[9px] text-foreground">{item}</span>
+   842→                </motion.div>
+   843→              ))}
+   844→            </div>
+   845→          </motion.div>
+   846→        ))}
+   847→      </div>
+   848→
+   849→      {/* Boundary Enforcement */}
+   850→      <motion.div
+   851→        className="rounded-xl border border-white/[0.06] p-5"
+   852→        style={{ background: "rgba(15,15,24,0.6)" }}
+   853→        initial={{ opacity: 0 }}
+   854→        animate={{ opacity: 1 }}
+   855→        transition={{ duration: 0.4, delay: 0.2 }}
+   856→      >
+   857→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Boundary Enforcement</h3>
+   858→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+   859→          {[
+   860→            { icon: <Shield className="h-4 w-4" />, title: "Platform Protection", desc: "VVU core tech cannot be transferred through any agreement", color: "#C9A84C" },
+   861→            { icon: <FileCheck2 className="h-4 w-4" />, title: "Research Access", desc: "Partners get research access through contracts, not ownership", color: "#3B82F6" },
+   862→            { icon: <Lock className="h-4 w-4" />, title: "IP Clauses", desc: "Every agreement includes explicit IP boundary clauses", color: "#10b981" },
+   863→            { icon: <Scale className="h-4 w-4" />, title: "Legal Framework", desc: "SA IP law + contract law provide enforcement mechanisms", color: "#8B5CF6" },
+   864→          ].map((item) => (
+   865→            <div key={item.title} className="rounded-lg border p-4" style={{ borderColor: `${item.color}20`, background: `${item.color}05` }}>
+   866→              <div className="flex h-7 w-7 items-center justify-center rounded-lg mb-2" style={{ background: `${item.color}15`, color: item.color }}>{item.icon}</div>
+   867→              <div className="text-xs font-bold" style={{ color: item.color }}>{item.title}</div>
+   868→              <p className="mt-1 font-mono text-[9px] text-muted-foreground">{item.desc}</p>
+   869→            </div>
+   870→          ))}
+   871→        </div>
+   872→      </motion.div>
+   873→    </div>
+   874→  );
+   875→}
+   876→
+   877→// ════════════════════════════════════════════════════════════════════════
+   878→// THREE-PHASE ROADMAP TAB
+   879→// ════════════════════════════════════════════════════════════════════════
+   880→
+   881→function RoadmapTab() {
+   882→  return (
+   883→    <div className="space-y-6">
+   884→      {/* Header */}
+   885→      <motion.div
+   886→        className="rounded-xl border border-[#C9A84C]/20 p-5"
+   887→        style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,15,24,0.6))" }}
+   888→        initial={{ opacity: 0, y: 10 }}
+   889→        animate={{ opacity: 1, y: 0 }}
+   890→        transition={{ duration: 0.4 }}
+   891→      >
+   892→        <div className="flex items-start gap-4">
+   893→          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#C9A84C]/30" style={{ background: "#C9A84C15" }}>
+   894→            <Route className="h-6 w-6" style={{ color: "#C9A84C" }} />
+   895→          </div>
+   896→          <div className="flex-1">
+   897→            <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>
+   898→              Three-Phase Strategic Roadmap
+   899→            </h3>
+   900→            <p className="mt-1 text-sm text-muted-foreground">
+   901→              Research Enablement → Industrial Validation → Commercialisation Decision — each phase builds on validated outcomes.
+   902→            </p>
+   903→          </div>
+   904→        </div>
+   905→      </motion.div>
+   906→
+   907→      {/* Phase Timeline */}
+   908→      <div className="relative space-y-0">
+   909→        {/* Connecting line */}
+   910→        <div className="absolute left-6 top-8 bottom-8 w-px bg-white/[0.06] hidden sm:block" />
+   911→
+   912→        {ROADMAP_PHASES.map((phase, idx) => {
+   913→          const phaseColor = roadmapStatusColor(phase.status);
+   914→          return (
+   915→            <motion.div
+   916→              key={phase.id}
+   917→              className="relative mb-6 last:mb-0"
+   918→              initial={{ opacity: 0, x: -20 }}
+   919→              animate={{ opacity: 1, x: 0 }}
+   920→              transition={{ duration: 0.4, delay: idx * 0.15 }}
+   921→            >
+   922→              {/* Timeline dot */}
+   923→              <div className="hidden sm:flex absolute left-4 top-6 h-8 w-8 items-center justify-center rounded-full border-2" style={{ borderColor: phase.color, background: phase.status === "active" ? phase.color : "transparent" }}>
+   924→                {roadmapIcon(phase.icon)}
+   925→              </div>
+   926→              <div className="sm:ml-16">
+   927→                <div className="rounded-xl border p-5" style={{ borderColor: `${phase.color}30`, background: "rgba(15,15,24,0.6)" }}>
+   928→                  {/* Phase header */}
+   929→                  <div className="flex items-center justify-between mb-3">
+   930→                    <div className="flex items-center gap-3">
+   931→                      <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${phase.color}15`, color: phase.color }}>
+   932→                        {roadmapIcon(phase.icon)}
+   933→                      </div>
+   934→                      <div>
+   935→                        <div className="flex items-center gap-2">
+   936→                          <span className="text-sm font-bold" style={{ color: phase.color }}>{phase.phase}: {phase.title}</span>
+   937→                        </div>
+   938→                        <span className="font-mono text-[9px] text-muted-foreground">{phase.duration}</span>
+   939→                      </div>
+   940→                    </div>
+   941→                    <span className="rounded-full border px-2.5 py-1 font-mono text-[9px] font-bold" style={{ borderColor: `${phaseColor}40`, background: `${phaseColor}10`, color: phaseColor }}>
+   942→                      {phase.status}
+   943→                    </span>
+   944→                  </div>
+   945→
+   946→                  <p className="mb-4 font-mono text-[9px] text-muted-foreground">{phase.subtitle}</p>
+   947→
+   948→                  {/* Deliverables */}
+   949→                  <div className="mb-4">
+   950→                    <div className="font-mono text-[8px] uppercase tracking-wider mb-2" style={{ color: phase.color }}>Deliverables</div>
+   951→                    <div className="space-y-1.5">
+   952→                      {phase.deliverables.map((d) => (
+   953→                        <div key={d} className="flex items-center gap-2 rounded-md border border-white/[0.04] p-2" style={{ background: `${phase.color}05` }}>
+   954→                          <Target className="h-3 w-3 flex-none" style={{ color: phase.color }} />
+   955→                          <span className="font-mono text-[9px] text-foreground">{d}</span>
+   956→                        </div>
+   957→                      ))}
+   958→                    </div>
+   959→                  </div>
+   960→
+   961→                  {/* Outcomes */}
+   962→                  <div className="mb-3">
+   963→                    <div className="font-mono text-[8px] uppercase tracking-wider mb-2" style={{ color: "#10b981" }}>Expected Outcomes</div>
+   964→                    <div className="space-y-1.5">
+   965→                      {phase.outcomes.map((o) => (
+   966→                        <div key={o} className="flex items-center gap-2">
+   967→                          <CheckCircle2 className="h-3 w-3 flex-none" style={{ color: "#10b981" }} />
+   968→                          <span className="font-mono text-[9px] text-foreground">{o}</span>
+   969→                        </div>
+   970→                      ))}
+   971→                    </div>
+   972→                  </div>
+   973→
+   974→                  {/* Partners */}
+   975→                  <div className="flex flex-wrap gap-1.5 mb-3">
+   976→                    {phase.partners.map((p) => (
+   977→                      <span key={p} className="rounded-md border border-white/[0.06] px-2 py-0.5 font-mono text-[9px] text-muted-foreground" style={{ background: "rgba(15,15,24,0.4)" }}>{p}</span>
+   978→                    ))}
+   979→                  </div>
+   980→
+   981→                  {/* Key Decision Callout */}
+   982→                  {phase.keyDecision && (
+   983→                    <motion.div
+   984→                      className="rounded-lg border-2 border-[#C9A84C]/40 p-4 mt-2"
+   985→                      style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.1), rgba(15,15,24,0.4))" }}
+   986→                      initial={{ opacity: 0, scale: 0.95 }}
+   987→                      animate={{ opacity: 1, scale: 1 }}
+   988→                      transition={{ duration: 0.4, delay: 0.3 }}
+   989→                    >
+   990→                      <div className="flex items-center gap-2 mb-2">
+   991→                        <Medal className="h-4 w-4" style={{ color: "#C9A84C" }} />
+   992→                        <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>Key Decision</span>
+   993→                      </div>
+   994→                      <p className="font-mono text-[9px] text-foreground leading-relaxed">{phase.keyDecision}</p>
+   995→                    </motion.div>
+   996→                  )}
+   997→                </div>
+   998→              </div>
+   999→            </motion.div>
+  1000→          );
+  1001→        })}
+  1002→      </div>
+  1003→
+  1004→      {/* Progression Principle */}
+  1005→      <motion.div
+  1006→        className="rounded-xl border border-white/[0.06] p-5"
+  1007→        style={{ background: "rgba(15,15,24,0.6)" }}
+  1008→        initial={{ opacity: 0 }}
+  1009→        animate={{ opacity: 1 }}
+  1010→        transition={{ duration: 0.4, delay: 0.4 }}
+  1011→      >
+  1012→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Progression Principle</h3>
+  1013→        <div className="grid gap-3 sm:grid-cols-3">
+  1014→          {[
+  1015→            { phase: "Phase 1", principle: "Validate before you invest", desc: "Publish results, secure grants, prove the technology works under real conditions.", color: "#10b981" },
+  1016→            { phase: "Phase 2", principle: "Optimize from evidence", desc: "Use validated data to optimize hardware, certify reliability, and formalize partnerships.", color: "#3B82F6" },
+  1017→            { phase: "Phase 3", principle: "Decide from strength", desc: "Negotiate from a validated position — not from a concept. Equity decisions only after proof.", color: "#C9A84C" },
+  1018→          ].map((item) => (
+  1019→            <div key={item.phase} className="rounded-lg border p-4 text-center" style={{ borderColor: `${item.color}20`, background: `${item.color}05` }}>
+  1020→              <div className="font-mono text-[9px] uppercase tracking-wider mb-1" style={{ color: item.color }}>{item.phase}</div>
+  1021→              <div className="text-sm font-bold" style={{ color: item.color }}>{item.principle}</div>
+  1022→              <p className="mt-2 font-mono text-[9px] text-muted-foreground">{item.desc}</p>
+  1023→            </div>
+  1024→          ))}
+  1025→        </div>
+  1026→      </motion.div>
+  1027→    </div>
+  1028→  );
+  1029→}
+  1030→
+  1031→// ════════════════════════════════════════════════════════════════════════
+  1032→// DIGITAL TWIN TAB — 3D CAD Layout + Module Status + Ownership
+  1033→// ════════════════════════════════════════════════════════════════════════
+  1034→
+  1035→function DigitalTwinTab({
+  1036→  selectedModule,
+  1037→  setSelectedModule,
+  1038→  hoveredModule,
+  1039→  setHoveredModule,
+  1040→}: {
+  1041→  selectedModule: string | null;
+  1042→  setSelectedModule: (id: string | null) => void;
+  1043→  hoveredModule: string | null;
+  1044→  setHoveredModule: (id: string | null) => void;
+  1045→}) {
+  1046→  const modules = HBK_CAD_MODULES.filter(m => m.id !== "base-plate");
+  1047→  const basePlate = HBK_CAD_MODULES[0];
+  1048→  const selected = selectedModule ? HBK_CAD_MODULES.find(m => m.id === selectedModule) : null;
+  1049→
+  1050→  // Scale: 1mm = 0.8px for the layout
+  1051→  const scale = 0.8;
+  1052→  const canvasW = 460 * scale;
+  1053→  const canvasH = 360 * scale;
+  1054→
+  1055→  return (
+  1056→    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+  1057→      {/* LEFT: CAD Layout */}
+  1058→      <div className="space-y-4">
+  1059→        {/* 3D Layout Canvas */}
+  1060→        <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1061→          <div className="mb-3 flex items-center justify-between">
+  1062→            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">HBK Mk-II CAD Layout</h3>
+  1063→            <span className="font-mono text-[9px] text-muted-foreground">460×360×180mm IP67 Shell</span>
+  1064→          </div>
+  1065→          <div className="relative mx-auto" style={{ width: canvasW, height: canvasH, background: "rgba(20,20,30,0.8)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+  1066→            {/* Grid overlay */}
+  1067→            <svg className="absolute inset-0" width={canvasW} height={canvasH} style={{ opacity: 0.08 }}>
+  1068→              {Array.from({ length: 10 }).map((_, i) => (
+  1069→                <line key={`vl-${i}`} x1={(i + 1) * canvasW / 11} y1={0} x2={(i + 1) * canvasW / 11} y2={canvasH} stroke="white" strokeWidth={0.5} />
+  1070→              ))}
+  1071→              {Array.from({ length: 8 }).map((_, i) => (
+  1072→                <line key={`hl-${i}`} x1={0} y1={(i + 1) * canvasH / 9} x2={canvasW} y2={(i + 1) * canvasH / 9} stroke="white" strokeWidth={0.5} />
+  1073→              ))}
+  1074→            </svg>
+  1075→
+  1076→            {/* Module blocks */}
+  1077→            {modules.map((mod) => {
+  1078→              const x = mod.position.x * scale;
+  1079→              const y = mod.position.y * scale;
+  1080→              const w = mod.length * scale;
+  1081→              const h = mod.width * scale;
+  1082→              const isHovered = hoveredModule === mod.id;
+  1083→              const isSelected = selectedModule === mod.id;
+  1084→              return (
+  1085→                <motion.div
+  1086→                  key={mod.id}
+  1087→                  className="absolute cursor-pointer"
+  1088→                  style={{ left: x, top: y, width: w, height: h }}
+  1089→                  onMouseEnter={() => setHoveredModule(mod.id)}
+  1090→                  onMouseLeave={() => setHoveredModule(null)}
+  1091→                  onClick={() => setSelectedModule(isSelected ? null : mod.id)}
+  1092→                  whileHover={{ scale: 1.02 }}
+  1093→                  whileTap={{ scale: 0.98 }}
+  1094→                >
+  1095→                  <div
+  1096→                    className="flex h-full w-full items-center justify-center rounded-sm border transition-all"
+  1097→                    style={{
+  1098→                      background: `${mod.color}${isHovered ? "40" : "20"}`,
+  1099→                      borderColor: isSelected ? mod.color : `${mod.color}60`,
+  1100→                      borderWidth: isSelected ? 2 : 1,
+  1101→                      boxShadow: isSelected ? `0 0 12px ${mod.color}40` : "none",
+  1102→                    }}
+  1103→                  >
+  1104→                    <div className="text-center">
+  1105→                      <div className="font-mono text-[8px] font-bold" style={{ color: mod.color }}>{mod.label.split(" ")[0]}</div>
+  1106→                      <div className="font-mono text-[7px] text-muted-foreground/60">{mod.length}×{mod.width}</div>
+  1107→                    </div>
+  1108→                  </div>
+  1109→                  {/* Status indicator */}
+  1110→                  <div className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-black/50" style={{ background: statusColor(mod.status) }} />
+  1111→                </motion.div>
+  1112→              );
+  1113→            })}
+  1114→
+  1115→            {/* Coordinate labels */}
+  1116→            <div className="absolute bottom-1 left-1 font-mono text-[7px] text-muted-foreground/40">X=0</div>
+  1117→            <div className="absolute bottom-1 right-1 font-mono text-[7px] text-muted-foreground/40">X=460</div>
+  1118→            <div className="absolute left-1 top-1 font-mono text-[7px] text-muted-foreground/40">Y=0</div>
+  1119→            <div className="absolute bottom-6 left-1 font-mono text-[7px] text-muted-foreground/40">Y=360</div>
+  1120→
+  1121→            {/* Isolation zone indicator */}
+  1122→            <svg className="absolute inset-0 pointer-events-none" width={canvasW} height={canvasH}>
+  1123→              <line x1={20 * scale} y1={180 * scale} x2={160 * scale} y2={120 * scale} stroke="#C9A84C" strokeWidth={1} strokeDasharray="4 3" opacity={0.4} />
+  1124→              <text x={80 * scale} y={155 * scale} fill="#C9A84C" fontSize={7} opacity={0.5} fontFamily="monospace">isolation zone</text>
+  1125→            </svg>
+  1126→          </div>
+  1127→        </div>
+  1128→
+  1129→        {/* Module Status Cards */}
+  1130→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+  1131→          {modules.map((mod) => (
+  1132→            <motion.div
+  1133→              key={mod.id}
+  1134→              className={`rounded-lg border p-3 transition-all cursor-pointer ${selectedModule === mod.id ? "ring-1" : ""}`}
+  1135→              style={{
+  1136→                borderColor: `${mod.color}30`,
+  1137→                background: "rgba(15,15,24,0.6)",
+  1138→                ringColor: mod.color,
+  1139→              }}
+  1140→              onClick={() => setSelectedModule(selectedModule === mod.id ? null : mod.id)}
+  1141→              whileHover={{ borderColor: `${mod.color}60` }}
+  1142→            >
+  1143→              <div className="flex items-start justify-between">
+  1144→                <div className="flex items-center gap-2">
+  1145→                  <div className="h-2 w-2 rounded-full" style={{ background: statusColor(mod.status) }} />
+  1146→                  <span className="font-mono text-[9px] font-bold" style={{ color: mod.color }}>{mod.name.replace(/_/g, " ")}</span>
+  1147→                </div>
+  1148→                <span className="font-mono text-[8px] text-muted-foreground/50">{mod.status}</span>
+  1149→              </div>
+  1150→              <div className="mt-2 grid grid-cols-2 gap-2">
+  1151→                <div className="flex items-center gap-1.5">
+  1152→                  <Thermometer className="h-3 w-3 text-muted-foreground/50" />
+  1153→                  <span className="font-mono text-[9px] text-muted-foreground">{mod.tempC}°C</span>
+  1154→                </div>
+  1155→                <div className="flex items-center gap-1.5">
+  1156→                  <Zap className="h-3 w-3 text-muted-foreground/50" />
+  1157→                  <span className="font-mono text-[9px] text-muted-foreground">{mod.loadPct}%</span>
+  1158→                </div>
+  1159→                <div className="flex items-center gap-1.5">
+  1160→                  <Box className="h-3 w-3 text-muted-foreground/50" />
+  1161→                  <span className="font-mono text-[9px] text-muted-foreground">{mod.length}×{mod.width}×{mod.height}</span>
+  1162→                </div>
+  1163→                <div className="flex items-center gap-1.5">
+  1164→                  <Target className="h-3 w-3 text-muted-foreground/50" />
+  1165→                  <span className="font-mono text-[9px] text-muted-foreground">({mod.position.x},{mod.position.y})</span>
+  1166→                </div>
+  1167→              </div>
+  1168→              {/* Load bar */}
+  1169→              <div className="mt-2 h-1 w-full rounded-full bg-white/[0.06]">
+  1170→                <div className="h-full rounded-full transition-all" style={{ width: `${mod.loadPct}%`, background: mod.color }} />
+  1171→              </div>
+  1172→            </motion.div>
+  1173→          ))}
+  1174→        </div>
+  1175→      </div>
+  1176→
+  1177→      {/* RIGHT: Ownership + Selected Module Details */}
+  1178→      <div className="space-y-4">
+  1179→        {/* VVU Ownership Badge */}
+  1180→        <div className="rounded-xl border border-[#C9A84C]/20 p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1181→          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Ownership</h3>
+  1182→          {OWNERSHIP_STRUCTURE.map((entry) => (
+  1183→            <div key={entry.holder}>
+  1184→              <div className="flex items-center justify-between">
+  1185→                <div className="flex items-center gap-2">
+  1186→                  <Shield className="h-3.5 w-3.5" style={{ color: entry.color }} />
+  1187→                  <span className="font-mono text-[10px] font-bold" style={{ color: entry.color }}>{entry.holder}</span>
+  1188→                </div>
+  1189→                <span className="font-mono text-[10px] text-foreground">{entry.pct}%</span>
+  1190→              </div>
+  1191→              <div className="mt-1 h-2 w-full rounded-full bg-white/[0.06]">
+  1192→                <motion.div
+  1193→                  className="h-full rounded-full"
+  1194→                  style={{ background: entry.color }}
+  1195→                  initial={{ width: 0 }}
+  1196→                  animate={{ width: `${entry.pct}%` }}
+  1197→                  transition={{ duration: 0.8, ease: "easeOut" }}
+  1198→                />
+  1199→              </div>
+  1200→              <p className="mt-0.5 font-mono text-[8px] text-muted-foreground/60">{entry.description}</p>
+  1201→            </div>
+  1202→          ))}
+  1203→          <div className="mt-3 rounded-lg border border-[#C9A84C]/20 p-2 text-center" style={{ background: "#C9A84C08" }}>
+  1204→            <span className="font-mono text-[9px] font-bold" style={{ color: "#C9A84C" }}>VVU 100% — Clean Capitalisation Table</span>
+  1205→          </div>
+  1206→        </div>
+  1207→
+  1208→        {/* Selected Module Details */}
+  1209→        {selected ? (
+  1210→          <motion.div
+  1211→            className="rounded-xl border p-4"
+  1212→            style={{ borderColor: `${selected.color}30`, background: "rgba(15,15,24,0.6)" }}
+  1213→            initial={{ opacity: 0, scale: 0.95 }}
+  1214→            animate={{ opacity: 1, scale: 1 }}
+  1215→          >
+  1216→            <h3 className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: selected.color }}>{selected.label}</h3>
+  1217→            <p className="mb-3 font-mono text-[9px] text-muted-foreground">{selected.description}</p>
+  1218→            <div className="space-y-2">
+  1219→              {[
+  1220→                ["Status", selected.status, statusColor(selected.status)],
+  1221→                ["Dimensions", `${selected.length}×${selected.width}×${selected.height} mm`, undefined],
+  1222→                ["Position (X,Y,Z)", `(${selected.position.x}, ${selected.position.y}, ${selected.position.z})`, undefined],
+  1223→                ["Temperature", `${selected.tempC}°C`, undefined],
+  1224→                ["Load", `${selected.loadPct}%`, undefined],
+  1225→                ["FreeCAD Name", selected.name, undefined],
+  1226→              ].map(([label, value, color]) => (
+  1227→                <div key={label as string} className="flex items-center justify-between">
+  1228→                  <span className="font-mono text-[9px] text-muted-foreground">{label as string}</span>
+  1229→                  <span className="font-mono text-[9px]" style={{ color: color as string || "var(--tw-prose-body)", fontWeight: color ? "bold" : "normal" }}>{value as string}</span>
+  1230→                </div>
+  1231→              ))}
+  1232→            </div>
+  1233→          </motion.div>
+  1234→        ) : (
+  1235→          <div className="rounded-xl border border-white/[0.06] p-4 text-center" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1236→            <Eye className="mx-auto h-8 w-8 text-muted-foreground/30" />
+  1237→            <p className="mt-2 font-mono text-[9px] text-muted-foreground/50">Click a module to inspect</p>
+  1238→          </div>
+  1239→        )}
+  1240→
+  1241→        {/* Enclosure Spec */}
+  1242→        <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1243→          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-foreground">Enclosure Spec</h3>
+  1244→          <div className="space-y-1.5">
+  1245→            {[
+  1246→              ["Shell", "IP67 Ruggedized Transit"],
+  1247→              ["Outer Dim", "500×400×180 mm"],
+  1248→              ["Working Vol", "460×360×3 mm (base)"],
+  1249→              ["Material", "6061-T6 Anodized Al"],
+  1250→              ["Fasteners", "316 Stainless Steel"],
+  1251→              ["Compute", "AMD Ryzen AI APU"],
+  1252→              ["Edge", "Kria SoM"],
+  1253→              ["Isolation", "Analog→Digital Clearance"],
+  1254→            ].map(([k, v]) => (
+  1255→              <div key={k} className="flex items-center justify-between">
+  1256→                <span className="font-mono text-[9px] text-muted-foreground">{k}</span>
+  1257→                <span className="font-mono text-[9px] text-foreground">{v}</span>
+  1258→              </div>
+  1259→            ))}
+  1260→          </div>
+  1261→        </div>
+  1262→      </div>
+  1263→    </div>
+  1264→  );
+  1265→}
+  1266→
+  1267→// ════════════════════════════════════════════════════════════════════════
+  1268→// RESOURCES TAB
+  1269→// ════════════════════════════════════════════════════════════════════════
+  1270→
+  1271→function ResourcesTab() {
+  1272→  const [filterCategory, setFilterCategory] = useState<string>("all");
+  1273→  const [filterStatus, setFilterStatus] = useState<string>("all");
+  1274→
+  1275→  const resources = RESOURCE_REGISTER;
+  1276→  const filtered = useMemo(() => {
+  1277→    return resources.filter(r => {
+  1278→      if (filterCategory !== "all" && r.category !== filterCategory) return false;
+  1279→      if (filterStatus !== "all" && r.status !== filterStatus) return false;
+  1280→      return true;
+  1281→    });
+  1282→  }, [filterCategory, filterStatus]);
+  1283→
+  1284→  const totalNeeded = resources.reduce((a, r) => a + r.qtyNeeded, 0);
+  1285→  const totalCommitted = resources.reduce((a, r) => a + r.qtyCommitted, 0);
+  1286→  const urgentCount = resources.filter(r => r.status === "urgent").length;
+  1287→  const securedCount = resources.filter(r => r.status === "secured").length;
+  1288→
+  1289→  return (
+  1290→    <div className="space-y-6">
+  1291→      {/* Summary Cards */}
+  1292→      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  1293→        {[
+  1294→          { label: "Total Resources", value: resources.length, icon: <ClipboardList className="h-4 w-4" />, color: "#C9A84C" },
+  1295→          { label: "Committed", value: totalCommitted, icon: <CheckCircle2 className="h-4 w-4" />, color: "#10b981" },
+  1296→          { label: "Urgent Gaps", value: urgentCount, icon: <AlertTriangle className="h-4 w-4" />, color: "#EF4444" },
+  1297→          { label: "Secured", value: securedCount, icon: <Shield className="h-4 w-4" />, color: "#3B82F6" },
+  1298→        ].map(card => (
+  1299→          <div key={card.label} className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1300→            <div className="flex items-center justify-between">
+  1301→              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{card.label}</span>
+  1302→              <span style={{ color: card.color }}>{card.icon}</span>
+  1303→            </div>
+  1304→            <div className="mt-2 text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
+  1305→          </div>
+  1306→        ))}
+  1307→      </div>
+  1308→
+  1309→      {/* Progress bar */}
+  1310→      <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1311→        <div className="flex items-center justify-between mb-2">
+  1312→          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Overall Progress</span>
+  1313→          <span className="font-mono text-[9px] text-foreground">{totalCommitted}/{totalNeeded} items committed</span>
+  1314→        </div>
+  1315→        <div className="h-3 w-full rounded-full bg-white/[0.06]">
+  1316→          <div className="h-full rounded-full transition-all" style={{ width: `${totalNeeded > 0 ? (totalCommitted / totalNeeded) * 100 : 0}%`, background: "linear-gradient(90deg, #10b981, #C9A84C)" }} />
+  1317→        </div>
+  1318→      </div>
+  1319→
+  1320→      {/* Filters */}
+  1321→      <div className="flex flex-wrap gap-2">
+  1322→        <select
+  1323→          value={filterCategory}
+  1324→          onChange={e => setFilterCategory(e.target.value)}
+  1325→          className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 font-mono text-[10px] text-foreground"
+  1326→        >
+  1327→          <option value="all">All Categories</option>
+  1328→          <option value="operations">Operations</option>
+  1329→          <option value="engineering">Engineering</option>
+  1330→          <option value="connectivity">Connectivity</option>
+  1331→          <option value="field-ops">Field Ops</option>
+  1332→          <option value="workshop">Workshop</option>
+  1333→          <option value="branding">Branding</option>
+  1334→        </select>
+  1335→        <select
+  1336→          value={filterStatus}
+  1337→          onChange={e => setFilterStatus(e.target.value)}
+  1338→          className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 font-mono text-[10px] text-foreground"
+  1339→        >
+  1340→          <option value="all">All Status</option>
+  1341→          <option value="urgent">Urgent</option>
+  1342→          <option value="open">Open</option>
+  1343→          <option value="in_progress">In Progress</option>
+  1344→          <option value="secured">Secured</option>
+  1345→        </select>
+  1346→      </div>
+  1347→
+  1348→      {/* Resource Table */}
+  1349→      <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1350→        <div className="overflow-x-auto">
+  1351→          <table className="w-full">
+  1352→            <thead>
+  1353→              <tr className="border-b border-white/[0.06]">
+  1354→                {["Resource", "Needed", "Committed", "Gap", "Partner Type", "Status"].map(h => (
+  1355→                  <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{h}</th>
+  1356→                ))}
+  1357→              </tr>
+  1358→            </thead>
+  1359→            <tbody>
+  1360→              {filtered.map((r) => {
+  1361→                const gap = r.qtyNeeded - r.qtyCommitted;
+  1362→                return (
+  1363→                  <tr key={r.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+  1364→                    <td className="px-4 py-2.5 font-mono text-[10px] text-foreground">{r.resource}</td>
+  1365→                    <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">{r.qtyNeeded} {r.unit}</td>
+  1366→                    <td className="px-4 py-2.5 font-mono text-[10px] text-foreground">{r.qtyCommitted}</td>
+  1367→                    <td className="px-4 py-2.5 font-mono text-[10px]" style={{ color: gap > 0 ? "#EF4444" : "#10b981" }}>{gap}</td>
+  1368→                    <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">{r.partnerType}</td>
+  1369→                    <td className="px-4 py-2.5">
+  1370→                      <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9px]" style={{ borderColor: `${resourceStatusColor(r.status)}30`, background: `${resourceStatusColor(r.status)}10`, color: resourceStatusColor(r.status) }}>
+  1371→                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: resourceStatusColor(r.status) }} />
+  1372→                        {r.status}
+  1373→                      </span>
+  1374→                    </td>
+  1375→                  </tr>
+  1376→                );
+  1377→              })}
+  1378→            </tbody>
+  1379→          </table>
+  1380→        </div>
+  1381→      </div>
+  1382→    </div>
+  1383→  );
+  1384→}
+  1385→
+  1386→// ════════════════════════════════════════════════════════════════════════
+  1387→// 72h VALIDATION SIMULATION TAB
+  1388→// ════════════════════════════════════════════════════════════════════════
+  1389→
+  1390→function SimulationTab({
+  1391→  simRunning,
+  1392→  setSimRunning,
+  1393→  simElapsed,
+  1394→  setSimElapsed,
+  1395→  simHours,
+  1396→  simMins,
+  1397→  simSecs,
+  1398→}: {
+  1399→  simRunning: boolean;
+  1400→  setSimRunning: (v: boolean) => void;
+  1401→  simElapsed: number;
+  1402→  setSimElapsed: (v: number) => void;
+  1403→  simHours: number;
+  1404→  simMins: number;
+  1405→  simSecs: number;
+  1406→}) {
+  1407→  const [liveMetrics, setLiveMetrics] = useState({
+  1408→    cpu: 45, ram: 62, queue: 0, latency: 12, facts: 0, proofs: 0, brier: 0.015,
+  1409→  });
+  1410→
+  1411→  // Simulate live metrics
+  1412→  useEffect(() => {
+  1413→    if (!simRunning) return;
+  1414→    const interval = setInterval(() => {
+  1415→      setLiveMetrics(prev => ({
+  1416→        cpu: Math.min(95, Math.max(20, prev.cpu + (Math.random() - 0.5) * 8)),
+  1417→        ram: Math.min(90, Math.max(40, prev.ram + (Math.random() - 0.5) * 5)),
+  1418→        queue: Math.max(0, Math.floor(prev.queue + (Math.random() - 0.4) * 3)),
+  1419→        latency: Math.max(5, Math.min(200, prev.latency + (Math.random() - 0.5) * 20)),
+  1420→        facts: prev.facts + Math.floor(Math.random() * 3),
+  1421→        proofs: prev.proofs + (Math.random() > 0.7 ? 1 : 0),
+  1422→        brier: Math.max(0.001, Math.min(0.05, prev.brier + (Math.random() - 0.5) * 0.003)),
+  1423→      }));
+  1424→    }, 1000);
+  1425→    return () => clearInterval(interval);
+  1426→  }, [simRunning]);
+  1427→
+  1428→  const currentPhase = VALIDATION_PHASES.find(p => p.status === "active") || VALIDATION_PHASES[2];
+  1429→  const progressPct = Math.min(100, (simElapsed / (72 * 3600)) * 100);
+  1430→
+  1431→  return (
+  1432→    <div className="space-y-6">
+  1433→      {/* Controls */}
+  1434→      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1435→        <div className="flex items-center justify-between">
+  1436→          <div>
+  1437→            <h3 className="text-sm font-bold" style={{ fontFamily: "var(--font-geist-sans)" }}>72-Hour Validation Loop</h3>
+  1438→            <p className="font-mono text-[9px] text-muted-foreground">VVU-VAL-001 · HBK Mk-II Digital Twin Prototype</p>
+  1439→          </div>
+  1440→          <div className="flex items-center gap-2">
+  1441→            <button
+  1442→              onClick={() => setSimRunning(!simRunning)}
+  1443→              className="flex items-center gap-2 rounded-lg border px-3 py-2 font-mono text-[10px] transition-all"
+  1444→              style={{
+  1445→                borderColor: simRunning ? "#EF444440" : "#10b98140",
+  1446→                background: simRunning ? "#EF444410" : "#10b98110",
+  1447→                color: simRunning ? "#EF4444" : "#10b981",
+  1448→              }}
+  1449→            >
+  1450→              {simRunning ? <><Pause className="h-3.5 w-3.5" /> Pause</> : <><Play className="h-3.5 w-3.5" /> Start</>}
+  1451→            </button>
+  1452→            <button
+  1453→              onClick={() => { setSimRunning(false); setSimElapsed(0); setLiveMetrics({ cpu: 45, ram: 62, queue: 0, latency: 12, facts: 0, proofs: 0, brier: 0.015 }); }}
+  1454→              className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-all"
+  1455→            >
+  1456→              <RotateCcw className="h-3.5 w-3.5" /> Reset
+  1457→            </button>
+  1458→          </div>
+  1459→        </div>
+  1460→
+  1461→        {/* Timer */}
+  1462→        <div className="mt-4 flex items-center gap-4">
+  1463→          <div className="font-mono text-3xl font-bold tabular-nums" style={{ color: simRunning ? "#10b981" : "#6B7280" }}>
+  1464→            {String(simHours).padStart(2, "0")}:{String(simMins).padStart(2, "0")}:{String(simSecs).padStart(2, "0")}
+  1465→          </div>
+  1466→          <div className="flex-1">
+  1467→            <div className="flex items-center justify-between mb-1">
+  1468→              <span className="font-mono text-[9px] text-muted-foreground">Progress</span>
+  1469→              <span className="font-mono text-[9px] text-foreground">{progressPct.toFixed(1)}%</span>
+  1470→            </div>
+  1471→            <div className="h-2 w-full rounded-full bg-white/[0.06]">
+  1472→              <motion.div
+  1473→                className="h-full rounded-full"
+  1474→                style={{ background: "linear-gradient(90deg, #10b981, #C9A84C, #ff2e5f)" }}
+  1475→                animate={{ width: `${progressPct}%` }}
+  1476→                transition={{ duration: 0.5 }}
+  1477→              />
+  1478→            </div>
+  1479→          </div>
+  1480→          <div className="text-right">
+  1481→            <span className="font-mono text-[9px] text-muted-foreground">Current Phase</span>
+  1482→            <div className="font-mono text-[10px] font-bold" style={{ color: "#3B82F6" }}>{currentPhase.name}</div>
+  1483→          </div>
+  1484→        </div>
+  1485→      </div>
+  1486→
+  1487→      {/* Live Metrics */}
+  1488→      {simRunning && (
+  1489→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  1490→          {[
+  1491→            { label: "CPU", value: `${liveMetrics.cpu.toFixed(0)}%`, icon: <Cpu className="h-3.5 w-3.5" />, color: liveMetrics.cpu > 80 ? "#EF4444" : "#10b981" },
+  1492→            { label: "RAM", value: `${liveMetrics.ram.toFixed(0)}%`, icon: <MemoryStick className="h-3.5 w-3.5" />, color: liveMetrics.ram > 85 ? "#EF4444" : "#3B82F6" },
+  1493→            { label: "Queue Depth", value: `${liveMetrics.queue}`, icon: <Activity className="h-3.5 w-3.5" />, color: liveMetrics.queue > 10 ? "#F59E0B" : "#10b981" },
+  1494→            { label: "P99 Latency", value: `${liveMetrics.latency.toFixed(0)}ms`, icon: <Clock className="h-3.5 w-3.5" />, color: liveMetrics.latency > 100 ? "#EF4444" : "#10b981" },
+  1495→            { label: "Facts Accepted", value: `${liveMetrics.facts}`, icon: <CheckCircle2 className="h-3.5 w-3.5" />, color: "#C9A84C" },
+  1496→            { label: "Proofs Generated", value: `${liveMetrics.proofs}`, icon: <Shield className="h-3.5 w-3.5" />, color: "#8B5CF6" },
+  1497→            { label: "Brier Score", value: liveMetrics.brier.toFixed(4), icon: <FlaskConical className="h-3.5 w-3.5" />, color: liveMetrics.brier > 0.02 ? "#EF4444" : "#10b981" },
+  1498→            { label: "Circuit Breaker", value: "NORMAL", icon: <Zap className="h-3.5 w-3.5" />, color: "#10b981" },
+  1499→          ].map(m => (
+  1500→            <div key={m.label} className="rounded-lg border border-white/[0.06] p-3" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1501→              <div className="flex items-center justify-between">
+  1502→                <span className="font-mono text-[9px] text-muted-foreground">{m.label}</span>
+  1503→                <span style={{ color: m.color }}>{m.icon}</span>
+  1504→              </div>
+  1505→              <div className="mt-1 text-lg font-bold tabular-nums" style={{ color: m.color }}>{m.value}</div>
+  1506→            </div>
+  1507→          ))}
+  1508→        </div>
+  1509→      )}
+  1510→
+  1511→      {/* Validation Phases */}
+  1512→      <div className="space-y-3">
+  1513→        <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Validation Phases</h3>
+  1514→        {VALIDATION_PHASES.map((phase) => (
+  1515→          <motion.div
+  1516→            key={phase.id}
+  1517→            className="rounded-xl border p-4"
+  1518→            style={{
+  1519→              borderColor: phase.status === "active" ? "#3B82F630" : phase.status === "complete" ? "#10b98120" : "rgba(255,255,255,0.06)",
+  1520→              background: phase.status === "active" ? "rgba(59,130,246,0.05)" : "rgba(15,15,24,0.6)",
+  1521→            }}
+  1522→          >
+  1523→            <div className="flex items-center justify-between">
+  1524→              <div className="flex items-center gap-3">
+  1525→                {validationStatusIcon(phase.status)}
+  1526→                <div>
+  1527→                  <h4 className="text-xs font-bold text-foreground">{phase.name}</h4>
+  1528→                  <span className="font-mono text-[9px] text-muted-foreground">{phase.duration}</span>
+  1529→                </div>
+  1530→              </div>
+  1531→              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: phase.status === "complete" ? "#10b981" : phase.status === "active" ? "#3B82F6" : "#6B7280" }}>
+  1532→                {phase.status}
+  1533→              </span>
+  1534→            </div>
+  1535→            <p className="mt-2 font-mono text-[9px] text-muted-foreground">{phase.description}</p>
+  1536→            <div className="mt-3 grid grid-cols-3 gap-2">
+  1537→              {phase.metrics.map(m => (
+  1538→                <div key={m.label} className="rounded-md border border-white/[0.04] p-2">
+  1539→                  <div className="font-mono text-[8px] text-muted-foreground/60">{m.label}</div>
+  1540→                  <div className="font-mono text-[10px] font-bold" style={{ color: m.status === "pass" ? "#10b981" : m.status === "fail" ? "#EF4444" : "#F59E0B" }}>{m.value}</div>
+  1541→                </div>
+  1542→              ))}
+  1543→            </div>
+  1544→          </motion.div>
+  1545→        ))}
+  1546→      </div>
+  1547→    </div>
+  1548→  );
+  1549→}
+  1550→
+  1551→// ════════════════════════════════════════════════════════════════════════
+  1552→// PROGRAMME TIMELINE TAB
+  1553→// ════════════════════════════════════════════════════════════════════════
+  1554→
+  1555→function TimelineTab() {
+  1556→  return (
+  1557→    <div className="space-y-6">
+  1558→      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1559→        <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-foreground">Programme Timeline</h3>
+  1560→        <div className="relative">
+  1561→          {/* Timeline line */}
+  1562→          <div className="absolute left-6 top-0 bottom-0 w-px bg-white/[0.06]" />
+  1563→
+  1564→          {PROGRAMME_TIMELINE.map((phase) => (
+  1565→            <div key={phase.id} className="relative mb-8 last:mb-0">
+  1566→              {/* Dot */}
+  1567→              <div className="absolute left-4 top-1 h-4 w-4 rounded-full border-2" style={{ borderColor: phase.color, background: phase.status === "active" ? phase.color : "transparent" }}>
+  1568→                {phase.status === "active" && (
+  1569→                  <motion.div
+  1570→                    className="absolute inset-0 rounded-full"
+  1571→                    style={{ background: phase.color }}
+  1572→                    animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+  1573→                    transition={{ duration: 2, repeat: Infinity }}
+  1574→                  />
+  1575→                )}
+  1576→              </div>
+  1577→
+  1578→              <div className="ml-14">
+  1579→                <div className="flex items-center gap-2 mb-1">
+  1580→                  <span className="text-sm font-bold" style={{ color: phase.color }}>{phase.phase}</span>
+  1581→                  <span className="rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${phase.color}30`, background: `${phase.color}10`, color: phase.color }}>
+  1582→                    {phase.status}
+  1583→                  </span>
+  1584→                </div>
+  1585→                <span className="font-mono text-[9px] text-muted-foreground">{phase.months}</span>
+  1586→                <p className="mt-1 text-xs text-muted-foreground">{phase.description}</p>
+  1587→
+  1588→                {/* Milestones */}
+  1589→                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+  1590→                  {phase.milestones.map((ms, i) => (
+  1591→                    <div key={i} className="flex items-center gap-2 rounded-md border border-white/[0.04] p-2">
+  1592→                      {phase.status === "complete" ? (
+  1593→                        <CheckCircle2 className="h-3.5 w-3.5 flex-none" style={{ color: "#10b981" }} />
+  1594→                      ) : phase.status === "active" && i === 0 ? (
+  1595→                        <Activity className="h-3.5 w-3.5 flex-none" style={{ color: phase.color }} />
+  1596→                      ) : (
+  1597→                        <Clock className="h-3.5 w-3.5 flex-none text-muted-foreground/40" />
+  1598→                      )}
+  1599→                      <span className="font-mono text-[9px] text-foreground">{ms}</span>
+  1600→                    </div>
+  1601→                  ))}
+  1602→                </div>
+  1603→              </div>
+  1604→            </div>
+  1605→          ))}
+  1606→        </div>
+  1607→      </div>
+  1608→
+  1609→      {/* Success Metrics */}
+  1610→      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1611→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Success Metrics</h3>
+  1612→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+  1613→          {[
+  1614→            { label: "Consortium Formation", target: "4+ partners signed", metric: "Agreement status", color: "#C9A84C" },
+  1615→            { label: "Resources Secured", target: "All priority resources", metric: "Resource register", color: "#10b981" },
+  1616→            { label: "Programme Visibility", target: "50+ mentions", metric: "Media, social media", color: "#3B82F6" },
+  1617→            { label: "Grant Funding", target: "2+ grants secured", metric: "Grant agreements", color: "#8B5CF6" },
+  1618→            { label: "Research Outputs", target: "2+ papers submitted", metric: "Publications", color: "#EC4899" },
+  1619→          ].map(m => (
+  1620→            <div key={m.label} className="rounded-lg border border-white/[0.04] p-3 text-center">
+  1621→              <div className="h-1.5 w-8 mx-auto rounded-full mb-2" style={{ background: m.color }} />
+  1622→              <div className="font-mono text-[9px] font-bold" style={{ color: m.color }}>{m.label}</div>
+  1623→              <div className="mt-1 font-mono text-[8px] text-muted-foreground">{m.target}</div>
+  1624→              <div className="mt-0.5 font-mono text-[7px] text-muted-foreground/50">{m.metric}</div>
+  1625→            </div>
+  1626→          ))}
+  1627→        </div>
+  1628→      </div>
+  1629→    </div>
+  1630→  );
+  1631→}
+  1632→
+  1633→// ════════════════════════════════════════════════════════════════════════
+  1634→// GIT ACTIONS LOG TAB
+  1635→// ════════════════════════════════════════════════════════════════════════
+  1636→
+  1637→function GitLogTab({ gitActions }: { gitActions: GitAction[] }) {
+  1638→  const [actionFilter, setActionFilter] = useState<string>("all");
+  1639→
+  1640→  const filtered = useMemo(() => {
+  1641→    if (actionFilter === "all") return gitActions;
+  1642→    return gitActions.filter(g => g.action === actionFilter);
+  1643→  }, [gitActions, actionFilter]);
+  1644→
+  1645→  const successCount = gitActions.filter(g => g.status === "success").length;
+  1646→  const runningCount = gitActions.filter(g => g.status === "running").length;
+  1647→  const failedCount = gitActions.filter(g => g.status === "failed").length;
+  1648→
+  1649→  return (
+  1650→    <div className="space-y-6">
+  1651→      {/* Summary */}
+  1652→      <div className="grid gap-3 sm:grid-cols-3">
+  1653→        {[
+  1654→          { label: "Successful", value: successCount, color: "#10b981", icon: <CheckCircle2 className="h-4 w-4" /> },
+  1655→          { label: "Running", value: runningCount, color: "#3B82F6", icon: <Activity className="h-4 w-4" /> },
+  1656→          { label: "Failed", value: failedCount, color: "#EF4444", icon: <XCircle className="h-4 w-4" /> },
+  1657→        ].map(card => (
+  1658→          <div key={card.label} className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1659→            <div className="flex items-center justify-between">
+  1660→              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{card.label}</span>
+  1661→              <span style={{ color: card.color }}>{card.icon}</span>
+  1662→            </div>
+  1663→            <div className="mt-2 text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
+  1664→          </div>
+  1665→        ))}
+  1666→      </div>
+  1667→
+  1668→      {/* Filters */}
+  1669→      <div className="flex flex-wrap gap-1.5">
+  1670→        {["all", "commit", "push", "merge", "deploy", "test", "validate"].map(f => (
+  1671→          <button
+  1672→            key={f}
+  1673→            onClick={() => setActionFilter(f)}
+  1674→            className={`rounded-full border px-3 py-1 font-mono text-[9px] transition-all ${actionFilter === f ? "border-[#C9A84C]/30 bg-[#C9A84C]/10 text-[#C9A84C]" : "border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+  1675→          >
+  1676→            {f}
+  1677→          </button>
+  1678→        ))}
+  1679→      </div>
+  1680→
+  1681→      {/* Action Log */}
+  1682→      <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1683→        <div className="max-h-[500px] overflow-y-auto">
+  1684→          {filtered.map((action, idx) => (
+  1685→            <div key={action.id} className={`flex items-start gap-3 border-b border-white/[0.03] p-3 transition-colors hover:bg-white/[0.02] ${idx === 0 ? "border-l-2" : ""}`} style={idx === 0 ? { borderLeftColor: gitActionColor(action.action) } : {}}>
+  1686→              <div className="flex-none mt-0.5" style={{ color: gitActionColor(action.action) }}>
+  1687→                {gitActionIcon(action.action)}
+  1688→              </div>
+  1689→              <div className="min-w-0 flex-1">
+  1690→                <div className="flex items-center gap-2">
+  1691→                  <span className="font-mono text-[9px] font-bold" style={{ color: gitActionColor(action.action) }}>{action.action}</span>
+  1692→                  <span className="font-mono text-[9px] text-muted-foreground/50">{action.hash.slice(0, 7)}</span>
+  1693→                  <span className="rounded-full border border-white/[0.06] px-1.5 py-0.5 font-mono text-[8px] text-muted-foreground/60">{action.branch}</span>
+  1694→                  <span className="ml-auto flex-none">
+  1695→                    {action.status === "success" ? <CheckCircle2 className="h-3 w-3" style={{ color: "#10b981" }} /> :
+  1696→                     action.status === "running" ? <Activity className="h-3 w-3" style={{ color: "#3B82F6" }} /> :
+  1697→                     <XCircle className="h-3 w-3" style={{ color: "#EF4444" }} />}
+  1698→                  </span>
+  1699→                </div>
+  1700→                <p className="mt-0.5 truncate font-mono text-[9px] text-foreground/80">{action.message}</p>
+  1701→                <div className="mt-0.5 flex items-center gap-2">
+  1702→                  <span className="font-mono text-[8px] text-muted-foreground/40">{action.author}</span>
+  1703→                  <span className="font-mono text-[8px] text-muted-foreground/30">{new Date(action.timestamp).toLocaleTimeString()}</span>
+  1704→                </div>
+  1705→              </div>
+  1706→            </div>
+  1707→          ))}
+  1708→        </div>
+  1709→      </div>
+  1710→    </div>
+  1711→  );
+  1712→}
+  1713→
+  1714→export default HbkDashboard;
+  1715→

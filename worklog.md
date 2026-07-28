@@ -633,3 +633,52 @@ Stage Summary:
 - **Narrative Shift**: "We are looking for investors" → "VVU is establishing a multi-institution applied research programme..."
 - All existing tabs (Digital Twin, Resources, 72h Validation, Timeline, Git Actions) continue to work
 - Zero lint errors, server running cleanly
+
+## Task 2: Power & Thermal Architecture Tab — Completed
+
+**Date**: 2024-03-05
+**Status**: COMPLETE
+
+### What was done:
+- Added Phase 2 "Power & Thermal" tab to HBK Dashboard (`hbk-dashboard.tsx`)
+- Imported 5 new data constants and 5 new type definitions from `@/lib/hbk/types`
+- Added 4 new lucide-react icons: `ShieldAlert`, `Layers`, `Flame`, `Plug`
+- Added `Zap` case to `tabIcon()` helper function
+- Added `case "power-thermal"` to `renderTabContent()` switch
+- Created `PowerThermalTab` component with 4 sub-sections:
+  1. **Power Architecture Card** — 8S4P battery spec, key stats, thermal advantage
+  2. **Star Ground Wiring Protocol Card** — P0–P3 expandable rails, color-coded
+  3. **Epistemic Thermal Governance Card** — Visual thermal gauge, 4 threshold cards, Wake-on-Acoustic
+  4. **Thermal Containment Architecture Card** — Conduction path, 4 layers, aerogel isolation, BOM summary
+
+### Verification:
+- ESLint: 0 errors, 0 warnings
+- Dev server: Running, all 200 responses, successful compilation
+- All 4 cards render correctly with dark theme, glass-morphism, gold accents
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Integrate Phase 2 Power & Thermal Architecture into HBK Dashboard
+
+Work Log:
+- Updated HBK_CAD_MODULES in types.ts with 2 new modules: Battery_8S_32700_Pack (X:140, Y:20) and Aerogel_Thermal_Barrier (X:135, Y:15)
+- Repositioned NVMe storage to X:320, Y:60 for battery clearance
+- Added BATTERY_SPEC: 8S4P 32700 LiFePO₄, 25.6V, 20Ah, 614Wh, Daly 8S 20A BMS
+- Added WIRING_RAILS: P0-P3 Star Ground wiring protocol (10 AWG power, 14 AWG system, 18 AWG clean, STP signal)
+- Added THERMAL_THRESHOLDS: 4-tier Epistemic thermal governance (65°C/75°C/85°C with Wake-on-Acoustic)
+- Added THERMAL_CONTAINMENT: 4 layers (TIM PCM, structural conduction, aerogel isolation, CNC fins)
+- Added PHASE2_BOM: 12 items (cells, BMS, aerogel, potting, TIM, wiring, galvanic isolator, copper heat block)
+- Added "Power & Thermal" tab (HbkTabId: "power-thermal") with Zap icon
+- Created PowerThermalTab component with 4 sub-cards: Power Architecture, Star Ground Wiring, Epistemic Thermal Governance, Thermal Containment
+- Verified all 11 tabs render correctly via agent-browser
+- Zero lint errors, zero console errors, mobile responsive at 375px
+
+Stage Summary:
+- **Phase 2 Power Architecture**: 8S4P 32700 LiFePO₄ (25.6V, 20Ah, 614Wh) — halves current draw vs 4S, I²R reduced ~75%
+- **Star Ground Wiring**: P0 (Main Power, 10 AWG) → P1 (System, 14 AWG) → P2 (Clean, galvanically isolated) → P3 (Signal, STP)
+- **Epistemic Thermal Governance**: NORMAL (<65°C) → WARNING (65°C ECO) → CRITICAL (75°C Wake-on-Acoustic) → EMERGENCY (85°C shutdown)
+- **Thermal Containment**: TIM PCM → Copper block → Mainboard → Gap pads → Denel enclosure → Ambient + Aerogel battery isolation
+- **BOM**: 12 items across battery (3), thermal (4), wiring (5) categories
+- **CAD Layout**: 8 modules total including new battery and aerogel modules, VR1 collision-free
+- All existing tabs (Consortium, VVU 100%, Contract Model, IP Boundaries, 3-Phase Roadmap, Digital Twin, Resources, 72h Validation, Timeline, Git Actions) continue to work

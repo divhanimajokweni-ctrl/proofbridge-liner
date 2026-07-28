@@ -16,6 +16,7 @@ import {
   Network, Lock, Route, FileCheck2, FileText,
   Users, CircleDot, Sparkles, Crown, Briefcase,
   Scale, Medal, BookOpen, Lightbulb, Gem,
+  ShieldAlert, Layers, Flame, Plug,
 } from "lucide-react";
 import {
   Card, CardHeader, CardContent, CardTitle, CardDescription,
@@ -25,10 +26,15 @@ import {
   CONSORTIUM_ARCHITECTURE, IP_OWNERSHIP, ROADMAP_PHASES,
   SPONSORSHIP_PACKAGES, RESOURCE_REGISTER, PROGRAMME_TIMELINE,
   VALIDATION_PHASES, HBK_TABS,
+  BATTERY_SPEC, WIRING_RAILS, THERMAL_THRESHOLDS,
+  THERMAL_CONTAINMENT, PHASE2_BOM,
   type HbkTabId, type CADModule, type GitAction,
   type ResourceItem, type ValidationPhase,
   type OwnershipEntry, type ConsortiumPartner,
   type ConsortiumArchitecture, type IPCategory, type RoadmapPhase,
+  type BatterySpecification, type WiringRail,
+  type ThermalThreshold, type ThermalContainmentLayer,
+  type BOMItem,
 } from "@/lib/hbk/types";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -131,6 +137,7 @@ const tabIcon = (iconName: string) => {
     case "Activity": return <Activity className="h-3.5 w-3.5" />;
     case "Calendar": return <Calendar className="h-3.5 w-3.5" />;
     case "GitBranch": return <GitBranch className="h-3.5 w-3.5" />;
+    case "Zap": return <Zap className="h-3.5 w-3.5" />;
     default: return <Cpu className="h-3.5 w-3.5" />;
   }
 };
@@ -244,6 +251,7 @@ export function HbkDashboard() {
       case "contracts": return <ContractsTab />;
       case "ip": return <IPBoundariesTab />;
       case "roadmap": return <RoadmapTab />;
+      case "power-thermal": return <PowerThermalTab />;
       case "twin": return <DigitalTwinTab selectedModule={selectedModule} setSelectedModule={setSelectedModule} hoveredModule={hoveredModule} setHoveredModule={setHoveredModule} />;
       case "resources": return <ResourcesTab />;
       case "simulation": return <SimulationTab simRunning={simRunning} setSimRunning={setSimRunning} simElapsed={simElapsed} setSimElapsed={setSimElapsed} simHours={simHours} simMins={simMins} simSecs={simSecs} />;
@@ -1024,6 +1032,628 @@ function RoadmapTab() {
           ))}
         </div>
       </motion.div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// POWER & THERMAL TAB — Phase 2 Architecture
+// ════════════════════════════════════════════════════════════════════════
+
+function PowerThermalTab() {
+  const [expandedRail, setExpandedRail] = useState<string | null>(null);
+
+  const bomStatusColor = (s: string) => {
+    switch (s) {
+      case "specified": return "#F59E0B";
+      case "sourced": return "#3B82F6";
+      case "ordered": return "#8B5CF6";
+      case "received": return "#10b981";
+      default: return "#6B7280";
+    }
+  };
+
+  const bomCategoryColor = (c: string) => {
+    switch (c) {
+      case "battery": return "#E67300";
+      case "thermal": return "#EF4444";
+      case "wiring": return "#3366CC";
+      default: return "#6B7280";
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header Banner */}
+      <motion.div
+        className="rounded-xl border border-[#C9A84C]/20 p-5"
+        style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,15,24,0.6))" }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#C9A84C]/30" style={{ background: "#C9A84C15" }}>
+            <Zap className="h-6 w-6" style={{ color: "#C9A84C" }} />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>
+              Phase 2: Power & Thermal Architecture
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              8S4P LiFePO₄ battery system, Star Ground wiring protocol, Epistemic thermal governance, and containment architecture for the HBK Mk-II.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-[#E67300]/30 bg-[#E67300]/10 px-3 py-1 font-mono text-[9px] text-[#E67300]">8S4P 25.6V</span>
+              <span className="rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1 font-mono text-[9px] text-[#10b981]">Star Ground P0–P3</span>
+              <span className="rounded-full border border-[#EF4444]/30 bg-[#EF4444]/10 px-3 py-1 font-mono text-[9px] text-[#EF4444]">4-Zone Thermal</span>
+              <span className="rounded-full border border-[#3366CC]/30 bg-[#3366CC]/10 px-3 py-1 font-mono text-[9px] text-[#3366CC]">Aerogel Isolation</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* ── 1. POWER ARCHITECTURE CARD ──────────────────────────────────── */}
+      <Card className="border-white/[0.06] bg-[rgba(15,15,24,0.6)] overflow-hidden">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#E67300]/30" style={{ background: "#E6730015" }}>
+              <Battery className="h-5 w-5" style={{ color: "#E67300" }} />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-bold" style={{ color: "#E67300" }}>Power Architecture</CardTitle>
+              <CardDescription className="font-mono text-[9px]">8S4P LiFePO₄ Battery System · 614Wh Field Power</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Key Stats Grid */}
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              { label: "Voltage", value: "25.6V", sub: "Nominal", color: "#E67300" },
+              { label: "Capacity", value: "20Ah", sub: "8S4P Config", color: "#10b981" },
+              { label: "Energy", value: "614Wh", sub: "Total Pack", color: "#3B82F6" },
+              { label: "Cells", value: "32", sub: "IFR-32700", color: "#8B5CF6" },
+              { label: "Weight", value: "~5.2kg", sub: "w/ Potting", color: "#C9A84C" },
+            ].map(stat => (
+              <motion.div
+                key={stat.label}
+                className="rounded-lg border p-3 text-center"
+                style={{ borderColor: `${stat.color}20`, background: `${stat.color}05` }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/60">{stat.label}</div>
+                <div className="text-xl font-bold" style={{ color: stat.color }}>{stat.value}</div>
+                <div className="font-mono text-[8px] text-muted-foreground/50">{stat.sub}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Battery Spec Details */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {/* Chemistry & Configuration */}
+            <div className="rounded-lg border border-[#E67300]/20 p-4" style={{ background: "#E6730008" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <FlaskConical className="h-4 w-4" style={{ color: "#E67300" }} />
+                <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#E67300" }}>Cell Chemistry</span>
+              </div>
+              <div className="space-y-2">
+                {[
+                  ["Chemistry", BATTERY_SPEC.chemistry],
+                  ["Format", BATTERY_SPEC.format],
+                  ["Configuration", BATTERY_SPEC.configuration],
+                  ["Cell Model", BATTERY_SPEC.cellModel],
+                  ["BMS", BATTERY_SPEC.bms],
+                  ["BMS Model", BATTERY_SPEC.bmsModel],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex items-center justify-between">
+                    <span className="font-mono text-[9px] text-muted-foreground">{k}</span>
+                    <span className="font-mono text-[9px] text-foreground font-bold">{v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Ruggedization & Shift */}
+            <div className="space-y-3">
+              <div className="rounded-lg border border-[#C9A84C]/20 p-4" style={{ background: "#C9A84C08" }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="h-4 w-4" style={{ color: "#C9A84C" }} />
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>Ruggedization</span>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[9px] text-muted-foreground">Overhead</span>
+                    <span className="font-mono text-[9px] text-foreground font-bold">{BATTERY_SPEC.ruggedizationOverhead}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[9px] text-muted-foreground">Potting</span>
+                    <span className="font-mono text-[9px] text-foreground font-bold">{BATTERY_SPEC.pottingMaterial}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-[#10b981]/20 p-4" style={{ background: "#10b98108" }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4" style={{ color: "#10b981" }} />
+                  <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#10b981" }}>Shift Duration</span>
+                </div>
+                <div className="text-sm font-bold" style={{ color: "#10b981" }}>{BATTERY_SPEC.shiftDuration}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Thermal Advantage Callout */}
+          <motion.div
+            className="rounded-lg border-2 border-[#10b981]/30 p-4"
+            style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(15,15,24,0.4))" }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="h-4 w-4" style={{ color: "#10b981" }} />
+              <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#10b981" }}>8S Thermal Advantage</span>
+            </div>
+            <p className="font-mono text-[9px] text-foreground leading-relaxed">{BATTERY_SPEC.thermalAdvantage}</p>
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-[8px] text-muted-foreground/60">I²R Reduction vs 4S</span>
+                  <span className="font-mono text-[9px] font-bold" style={{ color: "#10b981" }}>~75%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-white/[0.06]">
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{ background: "linear-gradient(90deg, #10b981, #C9A84C)" }}
+                    initial={{ width: 0 }}
+                    animate={{ width: "75%" }}
+                    transition={{ duration: 1.2, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </CardContent>
+      </Card>
+
+      {/* ── 2. STAR GROUND WIRING PROTOCOL CARD ─────────────────────────── */}
+      <Card className="border-white/[0.06] bg-[rgba(15,15,24,0.6)] overflow-hidden">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#3366CC]/30" style={{ background: "#3366CC15" }}>
+              <Plug className="h-5 w-5" style={{ color: "#3366CC" }} />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-bold" style={{ color: "#3366CC" }}>Star Ground Wiring Protocol</CardTitle>
+              <CardDescription className="font-mono text-[9px]">P0–P3 Isolated Rails · Physically Separated Signal Integrity</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Wiring Rails Schematic */}
+          <div className="space-y-2">
+            {WIRING_RAILS.map((rail, idx) => {
+              const isExpanded = expandedRail === rail.id;
+              return (
+                <motion.div
+                  key={rail.id}
+                  className="rounded-lg border cursor-pointer transition-all"
+                  style={{ borderColor: `${rail.color}30`, background: `${rail.color}05` }}
+                  onClick={() => setExpandedRail(isExpanded ? null : rail.id)}
+                  whileHover={{ borderColor: `${rail.color}60` }}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.1 }}
+                >
+                  {/* Rail Header */}
+                  <div className="p-3">
+                    <div className="flex items-center gap-3">
+                      {/* Color-coded rail indicator */}
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border" style={{ borderColor: `${rail.color}50`, background: `${rail.color}15` }}>
+                        <span className="font-mono text-[9px] font-black" style={{ color: rail.color }}>{rail.id}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold" style={{ color: rail.color }}>{rail.name}</span>
+                          <span className="rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${rail.color}40`, background: `${rail.color}10`, color: rail.color }}>
+                            {rail.isolationClass}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="font-mono text-[9px] text-muted-foreground">{rail.gauge}</span>
+                          <span className="font-mono text-[9px] text-muted-foreground/50">·</span>
+                          <span className="font-mono text-[9px] text-muted-foreground">{rail.voltage.split(" (")[0]}</span>
+                        </div>
+                      </div>
+                      <ChevronDown className={`h-4 w-4 text-muted-foreground/50 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                    </div>
+
+                    {/* Visual rail line */}
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full" style={{ background: rail.color }} />
+                      <div className="h-1 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${rail.color}, ${rail.color}40)` }} />
+                      <div className="h-1.5 w-1.5 rounded-full" style={{ background: rail.color }} />
+                    </div>
+                  </div>
+
+                  {/* Expanded Details */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="border-t px-3 py-3 space-y-2" style={{ borderColor: `${rail.color}20` }}>
+                          <div className="rounded-md border border-white/[0.04] p-2.5" style={{ background: "rgba(10,10,18,0.5)" }}>
+                            <div className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-1">Purpose</div>
+                            <p className="font-mono text-[9px] text-foreground">{rail.purpose}</p>
+                          </div>
+                          <div className="rounded-md border border-white/[0.04] p-2.5" style={{ background: "rgba(10,10,18,0.5)" }}>
+                            <div className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-1">Route</div>
+                            <p className="font-mono text-[9px] text-foreground">{rail.route}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-md border border-white/[0.04] p-2" style={{ background: "rgba(10,10,18,0.5)" }}>
+                              <div className="font-mono text-[8px] text-muted-foreground/50">Gauge</div>
+                              <div className="font-mono text-[9px] text-foreground font-bold">{rail.gauge}</div>
+                            </div>
+                            <div className="rounded-md border border-white/[0.04] p-2" style={{ background: "rgba(10,10,18,0.5)" }}>
+                              <div className="font-mono text-[8px] text-muted-foreground/50">Isolation</div>
+                              <div className="font-mono text-[9px] font-bold" style={{ color: rail.color }}>{rail.isolationClass}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Key Principle */}
+          <motion.div
+            className="rounded-lg border-2 border-[#3366CC]/30 p-4"
+            style={{ background: "linear-gradient(135deg, rgba(51,102,204,0.08), rgba(15,15,24,0.4))" }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="h-4 w-4" style={{ color: "#3366CC" }} />
+              <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#3366CC" }}>Signal Integrity Principle</span>
+            </div>
+            <p className="font-mono text-[9px] text-foreground leading-relaxed">
+              Physically separated signal integrity — P3 (Signal Rail) never crosses P0 (Main Power Rail). 
+              Star ground topology ensures BMS switching noise never contaminates analog sensor data paths.
+            </p>
+            {/* Schematic representation */}
+            <div className="mt-3 grid grid-cols-4 gap-1">
+              {WIRING_RAILS.map(r => (
+                <div key={r.id} className="flex items-center justify-center gap-1 rounded-md border py-1.5" style={{ borderColor: `${r.color}30`, background: `${r.color}08` }}>
+                  <div className="h-1.5 w-1.5 rounded-full" style={{ background: r.color }} />
+                  <span className="font-mono text-[8px] font-bold" style={{ color: r.color }}>{r.id}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </CardContent>
+      </Card>
+
+      {/* ── 3. EPISTEMIC THERMAL GOVERNANCE CARD ─────────────────────────── */}
+      <Card className="border-white/[0.06] bg-[rgba(15,15,24,0.6)] overflow-hidden">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#EF4444]/30" style={{ background: "#EF444415" }}>
+              <Thermometer className="h-5 w-5" style={{ color: "#EF4444" }} />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-bold" style={{ color: "#EF4444" }}>Epistemic Thermal Governance</CardTitle>
+              <CardDescription className="font-mono text-[9px]">Deterministic Response · Append-Only Evidence · Rule 4 + Rule 7</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Thermal Gauge — Visual Temperature Bar */}
+          <div className="rounded-lg border border-white/[0.06] p-4" style={{ background: "rgba(10,10,18,0.5)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Thermal Threshold Gauge</span>
+              <span className="font-mono text-[9px] text-muted-foreground/50">20°C → 85°C</span>
+            </div>
+            {/* Gradient bar */}
+            <div className="relative h-8 w-full rounded-lg overflow-hidden" style={{ background: "linear-gradient(90deg, #10b981 0%, #10b981 53%, #F59E0B 53%, #F59E0B 61%, #EF4444 61%, #EF4444 69%, #DC2626 69%, #DC2626 100%)" }}>
+              {/* Temperature markers */}
+              {THERMAL_THRESHOLDS.map(t => (
+                <div
+                  key={t.level}
+                  className="absolute top-0 h-full flex flex-col items-center justify-center"
+                  style={{ left: `${((t.tempC - 20) / 65) * 100}%` }}
+                >
+                  <div className="h-full w-px bg-white/30" />
+                </div>
+              ))}
+              {/* Labels */}
+              <div className="absolute inset-0 flex items-center">
+                {THERMAL_THRESHOLDS.map(t => (
+                  <div
+                    key={t.level}
+                    className="flex-1 text-center"
+                  >
+                    <span className="font-mono text-[8px] font-bold text-white drop-shadow-md">{t.tempC}°C</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Level labels below bar */}
+            <div className="mt-2 flex">
+              {THERMAL_THRESHOLDS.map(t => (
+                <div key={t.level} className="flex-1 text-center">
+                  <span className="font-mono text-[8px] font-bold" style={{ color: t.color }}>{t.level}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Threshold Detail Cards */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {THERMAL_THRESHOLDS.map((threshold, idx) => {
+              const thresholdIcon = (() => {
+                switch (threshold.icon) {
+                  case "CheckCircle2": return <CheckCircle2 className="h-4 w-4" />;
+                  case "AlertTriangle": return <AlertTriangle className="h-4 w-4" />;
+                  case "XCircle": return <XCircle className="h-4 w-4" />;
+                  case "ShieldAlert": return <ShieldAlert className="h-4 w-4" />;
+                  default: return <Thermometer className="h-4 w-4" />;
+                }
+              })();
+
+              return (
+                <motion.div
+                  key={threshold.level}
+                  className="rounded-lg border p-4"
+                  style={{ borderColor: `${threshold.color}30`, background: `${threshold.color}05` }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.1 }}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${threshold.color}15`, color: threshold.color }}>
+                        {thresholdIcon}
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold" style={{ color: threshold.color }}>{threshold.level}</span>
+                        <div className="font-mono text-[9px] text-muted-foreground">&lt;{threshold.tempC}°C</div>
+                      </div>
+                    </div>
+                    <div className="h-3 w-3 rounded-full" style={{ background: threshold.color, boxShadow: `0 0 8px ${threshold.color}60` }} />
+                  </div>
+
+                  {/* Action */}
+                  <div className="rounded-md border border-white/[0.04] p-2.5 mb-2" style={{ background: "rgba(10,10,18,0.5)" }}>
+                    <div className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-1">Action</div>
+                    <p className="font-mono text-[9px] text-foreground leading-relaxed">{threshold.action}</p>
+                  </div>
+
+                  {/* Runtime Log */}
+                  <div className="rounded-md border border-white/[0.04] p-2.5 mb-2" style={{ background: "rgba(10,10,18,0.5)" }}>
+                    <div className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-1">Runtime Log</div>
+                    <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">{threshold.runtimeLog}</p>
+                  </div>
+
+                  {/* ER Rule */}
+                  <div className="rounded-md border p-2.5" style={{ borderColor: `${threshold.color}20`, background: `${threshold.color}05` }}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Scale className="h-3 w-3" style={{ color: threshold.color }} />
+                      <span className="font-mono text-[8px] font-bold uppercase tracking-wider" style={{ color: threshold.color }}>ER Rule</span>
+                    </div>
+                    <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">{threshold.erRule}</p>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Wake-on-Acoustic Callout */}
+          <motion.div
+            className="rounded-lg border-2 border-[#EF4444]/30 p-4"
+            style={{ background: "linear-gradient(135deg, rgba(239,68,68,0.08), rgba(15,15,24,0.4))" }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <CircuitBoard className="h-4 w-4" style={{ color: "#EF4444" }} />
+              <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#EF4444" }}>Wake-on-Acoustic — Deterministic Hardware Interrupt</span>
+            </div>
+            <p className="font-mono text-[9px] text-foreground leading-relaxed">
+              At 75°C (CRITICAL), the APU enters low-power state. The analog sensor interface acts as a deterministic hardware interrupt — 
+              if acoustic energy exceeds threshold, the system wakes for a single inference cycle, logs the result as immutable Fact, 
+              and returns to sleep. Engineers have mathematically reproducible proof of why the system was offline.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-[#EF4444]/30 bg-[#EF4444]/10 px-2 py-0.5 font-mono text-[8px]" style={{ color: "#EF4444" }}>Rule 4: No Non-Determinism</span>
+              <span className="rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-2 py-0.5 font-mono text-[8px]" style={{ color: "#C9A84C" }}>Rule 7: Append-Only Evidence</span>
+              <span className="rounded-full border border-[#3366CC]/30 bg-[#3366CC]/10 px-2 py-0.5 font-mono text-[8px]" style={{ color: "#3366CC" }}>SHA-256 Canonical</span>
+              <span className="rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-2 py-0.5 font-mono text-[8px]" style={{ color: "#10b981" }}>WORM Storage</span>
+            </div>
+          </motion.div>
+        </CardContent>
+      </Card>
+
+      {/* ── 4. THERMAL CONTAINMENT ARCHITECTURE CARD ─────────────────────── */}
+      <Card className="border-white/[0.06] bg-[rgba(15,15,24,0.6)] overflow-hidden">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#C9A84C]/30" style={{ background: "#C9A84C15" }}>
+              <Layers className="h-5 w-5" style={{ color: "#C9A84C" }} />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-bold" style={{ color: "#C9A84C" }}>Thermal Containment Architecture</CardTitle>
+              <CardDescription className="font-mono text-[9px]">4-Layer Thermal Path · Aerogel Isolation · Passive Conduction</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Thermal Path Visualization */}
+          <div className="rounded-lg border border-white/[0.06] p-4" style={{ background: "rgba(10,10,18,0.5)" }}>
+            <div className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-3">Thermal Conduction Path</div>
+            <div className="flex items-center gap-1 overflow-x-auto pb-2">
+              {[
+                { label: "Ryzen Die", color: "#EF4444", sub: "Heat Source" },
+                { label: "TIM PCM", color: "#F59E0B", sub: "5-7 W/m·K" },
+                { label: "Cu Block", color: "#CC9900", sub: "Heat Spreader" },
+                { label: "Mainboard", color: "#C0C0C0", sub: "6061-T6" },
+                { label: "Gap Pads", color: "#F59E0B", sub: "3-5 W/m·K" },
+                { label: "Enclosure", color: "#10b981", sub: "IP67 Shell" },
+                { label: "Ambient", color: "#3B82F6", sub: "Eastern Cape" },
+              ].map((step, idx, arr) => (
+                <div key={step.label} className="flex items-center shrink-0">
+                  <div className="rounded-md border px-3 py-2 text-center" style={{ borderColor: `${step.color}30`, background: `${step.color}08`, minWidth: 80 }}>
+                    <div className="font-mono text-[8px] font-bold" style={{ color: step.color }}>{step.label}</div>
+                    <div className="font-mono text-[7px] text-muted-foreground/50">{step.sub}</div>
+                  </div>
+                  {idx < arr.length - 1 && (
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0 mx-1 text-muted-foreground/30" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Containment Layers */}
+          <div className="space-y-3">
+            {THERMAL_CONTAINMENT.map((layer, idx) => (
+              <motion.div
+                key={layer.id}
+                className="rounded-lg border p-4"
+                style={{ borderColor: `${layer.color}30`, background: `${layer.color}05` }}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: idx * 0.1 }}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border" style={{ borderColor: `${layer.color}40`, background: `${layer.color}15`, color: layer.color }}>
+                    <span className="font-mono text-[9px] font-bold">{layer.id.toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold" style={{ color: layer.color }}>{layer.name}</span>
+                      <span className="rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${layer.color}40`, background: `${layer.color}10`, color: layer.color }}>
+                        {layer.conductivity}
+                      </span>
+                    </div>
+                    <p className="font-mono text-[9px] text-muted-foreground leading-relaxed">{layer.purpose}</p>
+                    <div className="mt-2 flex items-center gap-4">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[8px] text-muted-foreground/50">From:</span>
+                        <span className="font-mono text-[9px] text-foreground">{layer.fromComponent}</span>
+                      </div>
+                      <ArrowRight className="h-3 w-3 text-muted-foreground/30" />
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[8px] text-muted-foreground/50">To:</span>
+                        <span className="font-mono text-[9px] text-foreground">{layer.toComponent}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Aerogel Isolation Highlight */}
+          <motion.div
+            className="rounded-lg border-2 border-[#3366CC]/30 p-4"
+            style={{ background: "linear-gradient(135deg, rgba(51,102,204,0.08), rgba(15,15,24,0.4))" }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Flame className="h-4 w-4" style={{ color: "#3366CC" }} />
+              <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#3366CC" }}>Aerogel Thermal Barrier — AMD Zone / Battery Zone Isolation</span>
+            </div>
+            <p className="font-mono text-[9px] text-foreground leading-relaxed">
+              Pyrogel XTE Aerogel (0.015 W/m·K) shields the LiFePO₄ battery pack from AMD Ryzen APU radiant heat.
+              This ultra-low conductivity barrier reclaims ~10mm of internal volume while maintaining thermal isolation
+              between the compute zone and battery zone.
+            </p>
+            <div className="mt-3 flex items-center gap-3">
+              <div className="rounded-md border border-[#EF4444]/30 bg-[#EF4444]/10 px-3 py-1.5 text-center">
+                <div className="font-mono text-[8px] text-[#EF4444]">AMD Zone</div>
+                <div className="font-mono text-[9px] font-bold text-[#EF4444]">~58°C</div>
+              </div>
+              <div className="flex-1 flex items-center gap-1">
+                <div className="h-1.5 w-1.5 rounded-full bg-[#EF4444]" />
+                <div className="h-1 flex-1 rounded-full" style={{ background: "linear-gradient(90deg, #EF4444, #3366CC, #10b981)" }} />
+                <div className="h-1.5 w-1.5 rounded-full bg-[#10b981]" />
+              </div>
+              <div className="rounded-md border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1.5 text-center">
+                <div className="font-mono text-[8px] text-[#10b981]">Battery Zone</div>
+                <div className="font-mono text-[9px] font-bold text-[#10b981]">~28°C</div>
+              </div>
+              <div className="rounded-md border border-[#3366CC]/30 bg-[#3366CC]/10 px-3 py-1.5 text-center">
+                <div className="font-mono text-[8px] text-[#3366CC]">Aerogel</div>
+                <div className="font-mono text-[9px] font-bold text-[#3366CC]">0.015 W/m·K</div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* BOM Summary */}
+          <div className="rounded-lg border border-white/[0.06] p-4" style={{ background: "rgba(10,10,18,0.5)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4" style={{ color: "#C9A84C" }} />
+                <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>Phase 2 BOM — {PHASE2_BOM.length} Items</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {["battery", "thermal", "wiring"].map(cat => {
+                  const count = PHASE2_BOM.filter(b => b.category === cat).length;
+                  return (
+                    <span key={cat} className="rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${bomCategoryColor(cat)}30`, background: `${bomCategoryColor(cat)}10`, color: bomCategoryColor(cat) }}>
+                      {cat}: {count}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="max-h-64 overflow-y-auto space-y-1.5">
+              {PHASE2_BOM.map(item => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-md border border-white/[0.04] p-2.5"
+                  style={{ background: `${bomCategoryColor(item.category)}03` }}
+                >
+                  <div className="h-2 w-2 rounded-full shrink-0" style={{ background: bomStatusColor(item.status) }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[9px] text-foreground font-bold truncate">{item.component}</span>
+                      <span className="rounded-full border px-1.5 py-0.5 font-mono text-[7px] shrink-0" style={{ borderColor: `${bomCategoryColor(item.category)}30`, background: `${bomCategoryColor(item.category)}10`, color: bomCategoryColor(item.category) }}>
+                        {item.category}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono text-[8px] text-muted-foreground/60 truncate">{item.specification}</span>
+                      <span className="font-mono text-[8px] text-muted-foreground/40">·</span>
+                      <span className="font-mono text-[8px] text-muted-foreground/60 shrink-0">Qty: {item.quantity}</span>
+                    </div>
+                  </div>
+                  <span className="rounded-full border px-2 py-0.5 font-mono text-[8px] shrink-0" style={{ borderColor: `${bomStatusColor(item.status)}30`, background: `${bomStatusColor(item.status)}10`, color: bomStatusColor(item.status) }}>
+                    {item.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
