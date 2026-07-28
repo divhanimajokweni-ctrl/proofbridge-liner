@@ -555,3 +555,81 @@ Stage Summary:
 - 9 files, +2071 additions, branch feat/hbk-mk-ii-digital-twin → main
 - PAT cached securely in .env.local, removed from visible locations
 - SSH key configured at ~/.ssh/id_ed25519_agent with matching GitHub deploy key
+
+---
+
+## Task 2: HBK Dashboard Redesign — VVU Consortium Model
+**Date:** 2025-03-04
+**Status:** COMPLETE
+
+### Summary
+Completely rewrote `/home/z/my-project/src/components/hbk/hbk-dashboard.tsx` to reflect the new VVU Consortium Model. The old 70/20/5/5 equity split and Founding Partners campaign have been replaced with a VVU 100% ownership model and contract-based partnership architecture.
+
+### Changes Made
+
+#### 1. New Imports
+- Replaced `EQUITY_SPLIT` with `OWNERSHIP_STRUCTURE`
+- Added `CONSORTIUM_PARTNERS`, `CONSORTIUM_ARCHITECTURE`, `IP_OWNERSHIP`, `ROADMAP_PHASES`
+- Added new type imports: `OwnershipEntry`, `ConsortiumPartner`, `ConsortiumArchitecture`, `IPCategory`, `RoadmapPhase`
+- Added new lucide icons: `Network`, `Lock`, `Route`, `FileCheck2`, `FileText`, `Landmark`, `ArrowDown`, `Crown`, `Scale`, `Medal`, `BookOpen`, `Lightbulb`, `Gem`, `Sparkles`, `Briefcase`, `CircleDot`
+- Added shadcn/ui Card components
+
+#### 2. New Helper Functions
+- `partnerStatusColor()` — amber/blue/purple/green for active_outreach/negotiating/agreement_draft/executed
+- `partnerStatusLabel()` — human-readable status labels
+- `partnerIcon()` — icon mapping by partner icon name
+- `tabIcon()` — icon mapping for tab renderers
+- `ipIcon()` — icon mapping for IP categories
+- `roadmapIcon()` — icon mapping for roadmap phases
+- `roadmapStatusColor()` — active/upcoming/future color mapping
+
+#### 3. New Tab Components
+- **ConsortiumTab** — Shows VVU → HBK Research Consortium → Partners hierarchy with narrative shift (old vs new), pitch statement, key principles
+- **OwnershipTab** — Large VVU 100% circular badge (gold #C9A84C), animated progress bar, "Why 100% Matters" section with 4 principle cards
+- **ContractsTab** — Expandable partner cards with agreement type, benefits, obligations, targets, rationale, and status badges. Comparison table at bottom.
+- **IPBoundariesTab** — Two clear sections: VVU-Owned Core Technology (with lock icons) and Joint Research Outputs (with book icons). "Co-authorship ≠ ownership transfer" banner. Boundary enforcement section.
+- **RoadmapTab** — Timeline with 3 phases (Research Enablement → Industrial Validation → Commercialisation), Phase 3 has gold "Key Decision" callout. Progression principle section.
+
+#### 4. Updated Existing Tabs
+- **DigitalTwinTab** — Replaced old Equity Split sidebar with VVU Ownership badge (using OWNERSHIP_STRUCTURE). Added "VVU 100% — Clean Capitalisation Table" statement.
+- **Top Bar** — Changed from "70/20/5" badge to "VVU 100%" badge. Changed icon color from #ff2e5f to #C9A84C. Updated subtitle to "VVU 100% Ownership · Contract-Based Partnerships · Multi-Institution Programme".
+- **Tab Bar** — Changed active tab indicator from #ff2e5f to #C9A84C (gold). Default tab changed from "twin" to "consortium".
+- **GitLogTab** — Changed filter highlight from #ff2e5f to #C9A84C.
+- **Removed** old PartnersTab (replaced by ConsortiumTab + ContractsTab).
+
+#### 5. Design Consistency
+- Dark theme with radial gradient background and glass-morphism cards
+- Gold (#C9A84C) as primary accent throughout (replacing old #ff2e5f)
+- Framer-motion animations for all transitions
+- shadcn/ui Card components used where appropriate
+- Responsive design (mobile-first)
+- All 10 tabs functional: consortium, ownership, contracts, ip, roadmap, twin, resources, simulation, timeline, gitlog
+
+### Verification
+- **Lint**: 0 errors, 0 warnings (only pre-existing unrelated warning)
+- **Dev Server**: Running on port 3000, HTTP 200, no compilation errors
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Restructure HBK Dashboard to VVU 100% Consortium Model
+
+Work Log:
+- Replaced 70/20/5/5 equity split data with VVU 100% ownership structure in `/home/z/my-project/src/lib/hbk/types.ts`
+- Added new data structures: CONSORTIUM_PARTNERS, CONSORTIUM_ARCHITECTURE, IP_OWNERSHIP, ROADMAP_PHASES, OWNERSHIP_STRUCTURE
+- Each partner type has tailored agreement: Research Collaboration (academic), Grant (funding), Pilot (municipal), Technology Partnership (industrial)
+- Completely redesigned `/home/z/my-project/src/components/hbk/hbk-dashboard.tsx` with 10 tabs
+- Updated HBK API route at `/home/z/my-project/src/app/api/hbk/route.ts` to serve new consortium data
+- Fixed stale git log mock entry referencing old equity model
+- Verified all 10 tabs render correctly via agent-browser
+- Mobile responsive layout verified at 375px width
+
+Stage Summary:
+- **VVU 100% Ownership**: Clean capitalisation table with no equity dilution. Gold badge prominently displayed.
+- **Consortium Model**: VVU → HBK Research Consortium → Academic/Municipal/Industrial/Funding Partners hierarchy visible
+- **Contract-Based Partnerships**: Each partner type has specific agreement type, benefits, obligations, targets, rationale
+- **IP Boundaries**: VVU-owned core (8 items) vs Joint research outputs (4 items). "Co-authorship ≠ ownership transfer" banner.
+- **Three-Phase Roadmap**: Research Enablement → Industrial Validation → Commercialisation Decision (with Key Decision callout)
+- **Narrative Shift**: "We are looking for investors" → "VVU is establishing a multi-institution applied research programme..."
+- All existing tabs (Digital Twin, Resources, 72h Validation, Timeline, Git Actions) continue to work
+- Zero lint errors, server running cleanly

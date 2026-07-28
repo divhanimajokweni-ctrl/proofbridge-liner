@@ -3,21 +3,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Cpu, Users, ClipboardList, Activity, Calendar, GitBranch,
-  ChevronRight, ArrowLeft, Thermometer, Zap, HardDrive, Wifi,
+  Cpu, ClipboardList, Activity, Calendar, GitBranch,
+  ChevronRight, ChevronDown, ArrowDown, ArrowRight,
+  Thermometer, Zap, HardDrive,
   Shield, CheckCircle2, AlertTriangle, XCircle, Clock, Play,
   Pause, RotateCcw, GitCommit, GitMerge, Rocket, TestTube,
   FlaskConical, Box, Eye, Droplets, Battery, Radio,
-  Monitor, Server, CircuitBoard, MemoryStick, ChevronDown,
-  ExternalLink, Mail, Phone, Building2, GraduationCap,
-  Globe, Wrench, Shirt, Coffee, Printer, Truck, Home,
-  Heart, Target, TrendingUp, Award, Handshake, Star,
+  Monitor, Server, CircuitBoard, MemoryStick,
+  Building2, GraduationCap, Landmark,
+  Globe, Wrench,
+  Target, Handshake, Star,
+  Network, Lock, Route, FileCheck2, FileText,
+  Users, CircleDot, Sparkles, Crown, Briefcase,
+  Scale, Medal, BookOpen, Lightbulb, Gem,
 } from "lucide-react";
 import {
-  HBK_CAD_MODULES, EQUITY_SPLIT, SPONSORSHIP_PACKAGES,
-  RESOURCE_REGISTER, PROGRAMME_TIMELINE, VALIDATION_PHASES,
-  HBK_TABS, type HbkTabId, type CADModule, type GitAction,
+  Card, CardHeader, CardContent, CardTitle, CardDescription,
+} from "@/components/ui/card";
+import {
+  HBK_CAD_MODULES, OWNERSHIP_STRUCTURE, CONSORTIUM_PARTNERS,
+  CONSORTIUM_ARCHITECTURE, IP_OWNERSHIP, ROADMAP_PHASES,
+  SPONSORSHIP_PACKAGES, RESOURCE_REGISTER, PROGRAMME_TIMELINE,
+  VALIDATION_PHASES, HBK_TABS,
+  type HbkTabId, type CADModule, type GitAction,
   type ResourceItem, type ValidationPhase,
+  type OwnershipEntry, type ConsortiumPartner,
+  type ConsortiumArchitecture, type IPCategory, type RoadmapPhase,
 } from "@/lib/hbk/types";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -78,13 +89,85 @@ const validationStatusIcon = (s: string) => {
   }
 };
 
+const partnerStatusColor = (s: string) => {
+  switch (s) {
+    case "active_outreach": return "#F59E0B";
+    case "negotiating": return "#3B82F6";
+    case "agreement_draft": return "#8B5CF6";
+    case "executed": return "#10b981";
+    default: return "#6B7280";
+  }
+};
+
+const partnerStatusLabel = (s: string) => {
+  switch (s) {
+    case "active_outreach": return "Active Outreach";
+    case "negotiating": return "Negotiating";
+    case "agreement_draft": return "Agreement Draft";
+    case "executed": return "Executed";
+    default: return s;
+  }
+};
+
+const partnerIcon = (iconName: string) => {
+  switch (iconName) {
+    case "GraduationCap": return <GraduationCap className="h-5 w-5" />;
+    case "Landmark": return <Landmark className="h-5 w-5" />;
+    case "Building2": return <Building2 className="h-5 w-5" />;
+    case "Cpu": return <Cpu className="h-5 w-5" />;
+    default: return <Users className="h-5 w-5" />;
+  }
+};
+
+const tabIcon = (iconName: string) => {
+  switch (iconName) {
+    case "Network": return <Network className="h-3.5 w-3.5" />;
+    case "Shield": return <Shield className="h-3.5 w-3.5" />;
+    case "FileCheck2": return <FileCheck2 className="h-3.5 w-3.5" />;
+    case "Lock": return <Lock className="h-3.5 w-3.5" />;
+    case "Route": return <Route className="h-3.5 w-3.5" />;
+    case "Cpu": return <Cpu className="h-3.5 w-3.5" />;
+    case "ClipboardList": return <ClipboardList className="h-3.5 w-3.5" />;
+    case "Activity": return <Activity className="h-3.5 w-3.5" />;
+    case "Calendar": return <Calendar className="h-3.5 w-3.5" />;
+    case "GitBranch": return <GitBranch className="h-3.5 w-3.5" />;
+    default: return <Cpu className="h-3.5 w-3.5" />;
+  }
+};
+
+const ipIcon = (iconName: string) => {
+  switch (iconName) {
+    case "Shield": return <Shield className="h-5 w-5" />;
+    case "FileCheck2": return <FileCheck2 className="h-5 w-5" />;
+    default: return <FileText className="h-5 w-5" />;
+  }
+};
+
+const roadmapIcon = (iconName: string) => {
+  switch (iconName) {
+    case "FlaskConical": return <FlaskConical className="h-5 w-5" />;
+    case "Wrench": return <Wrench className="h-5 w-5" />;
+    case "Rocket": return <Rocket className="h-5 w-5" />;
+    default: return <Target className="h-5 w-5" />;
+  }
+};
+
+const roadmapStatusColor = (s: string) => {
+  switch (s) {
+    case "active": return "#10b981";
+    case "upcoming": return "#3B82F6";
+    case "future": return "#C9A84C";
+    default: return "#6B7280";
+  }
+};
+
 // ════════════════════════════════════════════════════════════════════════
 // SIMULATED GIT ACTIONS GENERATOR
 // ════════════════════════════════════════════════════════════════════════
 
 function generateGitActions(count: number): GitAction[] {
   const actions: GitAction["action"][] = ["commit", "push", "merge", "deploy", "test", "validate"];
-  const branches = ["main", "hbk/mk-ii", "hbk/bayesian-engine", "hbk/sensor-cal", "hbk/cad-layout", "hbk/partners"];
+  const branches = ["main", "hbk/mk-ii", "hbk/bayesian-engine", "hbk/sensor-cal", "hbk/cad-layout", "hbk/consortium"];
   const messages = [
     "feat: add AMD Ryzen AI compute module bounding box",
     "fix: sensor isolation distance verified at X=20, Y=180",
@@ -96,11 +179,11 @@ function generateGitActions(count: number): GitAction[] {
     "validate: 72h validation phase V3 metrics passing",
     "deploy: HBK Mk-II chassis layout to FreeCAD workspace",
     "merge: hbk/sensor-cal → main (acoustic filtering verified)",
-    "feat: equity split 70/20/5 embedded in metadata",
+    "feat: VVU 100% ownership model embedded in metadata",
     "fix: analog isolation clearance zone expanded",
     "test: Kria SoM edge-compute integration",
     "validate: Brier Score ≤ 0.02 threshold check",
-    "feat: Founding Partners campaign framework",
+    "feat: consortium architecture hierarchy definition",
     "chore: resource register initial data migration",
   ];
   const authors = ["eng-lead", "cad-operator", "bayesian-eng", "sensor-tech", "field-ops", "devops"];
@@ -128,7 +211,7 @@ function generateGitActions(count: number): GitAction[] {
 // ════════════════════════════════════════════════════════════════════════
 
 export function HbkDashboard() {
-  const [activeTab, setActiveTab] = useState<HbkTabId>("twin");
+  const [activeTab, setActiveTab] = useState<HbkTabId>("consortium");
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [gitActions] = useState<GitAction[]>(() => generateGitActions(24));
   const [simRunning, setSimRunning] = useState(false);
@@ -156,8 +239,12 @@ export function HbkDashboard() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case "consortium": return <ConsortiumTab />;
+      case "ownership": return <OwnershipTab />;
+      case "contracts": return <ContractsTab />;
+      case "ip": return <IPBoundariesTab />;
+      case "roadmap": return <RoadmapTab />;
       case "twin": return <DigitalTwinTab selectedModule={selectedModule} setSelectedModule={setSelectedModule} hoveredModule={hoveredModule} setHoveredModule={setHoveredModule} />;
-      case "partners": return <PartnersTab />;
       case "resources": return <ResourcesTab />;
       case "simulation": return <SimulationTab simRunning={simRunning} setSimRunning={setSimRunning} simElapsed={simElapsed} setSimElapsed={setSimElapsed} simHours={simHours} simMins={simMins} simSecs={simSecs} />;
       case "timeline": return <TimelineTab />;
@@ -170,12 +257,12 @@ export function HbkDashboard() {
       {/* TOP BAR */}
       <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-4 py-2.5 sm:px-6" style={{ background: "rgba(15,15,24,0.5)" }}>
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border" style={{ borderColor: "#ff2e5f40", background: "#ff2e5f10" }}>
-            <Cpu className="h-4 w-4" style={{ color: "#ff2e5f" }} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border" style={{ borderColor: "#C9A84C40", background: "#C9A84C10" }}>
+            <Cpu className="h-4 w-4" style={{ color: "#C9A84C" }} />
           </div>
           <div>
-            <h2 className="text-sm font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>HBK Mk-II Digital Twin</h2>
-            <p className="font-mono text-[9px] text-muted-foreground/70">Hydro-Bayesian Kernel · AMD Ryzen AI · IP67 Transit Shell</p>
+            <h2 className="text-sm font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>HBK Mk-II Research Consortium</h2>
+            <p className="font-mono text-[9px] text-muted-foreground/70">VVU 100% Ownership · Contract-Based Partnerships · Multi-Institution Programme</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -183,8 +270,8 @@ export function HbkDashboard() {
             <span className="h-1.5 w-1.5 rounded-full bg-current" style={{ animation: "vvu-live-pulse 2s ease-in-out infinite" }} />
             LIVE
           </span>
-          <span className="rounded-full border px-2 py-1 font-mono text-[9px]" style={{ borderColor: "#C9A84C40", background: "#C9A84C10", color: "#C9A84C" }}>
-            70/20/5
+          <span className="rounded-full border px-2.5 py-1 font-mono text-[9px] font-bold" style={{ borderColor: "#C9A84C60", background: "#C9A84C15", color: "#C9A84C" }}>
+            VVU 100%
           </span>
         </div>
       </div>
@@ -197,11 +284,11 @@ export function HbkDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`relative flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 font-mono text-[10.5px] transition-all ${isActive ? "border-[#ff2e5f] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+              className={`relative flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 font-mono text-[10.5px] transition-all ${isActive ? "border-[#C9A84C] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
               title={tab.description}
             >
-              {isActive && <motion.span layoutId="hbk-tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#ff2e5f" }} />}
-              <span style={{ color: isActive ? "#ff2e5f" : undefined }}>{tab.label}</span>
+              {isActive && <motion.span layoutId="hbk-tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#C9A84C" }} />}
+              <span style={{ color: isActive ? "#C9A84C" : undefined }}>{tab.label}</span>
             </button>
           );
         })}
@@ -227,7 +314,722 @@ export function HbkDashboard() {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// DIGITAL TWIN TAB — 3D CAD Layout + Module Status + Equity Split
+// CONSORTIUM ARCHITECTURE TAB
+// ════════════════════════════════════════════════════════════════════════
+
+function ConsortiumTab() {
+  const arch = CONSORTIUM_ARCHITECTURE;
+
+  return (
+    <div className="space-y-6">
+      {/* Pitch Statement */}
+      <motion.div
+        className="rounded-xl border border-[#C9A84C]/20 p-5"
+        style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,15,24,0.6))" }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#C9A84C]/30" style={{ background: "#C9A84C15" }}>
+            <Crown className="h-6 w-6" style={{ color: "#C9A84C" }} />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>
+              {arch.programme}
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {arch.pitchStatement}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-3 py-1 font-mono text-[9px] text-[#C9A84C]">VVU Coordinator</span>
+              <span className="rounded-full border border-[#3B82F6]/30 bg-[#3B82F6]/10 px-3 py-1 font-mono text-[9px] text-[#3B82F6]">Contract-Based</span>
+              <span className="rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1 font-mono text-[9px] text-[#10b981]">No Equity Dilution</span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Narrative Shift */}
+      <motion.div
+        className="rounded-xl border border-white/[0.06] p-5"
+        style={{ background: "rgba(15,15,24,0.6)" }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Narrative Shift</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-red-400/60" />
+              <span className="font-mono text-[9px] uppercase tracking-wider text-red-400/60">Old Narrative</span>
+            </div>
+            <p className="text-sm text-muted-foreground">&ldquo;{arch.narrativeShift.old}&rdquo;</p>
+          </div>
+          <div className="rounded-lg border border-[#10b981]/20 bg-[#10b981]/5 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <Sparkles className="h-4 w-4" style={{ color: "#10b981" }} />
+              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: "#10b981" }}>New Narrative</span>
+            </div>
+            <p className="text-sm text-foreground">&ldquo;{arch.narrativeShift.new}&rdquo;</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Consortium Hierarchy */}
+      <motion.div
+        className="rounded-xl border border-white/[0.06] p-5"
+        style={{ background: "rgba(15,15,24,0.6)" }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
+        <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-foreground">Consortium Architecture</h3>
+        <div className="relative space-y-0">
+          {/* VVU — Coordinator Level */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-[#C9A84C]/50" style={{ background: "#C9A84C20" }}>
+              <Crown className="h-7 w-7" style={{ color: "#C9A84C" }} />
+            </div>
+            <div className="flex-1 rounded-lg border border-[#C9A84C]/30 p-3" style={{ background: "#C9A84C08" }}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold" style={{ color: "#C9A84C" }}>VVU</span>
+                <span className="rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-2 py-0.5 font-mono text-[8px]" style={{ color: "#C9A84C" }}>Coordinator</span>
+              </div>
+              <p className="font-mono text-[9px] text-muted-foreground">{arch.hierarchy[0]?.description}</p>
+            </div>
+          </div>
+
+          {/* Arrow down */}
+          <div className="flex justify-center py-1">
+            <ArrowDown className="h-5 w-5 text-[#C9A84C]/40" />
+          </div>
+
+          {/* HBK Research Consortium — Programme Level */}
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border-2 border-[#3B82F6]/50" style={{ background: "#3B82F620" }}>
+              <Network className="h-6 w-6" style={{ color: "#3B82F6" }} />
+            </div>
+            <div className="flex-1 rounded-lg border border-[#3B82F6]/30 p-3" style={{ background: "#3B82F608" }}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold" style={{ color: "#3B82F6" }}>HBK Research Consortium</span>
+                <span className="rounded-full border border-[#3B82F6]/30 bg-[#3B82F6]/10 px-2 py-0.5 font-mono text-[8px]" style={{ color: "#3B82F6" }}>Programme</span>
+              </div>
+              <p className="font-mono text-[9px] text-muted-foreground">{arch.hierarchy[1]?.description}</p>
+            </div>
+          </div>
+
+          {/* Arrow down */}
+          <div className="flex justify-center py-1">
+            <ArrowDown className="h-5 w-5 text-[#3B82F6]/40" />
+          </div>
+
+          {/* Partner Types — Grid */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {arch.hierarchy.slice(2).map((level) => {
+              const partner = CONSORTIUM_PARTNERS.find(p => p.tier === level.level);
+              const color = partner?.color || "#6B7280";
+              const icon = partner ? partnerIcon(partner.icon) : <Users className="h-5 w-5" />;
+              return (
+                <motion.div
+                  key={level.level}
+                  className="rounded-lg border p-3 text-center"
+                  style={{ borderColor: `${color}30`, background: `${color}08` }}
+                  whileHover={{ borderColor: `${color}60` }}
+                >
+                  <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg" style={{ background: `${color}15`, color }}>
+                    {icon}
+                  </div>
+                  <div className="text-xs font-bold" style={{ color }}>{level.entity}</div>
+                  <p className="mt-1 font-mono text-[8px] text-muted-foreground/70">{level.description}</p>
+                  {partner && (
+                    <span className="mt-2 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${partnerStatusColor(partner.status)}30`, background: `${partnerStatusColor(partner.status)}10`, color: partnerStatusColor(partner.status) }}>
+                      <span className="h-1 w-1 rounded-full" style={{ background: partnerStatusColor(partner.status) }} />
+                      {partnerStatusLabel(partner.status)}
+                    </span>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Key Principles */}
+      <motion.div
+        className="rounded-xl border border-white/[0.06] p-5"
+        style={{ background: "rgba(15,15,24,0.6)" }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+      >
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Key Principles</h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { icon: <Shield className="h-4 w-4" />, title: "VVU 100% Ownership", desc: "All core technology remains VVU property. No equity transfer through any agreement.", color: "#C9A84C" },
+            { icon: <FileCheck2 className="h-4 w-4" />, title: "Contract-Based Access", desc: "Partners access the programme through specific contracts — not equity stakes.", color: "#3B82F6" },
+            { icon: <Scale className="h-4 w-4" />, title: "Co-authorship ≠ Ownership", desc: "Joint research outputs are shared. Platform ownership stays with VVU.", color: "#10b981" },
+          ].map((p) => (
+            <div key={p.title} className="rounded-lg border p-4 text-center" style={{ borderColor: `${p.color}20`, background: `${p.color}05` }}>
+              <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${p.color}15`, color: p.color }}>{p.icon}</div>
+              <div className="text-xs font-bold" style={{ color: p.color }}>{p.title}</div>
+              <p className="mt-1 font-mono text-[9px] text-muted-foreground">{p.desc}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// VVU 100% OWNERSHIP TAB
+// ════════════════════════════════════════════════════════════════════════
+
+function OwnershipTab() {
+  return (
+    <div className="space-y-6">
+      {/* VVU 100% Badge — Visually dominant */}
+      <motion.div
+        className="flex flex-col items-center justify-center rounded-xl border border-[#C9A84C]/20 p-8 sm:p-12"
+        style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.12), rgba(15,15,24,0.7))" }}
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Large circular badge */}
+        <motion.div
+          className="relative flex h-28 w-28 sm:h-36 sm:w-36 items-center justify-center rounded-full border-4"
+          style={{ borderColor: "#C9A84C", background: "radial-gradient(circle, #C9A84C25 0%, #C9A84C08 70%, transparent 100%)" }}
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            style={{ border: "2px solid #C9A84C40" }}
+            animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 3, repeat: Infinity }}
+          />
+          <div className="text-center">
+            <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#C9A84C80" }}>Owner</div>
+            <div className="text-2xl sm:text-3xl font-black" style={{ color: "#C9A84C", fontFamily: "var(--font-geist-sans)" }}>VVU</div>
+            <div className="font-mono text-xl sm:text-2xl font-bold" style={{ color: "#C9A84C" }}>100%</div>
+          </div>
+        </motion.div>
+
+        <h3 className="mt-6 text-xl font-bold tracking-tight text-center" style={{ fontFamily: "var(--font-geist-sans)" }}>
+          Venture Vision Ubuntu — Sole Owner
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground text-center max-w-lg">
+          The capitalisation table stays clean. All core technology, platform IP, and manufacturing rights remain solely owned by VVU. No equity transfer through any partnership agreement.
+        </p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <span className="rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-3 py-1 font-mono text-[9px]" style={{ color: "#C9A84C" }}>Clean Cap Table</span>
+          <span className="rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1 font-mono text-[9px]" style={{ color: "#10b981" }}>No Equity Dilution</span>
+          <span className="rounded-full border border-[#3B82F6]/30 bg-[#3B82F6]/10 px-3 py-1 font-mono text-[9px]" style={{ color: "#3B82F6" }}>Contract-Based Only</span>
+        </div>
+      </motion.div>
+
+      {/* Ownership Details */}
+      <motion.div
+        className="rounded-xl border border-white/[0.06] p-5"
+        style={{ background: "rgba(15,15,24,0.6)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Ownership Structure</h3>
+        {OWNERSHIP_STRUCTURE.map((entry) => (
+          <div key={entry.holder} className="rounded-lg border border-[#C9A84C]/20 p-4" style={{ background: "#C9A84C08" }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-full" style={{ background: entry.color }} />
+                <span className="font-mono text-xs font-bold" style={{ color: entry.color }}>{entry.holder}</span>
+              </div>
+              <span className="font-mono text-lg font-bold" style={{ color: entry.color }}>{entry.pct}%</span>
+            </div>
+            <div className="mt-2 h-3 w-full rounded-full bg-white/[0.06]">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: `linear-gradient(90deg, ${entry.color}, ${entry.color}80)` }}
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 1.2, ease: "easeOut" }}
+              />
+            </div>
+            <p className="mt-2 font-mono text-[9px] text-muted-foreground">{entry.description}</p>
+          </div>
+        ))}
+      </motion.div>
+
+      {/* Why 100% Matters */}
+      <motion.div
+        className="rounded-xl border border-white/[0.06] p-5"
+        style={{ background: "rgba(15,15,24,0.6)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+      >
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Why 100% Ownership Matters</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            { icon: <Gem className="h-4 w-4" />, title: "Negotiate from Strength", desc: "When you own 100%, you negotiate partnerships from a position of strength — not desperation.", color: "#C9A84C" },
+            { icon: <Shield className="h-4 w-4" />, title: "Protect Core IP", desc: "All hardware architecture, software, and manufacturing rights stay under VVU control.", color: "#10b981" },
+            { icon: <Lightbulb className="h-4 w-4" />, title: "Decide Later", desc: "You can always decide to raise equity later — from a validated position with published results.", color: "#3B82F6" },
+            { icon: <Scale className="h-4 w-4" />, title: "Clean Legal Framework", desc: "Contract-based partnerships are simpler, faster, and don't require complex shareholder agreements.", color: "#8B5CF6" },
+          ].map((item) => (
+            <div key={item.title} className="rounded-lg border p-4" style={{ borderColor: `${item.color}20`, background: `${item.color}05` }}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: `${item.color}15`, color: item.color }}>{item.icon}</div>
+                <span className="text-xs font-bold" style={{ color: item.color }}>{item.title}</span>
+              </div>
+              <p className="font-mono text-[9px] text-muted-foreground">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// CONTRACT-BASED PARTNERSHIPS TAB
+// ════════════════════════════════════════════════════════════════════════
+
+function ContractsTab() {
+  const [expandedPartner, setExpandedPartner] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        className="rounded-xl border border-[#3B82F6]/20 p-5"
+        style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(15,15,24,0.6))" }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#3B82F6]/30" style={{ background: "#3B82F615" }}>
+            <FileCheck2 className="h-6 w-6" style={{ color: "#3B82F6" }} />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>
+              Partnership Through Contracts, Not Equity
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Each partner type engages through a specific agreement that defines their benefits, obligations, and targets — without any equity transfer.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Partner Cards */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        {CONSORTIUM_PARTNERS.map((partner) => {
+          const isExpanded = expandedPartner === partner.id;
+          const statusCol = partnerStatusColor(partner.status);
+          return (
+            <motion.div
+              key={partner.id}
+              className="rounded-xl border p-5 cursor-pointer transition-all"
+              style={{ borderColor: `${partner.color}30`, background: "rgba(15,15,24,0.6)" }}
+              onClick={() => setExpandedPartner(isExpanded ? null : partner.id)}
+              whileHover={{ borderColor: `${partner.color}60` }}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg" style={{ background: `${partner.color}15`, color: partner.color }}>
+                    {partnerIcon(partner.icon)}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold" style={{ color: partner.color }}>{partner.name}</h4>
+                    <span className="font-mono text-[9px] text-muted-foreground">{partner.agreementLabel}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${statusCol}30`, background: `${statusCol}10`, color: statusCol }}>
+                    <span className="h-1 w-1 rounded-full" style={{ background: statusCol }} />
+                    {partnerStatusLabel(partner.status)}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground/50 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                </div>
+              </div>
+
+              {/* Agreement type badge */}
+              <div className="rounded-lg border p-2 mb-3" style={{ borderColor: `${partner.color}20`, background: `${partner.color}05` }}>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-3.5 w-3.5" style={{ color: partner.color }} />
+                  <span className="font-mono text-[9px] font-bold" style={{ color: partner.color }}>Agreement: {partner.agreementLabel}</span>
+                </div>
+              </div>
+
+              {/* Targets */}
+              <div className="mb-3">
+                <div className="font-mono text-[8px] uppercase tracking-wider text-muted-foreground/50 mb-1">Target Institutions</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {partner.targets.map((t) => (
+                    <span key={t} className="rounded-md border border-white/[0.06] px-2 py-0.5 font-mono text-[9px] text-foreground/80" style={{ background: "rgba(15,15,24,0.4)" }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rationale */}
+              <div className="rounded-lg border border-white/[0.04] p-2" style={{ background: "rgba(10,10,18,0.4)" }}>
+                <p className="font-mono text-[9px] text-muted-foreground">{partner.rationale}</p>
+              </div>
+
+              {/* Expanded content */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-4 space-y-4 border-t border-white/[0.06] pt-4">
+                      {/* Benefits */}
+                      <div>
+                        <div className="font-mono text-[8px] uppercase tracking-wider mb-2" style={{ color: "#10b981" }}>Benefits</div>
+                        <div className="space-y-1.5">
+                          {partner.benefits.map((b) => (
+                            <div key={b} className="flex items-center gap-2">
+                              <CheckCircle2 className="h-3 w-3 flex-none" style={{ color: "#10b981" }} />
+                              <span className="font-mono text-[9px] text-foreground">{b}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Obligations */}
+                      <div>
+                        <div className="font-mono text-[8px] uppercase tracking-wider mb-2" style={{ color: "#3B82F6" }}>Obligations</div>
+                        <div className="space-y-1.5">
+                          {partner.obligations.map((o) => (
+                            <div key={o} className="flex items-center gap-2">
+                              <ClipboardList className="h-3 w-3 flex-none" style={{ color: "#3B82F6" }} />
+                              <span className="font-mono text-[9px] text-foreground">{o}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Comparison Table */}
+      <motion.div
+        className="rounded-xl border border-white/[0.06] p-5"
+        style={{ background: "rgba(15,15,24,0.6)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Agreement Comparison</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/[0.06]">
+                <th className="px-3 py-2 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Partner Type</th>
+                <th className="px-3 py-2 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Agreement</th>
+                <th className="px-3 py-2 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Equity?</th>
+                <th className="px-3 py-2 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CONSORTIUM_PARTNERS.map((p) => (
+                <tr key={p.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                  <td className="px-3 py-2 font-mono text-[10px]" style={{ color: p.color }}>{p.name}</td>
+                  <td className="px-3 py-2 font-mono text-[10px] text-foreground">{p.agreementLabel}</td>
+                  <td className="px-3 py-2 font-mono text-[10px] font-bold" style={{ color: "#10b981" }}>None</td>
+                  <td className="px-3 py-2">
+                    <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9px]" style={{ borderColor: `${partnerStatusColor(p.status)}30`, background: `${partnerStatusColor(p.status)}10`, color: partnerStatusColor(p.status) }}>
+                      {partnerStatusLabel(p.status)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// IP BOUNDARIES TAB
+// ════════════════════════════════════════════════════════════════════════
+
+function IPBoundariesTab() {
+  return (
+    <div className="space-y-6">
+      {/* Statement Banner */}
+      <motion.div
+        className="rounded-xl border border-[#C9A84C]/20 p-5 text-center"
+        style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,15,24,0.6))" }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-full border-2 border-[#C9A84C]/40" style={{ background: "#C9A84C15" }}>
+          <Scale className="h-7 w-7" style={{ color: "#C9A84C" }} />
+        </div>
+        <h3 className="mt-4 text-lg font-bold" style={{ fontFamily: "var(--font-geist-sans)", color: "#C9A84C" }}>
+          Co-authorship ≠ ownership transfer
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground max-w-lg mx-auto">
+          Joint research outputs can be co-authored without transferring ownership of the VVU platform. Clear IP boundaries protect core technology while enabling collaborative research.
+        </p>
+      </motion.div>
+
+      {/* IP Categories */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {IP_OWNERSHIP.map((cat) => (
+          <motion.div
+            key={cat.id}
+            className="rounded-xl border p-5"
+            style={{ borderColor: `${cat.color}30`, background: "rgba(15,15,24,0.6)" }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border" style={{ borderColor: `${cat.color}40`, background: `${cat.color}15`, color: cat.color }}>
+                {ipIcon(cat.icon)}
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold" style={{ color: cat.color }}>{cat.label}</h4>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${cat.color}30`, background: `${cat.color}10`, color: cat.color }}>
+                    {cat.owner === "vvu" ? "VVU Sole Owner" : "Joint Outputs"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <p className="mb-4 font-mono text-[9px] text-muted-foreground">{cat.description}</p>
+
+            {/* Items */}
+            <div className="space-y-2">
+              {cat.items.map((item) => (
+                <motion.div
+                  key={item}
+                  className="flex items-center gap-2 rounded-lg border border-white/[0.04] p-2.5"
+                  style={{ background: `${cat.color}05` }}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {cat.owner === "vvu" ? (
+                    <Lock className="h-3.5 w-3.5 flex-none" style={{ color: "#C9A84C" }} />
+                  ) : (
+                    <BookOpen className="h-3.5 w-3.5 flex-none" style={{ color: "#3B82F6" }} />
+                  )}
+                  <span className="font-mono text-[9px] text-foreground">{item}</span>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Boundary Enforcement */}
+      <motion.div
+        className="rounded-xl border border-white/[0.06] p-5"
+        style={{ background: "rgba(15,15,24,0.6)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Boundary Enforcement</h3>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { icon: <Shield className="h-4 w-4" />, title: "Platform Protection", desc: "VVU core tech cannot be transferred through any agreement", color: "#C9A84C" },
+            { icon: <FileCheck2 className="h-4 w-4" />, title: "Research Access", desc: "Partners get research access through contracts, not ownership", color: "#3B82F6" },
+            { icon: <Lock className="h-4 w-4" />, title: "IP Clauses", desc: "Every agreement includes explicit IP boundary clauses", color: "#10b981" },
+            { icon: <Scale className="h-4 w-4" />, title: "Legal Framework", desc: "SA IP law + contract law provide enforcement mechanisms", color: "#8B5CF6" },
+          ].map((item) => (
+            <div key={item.title} className="rounded-lg border p-4" style={{ borderColor: `${item.color}20`, background: `${item.color}05` }}>
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg mb-2" style={{ background: `${item.color}15`, color: item.color }}>{item.icon}</div>
+              <div className="text-xs font-bold" style={{ color: item.color }}>{item.title}</div>
+              <p className="mt-1 font-mono text-[9px] text-muted-foreground">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// THREE-PHASE ROADMAP TAB
+// ════════════════════════════════════════════════════════════════════════
+
+function RoadmapTab() {
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        className="rounded-xl border border-[#C9A84C]/20 p-5"
+        style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,15,24,0.6))" }}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-[#C9A84C]/30" style={{ background: "#C9A84C15" }}>
+            <Route className="h-6 w-6" style={{ color: "#C9A84C" }} />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>
+              Three-Phase Strategic Roadmap
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Research Enablement → Industrial Validation → Commercialisation Decision — each phase builds on validated outcomes.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Phase Timeline */}
+      <div className="relative space-y-0">
+        {/* Connecting line */}
+        <div className="absolute left-6 top-8 bottom-8 w-px bg-white/[0.06] hidden sm:block" />
+
+        {ROADMAP_PHASES.map((phase, idx) => {
+          const phaseColor = roadmapStatusColor(phase.status);
+          return (
+            <motion.div
+              key={phase.id}
+              className="relative mb-6 last:mb-0"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: idx * 0.15 }}
+            >
+              {/* Timeline dot */}
+              <div className="hidden sm:flex absolute left-4 top-6 h-8 w-8 items-center justify-center rounded-full border-2" style={{ borderColor: phase.color, background: phase.status === "active" ? phase.color : "transparent" }}>
+                {roadmapIcon(phase.icon)}
+              </div>
+              <div className="sm:ml-16">
+                <div className="rounded-xl border p-5" style={{ borderColor: `${phase.color}30`, background: "rgba(15,15,24,0.6)" }}>
+                  {/* Phase header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${phase.color}15`, color: phase.color }}>
+                        {roadmapIcon(phase.icon)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold" style={{ color: phase.color }}>{phase.phase}: {phase.title}</span>
+                        </div>
+                        <span className="font-mono text-[9px] text-muted-foreground">{phase.duration}</span>
+                      </div>
+                    </div>
+                    <span className="rounded-full border px-2.5 py-1 font-mono text-[9px] font-bold" style={{ borderColor: `${phaseColor}40`, background: `${phaseColor}10`, color: phaseColor }}>
+                      {phase.status}
+                    </span>
+                  </div>
+
+                  <p className="mb-4 font-mono text-[9px] text-muted-foreground">{phase.subtitle}</p>
+
+                  {/* Deliverables */}
+                  <div className="mb-4">
+                    <div className="font-mono text-[8px] uppercase tracking-wider mb-2" style={{ color: phase.color }}>Deliverables</div>
+                    <div className="space-y-1.5">
+                      {phase.deliverables.map((d) => (
+                        <div key={d} className="flex items-center gap-2 rounded-md border border-white/[0.04] p-2" style={{ background: `${phase.color}05` }}>
+                          <Target className="h-3 w-3 flex-none" style={{ color: phase.color }} />
+                          <span className="font-mono text-[9px] text-foreground">{d}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Outcomes */}
+                  <div className="mb-3">
+                    <div className="font-mono text-[8px] uppercase tracking-wider mb-2" style={{ color: "#10b981" }}>Expected Outcomes</div>
+                    <div className="space-y-1.5">
+                      {phase.outcomes.map((o) => (
+                        <div key={o} className="flex items-center gap-2">
+                          <CheckCircle2 className="h-3 w-3 flex-none" style={{ color: "#10b981" }} />
+                          <span className="font-mono text-[9px] text-foreground">{o}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Partners */}
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {phase.partners.map((p) => (
+                      <span key={p} className="rounded-md border border-white/[0.06] px-2 py-0.5 font-mono text-[9px] text-muted-foreground" style={{ background: "rgba(15,15,24,0.4)" }}>{p}</span>
+                    ))}
+                  </div>
+
+                  {/* Key Decision Callout */}
+                  {phase.keyDecision && (
+                    <motion.div
+                      className="rounded-lg border-2 border-[#C9A84C]/40 p-4 mt-2"
+                      style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.1), rgba(15,15,24,0.4))" }}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.4, delay: 0.3 }}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Medal className="h-4 w-4" style={{ color: "#C9A84C" }} />
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "#C9A84C" }}>Key Decision</span>
+                      </div>
+                      <p className="font-mono text-[9px] text-foreground leading-relaxed">{phase.keyDecision}</p>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Progression Principle */}
+      <motion.div
+        className="rounded-xl border border-white/[0.06] p-5"
+        style={{ background: "rgba(15,15,24,0.6)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.4 }}
+      >
+        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Progression Principle</h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { phase: "Phase 1", principle: "Validate before you invest", desc: "Publish results, secure grants, prove the technology works under real conditions.", color: "#10b981" },
+            { phase: "Phase 2", principle: "Optimize from evidence", desc: "Use validated data to optimize hardware, certify reliability, and formalize partnerships.", color: "#3B82F6" },
+            { phase: "Phase 3", principle: "Decide from strength", desc: "Negotiate from a validated position — not from a concept. Equity decisions only after proof.", color: "#C9A84C" },
+          ].map((item) => (
+            <div key={item.phase} className="rounded-lg border p-4 text-center" style={{ borderColor: `${item.color}20`, background: `${item.color}05` }}>
+              <div className="font-mono text-[9px] uppercase tracking-wider mb-1" style={{ color: item.color }}>{item.phase}</div>
+              <div className="text-sm font-bold" style={{ color: item.color }}>{item.principle}</div>
+              <p className="mt-2 font-mono text-[9px] text-muted-foreground">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// DIGITAL TWIN TAB — 3D CAD Layout + Module Status + Ownership
 // ════════════════════════════════════════════════════════════════════════
 
 function DigitalTwinTab({
@@ -318,8 +1120,8 @@ function DigitalTwinTab({
 
             {/* Isolation zone indicator */}
             <svg className="absolute inset-0 pointer-events-none" width={canvasW} height={canvasH}>
-              <line x1={20 * scale} y1={180 * scale} x2={160 * scale} y2={120 * scale} stroke="#ff2e5f" strokeWidth={1} strokeDasharray="4 3" opacity={0.4} />
-              <text x={80 * scale} y={155 * scale} fill="#ff2e5f" fontSize={7} opacity={0.5} fontFamily="monospace">isolation zone</text>
+              <line x1={20 * scale} y1={180 * scale} x2={160 * scale} y2={120 * scale} stroke="#C9A84C" strokeWidth={1} strokeDasharray="4 3" opacity={0.4} />
+              <text x={80 * scale} y={155 * scale} fill="#C9A84C" fontSize={7} opacity={0.5} fontFamily="monospace">isolation zone</text>
             </svg>
           </div>
         </div>
@@ -372,30 +1174,34 @@ function DigitalTwinTab({
         </div>
       </div>
 
-      {/* RIGHT: Equity Split + Selected Module Details */}
+      {/* RIGHT: Ownership + Selected Module Details */}
       <div className="space-y-4">
-        {/* Equity Split */}
-        <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
-          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Equity Split</h3>
-          <div className="space-y-3">
-            {EQUITY_SPLIT.map((slice) => (
-              <div key={slice.holder}>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] font-bold" style={{ color: slice.color }}>{slice.holder}</span>
-                  <span className="font-mono text-[10px] text-foreground">{slice.pct}%</span>
+        {/* VVU Ownership Badge */}
+        <div className="rounded-xl border border-[#C9A84C]/20 p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Ownership</h3>
+          {OWNERSHIP_STRUCTURE.map((entry) => (
+            <div key={entry.holder}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-3.5 w-3.5" style={{ color: entry.color }} />
+                  <span className="font-mono text-[10px] font-bold" style={{ color: entry.color }}>{entry.holder}</span>
                 </div>
-                <div className="mt-1 h-2 w-full rounded-full bg-white/[0.06]">
-                  <motion.div
-                    className="h-full rounded-full"
-                    style={{ background: slice.color }}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${slice.pct}%` }}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                  />
-                </div>
-                <p className="mt-0.5 font-mono text-[8px] text-muted-foreground/60">{slice.description}</p>
+                <span className="font-mono text-[10px] text-foreground">{entry.pct}%</span>
               </div>
-            ))}
+              <div className="mt-1 h-2 w-full rounded-full bg-white/[0.06]">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: entry.color }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${entry.pct}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                />
+              </div>
+              <p className="mt-0.5 font-mono text-[8px] text-muted-foreground/60">{entry.description}</p>
+            </div>
+          ))}
+          <div className="mt-3 rounded-lg border border-[#C9A84C]/20 p-2 text-center" style={{ background: "#C9A84C08" }}>
+            <span className="font-mono text-[9px] font-bold" style={{ color: "#C9A84C" }}>VVU 100% — Clean Capitalisation Table</span>
           </div>
         </div>
 
@@ -410,30 +1216,19 @@ function DigitalTwinTab({
             <h3 className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: selected.color }}>{selected.label}</h3>
             <p className="mb-3 font-mono text-[9px] text-muted-foreground">{selected.description}</p>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] text-muted-foreground">Status</span>
-                <span className="font-mono text-[9px] font-bold" style={{ color: statusColor(selected.status) }}>{selected.status}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] text-muted-foreground">Dimensions</span>
-                <span className="font-mono text-[9px] text-foreground">{selected.length}×{selected.width}×{selected.height} mm</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] text-muted-foreground">Position (X,Y,Z)</span>
-                <span className="font-mono text-[9px] text-foreground">({selected.position.x}, {selected.position.y}, {selected.position.z})</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] text-muted-foreground">Temperature</span>
-                <span className="font-mono text-[9px] text-foreground">{selected.tempC}°C</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] text-muted-foreground">Load</span>
-                <span className="font-mono text-[9px] text-foreground">{selected.loadPct}%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[9px] text-muted-foreground">FreeCAD Name</span>
-                <span className="font-mono text-[9px] text-foreground">{selected.name}</span>
-              </div>
+              {[
+                ["Status", selected.status, statusColor(selected.status)],
+                ["Dimensions", `${selected.length}×${selected.width}×${selected.height} mm`, undefined],
+                ["Position (X,Y,Z)", `(${selected.position.x}, ${selected.position.y}, ${selected.position.z})`, undefined],
+                ["Temperature", `${selected.tempC}°C`, undefined],
+                ["Load", `${selected.loadPct}%`, undefined],
+                ["FreeCAD Name", selected.name, undefined],
+              ].map(([label, value, color]) => (
+                <div key={label as string} className="flex items-center justify-between">
+                  <span className="font-mono text-[9px] text-muted-foreground">{label as string}</span>
+                  <span className="font-mono text-[9px]" style={{ color: color as string || "var(--tw-prose-body)", fontWeight: color ? "bold" : "normal" }}>{value as string}</span>
+                </div>
+              ))}
             </div>
           </motion.div>
         ) : (
@@ -463,190 +1258,6 @@ function DigitalTwinTab({
               </div>
             ))}
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// FOUNDING PARTNERS TAB
-// ════════════════════════════════════════════════════════════════════════
-
-function PartnersTab() {
-  const [expandedPackage, setExpandedPackage] = useState<string | null>(null);
-
-  return (
-    <div className="space-y-6">
-      {/* Campaign Header */}
-      <div className="rounded-xl border border-[#C9A84C]/20 p-5" style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,15,24,0.6))" }}>
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#C9A84C]/30" style={{ background: "#C9A84C15" }}>
-            <Handshake className="h-6 w-6" style={{ color: "#C9A84C" }} />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>The Founding 100 Campaign</h3>
-            <p className="mt-1 text-sm italic text-muted-foreground/80">
-              &ldquo;We are not requesting unrestricted funding. We are inviting your organization to sponsor one operational resource that enables the HBK Applied Research Programme to continue building South African technology for water infrastructure.&rdquo;
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-3 py-1 font-mono text-[9px] text-[#C9A84C]">100 Founding Partners</span>
-              <span className="rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1 font-mono text-[9px] text-[#10b981]">In-Kind Contributions</span>
-              <span className="rounded-full border border-[#3B82F6]/30 bg-[#3B82F6]/10 px-3 py-1 font-mono text-[9px] text-[#3B82F6]">12–18 Month Programme</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Campaign Psychology */}
-      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Campaign Psychology</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-            <div className="mb-1 font-mono text-[9px] uppercase tracking-wider text-red-400/60">Old Approach</div>
-            <p className="text-xs text-muted-foreground">&ldquo;Will you sponsor us?&rdquo; — Asking for help</p>
-          </div>
-          <div className="rounded-lg border border-[#10b981]/20 bg-[#10b981]/5 p-3">
-            <div className="mb-1 font-mono text-[9px] uppercase tracking-wider text-[#10b981]/60">New Approach</div>
-            <p className="text-xs text-foreground">&ldquo;Will you become one of the first 100 organizations helping establish South Africa&apos;s HBK Applied Research Programme?&rdquo; — Inviting participation</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Sponsorship Catalogue */}
-      <div>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Sponsorship Catalogue</h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {SPONSORSHIP_PACKAGES.map((pkg) => {
-            const isExpanded = expandedPackage === pkg.id;
-            return (
-              <motion.div
-                key={pkg.id}
-                className="rounded-xl border p-4 cursor-pointer transition-all"
-                style={{ borderColor: `${pkg.color}30`, background: "rgba(15,15,24,0.6)" }}
-                onClick={() => setExpandedPackage(isExpanded ? null : pkg.id)}
-                whileHover={{ borderColor: `${pkg.color}60` }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{pkg.icon}</span>
-                    <div>
-                      <h4 className="text-xs font-bold" style={{ color: pkg.color }}>{pkg.name}</h4>
-                      <span className="font-mono text-[9px] text-muted-foreground">{pkg.estimatedValue}</span>
-                    </div>
-                  </div>
-                  <ChevronDown className={`h-4 w-4 text-muted-foreground/50 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                </div>
-                <p className="mt-2 font-mono text-[9px] text-muted-foreground/70">{pkg.impact}</p>
-                <AnimatePresence>
-                  {isExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-3 space-y-1.5 border-t border-white/[0.06] pt-3">
-                        {pkg.items.map((item) => (
-                          <div key={item.name} className="flex items-center justify-between">
-                            <span className="font-mono text-[9px] text-foreground">{item.name}</span>
-                            <span className="font-mono text-[9px] text-muted-foreground">{item.qty}</span>
-                          </div>
-                        ))}
-                        <div className="mt-2 pt-2 border-t border-white/[0.06]">
-                          <span className="font-mono text-[8px] text-muted-foreground/50">Typical: {pkg.items[0]?.typicalProvider}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Partner Categories */}
-      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Partner Categories</h3>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {/* Consortium */}
-          <div className="rounded-lg border border-[#3B82F6]/20 bg-[#3B82F6]/5 p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Building2 className="h-4 w-4" style={{ color: "#3B82F6" }} />
-              <span className="text-xs font-bold" style={{ color: "#3B82F6" }}>Consortium Members</span>
-            </div>
-            <p className="font-mono text-[9px] text-muted-foreground mb-2">Formal agreements</p>
-            {[
-              { name: "UCT, Wits", type: "Research Collaboration" },
-              { name: "WRC, NRF, DSTI", type: "Grant Agreement" },
-              { name: "AMD, sensor mfg", type: "Technology Partnership" },
-              { name: "NMBM", type: "Pilot Agreement" },
-            ].map(p => (
-              <div key={p.name} className="flex items-center justify-between py-0.5">
-                <span className="font-mono text-[9px] text-foreground">{p.name}</span>
-                <span className="font-mono text-[8px] text-muted-foreground/50">{p.type}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Friends of VVU */}
-          <div className="rounded-lg border border-[#10b981]/20 bg-[#10b981]/5 p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Heart className="h-4 w-4" style={{ color: "#10b981" }} />
-              <span className="text-xs font-bold" style={{ color: "#10b981" }}>Friends of VVU</span>
-            </div>
-            <p className="font-mono text-[9px] text-muted-foreground mb-2">Informal support, no lengthy agreements</p>
-            {[
-              "Small businesses", "Restaurants & cafés", "Community organizations",
-              "Printing companies", "Taxi companies", "Hardware stores",
-            ].map(name => (
-              <div key={name} className="py-0.5">
-                <span className="font-mono text-[9px] text-foreground">{name}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Community Partner */}
-          <div className="rounded-lg border border-[#C9A84C]/20 bg-[#C9A84C]/5 p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <Star className="h-4 w-4" style={{ color: "#C9A84C" }} />
-              <span className="text-xs font-bold" style={{ color: "#C9A84C" }}>Community Partner</span>
-            </div>
-            <p className="font-mono text-[9px] text-muted-foreground mb-2">Operational support</p>
-            {[
-              { icon: <Coffee className="h-3 w-3" />, name: "Catering" },
-              { icon: <Shirt className="h-3 w-3" />, name: "Uniforms" },
-              { icon: <Printer className="h-3 w-3" />, name: "Printing" },
-              { icon: <Truck className="h-3 w-3" />, name: "Transport" },
-              { icon: <Home className="h-3 w-3" />, name: "Accommodation" },
-              { icon: <Globe className="h-3 w-3" />, name: "Marketing" },
-            ].map(item => (
-              <div key={item.name} className="flex items-center gap-1.5 py-0.5">
-                <span className="text-muted-foreground/50">{item.icon}</span>
-                <span className="font-mono text-[9px] text-foreground">{item.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Impact Language */}
-      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Impact Language Framework</h3>
-        <div className="space-y-2">
-          {[
-            { need: "We require office space.", impact: "A contribution of temporary workspace will directly accelerate engineering development, field validation, and student collaboration during the foundational phase of the HBK Applied Research Programme." },
-            { need: "We need laptops.", impact: "Sponsoring a workstation enables our engineering team to develop and validate the HBK Mk-II platform, advancing South Africa's hydraulic intelligence capabilities." },
-            { need: "We require mobile data.", impact: "A data contribution allows our field teams to transmit critical acoustic and pressure evidence in real-time, accelerating validation of Bayesian leak detection algorithms." },
-            { need: "We need branded shirts.", impact: "Supporting field uniforms establishes a professional research presence during municipal site visits, building trust with partners and communities." },
-          ].map((item) => (
-            <div key={item.need} className="rounded-lg border border-white/[0.04] p-3">
-              <div className="font-mono text-[9px] text-red-400/60 line-through">{item.need}</div>
-              <div className="mt-1 font-mono text-[9px] text-[#10b981]">{item.impact}</div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
@@ -950,7 +1561,7 @@ function TimelineTab() {
           {/* Timeline line */}
           <div className="absolute left-6 top-0 bottom-0 w-px bg-white/[0.06]" />
 
-          {PROGRAMME_TIMELINE.map((phase, idx) => (
+          {PROGRAMME_TIMELINE.map((phase) => (
             <div key={phase.id} className="relative mb-8 last:mb-0">
               {/* Dot */}
               <div className="absolute left-4 top-1 h-4 w-4 rounded-full border-2" style={{ borderColor: phase.color, background: phase.status === "active" ? phase.color : "transparent" }}>
@@ -1000,7 +1611,7 @@ function TimelineTab() {
         <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Success Metrics</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {[
-            { label: "Founding 100 Partners", target: "100 within 12 months", metric: "Signed response forms", color: "#C9A84C" },
+            { label: "Consortium Formation", target: "4+ partners signed", metric: "Agreement status", color: "#C9A84C" },
             { label: "Resources Secured", target: "All priority resources", metric: "Resource register", color: "#10b981" },
             { label: "Programme Visibility", target: "50+ mentions", metric: "Media, social media", color: "#3B82F6" },
             { label: "Grant Funding", target: "2+ grants secured", metric: "Grant agreements", color: "#8B5CF6" },
@@ -1060,7 +1671,7 @@ function GitLogTab({ gitActions }: { gitActions: GitAction[] }) {
           <button
             key={f}
             onClick={() => setActionFilter(f)}
-            className={`rounded-full border px-3 py-1 font-mono text-[9px] transition-all ${actionFilter === f ? "border-[#ff2e5f]/30 bg-[#ff2e5f]/10 text-[#ff2e5f]" : "border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+            className={`rounded-full border px-3 py-1 font-mono text-[9px] transition-all ${actionFilter === f ? "border-[#C9A84C]/30 bg-[#C9A84C]/10 text-[#C9A84C]" : "border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
           >
             {f}
           </button>

@@ -1,0 +1,1104 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+     4→import { motion, AnimatePresence } from "framer-motion";
+     5→import {
+     6→  Cpu, Users, ClipboardList, Activity, Calendar, GitBranch,
+     7→  ChevronRight, ArrowLeft, Thermometer, Zap, HardDrive, Wifi,
+     8→  Shield, CheckCircle2, AlertTriangle, XCircle, Clock, Play,
+     9→  Pause, RotateCcw, GitCommit, GitMerge, Rocket, TestTube,
+    10→  FlaskConical, Box, Eye, Droplets, Battery, Radio,
+    11→  Monitor, Server, CircuitBoard, MemoryStick, ChevronDown,
+    12→  ExternalLink, Mail, Phone, Building2, GraduationCap,
+    13→  Globe, Wrench, Shirt, Coffee, Printer, Truck, Home,
+    14→  Heart, Target, TrendingUp, Award, Handshake, Star,
+    15→} from "lucide-react";
+    16→import {
+    17→  HBK_CAD_MODULES, EQUITY_SPLIT, SPONSORSHIP_PACKAGES,
+    18→  RESOURCE_REGISTER, PROGRAMME_TIMELINE, VALIDATION_PHASES,
+    19→  HBK_TABS, type HbkTabId, type CADModule, type GitAction,
+    20→  type ResourceItem, type ValidationPhase,
+    21→} from "@/lib/hbk/types";
+    22→
+    23→// ════════════════════════════════════════════════════════════════════════
+    24→// HELPERS
+    25→// ════════════════════════════════════════════════════════════════════════
+    26→
+    27→const statusColor = (s: string) => {
+    28→  switch (s) {
+    29→    case "OPERATIONAL": return "#10b981";
+    30→    case "STANDBY": return "#F59E0B";
+    31→    case "DIAGNOSTIC": return "#3B82F6";
+    32→    case "OFFLINE": return "#EF4444";
+    33→    default: return "#6B7280";
+    34→  }
+    35→};
+    36→
+    37→const gitActionIcon = (a: string) => {
+    38→  switch (a) {
+    39→    case "commit": return <GitCommit className="h-3.5 w-3.5" />;
+    40→    case "push": return <GitBranch className="h-3.5 w-3.5" />;
+    41→    case "merge": return <GitMerge className="h-3.5 w-3.5" />;
+    42→    case "deploy": return <Rocket className="h-3.5 w-3.5" />;
+    43→    case "test": return <TestTube className="h-3.5 w-3.5" />;
+    44→    case "validate": return <FlaskConical className="h-3.5 w-3.5" />;
+    45→    default: return <GitCommit className="h-3.5 w-3.5" />;
+    46→  }
+    47→};
+    48→
+    49→const gitActionColor = (a: string) => {
+    50→  switch (a) {
+    51→    case "commit": return "#10b981";
+    52→    case "push": return "#3B82F6";
+    53→    case "merge": return "#8B5CF6";
+    54→    case "deploy": return "#F59E0B";
+    55→    case "test": return "#EC4899";
+    56→    case "validate": return "#C9A84C";
+    57→    default: return "#6B7280";
+    58→  }
+    59→};
+    60→
+    61→const resourceStatusColor = (s: string) => {
+    62→  switch (s) {
+    63→    case "secured": return "#10b981";
+    64→    case "in_progress": return "#3B82F6";
+    65→    case "open": return "#F59E0B";
+    66→    case "urgent": return "#EF4444";
+    67→    default: return "#6B7280";
+    68→  }
+    69→};
+    70→
+    71→const validationStatusIcon = (s: string) => {
+    72→  switch (s) {
+    73→    case "complete": return <CheckCircle2 className="h-4 w-4" style={{ color: "#10b981" }} />;
+    74→    case "active": return <Activity className="h-4 w-4" style={{ color: "#3B82F6" }} />;
+    75→    case "pending": return <Clock className="h-4 w-4" style={{ color: "#6B7280" }} />;
+    76→    case "failed": return <XCircle className="h-4 w-4" style={{ color: "#EF4444" }} />;
+    77→    default: return null;
+    78→  }
+    79→};
+    80→
+    81→// ════════════════════════════════════════════════════════════════════════
+    82→// SIMULATED GIT ACTIONS GENERATOR
+    83→// ════════════════════════════════════════════════════════════════════════
+    84→
+    85→function generateGitActions(count: number): GitAction[] {
+    86→  const actions: GitAction["action"][] = ["commit", "push", "merge", "deploy", "test", "validate"];
+    87→  const branches = ["main", "hbk/mk-ii", "hbk/bayesian-engine", "hbk/sensor-cal", "hbk/cad-layout", "hbk/partners"];
+    88→  const messages = [
+    89→    "feat: add AMD Ryzen AI compute module bounding box",
+    90→    "fix: sensor isolation distance verified at X=20, Y=180",
+    91→    "refactor: BMS power distribution routing updated",
+    92→    "feat: NVMe storage bay vibration dampening mounts",
+    93→    "chore: IP67 transit shell envelope clearance check",
+    94→    "test: Bayesian inference engine MCMC convergence",
+    95→    "feat: Comms routing node Cellular/GNSS integration",
+    96→    "validate: 72h validation phase V3 metrics passing",
+    97→    "deploy: HBK Mk-II chassis layout to FreeCAD workspace",
+    98→    "merge: hbk/sensor-cal → main (acoustic filtering verified)",
+    99→    "feat: equity split 70/20/5 embedded in metadata",
+   100→    "fix: analog isolation clearance zone expanded",
+   101→    "test: Kria SoM edge-compute integration",
+   102→    "validate: Brier Score ≤ 0.02 threshold check",
+   103→    "feat: Founding Partners campaign framework",
+   104→    "chore: resource register initial data migration",
+   105→  ];
+   106→  const authors = ["eng-lead", "cad-operator", "bayesian-eng", "sensor-tech", "field-ops", "devops"];
+   107→  const result: GitAction[] = [];
+   108→  const now = Date.now();
+   109→  for (let i = 0; i < count; i++) {
+   110→    const action = actions[Math.floor(Math.random() * actions.length)];
+   111→    const hash = Math.random().toString(16).slice(2, 9);
+   112→    result.push({
+   113→      id: `ga-${i}`,
+   114→      timestamp: new Date(now - (count - i) * 180000 + Math.random() * 60000).toISOString(),
+   115→      action,
+   116→      branch: branches[Math.floor(Math.random() * branches.length)],
+   117→      message: messages[Math.floor(Math.random() * messages.length)],
+   118→      author: authors[Math.floor(Math.random() * authors.length)],
+   119→      status: Math.random() > 0.08 ? "success" : Math.random() > 0.5 ? "running" : "failed",
+   120→      hash,
+   121→    });
+   122→  }
+   123→  return result;
+   124→}
+   125→
+   126→// ════════════════════════════════════════════════════════════════════════
+   127→// MAIN COMPONENT
+   128→// ════════════════════════════════════════════════════════════════════════
+   129→
+   130→export function HbkDashboard() {
+   131→  const [activeTab, setActiveTab] = useState<HbkTabId>("twin");
+   132→  const [selectedModule, setSelectedModule] = useState<string | null>(null);
+   133→  const [gitActions] = useState<GitAction[]>(() => generateGitActions(24));
+   134→  const [simRunning, setSimRunning] = useState(false);
+   135→  const [simElapsed, setSimElapsed] = useState(0);
+   136→  const [hoveredModule, setHoveredModule] = useState<string | null>(null);
+   137→  const simIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+   138→
+   139→  // Simulation timer
+   140→  useEffect(() => {
+   141→    if (simRunning) {
+   142→      simIntervalRef.current = setInterval(() => {
+   143→        setSimElapsed(prev => prev + 1);
+   144→      }, 1000);
+   145→    } else if (simIntervalRef.current) {
+   146→      clearInterval(simIntervalRef.current);
+   147→    }
+   148→    return () => { if (simIntervalRef.current) clearInterval(simIntervalRef.current); };
+   149→  }, [simRunning]);
+   150→
+   151→  const simHours = Math.floor(simElapsed / 3600);
+   152→  const simMins = Math.floor((simElapsed % 3600) / 60);
+   153→  const simSecs = simElapsed % 60;
+   154→
+   155→  // ── TAB RENDERING ──────────────────────────────────────────────────────
+   156→
+   157→  const renderTabContent = () => {
+   158→    switch (activeTab) {
+   159→      case "twin": return <DigitalTwinTab selectedModule={selectedModule} setSelectedModule={setSelectedModule} hoveredModule={hoveredModule} setHoveredModule={setHoveredModule} />;
+   160→      case "partners": return <PartnersTab />;
+   161→      case "resources": return <ResourcesTab />;
+   162→      case "simulation": return <SimulationTab simRunning={simRunning} setSimRunning={setSimRunning} simElapsed={simElapsed} setSimElapsed={setSimElapsed} simHours={simHours} simMins={simMins} simSecs={simSecs} />;
+   163→      case "timeline": return <TimelineTab />;
+   164→      case "gitlog": return <GitLogTab gitActions={gitActions} />;
+   165→    }
+   166→  };
+   167→
+   168→  return (
+   169→    <div className="flex h-full flex-col overflow-hidden">
+   170→      {/* TOP BAR */}
+   171→      <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-4 py-2.5 sm:px-6" style={{ background: "rgba(15,15,24,0.5)" }}>
+   172→        <div className="flex items-center gap-3">
+   173→          <div className="flex h-8 w-8 items-center justify-center rounded-lg border" style={{ borderColor: "#ff2e5f40", background: "#ff2e5f10" }}>
+   174→            <Cpu className="h-4 w-4" style={{ color: "#ff2e5f" }} />
+   175→          </div>
+   176→          <div>
+   177→            <h2 className="text-sm font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>HBK Mk-II Digital Twin</h2>
+   178→            <p className="font-mono text-[9px] text-muted-foreground/70">Hydro-Bayesian Kernel · AMD Ryzen AI · IP67 Transit Shell</p>
+   179→          </div>
+   180→        </div>
+   181→        <div className="flex items-center gap-2">
+   182→          <span className="hidden items-center gap-1.5 rounded-full border px-2 py-1 font-mono text-[9px] sm:inline-flex" style={{ borderColor: "#10b98140", background: "#10b98110", color: "#10b981" }}>
+   183→            <span className="h-1.5 w-1.5 rounded-full bg-current" style={{ animation: "vvu-live-pulse 2s ease-in-out infinite" }} />
+   184→            LIVE
+   185→          </span>
+   186→          <span className="rounded-full border px-2 py-1 font-mono text-[9px]" style={{ borderColor: "#C9A84C40", background: "#C9A84C10", color: "#C9A84C" }}>
+   187→            70/20/5
+   188→          </span>
+   189→        </div>
+   190→      </div>
+   191→
+   192→      {/* TABS */}
+   193→      <div className="flex shrink-0 items-center gap-0.5 overflow-x-auto border-b border-white/[0.06] px-3 sm:px-5" style={{ background: "rgba(15,15,24,0.3)" }}>
+   194→        {HBK_TABS.map((tab) => {
+   195→          const isActive = activeTab === tab.id;
+   196→          return (
+   197→            <button
+   198→              key={tab.id}
+   199→              onClick={() => setActiveTab(tab.id)}
+   200→              className={`relative flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 font-mono text-[10.5px] transition-all ${isActive ? "border-[#ff2e5f] text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+   201→              title={tab.description}
+   202→            >
+   203→              {isActive && <motion.span layoutId="hbk-tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5" style={{ background: "#ff2e5f" }} />}
+   204→              <span style={{ color: isActive ? "#ff2e5f" : undefined }}>{tab.label}</span>
+   205→            </button>
+   206→          );
+   207→        })}
+   208→      </div>
+   209→
+   210→      {/* CONTENT */}
+   211→      <div className="min-h-0 flex-1 overflow-auto">
+   212→        <AnimatePresence mode="wait">
+   213→          <motion.div
+   214→            key={activeTab}
+   215→            initial={{ opacity: 0, y: 4 }}
+   216→            animate={{ opacity: 1, y: 0 }}
+   217→            exit={{ opacity: 0, y: -4 }}
+   218→            transition={{ duration: 0.2 }}
+   219→            className="p-4 sm:p-6"
+   220→          >
+   221→            {renderTabContent()}
+   222→          </motion.div>
+   223→        </AnimatePresence>
+   224→      </div>
+   225→    </div>
+   226→  );
+   227→}
+   228→
+   229→// ════════════════════════════════════════════════════════════════════════
+   230→// DIGITAL TWIN TAB — 3D CAD Layout + Module Status + Equity Split
+   231→// ════════════════════════════════════════════════════════════════════════
+   232→
+   233→function DigitalTwinTab({
+   234→  selectedModule,
+   235→  setSelectedModule,
+   236→  hoveredModule,
+   237→  setHoveredModule,
+   238→}: {
+   239→  selectedModule: string | null;
+   240→  setSelectedModule: (id: string | null) => void;
+   241→  hoveredModule: string | null;
+   242→  setHoveredModule: (id: string | null) => void;
+   243→}) {
+   244→  const modules = HBK_CAD_MODULES.filter(m => m.id !== "base-plate");
+   245→  const basePlate = HBK_CAD_MODULES[0];
+   246→  const selected = selectedModule ? HBK_CAD_MODULES.find(m => m.id === selectedModule) : null;
+   247→
+   248→  // Scale: 1mm = 0.8px for the layout
+   249→  const scale = 0.8;
+   250→  const canvasW = 460 * scale;
+   251→  const canvasH = 360 * scale;
+   252→
+   253→  return (
+   254→    <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+   255→      {/* LEFT: CAD Layout */}
+   256→      <div className="space-y-4">
+   257→        {/* 3D Layout Canvas */}
+   258→        <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+   259→          <div className="mb-3 flex items-center justify-between">
+   260→            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">HBK Mk-II CAD Layout</h3>
+   261→            <span className="font-mono text-[9px] text-muted-foreground">460×360×180mm IP67 Shell</span>
+   262→          </div>
+   263→          <div className="relative mx-auto" style={{ width: canvasW, height: canvasH, background: "rgba(20,20,30,0.8)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+   264→            {/* Grid overlay */}
+   265→            <svg className="absolute inset-0" width={canvasW} height={canvasH} style={{ opacity: 0.08 }}>
+   266→              {Array.from({ length: 10 }).map((_, i) => (
+   267→                <line key={`vl-${i}`} x1={(i + 1) * canvasW / 11} y1={0} x2={(i + 1) * canvasW / 11} y2={canvasH} stroke="white" strokeWidth={0.5} />
+   268→              ))}
+   269→              {Array.from({ length: 8 }).map((_, i) => (
+   270→                <line key={`hl-${i}`} x1={0} y1={(i + 1) * canvasH / 9} x2={canvasW} y2={(i + 1) * canvasH / 9} stroke="white" strokeWidth={0.5} />
+   271→              ))}
+   272→            </svg>
+   273→
+   274→            {/* Module blocks */}
+   275→            {modules.map((mod) => {
+   276→              const x = mod.position.x * scale;
+   277→              const y = mod.position.y * scale;
+   278→              const w = mod.length * scale;
+   279→              const h = mod.width * scale;
+   280→              const isHovered = hoveredModule === mod.id;
+   281→              const isSelected = selectedModule === mod.id;
+   282→              return (
+   283→                <motion.div
+   284→                  key={mod.id}
+   285→                  className="absolute cursor-pointer"
+   286→                  style={{ left: x, top: y, width: w, height: h }}
+   287→                  onMouseEnter={() => setHoveredModule(mod.id)}
+   288→                  onMouseLeave={() => setHoveredModule(null)}
+   289→                  onClick={() => setSelectedModule(isSelected ? null : mod.id)}
+   290→                  whileHover={{ scale: 1.02 }}
+   291→                  whileTap={{ scale: 0.98 }}
+   292→                >
+   293→                  <div
+   294→                    className="flex h-full w-full items-center justify-center rounded-sm border transition-all"
+   295→                    style={{
+   296→                      background: `${mod.color}${isHovered ? "40" : "20"}`,
+   297→                      borderColor: isSelected ? mod.color : `${mod.color}60`,
+   298→                      borderWidth: isSelected ? 2 : 1,
+   299→                      boxShadow: isSelected ? `0 0 12px ${mod.color}40` : "none",
+   300→                    }}
+   301→                  >
+   302→                    <div className="text-center">
+   303→                      <div className="font-mono text-[8px] font-bold" style={{ color: mod.color }}>{mod.label.split(" ")[0]}</div>
+   304→                      <div className="font-mono text-[7px] text-muted-foreground/60">{mod.length}×{mod.width}</div>
+   305→                    </div>
+   306→                  </div>
+   307→                  {/* Status indicator */}
+   308→                  <div className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-black/50" style={{ background: statusColor(mod.status) }} />
+   309→                </motion.div>
+   310→              );
+   311→            })}
+   312→
+   313→            {/* Coordinate labels */}
+   314→            <div className="absolute bottom-1 left-1 font-mono text-[7px] text-muted-foreground/40">X=0</div>
+   315→            <div className="absolute bottom-1 right-1 font-mono text-[7px] text-muted-foreground/40">X=460</div>
+   316→            <div className="absolute left-1 top-1 font-mono text-[7px] text-muted-foreground/40">Y=0</div>
+   317→            <div className="absolute bottom-6 left-1 font-mono text-[7px] text-muted-foreground/40">Y=360</div>
+   318→
+   319→            {/* Isolation zone indicator */}
+   320→            <svg className="absolute inset-0 pointer-events-none" width={canvasW} height={canvasH}>
+   321→              <line x1={20 * scale} y1={180 * scale} x2={160 * scale} y2={120 * scale} stroke="#ff2e5f" strokeWidth={1} strokeDasharray="4 3" opacity={0.4} />
+   322→              <text x={80 * scale} y={155 * scale} fill="#ff2e5f" fontSize={7} opacity={0.5} fontFamily="monospace">isolation zone</text>
+   323→            </svg>
+   324→          </div>
+   325→        </div>
+   326→
+   327→        {/* Module Status Cards */}
+   328→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+   329→          {modules.map((mod) => (
+   330→            <motion.div
+   331→              key={mod.id}
+   332→              className={`rounded-lg border p-3 transition-all cursor-pointer ${selectedModule === mod.id ? "ring-1" : ""}`}
+   333→              style={{
+   334→                borderColor: `${mod.color}30`,
+   335→                background: "rgba(15,15,24,0.6)",
+   336→                ringColor: mod.color,
+   337→              }}
+   338→              onClick={() => setSelectedModule(selectedModule === mod.id ? null : mod.id)}
+   339→              whileHover={{ borderColor: `${mod.color}60` }}
+   340→            >
+   341→              <div className="flex items-start justify-between">
+   342→                <div className="flex items-center gap-2">
+   343→                  <div className="h-2 w-2 rounded-full" style={{ background: statusColor(mod.status) }} />
+   344→                  <span className="font-mono text-[9px] font-bold" style={{ color: mod.color }}>{mod.name.replace(/_/g, " ")}</span>
+   345→                </div>
+   346→                <span className="font-mono text-[8px] text-muted-foreground/50">{mod.status}</span>
+   347→              </div>
+   348→              <div className="mt-2 grid grid-cols-2 gap-2">
+   349→                <div className="flex items-center gap-1.5">
+   350→                  <Thermometer className="h-3 w-3 text-muted-foreground/50" />
+   351→                  <span className="font-mono text-[9px] text-muted-foreground">{mod.tempC}°C</span>
+   352→                </div>
+   353→                <div className="flex items-center gap-1.5">
+   354→                  <Zap className="h-3 w-3 text-muted-foreground/50" />
+   355→                  <span className="font-mono text-[9px] text-muted-foreground">{mod.loadPct}%</span>
+   356→                </div>
+   357→                <div className="flex items-center gap-1.5">
+   358→                  <Box className="h-3 w-3 text-muted-foreground/50" />
+   359→                  <span className="font-mono text-[9px] text-muted-foreground">{mod.length}×{mod.width}×{mod.height}</span>
+   360→                </div>
+   361→                <div className="flex items-center gap-1.5">
+   362→                  <Target className="h-3 w-3 text-muted-foreground/50" />
+   363→                  <span className="font-mono text-[9px] text-muted-foreground">({mod.position.x},{mod.position.y})</span>
+   364→                </div>
+   365→              </div>
+   366→              {/* Load bar */}
+   367→              <div className="mt-2 h-1 w-full rounded-full bg-white/[0.06]">
+   368→                <div className="h-full rounded-full transition-all" style={{ width: `${mod.loadPct}%`, background: mod.color }} />
+   369→              </div>
+   370→            </motion.div>
+   371→          ))}
+   372→        </div>
+   373→      </div>
+   374→
+   375→      {/* RIGHT: Equity Split + Selected Module Details */}
+   376→      <div className="space-y-4">
+   377→        {/* Equity Split */}
+   378→        <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+   379→          <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Equity Split</h3>
+   380→          <div className="space-y-3">
+   381→            {EQUITY_SPLIT.map((slice) => (
+   382→              <div key={slice.holder}>
+   383→                <div className="flex items-center justify-between">
+   384→                  <span className="font-mono text-[10px] font-bold" style={{ color: slice.color }}>{slice.holder}</span>
+   385→                  <span className="font-mono text-[10px] text-foreground">{slice.pct}%</span>
+   386→                </div>
+   387→                <div className="mt-1 h-2 w-full rounded-full bg-white/[0.06]">
+   388→                  <motion.div
+   389→                    className="h-full rounded-full"
+   390→                    style={{ background: slice.color }}
+   391→                    initial={{ width: 0 }}
+   392→                    animate={{ width: `${slice.pct}%` }}
+   393→                    transition={{ duration: 0.8, ease: "easeOut" }}
+   394→                  />
+   395→                </div>
+   396→                <p className="mt-0.5 font-mono text-[8px] text-muted-foreground/60">{slice.description}</p>
+   397→              </div>
+   398→            ))}
+   399→          </div>
+   400→        </div>
+   401→
+   402→        {/* Selected Module Details */}
+   403→        {selected ? (
+   404→          <motion.div
+   405→            className="rounded-xl border p-4"
+   406→            style={{ borderColor: `${selected.color}30`, background: "rgba(15,15,24,0.6)" }}
+   407→            initial={{ opacity: 0, scale: 0.95 }}
+   408→            animate={{ opacity: 1, scale: 1 }}
+   409→          >
+   410→            <h3 className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: selected.color }}>{selected.label}</h3>
+   411→            <p className="mb-3 font-mono text-[9px] text-muted-foreground">{selected.description}</p>
+   412→            <div className="space-y-2">
+   413→              <div className="flex items-center justify-between">
+   414→                <span className="font-mono text-[9px] text-muted-foreground">Status</span>
+   415→                <span className="font-mono text-[9px] font-bold" style={{ color: statusColor(selected.status) }}>{selected.status}</span>
+   416→              </div>
+   417→              <div className="flex items-center justify-between">
+   418→                <span className="font-mono text-[9px] text-muted-foreground">Dimensions</span>
+   419→                <span className="font-mono text-[9px] text-foreground">{selected.length}×{selected.width}×{selected.height} mm</span>
+   420→              </div>
+   421→              <div className="flex items-center justify-between">
+   422→                <span className="font-mono text-[9px] text-muted-foreground">Position (X,Y,Z)</span>
+   423→                <span className="font-mono text-[9px] text-foreground">({selected.position.x}, {selected.position.y}, {selected.position.z})</span>
+   424→              </div>
+   425→              <div className="flex items-center justify-between">
+   426→                <span className="font-mono text-[9px] text-muted-foreground">Temperature</span>
+   427→                <span className="font-mono text-[9px] text-foreground">{selected.tempC}°C</span>
+   428→              </div>
+   429→              <div className="flex items-center justify-between">
+   430→                <span className="font-mono text-[9px] text-muted-foreground">Load</span>
+   431→                <span className="font-mono text-[9px] text-foreground">{selected.loadPct}%</span>
+   432→              </div>
+   433→              <div className="flex items-center justify-between">
+   434→                <span className="font-mono text-[9px] text-muted-foreground">FreeCAD Name</span>
+   435→                <span className="font-mono text-[9px] text-foreground">{selected.name}</span>
+   436→              </div>
+   437→            </div>
+   438→          </motion.div>
+   439→        ) : (
+   440→          <div className="rounded-xl border border-white/[0.06] p-4 text-center" style={{ background: "rgba(15,15,24,0.6)" }}>
+   441→            <Eye className="mx-auto h-8 w-8 text-muted-foreground/30" />
+   442→            <p className="mt-2 font-mono text-[9px] text-muted-foreground/50">Click a module to inspect</p>
+   443→          </div>
+   444→        )}
+   445→
+   446→        {/* Enclosure Spec */}
+   447→        <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+   448→          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-foreground">Enclosure Spec</h3>
+   449→          <div className="space-y-1.5">
+   450→            {[
+   451→              ["Shell", "IP67 Ruggedized Transit"],
+   452→              ["Outer Dim", "500×400×180 mm"],
+   453→              ["Working Vol", "460×360×3 mm (base)"],
+   454→              ["Material", "6061-T6 Anodized Al"],
+   455→              ["Fasteners", "316 Stainless Steel"],
+   456→              ["Compute", "AMD Ryzen AI APU"],
+   457→              ["Edge", "Kria SoM"],
+   458→              ["Isolation", "Analog→Digital Clearance"],
+   459→            ].map(([k, v]) => (
+   460→              <div key={k} className="flex items-center justify-between">
+   461→                <span className="font-mono text-[9px] text-muted-foreground">{k}</span>
+   462→                <span className="font-mono text-[9px] text-foreground">{v}</span>
+   463→              </div>
+   464→            ))}
+   465→          </div>
+   466→        </div>
+   467→      </div>
+   468→    </div>
+   469→  );
+   470→}
+   471→
+   472→// ════════════════════════════════════════════════════════════════════════
+   473→// FOUNDING PARTNERS TAB
+   474→// ════════════════════════════════════════════════════════════════════════
+   475→
+   476→function PartnersTab() {
+   477→  const [expandedPackage, setExpandedPackage] = useState<string | null>(null);
+   478→
+   479→  return (
+   480→    <div className="space-y-6">
+   481→      {/* Campaign Header */}
+   482→      <div className="rounded-xl border border-[#C9A84C]/20 p-5" style={{ background: "linear-gradient(135deg, rgba(201,168,76,0.08), rgba(15,15,24,0.6))" }}>
+   483→        <div className="flex items-start gap-4">
+   484→          <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-[#C9A84C]/30" style={{ background: "#C9A84C15" }}>
+   485→            <Handshake className="h-6 w-6" style={{ color: "#C9A84C" }} />
+   486→          </div>
+   487→          <div className="flex-1">
+   488→            <h3 className="text-lg font-bold tracking-tight" style={{ fontFamily: "var(--font-geist-sans)" }}>The Founding 100 Campaign</h3>
+   489→            <p className="mt-1 text-sm italic text-muted-foreground/80">
+   490→              &ldquo;We are not requesting unrestricted funding. We are inviting your organization to sponsor one operational resource that enables the HBK Applied Research Programme to continue building South African technology for water infrastructure.&rdquo;
+   491→            </p>
+   492→            <div className="mt-3 flex flex-wrap gap-2">
+   493→              <span className="rounded-full border border-[#C9A84C]/30 bg-[#C9A84C]/10 px-3 py-1 font-mono text-[9px] text-[#C9A84C]">100 Founding Partners</span>
+   494→              <span className="rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-3 py-1 font-mono text-[9px] text-[#10b981]">In-Kind Contributions</span>
+   495→              <span className="rounded-full border border-[#3B82F6]/30 bg-[#3B82F6]/10 px-3 py-1 font-mono text-[9px] text-[#3B82F6]">12–18 Month Programme</span>
+   496→            </div>
+   497→          </div>
+   498→        </div>
+   499→      </div>
+   500→
+   501→      {/* Campaign Psychology */}
+   502→      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
+   503→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Campaign Psychology</h3>
+   504→        <div className="grid gap-3 sm:grid-cols-2">
+   505→          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+   506→            <div className="mb-1 font-mono text-[9px] uppercase tracking-wider text-red-400/60">Old Approach</div>
+   507→            <p className="text-xs text-muted-foreground">&ldquo;Will you sponsor us?&rdquo; — Asking for help</p>
+   508→          </div>
+   509→          <div className="rounded-lg border border-[#10b981]/20 bg-[#10b981]/5 p-3">
+   510→            <div className="mb-1 font-mono text-[9px] uppercase tracking-wider text-[#10b981]/60">New Approach</div>
+   511→            <p className="text-xs text-foreground">&ldquo;Will you become one of the first 100 organizations helping establish South Africa&apos;s HBK Applied Research Programme?&rdquo; — Inviting participation</p>
+   512→          </div>
+   513→        </div>
+   514→      </div>
+   515→
+   516→      {/* Sponsorship Catalogue */}
+   517→      <div>
+   518→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Sponsorship Catalogue</h3>
+   519→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+   520→          {SPONSORSHIP_PACKAGES.map((pkg) => {
+   521→            const isExpanded = expandedPackage === pkg.id;
+   522→            return (
+   523→              <motion.div
+   524→                key={pkg.id}
+   525→                className="rounded-xl border p-4 cursor-pointer transition-all"
+   526→                style={{ borderColor: `${pkg.color}30`, background: "rgba(15,15,24,0.6)" }}
+   527→                onClick={() => setExpandedPackage(isExpanded ? null : pkg.id)}
+   528→                whileHover={{ borderColor: `${pkg.color}60` }}
+   529→              >
+   530→                <div className="flex items-start justify-between">
+   531→                  <div className="flex items-center gap-2">
+   532→                    <span className="text-lg">{pkg.icon}</span>
+   533→                    <div>
+   534→                      <h4 className="text-xs font-bold" style={{ color: pkg.color }}>{pkg.name}</h4>
+   535→                      <span className="font-mono text-[9px] text-muted-foreground">{pkg.estimatedValue}</span>
+   536→                    </div>
+   537→                  </div>
+   538→                  <ChevronDown className={`h-4 w-4 text-muted-foreground/50 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+   539→                </div>
+   540→                <p className="mt-2 font-mono text-[9px] text-muted-foreground/70">{pkg.impact}</p>
+   541→                <AnimatePresence>
+   542→                  {isExpanded && (
+   543→                    <motion.div
+   544→                      initial={{ height: 0, opacity: 0 }}
+   545→                      animate={{ height: "auto", opacity: 1 }}
+   546→                      exit={{ height: 0, opacity: 0 }}
+   547→                      transition={{ duration: 0.2 }}
+   548→                      className="overflow-hidden"
+   549→                    >
+   550→                      <div className="mt-3 space-y-1.5 border-t border-white/[0.06] pt-3">
+   551→                        {pkg.items.map((item) => (
+   552→                          <div key={item.name} className="flex items-center justify-between">
+   553→                            <span className="font-mono text-[9px] text-foreground">{item.name}</span>
+   554→                            <span className="font-mono text-[9px] text-muted-foreground">{item.qty}</span>
+   555→                          </div>
+   556→                        ))}
+   557→                        <div className="mt-2 pt-2 border-t border-white/[0.06]">
+   558→                          <span className="font-mono text-[8px] text-muted-foreground/50">Typical: {pkg.items[0]?.typicalProvider}</span>
+   559→                        </div>
+   560→                      </div>
+   561→                    </motion.div>
+   562→                  )}
+   563→                </AnimatePresence>
+   564→              </motion.div>
+   565→            );
+   566→          })}
+   567→        </div>
+   568→      </div>
+   569→
+   570→      {/* Partner Categories */}
+   571→      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
+   572→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Partner Categories</h3>
+   573→        <div className="grid gap-4 sm:grid-cols-3">
+   574→          {/* Consortium */}
+   575→          <div className="rounded-lg border border-[#3B82F6]/20 bg-[#3B82F6]/5 p-3">
+   576→            <div className="flex items-center gap-2 mb-2">
+   577→              <Building2 className="h-4 w-4" style={{ color: "#3B82F6" }} />
+   578→              <span className="text-xs font-bold" style={{ color: "#3B82F6" }}>Consortium Members</span>
+   579→            </div>
+   580→            <p className="font-mono text-[9px] text-muted-foreground mb-2">Formal agreements</p>
+   581→            {[
+   582→              { name: "UCT, Wits", type: "Research Collaboration" },
+   583→              { name: "WRC, NRF, DSTI", type: "Grant Agreement" },
+   584→              { name: "AMD, sensor mfg", type: "Technology Partnership" },
+   585→              { name: "NMBM", type: "Pilot Agreement" },
+   586→            ].map(p => (
+   587→              <div key={p.name} className="flex items-center justify-between py-0.5">
+   588→                <span className="font-mono text-[9px] text-foreground">{p.name}</span>
+   589→                <span className="font-mono text-[8px] text-muted-foreground/50">{p.type}</span>
+   590→              </div>
+   591→            ))}
+   592→          </div>
+   593→
+   594→          {/* Friends of VVU */}
+   595→          <div className="rounded-lg border border-[#10b981]/20 bg-[#10b981]/5 p-3">
+   596→            <div className="flex items-center gap-2 mb-2">
+   597→              <Heart className="h-4 w-4" style={{ color: "#10b981" }} />
+   598→              <span className="text-xs font-bold" style={{ color: "#10b981" }}>Friends of VVU</span>
+   599→            </div>
+   600→            <p className="font-mono text-[9px] text-muted-foreground mb-2">Informal support, no lengthy agreements</p>
+   601→            {[
+   602→              "Small businesses", "Restaurants & cafés", "Community organizations",
+   603→              "Printing companies", "Taxi companies", "Hardware stores",
+   604→            ].map(name => (
+   605→              <div key={name} className="py-0.5">
+   606→                <span className="font-mono text-[9px] text-foreground">{name}</span>
+   607→              </div>
+   608→            ))}
+   609→          </div>
+   610→
+   611→          {/* Community Partner */}
+   612→          <div className="rounded-lg border border-[#C9A84C]/20 bg-[#C9A84C]/5 p-3">
+   613→            <div className="flex items-center gap-2 mb-2">
+   614→              <Star className="h-4 w-4" style={{ color: "#C9A84C" }} />
+   615→              <span className="text-xs font-bold" style={{ color: "#C9A84C" }}>Community Partner</span>
+   616→            </div>
+   617→            <p className="font-mono text-[9px] text-muted-foreground mb-2">Operational support</p>
+   618→            {[
+   619→              { icon: <Coffee className="h-3 w-3" />, name: "Catering" },
+   620→              { icon: <Shirt className="h-3 w-3" />, name: "Uniforms" },
+   621→              { icon: <Printer className="h-3 w-3" />, name: "Printing" },
+   622→              { icon: <Truck className="h-3 w-3" />, name: "Transport" },
+   623→              { icon: <Home className="h-3 w-3" />, name: "Accommodation" },
+   624→              { icon: <Globe className="h-3 w-3" />, name: "Marketing" },
+   625→            ].map(item => (
+   626→              <div key={item.name} className="flex items-center gap-1.5 py-0.5">
+   627→                <span className="text-muted-foreground/50">{item.icon}</span>
+   628→                <span className="font-mono text-[9px] text-foreground">{item.name}</span>
+   629→              </div>
+   630→            ))}
+   631→          </div>
+   632→        </div>
+   633→      </div>
+   634→
+   635→      {/* Impact Language */}
+   636→      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
+   637→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Impact Language Framework</h3>
+   638→        <div className="space-y-2">
+   639→          {[
+   640→            { need: "We require office space.", impact: "A contribution of temporary workspace will directly accelerate engineering development, field validation, and student collaboration during the foundational phase of the HBK Applied Research Programme." },
+   641→            { need: "We need laptops.", impact: "Sponsoring a workstation enables our engineering team to develop and validate the HBK Mk-II platform, advancing South Africa's hydraulic intelligence capabilities." },
+   642→            { need: "We require mobile data.", impact: "A data contribution allows our field teams to transmit critical acoustic and pressure evidence in real-time, accelerating validation of Bayesian leak detection algorithms." },
+   643→            { need: "We need branded shirts.", impact: "Supporting field uniforms establishes a professional research presence during municipal site visits, building trust with partners and communities." },
+   644→          ].map((item) => (
+   645→            <div key={item.need} className="rounded-lg border border-white/[0.04] p-3">
+   646→              <div className="font-mono text-[9px] text-red-400/60 line-through">{item.need}</div>
+   647→              <div className="mt-1 font-mono text-[9px] text-[#10b981]">{item.impact}</div>
+   648→            </div>
+   649→          ))}
+   650→        </div>
+   651→      </div>
+   652→    </div>
+   653→  );
+   654→}
+   655→
+   656→// ════════════════════════════════════════════════════════════════════════
+   657→// RESOURCES TAB
+   658→// ════════════════════════════════════════════════════════════════════════
+   659→
+   660→function ResourcesTab() {
+   661→  const [filterCategory, setFilterCategory] = useState<string>("all");
+   662→  const [filterStatus, setFilterStatus] = useState<string>("all");
+   663→
+   664→  const resources = RESOURCE_REGISTER;
+   665→  const filtered = useMemo(() => {
+   666→    return resources.filter(r => {
+   667→      if (filterCategory !== "all" && r.category !== filterCategory) return false;
+   668→      if (filterStatus !== "all" && r.status !== filterStatus) return false;
+   669→      return true;
+   670→    });
+   671→  }, [filterCategory, filterStatus]);
+   672→
+   673→  const totalNeeded = resources.reduce((a, r) => a + r.qtyNeeded, 0);
+   674→  const totalCommitted = resources.reduce((a, r) => a + r.qtyCommitted, 0);
+   675→  const urgentCount = resources.filter(r => r.status === "urgent").length;
+   676→  const securedCount = resources.filter(r => r.status === "secured").length;
+   677→
+   678→  return (
+   679→    <div className="space-y-6">
+   680→      {/* Summary Cards */}
+   681→      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+   682→        {[
+   683→          { label: "Total Resources", value: resources.length, icon: <ClipboardList className="h-4 w-4" />, color: "#C9A84C" },
+   684→          { label: "Committed", value: totalCommitted, icon: <CheckCircle2 className="h-4 w-4" />, color: "#10b981" },
+   685→          { label: "Urgent Gaps", value: urgentCount, icon: <AlertTriangle className="h-4 w-4" />, color: "#EF4444" },
+   686→          { label: "Secured", value: securedCount, icon: <Shield className="h-4 w-4" />, color: "#3B82F6" },
+   687→        ].map(card => (
+   688→          <div key={card.label} className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+   689→            <div className="flex items-center justify-between">
+   690→              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{card.label}</span>
+   691→              <span style={{ color: card.color }}>{card.icon}</span>
+   692→            </div>
+   693→            <div className="mt-2 text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
+   694→          </div>
+   695→        ))}
+   696→      </div>
+   697→
+   698→      {/* Progress bar */}
+   699→      <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+   700→        <div className="flex items-center justify-between mb-2">
+   701→          <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">Overall Progress</span>
+   702→          <span className="font-mono text-[9px] text-foreground">{totalCommitted}/{totalNeeded} items committed</span>
+   703→        </div>
+   704→        <div className="h-3 w-full rounded-full bg-white/[0.06]">
+   705→          <div className="h-full rounded-full transition-all" style={{ width: `${totalNeeded > 0 ? (totalCommitted / totalNeeded) * 100 : 0}%`, background: "linear-gradient(90deg, #10b981, #C9A84C)" }} />
+   706→        </div>
+   707→      </div>
+   708→
+   709→      {/* Filters */}
+   710→      <div className="flex flex-wrap gap-2">
+   711→        <select
+   712→          value={filterCategory}
+   713→          onChange={e => setFilterCategory(e.target.value)}
+   714→          className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 font-mono text-[10px] text-foreground"
+   715→        >
+   716→          <option value="all">All Categories</option>
+   717→          <option value="operations">Operations</option>
+   718→          <option value="engineering">Engineering</option>
+   719→          <option value="connectivity">Connectivity</option>
+   720→          <option value="field-ops">Field Ops</option>
+   721→          <option value="workshop">Workshop</option>
+   722→          <option value="branding">Branding</option>
+   723→        </select>
+   724→        <select
+   725→          value={filterStatus}
+   726→          onChange={e => setFilterStatus(e.target.value)}
+   727→          className="rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 font-mono text-[10px] text-foreground"
+   728→        >
+   729→          <option value="all">All Status</option>
+   730→          <option value="urgent">Urgent</option>
+   731→          <option value="open">Open</option>
+   732→          <option value="in_progress">In Progress</option>
+   733→          <option value="secured">Secured</option>
+   734→        </select>
+   735→      </div>
+   736→
+   737→      {/* Resource Table */}
+   738→      <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(15,15,24,0.6)" }}>
+   739→        <div className="overflow-x-auto">
+   740→          <table className="w-full">
+   741→            <thead>
+   742→              <tr className="border-b border-white/[0.06]">
+   743→                {["Resource", "Needed", "Committed", "Gap", "Partner Type", "Status"].map(h => (
+   744→                  <th key={h} className="px-4 py-2.5 text-left font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{h}</th>
+   745→                ))}
+   746→              </tr>
+   747→            </thead>
+   748→            <tbody>
+   749→              {filtered.map((r) => {
+   750→                const gap = r.qtyNeeded - r.qtyCommitted;
+   751→                return (
+   752→                  <tr key={r.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+   753→                    <td className="px-4 py-2.5 font-mono text-[10px] text-foreground">{r.resource}</td>
+   754→                    <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">{r.qtyNeeded} {r.unit}</td>
+   755→                    <td className="px-4 py-2.5 font-mono text-[10px] text-foreground">{r.qtyCommitted}</td>
+   756→                    <td className="px-4 py-2.5 font-mono text-[10px]" style={{ color: gap > 0 ? "#EF4444" : "#10b981" }}>{gap}</td>
+   757→                    <td className="px-4 py-2.5 font-mono text-[10px] text-muted-foreground">{r.partnerType}</td>
+   758→                    <td className="px-4 py-2.5">
+   759→                      <span className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9px]" style={{ borderColor: `${resourceStatusColor(r.status)}30`, background: `${resourceStatusColor(r.status)}10`, color: resourceStatusColor(r.status) }}>
+   760→                        <span className="h-1.5 w-1.5 rounded-full" style={{ background: resourceStatusColor(r.status) }} />
+   761→                        {r.status}
+   762→                      </span>
+   763→                    </td>
+   764→                  </tr>
+   765→                );
+   766→              })}
+   767→            </tbody>
+   768→          </table>
+   769→        </div>
+   770→      </div>
+   771→    </div>
+   772→  );
+   773→}
+   774→
+   775→// ════════════════════════════════════════════════════════════════════════
+   776→// 72h VALIDATION SIMULATION TAB
+   777→// ════════════════════════════════════════════════════════════════════════
+   778→
+   779→function SimulationTab({
+   780→  simRunning,
+   781→  setSimRunning,
+   782→  simElapsed,
+   783→  setSimElapsed,
+   784→  simHours,
+   785→  simMins,
+   786→  simSecs,
+   787→}: {
+   788→  simRunning: boolean;
+   789→  setSimRunning: (v: boolean) => void;
+   790→  simElapsed: number;
+   791→  setSimElapsed: (v: number) => void;
+   792→  simHours: number;
+   793→  simMins: number;
+   794→  simSecs: number;
+   795→}) {
+   796→  const [liveMetrics, setLiveMetrics] = useState({
+   797→    cpu: 45, ram: 62, queue: 0, latency: 12, facts: 0, proofs: 0, brier: 0.015,
+   798→  });
+   799→
+   800→  // Simulate live metrics
+   801→  useEffect(() => {
+   802→    if (!simRunning) return;
+   803→    const interval = setInterval(() => {
+   804→      setLiveMetrics(prev => ({
+   805→        cpu: Math.min(95, Math.max(20, prev.cpu + (Math.random() - 0.5) * 8)),
+   806→        ram: Math.min(90, Math.max(40, prev.ram + (Math.random() - 0.5) * 5)),
+   807→        queue: Math.max(0, Math.floor(prev.queue + (Math.random() - 0.4) * 3)),
+   808→        latency: Math.max(5, Math.min(200, prev.latency + (Math.random() - 0.5) * 20)),
+   809→        facts: prev.facts + Math.floor(Math.random() * 3),
+   810→        proofs: prev.proofs + (Math.random() > 0.7 ? 1 : 0),
+   811→        brier: Math.max(0.001, Math.min(0.05, prev.brier + (Math.random() - 0.5) * 0.003)),
+   812→      }));
+   813→    }, 1000);
+   814→    return () => clearInterval(interval);
+   815→  }, [simRunning]);
+   816→
+   817→  const currentPhase = VALIDATION_PHASES.find(p => p.status === "active") || VALIDATION_PHASES[2];
+   818→  const progressPct = Math.min(100, (simElapsed / (72 * 3600)) * 100);
+   819→
+   820→  return (
+   821→    <div className="space-y-6">
+   822→      {/* Controls */}
+   823→      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
+   824→        <div className="flex items-center justify-between">
+   825→          <div>
+   826→            <h3 className="text-sm font-bold" style={{ fontFamily: "var(--font-geist-sans)" }}>72-Hour Validation Loop</h3>
+   827→            <p className="font-mono text-[9px] text-muted-foreground">VVU-VAL-001 · HBK Mk-II Digital Twin Prototype</p>
+   828→          </div>
+   829→          <div className="flex items-center gap-2">
+   830→            <button
+   831→              onClick={() => setSimRunning(!simRunning)}
+   832→              className="flex items-center gap-2 rounded-lg border px-3 py-2 font-mono text-[10px] transition-all"
+   833→              style={{
+   834→                borderColor: simRunning ? "#EF444440" : "#10b98140",
+   835→                background: simRunning ? "#EF444410" : "#10b98110",
+   836→                color: simRunning ? "#EF4444" : "#10b981",
+   837→              }}
+   838→            >
+   839→              {simRunning ? <><Pause className="h-3.5 w-3.5" /> Pause</> : <><Play className="h-3.5 w-3.5" /> Start</>}
+   840→            </button>
+   841→            <button
+   842→              onClick={() => { setSimRunning(false); setSimElapsed(0); setLiveMetrics({ cpu: 45, ram: 62, queue: 0, latency: 12, facts: 0, proofs: 0, brier: 0.015 }); }}
+   843→              className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-all"
+   844→            >
+   845→              <RotateCcw className="h-3.5 w-3.5" /> Reset
+   846→            </button>
+   847→          </div>
+   848→        </div>
+   849→
+   850→        {/* Timer */}
+   851→        <div className="mt-4 flex items-center gap-4">
+   852→          <div className="font-mono text-3xl font-bold tabular-nums" style={{ color: simRunning ? "#10b981" : "#6B7280" }}>
+   853→            {String(simHours).padStart(2, "0")}:{String(simMins).padStart(2, "0")}:{String(simSecs).padStart(2, "0")}
+   854→          </div>
+   855→          <div className="flex-1">
+   856→            <div className="flex items-center justify-between mb-1">
+   857→              <span className="font-mono text-[9px] text-muted-foreground">Progress</span>
+   858→              <span className="font-mono text-[9px] text-foreground">{progressPct.toFixed(1)}%</span>
+   859→            </div>
+   860→            <div className="h-2 w-full rounded-full bg-white/[0.06]">
+   861→              <motion.div
+   862→                className="h-full rounded-full"
+   863→                style={{ background: "linear-gradient(90deg, #10b981, #C9A84C, #ff2e5f)" }}
+   864→                animate={{ width: `${progressPct}%` }}
+   865→                transition={{ duration: 0.5 }}
+   866→              />
+   867→            </div>
+   868→          </div>
+   869→          <div className="text-right">
+   870→            <span className="font-mono text-[9px] text-muted-foreground">Current Phase</span>
+   871→            <div className="font-mono text-[10px] font-bold" style={{ color: "#3B82F6" }}>{currentPhase.name}</div>
+   872→          </div>
+   873→        </div>
+   874→      </div>
+   875→
+   876→      {/* Live Metrics */}
+   877→      {simRunning && (
+   878→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+   879→          {[
+   880→            { label: "CPU", value: `${liveMetrics.cpu.toFixed(0)}%`, icon: <Cpu className="h-3.5 w-3.5" />, color: liveMetrics.cpu > 80 ? "#EF4444" : "#10b981" },
+   881→            { label: "RAM", value: `${liveMetrics.ram.toFixed(0)}%`, icon: <MemoryStick className="h-3.5 w-3.5" />, color: liveMetrics.ram > 85 ? "#EF4444" : "#3B82F6" },
+   882→            { label: "Queue Depth", value: `${liveMetrics.queue}`, icon: <Activity className="h-3.5 w-3.5" />, color: liveMetrics.queue > 10 ? "#F59E0B" : "#10b981" },
+   883→            { label: "P99 Latency", value: `${liveMetrics.latency.toFixed(0)}ms`, icon: <Clock className="h-3.5 w-3.5" />, color: liveMetrics.latency > 100 ? "#EF4444" : "#10b981" },
+   884→            { label: "Facts Accepted", value: `${liveMetrics.facts}`, icon: <CheckCircle2 className="h-3.5 w-3.5" />, color: "#C9A84C" },
+   885→            { label: "Proofs Generated", value: `${liveMetrics.proofs}`, icon: <Shield className="h-3.5 w-3.5" />, color: "#8B5CF6" },
+   886→            { label: "Brier Score", value: liveMetrics.brier.toFixed(4), icon: <FlaskConical className="h-3.5 w-3.5" />, color: liveMetrics.brier > 0.02 ? "#EF4444" : "#10b981" },
+   887→            { label: "Circuit Breaker", value: "NORMAL", icon: <Zap className="h-3.5 w-3.5" />, color: "#10b981" },
+   888→          ].map(m => (
+   889→            <div key={m.label} className="rounded-lg border border-white/[0.06] p-3" style={{ background: "rgba(15,15,24,0.6)" }}>
+   890→              <div className="flex items-center justify-between">
+   891→                <span className="font-mono text-[9px] text-muted-foreground">{m.label}</span>
+   892→                <span style={{ color: m.color }}>{m.icon}</span>
+   893→              </div>
+   894→              <div className="mt-1 text-lg font-bold tabular-nums" style={{ color: m.color }}>{m.value}</div>
+   895→            </div>
+   896→          ))}
+   897→        </div>
+   898→      )}
+   899→
+   900→      {/* Validation Phases */}
+   901→      <div className="space-y-3">
+   902→        <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Validation Phases</h3>
+   903→        {VALIDATION_PHASES.map((phase) => (
+   904→          <motion.div
+   905→            key={phase.id}
+   906→            className="rounded-xl border p-4"
+   907→            style={{
+   908→              borderColor: phase.status === "active" ? "#3B82F630" : phase.status === "complete" ? "#10b98120" : "rgba(255,255,255,0.06)",
+   909→              background: phase.status === "active" ? "rgba(59,130,246,0.05)" : "rgba(15,15,24,0.6)",
+   910→            }}
+   911→          >
+   912→            <div className="flex items-center justify-between">
+   913→              <div className="flex items-center gap-3">
+   914→                {validationStatusIcon(phase.status)}
+   915→                <div>
+   916→                  <h4 className="text-xs font-bold text-foreground">{phase.name}</h4>
+   917→                  <span className="font-mono text-[9px] text-muted-foreground">{phase.duration}</span>
+   918→                </div>
+   919→              </div>
+   920→              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: phase.status === "complete" ? "#10b981" : phase.status === "active" ? "#3B82F6" : "#6B7280" }}>
+   921→                {phase.status}
+   922→              </span>
+   923→            </div>
+   924→            <p className="mt-2 font-mono text-[9px] text-muted-foreground">{phase.description}</p>
+   925→            <div className="mt-3 grid grid-cols-3 gap-2">
+   926→              {phase.metrics.map(m => (
+   927→                <div key={m.label} className="rounded-md border border-white/[0.04] p-2">
+   928→                  <div className="font-mono text-[8px] text-muted-foreground/60">{m.label}</div>
+   929→                  <div className="font-mono text-[10px] font-bold" style={{ color: m.status === "pass" ? "#10b981" : m.status === "fail" ? "#EF4444" : "#F59E0B" }}>{m.value}</div>
+   930→                </div>
+   931→              ))}
+   932→            </div>
+   933→          </motion.div>
+   934→        ))}
+   935→      </div>
+   936→    </div>
+   937→  );
+   938→}
+   939→
+   940→// ════════════════════════════════════════════════════════════════════════
+   941→// PROGRAMME TIMELINE TAB
+   942→// ════════════════════════════════════════════════════════════════════════
+   943→
+   944→function TimelineTab() {
+   945→  return (
+   946→    <div className="space-y-6">
+   947→      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
+   948→        <h3 className="mb-4 text-xs font-bold uppercase tracking-wider text-foreground">Programme Timeline</h3>
+   949→        <div className="relative">
+   950→          {/* Timeline line */}
+   951→          <div className="absolute left-6 top-0 bottom-0 w-px bg-white/[0.06]" />
+   952→
+   953→          {PROGRAMME_TIMELINE.map((phase, idx) => (
+   954→            <div key={phase.id} className="relative mb-8 last:mb-0">
+   955→              {/* Dot */}
+   956→              <div className="absolute left-4 top-1 h-4 w-4 rounded-full border-2" style={{ borderColor: phase.color, background: phase.status === "active" ? phase.color : "transparent" }}>
+   957→                {phase.status === "active" && (
+   958→                  <motion.div
+   959→                    className="absolute inset-0 rounded-full"
+   960→                    style={{ background: phase.color }}
+   961→                    animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+   962→                    transition={{ duration: 2, repeat: Infinity }}
+   963→                  />
+   964→                )}
+   965→              </div>
+   966→
+   967→              <div className="ml-14">
+   968→                <div className="flex items-center gap-2 mb-1">
+   969→                  <span className="text-sm font-bold" style={{ color: phase.color }}>{phase.phase}</span>
+   970→                  <span className="rounded-full border px-2 py-0.5 font-mono text-[8px]" style={{ borderColor: `${phase.color}30`, background: `${phase.color}10`, color: phase.color }}>
+   971→                    {phase.status}
+   972→                  </span>
+   973→                </div>
+   974→                <span className="font-mono text-[9px] text-muted-foreground">{phase.months}</span>
+   975→                <p className="mt-1 text-xs text-muted-foreground">{phase.description}</p>
+   976→
+   977→                {/* Milestones */}
+   978→                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+   979→                  {phase.milestones.map((ms, i) => (
+   980→                    <div key={i} className="flex items-center gap-2 rounded-md border border-white/[0.04] p-2">
+   981→                      {phase.status === "complete" ? (
+   982→                        <CheckCircle2 className="h-3.5 w-3.5 flex-none" style={{ color: "#10b981" }} />
+   983→                      ) : phase.status === "active" && i === 0 ? (
+   984→                        <Activity className="h-3.5 w-3.5 flex-none" style={{ color: phase.color }} />
+   985→                      ) : (
+   986→                        <Clock className="h-3.5 w-3.5 flex-none text-muted-foreground/40" />
+   987→                      )}
+   988→                      <span className="font-mono text-[9px] text-foreground">{ms}</span>
+   989→                    </div>
+   990→                  ))}
+   991→                </div>
+   992→              </div>
+   993→            </div>
+   994→          ))}
+   995→        </div>
+   996→      </div>
+   997→
+   998→      {/* Success Metrics */}
+   999→      <div className="rounded-xl border border-white/[0.06] p-5" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1000→        <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-foreground">Success Metrics</h3>
+  1001→        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+  1002→          {[
+  1003→            { label: "Founding 100 Partners", target: "100 within 12 months", metric: "Signed response forms", color: "#C9A84C" },
+  1004→            { label: "Resources Secured", target: "All priority resources", metric: "Resource register", color: "#10b981" },
+  1005→            { label: "Programme Visibility", target: "50+ mentions", metric: "Media, social media", color: "#3B82F6" },
+  1006→            { label: "Grant Funding", target: "2+ grants secured", metric: "Grant agreements", color: "#8B5CF6" },
+  1007→            { label: "Research Outputs", target: "2+ papers submitted", metric: "Publications", color: "#EC4899" },
+  1008→          ].map(m => (
+  1009→            <div key={m.label} className="rounded-lg border border-white/[0.04] p-3 text-center">
+  1010→              <div className="h-1.5 w-8 mx-auto rounded-full mb-2" style={{ background: m.color }} />
+  1011→              <div className="font-mono text-[9px] font-bold" style={{ color: m.color }}>{m.label}</div>
+  1012→              <div className="mt-1 font-mono text-[8px] text-muted-foreground">{m.target}</div>
+  1013→              <div className="mt-0.5 font-mono text-[7px] text-muted-foreground/50">{m.metric}</div>
+  1014→            </div>
+  1015→          ))}
+  1016→        </div>
+  1017→      </div>
+  1018→    </div>
+  1019→  );
+  1020→}
+  1021→
+  1022→// ════════════════════════════════════════════════════════════════════════
+  1023→// GIT ACTIONS LOG TAB
+  1024→// ════════════════════════════════════════════════════════════════════════
+  1025→
+  1026→function GitLogTab({ gitActions }: { gitActions: GitAction[] }) {
+  1027→  const [actionFilter, setActionFilter] = useState<string>("all");
+  1028→
+  1029→  const filtered = useMemo(() => {
+  1030→    if (actionFilter === "all") return gitActions;
+  1031→    return gitActions.filter(g => g.action === actionFilter);
+  1032→  }, [gitActions, actionFilter]);
+  1033→
+  1034→  const successCount = gitActions.filter(g => g.status === "success").length;
+  1035→  const runningCount = gitActions.filter(g => g.status === "running").length;
+  1036→  const failedCount = gitActions.filter(g => g.status === "failed").length;
+  1037→
+  1038→  return (
+  1039→    <div className="space-y-6">
+  1040→      {/* Summary */}
+  1041→      <div className="grid gap-3 sm:grid-cols-3">
+  1042→        {[
+  1043→          { label: "Successful", value: successCount, color: "#10b981", icon: <CheckCircle2 className="h-4 w-4" /> },
+  1044→          { label: "Running", value: runningCount, color: "#3B82F6", icon: <Activity className="h-4 w-4" /> },
+  1045→          { label: "Failed", value: failedCount, color: "#EF4444", icon: <XCircle className="h-4 w-4" /> },
+  1046→        ].map(card => (
+  1047→          <div key={card.label} className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1048→            <div className="flex items-center justify-between">
+  1049→              <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">{card.label}</span>
+  1050→              <span style={{ color: card.color }}>{card.icon}</span>
+  1051→            </div>
+  1052→            <div className="mt-2 text-2xl font-bold" style={{ color: card.color }}>{card.value}</div>
+  1053→          </div>
+  1054→        ))}
+  1055→      </div>
+  1056→
+  1057→      {/* Filters */}
+  1058→      <div className="flex flex-wrap gap-1.5">
+  1059→        {["all", "commit", "push", "merge", "deploy", "test", "validate"].map(f => (
+  1060→          <button
+  1061→            key={f}
+  1062→            onClick={() => setActionFilter(f)}
+  1063→            className={`rounded-full border px-3 py-1 font-mono text-[9px] transition-all ${actionFilter === f ? "border-[#ff2e5f]/30 bg-[#ff2e5f]/10 text-[#ff2e5f]" : "border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}
+  1064→          >
+  1065→            {f}
+  1066→          </button>
+  1067→        ))}
+  1068→      </div>
+  1069→
+  1070→      {/* Action Log */}
+  1071→      <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(15,15,24,0.6)" }}>
+  1072→        <div className="max-h-[500px] overflow-y-auto">
+  1073→          {filtered.map((action, idx) => (
+  1074→            <div key={action.id} className={`flex items-start gap-3 border-b border-white/[0.03] p-3 transition-colors hover:bg-white/[0.02] ${idx === 0 ? "border-l-2" : ""}`} style={idx === 0 ? { borderLeftColor: gitActionColor(action.action) } : {}}>
+  1075→              <div className="flex-none mt-0.5" style={{ color: gitActionColor(action.action) }}>
+  1076→                {gitActionIcon(action.action)}
+  1077→              </div>
+  1078→              <div className="min-w-0 flex-1">
+  1079→                <div className="flex items-center gap-2">
+  1080→                  <span className="font-mono text-[9px] font-bold" style={{ color: gitActionColor(action.action) }}>{action.action}</span>
+  1081→                  <span className="font-mono text-[9px] text-muted-foreground/50">{action.hash.slice(0, 7)}</span>
+  1082→                  <span className="rounded-full border border-white/[0.06] px-1.5 py-0.5 font-mono text-[8px] text-muted-foreground/60">{action.branch}</span>
+  1083→                  <span className="ml-auto flex-none">
+  1084→                    {action.status === "success" ? <CheckCircle2 className="h-3 w-3" style={{ color: "#10b981" }} /> :
+  1085→                     action.status === "running" ? <Activity className="h-3 w-3" style={{ color: "#3B82F6" }} /> :
+  1086→                     <XCircle className="h-3 w-3" style={{ color: "#EF4444" }} />}
+  1087→                  </span>
+  1088→                </div>
+  1089→                <p className="mt-0.5 truncate font-mono text-[9px] text-foreground/80">{action.message}</p>
+  1090→                <div className="mt-0.5 flex items-center gap-2">
+  1091→                  <span className="font-mono text-[8px] text-muted-foreground/40">{action.author}</span>
+  1092→                  <span className="font-mono text-[8px] text-muted-foreground/30">{new Date(action.timestamp).toLocaleTimeString()}</span>
+  1093→                </div>
+  1094→              </div>
+  1095→            </div>
+  1096→          ))}
+  1097→        </div>
+  1098→      </div>
+  1099→    </div>
+  1100→  );
+  1101→}
+  1102→
+  1103→export default HbkDashboard;
+  1104→

@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════════════════════════════════
 // VVU HBK Mk-II — Type Definitions
+// Consortium Model: VVU 100% Ownership + Contract-Based Partnerships
 // ════════════════════════════════════════════════════════════════════════
 
 // ── CAD Module Layout (from FreeCAD Python script) ──────────────────────
@@ -83,25 +84,315 @@ export const HBK_CAD_MODULES: CADModule[] = [
   },
 ];
 
-// ── Equity Split ─────────────────────────────────────────────────────────
+// ── VVU Ownership Model (100% VVU — No Equity Dilution) ──────────────────
 
-export interface EquitySlice {
+export interface OwnershipEntry {
   holder: string;
   pct: number;
   color: string;
   description: string;
+  emphasis?: boolean;
 }
 
-export const EQUITY_SPLIT: EquitySlice[] = [
-  { holder: "VVU", pct: 70, color: "#C9A84C", description: "Venture Vision Ubuntu — founding entity" },
-  { holder: "UCT & Wits", pct: 20, color: "#3366CC", description: "Research collaboration partners" },
-  { holder: "Direct Investors", pct: 5, color: "#10b981", description: "Seed investment partners" },
-  { holder: "Unallocated (AMD Target)", pct: 5, color: "#CC3333", description: "Strategic reserve for AMD technology partnership" },
+export const OWNERSHIP_STRUCTURE: OwnershipEntry[] = [
+  { holder: "VVU", pct: 100, color: "#C9A84C", description: "Venture Vision Ubuntu — sole owner of all core technology and platform IP", emphasis: true },
 ];
 
-// ── Founding Partners ────────────────────────────────────────────────────
+// ── Consortium Model ──────────────────────────────────────────────────────
 
-export type PartnerCategory = "consortium" | "friend" | "community";
+export interface ConsortiumPartner {
+  id: string;
+  name: string;
+  tier: "academic" | "funding" | "municipal" | "industrial";
+  agreementType: string;
+  agreementLabel: string;
+  benefits: string[];
+  obligations: string[];
+  color: string;
+  icon: string;
+  status: "active_outreach" | "negotiating" | "agreement_draft" | "executed";
+  targets: string[];
+  rationale: string;
+}
+
+export const CONSORTIUM_PARTNERS: ConsortiumPartner[] = [
+  {
+    id: "academic",
+    name: "Academic Partners",
+    tier: "academic",
+    agreementType: "research_collaboration",
+    agreementLabel: "Research Collaboration Agreement",
+    benefits: [
+      "Publication rights",
+      "Research funding allocation",
+      "Student project supervision",
+      "Access to anonymised datasets",
+      "Formal acknowledgement",
+      "Co-author paper opportunities",
+    ],
+    obligations: [
+      "Provide academic supervision",
+      "Supply HPC/GPU compute resources",
+      "Facilitate laboratory access",
+      "Support postgraduate researchers",
+    ],
+    color: "#3366CC",
+    icon: "GraduationCap",
+    status: "active_outreach",
+    targets: ["UCT", "Wits", "Stellenbosch University", "CSIR"],
+    rationale: "Universities expect publication rights and research access — not equity. Research Collaboration Agreements align with what academic institutions already anticipate.",
+  },
+  {
+    id: "funding",
+    name: "Funding Partners",
+    tier: "funding",
+    agreementType: "grant",
+    agreementLabel: "Grant Agreement",
+    benefits: [
+      "Deliverables against programme milestones",
+      "Progress reports and audit trail",
+      "Named programme recognition",
+      "Access to validation outcomes",
+    ],
+    obligations: [
+      "Provide research programme funding",
+      "Supply equipment and prototype funding",
+      "Support pilot deployment funding",
+    ],
+    color: "#10b981",
+    icon: "Landmark",
+    status: "active_outreach",
+    targets: ["WRC", "NRF", "DSTI"],
+    rationale: "Funding bodies want deliverables, not ownership. Grant Agreements with milestone-based reporting are the standard model for WRC, NRF, and DSTI.",
+  },
+  {
+    id: "municipal",
+    name: "Municipal Partners",
+    tier: "municipal",
+    agreementType: "pilot",
+    agreementLabel: "Pilot Partner Agreement",
+    benefits: [
+      "Access to operational reports",
+      "Pilot outcomes and validation data",
+      "Operational insights for infrastructure planning",
+      "Participation in validation programme",
+      "Direct coordination with research team",
+    ],
+    obligations: [
+      "Provide pilot site access",
+      "Share asset and GIS records",
+      "Enable telemetry and SCADA access",
+      "Coordinate operational scheduling",
+    ],
+    color: "#F59E0B",
+    icon: "Building2",
+    status: "active_outreach",
+    targets: ["City of Cape Town"],
+    rationale: "Municipalities benefit from operational insights and pilot outcomes. Pilot Partner Agreements give them direct access to validation data — not equity in a startup.",
+  },
+  {
+    id: "industrial",
+    name: "Industrial Partners",
+    tier: "industrial",
+    agreementType: "technology_partnership",
+    agreementLabel: "Technology Partnership Agreement",
+    benefits: [
+      "Evaluation hardware access",
+      "Engineering support collaboration",
+      "Co-marketing opportunities",
+      "Reference design collaboration",
+      "Sponsorship recognition",
+    ],
+    obligations: [
+      "Supply evaluation hardware",
+      "Provide engineering support",
+      "Share manufacturing insights",
+      "Support certification pathway",
+    ],
+    color: "#1A9933",
+    icon: "Cpu",
+    status: "active_outreach",
+    targets: ["AMD", "Sensor manufacturers", "Communications providers"],
+    rationale: "If AMD wanted to invest years later, that would be a separate decision. Technology Partnership Agreements keep relationships productive without premature equity dilution.",
+  },
+];
+
+// ── IP Ownership Boundaries ──────────────────────────────────────────────
+
+export interface IPCategory {
+  id: string;
+  label: string;
+  owner: "vvu" | "joint";
+  items: string[];
+  color: string;
+  icon: string;
+  description: string;
+}
+
+export const IP_OWNERSHIP: IPCategory[] = [
+  {
+    id: "vvu-core",
+    label: "VVU-Owned Core Technology",
+    owner: "vvu",
+    items: [
+      "HBK hardware architecture",
+      "Bayesian runtime engine",
+      "ProofBridge software platform",
+      "Firmware and embedded systems",
+      "Electronics and circuit design",
+      "Industrial design",
+      "Manufacturing rights",
+      "Trademarks and brand identity",
+    ],
+    color: "#C9A84C",
+    icon: "Shield",
+    description: "All core platform technology remains solely owned by VVU. No transfer of ownership through any partnership agreement.",
+  },
+  {
+    id: "research-outputs",
+    label: "Joint Research Outputs",
+    owner: "joint",
+    items: [
+      "Published papers and findings",
+      "Benchmark datasets",
+      "Validation reports",
+      "Performance studies and field data",
+    ],
+    color: "#3366CC",
+    icon: "FileCheck2",
+    description: "Research outputs can be jointly authored without transferring ownership of the VVU platform. Co-authorship ≠ ownership transfer.",
+  },
+];
+
+// ── Three-Phase Roadmap ──────────────────────────────────────────────────
+
+export interface RoadmapPhase {
+  id: string;
+  phase: string;
+  phaseNumber: number;
+  title: string;
+  subtitle: string;
+  partners: string[];
+  deliverables: string[];
+  outcomes: string[];
+  duration: string;
+  status: "active" | "upcoming" | "future";
+  color: string;
+  icon: string;
+  keyDecision?: string;
+}
+
+export const ROADMAP_PHASES: RoadmapPhase[] = [
+  {
+    id: "phase-1",
+    phase: "Phase 1",
+    phaseNumber: 1,
+    title: "Research Enablement",
+    subtitle: "Validate algorithms, collect field evidence, publish findings",
+    partners: ["UCT", "Wits", "WRC", "Municipalities"],
+    deliverables: [
+      "Validate Bayesian algorithms under real conditions",
+      "Collect field evidence from municipal infrastructure",
+      "Publish peer-reviewed research findings",
+      "Secure grant funding from WRC, NRF, DSTI",
+    ],
+    outcomes: [
+      "Validated algorithms with published results",
+      "Grant funding secured",
+      "Pilot data collection completed",
+      "Academic partnerships formalised",
+    ],
+    duration: "12–18 months",
+    status: "active",
+    color: "#10b981",
+    icon: "FlaskConical",
+  },
+  {
+    id: "phase-2",
+    phase: "Phase 2",
+    phaseNumber: 2,
+    title: "Industrial Validation",
+    subtitle: "Optimize hardware, certify reliability, establish supply chain",
+    partners: ["AMD", "Sensor manufacturers", "Communications providers"],
+    deliverables: [
+      "Optimize HBK hardware for production readiness",
+      "Certify reliability through industrial testing",
+      "Establish supply chain and manufacturing contacts",
+      "Build production-ready prototypes",
+    ],
+    outcomes: [
+      "Production-ready HBK Mk-II prototype",
+      "Certified reliability metrics",
+      "Supply chain established",
+      "Technology partnerships formalised",
+    ],
+    duration: "12–24 months",
+    status: "upcoming",
+    color: "#3B82F6",
+    icon: "Wrench",
+  },
+  {
+    id: "phase-3",
+    phase: "Phase 3",
+    phaseNumber: 3,
+    title: "Commercialization",
+    subtitle: "Decide on venture capital, licensing, joint ventures, or independent growth",
+    partners: ["Market", "Investors (optional)", "Licensees"],
+    deliverables: [
+      "Evaluate commercialisation pathways",
+      "Decide on venture capital, licensing, or joint ventures",
+      "Continue growing independently if chosen",
+      "Negotiate from validated position",
+    ],
+    outcomes: [
+      "Commercialisation strategy decision",
+      "Negotiating from validated position with published results and field data",
+      "Option to raise equity only if strategically beneficial",
+    ],
+    duration: "Decision point after Phase 2",
+    status: "future",
+    color: "#C9A84C",
+    icon: "Rocket",
+    keyDecision: "Only after technical validation do you decide whether to raise venture capital, license the technology, form joint ventures, or continue growing independently. At that point, you negotiate from a much stronger position — validated technology, published results, and field data rather than just a concept.",
+  },
+];
+
+// ── Consortium Architecture ──────────────────────────────────────────────
+
+export interface ConsortiumArchitecture {
+  coordinator: string;
+  programme: string;
+  pitchStatement: string;
+  narrativeShift: {
+    old: string;
+    new: string;
+  };
+  hierarchy: {
+    level: string;
+    entity: string;
+    description: string;
+  }[];
+}
+
+export const CONSORTIUM_ARCHITECTURE: ConsortiumArchitecture = {
+  coordinator: "VVU",
+  programme: "HBK Applied Research Programme",
+  pitchStatement: "We have developed a portable research instrument that enables accelerated hydraulic evidence collection and Bayesian model validation. We are inviting research institutions, municipalities, and industry partners to participate in a structured validation programme, with VVU serving as the technology developer and programme coordinator.",
+  narrativeShift: {
+    old: "We are looking for investors.",
+    new: "VVU is establishing a multi-institution applied research programme to validate a portable hydro-engineering platform for municipal water infrastructure.",
+  },
+  hierarchy: [
+    { level: "coordinator", entity: "VVU", description: "Technology developer and programme coordinator" },
+    { level: "programme", entity: "HBK Research Consortium", description: "Multi-institution applied research programme" },
+    { level: "academic", entity: "Academic Partners", description: "UCT, Wits, Stellenbosch, CSIR — Research Collaboration Agreements" },
+    { level: "municipal", entity: "Municipal Partners", description: "City of Cape Town — Pilot Partner Agreements" },
+    { level: "industrial", entity: "Industrial Partners", description: "AMD, sensor manufacturers — Technology Partnership Agreements" },
+    { level: "funding", entity: "Funding Partners", description: "WRC, NRF, DSTI — Grant Agreements" },
+  ],
+};
+
+// ── Sponsorship Packages ─────────────────────────────────────────────────
 
 export interface SponsorshipPackage {
   id: string;
@@ -245,30 +536,39 @@ export interface TimelinePhase {
 export const PROGRAMME_TIMELINE: TimelinePhase[] = [
   {
     id: "p1",
-    phase: "Campaign Launch",
-    months: "Month 1–2",
-    description: "Launch Founding 100 campaign, approach Tier 1–3 partners, secure first commitments",
-    milestones: ["Launch campaign", "Approach Tier 1–3", "Secure first commitments", "Establish visible progress"],
+    phase: "Consortium Formation",
+    months: "Month 1–3",
+    description: "Formalise HBK Research Consortium, sign Research Collaboration Agreements, secure first Grant Agreements",
+    milestones: ["Form consortium", "Sign first Research Collaboration Agreement", "Secure WRC/NRF grant", "Establish Pilot Partner relationship"],
     status: "active",
     color: "#10b981",
   },
   {
     id: "p2",
-    phase: "Momentum Building",
-    months: "Month 3–6",
-    description: "Expand to Tier 4–8 partners, continue securing commitments, begin field operations",
-    milestones: ["Expand to Tier 4–8", "Secure commitments", "Begin field operations", "Track & report progress"],
+    phase: "Field Validation",
+    months: "Month 4–12",
+    description: "Deploy HBK Mk-II at pilot site, collect field evidence, begin Bayesian algorithm validation",
+    milestones: ["Deploy at pilot site", "Collect field evidence", "Validate algorithms", "Begin publishing"],
     status: "upcoming",
     color: "#3B82F6",
   },
   {
     id: "p3",
-    phase: "Programme Delivery",
-    months: "Month 7–18",
-    description: "Deploy HBK Mk-II platforms, collect field data, publish research findings",
-    milestones: ["Deploy HBK Mk-II", "Collect field data", "Publish research", "Engage partners"],
+    phase: "Industrial Preparation",
+    months: "Month 13–24",
+    description: "Form Technology Partnership Agreements, optimize hardware, certify reliability, build production prototypes",
+    milestones: ["Sign Technology Partnership Agreements", "Optimize hardware", "Certify reliability", "Build production prototype"],
     status: "upcoming",
     color: "#8B5CF6",
+  },
+  {
+    id: "p4",
+    phase: "Commercialisation Decision",
+    months: "Month 24+",
+    description: "Evaluate commercialisation pathway — venture capital, licensing, joint ventures, or independent growth",
+    milestones: ["Evaluate pathways", "Make commercialisation decision", "Negotiate from validated position"],
+    status: "upcoming",
+    color: "#C9A84C",
   },
 ];
 
@@ -369,9 +669,9 @@ export const VALIDATION_PHASES: ValidationPhase[] = [
   },
 ];
 
-// ── HBK Dashboard Tab ────────────────────────────────────────────────────
+// ── HBK Dashboard Tabs (updated for Consortium Model) ────────────────────
 
-export type HbkTabId = "twin" | "partners" | "resources" | "simulation" | "timeline" | "gitlog";
+export type HbkTabId = "consortium" | "ownership" | "contracts" | "ip" | "roadmap" | "twin" | "resources" | "simulation" | "timeline" | "gitlog";
 
 export interface HbkTab {
   id: HbkTabId;
@@ -381,8 +681,12 @@ export interface HbkTab {
 }
 
 export const HBK_TABS: HbkTab[] = [
-  { id: "twin", label: "Digital Twin", icon: "Cpu", description: "HBK Mk-II 3D CAD layout, module status, equity split" },
-  { id: "partners", label: "Founding Partners", icon: "Users", description: "Campaign framework, sponsorship catalogue, outreach" },
+  { id: "consortium", label: "Consortium", icon: "Network", description: "HBK Research Consortium architecture and narrative" },
+  { id: "ownership", label: "VVU 100%", icon: "Shield", description: "VVU sole ownership — capitalisation table remains clean" },
+  { id: "contracts", label: "Contract Model", icon: "FileCheck2", description: "Partnership through contracts, not equity" },
+  { id: "ip", label: "IP Boundaries", icon: "Lock", description: "VVU-owned core technology vs joint research outputs" },
+  { id: "roadmap", label: "3-Phase Roadmap", icon: "Route", description: "Research Enablement → Industrial Validation → Commercialisation" },
+  { id: "twin", label: "Digital Twin", icon: "Cpu", description: "HBK Mk-II 3D CAD layout and module status" },
   { id: "resources", label: "Resource Register", icon: "ClipboardList", description: "Live tracking of commitments and gaps" },
   { id: "simulation", label: "72h Validation", icon: "Activity", description: "Full 72-hour validation loop with digital twin" },
   { id: "timeline", label: "Programme Timeline", icon: "Calendar", description: "Phase tracking, milestones, delivery" },

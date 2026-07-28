@@ -14,7 +14,7 @@ function generateGitActions(count: number) {
     "validate: 72h validation phase V3 metrics passing",
     "deploy: HBK Mk-II chassis layout to FreeCAD workspace",
     "merge: hbk/sensor-cal → main (acoustic filtering verified)",
-    "feat: equity split 70/20/5 embedded in metadata",
+    "feat: VVU 100% ownership model embedded in metadata",
     "fix: analog isolation clearance zone expanded",
     "test: Kria SoM edge-compute integration",
     "validate: Brier Score ≤ 0.02 threshold check",
