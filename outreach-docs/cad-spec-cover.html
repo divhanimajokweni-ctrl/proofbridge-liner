@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HBK Mk-II Engineering Specification - Cover</title>
+<style>
+  :root {
+    --page-bg: #f0f0ef;
+    --section-bg: #efeeed;
+    --card-bg: #f0eeeb;
+    --table-stripe: #f0f0ee;
+    --header-fill: #5f5843;
+    --cover-block: #847959;
+    --border: #c9c2af;
+    --icon: #a8904a;
+    --accent: #8f7422;
+    --accent-secondary: #42a7c8;
+    --text-primary: #151513;
+    --text-muted: #84817a;
+    --c-bg: #f0f0ef;
+    --c-accent: #8f7422;
+    --c-text: #151513;
+    --c-muted: #84817a;
+    --c-mid: #5f5843;
+    --c-surface: #f0eeeb;
+  }
+
+  @page {
+    size: 794px 1123px;
+    margin: 0;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 794px;
+    height: 1123px;
+    background: var(--c-bg);
+    font-family: 'FreeSerif', 'Noto Serif', Georgia, serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  @media screen {
+    html { height: auto; display: flex; justify-content: center; }
+    body { transform-origin: top center; scale: min(1, calc(100vh / 1123)); margin: 0 auto; }
+  }
+
+  .cover-page {
+    position: relative;
+    width: 794px;
+    height: 1123px;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Layer 0: Background */
+  .cover-layer-0 {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: var(--c-bg);
+  }
+
+  /* Layer 1: Background - subtle watermark */
+  .cover-layer-1 {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .watermark-text {
+    position: absolute;
+    top: 50%;
+    left: 65%;
+    font-size: 140pt;
+    font-weight: 900;
+    color: var(--c-accent);
+    opacity: 0.025;
+    letter-spacing: 6pt;
+    transform: rotate(-90deg);
+    transform-origin: center center;
+    white-space: nowrap;
+  }
+
+  /* Layer 2: Structure - thick anchor line */
+  .cover-layer-2 {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+
+  .anchor-line {
+    position: absolute;
+    left: 95px;
+    top: 112px;
+    bottom: 112px;
+    width: 6pt;
+    background: var(--c-accent);
+  }
+
+  /* Layer 3: Content */
+  .cover-layer-3 {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+  }
+
+  /* Drawer A - Kicker */
+  .kicker {
+    position: absolute;
+    top: 168px;
+    left: 155px;
+    font-size: 11pt;
+    font-weight: 400;
+    letter-spacing: 3pt;
+    opacity: 0.6;
+    color: var(--c-text);
+    text-transform: uppercase;
+    max-width: 400px;
+    line-height: 1.4;
+  }
+
+  /* Drawer B - Hero Title */
+  .hero-title {
+    position: absolute;
+    top: 337px;
+    left: 155px;
+    font-size: 48pt;
+    font-weight: 900;
+    color: var(--c-text);
+    line-height: 1.15;
+    max-width: 560px;
+  }
+
+  /* Drawer C - Summary */
+  .summary {
+    position: absolute;
+    top: 561px;
+    left: 155px;
+    font-size: 16pt;
+    font-weight: 400;
+    color: var(--c-text);
+    opacity: 0.85;
+    line-height: 1.6;
+    max-width: 476px;
+  }
+
+  /* Drawer D - Meta */
+  .meta {
+    position: absolute;
+    top: 842px;
+    left: 155px;
+    font-size: 16pt;
+    font-weight: 400;
+    color: var(--c-muted);
+    line-height: 1.5;
+    max-width: 560px;
+  }
+
+  .meta-label {
+    font-size: 10pt;
+    letter-spacing: 1.5pt;
+    text-transform: uppercase;
+    color: var(--c-muted);
+    opacity: 0.7;
+    margin-bottom: 4px;
+  }
+
+  .meta-value {
+    font-size: 16pt;
+    color: var(--c-text);
+    opacity: 0.85;
+  }
+
+  /* Footer */
+  .cover-footer {
+    position: absolute;
+    bottom: 56px;
+    left: 155px;
+    font-size: 10pt;
+    letter-spacing: 3pt;
+    opacity: 0.4;
+    color: var(--c-muted);
+    text-transform: uppercase;
+  }
+
+  /* Right side decorative element */
+  .spec-badge {
+    position: absolute;
+    top: 360px;
+    right: 56px;
+    width: 120px;
+    padding: 12px 16px;
+    border: 1pt solid var(--c-accent);
+    opacity: 0.6;
+  }
+
+  .spec-badge-label {
+    font-size: 8pt;
+    letter-spacing: 2pt;
+    text-transform: uppercase;
+    color: var(--c-muted);
+    opacity: 0.7;
+    margin-bottom: 4px;
+  }
+
+  .spec-badge-value {
+    font-size: 14pt;
+    font-weight: 700;
+    color: var(--c-accent);
+  }
+
+  .spec-badge-sub {
+    font-size: 9pt;
+    color: var(--c-muted);
+    margin-top: 4px;
+  }
+
+  /* Bottom right classification */
+  .classification {
+    position: absolute;
+    bottom: 56px;
+    right: 56px;
+    font-size: 9pt;
+    letter-spacing: 2pt;
+    text-transform: uppercase;
+    color: var(--c-muted);
+    opacity: 0.5;
+  }
+</style>
+</head>
+<body>
+<div class="cover-page">
+  <!-- Layer 0: Background -->
+  <div class="cover-layer-0"></div>
+
+  <!-- Layer 1: Background watermark -->
+  <div class="cover-layer-1">
+    <div class="watermark-text">HBK MK-II</div>
+  </div>
+
+  <!-- Layer 2: Structure - thick anchor line -->
+  <div class="cover-layer-2">
+    <div class="anchor-line"></div>
+  </div>
+
+  <!-- Layer 3: Content -->
+  <div class="cover-layer-3">
+    <!-- Drawer A - Kicker -->
+    <div class="kicker">Phase 2 Power, Thermal &amp; CAD Architecture Specification</div>
+
+    <!-- Drawer B - Hero Title -->
+    <div class="hero-title">VVU HBK<br>Mk-II</div>
+
+    <!-- Drawer C - Summary -->
+    <div class="summary">
+      Comprehensive engineering specification for the HBK Mk-II Phase 2 platform, 
+      defining collision-free CAD coordinate matrices, 8S4P LiFePO4 power architecture, 
+      star ground wiring protocols, epistemic thermal governance, containment layers, 
+      and the full Phase 2 bill of materials.
+    </div>
+
+    <!-- Drawer D - Meta -->
+    <div class="meta">
+      <div class="meta-label">Revision</div>
+      <div class="meta-value">Phase 2 Release &mdash; 2026-03-04</div>
+      <div style="height: 12px;"></div>
+      <div class="meta-label">Prepared By</div>
+      <div class="meta-value">VVU EARTH TECH Engineering Division</div>
+      <div style="height: 12px;"></div>
+      <div class="meta-label">Classification</div>
+      <div class="meta-value">Internal &mdash; Restricted Distribution</div>
+    </div>
+
+    <!-- Right side spec badge -->
+    <div class="spec-badge">
+      <div class="spec-badge-label">Platform</div>
+      <div class="spec-badge-value">8S4P</div>
+      <div class="spec-badge-sub">25.6V / 614Wh</div>
+    </div>
+
+    <!-- Footer -->
+    <div class="cover-footer">VVU EARTH TECH</div>
+
+    <!-- Classification -->
+    <div class="classification">Document Ref: VVU-HBK-MKII-P2-CAD-001</div>
+  </div>
+</div>
+</body>
+</html>

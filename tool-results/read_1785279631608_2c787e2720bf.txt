@@ -1,0 +1,703 @@
+     1→# Poster Scene Rules — Creative Pipeline (Poster-Specific Constraints)
+     2→
+     3→> When poster / 海报 / 传单 / flyer / 宣传页 keywords are detected, load these rules on top of `creative-fixed-canvas.md`.
+     4→> These rules take priority over `creative-fixed-canvas.md` generic rules; in case of conflict, this file prevails.
+     5→>
+     6→> **Positioning**: This is a scene-layer patch on `creative-fixed-canvas.md` (the generic Creative pipeline) — only covers poster-specific constraints, does not repeat generic rules.
+     7→
+     8→---
+     9→
+    10→## 1. Page Count & Dimensions
+    11→
+    12→### 1.1 Default Single Page
+    13→- When the user does not explicitly request multiple pages, **default to a single-page poster**
+    14→- Single-page poster `total_pages: 1`, never split into multiple pages on your own
+    15→
+    16→### 1.2 Sizing Strategy
+    17→
+    18→| Text Volume | Recommended Size | Aspect Ratio | Notes |
+    19→|--------|---------|--------|------|
+    20→| ≤ 50 chars | 720 × 960 | 3:4 | Title poster / social media cover / card |
+    21→| 50–200 chars | 720 × 960 | 3:4 | Standard promotional poster |
+    22→| > 200 chars | 720 × min-height 960 | Adaptive | Long poster (H5 style), content stretches height |
+    23→| User-specified landscape | Adjust as needed | As needed | Width and height can be swapped |
+    24→
+    25→### 1.3 Canvas Variables
+    26→```json
+    27→{
+    28→  "canvas": { "width": 720, "height": 960 }
+    29→}
+    30→```
+    31→Default dimensions can be overridden via the `canvas` field in the Blueprint. `design_engine.py` will automatically inject `--canvas-w` and `--canvas-h` CSS variables.
+    32→
+    33→---
+    34→
+    35→## 2. Information Density & Page Fill
+    36→
+    37→### 2.1 Core Iron Rule: Content Must Fill the Page
+    38→
+    39→> **The biggest visual disaster for a poster is not content overflow, but content only occupying half the page with a blank bottom half.**
+    40→
+    41→| Text Volume | Content Area / Page Ratio | Notes |
+    42→|--------|----------------|------|
+    43→| ≤ 50 chars | 70–80% | Enlarged cards, large font sizes, generous decorative whitespace is intentional |
+    44→| 50–200 chars | 75–85% | Content modules distributed evenly, must not be crammed in the top half |
+    45→| > 200 chars | 80–90% | Content-dominant, whitespace only at margins |
+    46→
+    47→### 2.2 Anti-Top-Heavy
+    48→
+    49→- All components' `grid_area` **must cover the full 1→13 rows**, never stop at row 10 or 11
+    50→- The last component's `grid_area` row endpoint must be `13`
+    51→- **No large blank space at top/header** — the first content component's `grid_area` should start at row 1, not row 3 or 4
+    52→- **No large blank space on left/right sides** — components should utilize full column width (most should span 1→13 columns)
+    53→- If content is insufficient to fill 12 rows, use these strategies (by priority):
+    54→  1. **Increase font size**: Hero from scale 5 → 6, body font +2pt
+    55→  2. **Increase component spacing**: grid gap from 16px → 24px
+    56→  3. **Insert decorative components**: `Hairline_Divider`, `Page_Ghost_Number`
+    57→  4. **Expand stat block / hero grid row count**
+    58→
+    59→### 2.3 Grid Area Allocation Iron Rule
+    60→
+    61→```
+    62→✅ Correct: Components cover all rows 1→13
+    63→Page: [Hero 1→4] [Stats 4→7] [Glass 7→10] [Meta 10→13]
+    64→
+    65→❌ Wrong: Components only reach row 10, rows 11-13 empty  
+    66→Page: [Hero 1→3] [Stats 3→5] [Glass 5→8] [Meta 8→10] [??? 10→13 void]
+    67→```
+    68→
+    69→### 2.4 ★★★ Content-Proportional Row Allocation (Anti-Overlap Iron Rule)
+    70→
+    71→> **When two or more text components share a page, rows must be allocated proportionally to content volume — never split evenly!**
+    72→
+    73→**Problem reproduction:**
+    74→```
+    75→Attractions: 450 chars (3 attractions × 150 chars description)
+    76→Food:        250 chars (2 foods × 125 chars description)
+    77→Available rows: 8 rows (5→13)
+    78→
+    79→❌ Even split: Attractions 5→9, Food 9→13 → 4 rows each
+    80→   → Attractions content far exceeds 4-row capacity, overflows into Food area, text overlaps!
+    81→
+    82→✅ Proportional split: 
+    83→   Attractions: 8 × 450/700 ≈ 5 rows → 5→10
+    84→   Food:        8 × 250/700 ≈ 3 rows → 10→13
+    85→```
+    86→
+    87→**Steps:**
+    88→1. Write all `markdown_content` first
+    89→2. Count the **character count** of each text component (including titles/paragraphs/lists)
+    90→3. Allocate rows proportionally: `rows_i = total_rows × (chars_i / total_chars)`
+    91→4. Round off, each component **minimum 3 rows**
+    92→5. Verify: all component grid_area endpoints connect end-to-end, covering full 1→13
+    93→
+    94→**Applicable scenarios:**
+    95→- Multiple `Glass_Canvas` on the same page (most common)
+    96→- `Glass_Canvas` + `Process_List` on the same page
+    97→- Any two or more components containing text paragraphs
+    98→
+    99→**Not applicable:**
+   100→- `Hero_Typography` (very large font, 1-3 lines occupying 2-3 grid rows is reasonable)
+   101→- `Stat_Block` (number + label, fixed height, typically 2 rows)
+   102→- `Floating_Meta` (short labels, typically 2-3 rows)
+   103→
+   104→---
+   105→
+   106→## 3. Font Size System (Poster-Specific)
+   107→
+   108→### 3.1 Minimum Font Size (Hard Floor)
+   109→
+   110→| Element | Min Font Size | Recommended | Notes |
+   111→|------|---------|---------|------|
+   112→| **Page main title** | **50px** | 56–72px | Poster title must have visual impact |
+   113→| **Body text** | **24px** | 24–28px | Posters are not reports — body font must be large |
+   114→| **Subtitle / card title** | **28px** | 32–40px | Secondary headings |
+   115→| **Floating Meta** | **16px** | 16–20px | Metadata text |
+   116→| **Stat Number** | **48px** | 56–72px | Data sculptures must be eye-catching |
+   117→| **Stat Label** | **14px** | 14–16px | Data labels |
+   118→
+   119→> Compared to `fill-engine.md`'s generic red line (body ≥ 14pt), the poster body floor is **24px** — posters are a distance-reading medium, font sizes must be larger.
+   120→
+   121→### 3.2 Emphasis Hierarchy
+   122→
+   123→- Use **font size + font weight** to create hierarchy, **not color differentiation**
+   124→- Emphasis text (keyword/number highlights) font size must be smaller than titles
+   125→- Hero title recommended `weight: "black"` (900), subtitle `weight: "thin"` (100), creating extreme contrast
+   126→
+   127→---
+   128→
+   129→## 4. Color Rules (Poster-Specific)
+   130→
+   131→### 4.1 Color Palette System
+   132→
+   133→**Primary palette: Material Design 3 with low-medium saturation.** Default to medium-saturation colors; for light themes, use gradient backgrounds with white/light text on top.
+   134→
+   135→| Area | Proportion | Role |
+   136→|------|------|------|
+   137→| 60% Ground | Background/margins/whitespace | Main color (low saturation) |
+   138→| 30% Structure | Cards/dividers/secondary areas | Derived from main by adjusting lightness |
+   139→| 10% Emphasis | Titles/key numbers/single accent | Adjusted purity/brightness of main color |
+   140→
+   141→**Color derivation rules:**
+   142→- Title/subtitle text color: Adjust main color's purity and brightness (not a separate random color)
+   143→- Auxiliary colors: **Maximum 2**, derived from primary by adjusting lightness/saturation
+   144→- Keep consistent color palette throughout — do NOT change main color between sections
+   145→- Default recommendation: **Light theme with medium saturation**, or gradient background + white fonts
+   146→
+   147→### 4.2 Poster Additional Constraints
+   148→
+   149→- **No pure white (#FFFFFF) background** — use at least `#f5f4f2` or warmer off-white
+   150→- **No transparent background**
+   151→- **Page base color (`<body>` / `<html>` background) must match poster content background** — `printBackground: true` renders body background. If body is white but poster content is gray, white borders/gaps appear in the PDF. Ensure `html, body { background: var(--c-bg); }` matches the poster canvas exactly
+   152→- **Do not use a single image to fill the background** — use grid textures, gradients, geometric shapes, and other generative backgrounds
+   153→- Long posters (>200 chars) must not use full-image backgrounds
+   154→- **Gradients** or **large blurred circles/symbols** can be used sparingly as background accents
+   155→- Maximum 2 auxiliary colors, derived from primary by adjusting lightness/saturation
+   156→- Background accents: grid textures, organic shapes, large blurred circles/symbols — NOT a single image
+   157→- **Overall bright and vibrant color combinations** — the poster should feel visually striking, not muted/dull
+   158→
+   159→### 4.3 palette_mode Mapping
+   160→
+   161→| Poster Style | Recommended palette_mode | color_harmony |
+   162→|---------|-------------------|---------------|
+   163→| Business/Formal | `minimal` | `auto` |
+   164→| Tech/AI | `dark` | `complementary` |
+   165→| Lifestyle/Food/Artistic | `pastel` | `analogous` |
+   166→| Luxury/Ceremony | `jewel` | `split_complementary` |
+   167→| Other | `minimal` (default) | `auto` |
+   168→
+   169→---
+   170→
+   171→## 4.5 ★★★ Anti-Modularization Iron Rule (Anti-Card / Anti-Dashboard)
+   172→
+   173→> **A poster is a complete composition, not a dashboard, not an APP interface, not a report.**
+   174→
+   175→### Root Cause
+   176→
+   177→LLMs naturally tend to "classify information → put each category in a box → stack them vertically", because that is report/document organization logic. But poster visual logic is the exact opposite — **information is unified, hierarchy is established through typographic rhythm (font size, weight, spacing, whitespace), not through borders and background colors**.
+   178→
+   179→### Comparison
+   180→
+   181→| Report/UI Thinking ❌ | Poster Thinking ✅ |
+   182→|---|---|
+   183→| Each info block wrapped in `border + border-radius + background` as a card | Information placed directly on the canvas, no borders no background |
+   184→| Clear visual boundaries between modules | Modules naturally separated by **whitespace and thin lines** |
+   185→| Looks like a mobile APP interface | Looks like a design piece |
+   186→| Hierarchy via "different colored boxes" | Hierarchy via **font size gradient + weight contrast + color lightness** |
+   187→| Stacked Glass_Canvas components = card wall | Pure typography + occasional Hairline_Divider |
+   188→
+   189→### Mandatory Rules
+   190→
+   191→1. **Single-page posters must not have more than 3 containers with `background` + `border`.** If information needs grouping, use whitespace (margin/padding) and thin lines (1px, opacity < 10%) instead of bordered cards.
+   192→2. **No 2×2 / 2×3 grid card layouts** (unless it's a pure data scenario with `data_dashboard` archetype). Information flows in a single column; multiple items in the same row use `flex + gap` horizontal layout without borders.
+   193→3. **Information hierarchy must be established through typography properties**, not through "different colored/backgrounded boxes":
+   194→   - Primary information: large font (≥48px) + heavy weight (900)
+   195→   - Secondary information: medium font (18-24px) + medium weight (700)
+   196→   - Tertiary information: small font (12-14px) + light weight (300-400) + reduced opacity
+   197→4. **Glass_Canvas may be used at most once in a single-page poster.** If multiple text sections are needed, use direct HTML typography instead of wrapping each paragraph in a Glass_Canvas.
+   198→5. **Bottom action information (price/address/QR code) should not be wrapped in a separate color block.** Use larger font + heavier weight to emphasize, keeping it unified with the overall composition.
+   199→
+   200→### Correct Example (Direct HTML Flow)
+   201→
+   202→```html
+   203→<!-- ❌ Wrong: card wall -->
+   204→<div class="card" style="background:rgba(255,255,255,0.5); border-radius:12px; border:1px solid #ddd;">
+   205→  <h3>📅 展期</h3>
+   206→  <p>7.15 — 8.30</p>
+   207→</div>
+   208→<div class="card" style="background:rgba(255,255,255,0.5); border-radius:12px; border:1px solid #ddd;">
+   209→  <h3>📍 地点</h3>
+   210→  <p>城市艺术中心</p>
+   211→</div>
+   212→
+   213→<!-- ✅ Correct: pure typography, no borders -->
+   214→<div class="info-row" style="display:flex; gap:48px;">
+   215→  <div>
+   216→    <div style="font-size:10px; letter-spacing:3px; opacity:0.45;">展期</div>
+   217→    <div style="font-size:20px; font-weight:700;">7.15 — 8.30</div>
+   218→  </div>
+   219→  <div>
+   220→    <div style="font-size:10px; letter-spacing:3px; opacity:0.45;">地点</div>
+   221→    <div style="font-size:20px; font-weight:700;">城市艺术中心</div>
+   222→  </div>
+   223→</div>
+   224→```
+   225→
+   226→### Blueprint Route Additional Constraints
+   227→
+   228→When using Blueprint JSON (not Direct HTML):
+   229→- Single-page posters may have at most 1 `Glass_Canvas`, used only for text that truly needs reading
+   230→- Prefer combining `Stat_Block` (data), `Floating_Meta` (metadata), `Hero_Typography` (titles) instead of multiple Glass_Canvas
+   231→- Information data (dates, locations, headcounts) should use `Floating_Meta` or `Stat_Block`, not Glass_Canvas
+   232→
+   233→---
+   234→
+   235→## 5. Layout Strategy
+   236→
+   237→### 5.1 Composition Priority
+   238→1. **Vertical composition** (vertical flow) — most common, information flows top to bottom
+   239→2. **Left-right composition** (split vertical) — image and text split, `archetype: "split_vertical"`
+   240→3. **Centered composition** (centered) — suitable for title cards with ≤ 50 chars
+   241→
+   242→### 5.2 Card Rules
+   243→- Cards **must never overlap**
+   244→- Card content should be well-distributed, **no large internal whitespace**
+   245→- Text within cards **vertically centered**
+   246→- Glass Canvas `align-items` must be `stretch` (built into the engine)
+   247→
+   248→### 5.3 Breathing Margins
+   249→
+   250→| Scenario | safe-zone inset | Notes |
+   251→|------|----------------|------|
+   252→| Cover / title poster (≤50 chars) | `12% 14%` | Generous whitespace is intentional |
+   253→| Standard poster (50-200 chars) | `8% 10%` | Balance whitespace and content |
+   254→| Long poster (>200 chars) | `6% 8%` | Maximize content area |
+   255→
+   256→> Max content width = 80% of page width (consistent with original prompt)
+   257→
+   258→---
+   259→
+   260→## 5.5 Visual Impact Rules
+   261→
+   262→### 5.5.1 Emphasis & Contrast
+   263→- Create visual contrast with **oversized and small elements** — hero numbers/titles vs tiny metadata
+   264→- Highlight core points with large fonts or numbers for strong visual contrast
+   265→- **Emphasized text must remain smaller than headings/titles** — never let a highlight be bigger than the heading
+   266→- Texts that need emphasis can be highlighted with color, weight, or circled with hand-drawn lines
+   267→- **Do not insert multiple small pictures as embellishments** — this won’t enhance visual appeal
+   268→
+   269→### 5.5.2 Alignment & Spacing
+   270→- Allow blocks to resize based on content, align appropriately, optimize space utilization
+   271→- If excess whitespace exists, **enlarge fonts or modules** to balance the layout
+   272→- Cards cannot overlap; content should fill the card area without excessive empty space
+   273→- Use **flexbox** layouts to prevent footer from moving up (with top and bottom margin settings)
+   274→- For visual variety: encourage diverse and creative layouts beyond standard grids, while maintaining alignment and hierarchy
+   275→
+   276→---
+   277→
+   278→## 6. Design Style Library
+   279→
+   280→Based on content theme, the model should autonomously select one of the following styles. Explain the selection rationale in the Blueprint's `design_rationale`.
+   281→
+   282→| Style | Characteristics | Applicable Scenarios |
+   283→|------|------|---------|
+   284→| **Modern Minimal** | Clean colors, organic shapes, flowing curves, rounded cards, clear hierarchy | Business, tech, education |
+   285→| **Neo-Brutalism** | Flat elements, illustrations, patterns, large text blocks, special font designs, thick borders | Creative, events, youth |
+   286→| **Artistic Gradient** | Diffused light, gradient glow, semi-transparent elements, blur effects, glass texture | Art, music, branding |
+   287→| **Collage** | Contrasting color design, material collage, large text, irregular layout | Trends, fashion, exhibitions |
+   288→| **Playful UI** | Bright colors, interesting shapes, energetic | Children, games, social |
+   289→
+   290→### Special Forms for Text Volume ≤ 50 Characters
+   291→
+   292→When content is minimal, prioritize the following compact forms:
+   293→
+   294→| Form | Description | archetype |
+   295→|------|------|-----------|
+   296→| **Centered Card** | Calendar-like effect, key content centered as note/card | `cover_hero` |
+   297→| **Bookmark Page** | Narrow tall ratio (e.g. 360×960), vertical reading | `cover_hero` |
+   298→| **Minimal Text** | Title + whitespace only, no additional information | `cover_hero` |
+   299→| **Sticky Note** | Content displayed as floating sticky notes above background | `cover_hero` |
+   300→| **Polaroid Card** | Photo-style card with caption below | `cover_hero` |
+   301→
+   302→### Special Forms for Text Volume ≤ 100 Characters
+   303→
+   304→| Form | Description |
+   305→|------|------|
+   306→| **Floating Card System** | Content as cards floating above organic shape backgrounds |
+   307→| **Notebook Style** | Lined-paper aesthetic with handwritten-feel content |
+   308→| **Fortune Stick** | Vertical strip with centered calligraphy text |
+   309→
+   310→> **Key constraint**: If the user only provides a title with no other requirements, **do not expand content on your own** — just place the title.
+   311→
+   312→---
+   313→
+   314→## 6.5 Icons and Illustrations
+   315→
+   316→- Use **Material Design Icons** (Google Fonts method):
+   317→  ```html
+   318→  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+   319→  <!-- Usage: -->
+   320→  <i class="material-icons">icon_name</i>
+   321→  ```
+   322→- Icon color: Use the **theme color** (not random colors)
+   323→- Icon size and position: Aligned with surrounding elements, never stretched
+   324→- If positioned beside text: **center-aligned with the first line of text**
+   325→- **Emoji can be used as icons** — 🌸 🍴 🏙️ etc. (but remember ReportLab can’t render emoji — only use in HTML/Playwright route)
+   326→- For logos/emblems: Use text "Your Logo" or icons, **never** search for logo images
+   327→
+   328→---
+   329→
+   330→## 7. Text Readability
+   331→
+   332→### 7.1 Iron Rules
+   333→- **Line height ≥ 130%** (`line-height: 1.3` or above)
+   334→- **No text shadow/glow effects**
+   335→- **When text overlays images**, a semi-transparent mask layer is required
+   336→- **Do not use images with lots of text/charts/numbers as text background**
+   337→- **No `text-align: justify`** (CJK characters get stretched letter-spacing, terrible result) — always use `text-align: left`
+   338→
+   339→### 7.2 Contrast
+   340→- Text on light background: `color: #242220` or darker
+   341→- Text on dark background: `color: #f5f4f2` or lighter
+   342→- Text on medium background (L 0.30–0.70): **forbidden** — do not place text on mid-tone backgrounds
+   343→
+   344→---
+   345→
+   346→## 8. Image Usage Rules
+   347→
+   348→### 8.0 Image Recommendations
+   349→
+   350→When creating posters, actively use images to enrich visual effects. Good images can significantly enhance the poster's visual impact.
+   351→
+   352→- Priority: **installed image generation skill** > web image search
+   353→- Image style must match the poster theme
+   354→- Download images locally first, then embed into the poster
+   355→- Local images must be converted to base64 data URI in HTML (Playwright cannot load local absolute paths)
+   356→
+   357→### 8.1 Core Principles
+   358→- Don't force images when none are suitable, but images improve results when available
+   359→- Each image must be **unique** in the design, no reuse
+   360→- Prefer clear, high-resolution, watermark-free, text-free images
+   361→- Images should have rounded corners, sized consistently with the overall design
+   362→- You can try adding **irregularly shaped masks** (CSS `clip-path`) to images for visual interest
+   363→
+   364→### 8.2 Prohibited Behaviors
+   365→- ❌ Placing images directly in corners
+   366→- ❌ Images obscuring text or overlapping with other modules
+   367→- ❌ Multiple images scattered randomly as decoration
+   368→- ❌ Searching for images when logo/badge is needed — use text "Your Logo" or icons instead
+   369→
+   370→---
+   371→
+   372→## 9. Chart Rules (Poster Scene)
+   373→
+   374→- Large numerical datasets → consider creating visual charts
+   375→- Chart style should match the poster theme
+   376→- Use **Bento Grid** layout for multiple charts
+   377→- Chart containers **must have height constraints** to prevent infinite growth
+   378→
+   379→---
+   380→
+   381→## 10. Prohibited Items (Poster-Specific)
+   382→
+   383→### 10.0 HTML Rendering Iron Rules (Applicable to All HTML → PDF Routes)
+   384→
+   385→| Rule | Description |
+   386→|------|------|
+   387→| **No `overflow: hidden` on content components** | Truncates text. Only allowed on page-level `.canvas` and decorative background layers |
+   388→| **Use `min-height` instead of `height` for content containers** | `height:100%` locks height, content gets clipped when too much; `min-height:100%` allows natural expansion |
+   389→| **Exceptions where `overflow: hidden` is allowed** | `.canvas` (page boundary), `.poster` (auto-injected by `html2poster.js`), `.floating-meta` (short label ellipsis), cover Layer 1 (decorative clipping), SVG/img (fill container) |
+   390→| **Absolutely no `backdrop-filter`** | **Playwright PDF rendering silently discards entire element content!** Use fixed rgba() background color for cards instead |
+   391→| **Absolutely no `text-align: justify`** | CJK character spacing gets abnormally stretched, always use `text-align: left` |
+   392→| **`overflow: hidden` on `.page` containers** | **MANDATORY for multi-page documents.** Decorative elements (glow, gradient circles, oversized backgrounds) with `width > 100%` or negative offsets cause `scrollWidth > clientWidth`, triggering Playwright to shrink the entire page → content drifts left. `.page { overflow: hidden }` clips decorative overflow without affecting visible content |
+   393→| **Horizontal flex rows must have `flex-wrap`** | ≥3 inline items (flow bars, step lists, tag rows) without `flex-wrap: wrap` will overflow the page right edge when content is long. See `typesetting/overflow.md` §3.5 for full rules |
+   394→
+   395→| Prohibited | Reason |
+   396→|--------|------|
+   397→| ❌ Timeline graphics | Complex connecting lines easily misalign in PDF rendering |
+   398→| ❌ Complex SVG-drawn structure/flow diagrams | Unless user explicitly requests |
+   399→| ❌ Code-drawn maps or flags | Poor quality |
+   400→| ❌ Base64 images (when exceeding 10MB) | File too large. Small image base64 is acceptable (Playwright cannot load local paths) |
+   401→| ❌ Content truncation | Must adjust container height to ensure all content fully displayed |
+   402→| ❌ Pure white background (#FFFFFF) | Lacks design quality |
+   403→| ❌ Transparent background | PDF output cannot be transparent |
+   404→
+   405→---
+   406→
+   407→## 11. Poster Font Recommendations
+   408→
+   409→### 11.1 CJK Font Recommendations
+   410→
+   411→**For Chinese posters (serious/formal scenes):**
+   412→
+   413→| Purpose | Recommended Font | Google Fonts / CDN Name | Style |
+   414→|------|---------|-------------------|------|
+   415→| CJK title (serious) | DingTalk JinBuTi | `DingTalk JinBuTi` (letter-spacing: -5%) | Bold, impactful |
+   416→| CJK title (alt) | Douyin Sans / Alimama FangYuanTi VF Bold | Via CDN | Modern Chinese |
+   417→| CJK title (serif) | Swei B2 Serif CJKtc Bold | Via CDN | Elegant serif |
+   418→| CJK body | HarmonyOS Sans SC | `HarmonyOS Sans SC` | Clear, readable |
+   419→| CJK body (fallback) | Noto Sans SC Regular | `Noto Sans SC:wght@400` | Google Fonts guaranteed |
+   420→| CJK artistic | Noto Serif SC Bold | `Noto Serif SC:wght@700` | Elegant, artistic |
+   421→| Handwritten | ZhanKuKuaiLeTi2016XiuDingBan-2 | Via CDN | Casual, playful |
+   422→| Pixel/dot-matrix | DottedSongtiSquareRegular | Via CDN | Retro, xiangsuti |
+   423→
+   424→**For English posters:**
+   425→
+   426→| Purpose | Recommended Font | Google Fonts Name | Style |
+   427→|------|---------|-------------------|------|
+   428→| English/number title | Futura | System / `Futura` | Classic geometric |
+   429→| English body | Noto Sans SC | `Noto Sans SC:wght@400` | Clean, modern |
+   430→| English title (Google) | Inter Black | `Inter:wght@900` | Modern geometric |
+   431→| English serif | Playfair Display | `Playfair+Display:wght@900` | Classic editorial |
+   432→| Number emphasis | Inter Black | `Inter:wght@900` | Data sculpture |
+   433→
+   434→### 11.2 Font Usage Constraints
+   435→- Entire poster **maximum 3 fonts**
+   436→- Title and body may use different fonts, but must be visually harmonious
+   437→- **Never reduce font size or line height to squeeze in more content**
+   438→- Font content in cards should be **vertically centered** within the card
+   439→- You may use different style fonts for entertaining or artistic scenes
+   440→
+   441→---
+   442→
+   443→## 12. Coordination with design_engine.py
+   444→
+   445→### 12.0 ★★★ Stable Layout Selection Strategy (Anti-Overflow Core Rule)
+   446→
+   447→> **Content-heavy posters must bypass the Blueprint 12×12 Grid and use a pure flow-based HTML approach.**
+   448→
+   449→**Why:** The Blueprint 12×12 Grid allocates space with fixed row heights and cannot predict actual text rendering height, causing:
+   450→- Text overflowing Glass Canvas containers
+   451→- CJK character spacing stretched by `text-align: justify`
+   452→- Inaccurate row allocation for multiple components, text overlap
+   453→
+   454→**Route selection:**
+   455→
+   456→| Scenario | Recommended Route | Notes |
+   457→|------|---------|------|
+   458→| Title poster (≤ 50 chars) | Blueprint JSON | Few components, little content, Grid sufficient |
+   459→| Standard poster (50-150 chars) | Blueprint JSON | Grid mostly sufficient, mind row allocation |
+   460→| **Info-dense poster (>150 chars or multiple sections)** | **★ Direct HTML Flow** | **Strongly recommended — completely avoids overflow** |
+   461→| **Multi-page info poster** | **★ Direct HTML Flow** | **Strongly recommended** |
+   462→| Poster with images | Direct HTML Flow | Image embedding is more stable |
+   463→
+   464→### 12.1 Direct HTML Flow Approach (Recommended Default)
+   465→
+   466→**Core idea: No Grid, no fixed height, content flows naturally, never overflows.**
+   467→
+   468→Write HTML directly, convert to PDF via `html2poster.js`. The poster is a **single continuous `<div class="poster">` container** — NOT split into separate `<div class="page">` blocks.
+   469→
+   470→#### ★★★ Single-Canvas vs Multi-Page (Iron Rule)
+   471→
+   472→| Approach | When to Use | HTML Structure |
+   473→|----------|-------------|----------------|
+   474→| **Single Canvas** (default) | All content forms one unified poster | One `<div class="poster">`, no `page-break` |
+   475→| **Multi-Page** (exception) | User explicitly requests separate pages (e.g., "make a 4-page booklet") | Multiple `<div class="page">` with `page-break-after: always` |
+   476→
+   477→> **Default = Single Canvas.** A poster is ONE design composition, not a paginated report. Multi-page is only for booklets/multi-page documents where the user explicitly asks for page separation.
+   478→
+   479→#### ★★★ Dynamic Height (Anti-Blank-Bottom Iron Rule)
+   480→
+   481→**NEVER hardcode `@page { size: W H }` or `.poster { min-height: Xpx }` with a fixed height.** This creates blank space at the bottom when content is shorter than the hardcoded value.
+   482→
+   483→**Correct approach — use `html2poster.js`:**
+   484→
+   485→`html2poster.js` automatically handles all of this — you just need to write the HTML correctly and call one command:
+   486→
+   487→```bash
+   488→node "$PDF_SKILL_DIR/scripts/html2poster.js" poster.html --output poster.pdf --width 720px
+   489→```
+   490→
+   491→It will automatically:
+   492→1. Add `overflow: hidden` to `.poster` container (clips decorative overflow)
+   493→2. Inject `@page { margin: 0 }` (zero margins)
+   494→3. Sync `html/body` background with `.poster` background
+   495→4. Measure `.poster` scrollHeight (actual content height)
+   496→5. Generate single-page vector PDF with exact dimensions
+   497→
+   498→**⚠️ Do NOT use `html2pdf-next.js` for posters.** It is designed for multi-page documents and will inject 20mm margins / A4 pagination.
+   499→
+   500→**⚠️ Do NOT write hand-written Playwright scripts for posters.** `html2poster.js` handles everything.
+   501→
+   502→```css
+   503→/* ✅ CORRECT CSS for poster HTML (html2poster.js handles the rest): */
+   504→html, body { margin: 0; padding: 0; background: var(--c-bg); }
+   505→.poster { width: 720px; position: relative; background: var(--c-bg); }
+   506→/* Note: overflow:hidden on .poster is auto-injected by html2poster.js, 
+   507→   but including it in CSS is fine too */
+   508→```
+   509→
+   510→**CSS iron rules:**
+   511→```css
+   512→html, body { margin: 0; padding: 0; background: var(--c-bg); }
+   513→
+   514→/* Single poster canvas — NO fixed height */
+   515→.poster {
+   516→  width: 720px;
+   517→  position: relative;
+   518→  overflow: hidden;
+   519→  background: var(--c-bg);
+   520→  /* Height is determined by content, measured at render time */
+   521→}
+   522→
+   523→/* Card/content block */
+   524→.card {
+   525→  background: rgba(255,255,255,0.7);
+   526→  border-radius: 12px;
+   527→  padding: 24px 28px;
+   528→  margin-bottom: 20px;
+   529→  /* No height, no max-height, no overflow:hidden */
+   530→}
+   531→
+   532→/* CJK text iron rules */
+   533→.card, .card p, .card li {
+   534→  text-align: left;          /* Absolutely no justify! CJK stretches letter-spacing */
+   535→  line-height: 1.6;
+   536→  word-break: break-all;     /* CJK natural line break */
+   537→}
+   538→
+   539→/* Image */
+   540→.hero-image {
+   541→  width: 100%;
+   542→  border-radius: 8px;
+   543→  margin-bottom: 20px;
+   544→  display: block;
+   545→}
+   546→```
+   547→
+   548→**HTML structure template (Single Canvas):**
+   549→```html
+   550→<div class="poster">
+   551→  <!-- Hero section -->
+   552→  <div class="hero"> ... </div>
+   553→
+   554→  <!-- City 1 -->
+   555→  <div class="city-section">
+   556→    <h2>南京</h2>
+   557→    <div class="items-row"> ... attractions ... </div>
+   558→    <div class="food-row"> ... food ... </div>
+   559→  </div>
+   560→
+   561→  <!-- City separator (thin line, NOT page-break) -->
+   562→  <div class="city-sep"></div>
+   563→
+   564→  <!-- City 2 -->
+   565→  <div class="city-section"> ... </div>
+   566→
+   567→  <!-- Footer -->
+   568→  <div class="poster-footer"> ... </div>
+   569→</div>
+   570→```
+   571→
+   572→**Why it's stable:**
+   573→- No fixed height — content naturally defines poster size
+   574→- No `overflow: hidden`, text always fully displayed
+   575→- `text-align: left` avoids CJK letter-spacing stretch
+   576→- Single canvas = one unified composition, not chopped pages
+   577→- PDF height measured at render time = zero blank space
+   578→
+   579→**Convert to PDF and PNG:**
+   580→```bash
+   581→# PDF (vector, single-page, zero margins, auto-height):
+   582→node "$PDF_SKILL_DIR/scripts/html2poster.js" poster.html --output poster.pdf --width 720px
+   583→
+   584→# PNG preview (screenshot):
+   585→# Use Playwright screenshot with measured height
+   586→```
+   587→
+   588→> **⚠️ Do NOT write hand-written Playwright `page.pdf()` scripts.** Use `html2poster.js` which handles overflow:hidden, margin:0, background sync, and height measurement automatically.
+   589→
+   590→### 12.2 Blueprint Grid Approach (Only for Simple Posters)
+   591→
+   592→| Behavior | Status | Notes |
+   593→|------|------|------|
+   594→| Dynamic inset | ✅ Fixed | More content → smaller inset (`8% 10%`), less content → default (`10% 12%`) |
+   595→| Glass Canvas overflow | ✅ Fixed | `min-height:100%` replaces `height:100%`, removed `overflow:hidden` |
+   596→| Glass Canvas / Process List stretch | ✅ Fixed | Auto `align-items: stretch` |
+   597→
+   598→### 12.3 Poster Marker in Blueprint
+   599→
+   600→Add `scene: "poster"` marker in `art_direction` so `design_engine.py` can identify poster scenes and apply specific logic in the future:
+   601→
+   602→```json
+   603→{
+   604→  "art_direction": {
+   605→    "scene": "poster",
+   606→    "palette_mode": "minimal",
+   607→    "color_harmony": "auto",
+   608→    "background_svg": "flow",
+   609→    "design_rationale": "..."
+   610→  }
+   611→}
+   612→```
+   613→
+   614→---
+   615→
+   616→---
+   617→
+   618→## 14. PDF Conversion Iron Rules
+   619→
+   620→### 14.1 Background Color Consistency
+   621→```css
+   622→/* Must ensure html/body background = poster canvas background */
+   623→html, body {
+   624→  background: var(--c-bg);  /* Same color as .canvas background */
+   625→}
+   626→```
+   627→- Playwright `page.pdf({ printBackground: true })` renders body background color
+   628→- If body is white but poster is gray, white borders appear in the PDF
+   629→- `design_engine.py` already auto-injects `background: var(--c-bg)`, but if bypassing the engine and writing HTML directly, **you must ensure manually**
+   630→
+   631→**Multi-page posters / brochures with mixed page backgrounds:**
+   632→- When pages alternate between dark and light backgrounds, set `body { background }` to the **darkest page color** (see SKILL.md "Background Color Consistency" for full rationale)
+   633→- This eliminates sub-pixel white edges on dark pages without affecting light pages
+   634→
+   635→### 14.2 Content Centering (Anti-Drift)
+   636→
+   637→**Poster content must be centered in the PDF, no left or right drift allowed.**
+   638→
+   639→Common drift causes and fixes:
+   640→| Cause | Fix | 
+   641→|------|------|
+   642→| `@page { margin }` not 0 | Must be `@page { size: <w> <h>; margin: 0; }` |
+   643→| `.safe-zone` `inset` left-right asymmetric | Ensure `inset: Y% X%` uses same X% for left and right |
+   644→| Component `grid_area` only uses partial columns | Most components should span `1 / 1 / X / 13` (full width) |
+   645→| Content container has `max-width` but no `margin: 0 auto` | Add `margin: 0 auto` to center |
+   646→| Playwright PDF default margin | Pass `margin: { top: 0, right: 0, bottom: 0, left: 0 }` |
+   647→
+   648→### 14.3 Anti-Blank Edges (Dynamic Height Iron Rule)
+   649→
+   650→**Poster edges, top, and bottom should not have large meaningless whitespace.**
+   651→
+   652→**★★★ CRITICAL: Never hardcode poster height.** The poster is a single continuous canvas — its height is defined by content, not by a fixed CSS value.
+   653→
+   654→| Pattern | Status | Result |
+   655→|---------|--------|--------|
+   656→| `@page { size: 720px 3600px }` | ❌ FORBIDDEN | Creates 853px+ blank space at bottom if content is shorter |
+   657→| `.poster { min-height: 3600px }` | ❌ FORBIDDEN | Same problem — blank bottom |
+   658→| `.poster { width: 720px }` (no height) | ✅ CORRECT | Content defines height naturally |
+   659→| `node html2poster.js poster.html --width 720px` | ✅ CORRECT | Auto-measures height, zero blank space |
+   660→
+   661→**The 720×960 dimension is for multi-page documents with `page-break-after: always` only — NOT for single-canvas posters.**
+   662→
+   663→- Content must make full use of page area, no more than 20% unused space within safe-zone
+   664→- If excess whitespace exists, enlarge font sizes or modules to balance the layout
+   665→- Checklist:
+   666→  - [ ] Poster height defined by content (no hardcoded height)?
+   667→  - [ ] PDF generated via `html2poster.js` (not html2pdf-next.js)?
+   668→  - [ ] First component starts from the top?
+   669→  - [ ] Last component reaches the bottom with proper padding?
+   670→  - [ ] Left-right margins symmetric?
+   671→  - [ ] No blank space at bottom of PDF?
+   672→
+   673→---
+   674→
+   675→## 15. Preflight Checklist (Poster-Specific)
+   676→
+   677→Before outputting JSON Blueprint, verify the following items:
+   678→
+   679→```
+   680→□ ★ Single-canvas check: poster is ONE continuous <div>, not split into separate pages? (unless user explicitly requests multi-page)
+   681→□ ★ Dynamic height check: no hardcoded @page size height or .poster min-height? PDF generated via html2poster.js?
+   682→□ ★ Anti-modularization check: ≤ 3 containers with background+border in single-page poster? No 2×2 card grid? Hierarchy via font size/weight not border colors?
+   683→□ Emphasis elements (price/date/address) highlighted via font size+weight, not wrapped in separate color blocks?
+   684→□ Overall looks like a design piece, not an APP interface or dashboard?
+   685→□ total_pages = 1 (single canvas)? (unless user explicitly requests multi-page booklet)
+   686→□ No hardcoded @page height or .poster min-height? Content defines height?
+   687→□ Left-right margins symmetric? (no left/right drift)
+   688→□ html/body background = poster canvas background? (no color mismatch)
+   689→□ No bottom blank space in PDF? (height measured dynamically)
+   690→□ Page main title ≥ 50px? Body text ≥ 24px?
+   691→□ Text volume ≤ 150 chars? (single Glass Canvas)
+   692→□ palette_mode not #FFFFFF pure white?
+   693→□ No single image filling the background?
+   694→□ No overlap between cards?
+   695→□ No Timeline / complex SVG structure diagrams?
+   696→□ All content fully displayed, not truncated?
+   697→□ Emphasis text font size < title font size?
+   698→□ Entire design ≤ 3 fonts?
+   699→□ cover_hero page ≤ 4 components?
+   700→□ Hero_Typography has <br> line breaks?
+   701→□ @page { margin: 0 } set? (prevents PDF drift)
+   702→```
+   703→

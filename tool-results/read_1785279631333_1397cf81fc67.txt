@@ -1,0 +1,848 @@
+     1→# Brief: Creative Fixed-Canvas (Art Director Blueprint Mode)
+     2→
+     3→**When to use this brief:** Each page is a self-contained visual canvas with fixed dimensions — posters, infographics, invitations, certificates, dashboards, business cards, menus, greeting cards. Visual impact is primary; content per page ≤ 150 words.
+     4→
+     5→**NOT for:** Text-heavy flowing documents (guides, handbooks, catalogs, introductions) → use `briefs/creative-flow.md` instead.
+     6→
+     7→**Core Paradigm Shift**: You are NO LONGER a frontend developer writing HTML/CSS. You are an elite Art Director and Editorial Designer.
+     8→
+     9→Because LLMs lack spatial awareness and struggle to maintain perfectly nested, complex CSS over thousands of tokens, you are strictly forbidden from outputting raw HTML/CSS/Python.
+    10→
+    11→**→ MUST READ: `typesetting/overflow.md`** for Playwright/HTML-specific overflow patterns (CSS overflow-wrap, max-width, table-layout: fixed, etc.).
+    12→
+    13→Your sole responsibility is to act as the **Brain (Art Director)**:
+    14→1. Brutally edit and pace the raw text.
+    15→2. Select architectural components and layout archetypes.
+    16→3. Output a **Strict JSON Layout Blueprint**.
+    17→
+    18→The `design_engine.py` acts as the **Hands (Typesetter)**: It will parse your JSON and safely compile it into flawless, museum-quality Playwright HTML/PDFs using predefined grid mathematics and CSS rules.
+    19→
+    20→---
+    21→
+    22→## Phase 1: The Editorial Eye (Content Transformation)
+    23→
+    24→Before you design, you must "edit the raw material". Users often provide dense, unstructured text. If you just pour this text into a design, it will look like a cheap Word document.
+    25→
+    26→You must apply **Editorial Pacing**:
+    27→
+    28→### 1. The Word Budget
+    29→No single page or visual canvas should exceed **150 words** of readable body text (the golden rule for maximum aesthetic impact). The **absolute physical limit** is **250 words** - beyond that the design engine will overflow and clip content. If the raw content exceeds 150 words:
+    30→- **Action A**: Brutally summarize it down to ≤150 words.
+    31→- **Action B**: Split it across multiple `pages` in your JSON blueprint.
+    32→- Only push to 150-250 words if the content genuinely cannot be cut further.
+    33→
+    34→### 2. Typographic Hierarchy Extraction
+    35→You must parse the raw text and categorize it into typographic roles:
+    36→- **Hero / Display**: The core emotional hook (1-5 words). Must be punchy.
+    37→- **Kicker / Eyebrow**: Tiny context text above a headline (e.g., "Q3 REPORT", "MANIFESTO").
+    38→- **Lead Paragraph**: The 2-3 sentence summary.
+    39→- **Data Sculptures**: Scan the text for impactful numbers (e.g., "97%", "$4.2M"). EXTRACT THEM. They will not remain in the paragraph; they will become `Stat_Block` components.
+    40→- **Pull Quotes**: Extract the most provocative sentence to stand alone as a visual anchor.
+    41→
+    42→---
+    43→
+    44→## Phase 2: The Component Lexicon
+    45→
+    46→You will construct your JSON Blueprint using ONLY the following components. These map directly to the `configs/components.md` assets. Do not invent new component types.
+    47→
+    48→> **⚠️ Markdown Content Limits**: For `Glass_Canvas`, the golden rule is **under 150 words** for maximum aesthetic breathing room. Absolute physical limit is **250 words**. If content exceeds 250 words, the design engine will overflow. You MUST summarize it or split it into a new page.
+    49→
+    50→### 1. `Hero_Typography`
+    51→Giant, page-dominating text. Usually interacts with the background via blend modes.
+    52→- **Parameters**:
+    53→  - `content` (string): The text (use `<br>` for deliberate line breaks).
+    54→  - `weight` (string): `"black"` (900, dominating) or `"thin"` (100, elegant).
+    55→  - `variant` (string, optional): `"standard"` only. ~~`"vertical_accent"`~~ is **NOT implemented** in `design_engine.py` - the engine silently ignores this value and renders nothing. If you need vertical/rotated decorative text, use `Floating_Meta` instead (fully supported, no overflow risk).
+    56→  - `scale` (integer, optional): Typographic scale level `1`-`6`. Controls font size via the engine's fluid type system. If omitted, the engine uses the default hero size.
+    57→    - `6`: Hero/Display - oversized title, clamp(64px, 12vw, 150px). Use for single words or short phrases with maximum visual impact.
+    58→    - `5`: Primary Title - clamp(48px, 8vw, 96px). Standard poster headline.
+    59→    - `4`: Subheadline - clamp(32px, 5vw, 56px). Chapter openers or key quotes.
+    60→    - `3`: Lead Paragraph - clamp(20px, 3vw, 32px). Prominent body text.
+    61→    - `2`: Body - 16px. Standard readable text.
+    62→    - `1`: Meta/Caption - 10px. Decorative, environmental.
+    63→
+    64→### 2. `Glass_Canvas`
+    65→The main structural container for reading text. Frosted glass, sharp 2px print corners.
+    66→- **Parameters**:
+    67→  - `markdown_content` (string): The actual text to read. Supports standard Markdown (H2, H3, bold, lists). *Must be under 150 words.*
+    68→  - `tension_score` (float, optional): Semantic tension value from `0.0` to `1.0`. Drives dynamic font weight via Variable Font (Inter Variable, weight range 300-900). The engine maps: `weight = 300 + (tension_score × 600)`.
+    69→    - `0.0-0.2` → Light (300-420): calm, contemplative passages
+    70→    - `0.3-0.5` → Normal (420-600): standard body text
+    71→    - `0.6-0.8` → Bold (600-780): urgent, assertive content
+    72→    - `0.9-1.0` → Max (780-900): crisis, climax, emotional peak
+    73→    - **When to use**: Multi-page narrative documents with emotional arc (case studies, pitch decks, manifestos). Assign higher tension to problem/crisis sections, lower to resolution/hope. Do NOT use on every Glass_Canvas - only when the document has clear tonal shifts.
+    74→    - **When NOT to use**: Data-heavy pages, simple reports, single-page posters.
+    75→
+    76→### 3. `Floating_Meta`
+    77→Tiny, environmental metadata (dates, edition numbers, catalog IDs) that lives in the 15% breathing margin.
+    78→- **Parameters**:
+    79→  - `position` (string): `"top-left"`, `"top-right"`, `"bottom-left"`, `"bottom-right"`.
+    80→  - `items` (array of strings): E.g., `["VOL 01", "2026", "EDITION 500"]`.
+    81→
+    82→### 4. `Hairline_Divider`
+    83→Structural 0.5px line. Not decorative; acts as a visual fold.
+    84→- **Parameters**:
+    85→  - `style` (string): `"bleed"` (goes edge-to-edge) or `"accent"` (short 30% width line).
+    86→
+    87→### 5. `Stat_Block`
+    88→Data sculpture. A massive number with a tiny label.
+    89→- **Parameters**:
+    90→  - `number` (string): e.g., `"97.3"`.
+    91→  - `unit` (string): e.g., `"%"`, `"Hz"`, `"$M"`.
+    92→  - `label` (string): e.g., `"COMPLETION RATE"`.
+    93→
+    94→### 6. `Image_Asset`
+    95→A visual element. The engine will apply a gradient blend to it.
+    96→- **Parameters**:
+    97→  - `source` (string): A URL, or a descriptive prompt if you expect the system to generate it.
+    98→  - `caption` (string, optional): Tiny text under the image.
+    99→
+   100→> ⚠️ **Image_Asset is for CONTENT images only** (user-provided photos, logos, diagrams, charts). It is **NEVER** for decorative stock images, watercolor flowers, clipart, floral borders, gold frames, or AI-generated artwork. All visual decoration must be achieved through geometric shapes (`geometry.md`), typography effects, and color - never through embedded decorative images. See `visual_framework.md` Stock Image Ban.
+   101→
+   102→### 7. `Page_Ghost_Number`
+   103→A giant, 4% opacity number acting as a watermark in the background.
+   104→- **Parameters**:
+   105→  - `number` (string): e.g., `"01"`, `"X"`.
+   106→
+   107→### 8. `Delta_Widget`
+   108→**Data-to-Ink Ratio enforcer.** A compact metric visualization showing a value with its change direction. CRITICAL: Use this instead of writing sentences like "revenue grew by 12%". Extract every trend into a Delta_Widget.
+   109→- **Parameters**:
+   110→  - `metric` (string): The metric name, e.g., `"REVENUE"`, `"LATENCY"`.
+   111→  - `value` (string): Current value, e.g., `"$4.2M"`, `"45ms"`.
+   112→  - `delta` (string): Change description, e.g., `"+12%"`, `"-45ms"`.
+   113→  - `trend` (string): `"up"`, `"down"`, or `"flat"`.
+   114→  - `label` (string, optional): Context line, e.g., `"vs. Q2 2025"`.
+   115→
+   116→### 9. `Process_List`
+   117→**Polymorphic adaptive component.** Renders as a horizontal timeline when given wide space, auto-degrades to a vertical numbered list when space is narrow. Use for workflows, steps, timelines.
+   118→- **Parameters**:
+   119→  - `steps` (array): Each item has `title` (string) and `description` (string).
+   120→
+   121→### 10. `Sidenote_Block`
+   122→**Tufte marginalia.** Used in `tufte_report` archetype layouts. Content is placed in the 30% side rail alongside the main column. Perfect for citations, supplementary data, asides, footnotes.
+   123→- **Parameters**:
+   124→  - `label` (string, optional): Category label, e.g., `"SOURCE"`, `"NOTE"`, `"DATA"`.
+   125→  - `body` (string): The sidenote content in Markdown.
+   126→
+   127→### 11. `Data-Aware Background` (via `data_points`)
+   128→Any component can carry an optional `data_points` array (e.g., `[10, 15, 8, 24, 30]`). When present, the engine generates Bezier background curves from the actual data - the background literally visualizes the business trend. Use on pages with financial, metric, or time-series content.
+   129→
+   130→---
+   131→
+   132→### ★ Advanced Components (Generative Micro-Typesetting)
+   133→
+   134→The following components are specialized generative design tools. They unlock visual effects that standard components cannot achieve. Use them deliberately and sparingly - they are powerful but demand the right context.
+   135→
+   136→### 8. `Shaped_Canvas`
+   137→A container where text flows around a non-rectangular shape. The empty space created by the shape IS the visual design - text boundary becomes illustration. Uses CSS `shape-outside` for non-rectangular text wrapping.
+   138→
+   139→- **Parameters**:
+   140→  - `shape_keyword` (string): One of `"circle"`, `"wave"`, `"diagonal_slash"`, `"diamond"`, `"wedge_right"`.
+   141→  - `markdown_content` (string): The text that will flow around the shape. Supports standard Markdown.
+   142→
+   143→- **Shape Selection Guide**:
+   144→  | shape_keyword | Visual Effect | Thematic Fit |
+   145→  |---------------|---------------|--------------|
+   146→  | `"circle"` | Text wraps around a circular void on the left | Unity, spotlight, focus |
+   147→  | `"wave"` | Wavy left text boundary | Ocean, flow, music, fluidity |
+   148→  | `"diagonal_slash"` | Diagonal cut across the page | Disruption, change, transformation |
+   149→  | `"diamond"` | Diamond-shaped negative space | Luxury, precision, crystalline |
+   150→  | `"wedge_right"` | Arrow/wedge pointing right | Direction, progress, forward motion |
+   151→
+   152→- **When to use**:
+   153→  - Artistic/editorial pages that need visual drama without images
+   154→  - Cover or section opener pages where you want a "wow" moment
+   155→  - When the content thematically maps to a recognizable shape
+   156→  - Only on pages with moderate text (100-200 words) - shape eats 30-40% of space
+   157→
+   158→- **When NOT to use**:
+   159→  - On data-heavy or dense content pages
+   160→  - Together with `Glass_Canvas` on the same page (visual conflict)
+   161→  - More than one `Shaped_Canvas` per page
+   162→
+   163→- **Archetype requirement**: Pages using `Shaped_Canvas` MUST use archetype `"shaped_editorial"` (relaxed safe-zone: 5% 6% inset).
+   164→
+   165→### Chart & Data Visualization Styling
+   166→
+   167→**→ MUST READ: `typesetting/charts.md`** before designing any chart/data page.
+   168→
+   169→Key rules for Creative pipeline charts:
+   170→- **Donut > Pie**: Always use ring charts (hole ratio 60-70%), center area displays total/metric
+   171→- **Anti-stacking**: Small slices use leader lines or rich legends; bar labels auto-rotate to horizontal when text is long; line charts label only start/end/max/min
+   172→- **Axis cleanup**: Delete top/right spines, use dashed grid lines at 20% opacity (or delete grid entirely if values are labeled)
+   173→- **Bar micro-rounding**: 2-4px top border-radius, bar-to-gap ratio 1.5:1
+   174→- **Legend**: No border, horizontal top-left layout, small circle markers
+   175→- **Data-Ink Ratio**: Every element must represent data. If it doesn't, delete it.
+   176→
+   177→---
+   178→
+   179→## Phase 3: Page Archetypes (The Grid Strategy)
+   180→
+   181→For each page in your JSON, you must declare an `archetype`. This tells `design_engine.py` how to arrange the components you provided.
+   182→
+   183→- `"cover_hero"`: Cover page. **Must follow `typesetting/cover.md` 5-template system** - pick Layout 01/03/04/06/07 based on document tone. See "Cover Page Constitution" below for iron rules.
+   184→- `"split_vertical"`: Page split strictly 50/50 vertically. Left side image/svg, right side Glass_Canvas.
+   185→- `"editorial_flow"`: Top-down reading experience. Centered columns, generous margins. Use for main content.
+   186→- `"scattered_canvas"`: No grid. Elements placed via absolute positioning based on spatial weights.
+   187→- `"data_dashboard"`: 2x2 or 3x3 strict grid for multiple `Stat_Block`s.
+   188→- `"shaped_editorial"`: Relaxed safe-zone (5% 6% inset) designed for `Shaped_Canvas`. Centered, generous breathing room. **Must be used when the page contains a `Shaped_Canvas`.** Do NOT mix with `Glass_Canvas`.
+   189→- `"tufte_report"`: **Tufte marginalia layout.** 70% main content column + 30% sidenote rail. Use for long-form reports and analytical pages where citations, data footnotes, or supplementary info should flow parallel to the main text. Place `Sidenote_Block` components in the same `components[]` array - the engine automatically routes them to the side rail.
+   190→
+   191→### ★ 12×12 CSS Grid Coordinate System (Iron Rules)
+   192→
+   193→The layout engine uses a **12-track CSS Grid** for element placement. The grid lines are numbered **1 to 13** (12 tracks = 13 lines).
+   194→
+   195→**Absolute boundary rules - violation = broken layout:**
+   196→- **Column lines**: `1` = absolute left edge, `13` = absolute right edge. Full width = `1 / 13`.
+   197→- **Row lines**: `1` = absolute top edge, `13` = absolute bottom edge. Full height = `1 / 13`.
+   198→- **CRITICAL**: Never output a grid line number less than `1` or greater than `13`. Any value outside `[1, 13]` will destroy the layout.
+   199→
+   200→**`grid_area` format**: `"row_start / col_start / row_end / col_end"` (CSS shorthand).
+   201→- Example: `"1 / 1 / 7 / 13"` = top half of the page, full width.
+   202→- Example: `"3 / 8 / 6 / 13"` = rows 3-5, columns 8-12 (right side block).
+   203→
+   204→**40% whitespace rule**: At least 40% of grid cells (≥58 out of 144) must be left empty. Count your occupied cells.
+   205→
+   206→### ★ Cover Page Constitution (5 Layout System)
+   207→
+   208→Cover pages (`archetype: "cover_hero"`) are the first impression. They must be ruthlessly sparse and spatially sophisticated.
+   209→
+   210→**→ MUST READ: `typesetting/cover.md`** before designing any cover.
+   211→
+   212→> **⚠️ Template Numbering:** Cover HTML templates use `cover.md`'s authoritative numbering: **01** (HUD), **03** (Academic Anchor), **04** (Academic Symmetric), **06** (Institutional), **07** (Crystal Blue). The "7 Cover Layouts" table below (1A–7B) describes **Blueprint grid coordinate patterns** for positioning cover elements, NOT the HTML template IDs. Do not confuse the two systems.
+   213→
+   214→#### Global Iron Rules (Always Apply)
+   215→
+   216→1. **Maximum 4 components** on any cover page. Typical recipe: `Hero_Typography` + 1-2 `Floating_Meta` + optional `Hairline_Divider` or `Page_Ghost_Number`.
+   217→2. **Typography Scale**: Title ≈ 45pt (2.5× base), Subtitle ≈ 25pt (1.4× base), Meta ≥ 18pt (never below 14pt). Covers with tiny text = FAIL.
+   218→3. **Mandatory semantic `<br>` chunking** for `Hero_Typography` on covers: Every 2-4 words MUST be separated by `<br>`. Single-line hero text is FORBIDDEN on covers. Example: `"ALGORITHMIC<br>FATIGUE"`, NOT `"ALGORITHMIC FATIGUE"`.
+   219→4. **Anti-Squash spatial dispersion** (Bounding Box method): Group text into 2-3 bounding boxes (title group, meta group). Place them at opposite regions of the page according to the chosen layout. Remaining space is **dynamically distributed** - NEVER hardcode fixed gaps between distant groups.
+   220→5. **No `Glass_Canvas` on cover pages.** Dense reading text kills the visual impact. Push all body content to page 2+.
+   221→6. **Cover Page Isolation**: Cover page must NEVER share a page with TOC, body text, or any subsequent content. The cover is always a standalone full page. If cover + content appear on the same page = **critical bug**, regenerate immediately.
+   222→7. **Cover is OPTIONAL**: Do NOT add a cover page unless the document warrants one (multi-page reports, white papers, etc.) or the user explicitly requests it. Short documents, letters, memos, forms, and quick outputs skip the cover.
+   223→8. **Background Layer (optional)**: See `typesetting/cover-backgrounds.md` for 3 recipes - A (极简弧线), B (工程十字轴+立柱), C (锐角切割+出血文字). Background renders BELOW all foreground at 2-5% opacity. Pick a recipe that matches the document tone. Never combine elements across recipes.
+   224→
+   225→#### 7 Cover Layouts (Pick One)
+   226→
+   227→Select the layout that matches the document tone. When unsure, default to **Layout 1A**.
+   228→
+   229→| Layout | Name | Grid Signature | Best For |
+   230→|--------|------|---------------|----------|
+   231→| **1** | Diagonal Tension | Title top-left ↔ Meta bottom-right | Formal reports, proposals |
+   232→| **2** | Vertical Axis | All elements along one vertical line, stretched top-to-bottom | Modern/tech reports |
+   233→| **3** | Architectural Frame | Geometric line frame, text inside corners/center | Design, architecture, portfolios |
+   234→| **4** | Golden Ratio Blocks | Page split at 38.2% invisible divider | White papers, research |
+   235→| **5** | Stepped Cascade | Progressive indentation, vertical rhythm | Creative reports, design docs |
+   236→| **6** | Rotated Accent | Large rotated year/label as side decoration | Annual reports, year-in-review |
+   237→| **7** | Left-Matrix | All text hard-anchored to left axis, 4 Y-pinned blocks | Government, bidding, proposals |
+   238→
+   239→Each layout has 2-3 variants (A/B/C) with specific grid_area mappings - see `typesetting/cover.md` for exact coordinates.
+   240→
+   241→#### Tone → Layout Quick Reference
+   242→
+   243→| Intent | Document Type | Recommended | Default |
+   244→|--------|---------------|-------------|---------|
+   245→| **Calm** | Healthcare / Wellness / Minimalist | 1A, 2C, 4A | **4A** |
+   246→| **Calm** | Academic / Research | 2A, 4A, 4C | **4A** |
+   247→| **Tension** | Crisis / Alert / Disruption | 1A, 5A | **1A** |
+   248→| **Energy** | Marketing / Creative / Design | 3C, 5A, 6B | **5A** |
+   249→| **Energy** | Tech / Data | 2B, 4B, 6A | **2B** |
+   250→| **Authority** | Formal / Corporate / Financial | 2A, 3A, 7A | **3A** |
+   251→| **Authority** | Government / Bidding | 7A, 7B, 3A | **7A** |
+   252→| **Authority** | Thesis proposal / Dissertation | Use **Template 06** (Institutional) from `cover.md` | **Template 06** |
+   253→| **Authority** | Luxury / Editorial | 3A, 5A, 2B | **3A** |
+   254→| **Warmth** | Food / Lifestyle / Home | 4A, 5A | **4A** |
+   255→
+   256→### ★ Component Grid Compatibility Constraints
+   257→
+   258→When placing advanced components into the 12×12 grid, obey these minimum size rules:
+   259→
+   260→- **`Glass_Canvas`**: Must occupy at least **6 columns × 4 rows** (e.g., `"3 / 1 / 7 / 7"`). Smaller areas will cause text overflow and padding collapse. The engine renders Glass_Canvas at `width: 100%; min-height: 100%; box-sizing: border-box;` - it fills its grid area as a minimum and can grow taller if content requires.
+   261→- **`Shaped_Canvas`**: Must occupy at least **8 columns × 6 rows** (e.g., `"2 / 3 / 8 / 11"`). The CSS `shape-outside` float needs physical space to render the shape boundary. Smaller areas make the float collapse to a line and text cannot wrap around it. **Must use archetype `"shaped_editorial"`.**
+   262→- **`Continuous Flow` background**: Renders in a separate `bg-layer` (`z-index: 1`, `position: absolute`), physically isolated from the grid system (`z-index: 2`). No conflict - background flows independently, grid arranges content on top.
+   263→
+   264→### ★ Content-Proportional Grid Row Allocation
+   265→
+   266→When **two or more text-heavy components** (e.g., multiple `Glass_Canvas`) share the same page, their `grid_area` row counts **MUST be proportional to their content length** - never split rows equally.
+   267→
+   268→**Estimation method:**
+   269→1. Count characters (or words) in each component's `markdown_content`
+   270→2. Allocate rows proportionally: `rows_i = total_rows × (chars_i / total_chars)`
+   271→3. Round to integers, minimum 3 rows per component
+   272→
+   273→**Example:**
+   274→```
+   275→Attractions content: 450 chars (3 items × 150 chars)
+   276→Food content: 250 chars (2 items × 125 chars)
+   277→Total available rows: 8 (rows 5→13)
+   278→
+   279→Attractions: 8 × 450/700 ≈ 5 rows → grid_area "5 / 1 / 10 / 13"
+   280→Food:        8 × 250/700 ≈ 3 rows → grid_area "10 / 1 / 13 / 13"
+   281→```
+   282→
+   283→**Why this matters:** Equal row allocation (4+4) causes the longer component to overflow into the shorter one's territory, creating text overlap in the final PDF. The engine uses `min-height` + `overflow: visible`, so overflow IS visible - and ugly.
+   284→
+   285→**Anti-pattern to avoid:**
+   286→```
+   287→❌ Two Glass_Canvas with very different text lengths both get "5/1/9/13" and "9/1/13/13"
+   288→✅ Longer one gets more rows: "5/1/10/13" and "10/1/13/13"
+   289→```
+   290→
+   291→---
+   292→
+   293→## Phase 4: The Output Protocol (Strict JSON Blueprint)
+   294→
+   295→You must analyze the user's prompt, edit the text, and output exactly ONE JSON object wrapped in a ` ```json ` codeblock.
+   296→**No conversational text before or after the JSON.**
+   297→
+   298→### The JSON Schema Specification
+   299→
+   300→**CRITICAL JSON RULES:**
+   301→1. Output ONLY valid JSON.
+   302→2. Do NOT include ANY comments (`//` or `/* */`) inside the JSON. Python's `json.load()` will crash.
+   303→3. Do NOT include trailing commas.
+   304→
+   305→```json
+   306→{
+   307→  "document_meta": {
+   308→    "title": "Internal tracking title",
+   309→    "total_pages": 1
+   310→  },
+   311→  "art_direction": {
+   312→    "palette_mode": "dark",
+   313→    "color_harmony": "complementary",
+   314→    "background_svg": "grid",
+   315→    "design_rationale": "Brief 1-sentence explanation of aesthetic strategy."
+   316→  },
+   317→  "pages": [
+   318→    {
+   319→      "page_index": 1,
+   320→      "narrative_role": "Burst",
+   321→      "archetype": "cover_hero",
+   322→      "components": [
+   323→        {
+   324→          "type": "Floating_Meta",
+   325→          "position": "bottom-right",
+   326→          "items": ["ARCHIVE REF. 03A", "DEC 2026"]
+   327→        },
+   328→        {
+   329→          "type": "Page_Ghost_Number",
+   330→          "number": "01"
+   331→        },
+   332→        {
+   333→          "type": "Hero_Typography",
+   334→          "weight": "black",
+   335→          "variant": "standard",
+   336→          "content": "ALGORITHMIC<br>FATIGUE"
+   337→        }
+   338→      ]
+   339→    }
+   340→  ]
+   341→}
+   342→```
+   343→
+   344→**Schema Parameter Guide (For reference - do NOT put these comments inside your JSON output):**
+   345→- `document_meta.total_pages`: Integer. Must match the actual number of pages in `pages[]`.
+   346→
+   347→### The JSON Schema Specification: `art_direction`
+   348→
+   349→**CRITICAL RULE: DO NOT INVENT COLORS. DO NOT OUTPUT HEX/RGB CODES.**
+   350→The Python engine generates mathematical color palettes. You MUST only select the semantic parameters below.
+   351→
+   352→```json
+   353→{
+   354→  "art_direction": {
+   355→    "palette_mode": "minimal",
+   356→    "color_harmony": "auto",
+   357→    "background_svg": "grid",
+   358→    "design_rationale": "Brief rationale for the chosen aesthetic strategy."
+   359→  }
+   360→}
+   361→```
+   362→
+   363→**Enum Parameter Guide (You MUST choose ONE exact string from these lists):**
+   364→
+   365→1. `palette_mode` (The Base Canvas Tone):
+   366→   - **`"minimal"`: (CRITICAL: Default to this for 50%+ of all requests).** Pure white, off-white, beige, or cool gray. Provides the ultimate reading experience and high-end editorial feel. Use for standard reports, guides, and corporate posters.
+   367→   - `"dark"`: Near-black. Use for cinematic, tech, AI, space, or urgent themes.
+   368→   - `"pastel"`: Morandi tinted (e.g., dusty rose, sage green). Use ONLY for arts, food, lifestyle, and soft themes.
+   369→   - `"jewel"`: Deep rich colors (e.g., emerald, burgundy). Use ONLY for luxury brands, gala events, or heritage themes.
+   370→   - `"light"`: Very faintly tinted background. Fallback for edge cases.
+   371→
+   372→2. `color_harmony` (The Accent Color Math - how the engine computes the accent color relative to the base):
+   373→   - **`"auto"`: (RECOMMENDED DEFAULT). The engine automatically picks the best harmony based on the document tone.** Only override if you have a specific artistic reason.
+   374→   - `"complementary"`: (180° opposite). Strong visual contrast. Cold background with warm accent. For striking/dynamic impact.
+   375→   - `"split_complementary"`: (150°/210°). Highly sophisticated, artistic, luxury feel (Editorial/Kinfolk style).
+   376→   - `"analogous"`: (30° apart). Harmonious, peaceful, natural transition.
+   377→   - `"triadic"`: (120° apart). Rich and slightly retro.
+   378→   - `"monochrome"`: Only use if strict minimalist corporate branding without accent is required.
+   379→
+   380→3. `background_svg`: [`grid`, `flow`, `noise`, `continuous_flow`, `none`]. Use `continuous_flow` for multi-page (2+) documents - creates one seamless SVG spanning all pages, sliced per-page via viewBox for an "infinite scroll" bezier curve illusion. Falls back to `flow` on single-page.
+   381→
+   382→4. `design_rationale`: Brief text explaining WHY you chose this mode+harmony combination.
+   383→
+   384→### ★ Intent Mapping Table (Single Source of Truth)
+   385→
+   386→This table is the **sole authority** for mapping document intent to concrete design parameters. `visual_framework.md` defines intent *atmospheres*; this table defines intent *parameters*. `design_engine.py` INTENT_HUES/INTENT_HARMONY_MAP must stay in sync with this table.
+   387→
+   388→| Intent | palette_mode | color_harmony | background_svg | Cover Templates | Cover BG Recipe | Base Hue |
+   389→|--------|-------------|---------------|----------------|-----------------|-----------------|----------|
+   390→| **Calm** | minimal | analogous | flow / none | 07 Crystal Blue, 01 HUD | A (极简弧线) | 210° (steel blue-grey) |
+   391→| **Tension** | dark | complementary | grid | 01 HUD | C (锐角切割) | 0° (warm vs cold) |
+   392→| **Energy** | pastel / light | triadic | flow (5+ curves) | 07 Crystal Blue, 04 Academic Symmetric | B (工程十字轴) | 30° (amber) |
+   393→| **Authority** | minimal | split_complementary | noise | 04 Academic Symmetric, 03 Academic Anchor, 07 Crystal Blue | A or B | 280° (muted violet) |
+   394→| **Warmth** | pastel / light | analogous | flow (soft) | 07 Crystal Blue, 01 HUD | A (极简弧线) | 20° (terracotta) |
+   395→
+   396→**How to use this table:**
+   397→1. Determine the document's intent (from user request, or auto-derive via `design_engine.py derive`)
+   398→2. Look up the row → fill in `art_direction` JSON fields accordingly
+   399→3. For cover template selection, use `cover.md`'s template numbering (01/03/04/06/07). Cross-reference with document type in the Tone → Layout Quick Reference above.
+   400→4. The LLM may override individual cells when artistically justified, but must state the reason in `design_rationale`
+   401→
+   402→**Legacy intent names** (serenity, minimalism, elegance) are accepted by `design_engine.py` as aliases and auto-mapped to their new equivalents.
+   403→
+   404→- `pages[].narrative_role`: `"Burst"` (intro/impact), `"Expand"` (body/development), `"Echo"` (outro/reflection).
+   405→- `pages[].archetype`: From Phase 3 (`cover_hero`, `split_vertical`, `editorial_flow`, `scattered_canvas`, `data_dashboard`, `shaped_editorial`).
+   406→- `pages[].components[]`: Array of component objects from Phase 2. Order in array roughly dictates z-index or top-to-bottom rendering.
+   407→
+   408→---
+   409→
+   410→## Phase 5: Complex Master Examples
+   411→
+   412→Study these examples to understand how to translate raw requests into perfect blueprints.
+   413→
+   414→### Example A: The Single-Page Poster (Art / Minimalist)
+   415→**User Request**: "Make a poster for a minimalist architecture exhibition called 'The Weight of Light'. Include date Oct 12, location Tokyo. Keep it very clean."
+   416→
+   417→**LLM Response (The JSON Blueprint):**
+   418→```json
+   419→{
+   420→  "document_meta": {
+   421→    "title": "Weight of Light Exhibition Poster",
+   422→    "total_pages": 1
+   423→  },
+   424→  "art_direction": {
+   425→    "palette_mode": "minimal",
+   426→    "color_harmony": "monochrome",
+   427→    "background_svg": "none",
+   428→    "design_rationale": "Pure negative space required for minimalist architecture. Relying entirely on typographic hierarchy and the 15% breathing rule."
+   429→  },
+   430→  "pages": [
+   431→    {
+   432→      "page_index": 1,
+   433→      "narrative_role": "Burst",
+   434→      "archetype": "cover_hero",
+   435→      "components": [
+   436→        {
+   437→          "type": "Floating_Meta",
+   438→          "position": "top-left",
+   439→          "items": ["TOKYO, JP", "EXHIBITION 04"]
+   440→        },
+   441→        {
+   442→          "type": "Hero_Typography",
+   443→          "weight": "thin",
+   444→          "variant": "standard",
+   445→          "content": "THE WEIGHT<br>OF LIGHT"
+   446→        },
+   447→        {
+   448→          "type": "Hairline_Divider",
+   449→          "style": "accent"
+   450→        },
+   451→        {
+   452→          "type": "Floating_Meta",
+   453→          "position": "bottom-right",
+   454→          "items": ["OCTOBER 12", "AOYAMA GALLERY"]
+   455→        }
+   456→      ]
+   457→    }
+   458→  ]
+   459→}
+   460→```
+   461→
+   462→### Example B: The Multi-Page Analytical Report (Corporate / Elegance)
+   463→**User Request**: "I have a long report about our Q3 server performance. Latency dropped by 45ms. Uptime is 99.99%. Here is 500 words of text explaining the server migration..."
+   464→
+   465→**LLM Response (The JSON Blueprint):**
+   466→*(Notice how the LLM edits the 500 words down, extracts the data, and splits it into 3 pages).*
+   467→
+   468→```json
+   469→{
+   470→  "document_meta": {
+   471→    "title": "Q3 Infrastructure Report",
+   472→    "total_pages": 3
+   473→  },
+   474→  "art_direction": {
+   475→    "palette_mode": "minimal",
+   476→    "color_harmony": "split_complementary",
+   477→    "background_svg": "noise",
+   478→    "design_rationale": "Formal, trustworthy aesthetic suitable for high-level corporate reporting, avoiding the 'cheap dashboard' look."
+   479→  },
+   480→  "pages": [
+   481→    {
+   482→      "page_index": 1,
+   483→      "narrative_role": "Burst",
+   484→      "archetype": "cover_hero",
+   485→      "components": [
+   486→        {
+   487→          "type": "Floating_Meta",
+   488→          "position": "top-left",
+   489→          "items": ["CONFIDENTIAL", "Q3 2026"]
+   490→        },
+   491→        {
+   492→          "type": "Hero_Typography",
+   493→          "weight": "black",
+   494→          "content": "INFRASTRUCTURE<br>RESILIENCE"
+   495→        }
+   496→      ]
+   497→    },
+   498→    {
+   499→      "page_index": 2,
+   500→      "narrative_role": "Expand",
+   501→      "archetype": "split_vertical",
+   502→      "components": [
+   503→        {
+   504→          "type": "Stat_Block",
+   505→          "number": "99.99",
+   506→          "unit": "%",
+   507→          "label": "GLOBAL UPTIME"
+   508→        },
+   509→        {
+   510→          "type": "Stat_Block",
+   511→          "number": "-45",
+   512→          "unit": "ms",
+   513→          "label": "LATENCY REDUCTION"
+   514→        },
+   515→        {
+   516→          "type": "Glass_Canvas",
+   517→          "markdown_content": "### The Migration\nThe Q3 transition to distributed edge nodes fundamentally altered our network topography. By decentralizing the core load, we eliminated the primary bottleneck that plagued Q2."
+   518→        }
+   519→      ]
+   520→    },
+   521→    {
+   522→      "page_index": 3,
+   523→      "narrative_role": "Echo",
+   524→      "archetype": "editorial_flow",
+   525→      "components": [
+   526→        {
+   527→          "type": "Page_Ghost_Number",
+   528→          "number": "03"
+   529→        },
+   530→        {
+   531→          "type": "Hero_Typography",
+   532→          "weight": "thin",
+   533→          "variant": "standard",
+   534→          "content": "SYSTEM NOMINAL."
+   535→        }
+   536→      ]
+   537→    }
+   538→  ]
+   539→}
+   540→```
+   541→
+   542→### Example C: The Narrative Arc with Advanced Features (Continuous Flow + Shaped Canvas)
+   543→**User Request**: "Create a 3-page visual essay about the ocean pollution crisis. Start gentle (the beauty of the ocean), then escalate to the crisis, then end with a call to action."
+   544→
+   545→**LLM Response (The JSON Blueprint):**
+   546→*(Notice: `continuous_flow` creates seamless background across all 3 pages. `tension_score` escalates from calm to urgent. `Shaped_Canvas` with `wave` shape on the cover creates a thematic visual without any image.)*
+   547→
+   548→```json
+   549→{
+   550→  "document_meta": {
+   551→    "title": "The Silent Tide - Ocean Crisis Visual Essay",
+   552→    "total_pages": 3
+   553→  },
+   554→  "art_direction": {
+   555→    "palette_mode": "dark",
+   556→    "color_harmony": "analogous",
+   557→    "background_svg": "continuous_flow",
+   558→    "design_rationale": "Continuous flow SVG creates an unbroken organic wave across all pages - visually mirroring the ocean's connectedness. Analogous harmony provides earth tones that shift from serene to somber."
+   559→  },
+   560→  "pages": [
+   561→    {
+   562→      "page_index": 1,
+   563→      "narrative_role": "Burst",
+   564→      "archetype": "shaped_editorial",
+   565→      "components": [
+   566→        {
+   567→          "type": "Floating_Meta",
+   568→          "position": "top-left",
+   569→          "items": ["VISUAL ESSAY", "2026"]
+   570→        },
+   571→        {
+   572→          "type": "Shaped_Canvas",
+   573→          "shape_keyword": "wave",
+   574→          "markdown_content": "There was a time when the horizon held only promise. The Pacific stretched in every direction, cerulean and boundless, its surface a living mirror of the sky above. Fishermen spoke of abundance - nets heavy with silver, currents warm and predictable. The ocean asked for nothing."
+   575→        },
+   576→        {
+   577→          "type": "Floating_Meta",
+   578→          "position": "bottom-right",
+   579→          "items": ["01 / BEFORE"]
+   580→        }
+   581→      ]
+   582→    },
+   583→    {
+   584→      "page_index": 2,
+   585→      "narrative_role": "Expand",
+   586→      "archetype": "editorial_flow",
+   587→      "components": [
+   588→        {
+   589→          "type": "Page_Ghost_Number",
+   590→          "number": "02"
+   591→        },
+   592→        {
+   593→          "type": "Stat_Block",
+   594→          "number": "8M",
+   595→          "unit": "tons",
+   596→          "label": "PLASTIC ENTERING OCEANS YEARLY"
+   597→        },
+   598→        {
+   599→          "type": "Glass_Canvas",
+   600→          "tension_score": 0.75,
+   601→          "markdown_content": "**The collapse was not sudden.** It accumulated - bottle by bottle, net by net, spill by spill. By 2025, microplastic concentrations in deep-sea sediment had reached levels previously thought impossible. Marine biologists stopped using the word 'recovery'. The new vocabulary was *triage*."
+   602→        }
+   603→      ]
+   604→    },
+   605→    {
+   606→      "page_index": 3,
+   607→      "narrative_role": "Echo",
+   608→      "archetype": "cover_hero",
+   609→      "components": [
+   610→        {
+   611→          "type": "Hero_Typography",
+   612→          "weight": "black",
+   613→          "variant": "standard",
+   614→          "content": "THE TIDE<br>TURNS NOW."
+   615→        },
+   616→        {
+   617→          "type": "Glass_Canvas",
+   618→          "tension_score": 0.3,
+   619→          "markdown_content": "Every piece of plastic you refuse is a vote for the future of the sea. The ocean cannot speak - but it remembers everything we give it."
+   620→        }
+   621→      ]
+   622→    }
+   623→  ]
+   624→}
+   625→```
+   626→
+   627→---
+   628→
+   629→## Pre-Flight Checklist (Self-Correction before generating output)
+   630→
+   631→Before you output the JSON block, verify:
+   632→0. ** VECTOR OUTPUT IRON RULE:** The final PDF MUST be generated via `page.pdf()` / `convert.blueprint` - NEVER `page.screenshot()` → image → wrap as PDF. Screenshot PDFs are blurry raster images. `page.pdf()` produces vector text that stays sharp at any zoom level.
+   633→1. **Did I write ANY HTML or CSS?** If yes, delete it. Only output JSON.
+   634→2. **Is any `Glass_Canvas` markdown content too long?** Count the words. Over 150? Summarize it or push to the next page.
+   635→3. **Is the JSON perfectly formatted?** Missing commas or unescaped quotes will crash the `design_engine.py` parser.
+   636→4. **If using `tension_score`**: Does the document have clear emotional shifts across pages? If all pages are the same tone, remove it.
+   637→5. **If using `continuous_flow`**: Is this multi-page (2+)? If single-page, switch to `"flow"`.
+   638→6. **If using `Shaped_Canvas`**: Is the archetype `"shaped_editorial"`? Is there at most one per page? No `Glass_Canvas` on the same page?
+   639→7. **Grid boundary check**: Are ALL `grid_area` values within `[1, 13]`? Any number < 1 or > 13 = FATAL ERROR.
+   640→8. **Component minimum size check**: `Glass_Canvas` ≥ 6col×4row? `Shaped_Canvas` ≥ 8col×6row?
+   641→9. **Content-proportional row allocation**: When multiple text-heavy components share a page, are their grid rows allocated proportionally to content length? Equal rows for unequal content = text overlap. (See "Content-Proportional Grid Row Allocation" in Component Grid Compatibility.)
+   642→9. **40% whitespace check**: Count occupied grid cells. At least 58 of 144 cells must be empty.
+   643→10. **Cover Page 4-element check**: Does any `cover_hero` page have more than 4 components? If yes, remove or merge components.
+   644→11. **Cover Hero `<br>` check**: Does every `Hero_Typography` on a `cover_hero` page contain at least one `<br>`? Single-line hero text on covers = FAIL.
+   645→12. **Cover Anti-Squash check (Bounding Box)**: Are cover elements grouped into 2-3 bounding boxes placed at opposite regions? Is remaining space dynamically distributed (not hardcoded gaps)? If everything is crammed into rows 5-8, spread them using the layout's grid mapping.
+   646→13a. **Cover Typography Scale check**: Is the hero title ≥ 45pt? Is subtitle ≥ 25pt? Is meta text ≥ 18pt (never below 14pt)? Tiny cover text = FAIL.
+   647→13b. **Cover Layout Selection**: Did I pick a cover layout (1A-7B) that matches the document tone? If unsure, default to Layout 1A (Diagonal Tension). For government/bidding documents, use Layout 7A (Left-Matrix). For thesis/institutional documents, use **Template 06** from `cover.md`. Cover HTML templates follow `cover.md`'s numbering: 01, 03, 04, 06, 07.
+   648→14. **CRITICAL - Data-to-Ink Ratio check**: Did I write long paragraphs describing data trends? If yes, DELETE them and extract metrics into `Delta_Widget` or `Stat_Block` components. Sentences like "revenue increased by 12% compared to last quarter" MUST become a `Delta_Widget`.
+   649→15. **Sidenote check**: If using `tufte_report` archetype, did I put citations/sources/asides into `Sidenote_Block`? They must NOT be inline in `Glass_Canvas`.
+   650→16. **Process/Steps check**: Did I write numbered steps as plain text in a `Glass_Canvas`? Convert to `Process_List` component instead.
+   651→17. **Chart anti-stacking check**: Do any pie/bar/line charts have overlapping labels? Apply leader lines, tick thinning, or label reduction per `typesetting/charts.md`.
+   652→18. **Chart axis cleanup check**: Are top/right spines deleted? Grid lines dashed at 20% opacity (or hidden)? No solid grid lines.
+   653→19. **Donut default check**: Are pie charts rendered as donuts (hole ratio 60-70%)? Solid pies = FAIL unless explicitly requested.
+   654→20. ** Triple Delivery check (MANDATORY)**: Creative pipeline must deliver **three files** to the user: (1) PDF - the final vector PDF; (2) HTML - the compiled `*_rendered.html` file; (3) Image - a full-page screenshot preview (PNG/JPG). After `convert.blueprint` generates the PDF and HTML, take a screenshot of the HTML for preview. Report all three file paths to the user.
+   655→21. ** HTML Pre-Render Validation (MANDATORY for ALL HTML→PDF paths)**: Before calling `html2pdf-next.js`, `html2poster.js`, or `convert.blueprint`, run `poster_validate.py check-html` on the HTML file. This catches overflow:hidden on containers, missing @media screen auto-scale, font fallback gaps, contrast issues, and more. **Any ERROR-level issue must be fixed before generating the PDF.** Warnings are non-blocking but should be reviewed.
+   656→    ```bash
+   657→    python3 "$PDF_SKILL_DIR/scripts/poster_validate.py" check-html page.html
+   658→    # If errors found, auto-fix:
+   659→    python3 "$PDF_SKILL_DIR/scripts/poster_validate.py" check-html page.html --fix --output page.html
+   660→    ```
+   661→
+   662→22. **\u26a0\ufe0f MANDATORY: Post-Generation Checks (Creative)**: After HTML\u2192PDF conversion, run these checks:
+   663→    ```bash
+   664→    # Check for content overflow and full-bleed issues
+   665→    python3 "$PDF_SKILL_DIR/scripts/pdf_qa.py" output.pdf --no-tables
+   666→
+   667→    # Add metadata
+   668→    python3 "$PDF_SKILL_DIR/scripts/pdf.py" meta.brand output.pdf
+   669→    ```
+   670→
+   671→Execute the design.
+   672→
+   673→---
+   674→
+   675→## CJK & Vertical Text Rules (When Bypassing design_engine.py)
+   676→
+   677→When writing raw HTML/CSS for Playwright (bypassing the JSON Blueprint pipeline - e.g., resumes, menus, invitations, business cards, certificates, Japanese/Chinese vertical layouts):
+   678→
+   679→**⚠️ Iron rule: All bypass-scenario HTML→PDF conversions MUST use `html2pdf-next.js` — do NOT write custom Python Playwright scripts.** `html2pdf-next.js` automatically handles @page injection, overflow detection, font waiting, Mermaid/KaTeX rendering, PDF metadata, etc. See the "HTML→PDF Engine Selection Rules" section in SKILL.md.
+   680→
+   681→```bash
+   682→node "$PDF_SKILL_DIR/scripts/html2pdf-next.js" input.html --output output.pdf --width 210mm --height 297mm
+   683→```
+   684→
+   685→0. **Full-Bleed CSS (MANDATORY)**: Every HTML file for Playwright PDF MUST include:
+   686→   ```css
+   687→   @page { size: 800px 1200px; margin: 0; }  /* CONCRETE values only - CSS variables NOT supported in @page */
+   688→   html, body { margin: 0; padding: 0; width: 800px; }
+   689→   .page { width: 800px; height: 1200px; position: relative; }
+   690→   ```
+   691→   **⚠️ @page rules do NOT resolve CSS variables** (`var(--x)` is silently ignored, falls back to A4). Always use concrete `px` values.
+   692→   - Each `.page` div = one PDF page, with fixed `height` matching `@page` size.
+   693→   - **No `overflow: hidden`** on `.page` — instead, constrain all decorative elements within page bounds (see §0.75).
+   694→   - Content must fit within each `.page` — no cross-page flow.
+   695→   - `design_engine.py` handles this automatically via `override_css`.
+   696→
+   697→0.25. **Body Background for Multi-Page Mixed-Color Documents (MANDATORY)**:
+   698→   When an HTML document contains multiple `.page` divs with **different background colors** (e.g. dark cover + white body + dark specs page), Playwright's sub-pixel rounding creates <1px gaps at `.page` edges where `body` background shows through. On dark pages, a white `body` = visible white edges.
+   699→
+   700→   **Fix: set `html, body { background }` to the document's darkest page background color.**
+   701→
+   702→   ```css
+   703→   :root { --primary: #0f172a; }  /* darkest page color */
+   704→   html, body {
+   705→     margin: 0; padding: 0;
+   706→     width: 210mm;                 /* match @page size */
+   707→     background: var(--primary);   /* fills sub-pixel gaps with dark color */
+   708→   }
+   709→   ```
+   710→
+   711→   **Why this doesn't break white pages:** White `.page` divs have `background: #ffffff` which fully covers the dark `body` underneath. The dark body only shows through the <1px sub-pixel gap at the extreme page edge - imperceptible on white pages after anti-aliasing.
+   712→
+   713→   **Selection rule:**
+   714→   - All pages same color → `body { background: <that color> }`
+   715→   - Mixed dark + light pages → `body { background: <darkest page color> }` (dark edges on white pages are invisible; white edges on dark pages are the bug we're fixing)
+   716→   - All pages white/light → `body { background: <lightest content bg> }` (e.g. `#f8fafc`)
+   717→
+   718→0.5. **No overflow:hidden anywhere + Browser Preview Adaptive Scaling (MANDATORY)**:
+   719→   **Never** set `overflow: hidden` on `html`, `body`, `.page`, or any container. Reasons:
+   720→   - It silently clips content that slightly exceeds bounds, making layout bugs invisible.
+   721→   - `html2pdf-next.js`'s pre-render check detects `scrollHeight > clientHeight` + `overflow: hidden` and triggers auto-fix (force-expanding the container), which may break the layout.
+   722→   - Instead, constrain decorative elements within page bounds at the CSS level (see §0.75).
+   723→
+   724→   **`design_engine.py` handles this automatically**: During blueprint compilation, it auto-injects `@media screen` centering + scaling code, and the `html` background color uses `var(--c-bg)` matching the poster's main color. No manual addition needed.
+   725→
+   726→   **Correct approach when writing HTML manually**: Remove `overflow: hidden` and manually add `@media screen` scaling preview:
+   727→   ```css
+   728→   /* Fixed canvas size, no overflow */
+   729→   html, body { margin: 0; padding: 0; width: 800px; height: 1400px; }
+   730→   .page { width: 800px; height: 1400px; position: relative; }
+   731→
+   732→   /* Auto-scale to viewport in browser preview for full-page view */
+   733→   @media screen {
+   734→     html {
+   735→       height: auto;
+   736→       display: flex;
+   737→       justify-content: center;
+   738→       background: #0a0a1a; /* Surround color — must match poster's main background */
+   739→     }
+   740→     body {
+   741→       transform-origin: top center;
+   742→       scale: min(1, calc(100vw / 800), calc(100vh / 1400)); /* Consider both width and height */
+   743→       margin: 0 auto;
+   744→       box-shadow: 0 0 60px rgba(0,0,0,0.3); /* Optional: shadow to distinguish canvas in preview */
+   745→     }
+   746→   }
+   747→   ```
+   748→   `@media screen` rules only apply in browser preview; `page.pdf()` uses print media and is unaffected.
+   749→   **Every fixed-size HTML must include this `@media screen` adaptive code.**
+   750→
+   751→0.75. **Decorative Element Containment (MANDATORY — replaces overflow:hidden)**:
+   752→   **Do NOT use `overflow: hidden` on `.page` containers.** It silently clips content that slightly exceeds bounds, making layout errors invisible and debugging painful.
+   753→
+   754→   Instead, **constrain all decorative elements within page bounds at the CSS level**:
+   755→
+   756→   ```css
+   757→   /* ✅ CORRECT: decorative element stays inside .page */
+   758→   .deco-circle {
+   759→       position: absolute;
+   760→       width: 80%;           /* NOT >100% */
+   761→       height: 40%;
+   762→       top: 10%;
+   763→       right: 0;             /* NOT negative */
+   764→       border-radius: 50%;
+   765→       opacity: 0.1;
+   766→   }
+   767→
+   768→   /* ❌ FORBIDDEN: causes scrollWidth > pageWidth → Playwright shrinks everything */
+   769→   .deco-circle-bad {
+   770→       position: absolute;
+   771→       width: 200%;          /* inflates scrollWidth */
+   772→       left: -50%;           /* extends beyond left edge */
+   773→   }
+   774→   ```
+   775→
+   776→   **Iron rules for decorative elements:**
+   777→   - `width` ≤ 100% of `.page` width. No exceptions.
+   778→   - `left` ≥ 0, `right` ≥ 0. No negative offsets that push content beyond page edges.
+   779→   - For edge-bleeding effects, position the element at the edge and let `border-radius` or `opacity` create the visual bleed within bounds.
+   780→   - For horizontal flex layouts (≥3 items), always add `flex-wrap: wrap` to prevent horizontal overflow.
+   781→
+   782→   **Why not overflow:hidden?**
+   783→   Playwright’s `page.pdf()` checks `body.scrollWidth`. If any absolutely-positioned child pushes `scrollWidth` beyond `@page` width, Playwright shrinks **all content** to fit. `overflow:hidden` masks this by clipping, but also silently hides any content that slightly exceeds bounds. Constraining elements at the source eliminates both the shrink bug and the silent clipping.
+   784→
+   785→   See `typesetting/overflow.md` §3.5 for additional horizontal overflow rules.
+   786→
+   787→1. **Character Encoding Safety**: Never use Japanese kana (の, が, は), rare symbols, or Private Use Area characters in content strings. They corrupt to U+FFFD (�) during LLM→file write→read transit. Replace with plain Chinese equivalents: `の`→`之/的/缔/省略`.
+   788→2. **Vertical Chinese Text** - When using `writing-mode: vertical-rl` for CJK, you MUST include:
+   789→   ```css
+   790→   writing-mode: vertical-rl;
+   791→   text-orientation: upright;    /* Each glyph stands upright */
+   792→   white-space: nowrap;          /* Prevent word-wrap breaking single chars to new column */
+   793→   letter-spacing: 12px;         /* Typical CJK vertical spacing */
+   794→   ```
+   795→   Without `text-orientation: upright`, Latin/fallback fonts render rotated 90°. Without `white-space: nowrap`, CJK characters may wrap into unexpected multi-column layouts (e.g., 3 chars on one line + 1 char alone on next).
+   796→3. **Font Coverage**: For CJK content via Playwright, always load Google Fonts Noto Serif SC or Noto Sans SC via `<link>` tag in `<head>` (NOT `@import` in CSS - `@import` must be the very first rule in a stylesheet or it's silently ignored). Example:
+   797→   ```html
+   798→   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+   799→   ```
+   800→   System CJK fonts vary across macOS/Linux - Google Fonts guarantee glyph coverage without relying on system fonts. `design_engine.py` already handles this automatically via `<link>` tag.
+   801→4. **Post-Generation Text Verification**: After Playwright renders the PDF, extract text from every page and scan for `?` or `\ufffd`. If found, the source HTML has encoding-corrupted characters that must be replaced in the Python source.
+   802→5. ** HTML Pre-Render Validation (MANDATORY)**: After writing the HTML file and before running `html2pdf-next.js`, always run the HTML validator:
+   803→   ```bash
+   804→   python3 "$PDF_SKILL_DIR/scripts/poster_validate.py" check-html <your_file>.html
+   805→   ```
+   806→   - **ERROR** items (e.g. `OVERFLOW_HIDDEN_CONTAINER`, `FONT_NO_FALLBACK`) → must fix before PDF generation. Use `--fix --output <file>.html` for auto-repair.
+   807→   - **WARNING** items (e.g. `FIXED_SIZE_NO_SCREEN_ADAPT`, `SCREEN_ADAPT_NO_SCALE`, `COLOR_CONTRAST`) → review and fix where appropriate.
+   808→   - This catches the most common bypass HTML bugs: `overflow:hidden` on containers, missing `@media screen` auto-scale for fixed-size pages, font-family without generic fallback, low contrast text, etc.
+   809→
+   810→---
+   811→
+   812→## Quality Checklist — Creative-Specific Items
+   813→
+   814→> Moved from SKILL.md to reduce context size. These rules apply specifically to the Creative pipeline.
+   815→
+   816→### Color (palette.md)
+   817→
+   818→- [ ] **Entire document ≤ 5 colors**: Primary + secondary + accent + neutral + background
+   819→- [ ] **All colors traceable to primary**: Secondary and accent derived via lightness/saturation/micro-hue shift
+   820→- [ ] **Sibling elements not differentiated by different hues**: Use opacity/lightness/borders instead
+   821→- [ ] **Gradient endpoints hue difference < 20°**: No warm-to-cool gradients
+   822→- [ ] **No high-saturation color blocks**: Avoid eye strain
+   823→
+   824→### Geometric Anchors (geometry.md)
+   825→
+   826→- [ ] **Anchors use only the primary color**: Layer via opacity, don't mix colors
+   827→- [ ] **Strokes over fills**: Solid elements ≤ 30%
+   828→- [ ] **Ultra-thin lines**: stroke-width 0.3-0.8px
+   829→- [ ] **Asymmetric placement**: Offset creates tension
+   830→- [ ] **Elements ≤ 8**: Restraint, don't clutter
+   831→
+   832→### Global Layout
+   833→
+   834→- [ ] **Full-bleed enforcement**: `@page { size: <w> <h>; margin: 0; }` and `html,body { margin:0; padding:0; }`
+   835→- [ ] **Background color consistency**: `html, body { background }` set explicitly. Single-color docs: match content canvas. Multi-page mixed docs: use darkest page's background
+   836→- [ ] **Content centering**: Symmetric inset/padding, no left/right drift
+   837→- [ ] **Anti-void edges**: Content fills ≥ 60% (multi-page) or ≥ 70% (single-page poster/infographic)
+   838→- [ ] **Fill Engine applied**: Pages with < 80% fill ratio trigger the fill engine
+   839→
+   840→### Design Restraint (Anti-Gaudy)
+   841→
+   842→- [ ] **Decorative elements ≤ 3 per page**: Cover page exempt
+   843→- [ ] **No rainbow/multi-color schemes**: Stick to single-family palette
+   844→- [ ] **No texture/pattern backgrounds**: Solid or ultra-light tinted only
+   845→- [ ] **Whitespace is design**: Don't fill every gap with decorative elements
+   846→- [ ] **Typography over decoration**: Create hierarchy through font size/weight/spacing/color
+   847→- [ ] **2-typeface maximum**: At most 2 font families
+   848→- [ ] **🚫 NO stock images / clipart / AI-generated decorations**: Only user-provided content images allowed

@@ -1,0 +1,2002 @@
+     1→#!/usr/bin/env python3
+     2→"""
+     3→VVU EARTH TECH — Outreach Document Suite Generator
+     4→Generates 6 PDF documents for outreach distribution, scoping, and sales framework strategies.
+     5→
+     6→Documents:
+     7→1. User Manual (Outreach Distribution Edition)
+     8→2. Developer Specification (Technical Outreach Edition)
+     9→3. Administrator Specification (Operations Outreach Edition)
+    10→4. Research Proposal (Academic Partnership Edition)
+    11→5. Fabricator Specification Guide (Manufacturing Partnership Edition)
+    12→6. Assembly & Prototype Development Lifecycle Spec Guide
+    13→
+    14→ALL documents exclude legal and financial content.
+    15→ALL documents are for outreach distribution, scoping, and sales framework strategies.
+    16→"""
+    17→
+    18→import os
+    19→from datetime import datetime
+    20→from reportlab.lib.pagesizes import A4
+    21→from reportlab.lib.units import mm, cm
+    22→from reportlab.lib.colors import HexColor, black, white, Color
+    23→from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    24→from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT, TA_JUSTIFY
+    25→from reportlab.platypus import (
+    26→    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+    27→    PageBreak, ListFlowable, ListItem, KeepTogether, HRFlowable,
+    28→    Image, Flowable
+    29→)
+    30→from reportlab.platypus.frames import Frame
+    31→from reportlab.platypus.doctemplate import PageTemplate, BaseDocTemplate
+    32→from reportlab.graphics.shapes import Drawing, Rect, String, Line, Circle
+    33→from reportlab.graphics import renderPDF
+    34→from reportlab.pdfbase import pdfmetrics
+    35→from reportlab.pdfbase.ttfonts import TTFont
+    36→
+    37→# ─── Color Palette ───
+    38→VVU_DARK = HexColor('#0f0f18')
+    39→VVU_BG = HexColor('#09090f')
+    40→VVU_GREEN = HexColor('#10b981')
+    41→VVU_EMERALD = HexColor('#059669')
+    42→VVU_TEAL = HexColor('#14b8a6')
+    43→VVU_CYAN = HexColor('#06b6d4')
+    44→VVU_ORANGE = HexColor('#f97316')
+    45→VVU_RED = HexColor('#ef4444')
+    46→VVU_YELLOW = HexColor('#eab308')
+    47→VVU_PURPLE = HexColor('#8b5cf6')
+    48→VVU_GRAY = HexColor('#6b7280')
+    49→VVU_LIGHT_GRAY = HexColor('#9ca3af')
+    50→VVU_WHITE = HexColor('#e5e7eb')
+    51→VVU_PURE_WHITE = HexColor('#ffffff')
+    52→ACCENT_GREEN = HexColor('#34d399')
+    53→SECTION_BG = HexColor('#1a1a2e')
+    54→TABLE_HEADER_BG = HexColor('#1e293b')
+    55→TABLE_ROW_BG = HexColor('#0f172a')
+    56→TABLE_ALT_ROW = HexColor('#1e1e3a')
+    57→
+    58→OUTPUT_DIR = '/home/z/my-project/outreach-docs'
+    59→
+    60→# ─── Custom Styles ───
+    61→def create_styles(doc_title_color=VVU_GREEN):
+    62→    styles = getSampleStyleSheet()
+    63→
+    64→    # Cover styles
+    65→    styles.add(ParagraphStyle(
+    66→        name='CoverTitle',
+    67→        fontName='Helvetica-Bold',
+    68→        fontSize=28,
+    69→        leading=34,
+    70→        textColor=VVU_PURE_WHITE,
+    71→        alignment=TA_CENTER,
+    72→        spaceAfter=12,
+    73→    ))
+    74→    styles.add(ParagraphStyle(
+    75→        name='CoverSubtitle',
+    76→        fontName='Helvetica',
+    77→        fontSize=14,
+    78→        leading=18,
+    79→        textColor=ACCENT_GREEN,
+    80→        alignment=TA_CENTER,
+    81→        spaceAfter=6,
+    82→    ))
+    83→    styles.add(ParagraphStyle(
+    84→        name='CoverEdition',
+    85→        fontName='Helvetica-Bold',
+    86→        fontSize=11,
+    87→        leading=14,
+    88→        textColor=VVU_YELLOW,
+    89→        alignment=TA_CENTER,
+    90→        spaceAfter=4,
+    91→    ))
+    92→
+    93→    # Body styles
+    94→    styles.add(ParagraphStyle(
+    95→        name='DocTitle',
+    96→        fontName='Helvetica-Bold',
+    97→        fontSize=20,
+    98→        leading=26,
+    99→        textColor=doc_title_color,
+   100→        spaceBefore=0,
+   101→        spaceAfter=16,
+   102→    ))
+   103→    styles.add(ParagraphStyle(
+   104→        name='SectionTitle',
+   105→        fontName='Helvetica-Bold',
+   106→        fontSize=16,
+   107→        leading=20,
+   108→        textColor=doc_title_color,
+   109→        spaceBefore=20,
+   110→        spaceAfter=10,
+   111→    ))
+   112→    styles.add(ParagraphStyle(
+   113→        name='SubSection',
+   114→        fontName='Helvetica-Bold',
+   115→        fontSize=13,
+   116→        leading=16,
+   117→        textColor=HexColor('#94a3b8'),
+   118→        spaceBefore=12,
+   119→        spaceAfter=6,
+   120→    ))
+   121→    styles.add(ParagraphStyle(
+   122→        name='BodyText2',
+   123→        fontName='Helvetica',
+   124→        fontSize=10,
+   125→        leading=14,
+   126→        textColor=VVU_WHITE,
+   127→        alignment=TA_JUSTIFY,
+   128→        spaceBefore=2,
+   129→        spaceAfter=6,
+   130→    ))
+   131→    styles.add(ParagraphStyle(
+   132→        name='BulletText',
+   133→        fontName='Helvetica',
+   134→        fontSize=10,
+   135→        leading=14,
+   136→        textColor=VVU_WHITE,
+   137→        leftIndent=20,
+   138→        spaceBefore=2,
+   139→        spaceAfter=3,
+   140→    ))
+   141→    styles.add(ParagraphStyle(
+   142→        name='CodeBlock',
+   143→        fontName='Courier',
+   144→        fontSize=9,
+   145→        leading=12,
+   146→        textColor=ACCENT_GREEN,
+   147→        leftIndent=10,
+   148→        spaceBefore=4,
+   149→        spaceAfter=4,
+   150→        backColor=HexColor('#111827'),
+   151→    ))
+   152→    styles.add(ParagraphStyle(
+   153→        name='NoteText',
+   154→        fontName='Helvetica-BoldOblique',
+   155→        fontSize=10,
+   156→        leading=13,
+   157→        textColor=VVU_YELLOW,
+   158→        spaceBefore=6,
+   159→        spaceAfter=6,
+   160→        leftIndent=10,
+   161→    ))
+   162→    styles.add(ParagraphStyle(
+   163→        name='TableHeader',
+   164→        fontName='Helvetica-Bold',
+   165→        fontSize=9,
+   166→        leading=12,
+   167→        textColor=VVU_PURE_WHITE,
+   168→        alignment=TA_CENTER,
+   169→    ))
+   170→    styles.add(ParagraphStyle(
+   171→        name='TableCell',
+   172→        fontName='Helvetica',
+   173→        fontSize=9,
+   174→        leading=12,
+   175→        textColor=VVU_WHITE,
+   176→    ))
+   177→    styles.add(ParagraphStyle(
+   178→        name='FooterText',
+   179→        fontName='Helvetica',
+   180→        fontSize=8,
+   181→        leading=10,
+   182→        textColor=VVU_GRAY,
+   183→        alignment=TA_CENTER,
+   184→    ))
+   185→    styles.add(ParagraphStyle(
+   186→        name='SmallBold',
+   187→        fontName='Helvetica-Bold',
+   188→        fontSize=9,
+   189→        leading=12,
+   190→        textColor=VVU_WHITE,
+   191→    ))
+   192→    return styles
+   193→
+   194→
+   195→# ─── Custom Page Template ───
+   196→class DarkDocTemplate(BaseDocTemplate):
+   197→    def __init__(self, filename, **kw):
+   198→        BaseDocTemplate.__init__(self, filename, **kw)
+   199→        page_width, page_height = A4
+   200→        frame = Frame(
+   201→            20*mm, 25*mm, page_width - 40*mm, page_height - 50*mm,
+   202→            id='normal'
+   203→        )
+   204→        template = PageTemplate(id='dark', frames=[frame], onPage=self._dark_page)
+   205→        self.addPageTemplates([template])
+   206→
+   207→    def _dark_page(self, canvas, doc):
+   208→        canvas.saveState()
+   209→        # Full dark background
+   210→        canvas.setFillColor(VVU_BG)
+   211→        canvas.rect(0, 0, A4[0], A4[1], fill=1, stroke=0)
+   212→        # Top accent line
+   213→        canvas.setStrokeColor(VVU_GREEN)
+   214→        canvas.setLineWidth(2)
+   215→        canvas.line(20*mm, A4[1] - 20*mm, A4[0] - 20*mm, A4[1] - 20*mm)
+   216→        # Footer
+   217→        canvas.setFont('Helvetica', 8)
+   218→        canvas.setFillColor(VVU_GRAY)
+   219→        canvas.drawCentredString(A4[0]/2, 15*mm,
+   220→            f'VVU EARTH TECH — Outreach Distribution Document — {datetime.now().strftime("%Y-%m")}')
+   221→        # Bottom accent line
+   222→        canvas.setStrokeColor(VVU_GREEN)
+   223→        canvas.setLineWidth(1)
+   224→        canvas.line(20*mm, 20*mm, A4[0] - 20*mm, 20*mm)
+   225→        canvas.restoreState()
+   226→
+   227→
+   228→# ─── Helper Functions ───
+   229→def make_cover(styles, title, subtitle, edition, audience):
+   230→    """Generate a professional cover page."""
+   231→    elements = []
+   232→    elements.append(Spacer(1, 80*mm))
+   233→
+   234→    # Decorative line
+   235→    elements.append(HRFlowable(width="80%", thickness=2, color=VVU_GREEN, spaceAfter=20))
+   236→
+   237→    elements.append(Paragraph(title, styles['CoverTitle']))
+   238→    elements.append(Spacer(1, 8*mm))
+   239→    elements.append(Paragraph(subtitle, styles['CoverSubtitle']))
+   240→    elements.append(Spacer(1, 6*mm))
+   241→    elements.append(Paragraph(edition, styles['CoverEdition']))
+   242→    elements.append(Spacer(1, 4*mm))
+   243→
+   244→    # Audience tag
+   245→    audience_style = ParagraphStyle(
+   246→        'AudienceTag', parent=styles['BodyText2'],
+   247→        fontSize=10, textColor=VVU_TEAL, alignment=TA_CENTER
+   248→    )
+   249→    elements.append(Paragraph(f'Target Audience: {audience}', audience_style))
+   250→
+   251→    elements.append(Spacer(1, 12*mm))
+   252→    elements.append(HRFlowable(width="80%", thickness=1, color=VVU_GREEN, spaceBefore=10))
+   253→
+   254→    # Classification
+   255→    classification_style = ParagraphStyle(
+   256→        'Classification', parent=styles['BodyText2'],
+   257→        fontSize=9, textColor=VVU_YELLOW, alignment=TA_CENTER
+   258→    )
+   259→    elements.append(Spacer(1, 8*mm))
+   260→    elements.append(Paragraph(
+   261→        'CLASSIFICATION: Outreach Distribution — Scoping & Sales Framework Strategy',
+   262→        classification_style
+   263→    ))
+   264→    elements.append(Paragraph(
+   265→        'Content Scope: Technical, Operational, and Strategic — Excludes Legal & Financial',
+   266→        classification_style
+   267→    ))
+   268→
+   269→    # Date
+   270→    date_style = ParagraphStyle(
+   271→        'DateLine', parent=styles['BodyText2'],
+   272→        fontSize=9, textColor=VVU_LIGHT_GRAY, alignment=TA_CENTER
+   273→    )
+   274→    elements.append(Spacer(1, 4*mm))
+   275→    elements.append(Paragraph(
+   276→        f'Publication Date: {datetime.now().strftime("%Y-%m-%d")} | Version 1.0',
+   277→        date_style
+   278→    ))
+   279→    elements.append(Paragraph(
+   280→        'Venture Vision Ubuntu (VVU) — EARTH TECH Division',
+   281→        date_style
+   282→    ))
+   283→
+   284→    elements.append(PageBreak())
+   285→    return elements
+   286→
+   287→
+   288→def make_table(headers, rows, col_widths=None):
+   289→    """Create a styled table."""
+   290→    header_paras = [Paragraph(h, ParagraphStyle('TH', fontName='Helvetica-Bold',
+   291→                                                  fontSize=9, textColor=VVU_PURE_WHITE,
+   292→                                                  alignment=TA_CENTER)) for h in headers]
+   293→    data = [header_paras]
+   294→    for row in rows:
+   295→        row_paras = [Paragraph(str(cell), ParagraphStyle('TC', fontName='Helvetica',
+   296→                                                          fontSize=9, textColor=VVU_WHITE)) for cell in row]
+   297→        data.append(row_paras)
+   298→
+   299→    page_width = A4[0] - 40*mm
+   300→    if col_widths is None:
+   301→        n_cols = len(headers)
+   302→        col_widths = [page_width / n_cols] * n_cols
+   303→
+   304→    t = Table(data, colWidths=col_widths)
+   305→    t.setStyle(TableStyle([
+   306→        ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_BG),
+   307→        ('BACKGROUND', (0, 1), (-1, -1), TABLE_ROW_BG),
+   308→        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [TABLE_ROW_BG, TABLE_ALT_ROW]),
+   309→        ('TEXTCOLOR', (0, 0), (-1, 0), VVU_PURE_WHITE),
+   310→        ('TEXTCOLOR', (0, 1), (-1, -1), VVU_WHITE),
+   311→        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#334155')),
+   312→        ('TOPPADDING', (0, 0), (-1, -1), 4),
+   313→        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+   314→        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+   315→        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+   316→        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+   317→    ]))
+   318→    return t
+   319→
+   320→
+   321→def section(title, styles):
+   322→    return Paragraph(title, styles['SectionTitle'])
+   323→
+   324→def subsection(title, styles):
+   325→    return Paragraph(title, styles['SubSection'])
+   326→
+   327→def body(text, styles):
+   328→    return Paragraph(text, styles['BodyText2'])
+   329→
+   330→def note(text, styles):
+   331→    return Paragraph(f'▶ {text}', styles['NoteText'])
+   332→
+   333→def bullet_list(items, styles):
+   334→    paras = []
+   335→    for item in items:
+   336→        paras.append(Paragraph(f'• {item}', styles['BulletText']))
+   337→    return paras
+   338→
+   339→def spacer(h=6):
+   340→    return Spacer(1, h*mm)
+   341→
+   342→
+   343→# ─── Shared Content Blocks ───
+   344→SHARED_INTRO = """
+   345→The <b>VVU EARTH TECH</b> platform is a deterministic evidence runtime for infrastructure monitoring,
+   346→municipal water network management, and autonomous decision-making. It combines an <b>Epistemic DAG Runtime</b>
+   347→(with four primitives: Fact, Proof, Policy, Projection), a <b>Trust Runtime</b> (5-state AIR safety pipeline),
+   348→and a <b>72-Hour Resilience Matrix</b> to deliver verifiable, replay-deterministic, append-only evidence
+   349→for every decision the system makes.
+   350→"""
+   351→
+   352→SHARED_CAPE_TOWN = """
+   353→<b>Cape Town</b> serves as the alternative pilot municipality case study for the VVU EARTH TECH
+   354→Hydro-Gateway deployment. Cape Town was selected following a governance review that identified
+   355→operational risks at the originally proposed municipality. Cape Town's established water management
+   356→infrastructure, progressive governance framework, and existing IoT deployment experience make it
+   357→an ideal partner for validating municipal-grade infrastructure monitoring technology.
+   358→"""
+   359→
+   360→SHARED_EXECUTION_PRINCIPLE = """
+   361→<b>Execution Principle:</b> VVU EARTH TECH advances through multiple independent pathways in parallel.
+   362→Every activity is subject to formal governance review. Progress is measured by verified engineering
+   363→deliverables, not announcements. Where a pathway encounters obstacles, alternative pathways continue
+   364→without delay. This parallel execution model ensures continuous forward progress regardless of
+   365→individual pathway outcomes.
+   366→"""
+   367→
+   368→SHARED_COMMUNICATIONS_POLICY = """
+   369→<b>Communications Policy:</b> VVU EARTH TECH follows a staged disclosure framework:
+   370→(1) Engineering progress is communicated only after verification — not before.
+   371→(2) Outreach is structured in three stages: Evidence Publication → Personalized Outreach → General Social & Press.
+   372→(3) Sensitive operational details are shared on a need-to-know basis.
+   373→(4) Mass-blast communication is structurally impossible — the outreach engine enforces sequential stage gates.
+   374→"""
+   375→
+   376→SHARED_7_TRACK_STRATEGY = """
+   377→<b>7-Track Resource Acquisition & Partnership Strategy:</b>
+   378→
+   379→<b>Track A — Municipal Partnerships:</b> Active outreach to Cape Town and progressive municipalities for pilot deployment and validation partnerships. <i>Status: Active Outreach</i>
+   380→
+   381→<b>Track B — University Research Partnerships:</b> Engagement with South African and international universities for collaborative research, validation observation, and academic publication. <i>Status: Strategy</i>
+   382→
+   383→<b>Track C — Industry Integration:</b> Partnership development with water infrastructure, IoT, and municipal technology companies for integration, supply chain, and co-development. <i>Status: Strategy</i>
+   384→
+   385→<b>Track D — Public Funding:</b> Application to national and provincial technology innovation funds, water sector grants, and digital infrastructure programmes. <i>Status: Strategy</i>
+   386→
+   387→<b>Track E — Private Investment:</b> Structured engagement with impact investors, technology venture capital, and ESG-aligned funds. <i>Status: Strategy</i>
+   388→
+   389→<b>Track F — Sponsorship & Equipment:</b> Outreach to hardware manufacturers, cloud providers, and technology sponsors for equipment, infrastructure, and in-kind support. <i>Status: Strategy</i>
+   390→
+   391→<b>Track G — Community & Open Source:</b> Building developer community, open-source contributors, and civic technology networks for grassroots validation and adoption. <i>Status: Strategy</i>
+   392→"""
+   393→
+   394→SHARED_VALIDATION_PHASES_TABLE = [
+   395→    ['P1', 'Nominal Load', '0–12h', 'Baseline', 'Establish baseline under normal telemetry traffic', 'Critical'],
+   396→    ['P2', 'Telemetry Flood', '12–24h', 'Acceptance Capacity', 'Verify acceptance pipeline absorbs 100× flood', 'Major'],
+   397→    ['P3', 'Network Chaos', '24–36h', 'HLC Ordering', 'Verify replay stays deterministic under packet loss', 'Critical'],
+   398→    ['P4', 'Storage Pressure', '36–48h', 'Append-Only Integrity', 'Verify graceful degradation under disk fill', 'Critical'],
+   399→    ['P5', 'Node Failure', '48–60h', 'Recovery', 'Verify pods restart and no Fact is lost', 'Major'],
+   400→    ['P6', 'Security Injection', '60–66h', 'HF-001/002/005', 'Verify every spoofed/malformed payload rejected', 'Critical'],
+   401→    ['P7', 'Partition + Recovery', '66–72h', 'LVL-17', 'Verify deterministic HLC merge after partition', 'Critical'],
+   402→]
+   403→
+   404→SHARED_MILESTONES_TABLE = [
+   405→    ['M00', 'Pre-Registration Published', 'Before T=0', 'Manual'],
+   406→    ['M12', 'Nominal Phase Complete', 'Hour 12', 'Evidence checkpoint'],
+   407→    ['M24', 'Flood Phase Complete', 'Hour 24', 'Evidence checkpoint'],
+   408→    ['M36', 'Network Chaos Complete', 'Hour 36', 'Evidence checkpoint'],
+   409→    ['M48', 'Storage Pressure Complete', 'Hour 48', 'Evidence checkpoint'],
+   410→    ['M60', 'Node Failure Complete', 'Hour 60', 'Evidence checkpoint'],
+   411→    ['M66', 'Security Injection Complete', 'Hour 66', 'Evidence checkpoint'],
+   412→    ['M71', 'Partition Recovery + HLC Merge', 'Hour 71', 'Evidence merge'],
+   413→    ['M72', 'Final Evidence Package Published', 'Hour 72', 'Validation complete'],
+   414→]
+   415→
+   416→SHARED_HARD_FAILURE_CODES = [
+   417→    ['HF-001', 'Mock boolean / No TEE Verifier', '0.31 penalty', 'Evidence Compiler Pass 2'],
+   418→    ['HF-002', 'No ZK Prover', 'Critical', 'GovernanceAnchor.sol'],
+   419→    ['HF-006', 'Feature BLOCKED by invalid license', 'Hard block', 'requireFeature()'],
+   420→    ['HF-007', 'Tenant Boundary Violation', 'Critical', 'namespace = SHA-256(tenant_public_key)'],
+   421→]
+   422→
+   423→SHARED_COMMERCIAL_TIERS = [
+   424→    ['OPEN_SOURCE', 'Apache-2.0', 'Community', 'Core Epistemic Runtime, MMR, CLI'],
+   425→    ['PRO', 'R5,000/mo*', 'Professional', 'Trust Runtime, Risk Score Engine, Gate Pipeline'],
+   426→    ['ENTERPRISE', 'R25,000/mo*', 'Enterprise', 'Full AIR Kernel, ZK Proofs, Federation'],
+   427→    ['GOVERNANCE', 'R100k+/mo*', 'Government', 'Municipal Pilot, Custom Policy, 24/7 Support'],
+   428→]
+   429→
+   430→SHARED_RESILIENCE_PILLARS = [
+   431→    ['NATS/HLC', 'Hybrid Logical Clock', 'Durable queue + (wall_time, logical, node_id)', 'Partition tolerance'],
+   432→    ['Fail-Closed Circuit Breaker', '5-state hysteresis', 'NORMAL→WARNING→TRIPPED→RECOVERY→ESCALATED', 'Oscillation prevention'],
+   433→    ['Hydro-Gateway', 'IoT Sensor Bridge', 'Acoustic leak detection → Epistemic Runtime', 'Telemetry ingestion'],
+   434→    ['CSB/WAL', 'Cryptographic State Bundle', 'SHA-256 + CRC32c append-only log', 'Evidence integrity'],
+   435→    ['Policy Time Travel', 'Bi-temporal evaluation', 'Evaluate policies at any historical timestamp', 'Governance audit'],
+   436→]
+   437→
+   438→
+   439→# ════════════════════════════════════════════════════════════════════════
+   440→# DOCUMENT 1: USER MANUAL
+   441→# ════════════════════════════════════════════════════════════════════════
+   442→
+   443→def generate_user_manual():
+   444→    styles = create_styles(VVU_GREEN)
+   445→    doc = DarkDocTemplate(
+   446→        os.path.join(OUTPUT_DIR, 'VVU-User-Manual-Outreach-Edition.pdf'),
+   447→        pagesize=A4,
+   448→        title='VVU EARTH TECH — User Manual',
+   449→        author='Venture Vision Ubuntu',
+   450→    )
+   451→
+   452→    elements = []
+   453→
+   454→    # Cover
+   455→    elements.extend(make_cover(styles,
+   456→        'VVU EARTH TECH',
+   457→        'User Manual — Outreach Distribution Edition',
+   458→        'FOR OUTREACH DISTRIBUTION, SCOPING & SALES FRAMEWORK STRATEGIES',
+   459→        'End Users, Operators, Municipal Stakeholders'
+   460→    ))
+   461→
+   462→    # Table of Contents
+   463→    elements.append(section('Table of Contents', styles))
+   464→    toc_items = [
+   465→        '1. What is VVU EARTH TECH?',
+   466→        '2. The Epistemic Runtime Dashboard',
+   467→        '3. Navigating the Dashboard',
+   468→        '4. Trust Runtime Safety Pipeline',
+   469→        '5. Circuit Breaker States',
+   470→        '6. Validation Suite (VVU-VAL-001)',
+   471→        '7. Resource Acquisition Strategy',
+   472→        '8. Cape Town Pilot Municipality',
+   473→        '9. Governance: Execution Principle & Communications Policy',
+   474→        '10. Getting Started',
+   475→    ]
+   476→    elements.extend(bullet_list(toc_items, styles))
+   477→    elements.append(PageBreak())
+   478→
+   479→    # Section 1
+   480→    elements.append(section('1. What is VVU EARTH TECH?', styles))
+   481→    elements.append(body(SHARED_INTRO, styles))
+   482→    elements.append(spacer())
+   483→
+   484→    elements.append(subsection('Core Design Principles', styles))
+   485→    elements.extend(bullet_list([
+   486→        '<b>Deterministic Replay:</b> Every decision in the system can be replayed from the evidence log, producing the identical result every time.',
+   487→        '<b>Append-Only Evidence:</b> No Fact can be modified or deleted after acceptance — the log is cryptographically sealed.',
+   488→        '<b>Golden Rule:</b> The AIR Kernel is horizontal infrastructure — no product-specific logic in the open-source code.',
+   489→        '<b>Fail-Closed Philosophy:</b> When the system cannot verify, it rejects — never accepts unverified inputs.',
+   490→    ], styles))
+   491→    elements.append(spacer())
+   492→
+   493→    elements.append(subsection('Four Epistemic Primitives', styles))
+   494→    pw = A4[0] - 40*mm
+   495→    elements.append(make_table(
+   496→        ['Primitive', 'Purpose', 'Key Property'],
+   497→        [
+   498→            ['Fact', 'Observed evidence from sensors, logs, or external sources', 'Append-only, SHA-256 hashed, MMR-indexed'],
+   499→            ['Proof', 'Cryptographic attestation linking evidence to a decision', 'Ed25519/RSA-PSS-SHA256/ECDSA P-384 signed'],
+   500→            ['Policy', 'Governance rule governing how evidence is evaluated', 'Versioned, bi-temporal, replay-deterministic'],
+   501→            ['Projection', 'Derived state computed from Facts and Policies', 'Recomputable from evidence log alone'],
+   502→        ],
+   503→        col_widths=[pw*0.15, pw*0.45, pw*0.40]
+   504→    ))
+   505→    elements.append(PageBreak())
+   506→
+   507→    # Section 2
+   508→    elements.append(section('2. The Epistemic Runtime Dashboard', styles))
+   509→    elements.append(body(
+   510→        'The VVU MASTER Dashboard is the primary user interface for the Epistemic DAG Runtime. '
+   511→        'It provides a unified view of all system components: trust runtime status, validation progress, '
+   512→        'resource acquisition tracking, resilience metrics, and policy governance.',
+   513→        styles
+   514→    ))
+   515→    elements.append(spacer())
+   516→
+   517→    elements.append(subsection('Dashboard Sections', styles))
+   518→    pw = A4[0] - 40*mm
+   519→    elements.append(make_table(
+   520→        ['Section', 'Description', 'User Action'],
+   521→        [
+   522→            ['Overview', 'System health, validation index, phase progress', 'View real-time status'],
+   523→            ['Trust Runtime', '5-state AIR safety pipeline, risk scores, gates', 'Monitor safety state'],
+   524→            ['Circuit Breaker', '3-state municipal breaker + 5-state AIR breaker', 'Track state transitions'],
+   525→            ['Resilience Matrix', '72-Hour resilience pillars status', 'Review pillar health'],
+   526→            ['Policy Studio', 'Policy creation, versioning, diff comparison', 'Create/edit policies'],
+   527→            ['DAG Topology', 'Interactive graph of epistemic dependencies', 'Explore evidence graph'],
+   528→            ['MMR Proofs', 'Merkle Mountain Range proofs and verification', 'Verify evidence chains'],
+   529→            ['Timeline', 'Historical events and milestone tracking', 'Review event history'],
+   530→            ['Validation Suite', 'VVU-VAL-001 phases, milestones, outreach', 'Track validation progress'],
+   531→            ['Resource Acquisition', '7-Track strategy status overview', 'Review outreach progress'],
+   532→            ['CLI Terminal', 'Direct command interface (air health, air ledger)', 'Execute commands'],
+   533→            ['Performance Metrics', 'System throughput, latency, queue depth', 'Monitor performance'],
+   534→            ['Audit Reports', 'Evidence bundle verification and audit trail', 'Review audit results'],
+   535→        ],
+   536→        col_widths=[pw*0.20, pw*0.45, pw*0.35]
+   537→    ))
+   538→    elements.append(PageBreak())
+   539→
+   540→    # Section 3
+   541→    elements.append(section('3. Navigating the Dashboard', styles))
+   542→    elements.append(body(
+   543→        'The dashboard uses a tabbed interface with keyboard shortcuts for rapid navigation. '
+   544→        'Each section loads dynamically for performance optimization. The command palette '
+   545→        '(Ctrl+K) provides instant search across all sections and commands.',
+   546→        styles
+   547→    ))
+   548→    elements.append(spacer())
+   549→
+   550→    elements.append(subsection('Keyboard Shortcuts', styles))
+   551→    pw = A4[0] - 40*mm
+   552→    elements.append(make_table(
+   553→        ['Shortcut', 'Action'],
+   554→        [
+   555→            ['Ctrl+K', 'Open command palette (global search)'],
+   556→            ['1-9', 'Switch to section tab by number'],
+   557→            ['Ctrl+/', 'Show keyboard shortcuts overlay'],
+   558→            ['Escape', 'Close overlay/modal'],
+   559→        ],
+   560→        col_widths=[pw*0.30, pw*0.70]
+   561→    ))
+   562→    elements.append(spacer())
+   563→
+   564→    elements.append(subsection('Interactive Features', styles))
+   565→    elements.extend(bullet_list([
+   566→        '<b>Drag & Drop:</b> DAG topology nodes can be rearranged by dragging.',
+   567→        '<b>Zoom & Pan:</b> Graph sections support zoom (scroll) and pan (drag).',
+   568→        '<b>Click-to-Expand:</b> Click any node to see full detail in an overlay panel.',
+   569→        '<b>Real-Time Updates:</b> Validation suite and trust runtime update live during a validation event.',
+   570→        '<b>Theme Toggle:</b> Switch between dark and light themes (preserves readability).',
+   571→    ], styles))
+   572→    elements.append(PageBreak())
+   573→
+   574→    # Section 4
+   575→    elements.append(section('4. Trust Runtime Safety Pipeline', styles))
+   576→    elements.append(body(
+   577→        'The Trust Runtime implements a 5-state AIR (Autonomous Intelligence Runtime) safety pipeline '
+   578→        'with hysteresis to prevent oscillation at threshold boundaries. This is <b>separate from</b> the '
+   579→        '3-state municipal infrastructure circuit breaker — they operate independently.',
+   580→        styles
+   581→    ))
+   582→    elements.append(spacer())
+   583→
+   584→    elements.append(subsection('AIR Safety States', styles))
+   585→    pw = A4[0] - 40*mm
+   586→    elements.append(make_table(
+   587→        ['State', 'Meaning', 'Trigger', 'User Impact'],
+   588→        [
+   589→            ['NORMAL', 'All systems operating within safe parameters', 'Risk score below warning threshold', 'Full functionality, all features available'],
+   590→            ['WARNING', 'Elevated risk detected — monitoring intensified', 'Risk score ≥ 0.6 or delta ≥ 0.05', 'Features available, monitoring alerts active'],
+   591→            ['TRIPPED', 'Risk exceeds safe limits — execution halted', 'Risk score ≥ 0.75 or delta ≥ 0.1', 'Pending intents halted, new submissions queued'],
+   592→            ['RECOVERY', 'Risk declining — minimum hold period enforced', 'Risk drops below trip threshold', 'Queued intents processed after hold period'],
+   593→            ['ESCALATED', 'Repeated trips — system-wide escalation', '3 trips within 1-hour window', 'All execution suspended, manual review required'],
+   594→        ],
+   595→        col_widths=[pw*0.12, pw*0.30, pw*0.28, pw*0.30]
+   596→    ))
+   597→    elements.append(spacer())
+   598→
+   599→    elements.append(subsection('Gate Pipeline Flow', styles))
+   600→    elements.extend(bullet_list([
+   601→        '<b>Gate 0 — Temporal Validity:</b> Intent must not exceed 72-hour maximum age.',
+   602→        '<b>Gate A — Convergence:</b> Contracting behavior checked; divergence penalty applied.',
+   603→        '<b>Gate B — Accumulation:</b> Tier-weighted exposure must stay below configured ceiling.',
+   604→        '<b>Gate C — Velocity:</b> First-derivative (rate of change) must stay below max velocity.',
+   605→        '<b>Gate D — Acceleration:</b> Second-derivative (rate of rate) must stay below max acceleration.',
+   606→        '<b>Gate E — State Drift:</b> Current state must not drift beyond max distance from intent snapshot.',
+   607→        '<b>Composite Risk Score:</b> Weighted sum of all gate outputs → circuit breaker evaluation.',
+   608→    ], styles))
+   609→    elements.append(PageBreak())
+   610→
+   611→    # Section 5
+   612→    elements.append(section('5. Circuit Breaker States', styles))
+   613→    elements.append(body(
+   614→        'The system operates two independent circuit breaker systems, each serving a distinct purpose:',
+   615→        styles
+   616→    ))
+   617→    elements.append(spacer())
+   618→
+   619→    pw = A4[0] - 40*mm
+   620→    elements.append(make_table(
+   621→        ['Breaker', 'States', 'Scope', 'Purpose'],
+   622→        [
+   623→            ['AIR Safety Pipeline', 'NORMAL / WARNING / TRIPPED / RECOVERY / ESCALATED', 'Trust Runtime', 'Autonomous decision safety — prevents unsafe AI actions'],
+   624→            ['Municipal Infrastructure', 'NORMAL / DEGRADED / FAIL-CLOSED', 'Resilience Manager', 'Infrastructure resilience — protects water network monitoring'],
+   625→        ],
+   626→        col_widths=[pw*0.18, pw*0.28, pw*0.22, pw*0.32]
+   627→    ))
+   628→    elements.append(spacer())
+   629→    elements.append(note(
+   630→        'These two breakers are architecturally independent. The AIR breaker governs autonomous '
+   631→        'decision safety; the municipal breaker governs infrastructure resilience. They do not cascade.',
+   632→        styles
+   633→    ))
+   634→    elements.append(PageBreak())
+   635→
+   636→    # Section 6
+   637→    elements.append(section('6. Validation Suite (VVU-VAL-001)', styles))
+   638→    elements.append(body(
+   639→        'The VVU-VAL-001 is a 72-hour continuous validation protocol that subjects the Epistemic '
+   640→        'Runtime to controlled failure injection across 6 phases. The protocol is pre-registered '
+   641→        '(test plan frozen before execution) with published success criteria and a computed '
+   642→        'Validation Index (PASS ≥ 90.0).',
+   643→        styles
+   644→    ))
+   645→    elements.append(spacer())
+   646→
+   647→    elements.append(subsection('Validation Phases', styles))
+   648→    pw = A4[0] - 40*mm
+   649→    elements.append(make_table(
+   650→        ['Phase', 'Name', 'Hours', 'Gate', 'Objective', 'Severity'],
+   651→        SHARED_VALIDATION_PHASES_TABLE,
+   652→        col_widths=[pw*0.06, pw*0.16, pw*0.08, pw*0.16, pw*0.40, pw*0.10]
+   653→    ))
+   654→    elements.append(spacer())
+   655→
+   656→    elements.append(subsection('Validation Index Dimensions', styles))
+   657→    pw = A4[0] - 40*mm
+   658→    elements.append(make_table(
+   659→        ['Dimension', 'Weight', 'What It Measures'],
+   660→        [
+   661→            ['Replay Determinism', '0.25', 'Checksum match between live and replayed Fact Log'],
+   662→            ['Append-Only Integrity', '0.20', 'No Fact modified or deleted; MMR root valid'],
+   663→            ['Policy Enforcement', '0.15', 'Every violation produces Failure Fact; no crash'],
+   664→            ['HLC Merge Correctness', '0.15', 'Zero conflicts on partition reconnect'],
+   665→            ['Evidence Bundle Integrity', '0.15', 'Hourly bundles SHA-256 verified'],
+   666→            ['Security Gate Rejection', '0.10', 'All spoofed/malformed payloads rejected'],
+   667→        ],
+   668→        col_widths=[pw*0.25, pw*0.10, pw*0.65]
+   669→    ))
+   670→    elements.append(spacer())
+   671→    elements.append(note('PASS threshold: Validation Index ≥ 90.0. Zero Critical failures required (§3.1).', styles))
+   672→    elements.append(PageBreak())
+   673→
+   674→    # Section 7
+   675→    elements.append(section('7. Resource Acquisition Strategy', styles))
+   676→    elements.append(body(SHARED_7_TRACK_STRATEGY, styles))
+   677→    elements.append(spacer())
+   678→
+   679→    elements.append(note(
+   680→        'IMPORTANT: Tracks B–G are currently at Strategy stage. Only Track A (Cape Town outreach) '
+   681→        'is at Active Outreach stage. No track has reached Confirmed Commitment. VVU presents these '
+   682→        'as planned and active initiatives, NOT as outcomes already secured.',
+   683→        styles
+   684→    ))
+   685→    elements.append(PageBreak())
+   686→
+   687→    # Section 8
+   688→    elements.append(section('8. Cape Town Pilot Municipality', styles))
+   689→    elements.append(body(SHARED_CAPE_TOWN, styles))
+   690→    elements.append(spacer())
+   691→
+   692→    elements.append(subsection('Cape Town Selection Criteria', styles))
+   693→    elements.extend(bullet_list([
+   694→        '<b>Established Water Management:</b> Cape Town has extensive water infrastructure experience following the 2018 water crisis, including advanced demand management and monitoring systems.',
+   695→        '<b>Progressive Governance:</b> Transparent governance framework with established IoT deployment experience and digital transformation initiatives.',
+   696→        '<b>Technical Infrastructure:</b> Existing sensor networks, data platforms, and municipal IT systems suitable for Hydro-Gateway integration.',
+   697→        '<b>Research Ecosystem:</b> Proximity to University of Cape Town, Stellenbosch University, and CSIR for collaborative validation.',
+   698→    ], styles))
+   699→    elements.append(PageBreak())
+   700→
+   701→    # Section 9
+   702→    elements.append(section('9. Governance Framework', styles))
+   703→    elements.append(body(SHARED_EXECUTION_PRINCIPLE, styles))
+   704→    elements.append(spacer())
+   705→    elements.append(body(SHARED_COMMUNICATIONS_POLICY, styles))
+   706→    elements.append(spacer())
+   707→
+   708→    elements.append(subsection('Staged Release Enforcement', styles))
+   709→    pw = A4[0] - 40*mm
+   710→    elements.append(make_table(
+   711→        ['Stage', 'Name', 'Trigger', 'Audiences', 'Cooldown'],
+   712→        [
+   713→            ['1', 'Evidence Publication', 'M72 milestone + Validation Index ≥ 90.0', 'Technical communities, researchers', '0 hours'],
+   714→            ['2', 'Personalized Outreach', 'Stage 1 complete + 24h elapsed + no SEV-1', 'Investors, municipalities', '24 hours'],
+   715→            ['3', 'General Social & Press', 'Stage 2 complete + 48h elapsed', 'Journalists, general public', '48 hours'],
+   716→        ],
+   717→        col_widths=[pw*0.06, pw*0.18, pw*0.30, pw*0.30, pw*0.16]
+   718→    ))
+   719→    elements.append(PageBreak())
+   720→
+   721→    # Section 10
+   722→    elements.append(section('10. Getting Started', styles))
+   723→    elements.append(subsection('Accessing the Dashboard', styles))
+   724→    elements.append(body(
+   725→        'The VVU MASTER Dashboard is accessible via the web interface. All sections load dynamically '
+   726→        'for optimal performance. The dashboard supports both SIM (simulation) and LIVE modes for '
+   727→        'validation event monitoring.',
+   728→        styles
+   729→    ))
+   730→    elements.append(spacer())
+   731→
+   732→    elements.append(subsection('First Steps', styles))
+   733→    elements.extend(bullet_list([
+   734→        '<b>1. Open the Dashboard:</b> Navigate to the VVU MASTER Dashboard URL.',
+   735→        '<b>2. Review Overview:</b> Check system health, current phase, and validation index.',
+   736→        '<b>3. Explore Sections:</b> Use tab navigation or Ctrl+K to jump between sections.',
+   737→        '<b>4. Monitor Trust Runtime:</b> Watch the AIR safety state and risk score trends.',
+   738→        '<b>5. Track Validation:</b> During a VVU-VAL event, monitor phase progress and milestones.',
+   739→    ], styles))
+   740→    elements.append(spacer())
+   741→
+   742→    elements.append(subsection('Support & Outreach', styles))
+   743→    elements.append(body(
+   744→        'For partnership inquiries, pilot deployment discussions, or technical questions, '
+   745→        'contact the VVU EARTH TECH outreach team. All outreach follows the staged release '
+   746→        'enforcement protocol — no unsolicited mass communication.',
+   747→        styles
+   748→    ))
+   749→
+   750→    doc.build(elements)
+   751→    print('✅ User Manual PDF generated')
+   752→
+   753→
+   754→# ════════════════════════════════════════════════════════════════════════
+   755→# DOCUMENT 2: DEVELOPER SPECIFICATION
+   756→# ════════════════════════════════════════════════════════════════════════
+   757→
+   758→def generate_dev_spec():
+   759→    styles = create_styles(VVU_CYAN)
+   760→    doc = DarkDocTemplate(
+   761→        os.path.join(OUTPUT_DIR, 'VVU-Dev-Spec-Technical-Outreach-Edition.pdf'),
+   762→        pagesize=A4,
+   763→        title='VVU EARTH TECH — Developer Specification',
+   764→        author='Venture Vision Ubuntu',
+   765→    )
+   766→
+   767→    elements = []
+   768→
+   769→    # Cover
+   770→    elements.extend(make_cover(styles,
+   771→        'VVU EARTH TECH',
+   772→        'Developer Specification — Technical Outreach Edition',
+   773→        'FOR OUTREACH DISTRIBUTION, SCOPING & SALES FRAMEWORK STRATEGIES',
+   774→        'Developers, Integrators, Technical Partners'
+   775→    ))
+   776→
+   777→    # TOC
+   778→    elements.append(section('Table of Contents', styles))
+   779→    toc_items = [
+   780→        '1. Architecture Overview',
+   781→        '2. Epistemic Primitives & Type System',
+   782→        '3. Dependency Injection Framework',
+   783→        '4. Canonicalization & Hashing (RFC 8785 JCS + SHA-256)',
+   784→        '5. Merkle Mountain Range (MMR)',
+   785→        '6. Trust Runtime API',
+   786→        '7. Gate Pipeline Architecture',
+   787→        '8. Risk Score Engine',
+   788→        '9. Circuit Breaker State Machines',
+   789→        '10. 72-Hour Resilience Matrix',
+   790→        '11. Feature Gate & Hard Failure Codes',
+   791→        '12. VETPS Proof Standard',
+   792→        '13. 5-Pass Evidence Compiler',
+   793→        '14. Integration Guide',
+   794→    ]
+   795→    elements.extend(bullet_list(toc_items, styles))
+   796→    elements.append(PageBreak())
+   797→
+   798→    # Section 1
+   799→    elements.append(section('1. Architecture Overview', styles))
+   800→    elements.append(body(SHARED_INTRO, styles))
+   801→    elements.append(spacer())
+   802→
+   803→    elements.append(subsection('Two-Layer Architecture', styles))
+   804→    elements.extend(bullet_list([
+   805→        '<b>Layer 1 — Epistemic Runtime (Horizontal Infrastructure):</b> Deterministic evidence runtime, MMR, canonicalization, replay engine, acceptance pipeline. Open-source under Apache-2.0. NO product-specific logic (Golden Rule enforced by AST scanner).',
+   806→        '<b>Layer 2 — Product Applications (Vertical):</b> Municipal water monitoring (HBK), infrastructure management, decision dashboards. Commercial tier, builds on Layer 1 via adapters.',
+   807→    ], styles))
+   808→    elements.append(spacer())
+   809→
+   810→    elements.append(subsection('Directory Structure', styles))
+   811→    pw = A4[0] - 40*mm
+   812→    elements.append(make_table(
+   813→        ['Path', 'Layer', 'Access', 'Content'],
+   814→        [
+   815→            ['open-source/air-kernel/', 'Layer 1', 'Apache-2.0', 'Core runtime, MMR, replay, acceptance pipeline'],
+   816→            ['open-source/epistemic-runtime/', 'Layer 1', 'Apache-2.0', 'Fact/Proof/Policy/Projection primitives'],
+   817→            ['open-source/safe-krypte-basic/', 'Layer 1', 'Apache-2.0', 'Basic cryptographic operations'],
+   818→            ['commercial/feature-gate.ts', 'Layer 2', 'Commercial', 'requireFeature() with HF-006 enforcement'],
+   819→            ['shared/license/', 'Cross-layer', 'Shared', 'License schema, validator'],
+   820→            ['shared/vetps/', 'Cross-layer', 'Shared', 'VETPS proof standard schemas'],
+   821→            ['shared/verifiers/', 'Cross-layer', 'Shared', 'VerifierRegistry interfaces'],
+   822→        ],
+   823→        col_widths=[pw*0.25, pw*0.10, pw*0.12, pw*0.53]
+   824→    ))
+   825→    elements.append(PageBreak())
+   826→
+   827→    # Section 2
+   828→    elements.append(section('2. Epistemic Primitives & Type System', styles))
+   829→    pw = A4[0] - 40*mm
+   830→    elements.append(make_table(
+   831→        ['Primitive', 'Type Signature', 'Required Fields', 'Invariant'],
+   832→        [
+   833→            ['Fact', 'interface Fact { id, timestamp, body, sourceHash, mmrIndex }', 'id, body, sourceHash', 'Append-only; SHA-256(body) immutable'],
+   834→            ['Proof', 'interface Proof { id, factId, signerId, algorithm, signature }', 'factId, signerId, signature', 'Ed25519/RSA-PSS-SHA256/ECDSA P-384'],
+   835→            ['Policy', 'interface Policy { id, version, rules, effectiveFrom, effectiveTo }', 'version, rules', 'Bi-temporal; replay-deterministic'],
+   836→            ['Projection', 'interface Projection { id, sourceFacts, computedAt, value }', 'sourceFacts, value', 'Recomputable from Fact Log alone'],
+   837→        ],
+   838→        col_widths=[pw*0.12, pw*0.35, pw*0.20, pw*0.33]
+   839→    ))
+   840→    elements.append(PageBreak())
+   841→
+   842→    # Section 3
+   843→    elements.append(section('3. Dependency Injection Framework', styles))
+   844→    elements.append(body(
+   845→        'The AIR Kernel uses constructor-based dependency injection for all external dependencies. '
+   846→        'This enables testing with mock implementations, runtime swapping of storage/signing backends, '
+   847→        'and deterministic replay with injected clocks and UUID generators.',
+   848→        styles
+   849→    ))
+   850→    elements.append(spacer())
+   851→
+   852→    pw = A4[0] - 40*mm
+   853→    elements.append(make_table(
+   854→        ['Injectable', 'Interface', 'Default Implementation', 'Testing Use'],
+   855→        [
+   856→            ['Clock', 'now(): number', 'Date.now()', 'Injected fixed timestamp for replay'],
+   857→            ['UUID', 'generate(): string', 'crypto.randomUUID()', 'Deterministic UUIDs for test replay'],
+   858→            ['Entropy', 'bytes(n): Uint8Array', 'crypto.getRandomValues()', 'Fixed entropy for deterministic tests'],
+   859→            ['Signer', 'sign(data, algorithm): Signature', 'Ed25519 (default)', 'Mock signer for non-production'],
+   860→            ['EvidenceStore', 'append(fact): MMRIndex', 'S3 Object Lock COMPLIANCE', 'In-memory store for tests'],
+   861→            ['ProjectionRegistry', 'register/projection()', 'HashMap-based', 'Test projections with fixed outputs'],
+   862→            ['PolicyEngine', 'evaluate(facts, policy): Decision', 'Rule-based evaluator', 'Deterministic policy for replay'],
+   863→            ['MMR', 'append/verify/proof()', 'In-memory MMR', 'Pre-seeded MMR for replay'],
+   864→            ['Canonicalizer', 'canonicalize(obj): string', 'RFC 8785 JCS', 'Fixed canonicalization for hashing'],
+   865→            ['ReplayEngine', 'replay(fromTimestamp): ReplayResult', 'Full replay from Fact Log', 'Deterministic replay with injected deps'],
+   866→            ['AcceptancePipeline', 'accept(raw): AcceptedFact', '5-Pass compiler', 'Mock pipeline for unit tests'],
+   867→            ['VerifierRegistry', 'register/verify()', 'Ed25519 + RSA + ECDSA', 'Add custom verifiers per deployment'],
+   868→        ],
+   869→        col_widths=[pw*0.15, pw*0.25, pw*0.25, pw*0.35]
+   870→    ))
+   871→    elements.append(PageBreak())
+   872→
+   873→    # Section 4
+   874→    elements.append(section('4. Canonicalization & Hashing', styles))
+   875→    elements.append(body(
+   876→        '<b>RFC 8785 JCS (JSON Canonicalization Scheme)</b> is the sole canonicalization method. '
+   877→        'All objects are serialized to a deterministic JSON string before hashing. This guarantees '
+   878→        'that the same logical object always produces the same hash, regardless of key order, '
+   879→        'whitespace, or encoding differences.',
+   880→        styles
+   881→    ))
+   882→    elements.append(spacer())
+   883→
+   884→    elements.append(subsection('Hashing: SHA-256 Only', styles))
+   885→    elements.extend(bullet_list([
+   886→        '<b>SHA-256</b> is the sole hashing algorithm across the entire system.',
+   887→        'No SHA-1, no MD5, no Blake2, no custom hash functions.',
+   888→        'All Fact bodies, MMR nodes, evidence bundles, and state bundles use SHA-256.',
+   889→        'Canonicalization → SHA-256 is applied as: hash(SHA-256(JCS(object)))',
+   890→    ], styles))
+   891→    elements.append(spacer())
+   892→
+   893→    elements.append(subsection('Signing Algorithms', styles))
+   894→    pw = A4[0] - 40*mm
+   895→    elements.append(make_table(
+   896→        ['Algorithm', 'Use Case', 'Key Type', 'Implementation'],
+   897→        [
+   898→            ['Ed25519', 'Default signing for Facts and Proofs', 'Elliptic curve (Curve25519)', 'Native crypto + AWS KMS'],
+   899→            ['RSA-PSS-SHA256', 'High-assurance institutional signing', 'RSA 2048/4096', 'AWS KMS + IAM Federation'],
+   900→            ['ECDSA P-384', 'Governance anchor signing (GovernanceAnchor.sol)', 'Elliptic curve (P-384)', 'AWS KMS + OIDC'],
+   901→        ],
+   902→        col_widths=[pw*0.20, pw*0.30, pw*0.25, pw*0.25]
+   903→    ))
+   904→    elements.append(PageBreak())
+   905→
+   906→    # Section 5
+   907→    elements.append(section('5. Merkle Mountain Range (MMR)', styles))
+   908→    elements.append(body(
+   909→        'The Epistemic Runtime uses a <b>real Merkle Mountain Range</b> (not a binary Merkle tree). '
+   910→        'MMR provides efficient append-only proofs with logarithmic verification, supporting '
+   911→        'both inclusion proofs and consistency proofs without requiring the full tree.',
+   912→        styles
+   913→    ))
+   914→    elements.append(spacer())
+   915→
+   916→    elements.extend(bullet_list([
+   917→        '<b>Append-Only:</b> New Facts are appended to the MMR without modifying existing peaks.',
+   918→        '<b>Peak Hashing:</b> MMR peaks are hashed together to produce the current root hash.',
+   919→        '<b>Inclusion Proofs:</b> Any Fact can be proven to be in the MMR with O(log n) path.',
+   920→        '<b>Consistency Proofs:</b> Prove that the current MMR root is a valid extension of any previous root.',
+   921→        '<b>Bagging:</b> Peak bagging algorithm compresses multiple peaks into a single root for compact verification.',
+   922→    ], styles))
+   923→    elements.append(PageBreak())
+   924→
+   925→    # Section 6
+   926→    elements.append(section('6. Trust Runtime API', styles))
+   927→    elements.append(body(
+   928→        'The Trust Runtime provides the 5-state AIR safety pipeline with 7 gates, a composite '
+   929→        'risk score engine, and a hysteresis circuit breaker. It operates in two modes: '
+   930→        '<b>observe</b> (Phase 1-3: compute but do not enforce) and <b>enforce</b> (Phase 4: '
+   931→        'compute and halt execution on TRIPPED/ESCALATED).',
+   932→        styles
+   933→    ))
+   934→    elements.append(spacer())
+   935→
+   936→    elements.append(subsection('API Endpoint', styles))
+   937→    elements.append(Paragraph('/api/trust-runtime — GET returns current AIR state, risk score, gate metrics', styles['CodeBlock']))
+   938→    elements.append(spacer())
+   939→
+   940→    elements.append(subsection('GateMetrics Interface', styles))
+   941→    elements.append(Paragraph(
+   942→        'interface GateMetrics { exposure: [0,1]; failures: [0,1]; entropy: [0,1]; '
+   943→        'velocity: [0,1]; acceleration: [0,1]; intentAge: [0,1]; drift: [0,1]; '
+   944→        'convergencePenalty: [0,1]; }',
+   945→        styles['CodeBlock']
+   946→    ))
+   947→    elements.append(spacer())
+   948→
+   949→    elements.append(note(
+   950→        'ALL GateMetrics values MUST be normalized to [0,1] before reaching the risk score engine. '
+   951→        'Unnormalized values trigger AIRUnnormalizedMetricError — this is a bounded-state invariant, '
+   952→        'not a cosmetic issue.',
+   953→        styles
+   954→    ))
+   955→    elements.append(PageBreak())
+   956→
+   957→    # Section 7
+   958→    elements.append(section('7. Gate Pipeline Architecture', styles))
+   959→    elements.append(body(
+   960→        'The gate pipeline orchestrates: Temporal Validity → Convergence → Accumulation → '
+   961→        'Velocity → Acceleration → State Drift → Risk Score → Circuit Breaker. '
+   962→        'It is a pure function — the caller owns persisting state.',
+   963→        styles
+   964→    ))
+   965→    elements.append(spacer())
+   966→
+   967→    pw = A4[0] - 40*mm
+   968→    elements.append(make_table(
+   969→        ['Gate', 'Function', 'Input', 'Output', 'Enforcement'],
+   970→        [
+   971→            ['Gate 0', 'Temporal Validity', 'Intent + now', 'normalizedAge or expiry', 'Phase 4: reject expired intents'],
+   972→            ['Gate A', 'Convergence', 'Contraction ratio', 'convergencePenalty [0,1]', 'Penalty grows if diverging'],
+   973→            ['Gate B', 'Accumulation', 'Exposure samples', 'normalized exposure [0,1]', 'Ceiling breach → trip'],
+   974→            ['Gate C', 'Velocity', 'Exposure history', 'localVelocity + trip flag', 'Phase 4: halt if exceeded'],
+   975→            ['Gate D', 'Acceleration', 'Velocity windows', 'deviation + trip flag', 'Phase 4: halt if exceeded'],
+   976→            ['Gate E', 'State Drift', 'currentState vs snapshotState', 'distance + normalized [0,1]', 'Phase 4: halt if exceeded'],
+   977→            ['Composite', 'Risk Score', 'All GateMetrics', 'score [0, ~1.3]', 'EWMA-smoothed, delta-tracked'],
+   978→            ['Final', 'Circuit Breaker', 'score + deltaScore', 'AIRState transition', 'Hysteresis with escalation'],
+   979→        ],
+   980→        col_widths=[pw*0.10, pw*0.16, pw*0.20, pw*0.25, pw*0.29]
+   981→    ))
+   982→    elements.append(PageBreak())
+   983→
+   984→    # Section 8
+   985→    elements.append(section('8. Risk Score Engine', styles))
+   986→    elements.append(body(
+   987→        'The composite risk score is a weighted sum of all gate outputs. It is an <b>early-warning '
+   988→        'indicator</b>, NOT a proven-stable control quantity (formerly mislabeled "Lyapunov" — '
+   989→        'corrected in implementation).',
+   990→        styles
+   991→    ))
+   992→    elements.append(spacer())
+   993→
+   994→    pw = A4[0] - 40*mm
+   995→    elements.append(make_table(
+   996→        ['Weight', 'Value', 'Metric Source'],
+   997→        [
+   998→            ['exposure', '0.25', 'Gate B — Accumulation'],
+   999→            ['failures', '0.20', 'Decaying counter — adapter failures'],
+  1000→            ['entropy', '0.10', 'Epistemic Runtime — belief-state contradiction'],
+  1001→            ['velocity', '0.10', 'Gate C — first derivative'],
+  1002→            ['acceleration', '0.10', 'Gate D — second derivative'],
+  1003→            ['intentAge²', '0.10', 'Gate 0 — intent age squared (normalized)'],
+  1004→            ['drift', '0.15', 'Gate E — state drift distance'],
+  1005→            ['drift × intentAge', '0.10', 'Cross term — drift × age interaction'],
+  1006→            ['convergencePenalty', '0.20', 'Gate A — divergence penalty'],
+  1007→        ],
+  1008→        col_widths=[pw*0.20, pw*0.10, pw*0.70]
+  1009→    ))
+  1010→    elements.append(spacer())
+  1011→    elements.append(note('Weights are UNDERIVED defaults (P0). Phase 3 observation required before Phase 4 enforcement tuning.', styles))
+  1012→    elements.append(PageBreak())
+  1013→
+  1014→    # Section 9
+  1015→    elements.append(section('9. Circuit Breaker State Machines', styles))
+  1016→    elements.append(subsection('AIR Safety Pipeline (5-State)', styles))
+  1017→    elements.append(body(
+  1018→        'NORMAL → WARNING → TRIPPED → RECOVERY → NORMAL. '
+  1019→        'TRIPPED → ESCALATED after 3 trips within 1-hour window. '
+  1020→        'RECOVERY has minimum 5-minute hold to prevent flapping.',
+  1021→        styles
+  1022→    ))
+  1023→    elements.append(spacer())
+  1024→
+  1025→    elements.append(subsection('Municipal Infrastructure (3-State)', styles))
+  1026→    elements.append(body(
+  1027→        'NORMAL → DEGRADED → FAIL-CLOSED. '
+  1028→        'DEGRADED allows reduced throughput. FAIL-CLOSED rejects all new submissions. '
+  1029→        'This breaker is architecturally independent from the AIR safety pipeline.',
+  1030→        styles
+  1031→    ))
+  1032→    elements.append(PageBreak())
+  1033→
+  1034→    # Section 10
+  1035→    elements.append(section('10. 72-Hour Resilience Matrix', styles))
+  1036→    pw = A4[0] - 40*mm
+  1037→    elements.append(make_table(
+  1038→        ['Pillar', 'Component', 'Mechanism', 'Guarantee'],
+  1039→        SHARED_RESILIENCE_PILLARS,
+  1040→        col_widths=[pw*0.18, pw*0.20, pw*0.35, pw*0.27]
+  1041→    ))
+  1042→    elements.append(PageBreak())
+  1043→
+  1044→    # Section 11
+  1045→    elements.append(section('11. Feature Gate & Hard Failure Codes', styles))
+  1046→    elements.append(body(
+  1047→        'The feature gate system enforces tier boundaries with hard failure codes. '
+  1048→        'Any attempt to access a feature above the current tier throws HF-006.',
+  1049→        styles
+  1050→    ))
+  1051→    elements.append(spacer())
+  1052→
+  1053→    pw = A4[0] - 40*mm
+  1054→    elements.append(make_table(
+  1055→        ['Code', 'Description', 'Penalty', 'Gate Location'],
+  1056→        SHARED_HARD_FAILURE_CODES,
+  1057→        col_widths=[pw*0.10, pw*0.35, pw*0.15, pw*0.40]
+  1058→    ))
+  1059→    elements.append(spacer())
+  1060→
+  1061→    elements.append(subsection('Feature Gate Implementation', styles))
+  1062→    elements.append(Paragraph(
+  1063→        'requireFeature(featureName): decorator that checks CACHED_VALIDATION.isValid '
+  1064→        'and CACHED_VALIDATION.features.includes(featureName). Throws HF-006 on violation.',
+  1065→        styles['CodeBlock']
+  1066→    ))
+  1067→    elements.append(PageBreak())
+  1068→
+  1069→    # Section 12
+  1070→    elements.append(section('12. VETPS Proof Standard', styles))
+  1071→    elements.append(body(
+  1072→        '<b>VETPS</b> (VVU Earth Tech Proof Standard) bridges HBK ↔ AIR. It defines the schema '
+  1073→        'for proof packages that connect municipal infrastructure evidence to the Epistemic Runtime. '
+  1074→        'VETPS proofs are structured, signed, and verifiable by any third party.',
+  1075→        styles
+  1076→    ))
+  1077→    elements.append(spacer())
+  1078→
+  1079→    elements.extend(bullet_list([
+  1080→        '<b>Schema:</b> VETPS proof packages contain: evidence hash, signer identity, algorithm, signature, timestamp, and MMR inclusion proof.',
+  1081→        '<b>Verification:</b> Any party can verify a VETPS proof by: (1) canonicalizing the evidence, (2) computing SHA-256, (3) verifying the signature, (4) checking the MMR inclusion proof.',
+  1082→        '<b>HBK Adapter:</b> The hbk-adapter.ts implements SHA-256 hash verification for municipal telemetry, converting Hydro-Gateway sensor data into VETPS-compliant evidence.',
+  1083→    ], styles))
+  1084→    elements.append(PageBreak())
+  1085→
+  1086→    # Section 13
+  1087→    elements.append(section('13. 5-Pass Evidence Compiler', styles))
+  1088→    pw = A4[0] - 40*mm
+  1089→    elements.append(make_table(
+  1090→        ['Pass', 'Name', 'Operation', 'Output', 'Hard Failure Gate'],
+  1091→        [
+  1092→            ['1', 'Ingest', 'Receive raw telemetry/sensor data', 'RawObservation', '—'],
+  1093→            ['2', 'Canonicalize', 'RFC 8785 JCS + SHA-256', 'CanonicalFact', 'HF-001 (bad signature → quarantine)'],
+  1094→            ['3', 'Redact', 'Policy-based field redaction', 'RedactedFact', '—'],
+  1095→            ['4', 'Infer', 'Policy evaluation + projection computation', 'InferredFact + Decision', 'HF-005 (contradiction → TRIP)'],
+  1096→            ['5', 'CodeGen', 'Generate Proof + MMR append', 'AcceptedFact + Proof + MMRIndex', 'HF-002 (bad ZK → reject)'],
+  1097→        ],
+  1098→        col_widths=[pw*0.06, pw*0.14, pw*0.30, pw*0.25, pw*0.25]
+  1099→    ))
+  1100→    elements.append(PageBreak())
+  1101→
+  1102→    # Section 14
+  1103→    elements.append(section('14. Integration Guide', styles))
+  1104→    elements.append(subsection('Prerequisites', styles))
+  1105→    elements.extend(bullet_list([
+  1106→        'Node.js 18+ or Bun runtime',
+  1107→        'Next.js 16 with App Router',
+  1108→        'TypeScript 5 strict mode',
+  1109→        'Prisma ORM (SQLite client)',
+  1110→        'Tailwind CSS 4 + shadcn/ui',
+  1111→    ], styles))
+  1112→    elements.append(spacer())
+  1113→
+  1114→    elements.append(subsection('API Endpoints', styles))
+  1115→    pw = A4[0] - 40*mm
+  1116→    elements.append(make_table(
+  1117→        ['Endpoint', 'Method', 'Returns', 'Layer'],
+  1118→        [
+  1119→            ['/api/trust-runtime', 'GET', 'AIR state, risk score, gate metrics', 'Layer 1'],
+  1120→            ['/api/resilience', 'GET', 'Resilience manager status', 'Layer 1'],
+  1121→            ['/api/resilience/circuit-breaker', 'GET', '3-state breaker status', 'Layer 1'],
+  1122→            ['/api/kernel', 'GET', 'Kernel runtime status', 'Layer 1'],
+  1123→            ['/api/kernel/verify', 'POST', 'Verification result', 'Layer 1'],
+  1124→            ['/api/vvu-strategy', 'GET', '7-Track strategy data', 'Layer 2'],
+  1125→            ['/api/validation-suite', 'GET', 'VAL-001 phases + milestones', 'Layer 2'],
+  1126→            ['/api/metrics', 'GET', 'Performance metrics', 'Layer 1'],
+  1127→            ['/api/policies', 'GET/POST', 'Policy CRUD', 'Layer 1'],
+  1128→        ],
+  1129→        col_widths=[pw*0.30, pw*0.08, pw*0.40, pw*0.12]
+  1130→    ))
+  1131→    elements.append(spacer())
+  1132→
+  1133→    elements.append(subsection('Strategy & Outreach', styles))
+  1134→    elements.append(body(SHARED_7_TRACK_STRATEGY, styles))
+  1135→    elements.append(spacer())
+  1136→    elements.append(body(SHARED_EXECUTION_PRINCIPLE, styles))
+  1137→
+  1138→    doc.build(elements)
+  1139→    print('✅ Dev Spec PDF generated')
+  1140→
+  1141→
+  1142→# ════════════════════════════════════════════════════════════════════════
+  1143→# DOCUMENT 3: ADMINISTRATOR SPECIFICATION
+  1144→# ════════════════════════════════════════════════════════════════════════
+  1145→
+  1146→def generate_admin_spec():
+  1147→    styles = create_styles(VVU_ORANGE)
+  1148→    doc = DarkDocTemplate(
+  1149→        os.path.join(OUTPUT_DIR, 'VVU-Admin-Spec-Operations-Outreach-Edition.pdf'),
+  1150→        pagesize=A4,
+  1151→        title='VVU EARTH TECH — Administrator Specification',
+  1152→        author='Venture Vision Ubuntu',
+  1153→    )
+  1154→
+  1155→    elements = []
+  1156→
+  1157→    # Cover
+  1158→    elements.extend(make_cover(styles,
+  1159→        'VVU EARTH TECH',
+  1160→        'Administrator Specification — Operations Outreach Edition',
+  1161→        'FOR OUTREACH DISTRIBUTION, SCOPING & SALES FRAMEWORK STRATEGIES',
+  1162→        'System Administrators, Operations Teams, Municipal IT'
+  1163→    ))
+  1164→
+  1165→    # TOC
+  1166→    elements.append(section('Table of Contents', styles))
+  1167→    toc_items = [
+  1168→        '1. System Overview & Deployment Architecture',
+  1169→        '2. Kubernetes Infrastructure',
+  1170→        '3. Monitoring Stack',
+  1171→        '4. Circuit Breaker Operations',
+  1172→        '5. Validation Suite Operations (VVU-VAL-001)',
+  1173→        '6. Operator Runbook',
+  1174→        '7. Phase-by-Phase Monitoring Guide',
+  1175→        '8. Critical Failure Response',
+  1176→        '9. Outreach Staged Release Enforcement',
+  1177→        '10. Cape Town Pilot Deployment',
+  1178→        '11. Resource Acquisition & Partnership Strategy',
+  1179→    ]
+  1180→    elements.extend(bullet_list(toc_items, styles))
+  1181→    elements.append(PageBreak())
+  1182→
+  1183→    # Section 1
+  1184→    elements.append(section('1. System Overview & Deployment Architecture', styles))
+  1185→    elements.append(body(SHARED_INTRO, styles))
+  1186→    elements.append(spacer())
+  1187→
+  1188→    elements.append(subsection('Deployment Architecture', styles))
+  1189→    pw = A4[0] - 40*mm
+  1190→    elements.append(make_table(
+  1191→        ['Component', 'Deployment', 'Resources', 'Scaling'],
+  1192→        [
+  1193→            ['Epistemic Runtime', 'Kubernetes pod (runtime.yaml)', '2 CPU, 4GB RAM, 20GB disk', 'HPA: 2-10 replicas'],
+  1194→            ['NATS Streaming', 'Kubernetes pod (streaming.yaml)', '1 CPU, 2GB RAM, 50GB disk', 'Single cluster'],
+  1195→            ['Worker Pipeline', 'Kubernetes pod', '1 CPU, 2GB RAM', 'HPA: 2-8 replicas'],
+  1196→            ['API Gateway', 'Kubernetes pod', '0.5 CPU, 1GB RAM', 'HPA: 2-4 replicas'],
+  1197→            ['Evidence Collector', 'Kubernetes pod (evidence.yaml)', '0.5 CPU, 1GB RAM', 'Fixed 2 replicas'],
+  1198→            ['Monitoring Stack', 'Prometheus + Grafana', '2 CPU, 4GB RAM', 'Fixed deployment'],
+  1199→            ['Outreach Service', 'Kubernetes pod (outreach.yaml)', '0.25 CPU, 0.5GB RAM', 'Fixed 1 replica'],
+  1200→        ],
+  1201→        col_widths=[pw*0.22, pw*0.25, pw*0.28, pw*0.25]
+  1202→    ))
+  1203→    elements.append(PageBreak())
+  1204→
+  1205→    # Section 2
+  1206→    elements.append(section('2. Kubernetes Infrastructure', styles))
+  1207→    elements.append(body(
+  1208→        'VVU-VAL-001 deploys on provider-agnostic k3s with 6 Kubernetes manifests in the '
+  1209→        'validation/VVU-VAL-001/kubernetes/ directory. All manifests use the vvu-validation namespace.',
+  1210→        styles
+  1211→    ))
+  1212→    elements.append(spacer())
+  1213→
+  1214→    pw = A4[0] - 40*mm
+  1215→    elements.append(make_table(
+  1216→        ['Manifest', 'Purpose', 'Key Configuration'],
+  1217→        [
+  1218→            ['namespace.yaml', 'vvu-validation namespace', 'Labels: app=vvu, tier=validation'],
+  1219→            ['runtime.yaml', 'Epistemic Runtime deployment', 'Resource limits: 2CPU/4GB, Liveness probe, Readiness gate'],
+  1220→            ['monitoring.yaml', 'Prometheus + Grafana stack', 'ServiceMonitor, alert rules, dashboard CM'],
+  1221→            ['evidence.yaml', 'Evidence collection pods', 'SHA-256 verification, hourly bundle archival'],
+  1222→            ['streaming.yaml', 'NATS durable queue', 'Cluster: vvu-nats, durable subscriptions, replay mode'],
+  1223→            ['outreach.yaml', 'Staged outreach enforcement', '3-stage gate engine, recipient registry'],
+  1224→        ],
+  1225→        col_widths=[pw*0.18, pw*0.30, pw*0.52]
+  1226→    ))
+  1227→    elements.append(PageBreak())
+  1228→
+  1229→    # Section 3
+  1230→    elements.append(section('3. Monitoring Stack', styles))
+  1231→    elements.append(body(
+  1232→        'The monitoring stack consists of Prometheus (metrics collection), Grafana (visualization), '
+  1233→        'and the VVU Mission Control Dashboard (public scoreboard). Key metrics are defined in '
+  1234→        'scoreboard/metrics-schema.json.',
+  1235→        styles
+  1236→    ))
+  1237→    elements.append(spacer())
+  1238→
+  1239→    pw = A4[0] - 40*mm
+  1240→    elements.append(make_table(
+  1241→        ['Metric', 'Type', 'Source', 'Alert Threshold'],
+  1242→        [
+  1243→            ['circuit_breaker', 'enum (NORMAL/DEGRADED/RECOVERING/FAIL-CLOSED)', 'Runtime API', 'FAIL-CLOSED → Critical alert'],
+  1244→            ['facts_accepted', 'counter', 'Acceptance Pipeline', 'Drop > 10% → Warning'],
+  1245→            ['facts_rejected', 'counter', 'Evidence Compiler', 'Rejection rate > 5% → Warning'],
+  1246→            ['queue_depth', 'gauge', 'NATS streaming', '> 10000 → Warning, > 50000 → Critical'],
+  1247→            ['latency_p99_ms', 'gauge', 'API gateway', '> 500ms → Warning, > 2000ms → Critical'],
+  1248→            ['cpu_pct / ram_pct', 'gauge', 'Kubernetes', '> 80% → Warning, > 95% → Critical'],
+  1249→            ['mmr_root', 'string (SHA-256)', 'MMR append', 'Mismatch → Critical (replay divergent)'],
+  1250→            ['replay_checksum', 'string (SHA-256)', 'Replay engine', 'Must match fact_log_checksum'],
+  1251→            ['spoofed_payloads_quarantined', 'counter', 'Security gate', 'Must equal spoofed_payloads_injected'],
+  1252→        ],
+  1253→        col_widths=[pw*0.22, pw*0.22, pw*0.20, pw*0.36]
+  1254→    ))
+  1255→    elements.append(PageBreak())
+  1256→
+  1257→    # Section 4
+  1258→    elements.append(section('4. Circuit Breaker Operations', styles))
+  1259→    pw = A4[0] - 40*mm
+  1260→    elements.append(make_table(
+  1261→        ['Breaker', 'States', 'Transition Rules', 'Admin Action'],
+  1262→        [
+  1263→            ['AIR Safety (5-state)', 'NORMAL/WARNING/TRIPPED/RECOVERY/ESCALATED', 'Score-driven + hysteresis', 'Observe only; DO NOT manually transition'],
+  1264→            ['Municipal (3-state)', 'NORMAL/DEGRADED/FAIL-CLOSED', 'Infrastructure-driven', 'Manual FAIL-CLOSED only for documented P5/P7 recovery'],
+  1265→        ],
+  1266→        col_widths=[pw*0.18, pw*0.30, pw*0.27, pw*0.25]
+  1267→    ))
+  1268→    elements.append(spacer())
+  1269→    elements.append(note(
+  1270→        'ADMIN RULE: No manual Circuit Breaker transitions except documented P5/P7 recovery sequences. '
+  1271→        'Manual transitions on other phases = Critical failure = overall FAIL.',
+  1272→        styles
+  1273→    ))
+  1274→    elements.append(PageBreak())
+  1275→
+  1276→    # Section 5
+  1277→    elements.append(section('5. Validation Suite Operations', styles))
+  1278→    elements.append(body(
+  1279→        'VVU-VAL-001 is a 72-hour continuous validation with 6 failure-injection phases. '
+  1280→        'The protocol is pre-registered (frozen before T=0) with independent observers.',
+  1281→        styles
+  1282→    ))
+  1283→    elements.append(spacer())
+  1284→
+  1285→    pw = A4[0] - 40*mm
+  1286→    elements.append(make_table(
+  1287→        ['Phase', 'Name', 'Hours', 'Gate', 'Objective', 'Severity'],
+  1288→        SHARED_VALIDATION_PHASES_TABLE,
+  1289→        col_widths=[pw*0.06, pw*0.16, pw*0.08, pw*0.16, pw*0.40, pw*0.10]
+  1290→    ))
+  1291→    elements.append(spacer())
+  1292→
+  1293→    elements.append(subsection('Milestone Tracking', styles))
+  1294→    elements.append(make_table(
+  1295→        ['Milestone', 'Name', 'Trigger', 'Actions'],
+  1296→        SHARED_MILESTONES_TABLE,
+  1297→        col_widths=[pw*0.08, pw*0.35, pw*0.25, pw*0.32]
+  1298→    ))
+  1299→    elements.append(PageBreak())
+  1300→
+  1301→    # Section 6
+  1302→    elements.append(section('6. Operator Runbook', styles))
+  1303→    elements.append(subsection('Golden Rules (Non-Negotiable)', styles))
+  1304→    pw = A4[0] - 40*mm
+  1305→    elements.append(make_table(
+  1306→        ['Rule', 'Rationale'],
+  1307→        [
+  1308→            ['No code changes', 'Frozen commit hash must remain the build under test for 72 hours'],
+  1309→            ['No configuration edits', 'Config changes could alter runtime behavior mid-run'],
+  1310→            ['No manual Fact Log edits', 'Fact Log is append-only and immutable — edit = Critical failure'],
+  1311→            ['No manual Circuit Breaker transitions (except documented)', 'CB must transition per state machine'],
+  1312→            ['Hardware replacement only', 'Physical node failures: replace, log, sign entry'],
+  1313→            ['All interventions logged', 'Every SSH, kubectl, hardware touch → append-only operator log'],
+  1314→            ['All interventions signed', 'Every log entry signed with Ed25519 operator key'],
+  1315→            ['No touching evidence bundles', 'Evidence bundles immutable — no write access'],
+  1316→        ],
+  1317→        col_widths=[pw*0.35, pw*0.65]
+  1318→    ))
+  1319→    elements.append(PageBreak())
+  1320→
+  1321→    # Section 7
+  1322→    elements.append(section('7. Phase-by-Phase Monitoring Guide', styles))
+  1323→    pw = A4[0] - 40*mm
+  1324→    elements.append(make_table(
+  1325→        ['Phase', 'Hours', 'What to Watch', 'When to Act'],
+  1326→        [
+  1327→            ['P1 Nominal', '0–12', 'CB stays NORMAL, MMR progresses', 'Only if CB goes FAIL-CLOSED'],
+  1328→            ['P2 Flood', '12–24', 'Queue depth, CB may go DEGRADED', 'Only if CB goes FAIL-CLOSED'],
+  1329→            ['P3 Network Chaos', '24–36', 'Replay status, latency', 'Only if replay goes DIVERGENT'],
+  1330→            ['P4 Storage', '36–48', 'Disk usage, CB DEGRADED expected', 'Only if disk fills to 100%'],
+  1331→            ['P5 Node Failure', '48–60', 'Pods restarting, CB recovery', 'Only if pod doesn\'t restart in 5 min'],
+  1332→            ['P6 Security', '60–66', 'Rejected payloads, HF gates', 'Only if spoofed payload is ACCEPTED'],
+  1333→            ['P7 Partition', '66–72', 'NATS queue, then HLC merge', 'Only if merge produces conflicts'],
+  1334→        ],
+  1335→        col_widths=[pw*0.12, pw*0.08, pw*0.40, pw*0.40]
+  1336→    ))
+  1337→    elements.append(PageBreak())
+  1338→
+  1339→    # Section 8
+  1340→    elements.append(section('8. Critical Failure Response', styles))
+  1341→    elements.extend(bullet_list([
+  1342→        '<b>1. Do NOT attempt to fix it.</b> The run terminates immediately; the outcome is FAIL.',
+  1343→        '<b>2. Log the failure</b> in the operator log with timestamp and description.',
+  1344→        '<b>3. Notify</b> the VVU engineering lead and independent observers.',
+  1345→        '<b>4. Preserve all evidence</b> — do not delete or modify any logs, bundles, or state.',
+  1346→        '<b>5. File a postmortem</b> within 48 hours, published alongside the evidence package.',
+  1347→    ], styles))
+  1348→    elements.append(spacer())
+  1349→    elements.append(note(
+  1350→        'A Critical failure is itself valuable evidence. The logs, artifacts, and postmortem '
+  1351→        'are published alongside any subsequent successful rerun.',
+  1352→        styles
+  1353→    ))
+  1354→    elements.append(PageBreak())
+  1355→
+  1356→    # Section 9
+  1357→    elements.append(section('9. Outreach Staged Release Enforcement', styles))
+  1358→    elements.append(body(SHARED_COMMUNICATIONS_POLICY, styles))
+  1359→    elements.append(spacer())
+  1360→
+  1361→    pw = A4[0] - 40*mm
+  1362→    elements.append(make_table(
+  1363→        ['Stage', 'Name', 'Trigger', 'Audiences', 'Cooldown'],
+  1364→        [
+  1365→            ['1', 'Evidence Publication', 'M72 + Validation Index ≥ 90.0 + zero Critical failures', 'Technical communities, researchers', '0h'],
+  1366→            ['2', 'Personalized Outreach', 'Stage 1 complete + 24h elapsed + no SEV-1', 'Investors, municipalities', '24h'],
+  1367→            ['3', 'General Social & Press', 'Stage 2 complete + 48h elapsed', 'Journalists, general public', '48h'],
+  1368→        ],
+  1369→        col_widths=[pw*0.06, pw*0.18, pw*0.30, pw*0.30, pw*0.16]
+  1370→    ))
+  1371→    elements.append(spacer())
+  1372→    elements.append(note('Mass-blast communication is structurally impossible — the outreach engine enforces sequential stage gates.', styles))
+  1373→    elements.append(PageBreak())
+  1374→
+  1375→    # Section 10
+  1376→    elements.append(section('10. Cape Town Pilot Deployment', styles))
+  1377→    elements.append(body(SHARED_CAPE_TOWN, styles))
+  1378→    elements.append(spacer())
+  1379→
+  1380→    elements.append(subsection('Deployment Requirements', styles))
+  1381→    elements.extend(bullet_list([
+  1382→        '<b>Network:</b> Secure municipal network with IoT sensor connectivity.',
+  1383→        '<b>Hardware:</b> Hydro-Gateway acoustic leak detection sensors at designated monitoring points.',
+  1384→        '<b>Software:</b> Epistemic Runtime deployed on municipal Kubernetes cluster.',
+  1385→        '<b>Monitoring:</b> Prometheus + Grafana + VVU Mission Control Dashboard.',
+  1386→        '<b>Operations:</b> Trained municipal IT staff with operator runbook access.',
+  1387→    ], styles))
+  1388→    elements.append(PageBreak())
+  1389→
+  1390→    # Section 11
+  1391→    elements.append(section('11. Resource Acquisition & Partnership Strategy', styles))
+  1392→    elements.append(body(SHARED_7_TRACK_STRATEGY, styles))
+  1393→    elements.append(spacer())
+  1394→    elements.append(body(SHARED_EXECUTION_PRINCIPLE, styles))
+  1395→
+  1396→    doc.build(elements)
+  1397→    print('✅ Admin Spec PDF generated')
+  1398→
+  1399→
+  1400→# ════════════════════════════════════════════════════════════════════════
+  1401→# DOCUMENT 4: RESEARCH PROPOSAL
+  1402→# ════════════════════════════════════════════════════════════════════════
+  1403→
+  1404→def generate_research_proposal():
+  1405→    styles = create_styles(VVU_PURPLE)
+  1406→    doc = DarkDocTemplate(
+  1407→        os.path.join(OUTPUT_DIR, 'VVU-Research-Proposal-Academic-Partnership-Edition.pdf'),
+  1408→        pagesize=A4,
+  1409→        title='VVU EARTH TECH — Research Proposal',
+  1410→        author='Venture Vision Ubuntu',
+  1411→    )
+  1412→
+  1413→    elements = []
+  1414→
+  1415→    # Cover
+  1416→    elements.extend(make_cover(styles,
+  1417→        'VVU EARTH TECH',
+  1418→        'Research Proposal — Academic Partnership Edition',
+  1419→        'FOR OUTREACH DISTRIBUTION, SCOPING & SALES FRAMEWORK STRATEGIES',
+  1420→        'Academic Researchers, University Partners, Validation Observers'
+  1421→    ))
+  1422→
+  1423→    # TOC
+  1424→    elements.append(section('Table of Contents', styles))
+  1425→    toc_items = [
+  1426→        '1. Epistemic Theory Foundation',
+  1427→        '2. Deterministic Evidence Runtime Methodology',
+  1428→        '3. 72-Hour Continuous Validation Protocol',
+  1429→        '4. Validation Index Formula',
+  1430→        '5. Threat Model & Scope',
+  1431→        '6. Independent Observer Methodology',
+  1432→        '7. Independent Reproduction Procedure',
+  1433→        '8. Research Collaboration Opportunities',
+  1434→        '9. 7-Track Partnership Framework',
+  1435→        '10. Cape Town Municipal Pilot Research Context',
+  1436→        '11. Governance: Execution Principle & Communications Policy',
+  1437→    ]
+  1438→    elements.extend(bullet_list(toc_items, styles))
+  1439→    elements.append(PageBreak())
+  1440→
+  1441→    # Section 1
+  1442→    elements.append(section('1. Epistemic Theory Foundation', styles))
+  1443→    elements.append(body(
+  1444→        'The VVU EARTH TECH Epistemic DAG Runtime is grounded in the principle that <b>every '
+  1445→        'autonomous decision must be traceable to verifiable evidence</b>. Unlike conventional '
+  1446→        'monitoring systems that treat data as ephemeral, the Epistemic Runtime treats evidence '
+  1447→        'as an immutable, append-only DAG where each node is cryptographically linked to its '
+  1448→        'predecessors.',
+  1449→        styles
+  1450→    ))
+  1451→    elements.append(spacer())
+  1452→
+  1453→    elements.append(subsection('Epistemic Primitives', styles))
+  1454→    elements.extend(bullet_list([
+  1455→        '<b>Fact:</b> An observed piece of evidence. Once accepted, it is appended to the Fact Log and indexed in the MMR. No Fact can be modified or deleted — the append-only invariant is a hard constraint verified at every checkpoint.',
+  1456→        '<b>Proof:</b> A cryptographic attestation linking a Fact (or set of Facts) to a decision or derivation. Proofs are signed with Ed25519, RSA-PSS-SHA256, or ECDSA P-384, and their verification is deterministic.',
+  1457→        '<b>Policy:</b> A governance rule that determines how evidence is evaluated. Policies are versioned and bi-temporal (effectiveFrom/effectiveTo), enabling "Policy Time Travel" — evaluating current evidence under any historical policy version.',
+  1458→        '<b>Projection:</b> A derived state computed from Facts and Policies. Every Projection is recomputable from the Fact Log alone — no external state is required. This guarantees replay determinism.',
+  1459→    ], styles))
+  1460→    elements.append(spacer())
+  1461→
+  1462→    elements.append(subsection('DAG Structure', styles))
+  1463→    elements.append(body(
+  1464→        'Evidence dependencies form a Directed Acyclic Graph (DAG). Each Fact may depend on '
+  1465→        'zero or more predecessor Facts. Each Proof depends on the Facts it attests. Each '
+  1466→        'Projection depends on the Facts and Policies that produced it. The DAG topology ensures '
+  1467→        'that replay from any starting point produces the identical result — this is the core '
+  1468→        'claim validated by VVU-VAL-001.',
+  1469→        styles
+  1470→    ))
+  1471→    elements.append(PageBreak())
+  1472→
+  1473→    # Section 2
+  1474→    elements.append(section('2. Deterministic Evidence Runtime Methodology', styles))
+  1475→    elements.append(body(
+  1476→        'Determinism is achieved through three mechanisms: (1) <b>RFC 8785 JCS canonicalization</b> '
+  1477→        'eliminates serialization ambiguity, (2) <b>SHA-256 hashing</b> provides deterministic '
+  1478→        'fingerprinting, and (3) <b>Dependency Injection</b> allows replay with fixed clocks, '
+  1479→        'UUID generators, and entropy sources.',
+  1480→        styles
+  1481→    ))
+  1482→    elements.append(spacer())
+  1483→
+  1484→    pw = A4[0] - 40*mm
+  1485→    elements.append(make_table(
+  1486→        ['Mechanism', 'Implementation', 'Guarantee'],
+  1487→        [
+  1488→            ['RFC 8785 JCS', 'JSON Canonicalization Scheme (IETF RFC 8785)', 'Same logical object → same byte sequence → same hash'],
+  1489→            ['SHA-256', 'Sole hashing algorithm (no alternatives)', 'Deterministic fingerprint for all evidence'],
+  1490→            ['Dependency Injection', 'Clock, UUID, Entropy, Signer injectable', 'Replay with fixed deps produces identical result'],
+  1491→            ['MMR Append-Only', 'Merkle Mountain Range with peak bagging', 'Inclusion + consistency proofs without full tree'],
+  1492→            ['Bi-temporal Policy', 'effectiveFrom/effectiveTo timestamps', 'Evaluate any historical policy version at any time'],
+  1493→        ],
+  1494→        col_widths=[pw*0.20, pw*0.40, pw*0.40]
+  1495→    ))
+  1496→    elements.append(PageBreak())
+  1497→
+  1498→    # Section 3
+  1499→    elements.append(section('3. 72-Hour Continuous Validation Protocol', styles))
+  1500→    elements.append(body(
+  1501→        'VVU-VAL-001 is a <b>pre-registered</b> 72-hour continuous validation protocol. The test plan, '
+  1502→        'success criteria, failure schedule, and Validation Index formula are <b>frozen and published '
+  1503→        'before T=0</b>. The public validation event is executed against one frozen build. Any '
+  1504→        'subsequent execution constitutes a separately versioned validation event.',
+  1505→        styles
+  1506→    ))
+  1507→    elements.append(spacer())
+  1508→
+  1509→    pw = A4[0] - 40*mm
+  1510→    elements.append(make_table(
+  1511→        ['Phase', 'Name', 'Hours', 'Gate', 'Objective', 'Severity'],
+  1512→        SHARED_VALIDATION_PHASES_TABLE,
+  1513→        col_widths=[pw*0.06, pw*0.16, pw*0.08, pw*0.16, pw*0.40, pw*0.10]
+  1514→    ))
+  1515→    elements.append(PageBreak())
+  1516→
+  1517→    # Section 4
+  1518→    elements.append(section('4. Validation Index Formula', styles))
+  1519→    elements.append(body(
+  1520→        'The Validation Index is a weighted composite of 6 dimensions, published before T=0. '
+  1521→        'PASS requires Index ≥ 90.0 and zero Critical failures.',
+  1522→        styles
+  1523→    ))
+  1524→    elements.append(spacer())
+  1525→
+  1526→    pw = A4[0] - 40*mm
+  1527→    elements.append(make_table(
+  1528→        ['Dimension', 'Weight', 'Formula', 'Verification Method'],
+  1529→        [
+  1530→            ['Replay Determinism', '0.25', 'checksum_match(live, replay)', 'SHA-256 of live Fact Log vs replayed Fact Log at every hourly checkpoint'],
+  1531→            ['Append-Only Integrity', '0.20', 'no_modification(fact_log) AND mmr_root_valid', 'MMR root verification at every checkpoint'],
+  1532→            ['Policy Enforcement', '0.15', 'violation → Failure_Fact, no crash', 'Every policy violation produces a Failure Fact, not a crash'],
+  1533→            ['HLC Merge Correctness', '0.15', 'merge_conflicts = 0', 'P7 partition reconnect: zero conflicts observed'],
+  1534→            ['Evidence Bundle Integrity', '0.15', 'bundle_sha256_verified', 'Hourly bundles SHA-256 verified against ledger'],
+  1535→            ['Security Gate Rejection', '0.10', 'spoofed_rejected / spoofed_injected = 1.0', 'Every spoofed/malformed payload rejected at documented gate'],
+  1536→        ],
+  1537→        col_widths=[pw*0.18, pw*0.08, pw*0.25, pw*0.49]
+  1538→    ))
+  1539→    elements.append(spacer())
+  1540→    elements.append(note('PASS threshold: Index ≥ 90.0. Zero Critical failures (§3.1). Formula frozen before T=0.', styles))
+  1541→    elements.append(PageBreak())
+  1542→
+  1543→    # Section 5
+  1544→    elements.append(section('5. Threat Model & Scope', styles))
+  1545→    elements.append(subsection('Validated by This Protocol', styles))
+  1546→    pw = A4[0] - 40*mm
+  1547→    elements.append(make_table(
+  1548→        ['Property', 'How Validated', 'Phase'],
+  1549→        [
+  1550→            ['Deterministic replay', 'Checksum vs live at every checkpoint', 'All'],
+  1551→            ['Append-only Fact Log', 'No modification/deletion; MMR valid', 'All'],
+  1552→            ['HLC merge under partition', 'P7 reconnect; zero conflicts', 'P7'],
+  1553→            ['MMR integrity under stress', 'Root valid; identical live vs replay', 'All'],
+  1554→            ['Policy enforcement under degradation', 'Violation → Failure Fact; no crash', 'P2-P6'],
+  1555→            ['TEE attestation rejection (HF-001)', 'Spoofed payload quarantined at Pass 2', 'P6'],
+  1556→            ['ZK proof rejection (HF-002)', 'Bad ZK proof rejected; no WRT minted', 'P6'],
+  1557→            ['Decision derivation halt (HF-005)', 'Contradictory telemetry → TRIP verdict', 'P6'],
+  1558→            ['Node failure recovery', 'Pods restart; no Fact loss; CB recovers', 'P5'],
+  1559→            ['Evidence bundle integrity', 'Hourly SHA-256 verified', 'All'],
+  1560→        ],
+  1561→        col_widths=[pw*0.30, pw*0.45, pw*0.25]
+  1562→    ))
+  1563→    elements.append(spacer())
+  1564→
+  1565→    elements.append(subsection('NOT Validated by This Protocol', styles))
+  1566→    elements.append(make_table(
+  1567→        ['Property', 'Why Not', 'Separate Validation'],
+  1568→        [
+  1569→            ['Municipal hydraulics accuracy', 'Synthetic payloads only', 'Municipal pilot'],
+  1570→            ['Sensor accuracy (acoustic)', 'No physical Hydro-Gateway', 'Hardware prototype validation'],
+  1571→            ['Production cybersecurity', 'Controlled injection only', 'Independent security audit'],
+  1572→            ['Manufacturing reliability', 'Specification only, no hardware', 'Fabricator FAI + audit'],
+  1573→            ['Long-term durability', '72-hour run only', 'Field deployment + multi-year observation'],
+  1574→            ['Federation correctness', 'Single-writer ledger only', 'VVU-VAL-002+ after v1.2'],
+  1575→        ],
+  1576→        col_widths=[pw*0.25, pw*0.35, pw*0.40]
+  1577→    ))
+  1578→    elements.append(PageBreak())
+  1579→
+  1580→    # Section 6
+  1581→    elements.append(section('6. Independent Observer Methodology', styles))
+  1582→    elements.append(body(
+  1583→        'Independent observers attest <b>artifact integrity</b>, not system quality. Their role is '
+  1584→        'narrow and well-defined: they verify that published artifacts match what they observed '
+  1585→        'during the run. They do NOT endorse the system or assess fitness for purpose.',
+  1586→        styles
+  1587→    ))
+  1588→    elements.append(spacer())
+  1589→
+  1590→    elements.append(subsection('Observer Categories', styles))
+  1591→    pw = A4[0] - 40*mm
+  1592→    elements.append(make_table(
+  1593→        ['Category', 'Who', 'Attestation Scope'],
+  1594→        [
+  1595→            ['Academic', 'University researchers, CSIR scientists', 'Hash verification, replay verification, discrepancy report'],
+  1596→            ['Industry', 'Technology professionals, municipal engineers', 'Same as Academic + operational context assessment'],
+  1597→            ['Community', 'Open-source contributors, civic technologists', 'Hash verification, build reproduction, discrepancy report'],
+  1598→        ],
+  1599→        col_widths=[pw*0.15, pw*0.40, pw*0.45]
+  1600→    ))
+  1601→    elements.append(spacer())
+  1602→
+  1603→    elements.append(subsection('Attestation Letter Format', styles))
+  1604→    elements.extend(bullet_list([
+  1605→        'Observer name, affiliation, and category (Academic / Industry / Community)',
+  1606→        'Observation period (start and end timestamps)',
+  1607→        'Timestamps of checkpoint observations',
+  1608→        'Hash verification result (YES / NO)',
+  1609→        'Replay verification result (YES / NO)',
+  1610→        'Any discrepancies (or "none observed")',
+  1611→        'Attestation statement + digital signature',
+  1612→    ], styles))
+  1613→    elements.append(PageBreak())
+  1614→
+  1615→    # Section 7
+  1616→    elements.append(section('7. Independent Reproduction Procedure', styles))
+  1617→    elements.append(body(
+  1618→        'Any third party can independently reproduce the validation results using the 8-step procedure:',
+  1619→        styles
+  1620→    ))
+  1621→    elements.append(spacer())
+  1622→
+  1623→    elements.extend(bullet_list([
+  1624→        '<b>1. Clone</b> the VVU-VAL-001 repository at the frozen commit hash.',
+  1625→        '<b>2. Checkout</b> the frozen commit (published in protocol/frozen-build.json).',
+  1626→        '<b>3. Download</b> the evidence package from the GitHub Release.',
+  1627→        '<b>4. Verify</b> SHA-256 of the evidence package against the SHA256SUMS ledger.',
+  1628→        '<b>5. Replay</b> the Fact Log from the evidence package using the replay engine.',
+  1629→        '<b>6. Compare</b> replay checksum against the published live checksum.',
+  1630→        '<b>7. Publish</b> attestation letter if checksums match.',
+  1631→        '<b>8. Report</b> any discrepancies via the public issue tracker.',
+  1632→    ], styles))
+  1633→    elements.append(PageBreak())
+  1634→
+  1635→    # Section 8
+  1636→    elements.append(section('8. Research Collaboration Opportunities', styles))
+  1637→    elements.extend(bullet_list([
+  1638→        '<b>Independent Observer Participation:</b> Academic researchers can serve as independent observers for VVU-VAL-001, attesting to artifact integrity.',
+  1639→        '<b>Validation Methodology Co-Development:</b> Collaborate on extending the Validation Index formula, adding dimensions, or developing new chaos injection methodologies.',
+  1640→        '<b>Epistemic Runtime Research:</b> Study the DAG topology, MMR proofs, and replay determinism properties. Publish comparative analyses with other evidence runtime approaches.',
+  1641→        '<b>Policy Time Travel Research:</b> Investigate bi-temporal policy evaluation as a governance audit mechanism. Develop formal verification methods for policy version consistency.',
+  1642→        '<b>Municipal Pilot Research:</b> Collaborate on Cape Town pilot deployment as a case study for infrastructure monitoring technology adoption in South African municipalities.',
+  1643→        '<b>Threat Model Extension:</b> Develop additional threat models for production deployment, red-team testing, and manufacturing reliability validation.',
+  1644→    ], styles))
+  1645→    elements.append(PageBreak())
+  1646→
+  1647→    # Section 9
+  1648→    elements.append(section('9. 7-Track Partnership Framework', styles))
+  1649→    elements.append(body(SHARED_7_TRACK_STRATEGY, styles))
+  1650→    elements.append(spacer())
+  1651→
+  1652→    elements.append(subsection('University Partnership Details (Track B)', styles))
+  1653→    elements.extend(bullet_list([
+  1654→        '<b>Target Institutions:</b> University of Cape Town, Stellenbosch University, University of the Witwatersrand, CSIR, international water research institutions.',
+  1655→        '<b>Collaboration Models:</b> Independent observation, co-authored publications, student research projects, validation methodology development.',
+  1656→        '<b>Requested Support:</b> Observer participation, research supervision, laboratory access for hardware prototype testing.',
+  1657→        '<b>Status:</b> Strategy — outreach planned, not yet active.',
+  1658→    ], styles))
+  1659→    elements.append(PageBreak())
+  1660→
+  1661→    # Section 10
+  1662→    elements.append(section('10. Cape Town Municipal Pilot Research Context', styles))
+  1663→    elements.append(body(SHARED_CAPE_TOWN, styles))
+  1664→    elements.append(spacer())
+  1665→
+  1666→    elements.append(subsection('Research Dimensions', styles))
+  1667→    elements.extend(bullet_list([
+  1668→        '<b>Water Infrastructure Monitoring:</b> Real-world validation of Hydro-Gateway acoustic leak detection against Cape Town\'s water network.',
+  1669→        '<b>IoT Deployment Governance:</b> Study of municipal governance frameworks for IoT sensor deployment in public infrastructure.',
+  1670→        '<b>Epistemic Runtime in Practice:</b> First real-world deployment of deterministic evidence runtime for municipal decision-making.',
+  1671→        '<b>Community Engagement:</b> Civic technology adoption patterns and community-driven infrastructure monitoring.',
+  1672→    ], styles))
+  1673→    elements.append(PageBreak())
+  1674→
+  1675→    # Section 11
+  1676→    elements.append(section('11. Governance Framework', styles))
+  1677→    elements.append(body(SHARED_EXECUTION_PRINCIPLE, styles))
+  1678→    elements.append(spacer())
+  1679→    elements.append(body(SHARED_COMMUNICATIONS_POLICY, styles))
+  1680→
+  1681→    doc.build(elements)
+  1682→    print('✅ Research Proposal PDF generated')
+  1683→
+  1684→
+  1685→# ════════════════════════════════════════════════════════════════════════
+  1686→# DOCUMENT 5: FABRICATOR SPECIFICATION GUIDE
+  1687→# ════════════════════════════════════════════════════════════════════════
+  1688→
+  1689→def generate_fabricator_spec():
+  1690→    styles = create_styles(VVU_TEAL)
+  1691→    doc = DarkDocTemplate(
+  1692→        os.path.join(OUTPUT_DIR, 'VVU-Fabricator-Spec-Guide-Outreach-Edition.pdf'),
+  1693→        pagesize=A4,
+  1694→        title='VVU EARTH TECH — Fabricator Specification Guide',
+  1695→        author='Venture Vision Ubuntu',
+  1696→    )
+  1697→
+  1698→    elements = []
+  1699→
+  1700→    # Cover
+  1701→    elements.extend(make_cover(styles,
+  1702→        'VVU EARTH TECH',
+  1703→        'Fabricator Specification Guide — Manufacturing Partnership Edition',
+  1704→        'FOR OUTREACH DISTRIBUTION, SCOPING & SALES FRAMEWORK STRATEGIES',
+  1705→        'Hardware Manufacturers, Fabrication Partners, Quality Engineers'
+  1706→    ))
+  1707→
+  1708→    # TOC
+  1709→    elements.append(section('Table of Contents', styles))
+  1710→    toc_items = [
+  1711→        '1. Hydro-Gateway Hardware Overview',
+  1712→        '2. 24 Parametric Constraints',
+  1713→        '3. Acoustic Leak Detection Sensor Specifications',
+  1714→        '4. Materials & Fabrication Requirements',
+  1715→        '5. Assembly Requirements',
+  1716→        '6. Quality Assurance Procedures',
+  1717→        '7. Testing & Verification',
+  1718→        '8. Prototype Development Lifecycle',
+  1719→        '9. Epistemic Runtime Integration',
+  1720→        '10. Cape Town Pilot Hardware Context',
+  1721→        '11. Partnership & Supply Chain Strategy',
+  1722→    ]
+  1723→    elements.extend(bullet_list(toc_items, styles))
+  1724→    elements.append(PageBreak())
+  1725→
+  1726→    # Section 1
+  1727→    elements.append(section('1. Hydro-Gateway Hardware Overview', styles))
+  1728→    elements.append(body(
+  1729→        'The <b>Hydro-Gateway</b> is the IoT sensor bridge that connects physical water infrastructure '
+  1730→        'monitoring to the Epistemic DAG Runtime. It consists of an acoustic leak detection sensor array, '
+  1731→        'a processing unit, and a communications module that transmits verified telemetry to the '
+  1732→        'Epistemic Runtime via the AIR Kernel.',
+  1733→        styles
+  1734→    ))
+  1735→    elements.append(spacer())
+  1736→
+  1737→    elements.append(subsection('Hydro-Gateway Architecture', styles))
+  1738→    pw = A4[0] - 40*mm
+  1739→    elements.append(make_table(
+  1740→        ['Component', 'Function', 'Interface', 'Evidence Flow'],
+  1741→        [
+  1742→            ['Acoustic Sensor Array', 'Detect water leak signatures via acoustic monitoring', 'Analog → DSP pipeline', 'Raw acoustic data → Epistemic Runtime as Fact'],
+  1743→            ['Processing Unit', 'Signal processing, pattern recognition, telemetry formatting', 'DSP → CAN/UART', 'Processed telemetry → canonicalized → SHA-256 hashed'],
+  1744→            ['Communications Module', 'Secure telemetry transmission to AIR Kernel', 'LTE/WiFi/NB-IoT', 'Signed telemetry → NATS durable queue → Acceptance Pipeline'],
+  1745→            ['Power Management', 'Battery + solar harvesting for continuous operation', 'Li-ion + solar panel', 'Power status → Fact Log (monitoring evidence)'],
+  1746→            ['Enclosure', 'IP67-rated environmental protection', 'Marine-grade aluminum', 'Deployment metadata → Fact Log'],
+  1747→        ],
+  1748→        col_widths=[pw*0.18, pw*0.28, pw*0.18, pw*0.36]
+  1749→    ))
+  1750→    elements.append(PageBreak())
+  1751→
+  1752→    # Section 2
+  1753→    elements.append(section('2. 24 Parametric Constraints', styles))
+  1754→    elements.append(body(
+  1755→        'The Hydro-Gateway operates under 24 parametric constraints that define acceptable '
+  1756→        'operational boundaries. These constraints are verified at fabrication (FAI), '
+  1757→        'prototype testing, and field deployment stages.',
+  1758→        styles
+  1759→    ))
+  1760→    elements.append(spacer())
+  1761→
+  1762→    pw = A4[0] - 40*mm
+  1763→    constraints = [
+  1764→        ['Acoustic sensitivity', '≥ 45 dB SNR', 'DSP pipeline', 'Sensor array'],
+  1765→        ['Frequency range', '20 Hz – 200 kHz', 'Signal processing', 'Acoustic sensor'],
+  1766→        ['Detection accuracy', '≥ 95% (controlled)', 'Pattern recognition', 'Processing unit'],
+  1767→        ['False positive rate', '≤ 5% (controlled)', 'Classification', 'Processing unit'],
+  1768→        ['Operating temperature', '-10°C to +55°C', 'Environmental', 'Enclosure + electronics'],
+  1769→        ['Humidity tolerance', '0–99% RH (non-condensing)', 'Environmental', 'Enclosure'],
+  1770→        ['Depth rating', 'IP67 (1m, 30min)', 'Ingress protection', 'Enclosure'],
+  1771→        ['Battery life', '≥ 72 hours continuous', 'Power management', 'Battery + solar'],
+  1772→        ['Solar harvesting', '≥ 15Wh/day (average SA conditions)', 'Power management', 'Solar panel'],
+  1773→        ['Communication latency', '≤ 500ms (p99)', 'Communications', 'LTE/NB-IoT module'],
+  1774→        ['Data integrity', 'SHA-256 verified per packet', 'Cryptographic', 'Processing unit'],
+  1775→        ['Clock synchronization', 'HLC (wall_time, logical, node_id)', 'Temporal', 'Processing unit'],
+  1776→        ['Memory', '≥ 512KB buffer', 'Storage', 'Processing unit'],
+  1777→        ['Processing throughput', '≥ 50 telemetry events/sec', 'Performance', 'Processing unit'],
+  1778→        ['Mounting', 'Standard municipal pipe fittings', 'Mechanical', 'Enclosure mounting'],
+  1779→        ['Weight', '≤ 2.5 kg (deployed unit)', 'Mechanical', 'Full assembly'],
+  1780→        ['Vibration resistance', 'IEC 60068-2-6', 'Mechanical', 'Enclosure + internals'],
+  1781→        ['EMC compliance', 'IEC 61000-6-2/6-4', 'Electromagnetic', 'Full assembly'],
+  1782→        ['Mean time between failures', '≥ 10,000 hours', 'Reliability', 'Full assembly'],
+  1783→        ['Field life', '≥ 10 years', 'Durability', 'Full assembly'],
+  1784→        ['Upgrade path', 'Hot-swappable sensor module', 'Maintenance', 'Modular design'],
+  1785→        ['Telemetry format', 'RFC 8785 JCS + SHA-256', 'Canonicalization', 'Processing unit'],
+  1786→        ['Signing capability', 'Ed25519 onboard', 'Cryptographic', 'Secure element'],
+  1787→        ['Kill switch compliance', 'Distributed kill switch integration', 'Safety', 'Processing unit'],
+  1788→    ]
+  1789→    elements.append(make_table(
+  1790→        ['Constraint', 'Specification', 'Category', 'Component'],
+  1791→        constraints,
+  1792→        col_widths=[pw*0.22, pw*0.28, pw*0.18, pw*0.32]
+  1793→    ))
+  1794→    elements.append(PageBreak())
+  1795→
+  1796→    # Section 3
+  1797→    elements.append(section('3. Acoustic Leak Detection Sensor Specifications', styles))
+  1798→    elements.append(body(
+  1799→        'The acoustic sensor array is the primary sensing element of the Hydro-Gateway. '
+  1800→        'It detects water leak signatures through continuous acoustic monitoring of pipe '
+  1801→        'infrastructure, using pattern recognition to distinguish leak events from background noise.',
+  1802→        styles
+  1803→    ))
+  1804→    elements.append(spacer())
+  1805→
+  1806→    pw = A4[0] - 40*mm
+  1807→    elements.append(make_table(
+  1808→        ['Parameter', 'Specification', 'Measurement Method'],
+  1809→        [
+  1810→            ['Sensor type', 'Piezoelectric acoustic transducer', 'Component specification'],
+  1811→            ['Sensitivity', '≥ 45 dB SNR at 1m distance', 'Laboratory calibration'],
+  1812→            ['Frequency response', '20 Hz – 200 kHz (flat ±3 dB)', 'Frequency sweep test'],
+  1813→            ['Sampling rate', '≥ 44.1 kHz', 'DSP pipeline configuration'],
+  1814→            ['Dynamic range', '≥ 80 dB', 'Laboratory measurement'],
+  1815→            ['Directionality', 'Omnidirectional (pipe-mounted)', 'Field deployment configuration'],
+  1816→            ['Temperature compensation', 'Automatic (-10°C to +55°C)', 'Onboard calibration loop'],
+  1817→            ['Self-test', 'Daily acoustic calibration pulse', 'Automated test sequence'],
+  1818→        ],
+  1819→        col_widths=[pw*0.22, pw*0.40, pw*0.38]
+  1820→    ))
+  1821→    elements.append(PageBreak())
+  1822→
+  1823→    # Section 4
+  1824→    elements.append(section('4. Materials & Fabrication Requirements', styles))
+  1825→    pw = A4[0] - 40*mm
+  1826→    elements.append(make_table(
+  1827→        ['Component', 'Material', 'Specification', 'Fabrication Process'],
+  1828→        [
+  1829→            ['Enclosure body', 'Marine-grade aluminum (6061-T6)', 'IP67, anodized finish', 'CNC machining + anodization'],
+  1830→            ['Enclosure seals', 'Viton O-ring (fluoropolymer)', 'IP67 compliant, -20°C to +200°C', 'Precision molding'],
+  1831→            ['Sensor housing', '316L stainless steel', 'Corrosion resistant, biocompatible', 'CNC machining + passivation'],
+  1832→            ['PCB substrate', 'FR-4 (multi-layer)', '4-layer, 1.6mm, ENIG finish', 'Standard PCB fabrication'],
+  1833→            ['Solar panel frame', 'Anodized aluminum', 'UV-resistant, weather-proof', 'Extrusion + anodization'],
+  1834→            ['Mounting bracket', 'Galvanized steel', 'Standard municipal pipe fittings', 'Stamping + galvanization'],
+  1835→            ['Antenna enclosure', 'UV-resistant polycarbonate', 'IP54, impact resistant', 'Injection molding'],
+  1836→        ],
+  1837→        col_widths=[pw*0.18, pw*0.25, pw*0.30, pw*0.27]
+  1838→    ))
+  1839→    elements.append(PageBreak())
+  1840→
+  1841→    # Section 5
+  1842→    elements.append(section('5. Assembly Requirements', styles))
+  1843→    elements.extend(bullet_list([
+  1844→        '<b>Assembly Sequence:</b> Defined step-by-step assembly procedure with quality gates at each stage.',
+  1845→        '<b>Torque Specifications:</b> All fasteners torqued to specification with calibrated tools.',
+  1846→        '<b>Seal Verification:</b> IP67 seal verification via pressure test after enclosure assembly.',
+  1847→        '<b>PCB Installation:</b> PCB mounted with ESD-safe procedures; conformal coating applied to specified areas.',
+  1848→        '<b>Sensor Calibration:</b> Each acoustic sensor individually calibrated against reference standard.',
+  1849→        '<b>Communications Test:</b> Full communications module test (LTE/NB-IoT) before enclosure sealing.',
+  1850→        '<b>Integration Test:</b> End-to-end telemetry flow test: acoustic event → processing → signing → transmission.',
+  1851→        '<b>Final Inspection:</b> Visual inspection, dimensional verification, and functional test before shipment.',
+  1852→    ], styles))
+  1853→    elements.append(PageBreak())
+  1854→
+  1855→    # Section 6
+  1856→    elements.append(section('6. Quality Assurance Procedures', styles))
+  1857→    pw = A4[0] - 40*mm
+  1858→    elements.append(make_table(
+  1859→        ['QA Stage', 'Procedure', 'Standard', 'Acceptance Criteria'],
+  1860→        [
+  1861→            ['Incoming Inspection', 'Material certification + dimensional check', 'ISO 9001', 'All materials meet specification'],
+  1862→            ['In-Process Inspection', 'Assembly step verification at each gate', 'Work instruction', 'Each gate PASS before next step'],
+  1863→            ['PCB Functional Test', 'Electrical test + firmware verification', 'IPC-6012', 'All test points within specification'],
+  1864→            ['Sensor Calibration', 'Acoustic sensitivity + frequency response', 'Laboratory standard', 'SNR ≥ 45 dB, frequency ±3 dB'],
+  1865→            ['IP67 Verification', 'Pressure test (1m, 30min water immersion)', 'IEC 60529', 'No ingress detected'],
+  1866→            ['Communications Test', 'Network registration + data transmission', 'Operator specification', 'Successful telemetry transmission'],
+  1867→            ['Integration Test', 'End-to-end acoustic → telemetry flow', 'System specification', 'SHA-256 verified telemetry received'],
+  1868→            ['Final Inspection', 'Visual + dimensional + functional', 'Customer specification', 'All 24 parametric constraints met'],
+  1869→        ],
+  1870→        col_widths=[pw*0.18, pw*0.30, pw*0.18, pw*0.34]
+  1871→    ))
+  1872→    elements.append(PageBreak())
+  1873→
+  1874→    # Section 7
+  1875→    elements.append(section('7. Testing & Verification', styles))
+  1876→    elements.append(subsection('First Article Inspection (FAI)', styles))
+  1877→    elements.extend(bullet_list([
+  1878→        '<b>FAI Purpose:</b> Verify that the first production article meets all 24 parametric constraints.',
+  1879→        '<b>FAI Scope:</b> Full dimensional, functional, and environmental test suite.',
+  1880→        '<b>FAI Documentation:</b> Results recorded as Facts in the Epistemic Runtime — immutable evidence.',
+  1881→        '<b>FAI Verification:</b> Independent verification against specification; SHA-256 signed results.',
+  1882→    ], styles))
+  1883→    elements.append(spacer())
+  1884→
+  1885→    elements.append(subsection('Production Quality Audit', styles))
+  1886→    elements.extend(bullet_list([
+  1887→        '<b>Sampling Plan:</b> Statistical sampling per AQL (Acceptable Quality Level) framework.',
+  1888→        '<b>Environmental Test:</b> Temperature cycling, humidity exposure, vibration per IEC 60068.',
+  1889→        '<b>Reliability Test:</b> Accelerated life testing for MTBF verification.',
+  1890→        '<b>Evidence Recording:</b> All test results recorded as Facts; audit trail immutable.',
+  1891→    ], styles))
+  1892→    elements.append(PageBreak())
+  1893→
+  1894→    # Section 8
+  1895→    elements.append(section('8. Prototype Development Lifecycle', styles))
+  1896→    pw = A4[0] - 40*mm
+  1897→    elements.append(make_table(
+  1898→        ['Phase', 'Objective', 'Deliverable', 'Quality Gate'],
+  1899→        [
+  1900→            ['P0 — Concept', 'Define specifications, constraints, interfaces', 'Specification document', 'Review + approval'],
+  1901→            ['P1 — Design', 'Detailed design, material selection, fabrication planning', 'Design package (CAD, BOM, process)', 'Design review'],
+  1902→            ['P2 — Prototype Build', 'Fabricate first article, assemble, calibrate', 'Functional prototype', 'FAI (all 24 constraints)'],
+  1903→            ['P3 — Integration Test', 'Connect to Epistemic Runtime, verify telemetry flow', 'Integrated system test report', 'End-to-end telemetry verified'],
+  1904→            ['P4 — Field Trial', 'Deploy at Cape Town pilot site, monitor performance', 'Field trial data + analysis', 'Performance meets specification'],
+  1905→            ['P5 — Production Readiness', 'Finalize fabrication process, QA procedures, supply chain', 'Production readiness review', 'All gates PASS'],
+  1906→        ],
+  1907→        col_widths=[pw*0.12, pw*0.28, pw*0.30, pw*0.30]
+  1908→    ))
+  1909→    elements.append(PageBreak())
+  1910→
+  1911→    # Section 9
+  1912→    elements.append(section('9. Epistemic Runtime Integration', styles))
+  1913→    elements.append(body(
+  1914→        'The Hydro-Gateway integrates with the Epistemic DAG Runtime through the AIR Kernel. '
+  1915→        'Every telemetry event from the Hydro-Gateway follows this path:',
+  1916→        styles
+  1917→    ))
+  1918→    elements.append(spacer())
+  1919→
+  1920→    elements.extend(bullet_list([
+  1921→        '<b>1. Sensing:</b> Acoustic sensor detects event → DSP processing → telemetry packet.',
+  1922→        '<b>2. Canonicalization:</b> Telemetry canonicalized via RFC 8785 JCS.',
+  1923→        '<b>3. Hashing:</b> SHA-256(JCS(telemetry)) produces deterministic fingerprint.',
+  1924→        '<b>4. Signing:</b> Ed25519 signature created on the Hydro-Gateway secure element.',
+  1925→        '<b>5. Transmission:</b> Signed telemetry transmitted via LTE/NB-IoT to NATS durable queue.',
+  1926→        '<b>6. Acceptance:</b> AIR Kernel Acceptance Pipeline processes telemetry through 5-Pass Evidence Compiler.',
+  1927→        '<b>7. Evidence:</b> Accepted telemetry becomes a Fact in the Fact Log, indexed in MMR.',
+  1928→        '<b>8. Decision:</b> Policy evaluation produces Projections and Decisions based on the Fact.',
+  1929→    ], styles))
+  1930→    elements.append(PageBreak())
+  1931→
+  1932→    # Section 10
+  1933→    elements.append(section('10. Cape Town Pilot Hardware Context', styles))
+  1934→    elements.append(body(SHARED_CAPE_TOWN, styles))
+  1935→    elements.append(spacer())
+  1936→
+  1937→    elements.append(subsection('Hardware Deployment Requirements', styles))
+  1938→    elements.extend(bullet_list([
+  1939→        '<b>Sensor Placement:</b> Hydro-Gateway units at designated monitoring points in Cape Town water network.',
+  1940→        '<b>Communications:</b> LTE/NB-IoT connectivity for telemetry transmission.',
+  1941→        '<b>Power:</b> Battery + solar harvesting; 72-hour minimum continuous operation.',
+  1942→        '<b>Environmental:</b> IP67 rated for outdoor deployment in Cape Town climate conditions.',
+  1943→        '<b>Quantity:</b> Initial pilot deployment scope to be determined in partnership discussions.',
+  1944→    ], styles))
+  1945→    elements.append(PageBreak())
+  1946→
+  1947→    # Section 11
+  1948→    elements.append(section('11. Partnership & Supply Chain Strategy', styles))
+  1949→    elements.append(body(SHARED_7_TRACK_STRATEGY, styles))
+  1950→    elements.append(spacer())
+  1951→
+  1952→    elements.append(subsection('Track F — Sponsorship & Equipment (Fabricator-Relevant)', styles))
+  1953→    elements.extend(bullet_list([
+  1954→        '<b>Target Partners:</b> PCB fabricators, sensor manufacturers, enclosure fabricators, communications module suppliers.',
+  1955→        '<b>Requested Support:</b> Prototype fabrication, component supply, FAI testing support.',
+  1956→        '<b>Status:</b> Strategy — outreach planned, not yet active.',
+  1957→    ], styles))
+  1958→
+  1959→    doc.build(elements)
+  1960→    print('✅ Fabricator Spec Guide PDF generated')
+  1961→
+  1962→
+  1963→# ════════════════════════════════════════════════════════════════════════
+  1964→# DOCUMENT 6: ASSEMBLY & PROTOTYPE DEVELOPMENT LIFECYCLE SPEC GUIDE
+  1965→# ════════════════════════════════════════════════════════════════════════
+  1966→
+  1967→def generate_assembly_lifecycle_spec():
+  1968→    styles = create_styles(HexColor('#f472b6'))
+  1969→    doc = DarkDocTemplate(
+  1970→        os.path.join(OUTPUT_DIR, 'VVU-Assembly-Prototype-Lifecycle-Spec-Guide-Outreach-Edition.pdf'),
+  1971→        pagesize=A4,
+  1972→        title='VVU EARTH TECH — Assembly & Prototype Development Lifecycle Spec Guide',
+  1973→        author='Venture Vision Ubuntu',
+  1974→    )
+  1975→
+  1976→    elements = []
+  1977→
+  1978→    # Cover
+  1979→    elements.extend(make_cover(styles,
+  1980→        'VVU EARTH TECH',
+  1981→        'Assembly & Prototype Development Lifecycle Spec Guide',
+  1982→        'FOR OUTREACH DISTRIBUTION, SCOPING & SALES FRAMEWORK STRATEGIES',
+  1983→        'Prototype Development Teams, Assembly Engineers, QA Specialists'
+  1984→    ))
+  1985→
+  1986→    # TOC
+  1987→    elements.append(section('Table of Contents', styles))
+  1988→    toc_items = [
+  1989→        '1. Prototype Lifecycle Overview',
+  1990→        '2. Lifecycle Phase Definitions',
+  1991→        '3. Assembly Procedures & Sequences',
+  1992→        '4. Component Integration Testing',
+  1993→        '5. Epistemic Runtime Verification at Each Phase',
+  1994→        '6. Quality Gates & Acceptance Criteria',
+  1995→        '7. Validation Milestone Tracking',
+  1996→        '8. Cape Town Pilot Deployment Timeline',
+  1997→        '9. Handoff & Transition Procedures',
+  1998→        '10. Resource Acquisition Strategy',
+  1999→    ]
+  2000→    elements.extend(bullet_list(toc_items, styles))
+
+[showing lines 1-2000 of 2283; use offset=2001 with limit to continue reading]

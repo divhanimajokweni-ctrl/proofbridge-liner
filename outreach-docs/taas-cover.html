@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=794, initial-scale=1">
+<title>VVU TaaS Commercial Framework Cover</title>
+<style>
+  @page { size: 794px 1123px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  :root {
+    /* ── Cascade Palette ── */
+    --page-bg: #f5f4f3;
+    --section-bg: #eeeeec;
+    --card-bg: #e8e7e2;
+    --table-stripe: #f3f2f1;
+    --header-fill: #675f49;
+    --cover-block: #78715d;
+    --border: #d4d0c5;
+    --icon: #8c7c4a;
+    --accent: #C9A84C;
+    --accent-secondary: #55a3bd;
+    --text-primary: #242320;
+    --text-muted: #7c7a72;
+    --c-bg: #f5f4f3;
+    --c-accent: #C9A84C;
+    --c-text: #242320;
+    --c-muted: #7c7a72;
+    --c-mid: #675f49;
+    --c-surface: #e8e7e2;
+  }
+
+  /* A0.0 — Base Parameters */
+  /* W = 794px, H = 1123px, U = 794 * 0.05 = 39.7px */
+
+  .cover-page {
+    position: relative;
+    width: 794px;
+    height: 1123px;
+    background: var(--c-bg);
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Layer 1 — Background grid pattern */
+  .cover-layer-1 {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .grid-pattern {
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 50px, var(--c-accent) 50px, var(--c-accent) 50.5px),
+      repeating-linear-gradient(90deg, transparent, transparent 50px, var(--c-accent) 50px, var(--c-accent) 50.5px);
+    opacity: 0.03;
+  }
+
+  /* Layer 2 — Structure: left anchor line */
+  .cover-layer-2 {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+  }
+  .anchor-line {
+    position: absolute;
+    left: 12%;
+    top: 10%;
+    bottom: 10%;
+    width: 6px;
+    background: var(--c-accent);
+  }
+
+  /* Layer 3 — Content */
+  .cover-layer-3 {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+  }
+
+  /* Drawer A — Kicker */
+  .drawer-kicker {
+    position: absolute;
+    top: 15%;
+    left: calc(12% + 50px);
+    max-width: 60%;
+  }
+  .kicker-text {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 16pt;
+    font-weight: 400;
+    letter-spacing: 3pt;
+    color: var(--c-muted);
+    text-transform: uppercase;
+  }
+
+  /* Drawer B — Hero Title */
+  .drawer-hero {
+    position: absolute;
+    top: 30%;
+    left: calc(12% + 50px);
+    max-width: 75%;
+  }
+  .hero-title {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 42pt;
+    font-weight: 900;
+    color: var(--c-text);
+    line-height: 1.15;
+  }
+  .hero-subtitle {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 24pt;
+    font-weight: 700;
+    color: var(--c-accent);
+    line-height: 1.3;
+    margin-top: 12px;
+  }
+
+  /* Drawer C — Summary */
+  .drawer-summary {
+    position: absolute;
+    top: 55%;
+    left: calc(12% + 50px);
+    max-width: 60%;
+  }
+  .summary-text {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 16pt;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--c-muted);
+    opacity: 0.85;
+  }
+
+  /* Drawer D — Meta/Date */
+  .drawer-meta {
+    position: absolute;
+    top: 75%;
+    left: calc(12% + 50px);
+    max-width: 60%;
+  }
+  .meta-text {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 14pt;
+    font-weight: 400;
+    color: var(--c-muted);
+    line-height: 1.5;
+  }
+
+  /* Footer */
+  .drawer-footer {
+    position: absolute;
+    bottom: 10%;
+    left: calc(12% + 50px);
+    max-width: 60%;
+  }
+  .footer-text {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 12pt;
+    font-weight: 400;
+    letter-spacing: 3pt;
+    color: var(--c-muted);
+    opacity: 0.6;
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="cover-page">
+  <!-- Layer 1: Background grid -->
+  <div class="cover-layer-1">
+    <div class="grid-pattern"></div>
+  </div>
+
+  <!-- Layer 2: Structure — left anchor line -->
+  <div class="cover-layer-2">
+    <div class="anchor-line"></div>
+  </div>
+
+  <!-- Layer 3: Content -->
+  <div class="cover-layer-3">
+    <!-- Drawer A: Kicker -->
+    <div class="drawer-kicker">
+      <p class="kicker-text">COMMERCIAL FRAMEWORK SPECIFICATION</p>
+    </div>
+
+    <!-- Drawer B: Hero Title -->
+    <div class="drawer-hero">
+      <p class="hero-title">VVU HBK Mk-II</p>
+      <p class="hero-subtitle">Terminal-as-a-Service (TaaS)</p>
+    </div>
+
+    <!-- Drawer C: Summary -->
+    <div class="drawer-summary">
+      <p class="summary-text">
+        Defining the commercial architecture for municipal water infrastructure intelligence 
+        through a non-recourse OpEx subscription model, 100% equity retention, and sole data 
+        sovereignty. This specification establishes the financial, governance, and operational 
+        pillars that govern the HBK Mk-II Hydro-Gateway deployment lifecycle.
+      </p>
+    </div>
+
+    <!-- Drawer D: Meta -->
+    <div class="drawer-meta">
+      <p class="meta-text">Vulcan Vex Umbra (VVU) EARTH TECH</p>
+      <p class="meta-text">Document Ref: VVU-TaaS-CFS-2026-001</p>
+      <p class="meta-text">Issue Date: March 2026</p>
+    </div>
+
+    <!-- Footer -->
+    <div class="drawer-footer">
+      <p class="footer-text">CONFIDENTIAL — FOR AUTHORIZED DISTRIBUTION ONLY</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

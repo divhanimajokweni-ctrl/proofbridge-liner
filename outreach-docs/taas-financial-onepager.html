@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1123">
+<title>VVU HBK Mk-II — Terminal-as-a-Service Financial Model</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-dark: #0f172a;
+    --bg-card: #1e293b;
+    --bg-card-alt: #162032;
+    --gold: #C9A84C;
+    --gold-light: #d4b967;
+    --gold-muted: #8B7A3C;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --border-subtle: #334155;
+    --border-gold: rgba(201, 168, 76, 0.3);
+  }
+
+  @page { margin: 0 !important; size: auto; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-dark);
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .poster {
+    width: 1123px;
+    height: 794px;
+    background: var(--bg-dark);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Subtle grid background */
+  .poster::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(201,168,76,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(201,168,76,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+  }
+
+  .poster > * {
+    z-index: 1;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 36px 12px 36px;
+    border-bottom: 1px solid var(--border-gold);
+  }
+
+  .header-title {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  .header-title h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+  }
+
+  .header-title .subtitle {
+    font-size: 13px;
+    font-weight: 300;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .header-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gold);
+    border: 1px solid var(--border-gold);
+    padding: 4px 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ===== MAIN CONTENT AREA ===== */
+  .main-content {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1.3fr 1fr;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    padding: 16px 36px 8px 36px;
+  }
+
+  /* ===== VALUE PROPOSITION (Top Left) ===== */
+  .value-prop {
+    padding: 16px 20px;
+    border-right: 1px solid rgba(51,65,85,0.5);
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--gold-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .value-prop h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--gold);
+    line-height: 1.15;
+    margin: 0 0 6px 0;
+  }
+
+  .value-prop .transition-badge {
+    display: inline-block;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+
+  .value-prop .transition-badge .arrow {
+    color: var(--gold);
+    margin: 0 4px;
+  }
+
+  .value-prop .points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .value-prop .points li {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    padding-left: 16px;
+    position: relative;
+    margin-bottom: 6px;
+  }
+
+  .value-prop .points li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 7px;
+    width: 6px;
+    height: 6px;
+    border: 1.5px solid var(--gold);
+    border-radius: 1px;
+  }
+
+  /* ===== REVENUE SPLIT (Center) ===== */
+  .revenue-split {
+    padding: 16px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid rgba(51,65,85,0.5);
+  }
+
+  .revenue-split .section-label {
+    text-align: center;
+  }
+
+  .donut-container {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    margin: 8px 0 12px 0;
+  }
+
+  .donut-svg {
+    width: 220px;
+    height: 220px;
+  }
+
+  .donut-center-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+
+  .donut-center-text .pct-total {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .donut-center-text .pct-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .split-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .split-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .split-bar-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 100px;
+    text-align: right;
+  }
+
+  .split-bar-track {
+    flex: 1;
+    height: 18px;
+    background: rgba(30,41,59,0.8);
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .split-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--bg-dark);
+  }
+
+  .split-bar-fill.op-baseline { background: var(--gold); width: 60%; }
+  .split-bar-fill.growth-rd { background: #5b8a72; width: 30%; }
+  .split-bar-fill.risk-comp { background: #7c5cbf; width: 10%; }
+
+  .split-bar-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.3;
+    max-width: 140px;
+  }
+
+  /* ===== SLA PERFORMANCE (Right) ===== */
+  .sla-performance {
+    padding: 16px 20px;
+  }
+
+  .sla-performance .section-label {
+    margin-bottom: 12px;
+  }
+
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .metric-card:last-child {
+    margin-bottom: 0;
+  }
+
+  .metric-value {
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--gold);
+    line-height: 1;
+    min-width: 70px;
+  }
+
+  .metric-unit {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  .metric-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1.3;
+  }
+
+  /* ===== BOTTOM SECTION ===== */
+  .bottom-section {
+    display: grid;
+    grid-template-columns: 1.1fr 1.1fr;
+    gap: 0;
+    padding: 8px 36px 0 36px;
+    border-top: 1px solid rgba(51,65,85,0.5);
+  }
+
+  /* ===== ZERO FABRICATION (Bottom Left) ===== */
+  .zero-fab {
+    padding: 14px 20px 10px 20px;
+    border-right: 1px solid rgba(51,65,85,0.5);
+  }
+
+  .zero-fab .section-label {
+    margin-bottom: 6px;
+  }
+
+  .zero-fab h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+
+  .three-keys {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .key-badge {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--gold);
+    background: rgba(201,168,76,0.12);
+    border: 1px solid var(--border-gold);
+    padding: 3px 8px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    border-radius: 3px;
+  }
+
+  .zero-fab .detail {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 6px;
+  }
+
+  .safe-harbor-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .harbor-item {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    flex: 1;
+  }
+
+  .harbor-item strong {
+    color: var(--gold-muted);
+    font-weight: 600;
+  }
+
+  /* ===== EQUITY RETENTION (Bottom Right) ===== */
+  .equity-retention {
+    padding: 14px 20px 10px 20px;
+  }
+
+  .equity-retention .section-label {
+    margin-bottom: 6px;
+  }
+
+  .equity-retention h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+
+  .equity-retention .statements {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 8px 0;
+  }
+
+  .equity-retention .statements li {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    padding-left: 14px;
+    position: relative;
+    margin-bottom: 4px;
+  }
+
+  .equity-retention .statements li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    background: var(--gold);
+    opacity: 0.6;
+    border-radius: 1px;
+  }
+
+  .crypto-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--gold-muted);
+    border: 1px solid var(--border-gold);
+    padding: 3px 10px;
+    letter-spacing: 0.05em;
+    border-radius: 3px;
+  }
+
+  .crypto-badge .algo {
+    font-weight: 700;
+    color: var(--gold);
+  }
+
+  /* ===== VENDOR FINANCING BAR ===== */
+  .vendor-bar {
+    padding: 8px 36px 18px 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--border-gold);
+    background: rgba(201,168,76,0.04);
+  }
+
+  .vendor-bar .left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .vendor-bar .label-text {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--gold-muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .vendor-bar .amount {
+    font-size: 18px;
+    font-weight: 900;
+    color: var(--gold);
+    font-family: 'Inter', sans-serif;
+  }
+
+  .vendor-bar .amount .currency {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-right: 2px;
+  }
+
+  .vendor-bar .exemption {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .vendor-bar .exemption em {
+    color: var(--text-secondary);
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  /* ===== DECORATIVE GOLD LINE ===== */
+  .gold-line-accent {
+    position: absolute;
+    bottom: 36px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0.2;
+    z-index: 0;
+  }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-title">
+      <h1>VVU HBK Mk-II</h1>
+      <span class="subtitle">Terminal-as-a-Service Financial Model</span>
+    </div>
+    <div class="header-badge">CONFIDENTIAL / INVESTOR EDITION</div>
+  </div>
+
+  <!-- MAIN 3-COLUMN CONTENT -->
+  <div class="main-content">
+
+    <!-- LEFT: TaaS Value Proposition -->
+    <div class="value-prop">
+      <div class="section-label">The TaaS Value Proposition</div>
+      <h2>CapEx <span style="color:var(--gold-muted);font-weight:300">to</span> OpEx</h2>
+      <div class="transition-badge">
+        CapEx<span class="arrow">&rarr;</span>OpEx Transition
+      </div>
+      <ul class="points">
+        <li>No upfront capital requirement for municipalities</li>
+        <li>Balance sheet de-risking via operational expenditure model</li>
+        <li>Municipalities retain usage rights; VVU retains all hardware equity</li>
+        <li>Service-level guarantees replace procurement risk</li>
+      </ul>
+    </div>
+
+    <!-- CENTER: 60/30/10 Revenue Split -->
+    <div class="revenue-split">
+      <div class="section-label">Revenue Allocation Model</div>
+
+      <!-- Donut Chart SVG -->
+      <div class="donut-container">
+        <svg class="donut-svg" viewBox="0 0 220 220">
+          <!-- Background circle -->
+          <circle cx="110" cy="110" r="90" fill="none" stroke="rgba(30,41,59,0.8)" stroke-width="28"/>
+          <!-- 60% slice - Operational Baseline (Gold) -->
+          <circle cx="110" cy="110" r="90" fill="none" stroke="#C9A84C" stroke-width="28"
+            stroke-dasharray="339.29 226.19" stroke-dashoffset="0"
+            transform="rotate(-90 110 110)"/>
+          <!-- 30% slice - Growth & R&D (Green) -->
+          <circle cx="110" cy="110" r="90" fill="none" stroke="#5b8a72" stroke-width="28"
+            stroke-dasharray="169.65 395.84" stroke-dashoffset="-339.29"
+            transform="rotate(-90 110 110)"/>
+          <!-- 10% slice - Risk & Compliance (Purple) -->
+          <circle cx="110" cy="110" r="90" fill="none" stroke="#7c5cbf" stroke-width="28"
+            stroke-dasharray="56.55 508.93" stroke-dashoffset="-508.93"
+            transform="rotate(-90 110 110)"/>
+          <!-- Inner white circle for donut hole -->
+          <circle cx="110" cy="110" r="62" fill="#0f172a"/>
+        </svg>
+        <div class="donut-center-text">
+          <div class="pct-total">60/30/10</div>
+          <div class="pct-label">Split Ratio</div>
+        </div>
+      </div>
+
+      <!-- Horizontal Bar Breakdown -->
+      <div class="split-bars">
+        <div class="split-bar-item">
+          <div class="split-bar-label" style="color:#C9A84C;">Operational Baseline</div>
+          <div class="split-bar-track">
+            <div class="split-bar-fill op-baseline">60%</div>
+          </div>
+          <div class="split-bar-desc">Hardware amortization, server costs, HBK inference</div>
+        </div>
+        <div class="split-bar-item">
+          <div class="split-bar-label" style="color:#5b8a72;">Growth &amp; R&amp;D</div>
+          <div class="split-bar-track">
+            <div class="split-bar-fill growth-rd">30%</div>
+          </div>
+          <div class="split-bar-desc">Software refinement, UCT/Wits academic collaboration</div>
+        </div>
+        <div class="split-bar-item">
+          <div class="split-bar-label" style="color:#7c5cbf;">Risk &amp; Compliance</div>
+          <div class="split-bar-track">
+            <div class="split-bar-fill risk-comp">10%</div>
+          </div>
+          <div class="split-bar-desc">ProofBridge-Liner audit chain, regulatory alignment</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: SLA Performance Targets -->
+    <div class="sla-performance">
+      <div class="section-label">SLA Performance Targets</div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-value">95% <span class="metric-unit">reduction</span></div>
+        </div>
+        <div class="metric-label">Search uncertainty elimination across pipeline operations</div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-value">&le;500m</div>
+        </div>
+        <div class="metric-label">Leak localization radius precision bound</div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-value">&le;5% <span class="metric-unit">FPR</span></div>
+        </div>
+        <div class="metric-label">False positive rate ceiling with ProofBridge-Liner validation</div>
+      </div>
+
+      <div class="metric-card">
+        <div>
+          <div class="metric-value">Optimized</div>
+        </div>
+        <div class="metric-label">Information density across all HBK inference outputs</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM 2-COLUMN SECTION -->
+  <div class="bottom-section">
+
+    <!-- BOTTOM LEFT: Zero Fabrication Governance -->
+    <div class="zero-fab">
+      <div class="section-label">Zero Fabrication Governance</div>
+      <h3>Three Keys Authorization Mechanism</h3>
+      <div class="three-keys">
+        <span class="key-badge">VVU</span>
+        <span class="key-badge">Academic</span>
+        <span class="key-badge">Municipal</span>
+      </div>
+      <div class="detail">32 SRS parameters must be verified before any manufacturing authorization is granted. No single entity can unilaterally authorize fabrication.</div>
+      <div class="safe-harbor-row">
+        <div class="harbor-item"><strong>20 bar</strong> surge pressure ceiling</div>
+        <div class="harbor-item"><strong>1400 m/s</strong> celerity threshold</div>
+        <div class="harbor-item"><strong>10mm</strong> corrosion limit</div>
+        <div class="harbor-item"><strong>FoS 1.5–3.0</strong> safety envelope</div>
+      </div>
+    </div>
+
+    <!-- BOTTOM RIGHT: VVU 100% Equity Retention -->
+    <div class="equity-retention">
+      <div class="section-label">VVU 100% Equity Retention</div>
+      <h3>Hardware Sovereignty Model</h3>
+      <ul class="statements">
+        <li>VVU owns all hardware. Municipalities hold usage rights only.</li>
+        <li>Unilateral right to hardware retrieval and redeployment upon contract termination.</li>
+        <li>No asset transfer, no lease-to-own, no depreciation schedule to municipalities.</li>
+      </ul>
+      <div class="crypto-badge">
+        <span class="algo">SHA-256</span> cryptographic audit trail &mdash; data sovereignty enforced at hash level
+      </div>
+    </div>
+  </div>
+
+  <!-- VENDOR FINANCING BOTTOM BAR -->
+  <div class="vendor-bar">
+    <div class="left">
+      <div class="label-text">Vendor Financing &bull; Tranche 1 Budget Lock</div>
+      <div class="amount"><span class="currency">R</span>812,490.00</div>
+    </div>
+    <div class="exemption">Prototyping exemptions available for <em>Limited Experimental Validation Builds</em> under SRS conditional waiver framework</div>
+  </div>
+
+</div>
+</body>
+</html>

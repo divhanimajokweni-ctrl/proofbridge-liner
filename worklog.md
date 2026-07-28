@@ -682,3 +682,158 @@ Stage Summary:
 - **BOM**: 12 items across battery (3), thermal (4), wiring (5) categories
 - **CAD Layout**: 8 modules total including new battery and aerogel modules, VR1 collision-free
 - All existing tabs (Consortium, VVU 100%, Contract Model, IP Boundaries, 3-Phase Roadmap, Digital Twin, Resources, 72h Validation, Timeline, Git Actions) continue to work
+
+---
+
+## Task 2-b: HBK Mk-II Phase 2 CAD & Engineering Specification PDF
+
+**Date:** 2026-03-04
+**Agent:** 2-b
+**Status:** COMPLETE
+
+### Summary
+Generated the professional PDF document "VVU HBK Mk-II Phase 2 Power, Thermal & CAD Architecture Specification" using the ReportLab pipeline as defined in the PDF skill.
+
+### Output
+- **Final PDF:** `/home/z/my-project/outreach-docs/VVU-HBK-Mk-II-CAD-Specification.pdf`
+- **Pages:** 12 (1 cover + 11 body)
+- **Size:** ~138 KB
+- **Page size:** A4 (210mm x 297mm)
+
+### Production Pipeline
+1. **Palette Generation:** Used `palette.cascade --title "HBK Mk-II Engineering Specification" --mode minimal --format reportlab` to generate the color system. The palette derived a warm industrial tone (olive/amber accent `#8c7225`, dark header `#4b4533`) matching the engineering specification theme.
+
+2. **Cover Page:** Built using Template 01 (HUD Data Terminal) with ultra-thick vertical anchor line. Cover HTML validated with `poster_validate.py` (PASS) and `cover_validate.js` (PASS, no overlaps). Rendered via `html2poster.js --width 794px`. Cover includes:
+   - Kicker: "PHASE 2 POWER, THERMAL & CAD ARCHITECTURE SPECIFICATION"
+   - Hero Title: "VVU HBK Mk-II"
+   - Summary: 4-line description of the specification scope
+   - Meta: Revision, Prepared By, Classification
+   - Spec badge: "8S4P / 25.6V / 614Wh"
+   - Document reference: VVU-HBK-MKII-P2-CAD-001
+
+3. **Body PDF:** Generated via ReportLab with `TocDocTemplate` + `multiBuild` for proper TOC. Includes:
+   - Table of Contents (auto-generated, clickable)
+   - Section 1: CAD Layout with 8-module coordinate matrix table
+   - Section 2: Power Architecture with 16-row battery specification table
+   - Section 3: Star Ground Wiring Protocol with 4-rail table
+   - Section 4: Epistemic Thermal Governance with 4-tier threshold table
+   - Section 5: Thermal Containment Architecture with 4-layer table
+   - Section 6: Bill of Materials with 12-item BOM table
+   - Page numbers on all body pages
+   - Professional typography with FreeSerif font family
+
+4. **Merge:** Cover PDF (Playwright) + body PDF (ReportLab) merged via pypdf with page size normalization (cover scaled to match A4 body).
+
+5. **QA Results:** `pdf_qa.py` passed with 12/12 checks OK. Only 1 warning (margin asymmetry on cover due to anchor line design, expected per Template 01 spec).
+
+### Files Created
+- `/home/z/my-project/outreach-docs/VVU-HBK-Mk-II-CAD-Specification.pdf` — Final merged PDF
+- `/home/z/my-project/outreach-docs/VVU-HBK-Mk-II-CAD-Specification-body.pdf` — Body PDF (pre-merge)
+- `/home/z/my-project/outreach-docs/cad-spec-cover.pdf` — Cover PDF
+- `/home/z/my-project/outreach-docs/cad-spec-cover.html` — Cover HTML source
+
+---
+
+## Task 2-a: VVU TaaS Commercial Framework Specification PDF
+
+**Agent:** Task 2-a | **Date:** 2026-03-04 | **Status:** COMPLETE
+
+### Objective
+Generate a professional PDF document: "VVU HBK Mk-II Terminal-as-a-Service (TaaS) Commercial Framework Specification" using the ReportLab pipeline from the PDF skill.
+
+### Production Workflow
+1. **Palette Generation:** `palette.cascade --title "VVU TaaS Commercial Framework" --mode minimal --format reportlab` produced gold-toned cascade palette with M-tier HEADER_FILL (#514931) and XS-tier ACCENT (#8e7324) and VVU_GOLD (#C9A84C) branding accent.
+
+2. **Cover Design:** Template 01 HUD Data Terminal with ultra-thick vertical anchor line in gold (#C9A84C). Cover includes:
+   - Kicker: "COMMERCIAL FRAMEWORK SPECIFICATION"
+   - Hero: "VVU HBK Mk-II" + subtitle "Terminal-as-a-Service (TaaS)"
+   - Summary: 4-line description of the commercial architecture
+   - Meta: Organization name, document ref, date
+   - Footer: Confidentiality notice
+
+3. **Cover Validation:** `cover_validate.js` detected 1 text-line overlap (34px gap vs required 40px). Fixed by increasing content left offset from `calc(12% + 40px)` to `calc(12% + 50px)`. Re-validation: all checks passed.
+
+4. **Cover Rendering:** `html2poster.js` generated cover at 794px width. Page size mismatch (595.92 x 842.88 pt vs A4 595.28 x 841.89 pt) fixed via pypdf scaling to exact A4.
+
+5. **Body PDF (ReportLab):** Used `BaseDocTemplate` (not `SimpleDocTemplate`) with custom `TocDocTemplate` class for TOC support. `PageTemplate` with `footer_arabic` callback draws centered page numbers + thin decorative line. Key fix: initial `SimpleDocTemplate` didn't apply `onPage` callback — switched to `BaseDocTemplate` with explicit template addition via `addPageTemplates()`.
+
+6. **Document Structure (12 pages):**
+   - Cover (p1): Full-bleed HTML/Playwright poster
+   - TOC (p2): Clickable Table of Contents with level 0/1 styles
+   - Section 1 (p3-4): Service Definition — TaaS Value Proposition + Asset Identification (11-component table)
+   - Section 2 (p5-6): Core Commercial Pillars — 100% Equity, Sole Data Sovereignty, InfrastructureRight Abstraction
+   - Section 3 (p7): Financial Model & Revenue Distribution — 60/30/10 split table
+   - Section 4 (p8-9): Risk Mitigation & Zero Fabrication — Safe Harbor Boundaries table + VR1-VR5 Verification Gates table
+   - Section 5 (p10): SLA Metrics — Leak Localization, FPR, Information Density table
+   - Section 6 (p11-12): Vendor Financing Terms — Tranche 1 Budget Lock, Prototyping Exemptions, Default & Asset Recovery
+
+7. **Tables (5 total):**
+   - Asset Identification (11 rows): Component, X/Y/Z coordinates, Functional Role
+   - Revenue Split (3 rows): Operational Baseline 60%, Growth & R&D 30%, Risk & Compliance 10%
+   - Safe Harbor Boundaries (4 rows): Surge Max, Wave Celerity, Corrosion Limit, Structural FoS
+   - Verification Gates VR1-VR5 (5 rows): Geometry, Material, Assembly, FAT, SAT
+   - SLA Metrics (3 rows): Localization Accuracy, FPR, Information Density
+
+8. **QA Results:** `pdf_qa.py` — ALL 13 checks PASSED. Page size consistent, no blank pages, fonts embedded, TOC populated with entries, cover full-bleed, page numbers present on all body pages, content fill adequate.
+
+### Files Created
+- `/home/z/my-project/outreach-docs/VVU-TaaS-Commercial-Framework-Specification.pdf` — Final merged PDF (12 pages, 68.6 KB)
+- `/home/z/my-project/outreach-docs/taas-body.pdf` — Body PDF (pre-merge, 11 pages)
+- `/home/z/my-project/outreach-docs/taas-cover.pdf` — Cover PDF (pre-A4-scaling)
+- `/home/z/my-project/outreach-docs/taas-cover-a4.pdf` — Cover PDF (A4-scaled)
+- `/home/z/my-project/outreach-docs/taas-cover.html` — Cover HTML source (Template 01)
+- `/home/z/my-project/outreach-docs/generate-taas-pdf.py` — ReportLab body PDF script
+- `/home/z/my-project/outreach-docs/generate-cad-spec-pdf.py` — ReportLab generation script
+
+---
+
+## Task 4 — TaaS Financial Model One-Pager PDF (Creative Pipeline)
+
+**Date:** 2026-03-05
+**Status:** COMPLETE
+
+### Summary
+Generated a professional single-page A4 landscape PDF one-pager for the VVU HBK Mk-II Terminal-as-a-Service Financial Model, using the Creative pipeline (Playwright/html2poster.js).
+
+### Pipeline Steps Executed
+1. **HTML Written:** `/home/z/my-project/outreach-docs/taas-financial-onepager.html` — Full custom HTML with dark navy (#0f172a) background, gold (#C9A84C) accents, SVG donut chart for 60/30/10 revenue split, horizontal bar breakdown, SLA metrics cards, Zero Fabrication governance section, VVU equity retention section, and vendor financing bottom bar.
+2. **poster_validate.py check-html:** PASSED (0 errors, 1 non-critical warning about @media screen adapt)
+3. **html2poster.js:** Successfully generated PDF at 1123x794px (A4 landscape) — 272.9 KB
+4. **pdf_qa.py --poster:** PASSED (10/10 checks, 1 warning for missing author metadata — resolved by meta.brand)
+5. **meta.brand:** Added Z.ai branding metadata (Title: "VVU HBK Mk-II — Terminal-as-a-Service Financial Model", Author: Z.ai, Creator: Z.ai)
+
+### Output
+- `/home/z/my-project/outreach-docs/VVU-TaaS-Financial-Model-OnePager.pdf` — Final PDF (A4 landscape, 842.88 x 595.92 pt, 272.9 KB)
+- `/home/z/my-project/outreach-docs/taas-financial-onepager.html` — Source HTML
+
+### Content Sections
+1. **TaaS Value Proposition** (CapEx → OpEx transition, no upfront capital, balance sheet de-risking)
+2. **60/30/10 Revenue Split** (SVG donut chart + horizontal bars: 60% Op Baseline, 30% Growth & R&D, 10% Risk & Compliance)
+3. **SLA Performance Targets** (4 metric cards: 95% reduction, ≤500m localization, ≤5% FPR, information density)
+4. **Zero Fabrication Governance** (Three Keys: VVU + Academic + Municipal, 32 SRS parameters, Safe Harbor boundaries)
+5. **VVU 100% Equity Retention** (Hardware sovereignty, SHA-256 audit trail, unilateral retrieval rights)
+6. **Vendor Financing Bar** (Tranche 1 Budget Lock: R812,490.00, prototyping exemptions)
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Generate TaaS Commercial Framework PDFs and HBK Mk-II CAD Specification
+
+Work Log:
+- Invoked PDF skill and read report.md, fonts.md, cover.md, typesetting specs
+- Generated 3 professional PDF documents via ReportLab and Playwright pipelines:
+  1. VVU-TaaS-Commercial-Framework-Specification.pdf (12 pages, 70KB, A4)
+  2. VVU-HBK-Mk-II-CAD-Specification.pdf (12 pages, 138KB, A4)
+  3. VVU-TaaS-Financial-Model-OnePager.pdf (1 page, 274KB, A4 landscape)
+- All PDFs passed QA checks (pdf_qa.py, cover_validate.js, poster_validate.py)
+- TaaS PDF covers all 6 sections: Service Definition, Core Commercial Pillars, Financial Model, Risk Mitigation, SLA Metrics, Vendor Financing
+- CAD Spec PDF covers all 6 sections: CAD Layout, Power Architecture, Star Ground Wiring, Thermal Governance, Thermal Containment, BOM
+- Financial OnePager is a dark-themed landscape poster with 60/30/10 revenue split visualization
+
+Stage Summary:
+- **3 PDF documents** generated and QA verified:
+  - `/home/z/my-project/outreach-docs/VVU-TaaS-Commercial-Framework-Specification.pdf` — 12 pages, clickable TOC, cover page, 6 sections, tables for Asset Identification (11 components), Revenue Split, Safe Harbor Boundaries, VR1-VR5 Gates, SLA Metrics
+  - `/home/z/my-project/outreach-docs/VVU-HBK-Mk-II-CAD-Specification.pdf` — 12 pages, clickable TOC, cover page, 6 sections, tables for CAD coordinates (8 modules), Battery spec (16 rows), Wiring P0-P3, Thermal thresholds, Thermal containment, BOM (12 items)
+  - `/home/z/my-project/outreach-docs/VVU-TaaS-Financial-Model-OnePager.pdf` — 1 page landscape poster, dark theme, gold accent, 60/30/10 visualization, SLA metrics cards, Zero Fabrication governance, VVU 100% equity retention
+- All PDFs use proper typography, embedded fonts, A4 page size
+- Cover pages use Template 01 HUD Data Terminal with gold (#C9A84C) vertical anchor line
