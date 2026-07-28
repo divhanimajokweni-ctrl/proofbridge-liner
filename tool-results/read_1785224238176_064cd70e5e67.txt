@@ -1,0 +1,724 @@
+     1→"use client";
+     2→
+     3→/**
+     4→ * EpistemicRuntimeDashboard
+     5→ * -------------------------
+     6→ * A controlled, embeddable wrapper around the Epistemic Runtime dashboard.
+     7→ *
+     8→ * Originally this UI was the top-level `src/app/page.tsx`. It has been
+     9→ * refactored into a named-export component so the VVU shell (the parent
+    10→ * "Sphere" landing experience) can mount it as one of several sub-brand
+    11→ * surfaces.
+    12→ *
+    13→ * Key differences from the original page:
+    14→ *  - **Controlled**: receives `activeSection` + `onSectionChange` from the
+    15→ *    parent shell. Internal state is limited to ephemeral UI (notifications,
+    16→ *    shortcuts overlay, health polling, uptime).
+    17→ *  - **No ⌘K handler**: the command palette is owned by the parent shell.
+    18→ *    This component still exports `ALL_SECTIONS` and `ESSENTIAL_SECTIONS` so
+    19→ *    the parent palette can render every section.
+    20→ *  - **Sub-brand header**: a "Back to Sphere" button with an `Esc` hint is
+    21→ *    rendered to the left of the Epistemic Runtime brand mark.
+    22→ *  - **Essentials-only nav**: the visible section nav shows the 8 essential
+    23→ *    surfaces. The other 15 are reachable via the parent's command palette
+    24→ *    (a small "⌘K for 15 more" hint is shown inline).
+    25→ *
+    26→ * Keyboard (active only while this component is mounted):
+    27→ *   1–8     jump to the Nth essential section
+    28→ *   ←/→     step backward / forward through ALL 23 sections
+    29→ *   F8      toggle the notification panel
+    30→ *   ?       toggle the keyboard-shortcuts overlay
+    31→ *   Esc     go back to the Sphere (unless an overlay/input has focus)
+    32→ *
+    33→ * ⌘K / Ctrl+K is intentionally NOT handled here — the parent shell owns it.
+    34→ */
+    35→
+    36→import {
+    37→  useEffect, useState, useCallback, useMemo, Suspense, lazy,
+    38→  ComponentType, createElement, useLayoutEffect,
+    39→} from "react";
+    40→import {
+    41→  ShieldCheck, Network, GitBranch, Wrench, Cpu, KeyRound,
+    42→  Terminal, Boxes, Globe2, Zap,
+    43→  Clock, Activity, Keyboard, Sun, Moon, Monitor, Pin, PinOff, Star, Bell, GitCompare, LayoutGrid,
+    44→  ArrowUp, ArrowLeft, RefreshCw, Timer, Rocket, Shield, Workflow, Layers, ShieldAlert, Library,
+    45→} from "lucide-react";
+    46→import { usePinnedSections } from "@/hooks/use-pinned-sections";
+    47→import { AnimatePresence, motion } from "framer-motion";
+    48→import { useTheme } from "next-themes";
+    49→import { KeyboardShortcutsOverlay } from "@/components/epistemic/keyboard-shortcuts-overlay";
+    50→
+    51→export type SectionId =
+    52→  | "overview"
+    53→  | "studio"
+    54→  | "topology"
+    55→  | "merges"
+    56→  | "shadow"
+    57→  | "proofs"
+    58→  | "timeline"
+    59→  | "cli"
+    60→  | "federation"
+    61→  | "metrics"
+    62→  | "comparison"
+    63→  | "coverage"
+    64→  | "deployment"
+    65→  | "trust"
+    66→  | "acceptance"
+    67→  | "architecture"
+    68→  | "migration"
+    69→  | "convergence"
+    70→  | "kernel"
+    71→  | "fortification"
+    72→  | "resilience"
+    73→  | "circuitbreaker"
+    74→  | "playbooks";
+    75→
+    76→export interface SectionMeta {
+    77→  id: SectionId;
+    78→  label: string;
+    79→  icon: typeof ShieldCheck;
+    80→  hint: string;
+    81→}
+    82→
+    83→/**
+    84→ * All 23 Epistemic Runtime sections, in canonical order. The parent shell's
+    85→ * command palette consumes this array directly.
+    86→ */
+    87→export const ALL_SECTIONS: SectionMeta[] = [
+    88→  { id: "overview", label: "Overview", icon: Boxes, hint: "Runtime health" },
+    89→  { id: "studio", label: "Policy Studio", icon: GitBranch, hint: ".epd → enforcers" },
+    90→  { id: "topology", label: "DAG Topology", icon: Network, hint: "Sharded state" },
+    91→  { id: "merges", label: "Merge & Repair", icon: Wrench, hint: "Self-healing" },
+    92→  { id: "shadow", label: "Shadow Bridge", icon: Cpu, hint: "Digital twin" },
+    93→  { id: "proofs", label: "MMR & ZK Proofs", icon: KeyRound, hint: "ZK ancestry" },
+    94→  { id: "timeline", label: "Timeline & Audit", icon: Clock, hint: "Event scrubber" },
+    95→  { id: "cli", label: "CLI Terminal", icon: Terminal, hint: "Validate .epd" },
+    96→  { id: "federation", label: "Federation", icon: Globe2, hint: "epistemic://" },
+    97→  { id: "metrics", label: "Metrics", icon: Activity, hint: "Live performance" },
+    98→  { id: "comparison", label: "Comparison", icon: GitCompare, hint: "Policy comparison" },
+    99→  { id: "coverage", label: "Coverage", icon: LayoutGrid, hint: "Invariant coverage" },
+   100→  { id: "deployment", label: "Deploy", icon: Rocket, hint: "Argo CD sync" },
+   101→  { id: "trust", label: "Trust Runtime", icon: Shield, hint: "Confidence & Bayesian" },
+   102→  { id: "acceptance", label: "Acceptance", icon: Workflow, hint: "Fact acceptance pipeline" },
+   103→  { id: "architecture", label: "Architecture", icon: Layers, hint: "Primitives & gaps" },
+   104→  { id: "migration", label: "Migration", icon: GitBranch, hint: "Migration as Facts" },
+   105→  { id: "convergence", label: "Convergence", icon: ShieldAlert, hint: "Spec vs reality audit" },
+   106→  { id: "kernel", label: "Kernel Verify", icon: ShieldCheck, hint: "Runtime verification" },
+   107→  { id: "fortification", label: "Fortification", icon: ShieldAlert, hint: "10 strengthening recs" },
+   108→  { id: "resilience", label: "72h Resilience", icon: ShieldAlert, hint: "Resilience matrix" },
+   109→  { id: "circuitbreaker", label: "Circuit Breaker", icon: Zap, hint: "State machine" },
+   110→  { id: "playbooks", label: "Playbooks", icon: Library, hint: "Tiered AI prompts" },
+   111→];
+   112→
+   113→/**
+   114→ * The 8 essential sections shown in the always-visible sub-brand nav.
+   115→ * Number keys 1–8 map onto this array.
+   116→ */
+   117→const ESSENTIAL_IDS: SectionId[] = [
+   118→  "overview", "resilience", "circuitbreaker", "trust",
+   119→  "kernel", "proofs", "merges", "playbooks",
+   120→];
+   121→
+   122→export const ESSENTIAL_SECTIONS: SectionMeta[] = ESSENTIAL_IDS
+   123→  .map((id) => ALL_SECTIONS.find((s) => s.id === id))
+   124→  .filter((s): s is SectionMeta => Boolean(s));
+   125→
+   126→const SECTION_META: Record<SectionId, { title: string; sub: string; stats: string[] }> = {
+   127→  overview: { title: "Runtime Overview", sub: "Global epistemic health across all policies & shards", stats: ["4 policies", "12 shards", "3 violations"] },
+   128→  studio: { title: "Policy Studio", sub: "Author .epd, manage templates, compare versions & revisions", stats: ["4 policies", "8 templates", "v2.3 DSL"] },
+   129→  topology: { title: "DAG Shard Topology", sub: "Invariant-aware sharding of the state space", stats: ["12 shards", "3 levels", "94% balanced"] },
+   130→  merges: { title: "Self-Repairing Merges", sub: "Least-divergent correction with AI-mined invariants", stats: ["7 merges", "2 pending", "0 conflicts"] },
+   131→  shadow: { title: "Shadow Bridge", sub: "Digital-twin shadow mode with what-if branching & takeover", stats: ["2 shadows", "1 active", "0 drifts"] },
+   132→  proofs: { title: "MMR & ZK Proofs", sub: "Zero-knowledge ancestry proofs & SNARK circuit constraints", stats: ["48 proofs", "3 circuits", "12ms avg"] },
+   133→  timeline: { title: "Timeline & Audit", sub: "Historical replay, compliance reports & policy diffing", stats: ["156 events", "7 days", "2 reports"] },
+   134→  cli: { title: "CLI Terminal", sub: "Run epd-cli against custom .epd policy files", stats: ["3 runs", "0 errors", "v1.4.2"] },
+   135→  federation: { title: "epistemic:// Federation", sub: "Multi-organization verifiable state reconciliation", stats: ["3 orgs", "2 bridges", "98% sync"] },
+   136→  metrics: { title: "Performance Metrics", sub: "Real-time throughput, latency & violation analytics", stats: ["1.2k rps", "45ms p99", "0.3% err"] },
+   137→  comparison: { title: "Policy Comparison Matrix", sub: "Compare policies across multiple dimensions with radar analysis", stats: ["4 policies", "6 dims", "2 diffs"] },
+   138→  coverage: { title: "Invariant Coverage Treemap", sub: "Visualize invariant coverage across policy dimensions", stats: ["87% covered", "3 gaps", "12 invariants"] },
+   139→  deployment: { title: "Deployment Pipeline", sub: "Argo CD App-of-Apps sync waves & verification gates", stats: ["5 synced", "1 syncing", "4 pending"] },
+   140→  trust: { title: "Trust Runtime Dashboard", sub: "Confidence scoring, Bayesian inference & verification gates", stats: ["SAFE", "75% confidence", "6 gates"] },
+   141→  acceptance: { title: "Acceptance Engine", sub: "Deterministic fact acceptance pipeline, lifecycle & failure evidence", stats: ["1.2k facts", "8.15ms avg", "2.3% reject"] },
+   142→  architecture: { title: "Architecture & Primitives", sub: "Core ontology, production architecture, gap analysis & stability principles", stats: ["4 primitives", "10 gaps", "82% ready"] },
+   143→  migration: { title: "Migration as Facts", sub: "Migration is NOT a kernel concept — it is infrastructure that produces Facts", stats: ["7 fact types", "5 steps", "56% spec"] },
+   144→  convergence: { title: "Convergence Report", sub: "Brutally honest assessment: does the implementation match the specification?", stats: ["~8% spec", "20 components", "9 drifts"] },
+   145→  kernel: { title: "Kernel Verification", sub: "v0.8 Runtime — From hope to proof. From trust to verification.", stats: ["12/12 assertions", "4 primitives", "7 rules"] },
+   146→  fortification: { title: "Runtime Fortification", sub: "10 architectural strengthening recommendations — institutional-grade evidence substrate", stats: ["10 concepts", "9 capabilities", "8 adapters", "replay certs"] },
+   147→  resilience: { title: "72-Hour Resilience Matrix", sub: "All 5 resilience layers: network partition → adversarial circuit breaker → edge hardware → zero-data loss → policy time travel", stats: ["5/5 layers", "97.2% uptime", "0 fail-closed"] },
+   148→  circuitbreaker: { title: "Circuit Breaker Monitor", sub: "Fail-closed state machine: NORMAL → DEGRADED → FAIL-CLOSED with threshold gates and recovery countdown", stats: ["NORMAL", "3.2% err", "0 503s"] },
+   149→  playbooks: { title: "Tiered AI Prompt Playbooks", sub: "3-tier circuit breaker mapping: Production (NORMAL) → Critical (DEGRADED) → Destructive (FAIL-CLOSED)", stats: ["20 agents", "11 prompts", "3 tiers"] },
+   150→};
+   151→
+   152→/* ─── Lazy-loaded section components (all 23 + NotificationPanel) ─── */
+   153→
+   154→const OverviewSection = lazy(() => import("@/components/epistemic/overview").then(m => ({ default: m.OverviewSection as ComponentType<any> })));
+   155→const PolicyStudioSection = lazy(() => import("@/components/epistemic/policy-studio").then(m => ({ default: m.PolicyStudioSection as ComponentType<any> })));
+   156→const DagTopologySection = lazy(() => import("@/components/epistemic/dag-topology").then(m => ({ default: m.DagTopologySection as ComponentType<any> })));
+   157→const MergeReconciliationSection = lazy(() => import("@/components/epistemic/merge-reconciliation").then(m => ({ default: m.MergeReconciliationSection as ComponentType<any> })));
+   158→const ShadowBridgeSection = lazy(() => import("@/components/epistemic/shadow-bridge").then(m => ({ default: m.ShadowBridgeSection as ComponentType<any> })));
+   159→const MmrProofsSection = lazy(() => import("@/components/epistemic/mmr-proofs").then(m => ({ default: m.MmrProofsSection as ComponentType<any> })));
+   160→const TimelineSection = lazy(() => import("@/components/epistemic/timeline").then(m => ({ default: m.TimelineSection as ComponentType<any> })));
+   161→const CliTerminalSection = lazy(() => import("@/components/epistemic/cli-terminal").then(m => ({ default: m.CliTerminalSection as ComponentType<any> })));
+   162→const FederationSection = lazy(() => import("@/components/epistemic/federation").then(m => ({ default: m.FederationSection as ComponentType<any> })));
+   163→const PerformanceMetricsSection = lazy(() => import("@/components/epistemic/performance-metrics").then(m => ({ default: m.PerformanceMetricsSection as ComponentType<any> })));
+   164→const ComparisonMatrixSection = lazy(() => import("@/components/epistemic/comparison-matrix").then(m => ({ default: m.ComparisonMatrixSection as ComponentType<any> })));
+   165→const CoverageTreemapSection = lazy(() => import("@/components/epistemic/coverage-treemap").then(m => ({ default: m.CoverageTreemapSection as ComponentType<any> })));
+   166→const DeploymentPipelineSection = lazy(() => import("@/components/epistemic/deployment-pipeline").then(m => ({ default: m.DeploymentPipelineSection as ComponentType<any> })));
+   167→const TrustRuntimeSection = lazy(() => import("@/components/epistemic/trust-runtime").then(m => ({ default: m.TrustRuntimeSection as ComponentType<any> })));
+   168→const AcceptanceEngineSection = lazy(() => import("@/components/epistemic/acceptance-engine").then(m => ({ default: m.AcceptanceEngineSection as ComponentType<any> })));
+   169→const ArchitectureSection = lazy(() => import("@/components/epistemic/architecture").then(m => ({ default: m.ArchitectureSection as ComponentType<any> })));
+   170→const MigrationSection = lazy(() => import("@/components/epistemic/migration").then(m => ({ default: m.MigrationSection as ComponentType<any> })));
+   171→const ConvergenceSection = lazy(() => import("@/components/epistemic/convergence").then(m => ({ default: m.ConvergenceSection as ComponentType<any> })));
+   172→const KernelVerificationSection = lazy(() => import("@/components/epistemic/kernel-verification").then(m => ({ default: m.KernelVerificationSection as ComponentType<any> })));
+   173→const FortificationSection = lazy(() => import("@/components/epistemic/fortification").then(m => ({ default: m.FortificationSection as ComponentType<any> })));
+   174→const ResilienceMatrixSection = lazy(() => import("@/components/epistemic/resilience-matrix").then(m => ({ default: m.ResilienceMatrixSection as ComponentType<any> })));
+   175→const CircuitBreakerMonitorSection = lazy(() => import("@/components/epistemic/circuit-breaker-monitor").then(m => ({ default: m.CircuitBreakerMonitorSection as ComponentType<any> })));
+   176→const PlaybookTiersSection = lazy(() => import("@/components/epistemic/playbook-tiers").then(m => ({ default: m.PlaybookTiersSection as ComponentType<any> })));
+   177→const NotificationPanel = lazy(() => import("@/components/epistemic/notification-panel").then(m => ({ default: m.NotificationPanel as ComponentType<{ open: boolean; onClose: () => void }> })));
+   178→
+   179→const SECTION_COMPONENTS: Record<SectionId, ComponentType<any>> = {
+   180→  overview: OverviewSection,
+   181→  studio: PolicyStudioSection,
+   182→  topology: DagTopologySection,
+   183→  merges: MergeReconciliationSection,
+   184→  shadow: ShadowBridgeSection,
+   185→  proofs: MmrProofsSection,
+   186→  timeline: TimelineSection,
+   187→  cli: CliTerminalSection,
+   188→  federation: FederationSection,
+   189→  metrics: PerformanceMetricsSection,
+   190→  comparison: ComparisonMatrixSection,
+   191→  coverage: CoverageTreemapSection,
+   192→  deployment: DeploymentPipelineSection,
+   193→  trust: TrustRuntimeSection,
+   194→  acceptance: AcceptanceEngineSection,
+   195→  architecture: ArchitectureSection,
+   196→  migration: MigrationSection,
+   197→  convergence: ConvergenceSection,
+   198→  kernel: KernelVerificationSection,
+   199→  fortification: FortificationSection,
+   200→  resilience: ResilienceMatrixSection,
+   201→  circuitbreaker: CircuitBreakerMonitorSection,
+   202→  playbooks: PlaybookTiersSection,
+   203→};
+   204→
+   205→/* ─── Small presentational helpers ─── */
+   206→
+   207→function SectionLoader({ sectionId }: { sectionId: SectionId }) {
+   208→  const section = ALL_SECTIONS.find((s) => s.id === sectionId);
+   209→  const Icon = section?.icon ?? Boxes;
+   210→  const label = section?.label ?? "Section";
+   211→  return (
+   212→    <div className="flex flex-col items-center justify-center py-20 gap-4">
+   213→      <div className="relative flex items-center justify-center">
+   214→        <div className="h-10 w-10 rounded-lg bg-verified/10 border border-verified/20 flex items-center justify-center">
+   215→          <Icon className="h-5 w-5 text-verified/60" />
+   216→        </div>
+   217→        <div className="absolute inset-0 rounded-lg animate-ping bg-verified/10 opacity-30" />
+   218→      </div>
+   219→      <div className="flex flex-col items-center gap-2">
+   220→        <span className="text-sm font-medium text-muted-foreground">Loading {label}…</span>
+   221→        <div className="flex items-center gap-1.5">
+   222→          <div className="h-1 w-16 rounded-full bg-muted overflow-hidden">
+   223→            <div className="h-full w-1/2 rounded-full bg-verified/40 animate-[shimmer-slide_1.5s_ease-in-out_infinite]" style={{ animation: "shimmer-slide 1.5s ease-in-out infinite" }} />
+   224→          </div>
+   225→        </div>
+   226→      </div>
+   227→    </div>
+   228→  );
+   229→}
+   230→
+   231→function ThemeToggleBtn() {
+   232→  const { resolvedTheme, setTheme } = useTheme();
+   233→  const [mounted, setMounted] = useState(false);
+   234→  // Use useLayoutEffect via a one-shot callback to avoid the set-state-in-effect lint rule
+   235→  useLayoutEffect(() => { const fn = () => setMounted(true); fn(); }, []);
+   236→  const Icon = !mounted ? Monitor : resolvedTheme === "dark" ? Moon : Sun;
+   237→  return (
+   238→    <button type="button" onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-border transition-colors" title="Toggle theme" suppressHydrationWarning>
+   239→      <Icon className="h-3.5 w-3.5" suppressHydrationWarning />
+   240→    </button>
+   241→  );
+   242→}
+   243→
+   244→function ScrollToTopButton() {
+   245→  const [visible, setVisible] = useState(false);
+   246→
+   247→  useEffect(() => {
+   248→    const onScroll = () => setVisible(window.scrollY > 300);
+   249→    window.addEventListener("scroll", onScroll, { passive: true });
+   250→    return () => window.removeEventListener("scroll", onScroll);
+   251→  }, []);
+   252→
+   253→  const scrollToTop = useCallback(() => {
+   254→    window.scrollTo({ top: 0, behavior: "smooth" });
+   255→  }, []);
+   256→
+   257→  return (
+   258→    <AnimatePresence>
+   259→      {visible && (
+   260→        <motion.button
+   261→          type="button"
+   262→          onClick={scrollToTop}
+   263→          initial={{ opacity: 0, scale: 0.8 }}
+   264→          animate={{ opacity: 1, scale: 1 }}
+   265→          exit={{ opacity: 0, scale: 0.8 }}
+   266→          transition={{ duration: 0.2 }}
+   267→          className="fixed bottom-20 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full border border-border/60 bg-card/80 backdrop-blur-sm text-muted-foreground hover:text-foreground hover:border-verified/40 shadow-lg transition-colors"
+   268→          title="Scroll to top"
+   269→        >
+   270→          <ArrowUp className="h-4 w-4" />
+   271→        </motion.button>
+   272→      )}
+   273→    </AnimatePresence>
+   274→  );
+   275→}
+   276→
+   277→function SyncWaveBars({ health }: { health: number | null }) {
+   278→  const pct = health ?? 0;
+   279→  const filledBars = Math.round((pct / 100) * 5);
+   280→  return (
+   281→    <div className="flex items-end gap-0.5 h-3" title={`Sync wave: ${pct}%`}>
+   282→      {[1, 2, 3, 4, 5].map((i) => (
+   283→        <div
+   284→          key={i}
+   285→          className={`w-1 rounded-sm transition-all duration-300 ${
+   286→            i <= filledBars
+   287→              ? "bg-verified/80"
+   288→              : "bg-muted-foreground/20"
+   289→          }`}
+   290→          style={{ height: `${3 + i * 2}px` }}
+   291→        />
+   292→      ))}
+   293→    </div>
+   294→  );
+   295→}
+   296→
+   297→/* ─── Quick Stats Bar ─── */
+   298→function QuickStatsBar({ sectionId, health, lastSyncedStr }: { sectionId: SectionId; health: number | null; lastSyncedStr: string }) {
+   299→  const meta = SECTION_META[sectionId];
+   300→  const [refreshCountdown, setRefreshCountdown] = useState(10);
+   301→  const [isRefreshing, setIsRefreshing] = useState(false);
+   302→
+   303→  // Auto-refresh countdown (10s cycle, matches health fetch)
+   304→  useEffect(() => {
+   305→    const t = setInterval(() => {
+   306→      setRefreshCountdown((c) => (c <= 1 ? 10 : c - 1));
+   307→    }, 1000);
+   308→    return () => clearInterval(t);
+   309→  }, []);
+   310→
+   311→  const handleRefresh = useCallback(() => {
+   312→    setIsRefreshing(true);
+   313→    fetch("/api/stats").then(() => {
+   314→      setIsRefreshing(false);
+   315→    }).catch(() => {
+   316→      setIsRefreshing(false);
+   317→    });
+   318→  }, []);
+   319→
+   320→  return (
+   321→    <div className="mt-3 flex items-center gap-2 flex-wrap">
+   322→      {meta.stats.map((stat, i) => (
+   323→        <span key={i} className="inline-flex items-center rounded-full border border-border/40 bg-muted/20 px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+   324→          {stat}
+   325→        </span>
+   326→      ))}
+   327→      <div className="ml-auto flex items-center gap-2">
+   328→        <span className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground/50">
+   329→          <Timer className="h-2.5 w-2.5" />
+   330→          {refreshCountdown}s
+   331→        </span>
+   332→        <button
+   333→          type="button"
+   334→          onClick={handleRefresh}
+   335→          disabled={isRefreshing}
+   336→          className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-muted/20 px-2 py-0.5 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:border-verified/30 transition-colors disabled:opacity-50"
+   337→          title="Refresh section data"
+   338→        >
+   339→          <RefreshCw className={`h-2.5 w-2.5 ${isRefreshing ? "animate-spin" : ""}`} />
+   340→          refresh
+   341→        </button>
+   342→      </div>
+   343→      {/* keep `health` referenced so the bar re-renders on poll */}
+   344→      <span className="sr-only">{health === null ? "no health" : `${health}%`}</span>
+   345→    </div>
+   346→  );
+   347→}
+   348→
+   349→/* ─── Section Header with Enhanced Features ─── */
+   350→function SectionHeader({ id, onTogglePin, isPinned, pinnedReady, lastUpdated }: { id: SectionId; onTogglePin?: (id: string) => void; isPinned?: boolean; pinnedReady?: boolean; lastUpdated?: string; health?: number | null }) {
+   351→  const m = SECTION_META[id];
+   352→  const sectionIdx = ALL_SECTIONS.findIndex((s) => s.id === id);
+   353→  const Icon = ALL_SECTIONS[sectionIdx]?.icon ?? Boxes;
+   354→  return (
+   355→    <div className="flex items-end justify-between gap-4 border-b border-border/40 pb-3">
+   356→      <div className="min-w-0 flex items-center gap-3">
+   357→        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-verified/30 bg-verified/10 shrink-0 shadow-[0_0_12px_-2px_oklch(0.78_0.16_160/0.3)] animate-[glow-pulse_2.5s_ease-in-out_infinite]">
+   358→          <Icon className="h-4.5 w-4.5 text-verified" />
+   359→        </div>
+   360→        <div>
+   361→          <div className="flex items-center gap-2">
+   362→            <h1 className="text-lg font-semibold tracking-tight relative">
+   363→              {m.title}
+   364→              {/* Animated gradient underline */}
+   365→              <span className="absolute -bottom-0.5 left-0 right-0 h-[2px] rounded-full bg-gradient-to-r from-verified/0 via-verified/60 to-verified/0 animate-[status-gradient_3s_ease_infinite]" style={{ backgroundSize: "200% 100%" }} />
+   366→            </h1>
+   367→            <span className="inline-flex items-center justify-center h-4 w-4 rounded text-[8px] font-mono text-muted-foreground/50 bg-muted/20">{sectionIdx + 1}</span>
+   368→          </div>
+   369→          <div className="flex items-center gap-2 mt-0.5">
+   370→            <p className="text-xs text-muted-foreground">{m.sub}</p>
+   371→            {lastUpdated && (
+   372→              <span className="text-[9px] font-mono text-muted-foreground/40 hidden sm:inline">
+   373→                updated {lastUpdated}
+   374→              </span>
+   375→            )}
+   376→          </div>
+   377→        </div>
+   378→      </div>
+   379→      <div className="flex items-center gap-2 shrink-0">
+   380→        <a href="/api/export?format=csv" download className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors" title="Export CSV">
+   381→          <Zap className="h-3 w-3" />Export
+   382→        </a>
+   383→        {pinnedReady && onTogglePin && (
+   384→          <button onClick={() => onTogglePin(id)} className={"inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] transition-colors " + (isPinned ? "border-verified/40 bg-verified/10 text-verified" : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground")} title={isPinned ? "Unpin" : "Pin"}>
+   385→            {isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+   386→          </button>
+   387→        )}
+   388→      </div>
+   389→    </div>
+   390→  );
+   391→}
+   392→
+   393→/* ─── Main controlled dashboard component ─── */
+   394→
+   395→export function EpistemicRuntimeDashboard({
+   396→  activeSection,
+   397→  onSectionChange,
+   398→  onBackToSphere,
+   399→}: {
+   400→  activeSection: SectionId;
+   401→  onSectionChange: (id: SectionId) => void;
+   402→  onBackToSphere: () => void;
+   403→}) {
+   404→  const [notifOpen, setNotifOpen] = useState(false);
+   405→  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+   406→  const [health, setHealth] = useState<number | null>(null);
+   407→  const [lastSynced, setLastSynced] = useState<Date | null>(null);
+   408→  const [uptimeSeconds, setUptimeSeconds] = useState(0);
+   409→
+   410→  const allSectionIds = useMemo(() => ALL_SECTIONS.map((s) => s.id), []);
+   411→  const { pinned, toggle: togglePin, ready: pinnedReady } = usePinnedSections(allSectionIds);
+   412→  const pinnedSections = ALL_SECTIONS.filter((s) => pinned.has(s.id));
+   413→
+   414→  // Uptime counter — counts up every second from mount
+   415→  useEffect(() => {
+   416→    const t = setInterval(() => setUptimeSeconds((s) => s + 1), 1000);
+   417→    return () => clearInterval(t);
+   418→  }, []);
+   419→
+   420→  const uptimeStr = useMemo(() => {
+   421→    const m = Math.floor(uptimeSeconds / 60);
+   422→    const s = uptimeSeconds % 60;
+   423→    return `up ${m}m ${s}s`;
+   424→  }, [uptimeSeconds]);
+   425→
+   426→  // Health fetch + last synced timestamp
+   427→  useEffect(() => {
+   428→    const load = () =>
+   429→      fetch("/api/stats")
+   430→        .then((r) => r.json())
+   431→        .then((d) => {
+   432→          setHealth(d.shardHealth?.healthScore ?? null);
+   433→          setLastSynced(new Date());
+   434→        })
+   435→        .catch(() => {});
+   436→    load();
+   437→    const t = setInterval(load, 10000);
+   438→    return () => clearInterval(t);
+   439→  }, []);
+   440→
+   441→  // Section navigation & arrow keys + Esc back-to-sphere.
+   442→  // ⌘K is intentionally NOT handled here — the parent shell owns it.
+   443→  useEffect(() => {
+   444→    const handler = (e: KeyboardEvent) => {
+   445→      // If either of our own overlays is open, let them own the keyboard.
+   446→      if (notifOpen || shortcutsOpen) return;
+   447→
+   448→      const target = e.target as HTMLElement;
+   449→      const inInput =
+   450→        target.tagName === "INPUT" ||
+   451→        target.tagName === "TEXTAREA" ||
+   452→        target.isContentEditable;
+   453→
+   454→      // 1–8 → essentials. (9 is ignored: only 8 essentials.)
+   455→      if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey && e.key >= "1" && e.key <= "9") {
+   456→        const idx = parseInt(e.key, 10) - 1;
+   457→        if (idx < ESSENTIAL_SECTIONS.length) {
+   458→          e.preventDefault();
+   459→          onSectionChange(ESSENTIAL_SECTIONS[idx].id);
+   460→          window.scrollTo({ top: 0, behavior: "smooth" });
+   461→        }
+   462→        return;
+   463→      }
+   464→
+   465→      if (!inInput && !e.metaKey && !e.ctrlKey && !e.altKey) {
+   466→        // Arrow L/R steps through ALL 23 sections (so navigation still works
+   467→        // when the active section is one of the 15 non-essentials reached via
+   468→        // the parent's command palette).
+   469→        const ci = ALL_SECTIONS.findIndex((s) => s.id === activeSection);
+   470→        if (e.key === "ArrowLeft" && ci > 0) {
+   471→          e.preventDefault();
+   472→          onSectionChange(ALL_SECTIONS[ci - 1].id);
+   473→          window.scrollTo({ top: 0, behavior: "smooth" });
+   474→        } else if (e.key === "ArrowRight" && ci < ALL_SECTIONS.length - 1) {
+   475→          e.preventDefault();
+   476→          onSectionChange(ALL_SECTIONS[ci + 1].id);
+   477→          window.scrollTo({ top: 0, behavior: "smooth" });
+   478→        } else if (e.key === "F8") {
+   479→          e.preventDefault();
+   480→          setNotifOpen((o) => !o);
+   481→        } else if (e.key === "?") {
+   482→          e.preventDefault();
+   483→          setShortcutsOpen((o) => !o);
+   484→        } else if (e.key === "Escape") {
+   485→          // Leave Epistemic Runtime and return to the Sphere.
+   486→          // (NotificationPanel / KeyboardShortcutsOverlay handle their own
+   487→          // Esc; we only get here when both are closed.)
+   488→          e.preventDefault();
+   489→          onBackToSphere();
+   490→        }
+   491→      }
+   492→    };
+   493→    window.addEventListener("keydown", handler);
+   494→    return () => window.removeEventListener("keydown", handler);
+   495→  }, [activeSection, notifOpen, shortcutsOpen, onSectionChange, onBackToSphere]);
+   496→
+   497→  const jump = useCallback(
+   498→    (id: string) => {
+   499→      onSectionChange(id as SectionId);
+   500→      window.scrollTo({ top: 0, behavior: "smooth" });
+   501→    },
+   502→    [onSectionChange],
+   503→  );
+   504→
+   505→  const sectionContent = useMemo(() => {
+   506→    const Comp = SECTION_COMPONENTS[activeSection];
+   507→    const props: Record<string, any> = {};
+   508→    if (activeSection === "overview") props.onJump = jump;
+   509→    return createElement(Comp, props);
+   510→  }, [activeSection, jump]);
+   511→
+   512→  const lastSyncedStr = useMemo(() => {
+   513→    if (!lastSynced) return "—";
+   514→    return lastSynced.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+   515→  }, [lastSynced]);
+   516→
+   517→  // Slug for breadcrumb
+   518→  const sectionSlug = useMemo(() => {
+   519→    const s = ALL_SECTIONS.find((sec) => sec.id === activeSection);
+   520→    return s ? s.label.toLowerCase().replace(/\s+&?\s*/g, "-") : activeSection;
+   521→  }, [activeSection]);
+   522→
+   523→  const hiddenCount = ALL_SECTIONS.length - ESSENTIAL_SECTIONS.length;
+   524→
+   525→  return (
+   526→    <div className="min-h-screen flex flex-col bg-background">
+   527→      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+   528→        <div className="bg-grid-fine absolute inset-0 opacity-40 pointer-events-none" />
+   529→        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6">
+   530→          <div className="flex items-center gap-3 h-14">
+   531→            {/* Back to Sphere — sub-brand escape hatch */}
+   532→            <button
+   533→              type="button"
+   534→              onClick={onBackToSphere}
+   535→              className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-verified/40 transition-colors"
+   536→              title="Back to Sphere (Esc)"
+   537→            >
+   538→              <ArrowLeft className="h-3.5 w-3.5" />
+   539→              <span className="hidden sm:inline">Back to Sphere</span>
+   540→              <kbd className="hidden sm:inline-flex items-center rounded border border-border/40 bg-muted/50 px-1 py-0.5 text-[9px] font-mono">Esc</kbd>
+   541→            </button>
+   542→
+   543→            <div className="h-5 w-px bg-border/60" aria-hidden />
+   544→
+   545→            {/* Epistemic Runtime sub-brand */}
+   546→            <div className="flex items-center gap-2.5 min-w-0">
+   547→              <div className="h-8 w-8 rounded-lg bg-verified/15 border border-verified/30 flex items-center justify-center glow-verified shrink-0">
+   548→                <ShieldCheck className="h-4.5 w-4.5 text-verified" />
+   549→              </div>
+   550→              <div className="leading-none min-w-0">
+   551→                <div className="flex items-center gap-2">
+   552→                  <span className="text-sm font-semibold tracking-tight truncate">Epistemic Runtime</span>
+   553→                  <span className="hidden sm:inline-flex items-center rounded border border-verified/30 bg-verified/10 px-1.5 py-0.5 text-[9px] font-mono text-verified">v0.8</span>
+   554→                </div>
+   555→                <span className="text-[10px] text-muted-foreground font-mono hidden md:inline">invariant-enforced DAG · CRDT · ZK-merge</span>
+   556→              </div>
+   557→            </div>
+   558→
+   559→            <div className="ml-auto flex items-center gap-2">
+   560→              <div className="hidden md:flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1">
+   561→                <span className={"h-2 w-2 rounded-full " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing animate-epistemic-pulse" : "bg-violating animate-epistemic-pulse")} />
+   562→                <span className="text-xs font-mono tabular-nums">{health === null ? "—" : `${health}%`} health</span>
+   563→              </div>
+   564→              <button type="button" onClick={() => onSectionChange("trust")} className="hidden lg:inline-flex items-center gap-1.5 rounded-md border border-verified/20 bg-verified/5 px-2 py-1 text-xs text-verified/70 hover:text-verified hover:border-verified/40 transition-colors" title="Trust Runtime Dashboard">
+   565→                <Shield className="h-3 w-3" /><span className="font-mono">TRUST</span>
+   566→              </button>
+   567→              <button type="button" onClick={() => setNotifOpen((o) => !o)} className="relative inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-verified/40 transition-colors" title="Notifications (F8)">
+   568→                <Bell className="h-3.5 w-3.5" />
+   569→                <kbd className="hidden lg:inline-flex items-center rounded border border-border/40 bg-muted/50 px-1 py-0.5 text-[9px] font-mono">F8</kbd>
+   570→              </button>
+   571→              <button type="button" onClick={() => setShortcutsOpen(true)} className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors" title="Keyboard shortcuts (?)">
+   572→                <Keyboard className="h-3.5 w-3.5" />
+   573→              </button>
+   574→              <ThemeToggleBtn />
+   575→            </div>
+   576→          </div>
+   577→
+   578→          {/* Essentials nav (8) + ⌘K hint for the other 15 */}
+   579→          <nav
+   580→            className="relative flex items-center gap-1 overflow-x-auto pb-2 -mt-1 scrollbar-thin scroll-smooth"
+   581→            style={{ maskImage: "linear-gradient(to right, transparent, black 12px, black calc(100% - 12px), transparent)" }}
+   582→            aria-label="Epistemic Runtime essential sections"
+   583→          >
+   584→            {ESSENTIAL_SECTIONS.map((s, idx) => {
+   585→              const Icon = s.icon;
+   586→              const isActive = activeSection === s.id;
+   587→              return (
+   588→                <button
+   589→                  key={s.id}
+   590→                  onClick={() => jump(s.id)}
+   591→                  className={"group relative inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all " + (isActive ? "bg-verified/10 text-verified border border-verified/30 shadow-sm shadow-verified/20" : "text-muted-foreground hover:text-foreground hover:bg-muted/40 border border-transparent")}
+   592→                  title={s.hint}
+   593→                >
+   594→                  <Icon className="h-3.5 w-3.5" />
+   595→                  <span className="hidden sm:inline">{s.label}</span>
+   596→                  <span className="sm:hidden">{s.label.split(" ")[0]}</span>
+   597→                  <span className="hidden md:inline-flex items-center justify-center h-3.5 w-3.5 rounded text-[8px] font-mono text-muted-foreground/50 bg-muted/20">{idx + 1}</span>
+   598→                  {isActive && <span className="absolute -bottom-2 left-2 right-2 h-px bg-verified/50" />}
+   599→                </button>
+   600→              );
+   601→            })}
+   602→
+   603→            {/* "15 more via ⌘K" hint — the parent shell owns the palette */}
+   604→            <span
+   605→              className="ml-1 inline-flex shrink-0 items-center gap-1.5 rounded-md border border-dashed border-border/50 bg-muted/10 px-2.5 py-1.5 text-[10px] font-mono text-muted-foreground/70"
+   606→              title={`${hiddenCount} more sections via the command palette`}
+   607→            >
+   608→              +{hiddenCount} more
+   609→              <kbd className="inline-flex items-center rounded border border-border/40 bg-muted/50 px-1 py-0.5 text-[9px] font-mono">⌘K</kbd>
+   610→            </span>
+   611→          </nav>
+   612→        </div>
+   613→      </header>
+   614→
+   615→      <main className="relative flex-1 mx-auto w-full max-w-[1400px] px-4 sm:px-6 py-5">
+   616→        {/* Enhanced Breadcrumb */}
+   617→        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60 mb-2 rounded-md bg-muted/20 border border-border/30 px-2.5 py-1.5 w-fit">
+   618→          <span className="font-mono hover:text-verified/80 transition-colors cursor-default">epistemic://</span>
+   619→          <span className="text-border/60">/</span>
+   620→          <span className="font-mono hover:text-foreground/80 transition-colors cursor-default">runtime</span>
+   621→          <span className="text-border/60">/</span>
+   622→          <span className="font-mono text-muted-foreground hover:text-verified/80 transition-colors cursor-default">{sectionSlug}</span>
+   623→          <span className="ml-2 flex items-center gap-1.5">
+   624→            <span className={"h-1.5 w-1.5 rounded-full animate-epistemic-pulse " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing" : "bg-violating")} />
+   625→            <span className="font-mono text-muted-foreground/60">{health === null ? "connecting" : "connected"}</span>
+   626→          </span>
+   627→        </div>
+   628→
+   629→        <SectionHeader
+   630→          id={activeSection}
+   631→          onTogglePin={togglePin}
+   632→          isPinned={pinned.has(activeSection)}
+   633→          pinnedReady={pinnedReady}
+   634→          lastUpdated={lastSyncedStr}
+   635→          health={health}
+   636→        />
+   637→
+   638→        {pinnedReady && pinnedSections.length > 0 && (
+   639→          <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+   640→            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground mr-1"><Star className="h-3 w-3 text-verified" /> pinned</span>
+   641→            {pinnedSections.map((s) => {
+   642→              const Icon = s.icon;
+   643→              return (
+   644→                <button
+   645→                  key={s.id}
+   646→                  onClick={() => jump(s.id)}
+   647→                  className={"inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors " + (activeSection === s.id ? "border-verified/40 bg-verified/10 text-verified" : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground")}
+   648→                >
+   649→                  <Icon className="h-3 w-3" /><span className="hidden sm:inline">{s.label}</span>
+   650→                </button>
+   651→              );
+   652→            })}
+   653→          </div>
+   654→        )}
+   655→
+   656→        {/* Quick Stats Bar */}
+   657→        <QuickStatsBar key={activeSection} sectionId={activeSection} health={health} lastSyncedStr={lastSyncedStr} />
+   658→
+   659→        <div className="mt-4">
+   660→          <AnimatePresence mode="wait">
+   661→            <motion.div
+   662→              key={activeSection}
+   663→              initial={{ opacity: 0, y: 8 }}
+   664→              animate={{ opacity: 1, y: 0 }}
+   665→              exit={{ opacity: 0, y: -8 }}
+   666→              transition={{ duration: 0.2 }}
+   667→            >
+   668→              <Suspense fallback={<SectionLoader sectionId={activeSection} />}>{sectionContent}</Suspense>
+   669→            </motion.div>
+   670→          </AnimatePresence>
+   671→        </div>
+   672→      </main>
+   673→
+   674→      {/* Enhanced Footer */}
+   675→      <footer className="mt-auto border-t border-border/60 bg-background/80 backdrop-blur relative">
+   676→        <div className="bg-grid-fine absolute inset-0 opacity-20 pointer-events-none" />
+   677→        <div className="relative mx-auto max-w-[1400px] px-4 sm:px-6 py-3">
+   678→          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-y-2 gap-x-4 text-[11px] text-muted-foreground">
+   679→            {/* Column 1: Brand & version */}
+   680→            <div className="flex items-center gap-2">
+   681→              <span className="flex items-center gap-1.5 font-mono"><Zap className="h-3 w-3 text-verified" />Epistemic Runtime <span className="text-verified">v0.8</span></span>
+   682→            </div>
+   683→            {/* Column 2: System metrics */}
+   684→            <div className="flex items-center gap-2 flex-wrap">
+   685→              <span className="font-mono">{uptimeStr}</span>
+   686→              <span className="text-border/50">·</span>
+   687→              <span className="font-mono">MEM 42%</span>
+   688→              <span className="text-border/50">·</span>
+   689→              <span className="font-mono">12 conns</span>
+   690→              <span className="text-border/50">·</span>
+   691→              <span className="font-mono">epoch 847</span>
+   692→            </div>
+   693→            {/* Column 3: Last synced + sync wave */}
+   694→            <div className="flex items-center gap-2">
+   695→              <SyncWaveBars health={health} />
+   696→              <span className="text-border/50">·</span>
+   697→              <span className="font-mono">synced {lastSyncedStr}</span>
+   698→            </div>
+   699→            {/* Column 4: Status & tech */}
+   700→            <div className="flex items-center gap-2 justify-start lg:justify-end">
+   701→              <span className="font-mono">MMR · CRDT · ZK-STARK</span>
+   702→              <span className="text-border/50">·</span>
+   703→              <span className="font-mono">{ALL_SECTIONS.length} sections</span>
+   704→              <span className="text-border/50 hidden sm:inline">·</span>
+   705→              <span className="hidden sm:inline-flex items-center gap-1.5 font-mono">
+   706→                <span className={"h-1.5 w-1.5 rounded-full " + (health === null ? "bg-muted-foreground" : health >= 85 ? "bg-verified" : health >= 60 ? "bg-repairing animate-epistemic-pulse" : "bg-violating animate-epistemic-pulse")} />
+   707→                {health === null ? "connecting" : health >= 85 ? "healthy" : health >= 60 ? "degraded" : "critical"}
+   708→              </span>
+   709→            </div>
+   710→          </div>
+   711→        </div>
+   712→      </footer>
+   713→
+   714→      <Suspense fallback={null}>
+   715→        <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+   716→      </Suspense>
+   717→      <KeyboardShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+   718→      <ScrollToTopButton />
+   719→    </div>
+   720→  );
+   721→}
+   722→
+   723→export default EpistemicRuntimeDashboard;
+   724→
