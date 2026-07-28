@@ -1,9 +1,9 @@
 import {
-  Boxes, ShieldCheck, FileCheck2, Workflow, Droplets, BrainCircuit,
+  Boxes, ShieldCheck, FileCheck2, Workflow, Droplets, BrainCircuit, Activity,
   type LucideIcon,
 } from "lucide-react";
 
-export type ProductId = "sphere" | "epistemic" | "proofbridge" | "air-runtime" | "ubuntu-pools" | "hbk";
+export type ProductId = "sphere" | "epistemic" | "proofbridge" | "air-runtime" | "ubuntu-pools" | "hbk" | "simulation";
 
 export interface ProductMeta {
   id: ProductId;
@@ -117,6 +117,23 @@ export const PRODUCTS: ProductMeta[] = [
       { label: "Trip Verdicts", value: "0", hint: "Hallucination blocks" },
     ],
     status: "COMING_ONLINE",
+  },
+  {
+    id: "simulation",
+    label: "72h Simulation",
+    tag: "SIM",
+    icon: Activity,
+    mission: "Full 72-hour VVU-VAL-001 validation loop with HBK digital twin prototype. Real-time Git Actions log. Cape Town water network simulation. Production simulation — explicitly honest, practical, production-grade.",
+    tagline: "HBK Twin · Git Actions · Real-Time Metrics",
+    accent: "#10b981",
+    shortcut: 7,
+    signals: [
+      { label: "Sim Engine", value: "OFFLINE", hint: "WebSocket connection status" },
+      { label: "Current Phase", value: "P1", hint: "7-phase validation lifecycle" },
+      { label: "Validation Index", value: "—", hint: "PASS ≥ 90.0" },
+    ],
+    status: "ONLINE",
+    fullPage: true,
   },
 ];
 

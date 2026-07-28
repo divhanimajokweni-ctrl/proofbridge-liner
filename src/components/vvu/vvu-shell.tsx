@@ -13,6 +13,7 @@ import {
   EpistemicRuntimeDashboard, ESSENTIAL_SECTIONS, type SectionId,
 } from "./epistemic-runtime-dashboard";
 import { VvuCommandPalette } from "./command-palette";
+import { SimulationDashboard } from "@/components/simulation/simulation-dashboard";
 
 type CBState = "NORMAL" | "DEGRADED" | "FAIL-CLOSED";
 const CB_COLORS: Record<CBState, string> = { NORMAL: "#3dffb0", DEGRADED: "#CC7722", "FAIL-CLOSED": "#ff2e5f" };
@@ -33,7 +34,7 @@ export function VvuShell() {
       if (paletteOpen) return;
       const t = e.target as HTMLElement;
       const inInput = t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable;
-      if (e.altKey && !e.metaKey && !e.ctrlKey && e.key >= "1" && e.key <= "6") {
+      if (e.altKey && !e.metaKey && !e.ctrlKey && e.key >= "1" && e.key <= "7") {
         const idx = parseInt(e.key, 10) - 1;
         if (idx < PRODUCTS.length) { e.preventDefault(); setActiveProduct(PRODUCTS[idx].id); }
         return;
@@ -68,7 +69,7 @@ export function VvuShell() {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden" style={{ background: "radial-gradient(ellipse at 50% 25%, #0f0f18, #09090f 75%)" }}>
-      <style>{`:root{--vvu-gold:#C9A84C}@keyframes vvu-live-pulse{0%,100%{opacity:1}50%{opacity:.35}}`}</style>
+      <style dangerouslySetInnerHTML={{ __html: `:root{--vvu-gold:#C9A84C}@keyframes vvu-live-pulse{0%,100%{opacity:1}50%{opacity:.35}}` }} />
 
       {/* HEADER */}
       <header className="relative z-30 flex shrink-0 items-center justify-between gap-4 border-b border-white/[0.06] px-4 py-3 backdrop-blur-xl sm:px-6" style={{ background: "rgba(15,15,24,0.65)" }}>
@@ -174,7 +175,8 @@ export function VvuShell() {
                 <EpistemicRuntimeDashboard activeSection={epistemicSection} onSectionChange={setEpistemicSection} onBackToSphere={() => setActiveProduct("sphere")} />
               )}
               {activeProduct === "ubuntu-pools" && <UbuntuPools />}
-              {activeProduct !== "sphere" && activeProduct !== "epistemic" && activeProduct !== "ubuntu-pools" && (
+              {activeProduct === "simulation" && <SimulationDashboard />}
+              {!["sphere", "epistemic", "ubuntu-pools", "simulation"].includes(activeProduct) && (
                 <ProductStub product={activeMeta} onBackToSphere={() => setActiveProduct("sphere")} />
               )}
             </motion.div>
