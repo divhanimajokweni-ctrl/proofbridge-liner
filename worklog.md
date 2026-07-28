@@ -492,3 +492,38 @@ Stage Summary:
 - All metrics follow phase-dependent patterns matching VVU-VAL-001 chaos schedule
 - Dashboard accessible via "72h Simulation" product (Alt+7) in VvuShell sidebar
 - Production-grade: no mock booleans, real TEE attestation, SHA-256 hashes, Ed25519 signing simulation
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Build HBK Mk-II Digital Twin Dashboard with Founding Partners Campaign, 72h Validation Simulation, Git Actions Log, Resource Register, and Programme Timeline
+
+Work Log:
+- Created `/src/lib/hbk/types.ts` with full type definitions: CADModule, EquitySlice, SponsorshipPackage, ResourceItem, TimelinePhase, GitAction, ValidationPhase, HbkTab
+- Defined HBK_CAD_MODULES from FreeCAD Python script coordinates (base plate, AMD compute, sensor interface, power BMS, NVMe storage, comms routing)
+- Defined EQUITY_SPLIT: 70% VVU / 20% UCT & Wits / 5% Direct Investors / 5% Unallocated (AMD Target)
+- Defined SPONSORSHIP_PACKAGES: 6 packages (Operations, Engineering, Connectivity, Field Ops, Workshop, Branding)
+- Defined RESOURCE_REGISTER: 15 tracked resources with quantities, commitments, partner types, and urgency status
+- Defined VALIDATION_PHASES: 7 phases (Cold Boot → Final Validation) covering 72-hour loop
+- Built `/src/components/hbk/hbk-dashboard.tsx` with 6 tabs:
+  - Digital Twin: 2D CAD layout with module blocks, isolation zone SVG, module status cards, equity split visualization, enclosure spec, module detail panel
+  - Founding Partners: Campaign header, campaign psychology comparison, sponsorship catalogue (expandable), partner categories (Consortium/Friends/Community), impact language framework
+  - Resource Register: Summary cards, progress bar, category/status filters, full resource table with gap tracking
+  - 72h Validation: Start/Pause/Reset simulation controls, elapsed timer, live metrics (CPU/RAM/Queue/Latency/Facts/Proofs/Brier), 7 validation phases with sub-metrics
+  - Programme Timeline: 3 phases with milestones, status indicators, success metrics
+  - Git Actions: Action log with filtering, success/running/failed stats, branch/author/hash display
+- Updated `/src/components/vvu/products.ts`: HBK changed to ONLINE, fullPage=true, updated signals and tagline
+- Updated `/src/components/vvu/vvu-shell.tsx`: Added HbkDashboard import and rendering for activeProduct="hbk"
+- Created API routes: `/api/hbk/route.ts`, `/api/hbk/gitlog/route.ts`, `/api/hbk/resources/route.ts`
+- Updated Prisma schema: Added HbkResource, HbkCommitment, HbkGitAction, HbkValidationPhase models
+- Ran `bun run db:push` successfully
+- Fixed sidebar/footer overlap: Changed max-h from 260px to 300px and added pb-2
+- Lint passes (0 errors, 1 pre-existing warning)
+- Agent-browser verified all 6 tabs render correctly, all interactions work
+
+Stage Summary:
+- HBK Mk-II Digital Twin Dashboard is fully functional with 6 tabs
+- All features verified: CAD layout, module detail, simulation timer, resource table, git log, sponsorship catalogue
+- API routes created for HBK data, git log, and resources
+- Prisma schema updated with 4 new models for HBK resource tracking
+- No errors, no blank screens, all interactions working

@@ -14,6 +14,7 @@ import {
 } from "./epistemic-runtime-dashboard";
 import { VvuCommandPalette } from "./command-palette";
 import { SimulationDashboard } from "@/components/simulation/simulation-dashboard";
+import { HbkDashboard } from "@/components/hbk/hbk-dashboard";
 
 type CBState = "NORMAL" | "DEGRADED" | "FAIL-CLOSED";
 const CB_COLORS: Record<CBState, string> = { NORMAL: "#3dffb0", DEGRADED: "#CC7722", "FAIL-CLOSED": "#ff2e5f" };
@@ -130,7 +131,7 @@ export function VvuShell() {
             <div className="px-2 pb-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/60">
               {activeProduct === "sphere" ? "Sphere View" : activeProduct === "epistemic" ? "Epistemic Essentials" : "Signals"}
             </div>
-            <div className="flex max-h-[calc(100vh-260px)] flex-col gap-0.5 overflow-y-auto pr-1">
+            <div className="flex max-h-[calc(100vh-300px)] flex-col gap-0.5 overflow-y-auto pr-1 pb-2">
               {contextNav.map((entry, idx) => (
                 <button key={`${entry.label}-${idx}`} onClick={entry.onSelect}
                   className={`group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs transition-colors ${entry.active ? "bg-white/[0.05] text-foreground" : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground"}`}>
@@ -175,8 +176,9 @@ export function VvuShell() {
                 <EpistemicRuntimeDashboard activeSection={epistemicSection} onSectionChange={setEpistemicSection} onBackToSphere={() => setActiveProduct("sphere")} />
               )}
               {activeProduct === "ubuntu-pools" && <UbuntuPools />}
+              {activeProduct === "hbk" && <HbkDashboard />}
               {activeProduct === "simulation" && <SimulationDashboard />}
-              {!["sphere", "epistemic", "ubuntu-pools", "simulation"].includes(activeProduct) && (
+              {!["sphere", "epistemic", "ubuntu-pools", "hbk", "simulation"].includes(activeProduct) && (
                 <ProductStub product={activeMeta} onBackToSphere={() => setActiveProduct("sphere")} />
               )}
             </motion.div>

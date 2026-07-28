@@ -193,3 +193,74 @@ model FactLog {
   @@index([sequence])
   @@index([submittedBy])
 }
+
+// ── HBK Mk-II Applied Research Programme ────────────────────────────────
+
+// Resource tracking for the Founding 100 campaign.
+model HbkResource {
+  id            String   @id @default(cuid())
+  resource      String   // e.g. "Laptops", "Desks"
+  qtyNeeded     Int      @default(0)
+  qtyCommitted  Int      @default(0)
+  unit          String   // e.g. "units", "GB/month"
+  partnerType   String   // e.g. "Technology Partner", "Academic Partner"
+  status        String   @default("open") // secured | in_progress | open | urgent
+  category      String   // operations | engineering | connectivity | field-ops | workshop | branding
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  commitments HbkCommitment[]
+
+  @@index([status])
+  @@index([category])
+}
+
+// Individual partner commitments for specific resources.
+model HbkCommitment {
+  id            String   @id @default(cuid())
+  resourceId    String
+  resource      HbkResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  partnerName   String   // Organization name
+  partnerContact String? // Contact person
+  partnerEmail  String?
+  qty           Int      @default(1)
+  status        String   @default("pledged") // pledged | confirmed | delivered
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([resourceId])
+  @@index([status])
+}
+
+// Git Actions Log for the HBK digital twin engineering process.
+model HbkGitAction {
+  id            String   @id @default(cuid())
+  action        String   // commit | push | merge | deploy | test | validate
+  branch        String
+  message       String
+  author        String
+  hash          String
+  status        String   @default("success") // success | running | failed
+  createdAt     DateTime @default(now())
+
+  @@index([action])
+  @@index([branch])
+  @@index([createdAt])
+}
+
+// 72h Validation simulation phases tracking.
+model HbkValidationPhase {
+  id            String   @id @default(cuid())
+  phaseId       String   @unique // v1-v7
+  name          String
+  duration      String   // e.g. "0-4h"
+  status        String   @default("pending") // complete | active | pending | failed
+  description   String
+  metricsJson   String   // JSON array of { label, value, status }
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+}

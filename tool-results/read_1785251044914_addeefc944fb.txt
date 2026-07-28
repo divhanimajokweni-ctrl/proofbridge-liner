@@ -1,0 +1,409 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useRef, useState } from "react";
+     4→import { io, Socket } from "socket.io-client";
+     5→import {
+     6→  Play, Pause, Square, RotateCcw, Gauge, GitBranch, Droplets,
+     7→  Activity, Shield, Clock, AlertTriangle, CheckCircle2, XCircle,
+     8→  Zap, Database, Cpu, HardDrive, Wifi, Eye, FileText, Timer
+     9→} from "lucide-react";
+    10→import { motion, AnimatePresence } from "framer-motion";
+    11→
+    12→// ════════════════════════════════════════════════════════════════════════
+    13→// TYPES — matching simulation engine
+    14→// ════════════════════════════════════════════════════════════════════════
+    15→
+    16→interface SimMetrics {
+    17→  elapsed_s: number;
+    18→  elapsed_min: number;
+    19→  phase_id: string;
+    20→  circuit_breaker: "NORMAL" | "DEGRADED" | "RECOVERING" | "FAIL-CLOSED";
+    21→  air_state: "NORMAL" | "WARNING" | "TRIPPED" | "RECOVERY" | "ESCALATED";
+    22→  facts_accepted: number;
+    23→  facts_queued: number;
+    24→  facts_merged: number;
+    25→  facts_rejected: number;
+    26→  policy_violations: number;
+    27→  policy_violations_handled: number;
+    28→  cpu_pct: number;
+    29→  ram_pct: number;
+    30→  queue_depth: number;
+    31→  latency_p99_ms: number;
+    32→  proof_count: number;
+    33→  tee_status: "ATTESTED" | "QUARANTINED";
+    34→  replay_status: "VERIFIED" | "DIVERGENT" | "PENDING";
+    35→  mmr_root: string;
+    36→  validation_index: number;
+    37→  risk_score: number;
+    38→  risk_score_smoothed: number;
+    39→  spoofed_payloads_injected: number;
+    40→  spoofed_payloads_quarantined: number;
+    41→  merge_count: number;
+    42→  merge_conflicts_observed: number;
+    43→  evidence_bundles_total: number;
+    44→  evidence_bundles_verified: number;
+    45→  fail_closed_s: number;
+    46→}
+    47→
+    48→interface HBKTelemetry {
+    49→  sensor_id: string;
+    50→  pipe_id: string;
+    51→  zone: string;
+    52→  pressure_psi: number;
+    53→  flow_rate_lpm: number;
+    54→  acoustic_db: number;
+    55→  temperature_c: number;
+    56→  leak_probability: number;
+    57→  event_type: "normal" | "leak_detected" | "pressure_spike" | "flow_anomaly" | "maintenance";
+    58→  hash: string;
+    59→}
+    60→
+    61→interface GitActionLogEntry {
+    62→  id: string;
+    63→  workflow: string;
+    64→  event: string;
+    65→  status: "pending" | "running" | "success" | "failure" | "cancelled";
+    66→  commit_hash: string;
+    67→  branch: string;
+    68→  duration_ms: number;
+    69→  log_output: string;
+    70→  phase: string;
+    71→  actor: string;
+    72→}
+    73→
+    74→interface SimMilestone {
+    75→  id: string;
+    76→  name: string;
+    77→  hour: number;
+    78→  triggered: boolean;
+    79→  actions: string[];
+    80→}
+    81→
+    82→interface SimPhaseInfo {
+    83→  id: string;
+    84→  name: string;
+    85→  startHour: number;
+    86→  endHour: number;
+    87→  gate: string;
+    88→  objective: string;
+    89→  severity: string;
+    90→  color: string;
+    91→}
+    92→
+    93→interface SimTickData {
+    94→  hour: number;
+    95→  phase: string;
+    96→  metrics: SimMetrics;
+    97→  hbkTelemetry: HBKTelemetry[];
+    98→  gitActions: GitActionLogEntry[];
+    99→  milestones: SimMilestone[];
+   100→  running: boolean;
+   101→  speedMultiplier: number;
+   102→}
+   103→
+   104→// ════════════════════════════════════════════════════════════════════════
+   105→// CONSTANTS
+   106→// ════════════════════════════════════════════════════════════════════════
+   107→
+   108→const PHASES: SimPhaseInfo[] = [
+   109→  { id: "P1", name: "Nominal Load", startHour: 0, endHour: 12, gate: "Baseline", objective: "Establish baseline under normal telemetry", severity: "Critical", color: "#10b981" },
+   110→  { id: "P2", name: "Telemetry Flood", startHour: 12, endHour: 24, gate: "Acceptance Capacity", objective: "Verify pipeline absorbs 100× flood", severity: "Major", color: "#f97316" },
+   111→  { id: "P3", name: "Network Chaos", startHour: 24, endHour: 36, gate: "HLC Ordering", objective: "Verify deterministic replay under packet loss", severity: "Critical", color: "#ef4444" },
+   112→  { id: "P4", name: "Storage Pressure", startHour: 36, endHour: 48, gate: "Append-Only Integrity", objective: "Verify graceful degradation under disk fill", severity: "Critical", color: "#eab308" },
+   113→  { id: "P5", name: "Node Failure", startHour: 48, endHour: 60, gate: "Recovery", objective: "Verify pods restart and no Fact loss", severity: "Major", color: "#8b5cf6" },
+   114→  { id: "P6", name: "Security Injection", startHour: 60, endHour: 66, gate: "HF-001/002/005", objective: "Verify spoofed/malformed payloads rejected", severity: "Critical", color: "#06b6d4" },
+   115→  { id: "P7", name: "Partition + Recovery", startHour: 66, endHour: 72, gate: "LVL-17 (72h Blackout)", objective: "Verify deterministic HLC merge after partition", severity: "Critical", color: "#14b8a6" },
+   116→];
+   117→
+   118→const CB_COLORS: Record<string, string> = { NORMAL: "#3dffb0", DEGRADED: "#CC7722", RECOVERING: "#f97316", FAIL_CLOSED: "#ff2e5f" };
+   119→const AIR_COLORS: Record<string, string> = { NORMAL: "#3dffb0", WARNING: "#eab308", TRIPPED: "#ff2e5f", RECOVERY: "#f97316", ESCALATED: "#ff2e5f" };
+   120→const GIT_STATUS_COLORS: Record<string, string> = { success: "#10b981", failure: "#ef4444", running: "#f97316", pending: "#6b7280", cancelled: "#8b5cf6" };
+   121→
+   122→// ════════════════════════════════════════════════════════════════════════
+   123→// SIMULATION DASHBOARD
+   124→// ════════════════════════════════════════════════════════════════════════
+   125→
+   126→export function SimulationDashboard() {
+   127→  const socketRef = useRef<Socket | null>(null);
+   128→  const [connected, setConnected] = useState(false);
+   129→  const [simData, setSimData] = useState<SimTickData | null>(null);
+   130→  const [simRunning, setSimRunning] = useState(false);
+   131→  const [simPaused, setSimPaused] = useState(false);
+   132→  const [speed, setSpeed] = useState(60);
+   133→  const [activeTab, setActiveTab] = useState<"overview" | "hbk" | "git" | "metrics">("overview");
+   134→  const [metricsHistory, setMetricsHistory] = useState<{ cpu: number[]; ram: number[]; queue: number[]; latency: number[]; risk: number[]; vi: number[] }>({ cpu: [], ram: [], queue: [], latency: [], risk: [], vi: [] });
+   135→
+   136→  useEffect(() => {
+   137→    const socket = io("/?XTransformPort=3003", { transports: ["websocket"], reconnection: true, reconnectionAttempts: 10, reconnectionDelay: 2000 });
+   138→    socket.on("connect", () => { setConnected(true); });
+   139→    socket.on("disconnect", () => { setConnected(false); });
+   140→    socket.on("sim:state", (data: any) => { setSimData(data); setSimRunning(data.running); });
+   141→    socket.on("sim:tick", (data: SimTickData) => {
+   142→      setSimData(data);
+   143→      setMetricsHistory(prev => {
+   144→        const h = { ...prev, cpu: [...prev.cpu, data.metrics.cpu_pct], ram: [...prev.ram, data.metrics.ram_pct], queue: [...prev.queue, data.metrics.queue_depth], latency: [...prev.latency, data.metrics.latency_p99_ms], risk: [...prev.risk, data.metrics.risk_score], vi: [...prev.vi, data.metrics.validation_index] };
+   145→        for (const k of Object.keys(h) as (keyof typeof h)[]) { if (h[k].length > 60) h[k] = h[k].slice(-60); }
+   146→        return h;
+   147→      });
+   148→    });
+   149→    socket.on("sim:started", () => { setSimRunning(true); setSimPaused(false); });
+   150→    socket.on("sim:paused", (d: { paused: boolean }) => { setSimPaused(d.paused); });
+   151→    socket.on("sim:stopped", () => { setSimRunning(false); setSimPaused(false); });
+   152→    socket.on("sim:reset", () => { setSimRunning(false); setSimPaused(false); setSimData(null); });
+   153→    socketRef.current = socket;
+   154→    return () => { socket.disconnect(); };
+   155→  }, []);
+   156→
+   157→  const startSim = useCallback(() => { socketRef.current?.emit("sim:start", { speedMultiplier: speed }); }, [speed]);
+   158→  const pauseSim = useCallback(() => { socketRef.current?.emit("sim:pause"); }, []);
+   159→  const stopSim = useCallback(() => { socketRef.current?.emit("sim:stop"); }, []);
+   160→  const resetSim = useCallback(() => { socketRef.current?.emit("sim:reset"); }, []);
+   161→  const changeSpeed = useCallback((newSpeed: number) => { setSpeed(newSpeed); socketRef.current?.emit("sim:speed", { speedMultiplier: newSpeed }); }, []);
+   162→
+   163→  const metrics = simData?.metrics;
+   164→  const hour = simData?.hour ?? 0;
+   165→  const phase = simData?.phase ?? "P1";
+   166→  const currentPhaseInfo = PHASES.find(p => p.id === phase) ?? PHASES[0];
+   167→  const hbkData = simData?.hbkTelemetry ?? [];
+   168→  const gitData = simData?.gitActions ?? [];
+   169→  const milestones = simData?.milestones ?? [];
+   170→  const phaseProgress = currentPhaseInfo ? ((hour - currentPhaseInfo.startHour) / (currentPhaseInfo.endHour - currentPhaseInfo.startHour)) * 100 : 0;
+   171→  const overallProgress = (hour / 72) * 100;
+   172→
+   173→  return (
+   174→    <div className="flex h-full flex-col overflow-hidden">
+   175→      {/* SIMULATION CONTROLLER BAR */}
+   176→      <div className="flex flex-wrap items-center gap-3 border-b border-white/[0.06] px-4 py-2.5 backdrop-blur-xl" style={{ background: "rgba(15,15,24,0.7)" }}>
+   177→        <div className="flex items-center gap-2">
+   178→          <span className={`h-2 w-2 rounded-full ${connected ? "bg-green-400" : "bg-red-400"}`} style={{ boxShadow: connected ? "0 0 6px rgba(52,211,153,0.5)" : "none" }} />
+   179→          <span className="font-mono text-[10px] text-muted-foreground">{connected ? "SIM ENGINE LIVE" : "SIM ENGINE OFFLINE"}</span>
+   180→        </div>
+   181→        <div className="flex items-center gap-1.5">
+   182→          {!simRunning ? (
+   183→            <button onClick={startSim} className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 hover:bg-emerald-500/20">
+   184→              <Play className="h-3 w-3" />Start 72h Loop
+   185→            </button>
+   186→          ) : (
+   187→            <>
+   188→              <button onClick={pauseSim} className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium ${simPaused ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-yellow-500/30 bg-yellow-500/10 text-yellow-400"}`}>
+   189→                {simPaused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}{simPaused ? "Resume" : "Pause"}
+   190→              </button>
+   191→              <button onClick={stopSim} className="inline-flex items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-medium text-red-400 hover:bg-red-500/20">
+   192→                <Square className="h-3 w-3" />Stop
+   193→              </button>
+   194→            </>
+   195→          )}
+   196→          <button onClick={resetSim} className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">
+   197→            <RotateCcw className="h-3 w-3" />Reset
+   198→          </button>
+   199→        </div>
+   200→        <div className="flex items-center gap-2">
+   201→          <Gauge className="h-3 w-3 text-muted-foreground" />
+   202→          <span className="font-mono text-[10px] text-muted-foreground">Speed:</span>
+   203→          {[{ label: "1x", value: 1 }, { label: "60x", value: 60 }, { label: "360x", value: 360 }, { label: "3600x", value: 3600 }].map(s => (
+   204→            <button key={s.value} onClick={() => changeSpeed(s.value)} className={`rounded border px-2 py-1 font-mono text-[10px] transition-all ${speed === s.value ? "border-[#C9A84C]/30 bg-[#C9A84C]/10 text-[#C9A84C]" : "border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-foreground"}`}>
+   205→              {s.label}
+   206→            </button>
+   207→          ))}
+   208→        </div>
+   209→        <div className="flex items-center gap-4 ml-auto">
+   210→          <div className="flex items-center gap-2">
+   211→            <Clock className="h-3.5 w-3.5" style={{ color: currentPhaseInfo.color }} />
+   212→            <span className="font-mono text-sm font-bold" style={{ color: currentPhaseInfo.color }}>H{hour.toString().padStart(2,"0")}:00</span>
+   213→            <span className="font-mono text-[10px] text-muted-foreground">/ H72</span>
+   214→          </div>
+   215→          <div className="flex items-center gap-1.5">
+   216→            <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: currentPhaseInfo.color }}>{currentPhaseInfo.id}</span>
+   217→            <span className="text-xs font-medium" style={{ color: currentPhaseInfo.color }}>{currentPhaseInfo.name}</span>
+   218→          </div>
+   219→          {metrics && (
+   220→            <>
+   221→              <div className="flex items-center gap-1.5">
+   222→                <span className="h-1.5 w-1.5 rounded-full" style={{ background: CB_COLORS[metrics.circuit_breaker]||"#6b7280", boxShadow: `0 0 4px ${CB_COLORS[metrics.circuit_breaker]||"#6b7280"}80` }} />
+   223→                <span className="font-mono text-[10px] text-muted-foreground">CB:</span>
+   224→                <span className="font-mono text-[10px] font-medium" style={{ color: CB_COLORS[metrics.circuit_breaker] }}>{metrics.circuit_breaker}</span>
+   225→              </div>
+   226→              <div className="flex items-center gap-1.5">
+   227→                <Shield className="h-3 w-3" style={{ color: AIR_COLORS[metrics.air_state] }} />
+   228→                <span className="font-mono text-[10px] text-muted-foreground">AIR:</span>
+   229→                <span className="font-mono text-[10px] font-medium" style={{ color: AIR_COLORS[metrics.air_state] }}>{metrics.air_state}</span>
+   230→              </div>
+   231→            </>
+   232→          )}
+   233→        </div>
+   234→      </div>
+   235→
+   236→      {/* PROGRESS BAR */}
+   237→      <div className="px-4 pt-1 pb-2">
+   238→        <div className="relative h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+   239→          <div className="absolute inset-0 rounded-full" style={{ width: `${overallProgress}%`, background: `linear-gradient(90deg, ${PHASES.map(p=>p.color).join(",")})`, transition: "width 0.3s" }} />
+   240→          {PHASES.map(p => <div key={p.id} className="absolute top-0 h-full w-[2px]" style={{ left: `${(p.startHour/72)*100}%`, background: `${p.color}60` }} />)}
+   241→        </div>
+   242→        <div className="flex justify-between mt-1 font-mono text-[9px] text-muted-foreground/60">
+   243→          {PHASES.map(p => <span key={p.id} style={{ color: phase===p.id ? p.color : undefined }}>{p.id}</span>)}
+   244→        </div>
+   245→      </div>
+   246→
+   247→      {/* TAB BAR */}
+   248→      <div className="flex gap-1 px-4 pb-2">
+   249→        {([["overview","Overview",Activity],["hbk","HBK Digital Twin",Droplets],["git","Git Actions Log",GitBranch],["metrics","Real-Time Metrics",Cpu]] as const).map(([id,label,Icon])=>(
+   250→          <button key={id} onClick={()=>setActiveTab(id as any)} className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all ${activeTab===id?"border-white/10 bg-white/[0.05] text-foreground":"border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground"}`}>
+   251→            <Icon className="h-3 w-3" />{label}
+   252→          </button>
+   253→        ))}
+   254→      </div>
+   255→
+   256→      {/* MAIN CONTENT */}
+   257→      <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ scrollbarWidth:"thin" }}>
+   258→        <AnimatePresence mode="wait">
+   259→          <motion.div key={activeTab} initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }} transition={{ duration:0.15 }}>
+   260→            {/* OVERVIEW TAB */}
+   261→            {activeTab==="overview" && (
+   262→              <div className="space-y-4">
+   263→                {metrics && (
+   264→                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+   265→                    {([
+   266→                      ["Validation Index", metrics.validation_index.toFixed(1), Eye, metrics.validation_index>=90?"#10b981":"#ef4444", "/ 100"],
+   267→                      ["Facts Accepted", metrics.facts_accepted.toLocaleString(), CheckCircle2, "#3dffb0", ""],
+   268→                      ["Facts Rejected", metrics.facts_rejected.toLocaleString(), XCircle, metrics.facts_rejected>0?"#ef4444":"#6b7280", ""],
+   269→                      ["Queue Depth", metrics.queue_depth.toLocaleString(), Database, metrics.queue_depth>10000?"#ef4444":"#3dffb0", ""],
+   270→                      ["Risk Score", metrics.risk_score_smoothed.toFixed(3), AlertTriangle, AIR_COLORS[metrics.air_state], "[0,1]"],
+   271→                      ["Proofs", metrics.proof_count.toLocaleString(), Shield, "#c9a84c", ""],
+   272→                      ["TEE Status", metrics.tee_status, Cpu, metrics.tee_status==="ATTESTED"?"#3dffb0":"#ef4444", ""],
+   273→                      ["Replay", metrics.replay_status, FileText, metrics.replay_status==="VERIFIED"?"#3dffb0":"#ef4444", ""],
+   274→                      ["Spoofed Quarantined", `${metrics.spoofed_payloads_quarantined}/${metrics.spoofed_payloads_injected}`, Shield, metrics.spoofed_payloads_injected>0&&metrics.spoofed_payloads_quarantined===metrics.spoofed_payloads_injected?"#3dffb0":"#ef4444", ""],
+   275→                      ["Merge Conflicts", metrics.merge_conflicts_observed.toString(), GitBranch, metrics.merge_conflicts_observed===0?"#3dffb0":"#ef4444", "observed"],
+   276→                      ["Evidence Bundles", `${metrics.evidence_bundles_verified}/${metrics.evidence_bundles_total}`, HardDrive, metrics.evidence_bundles_verified===metrics.evidence_bundles_total?"#3dffb0":"#ef4444", "verified"],
+   277→                      ["Fail-Closed Dur.", `${metrics.fail_closed_s.toFixed(0)}s`, Zap, metrics.fail_closed_s>0?"#ef4444":"#6b7280", ""],
+   278→                    ] as [string,string,any,string,string][]).map(([label,value,Icon,color,suffix])=>(
+   279→                      <div key={label} className="rounded-lg border border-white/[0.06] p-3 backdrop-blur-sm" style={{ background:"rgba(15,15,24,0.6)" }}>
+   280→                        <div className="flex items-center gap-1.5 mb-1"><Icon className="h-3 w-3" style={{ color }} strokeWidth={1.8} /><span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/70">{label}</span></div>
+   281→                        <div className="font-mono text-lg font-bold" style={{ color }}>{value}{suffix&&<span className="text-[10px] text-muted-foreground/50 ml-1">{suffix}</span>}</div>
+   282→                      </div>
+   283→                    ))}
+   284→                  </div>
+   285→                )}
+   286→                {/* Phase Timeline */}
+   287→                <div className="rounded-lg border border-white/[0.06] p-4 backdrop-blur-sm" style={{ background:"rgba(15,15,24,0.6)" }}>
+   288→                  <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Phase Timeline</h3>
+   289→                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
+   290→                    {PHASES.map(p=>{
+   291→                      const isActive=phase===p.id; const isComplete=hour>=p.endHour;
+   292→                      return (
+   293→                        <div key={p.id} className={`rounded-md border p-2.5 transition-all ${isActive?"border-white/10 bg-white/[0.05]":isComplete?"border-white/[0.04] bg-white/[0.02]":"border-white/[0.03]"}`}>
+   294→                          <div className="flex items-center gap-1.5 mb-1"><span className="h-1.5 w-1.5 rounded-full" style={{ background:isActive||isComplete?p.color:"#6b728040" }} /><span className="font-mono text-[10px] font-medium" style={{ color:isActive||isComplete?p.color:"#6b7280" }}>{p.id}</span></div>
+   295→                          <div className="text-xs font-medium truncate" style={{ color:isActive||isComplete?p.color:"#6b7280" }}>{p.name}</div>
+   296→                          <div className="font-mono text-[9px] text-muted-foreground/60 mt-0.5">H{p.startHour}–H{p.endHour}</div>
+   297→                          {isActive && <div className="mt-1.5 h-1 rounded-full bg-white/[0.06] overflow-hidden"><div className="h-full rounded-full" style={{ width:`${Math.min(100,phaseProgress)}%`, background:p.color, transition:"width 0.3s" }} /></div>}
+   298→                          {isComplete && <div className="mt-1 font-mono text-[9px] text-emerald-400">✓ PASS</div>}
+   299→                        </div>
+   300→                      );
+   301→                    })}
+   302→                  </div>
+   303→                </div>
+   304→                {/* Milestones */}
+   305→                <div className="rounded-lg border border-white/[0.06] p-4 backdrop-blur-sm" style={{ background:"rgba(15,15,24,0.6)" }}>
+   306→                  <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Milestone Tracker</h3>
+   307→                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+   308→                    {milestones.map(m=>(
+   309→                      <div key={m.id} className={`flex items-center gap-2 rounded-md border px-2.5 py-2 ${m.triggered?"border-emerald-500/20 bg-emerald-500/5":"border-white/[0.04]"}`}>
+   310→                        <span className={`h-1.5 w-1.5 rounded-full ${m.triggered?"bg-emerald-400":"bg-white/[0.06]"}`} />
+   311→                        <span className="font-mono text-[10px] font-medium" style={{ color:m.triggered?"#10b981":"#6b7280" }}>{m.id}</span>
+   312→                        <span className="text-xs truncate" style={{ color:m.triggered?"#e5e7eb":"#6b7280" }}>{m.name}</span>
+   313→                        <span className="font-mono text-[9px] text-muted-foreground/50 ml-auto">H{m.hour}</span>
+   314→                      </div>
+   315→                    ))}
+   316→                  </div>
+   317→                </div>
+   318→              </div>
+   319→            )}
+   320→            {/* HBK DIGITAL TWIN TAB */}
+   321→            {activeTab==="hbk" && (
+   322→              <div className="space-y-4">
+   323→                <div className="rounded-lg border border-white/[0.06] p-4 backdrop-blur-sm" style={{ background:"rgba(15,15,24,0.6)" }}>
+   324→                  <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1">HBK Digital Twin — Cape Town Water Network</h3>
+   325→                  <div className="text-xs text-muted-foreground mb-3">Real-time telemetry simulation from 6 municipal zones. SHA-256 hashed. Streamed to Epistemic Runtime.</div>
+   326→                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+   327→                    {(["CBD-Central","Atlantic-Seaboard","Southern-Suburbs","Northern-Suburbs","Khayelitsha","Mitchells-Plain"]).map(zone=>{
+   328→                      const zoneData=hbkData.filter(t=>t.zone===zone);
+   329→                      const hasLeak=zoneData.some(t=>t.event_type==="leak_detected");
+   330→                      const avgP=zoneData.length?zoneData.reduce((a,t)=>a+t.pressure_psi,0)/zoneData.length:0;
+   331→                      const avgF=zoneData.length?zoneData.reduce((a,t)=>a+t.flow_rate_lpm,0)/zoneData.length:0;
+   332→                      const avgA=zoneData.length?zoneData.reduce((a,t)=>a+t.acoustic_db,0)/zoneData.length:0;
+   333→                      return (
+   334→                        <div key={zone} className={`rounded-md border p-3 ${hasLeak?"border-red-500/30 bg-red-500/5":"border-white/[0.06] bg-white/[0.02]"}`}>
+   335→                          <div className="flex items-center gap-1.5 mb-2"><Droplets className="h-3 w-3" style={{ color:hasLeak?"#ef4444":"#14b8a6" }} /><span className="text-xs font-medium truncate" style={{ color:hasLeak?"#ef4444":"#14b8a6" }}>{zone}</span></div>
+   336→                          <div className="grid grid-cols-1 gap-1 font-mono text-[10px]">
+   337→                            <div className="flex justify-between"><span className="text-muted-foreground/60">Sensors</span><span className="text-foreground/80">{zoneData.length}</span></div>
+   338→                            <div className="flex justify-between"><span className="text-muted-foreground/60">Pressure</span><span style={{ color:avgP>80?"#ef4444":"#e5e7eb" }}>{avgP.toFixed(1)} psi</span></div>
+   339→                            <div className="flex justify-between"><span className="text-muted-foreground/60">Flow</span><span className="text-foreground/80">{avgF.toFixed(1)} lpm</span></div>
+   340→                            <div className="flex justify-between"><span className="text-muted-foreground/60">Acoustic</span><span style={{ color:avgA>50?"#ef4444":"#e5e7eb" }}>{avgA.toFixed(1)} dB</span></div>
+   341→                          </div>
+   342→                          {hasLeak && <div className="mt-1.5 text-[10px] font-medium text-red-400">⚠ LEAK DETECTED</div>}
+   343→                        </div>
+   344→                      );
+   345→                    })}
+   346→                  </div>
+   347→                </div>
+   348→                <div className="rounded-lg border border-white/[0.06] p-4 backdrop-blur-sm max-h-[400px] overflow-y-auto" style={{ background:"rgba(15,15,24,0.6)", scrollbarWidth:"thin" }}>
+   349→                  <h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-3">Live Sensor Readings ({hbkData.length} active)</h3>
+   350→                  <table className="w-full text-[10px] font-mono">
+   351→                    <thead><tr className="text-muted-foreground/60"><th className="pb-1.5 text-left">Sensor</th><th className="pb-1.5 text-left">Zone</th><th className="pb-1.5 text-right">Pressure</th><th className="pb-1.5 text-right">Flow</th><th className="pb-1.5 text-right">Acoustic</th><th className="pb-1.5 text-right">Leak Prob</th><th className="pb-1.5 text-left">Event</th><th className="pb-1.5 text-left">Hash</th></tr></thead>
+   352→                    <tbody>
+   353→                      {hbkData.slice(0,30).map(t=>(
+   354→                        <tr key={t.sensor_id} className={`${t.event_type==="leak_detected"?"text-red-400":t.event_type==="pressure_spike"?"text-orange-400":"text-foreground/70"}`}>
+   355→                          <td className="py-0.5">{t.sensor_id}</td><td className="py-0.5 truncate max-w-[80px]">{t.zone}</td><td className="py-0.5 text-right">{t.pressure_psi.toFixed(1)}</td><td className="py-0.5 text-right">{t.flow_rate_lpm.toFixed(1)}</td><td className="py-0.5 text-right">{t.acoustic_db.toFixed(1)}</td><td className="py-0.5 text-right">{t.leak_probability.toFixed(4)}</td><td className="py-0.5">{t.event_type}</td><td className="py-0.5 truncate max-w-[60px] text-muted-foreground/40">{t.hash.slice(0,18)}</td>
+   356→                        </tr>
+   357→                      ))}
+   358→                    </tbody>
+   359→                  </table>
+   360→                </div>
+   361→              </div>
+   362→            )}
+   363→            {/* GIT ACTIONS LOG TAB */}
+   364→            {activeTab==="git" && (
+   365→              <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto" style={{ scrollbarWidth:"thin" }}>
+   366→                <div className="rounded-lg border border-white/[0.06] p-3 backdrop-blur-sm" style={{ background:"rgba(15,15,24,0.6)" }}>
+   367→                  <div className="flex items-center gap-2 mb-3"><GitBranch className="h-3.5 w-3.5 text-muted-foreground" /><h3 className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">GitHub Actions — VVU-VAL-001 Workflows</h3><span className="font-mono text-[9px] text-muted-foreground/50 ml-auto">{gitData.length} runs tracked</span></div>
+   368→                </div>
+   369→                {gitData.slice(-50).reverse().map(entry=>(
+   370→                  <div key={entry.id} className={`rounded-lg border p-3 backdrop-blur-sm ${entry.status==="failure"?"border-red-500/20":entry.status==="success"?"border-emerald-500/15":"border-white/[0.06]"}`} style={{ background:"rgba(15,15,24,0.6)" }}>
+   371→                    <div className="flex items-center gap-2 mb-2">
+   372→                      <span className="h-1.5 w-1.5 rounded-full" style={{ background:GIT_STATUS_COLORS[entry.status] }} />
+   373→                      <span className="font-mono text-xs font-medium" style={{ color:GIT_STATUS_COLORS[entry.status] }}>{entry.status==="success"?"✓":entry.status==="failure"?"✗":entry.status==="cancelled"?"⏸":"⟳"} {entry.workflow}</span>
+   374→                      <span className="font-mono text-[10px] text-muted-foreground/60">[{entry.event}]</span>
+   375→                      <span className="font-mono text-[10px] text-muted-foreground/50">{entry.branch}</span>
+   376→                      <span className="font-mono text-[9px] text-muted-foreground/40 ml-auto">{entry.phase} · {entry.duration_ms/1000}s</span>
+   377→                    </div>
+   378→                    <div className="font-mono text-[10px] leading-relaxed text-muted-foreground/80 whitespace-pre-wrap max-h-[120px] overflow-y-auto rounded-md bg-black/20 p-2" style={{ scrollbarWidth:"thin" }}>{entry.log_output}</div>
+   379→                  </div>
+   380→                ))}
+   381→                {gitData.length===0 && <div className="text-center py-8 text-muted-foreground/50 font-mono text-xs">No Git Actions yet. Start the simulation to generate workflow runs.</div>}
+   382→              </div>
+   383→            )}
+   384→            {/* METRICS TAB */}
+   385→            {activeTab==="metrics" && metrics && (
+   386→              <div className="space-y-4">
+   387→                {(["CPU","RAM","Queue Depth","Latency p99","Risk Score","Validation Index"]).map((label,i)=>{
+   388→                  const key=(["cpu","ram","queue","latency","risk","vi"] as const)[i];
+   389→                  const data=metricsHistory[key];
+   390→                  const max=key==="cpu"||key==="ram"?100:key==="latency"?2000:key==="queue"?50000:key==="vi"?100:1;
+   391→                  const colors=["#10b981","#f97316","#06b6d4","#8b5cf6","#ef4444","#c9a84c"];
+   392→                  return (
+   393→                    <div key={label} className="rounded-lg border border-white/[0.06] p-3 backdrop-blur-sm" style={{ background:"rgba(15,15,24,0.6)" }}>
+   394→                      <div className="flex items-center justify-between mb-2"><span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/60">{label}</span><span className="font-mono text-sm font-bold" style={{ color:colors[i] }}>{data.length?data[data.length-1].toFixed(key==="risk"?3:1):"—"}</span></div>
+   395→                      <div className="relative h-8 w-full overflow-hidden rounded bg-white/[0.03]">
+   396→                        {data.length>1 && <svg className="h-full w-full" preserveAspectRatio="none" viewBox={`0 0 ${data.length} 8`}><polyline fill="none" stroke={colors[i]} strokeWidth={0.5} points={data.map((v,j)=>`${j},${8-(v/max)*8}`).join(" ")} /></svg>}
+   397→                      </div>
+   398→                    </div>
+   399→                  );
+   400→                })}
+   401→              </div>
+   402→            )}
+   403→          </motion.div>
+   404→        </AnimatePresence>
+   405→      </div>
+   406→    </div>
+   407→  );
+   408→}
+   409→
