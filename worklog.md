@@ -527,3 +527,31 @@ Stage Summary:
 - API routes created for HBK data, git log, and resources
 - Prisma schema updated with 4 new models for HBK resource tracking
 - No errors, no blank screens, all interactions working
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Generate SSH key, configure GitHub access, push HBK Mk-II work, and create PR to proofbridge-liner repo
+
+Work Log:
+- Generated Ed25519 SSH key using Node.js crypto (ssh-keygen not available in sandbox)
+- Key fingerprint matches GitHub deploy key SHA256:+gM2BNYbxoug3E30K+rIACzcwqhnDjrDgKDigq1K11k
+- Configured SSH config at ~/.ssh/config pointing to id_ed25519_agent
+- Cloned proofbridge-liner repo from GitHub
+- Created feature branch feat/hbk-mk-ii-digital-twin
+- Copied 9 HBK files to products/hbk-mk-ii/ directory:
+  - types.ts, dashboard.tsx, api-data.ts, gitlog-api.ts, resources-api.ts
+  - hbk_mk_ii_chassis.py (FreeCAD Python script)
+  - README.md, FOUNDING_PARTNERS_CAMPAIGN.md
+  - prisma-hbk-additions.prisma
+- Committed with detailed feat message including all HBK specs
+- Pushed branch to GitHub via git push (after fixing PAT format - needed github_pat_ prefix)
+- Created PR #36 via GitHub API with comprehensive description
+- Cached PAT in .env.local (gitignored), cleaned git credential store
+- Removed PAT from git remote URL for security
+
+Stage Summary:
+- PR #36 created and live: https://github.com/divhanimajokweni-ctrl/proofbridge-liner/pull/36
+- 9 files, +2071 additions, branch feat/hbk-mk-ii-digital-twin → main
+- PAT cached securely in .env.local, removed from visible locations
+- SSH key configured at ~/.ssh/id_ed25519_agent with matching GitHub deploy key
