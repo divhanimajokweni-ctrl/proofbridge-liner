@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 
-const VvuShell = dynamic(
-  () => import("@/components/vvu/vvu-shell").then((m) => m.VvuShell),
+const WorkbenchShell = dynamic(
+  () => import("@/components/vvu/workbench-shell").then((m) => m.WorkbenchShell),
   {
     ssr: false,
     loading: () => (
@@ -18,12 +18,12 @@ const VvuShell = dynamic(
         fontSize: "11px",
         letterSpacing: "0.12em",
       }}>
-        VVU · initializing trust runtime…
+        VVU · initializing trust operating environment…
       </div>
     ),
   },
 );
 
 export default function Home() {
-  return <VvuShell />;
+  return <WorkbenchShell />;
 }
