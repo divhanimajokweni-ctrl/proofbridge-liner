@@ -8,8 +8,8 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Epistemic Runtime — Invariant-Enforced DAG Control Plane",
-  description: "Verifiable, real-time shared-reality engine: a Policy DSL (.epd), invariant-aware sharded CRDTs, self-repairing merges, MMR ancestry proofs, and a Shadow Bridge for cyber-physical systems.",
+  title: "Venture Vision Ubuntu — Trusted Digital Infrastructure for South Africa",
+  description: "VVU is a South African technology and research organization building community finance, trusted digital infrastructure, and applied engineering through deterministic, evidence-backed processes.",
   icons: { icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg" },
 };
 

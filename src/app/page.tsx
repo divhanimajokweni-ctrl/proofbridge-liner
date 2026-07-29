@@ -1,29 +1,33 @@
-"use client";
+'use client';
 
-import dynamic from "next/dynamic";
+import { Navigation } from '@/components/vvu/navigation';
+import { HeroSection } from '@/components/vvu/hero-section';
+import { AboutSection } from '@/components/vvu/about-section';
+import { MissionSection } from '@/components/vvu/mission-section';
+import { ProgramsSection } from '@/components/vvu/programs-section';
+import { EngineeringSection } from '@/components/vvu/engineering-section';
+import { PartnersSection } from '@/components/vvu/partners-section';
+import { CommunitySection } from '@/components/vvu/community-section';
+import { NewsSection } from '@/components/vvu/news-section';
+import { ContactSection } from '@/components/vvu/contact-section';
+import { Footer } from '@/components/vvu/footer';
 
-const WorkbenchShell = dynamic(
-  () => import("@/components/vvu/workbench-shell").then((m) => m.WorkbenchShell),
-  {
-    ssr: false,
-    loading: () => (
-      <div style={{
-        minHeight: "100vh",
-        background: "radial-gradient(ellipse at 50% 25%, #0f0f18, #09090f 75%)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#7b7d8c",
-        fontFamily: "monospace",
-        fontSize: "11px",
-        letterSpacing: "0.12em",
-      }}>
-        VVU · initializing trust operating environment…
-      </div>
-    ),
-  },
-);
-
-export default function Home() {
-  return <WorkbenchShell />;
+export default function VVUHome() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navigation />
+      <main className="flex-1">
+        <HeroSection />
+        <AboutSection />
+        <MissionSection />
+        <ProgramsSection />
+        <EngineeringSection />
+        <PartnersSection />
+        <CommunitySection />
+        <NewsSection />
+        <ContactSection />
+      </main>
+      <Footer />
+    </div>
+  );
 }

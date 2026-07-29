@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a1a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="120" height="120" rx="24" fill="url(#bgGrad)"/>
+  <!-- V shape - left stroke (emerald) -->
+  <path d="M30 30 L60 90" stroke="url(#emeraldGrad)" stroke-width="10" stroke-linecap="round"/>
+  <!-- V shape - right stroke (amber) -->
+  <path d="M60 90 L90 30" stroke="url(#amberGrad)" stroke-width="10" stroke-linecap="round"/>
+  <!-- Intersection dot -->
+  <circle cx="60" cy="90" r="5" fill="url(#amberGrad)"/>
+  <!-- Small accent marks -->
+  <circle cx="30" cy="30" r="3" fill="url(#emeraldGrad)" opacity="0.6"/>
+  <circle cx="90" cy="30" r="3" fill="url(#amberGrad)" opacity="0.6"/>
+</svg>
