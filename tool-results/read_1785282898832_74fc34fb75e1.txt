@@ -1,0 +1,953 @@
+     1→// ════════════════════════════════════════════════════════════════════════
+     2→// VVU HBK Mk-II — Type Definitions
+     3→// Consortium Model: VVU 100% Ownership + Contract-Based Partnerships
+     4→// ════════════════════════════════════════════════════════════════════════
+     5→
+     6→// ── CAD Module Layout (from FreeCAD Python script) ──────────────────────
+     7→
+     8→export interface CADModule {
+     9→  id: string;
+    10→  name: string;
+    11→  label: string;
+    12→  length: number;  // X mm
+    13→  width: number;   // Y mm
+    14→  height: number;  // Z mm
+    15→  position: { x: number; y: number; z: number };
+    16→  color: string;       // CSS hex
+    17→  colorRGB: [number, number, number];
+    18→  status: "OPERATIONAL" | "STANDBY" | "DIAGNOSTIC" | "OFFLINE";
+    19→  tempC: number;
+    20→  loadPct: number;
+    21→  description: string;
+    22→}
+    23→
+    24→export const HBK_CAD_MODULES: CADModule[] = [
+    25→  {
+    26→    id: "base-plate",
+    27→    name: "Chassis_Base_Plate",
+    28→    label: "Base Plate (6061-T6)",
+    29→    length: 460, width: 360, height: 3,
+    30→    position: { x: 0, y: 0, z: 0 },
+    31→    color: "#C0C0C0", colorRGB: [0.75, 0.75, 0.75],
+    32→    status: "OPERATIONAL", tempC: 22, loadPct: 0,
+    33→    description: "Anodized aluminum structural base — 460×360mm working volume (3.0mm CNC 6061-T6 tray)",
+    34→  },
+    35→  {
+    36→    id: "amd-compute",
+    37→    name: "AMD_Compute_Module",
+    38→    label: "AMD Ryzen AI Compute Engine",
+    39→    length: 140, width: 130, height: 45,
+    40→    position: { x: 160, y: 120, z: 3 },
+    41→    color: "#1A9933", colorRGB: [0.1, 0.6, 0.2],
+    42→    status: "OPERATIONAL", tempC: 58, loadPct: 72,
+    43→    description: "Unified Memory Architecture — Edge compute with Ryzen AI APU (diagonal separation >170mm from PMU)",
+    44→  },
+    45→  {
+    46→    id: "sensor-interface",
+    47→    name: "Sensor_Interface_Module",
+    48→    label: "Analog Front-End / Sensor Shield",
+    49→    length: 120, width: 160, height: 22,
+    50→    position: { x: 20, y: 180, z: 3 },
+    51→    color: "#3366CC", colorRGB: [0.2, 0.3, 0.8],
+    52→    status: "OPERATIONAL", tempC: 31, loadPct: 45,
+    53→    description: "Acoustic filtering — isolated analog sensor interface (≥15mm EMI/RFI clearance zone enforced)",
+    54→  },
+    55→  {
+    56→    id: "power-bms",
+    57→    name: "Power_BMS_Module",
+    58→    label: "PM-01 Power Distribution & Daly 8S 20A BMS",
+    59→    length: 110, width: 140, height: 38,
+    60→    position: { x: 20, y: 20, z: 3 },
+    61→    color: "#CC3333", colorRGB: [0.8, 0.2, 0.2],
+    62→    status: "OPERATIONAL", tempC: 38, loadPct: 61,
+    63→    description: "Daly 8S 20A BMS — 25.6V/12V distribution with synchronous buck-boost regulators",
+    64→  },
+    65→  {
+    66→    id: "battery-8s",
+    67→    name: "Battery_8S_32700_Pack",
+    68→    label: "8S4P 32700 LiFePO₄ Pack (25.6V, 20Ah)",
+    69→    length: 150, width: 85, height: 80,
+    70→    position: { x: 140, y: 20, z: 3 },
+    71→    color: "#E67300", colorRGB: [0.9, 0.45, 0.0],
+    72→    status: "OPERATIONAL", tempC: 28, loadPct: 82,
+    73→    description: "32× IFR-32700 cells (8S4P) — 614Wh, 15% ruggedization overhead (busbars, holders, epoxy potting)",
+    74→  },
+    75→  {
+    76→    id: "aerogel-shield",
+    77→    name: "Aerogel_Thermal_Barrier",
+    78→    label: "Pyrogel XTE Aerogel Thermal Isolation",
+    79→    length: 160, width: 95, height: 85,
+    80→    position: { x: 135, y: 15, z: 3 },
+    81→    color: "#E8E8E8", colorRGB: [0.91, 0.91, 0.91],
+    82→    status: "OPERATIONAL", tempC: 25, loadPct: 0,
+    83→    description: "0.015 W/m·K thermal isolation — shields LiFePO₄ cells from AMD SoC radiant heat",
+    84→  },
+    85→  {
+    86→    id: "storage-bay",
+    87→    name: "NVMe_Storage_Bay",
+    88→    label: "NVMe Storage Bay",
+    89→    length: 40, width: 90, height: 15,
+    90→    position: { x: 320, y: 60, z: 3 },
+    91→    color: "#808080", colorRGB: [0.5, 0.5, 0.5],
+    92→    status: "OPERATIONAL", tempC: 34, loadPct: 28,
+    93→    description: "Vibration-dampened NVMe assembly — repositioned to X=320 for battery clearance",
+    94→  },
+    95→  {
+    96→    id: "comms-routing",
+    97→    name: "Comms_Routing_Node",
+    98→    label: "Sealed Comms Routing Node",
+    99→    length: 100, width: 140, height: 25,
+   100→    position: { x: 340, y: 200, z: 3 },
+   101→    color: "#CC9900", colorRGB: [0.8, 0.6, 0.1],
+   102→    status: "STANDBY", tempC: 26, loadPct: 12,
+   103→    description: "Cellular/GNSS/LoRa carrier — sealed IP67 routing",
+   104→  },
+   105→];
+   106→
+   107→// ── VVU Ownership Model (100% VVU — No Equity Dilution) ──────────────────
+   108→
+   109→export interface OwnershipEntry {
+   110→  holder: string;
+   111→  pct: number;
+   112→  color: string;
+   113→  description: string;
+   114→  emphasis?: boolean;
+   115→}
+   116→
+   117→export const OWNERSHIP_STRUCTURE: OwnershipEntry[] = [
+   118→  { holder: "VVU", pct: 100, color: "#C9A84C", description: "Venture Vision Ubuntu — sole owner of all core technology and platform IP", emphasis: true },
+   119→];
+   120→
+   121→// ── Consortium Model ──────────────────────────────────────────────────────
+   122→
+   123→export interface ConsortiumPartner {
+   124→  id: string;
+   125→  name: string;
+   126→  tier: "academic" | "funding" | "municipal" | "industrial";
+   127→  agreementType: string;
+   128→  agreementLabel: string;
+   129→  benefits: string[];
+   130→  obligations: string[];
+   131→  color: string;
+   132→  icon: string;
+   133→  status: "active_outreach" | "negotiating" | "agreement_draft" | "executed";
+   134→  targets: string[];
+   135→  rationale: string;
+   136→}
+   137→
+   138→export const CONSORTIUM_PARTNERS: ConsortiumPartner[] = [
+   139→  {
+   140→    id: "academic",
+   141→    name: "Academic Partners",
+   142→    tier: "academic",
+   143→    agreementType: "research_collaboration",
+   144→    agreementLabel: "Research Collaboration Agreement",
+   145→    benefits: [
+   146→      "Publication rights",
+   147→      "Research funding allocation",
+   148→      "Student project supervision",
+   149→      "Access to anonymised datasets",
+   150→      "Formal acknowledgement",
+   151→      "Co-author paper opportunities",
+   152→    ],
+   153→    obligations: [
+   154→      "Provide academic supervision",
+   155→      "Supply HPC/GPU compute resources",
+   156→      "Facilitate laboratory access",
+   157→      "Support postgraduate researchers",
+   158→    ],
+   159→    color: "#3366CC",
+   160→    icon: "GraduationCap",
+   161→    status: "active_outreach",
+   162→    targets: ["UCT", "Wits", "Stellenbosch University", "CSIR"],
+   163→    rationale: "Universities expect publication rights and research access — not equity. Research Collaboration Agreements align with what academic institutions already anticipate.",
+   164→  },
+   165→  {
+   166→    id: "funding",
+   167→    name: "Funding Partners",
+   168→    tier: "funding",
+   169→    agreementType: "grant",
+   170→    agreementLabel: "Grant Agreement",
+   171→    benefits: [
+   172→      "Deliverables against programme milestones",
+   173→      "Progress reports and audit trail",
+   174→      "Named programme recognition",
+   175→      "Access to validation outcomes",
+   176→    ],
+   177→    obligations: [
+   178→      "Provide research programme funding",
+   179→      "Supply equipment and prototype funding",
+   180→      "Support pilot deployment funding",
+   181→    ],
+   182→    color: "#10b981",
+   183→    icon: "Landmark",
+   184→    status: "active_outreach",
+   185→    targets: ["WRC", "NRF", "DSTI"],
+   186→    rationale: "Funding bodies want deliverables, not ownership. Grant Agreements with milestone-based reporting are the standard model for WRC, NRF, and DSTI.",
+   187→  },
+   188→  {
+   189→    id: "municipal",
+   190→    name: "Municipal Partners",
+   191→    tier: "municipal",
+   192→    agreementType: "pilot",
+   193→    agreementLabel: "Pilot Partner Agreement",
+   194→    benefits: [
+   195→      "Access to operational reports",
+   196→      "Pilot outcomes and validation data",
+   197→      "Operational insights for infrastructure planning",
+   198→      "Participation in validation programme",
+   199→      "Direct coordination with research team",
+   200→    ],
+   201→    obligations: [
+   202→      "Provide pilot site access",
+   203→      "Share asset and GIS records",
+   204→      "Enable telemetry and SCADA access",
+   205→      "Coordinate operational scheduling",
+   206→    ],
+   207→    color: "#F59E0B",
+   208→    icon: "Building2",
+   209→    status: "active_outreach",
+   210→    targets: ["City of Cape Town"],
+   211→    rationale: "Municipalities benefit from operational insights and pilot outcomes. Pilot Partner Agreements give them direct access to validation data — not equity in a startup.",
+   212→  },
+   213→  {
+   214→    id: "industrial",
+   215→    name: "Industrial Partners",
+   216→    tier: "industrial",
+   217→    agreementType: "technology_partnership",
+   218→    agreementLabel: "Technology Partnership Agreement",
+   219→    benefits: [
+   220→      "Evaluation hardware access",
+   221→      "Engineering support collaboration",
+   222→      "Co-marketing opportunities",
+   223→      "Reference design collaboration",
+   224→      "Sponsorship recognition",
+   225→    ],
+   226→    obligations: [
+   227→      "Supply evaluation hardware",
+   228→      "Provide engineering support",
+   229→      "Share manufacturing insights",
+   230→      "Support certification pathway",
+   231→    ],
+   232→    color: "#1A9933",
+   233→    icon: "Cpu",
+   234→    status: "active_outreach",
+   235→    targets: ["AMD", "Sensor manufacturers", "Communications providers"],
+   236→    rationale: "If AMD wanted to invest years later, that would be a separate decision. Technology Partnership Agreements keep relationships productive without premature equity dilution.",
+   237→  },
+   238→];
+   239→
+   240→// ── IP Ownership Boundaries ──────────────────────────────────────────────
+   241→
+   242→export interface IPCategory {
+   243→  id: string;
+   244→  label: string;
+   245→  owner: "vvu" | "joint";
+   246→  items: string[];
+   247→  color: string;
+   248→  icon: string;
+   249→  description: string;
+   250→}
+   251→
+   252→export const IP_OWNERSHIP: IPCategory[] = [
+   253→  {
+   254→    id: "vvu-core",
+   255→    label: "VVU-Owned Core Technology",
+   256→    owner: "vvu",
+   257→    items: [
+   258→      "HBK hardware architecture",
+   259→      "Bayesian runtime engine",
+   260→      "ProofBridge software platform",
+   261→      "Firmware and embedded systems",
+   262→      "Electronics and circuit design",
+   263→      "Industrial design",
+   264→      "Manufacturing rights",
+   265→      "Trademarks and brand identity",
+   266→    ],
+   267→    color: "#C9A84C",
+   268→    icon: "Shield",
+   269→    description: "All core platform technology remains solely owned by VVU. No transfer of ownership through any partnership agreement.",
+   270→  },
+   271→  {
+   272→    id: "research-outputs",
+   273→    label: "Joint Research Outputs",
+   274→    owner: "joint",
+   275→    items: [
+   276→      "Published papers and findings",
+   277→      "Benchmark datasets",
+   278→      "Validation reports",
+   279→      "Performance studies and field data",
+   280→    ],
+   281→    color: "#3366CC",
+   282→    icon: "FileCheck2",
+   283→    description: "Research outputs can be jointly authored without transferring ownership of the VVU platform. Co-authorship ≠ ownership transfer.",
+   284→  },
+   285→];
+   286→
+   287→// ── Three-Phase Roadmap ──────────────────────────────────────────────────
+   288→
+   289→export interface RoadmapPhase {
+   290→  id: string;
+   291→  phase: string;
+   292→  phaseNumber: number;
+   293→  title: string;
+   294→  subtitle: string;
+   295→  partners: string[];
+   296→  deliverables: string[];
+   297→  outcomes: string[];
+   298→  duration: string;
+   299→  status: "active" | "upcoming" | "future";
+   300→  color: string;
+   301→  icon: string;
+   302→  keyDecision?: string;
+   303→}
+   304→
+   305→export const ROADMAP_PHASES: RoadmapPhase[] = [
+   306→  {
+   307→    id: "phase-1",
+   308→    phase: "Phase 1",
+   309→    phaseNumber: 1,
+   310→    title: "Research Enablement",
+   311→    subtitle: "Validate algorithms, collect field evidence, publish findings",
+   312→    partners: ["UCT", "Wits", "WRC", "Municipalities"],
+   313→    deliverables: [
+   314→      "Validate Bayesian algorithms under real conditions",
+   315→      "Collect field evidence from municipal infrastructure",
+   316→      "Publish peer-reviewed research findings",
+   317→      "Secure grant funding from WRC, NRF, DSTI",
+   318→    ],
+   319→    outcomes: [
+   320→      "Validated algorithms with published results",
+   321→      "Grant funding secured",
+   322→      "Pilot data collection completed",
+   323→      "Academic partnerships formalised",
+   324→    ],
+   325→    duration: "12–18 months",
+   326→    status: "active",
+   327→    color: "#10b981",
+   328→    icon: "FlaskConical",
+   329→  },
+   330→  {
+   331→    id: "phase-2",
+   332→    phase: "Phase 2",
+   333→    phaseNumber: 2,
+   334→    title: "Industrial Validation",
+   335→    subtitle: "Optimize hardware, certify reliability, establish supply chain",
+   336→    partners: ["AMD", "Sensor manufacturers", "Communications providers"],
+   337→    deliverables: [
+   338→      "Optimize HBK hardware for production readiness",
+   339→      "Certify reliability through industrial testing",
+   340→      "Establish supply chain and manufacturing contacts",
+   341→      "Build production-ready prototypes",
+   342→    ],
+   343→    outcomes: [
+   344→      "Production-ready HBK Mk-II prototype",
+   345→      "Certified reliability metrics",
+   346→      "Supply chain established",
+   347→      "Technology partnerships formalised",
+   348→    ],
+   349→    duration: "12–24 months",
+   350→    status: "upcoming",
+   351→    color: "#3B82F6",
+   352→    icon: "Wrench",
+   353→  },
+   354→  {
+   355→    id: "phase-3",
+   356→    phase: "Phase 3",
+   357→    phaseNumber: 3,
+   358→    title: "Commercialization",
+   359→    subtitle: "Decide on venture capital, licensing, joint ventures, or independent growth",
+   360→    partners: ["Market", "Investors (optional)", "Licensees"],
+   361→    deliverables: [
+   362→      "Evaluate commercialisation pathways",
+   363→      "Decide on venture capital, licensing, or joint ventures",
+   364→      "Continue growing independently if chosen",
+   365→      "Negotiate from validated position",
+   366→    ],
+   367→    outcomes: [
+   368→      "Commercialisation strategy decision",
+   369→      "Negotiating from validated position with published results and field data",
+   370→      "Option to raise equity only if strategically beneficial",
+   371→    ],
+   372→    duration: "Decision point after Phase 2",
+   373→    status: "future",
+   374→    color: "#C9A84C",
+   375→    icon: "Rocket",
+   376→    keyDecision: "Only after technical validation do you decide whether to raise venture capital, license the technology, form joint ventures, or continue growing independently. At that point, you negotiate from a much stronger position — validated technology, published results, and field data rather than just a concept.",
+   377→  },
+   378→];
+   379→
+   380→// ── Consortium Architecture ──────────────────────────────────────────────
+   381→
+   382→export interface ConsortiumArchitecture {
+   383→  coordinator: string;
+   384→  programme: string;
+   385→  pitchStatement: string;
+   386→  narrativeShift: {
+   387→    old: string;
+   388→    new: string;
+   389→  };
+   390→  hierarchy: {
+   391→    level: string;
+   392→    entity: string;
+   393→    description: string;
+   394→  }[];
+   395→}
+   396→
+   397→export const CONSORTIUM_ARCHITECTURE: ConsortiumArchitecture = {
+   398→  coordinator: "VVU",
+   399→  programme: "HBK Applied Research Programme",
+   400→  pitchStatement: "We have developed a portable research instrument that enables accelerated hydraulic evidence collection and Bayesian model validation. We are inviting research institutions, municipalities, and industry partners to participate in a structured validation programme, with VVU serving as the technology developer and programme coordinator.",
+   401→  narrativeShift: {
+   402→    old: "We are looking for investors.",
+   403→    new: "VVU is establishing a multi-institution applied research programme to validate a portable hydro-engineering platform for municipal water infrastructure.",
+   404→  },
+   405→  hierarchy: [
+   406→    { level: "coordinator", entity: "VVU", description: "Technology developer and programme coordinator" },
+   407→    { level: "programme", entity: "HBK Research Consortium", description: "Multi-institution applied research programme" },
+   408→    { level: "academic", entity: "Academic Partners", description: "UCT, Wits, Stellenbosch, CSIR — Research Collaboration Agreements" },
+   409→    { level: "municipal", entity: "Municipal Partners", description: "City of Cape Town — Pilot Partner Agreements" },
+   410→    { level: "industrial", entity: "Industrial Partners", description: "AMD, sensor manufacturers — Technology Partnership Agreements" },
+   411→    { level: "funding", entity: "Funding Partners", description: "WRC, NRF, DSTI — Grant Agreements" },
+   412→  ],
+   413→};
+   414→
+   415→// ── Sponsorship Packages ─────────────────────────────────────────────────
+   416→
+   417→export interface SponsorshipPackage {
+   418→  id: string;
+   419→  name: string;
+   420→  icon: string;
+   421→  items: { name: string; qty: string; typicalProvider: string }[];
+   422→  estimatedValue: string;
+   423→  impact: string;
+   424→  color: string;
+   425→}
+   426→
+   427→export const SPONSORSHIP_PACKAGES: SponsorshipPackage[] = [
+   428→  {
+   429→    id: "operations",
+   430→    name: "Operations Package",
+   431→    icon: "🏢",
+   432→    items: [
+   433→      { name: "Desk", qty: "2", typicalProvider: "University, office provider" },
+   434→      { name: "Chair", qty: "2", typicalProvider: "University, office provider" },
+   435→      { name: "Lockable cabinet", qty: "1", typicalProvider: "University, office provider" },
+   436→    ],
+   437→    estimatedValue: "R15,000–30,000",
+   438→    impact: "Enables dedicated research workspace",
+   439→    color: "#8B5CF6",
+   440→  },
+   441→  {
+   442→    id: "engineering",
+   443→    name: "Engineering Package",
+   444→    icon: "💻",
+   445→    items: [
+   446→      { name: "Laptop", qty: "1–3", typicalProvider: "Dell, Lenovo, HP" },
+   447→      { name: "External monitor", qty: "1–3", typicalProvider: "Hardware manufacturer, retail" },
+   448→      { name: "UPS", qty: "1–2", typicalProvider: "Makro, Builders" },
+   449→      { name: "Keyboard & mouse", qty: "1–3", typicalProvider: "Hardware manufacturer, retail" },
+   450→    ],
+   451→    estimatedValue: "R30,000–90,000",
+   452→    impact: "Powers engineering development and algorithm validation",
+   453→    color: "#10b981",
+   454→  },
+   455→  {
+   456→    id: "connectivity",
+   457→    name: "Connectivity Package",
+   458→    icon: "📡",
+   459→    items: [
+   460→      { name: "Router", qty: "1", typicalProvider: "MTN, Vodacom" },
+   461→      { name: "SIM card", qty: "1–2", typicalProvider: "Telecom provider" },
+   462→      { name: "Monthly data allocation", qty: "200+ GB", typicalProvider: "Telecom provider" },
+   463→    ],
+   464→    estimatedValue: "R5,000–15,000/year",
+   465→    impact: "Enables field data transmission and cloud connectivity",
+   466→    color: "#3B82F6",
+   467→  },
+   468→  {
+   469→    id: "field-ops",
+   470→    name: "Field Operations Package",
+   471→    icon: "🦺",
+   472→    items: [
+   473→      { name: "Reflective jackets", qty: "3–5", typicalProvider: "PPE supplier" },
+   474→      { name: "Safety boots", qty: "3–5", typicalProvider: "PPE supplier" },
+   475→      { name: "Hard hats", qty: "3–5", typicalProvider: "PPE supplier" },
+   476→      { name: "Equipment bags", qty: "2–3", typicalProvider: "PPE supplier" },
+   477→    ],
+   478→    estimatedValue: "R10,000–25,000",
+   479→    impact: "Enables safe field deployment",
+   480→    color: "#F59E0B",
+   481→  },
+   482→  {
+   483→    id: "workshop",
+   484→    name: "Workshop Package",
+   485→    icon: "📋",
+   486→    items: [
+   487→      { name: "Printing services", qty: "Up to 500 pages", typicalProvider: "Local print shop" },
+   488→      { name: "Meeting room", qty: "As needed", typicalProvider: "University" },
+   489→      { name: "Coffee/refreshments", qty: "For 20 participants", typicalProvider: "Local café" },
+   490→      { name: "Lunch", qty: "For 20 participants", typicalProvider: "Catering company" },
+   491→    ],
+   492→    estimatedValue: "R5,000–15,000/workshop",
+   493→    impact: "Enables research workshops and stakeholder meetings",
+   494→    color: "#EC4899",
+   495→  },
+   496→  {
+   497→    id: "branding",
+   498→    name: "Branding Package",
+   499→    icon: "👕",
+   500→    items: [
+   501→      { name: "Branded shirts", qty: "5–10", typicalProvider: "Textile company" },
+   502→      { name: "Jackets", qty: "3–5", typicalProvider: "Textile company" },
+   503→      { name: "Caps", qty: "5–10", typicalProvider: "Textile company" },
+   504→      { name: "Name badges", qty: "5–10", typicalProvider: "Signage company" },
+   505→      { name: "Vehicle branding (optional)", qty: "1", typicalProvider: "Signage company" },
+   506→    ],
+   507→    estimatedValue: "R8,000–25,000",
+   508→    impact: "Professional presence and programme identity",
+   509→    color: "#8B5CF6",
+   510→  },
+   511→];
+   512→
+   513→// ── Resource Register ────────────────────────────────────────────────────
+   514→
+   515→export interface ResourceItem {
+   516→  id: string;
+   517→  resource: string;
+   518→  qtyNeeded: number;
+   519→  qtyCommitted: number;
+   520→  unit: string;
+   521→  partnerType: string;
+   522→  status: "secured" | "in_progress" | "open" | "urgent";
+   523→  category: string;
+   524→}
+   525→
+   526→export const RESOURCE_REGISTER: ResourceItem[] = [
+   527→  { id: "r1", resource: "Desks", qtyNeeded: 2, qtyCommitted: 1, unit: "units", partnerType: "Academic Partner", status: "open", category: "operations" },
+   528→  { id: "r2", resource: "Laptops", qtyNeeded: 3, qtyCommitted: 0, unit: "units", partnerType: "Technology Partner", status: "urgent", category: "engineering" },
+   529→  { id: "r3", resource: "Fibre connectivity", qtyNeeded: 1, qtyCommitted: 0, unit: "connections", partnerType: "Telecom Partner", status: "urgent", category: "connectivity" },
+   530→  { id: "r4", resource: "Branded shirts", qtyNeeded: 5, qtyCommitted: 0, unit: "units", partnerType: "Community Partner", status: "open", category: "branding" },
+   531→  { id: "r5", resource: "Router", qtyNeeded: 1, qtyCommitted: 0, unit: "units", partnerType: "Telecom Partner", status: "open", category: "connectivity" },
+   532→  { id: "r6", resource: "UPS units", qtyNeeded: 2, qtyCommitted: 0, unit: "units", partnerType: "Retail Partner", status: "open", category: "engineering" },
+   533→  { id: "r7", resource: "Safety boots", qtyNeeded: 5, qtyCommitted: 0, unit: "pairs", partnerType: "Community Partner", status: "open", category: "field-ops" },
+   534→  { id: "r8", resource: "Meeting space", qtyNeeded: 1, qtyCommitted: 0, unit: "monthly", partnerType: "Academic Partner", status: "open", category: "workshop" },
+   535→  { id: "r9", resource: "Mobile data", qtyNeeded: 200, qtyCommitted: 0, unit: "GB/month", partnerType: "Telecom Partner", status: "urgent", category: "connectivity" },
+   536→  { id: "r10", resource: "Whiteboard", qtyNeeded: 1, qtyCommitted: 0, unit: "units", partnerType: "Retail Partner", status: "open", category: "operations" },
+   537→  { id: "r11", resource: "External monitors", qtyNeeded: 3, qtyCommitted: 0, unit: "units", partnerType: "Technology Partner", status: "urgent", category: "engineering" },
+   538→  { id: "r12", resource: "Reflective jackets", qtyNeeded: 5, qtyCommitted: 0, unit: "units", partnerType: "PPE Supplier", status: "open", category: "field-ops" },
+   539→  { id: "r13", resource: "Hard hats", qtyNeeded: 5, qtyCommitted: 0, unit: "units", partnerType: "PPE Supplier", status: "open", category: "field-ops" },
+   540→  { id: "r14", resource: "Equipment bags", qtyNeeded: 3, qtyCommitted: 0, unit: "units", partnerType: "PPE Supplier", status: "open", category: "field-ops" },
+   541→  { id: "r15", resource: "Printing services", qtyNeeded: 500, qtyCommitted: 0, unit: "pages", partnerType: "Community Partner", status: "open", category: "workshop" },
+   542→];
+   543→
+   544→// ── Programme Timeline ───────────────────────────────────────────────────
+   545→
+   546→export interface TimelinePhase {
+   547→  id: string;
+   548→  phase: string;
+   549→  months: string;
+   550→  description: string;
+   551→  milestones: string[];
+   552→  status: "complete" | "active" | "upcoming";
+   553→  color: string;
+   554→}
+   555→
+   556→export const PROGRAMME_TIMELINE: TimelinePhase[] = [
+   557→  {
+   558→    id: "p1",
+   559→    phase: "Consortium Formation",
+   560→    months: "Month 1–3",
+   561→    description: "Formalise HBK Research Consortium, sign Research Collaboration Agreements, secure first Grant Agreements",
+   562→    milestones: ["Form consortium", "Sign first Research Collaboration Agreement", "Secure WRC/NRF grant", "Establish Pilot Partner relationship"],
+   563→    status: "active",
+   564→    color: "#10b981",
+   565→  },
+   566→  {
+   567→    id: "p2",
+   568→    phase: "Field Validation",
+   569→    months: "Month 4–12",
+   570→    description: "Deploy HBK Mk-II at pilot site, collect field evidence, begin Bayesian algorithm validation",
+   571→    milestones: ["Deploy at pilot site", "Collect field evidence", "Validate algorithms", "Begin publishing"],
+   572→    status: "upcoming",
+   573→    color: "#3B82F6",
+   574→  },
+   575→  {
+   576→    id: "p3",
+   577→    phase: "Industrial Preparation",
+   578→    months: "Month 13–24",
+   579→    description: "Form Technology Partnership Agreements, optimize hardware, certify reliability, build production prototypes",
+   580→    milestones: ["Sign Technology Partnership Agreements", "Optimize hardware", "Certify reliability", "Build production prototype"],
+   581→    status: "upcoming",
+   582→    color: "#8B5CF6",
+   583→  },
+   584→  {
+   585→    id: "p4",
+   586→    phase: "Commercialisation Decision",
+   587→    months: "Month 24+",
+   588→    description: "Evaluate commercialisation pathway — venture capital, licensing, joint ventures, or independent growth",
+   589→    milestones: ["Evaluate pathways", "Make commercialisation decision", "Negotiate from validated position"],
+   590→    status: "upcoming",
+   591→    color: "#C9A84C",
+   592→  },
+   593→];
+   594→
+   595→// ── Git Actions Log ──────────────────────────────────────────────────────
+   596→
+   597→export interface GitAction {
+   598→  id: string;
+   599→  timestamp: string;
+   600→  action: "commit" | "push" | "merge" | "deploy" | "test" | "validate";
+   601→  branch: string;
+   602→  message: string;
+   603→  author: string;
+   604→  status: "success" | "running" | "failed";
+   605→  hash: string;
+   606→}
+   607→
+   608→// ── Validation Simulation ────────────────────────────────────────────────
+   609→
+   610→export interface ValidationPhase {
+   611→  id: string;
+   612→  name: string;
+   613→  duration: string;
+   614→  description: string;
+   615→  status: "complete" | "active" | "pending" | "failed";
+   616→  metrics: { label: string; value: string; status: "pass" | "warn" | "fail" }[];
+   617→}
+   618→
+   619→export const VALIDATION_PHASES: ValidationPhase[] = [
+   620→  {
+   621→    id: "v1", name: "Cold Boot & Initialization", duration: "0–4h",
+   622→    description: "System boot, kernel assertion, module self-test",
+   623→    status: "complete",
+   624→    metrics: [
+   625→      { label: "Boot Sequence", value: "PASS", status: "pass" },
+   626→      { label: "Kernel Assertions", value: "12/12", status: "pass" },
+   627→      { label: "Module Self-Test", value: "6/6", status: "pass" },
+   628→    ],
+   629→  },
+   630→  {
+   631→    id: "v2", name: "Sensor Calibration & Baseline", duration: "4–12h",
+   632→    description: "Acoustic sensor calibration, pressure baseline establishment",
+   633→    status: "complete",
+   634→    metrics: [
+   635→      { label: "Sensor Calibration", value: "PASS", status: "pass" },
+   636→      { label: "Baseline SNR", value: "42.3 dB", status: "pass" },
+   637→      { label: "Analog Isolation", value: "VERIFIED", status: "pass" },
+   638→    ],
+   639→  },
+   640→  {
+   641→    id: "v3", name: "Bayesian Inference Engine", duration: "12–24h",
+   642→    description: "MCMC derivation validation, Brier Score monitoring",
+   643→    status: "active",
+   644→    metrics: [
+   645→      { label: "MCMC Convergence", value: "0.87", status: "pass" },
+   646→      { label: "Brier Score", value: "0.013", status: "pass" },
+   647→      { label: "Trip Verdicts", value: "0", status: "pass" },
+   648→    ],
+   649→  },
+   650→  {
+   651→    id: "v4", name: "Stress & Load Testing", duration: "24–36h",
+   652→    description: "Circuit breaker stress, failover testing, queue depth",
+   653→    status: "pending",
+   654→    metrics: [
+   655→      { label: "Circuit Breaker", value: "—", status: "warn" },
+   656→      { label: "Queue Depth", value: "—", status: "warn" },
+   657→      { label: "Failover", value: "—", status: "warn" },
+   658→    ],
+   659→  },
+   660→  {
+   661→    id: "v5", name: "Network Simulation (Cape Town)", duration: "36–48h",
+   662→    description: "Cape Town water network simulation, zone data injection",
+   663→    status: "pending",
+   664→    metrics: [
+   665→      { label: "Zone Coverage", value: "—", status: "warn" },
+   666→      { label: "Leak Detection", value: "—", status: "warn" },
+   667→      { label: "False Positive Rate", value: "—", status: "warn" },
+   668→    ],
+   669→  },
+   670→  {
+   671→    id: "v6", name: "Edge-Compute Validation", duration: "48–60h",
+   672→    description: "AMD Ryzen AI APU validation, Kria SoM integration",
+   673→    status: "pending",
+   674→    metrics: [
+   675→      { label: "APU Utilization", value: "—", status: "warn" },
+   676→      { label: "Inference Latency", value: "—", status: "warn" },
+   677→      { label: "Memory Pressure", value: "—", status: "warn" },
+   678→    ],
+   679→  },
+   680→  {
+   681→    id: "v7", name: "Final Validation & Sign-Off", duration: "60–72h",
+   682→    description: "Full validation index, audit report, TRIP verdict finalization",
+   683→    status: "pending",
+   684→    metrics: [
+   685→      { label: "Validation Index", value: "—", status: "warn" },
+   686→      { label: "Audit Trail", value: "—", status: "warn" },
+   687→      { label: "TRIP Verdict", value: "—", status: "warn" },
+   688→    ],
+   689→  },
+   690→];
+   691→
+   692→// ── Phase 2: Power Architecture ──────────────────────────────────────────
+   693→
+   694→export interface BatterySpecification {
+   695→  chemistry: string;
+   696→  format: string;
+   697→  configuration: string;
+   698→  seriesCells: number;
+   699→  parallelCells: number;
+   700→  totalCells: number;
+   701→  nominalVoltage: number;
+   702→  capacityAh: number;
+   703→  totalEnergyWh: number;
+   704→  bms: string;
+   705→  cellModel: string;
+   706→  bmsModel: string;
+   707→  estimatedWeight: string;
+   708→  ruggedizationOverhead: string;
+   709→  pottingMaterial: string;
+   710→  shiftDuration: string;
+   711→  thermalAdvantage: string;
+   712→}
+   713→
+   714→export const BATTERY_SPEC: BatterySpecification = {
+   715→  chemistry: "LiFePO₄ (Lithium Iron Phosphate)",
+   716→  format: "32700 Cylindrical",
+   717→  configuration: "8S4P",
+   718→  seriesCells: 8,
+   719→  parallelCells: 4,
+   720→  totalCells: 32,
+   721→  nominalVoltage: 25.6,
+   722→  capacityAh: 20,
+   723→  totalEnergyWh: 614,
+   724→  bms: "Daly 8S 20A BMS",
+   725→  cellModel: "IFR-32700",
+   726→  bmsModel: "Daly BMS-8S20A",
+   727→  estimatedWeight: "~5.2 kg (cells + potting + busbars)",
+   728→  ruggedizationOverhead: "15% (busbars, holders, epoxy potting resin)",
+   729→  pottingMaterial: "Epoxy Resin (structural potting for vibration/field shock)",
+   730→  shiftDuration: "8 hours continuous field operation",
+   731→  thermalAdvantage: "8S (25.6V) halves current draw vs 4S — I²R resistive heating reduced by ~75% in BMS and PM-01 wiring harness",
+   732→};
+   733→
+   734→// ── Phase 2: Star Ground Wiring Protocol (P0–P3) ─────────────────────────
+   735→
+   736→export interface WiringRail {
+   737→  id: string;
+   738→  name: string;
+   739→  designation: string;
+   740→  gauge: string;
+   741→  voltage: string;
+   742→  purpose: string;
+   743→  route: string;
+   744→  isolationClass: string;
+   745→  color: string;
+   746→}
+   747→
+   748→export const WIRING_RAILS: WiringRail[] = [
+   749→  {
+   750→    id: "P0",
+   751→    name: "Main Power Rail",
+   752→    designation: "P0 — High Current",
+   753→    gauge: "10 AWG",
+   754→    voltage: "25.6V DC (Battery → BMS → PM-01)",
+   755→    purpose: "Primary DC distribution from battery pack through BMS to PM-01 power management unit",
+   756→    route: "Battery_8S_32700_Pack (X:140, Y:20) → Power_BMS_Module (X:20, Y:20) — shortest possible run",
+   757→    isolationClass: "EMI-HIGH",
+   758→    color: "#CC3333",
+   759→  },
+   760→  {
+   761→    id: "P1",
+   762→    name: "System Power Rail",
+   763→    designation: "P1 — Compute Power",
+   764→    gauge: "14 AWG",
+   765→    voltage: "12V / 5V (PM-01 → AMD Compute / NVMe / Comms)",
+   766→    purpose: "Regulated power from PM-01 to AMD Ryzen SoC, NVMe storage, and comms routing node",
+   767→    route: "PM-01 (X:20, Y:20) → AMD Compute (X:160, Y:120) → NVMe (X:320, Y:60) → Comms (X:340, Y:200)",
+   768→    isolationClass: "EMI-MEDIUM",
+   769→    color: "#F59E0B",
+   770→  },
+   771→  {
+   772→    id: "P2",
+   773→    name: "Clean Power Rail",
+   774→    designation: "P2 — Clean Rail (Galvanically Isolated)",
+   775→    gauge: "18 AWG",
+   776→    voltage: "±12.0V / 5.0V (with galvanic isolator)",
+   777→    purpose: "Ultra-clean power for analog sensor interface — galvanically isolated from BMS switching noise",
+   778→    route: "PM-01 (X:20, Y:20) → Sensor Interface (X:20, Y:180) — dedicated isolation path",
+   779→    isolationClass: "CLEAN-ISO",
+   780→    color: "#3366CC",
+   781→  },
+   782→  {
+   783→    id: "P3",
+   784→    name: "Signal Rail",
+   785→    designation: "P3 — Signal (Shielded Twisted Pair)",
+   786→    gauge: "Shielded Twisted Pair",
+   787→    voltage: "Analog / Digital Signal Lines",
+   788→    purpose: "All sensor data lines — routed away from BMS and power rails via shielded twisted pair",
+   789→    route: "Sensor Interface (X:20, Y:180) → AMD Compute (X:160, Y:120) — physically separated from P0/P1",
+   790→    isolationClass: "SIGNAL-GUARD",
+   791→    color: "#10b981",
+   792→  },
+   793→];
+   794→
+   795→// ── Phase 2: Epistemic Thermal Governance ─────────────────────────────────
+   796→
+   797→export interface ThermalThreshold {
+   798→  level: string;
+   799→  tempC: number;
+   800→  action: string;
+   801→  runtimeLog: string;
+   802→  color: string;
+   803→  icon: string;
+   804→  erRule: string;
+   805→}
+   806→
+   807→export const THERMAL_THRESHOLDS: ThermalThreshold[] = [
+   808→  {
+   809→    level: "NORMAL",
+   810→    tempC: 65,
+   811→    action: "Full operation — all inference loops active, sensor polling at full rate",
+   812→    runtimeLog: "No thermal event — continuous operation logged as periodic Fact",
+   813→    color: "#10b981",
+   814→    icon: "CheckCircle2",
+   815→    erRule: "Rule 4 (No Non-Determinism) — deterministic duty cycling at all times",
+   816→  },
+   817→  {
+   818→    level: "WARNING",
+   819→    tempC: 65,
+   820→    action: "ECO mode engaged — AMD APU clock reduced, sensor polling interval doubled",
+   821→    runtimeLog: "Thermal spike logged as append-only Fact (SHA-256 canonical) → WORM storage before ECO mode engagement",
+   822→    color: "#F59E0B",
+   823→    icon: "AlertTriangle",
+   824→    erRule: "Rule 7 (Append-Only Evidence) — temperature event is immutable Fact before any throttling",
+   825→  },
+   826→  {
+   827→    level: "CRITICAL",
+   828→    tempC: 75,
+   829→    action: "Wake-on-Acoustic loop — APU enters low-power state, analog sensor interface acts as deterministic hardware interrupt",
+   830→    runtimeLog: "Critical thermal event logged as Fact → APU enters wake-on-interrupt loop → trigger logged as verified Proof",
+   831→    color: "#EF4444",
+   832→    icon: "XCircle",
+   833→    erRule: "Rule 7 + Rule 4 — if the system misses a leak because inference was terminated at 75°C, engineers have mathematically reproducible proof of why the system was offline",
+   834→  },
+   835→  {
+   836→    level: "EMERGENCY",
+   837→    tempC: 85,
+   838→    action: "Full system shutdown — battery disconnected via BMS hard-cut, all evidence flushed to NVMe",
+   839→    runtimeLog: "Emergency shutdown logged as Fact → final state snapshot → WORM commit → BMS disconnect",
+   840→    color: "#DC2626",
+   841→    icon: "ShieldAlert",
+   842→    erRule: "Rule 7 — final evidence preservation before hardware disconnect. No data loss.",
+   843→  },
+   844→];
+   845→
+   846→// ── Phase 2: Thermal Containment Architecture ────────────────────────────
+   847→
+   848→export interface ThermalContainmentLayer {
+   849→  id: string;
+   850→  name: string;
+   851→  material: string;
+   852→  conductivity: string;
+   853→  purpose: string;
+   854→  fromComponent: string;
+   855→  toComponent: string;
+   856→  color: string;
+   857→}
+   858→
+   859→export const THERMAL_CONTAINMENT: ThermalContainmentLayer[] = [
+   860→  {
+   861→    id: "tc1",
+   862→    name: "TIM Phase-Change Layer",
+   863→    material: "5–7 W/m·K Phase-Change Material (PCM)",
+   864→    conductivity: "5–7 W/m·K",
+   865→    purpose: "Thermal bridge between Ryzen die and custom copper heat block",
+   866→    fromComponent: "AMD Ryzen APU die",
+   867→    toComponent: "Copper heat block",
+   868→    color: "#F59E0B",
+   869→  },
+   870→  {
+   871→    id: "tc2",
+   872→    name: "Structural Conduction Path",
+   873→    material: "Thermal gap pads (6061-T6 mainboard → Denel enclosure bosses)",
+   874→    conductivity: "3–5 W/m·K",
+   875→    purpose: "Conduct heat from mainboard tray to aluminum enclosure shell (passive radiator)",
+   876→    fromComponent: "6061-T6 Mainboard Tray",
+   877→    toComponent: "Denel aluminum enclosure (IP67 shell)",
+   878→    color: "#CC3333",
+   879→  },
+   880→  {
+   881→    id: "tc3",
+   882→    name: "Aerogel Battery Isolation",
+   883→    material: "Pyrogel XTE Aerogel (0.015 W/m·K)",
+   884→    conductivity: "0.015 W/m·K",
+   885→    purpose: "Shield LiFePO₄ cells from AMD SoC radiant heat — reclaim 10mm of internal volume",
+   886→    fromComponent: "AMD Ryzen APU thermal zone",
+   887→    toComponent: "Battery_8S_32700_Pack",
+   888→    color: "#3366CC",
+   889→  },
+   890→  {
+   891→    id: "tc4",
+   892→    name: "External CNC Fin Array",
+   893→    material: "CNC aluminum cooling fins (optional)",
+   894→    conductivity: "Aluminum (167 W/m·K)",
+   895→    purpose: "If ambient Eastern Cape environment demands it — external fins at APU Z-axis coordinate overhead",
+   896→    fromComponent: "Denel enclosure exterior",
+   897→    toComponent: "Ambient air",
+   898→    color: "#10b981",
+   899→  },
+   900→];
+   901→
+   902→// ── Phase 2: BOM (Bill of Materials) ─────────────────────────────────────
+   903→
+   904→export interface BOMItem {
+   905→  id: string;
+   906→  component: string;
+   907→  specification: string;
+   908→  quantity: string;
+   909→  source: string;
+   910→  category: string;
+   911→  status: "specified" | "sourced" | "ordered" | "received";
+   912→}
+   913→
+   914→export const PHASE2_BOM: BOMItem[] = [
+   915→  { id: "bom-1", component: "IFR-32700 LiFePO₄ Cells", specification: "32700 cylindrical, 3.2V nominal", quantity: "32", source: "Battery supplier", category: "battery", status: "specified" },
+   916→  { id: "bom-2", component: "Daly 8S 20A BMS", specification: "BMS-8S20A, 25.6V nominal", quantity: "1", source: "Daly Electronics", category: "battery", status: "specified" },
+   917→  { id: "bom-3", component: "Pyrogel XTE Aerogel", specification: "0.015 W/m·K, 5mm thickness", quantity: "1 sheet (160×95mm)", source: "Aspen Aerogels", category: "thermal", status: "specified" },
+   918→  { id: "bom-4", component: "Epoxy Potting Resin", specification: "Structural potting for vibration/field shock", quantity: "1 kit", source: "Epoxy supplier", category: "battery", status: "specified" },
+   919→  { id: "bom-5", component: "PCM Thermal Interface", specification: "5–7 W/m·K phase-change material", quantity: "1 pad", source: "TIM supplier", category: "thermal", status: "specified" },
+   920→  { id: "bom-6", component: "Thermal Gap Pads", specification: "3–5 W/m·K, mainboard-to-enclosure", quantity: "4 pads", source: "TIM supplier", category: "thermal", status: "specified" },
+   921→  { id: "bom-7", component: "10 AWG P0 Power Wire", specification: "High-current DC rail (Battery→BMS)", quantity: "200mm", source: "Wire supplier", category: "wiring", status: "specified" },
+   922→  { id: "bom-8", component: "14 AWG P1 System Wire", specification: "Compute power distribution", quantity: "500mm", source: "Wire supplier", category: "wiring", status: "specified" },
+   923→  { id: "bom-9", component: "18 AWG P2 Clean Wire", specification: "Galvanically isolated clean rail", quantity: "300mm", source: "Wire supplier", category: "wiring", status: "specified" },
+   924→  { id: "bom-10", component: "Shielded Twisted Pair (P3)", specification: "Signal lines — physically separated from P0/P1", quantity: "400mm", source: "Signal cable supplier", category: "wiring", status: "specified" },
+   925→  { id: "bom-11", component: "Galvanic Isolator (P2)", specification: "DC-DC isolated converter ±12V/5V", quantity: "1", source: "Isolation component supplier", category: "wiring", status: "specified" },
+   926→  { id: "bom-12", component: "Copper Heat Block", specification: "Custom AMD Ryzen APU heat spreader", quantity: "1", source: "CNC machining", category: "thermal", status: "specified" },
+   927→];
+   928→
+   929→// ── HBK Dashboard Tabs (updated for Consortium Model + Phase 2) ───────────
+   930→
+   931→export type HbkTabId = "consortium" | "ownership" | "contracts" | "ip" | "roadmap" | "power-thermal" | "twin" | "resources" | "simulation" | "timeline" | "gitlog";
+   932→
+   933→export interface HbkTab {
+   934→  id: HbkTabId;
+   935→  label: string;
+   936→  icon: string;
+   937→  description: string;
+   938→}
+   939→
+   940→export const HBK_TABS: HbkTab[] = [
+   941→  { id: "consortium", label: "Consortium", icon: "Network", description: "HBK Research Consortium architecture and narrative" },
+   942→  { id: "ownership", label: "VVU 100%", icon: "Shield", description: "VVU sole ownership — capitalisation table remains clean" },
+   943→  { id: "contracts", label: "Contract Model", icon: "FileCheck2", description: "Partnership through contracts, not equity" },
+   944→  { id: "ip", label: "IP Boundaries", icon: "Lock", description: "VVU-owned core technology vs joint research outputs" },
+   945→  { id: "roadmap", label: "3-Phase Roadmap", icon: "Route", description: "Research Enablement → Industrial Validation → Commercialisation" },
+   946→  { id: "power-thermal", label: "Power & Thermal", icon: "Zap", description: "Phase 2: 8S4P battery, Star Ground wiring, Epistemic thermal governance" },
+   947→  { id: "twin", label: "Digital Twin", icon: "Cpu", description: "HBK Mk-II 3D CAD layout and module status" },
+   948→  { id: "resources", label: "Resource Register", icon: "ClipboardList", description: "Live tracking of commitments and gaps" },
+   949→  { id: "simulation", label: "72h Validation", icon: "Activity", description: "Full 72-hour validation loop with digital twin" },
+   950→  { id: "timeline", label: "Programme Timeline", icon: "Calendar", description: "Phase tracking, milestones, delivery" },
+   951→  { id: "gitlog", label: "Git Actions", icon: "GitBranch", description: "Real-time commit, merge, deploy log" },
+   952→];
+   953→

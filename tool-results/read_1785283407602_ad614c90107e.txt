@@ -1,0 +1,468 @@
+   600→        'Municipal Client) as defined in Section 4.1.',
+   601→        styles['BodyTaaS']
+   602→    ))
+   603→    story.append(Spacer(1, 8))
+   604→
+   605→    # ── Revenue Split Table ──
+   606→    revenue_data = [
+   607→        [Paragraph('<b>Allocation</b>', styles['TH']),
+   608→         Paragraph('<b>Percentage</b>', styles['TH']),
+   609→         Paragraph('<b>Scope</b>', styles['TH']),
+   610→         Paragraph('<b>Description</b>', styles['TH'])],
+   611→        [Paragraph('Operational Baseline', styles['TC']),
+   612→         Paragraph('60%', styles['TCC']),
+   613→         Paragraph('Hardware + Operations', styles['TC']),
+   614→         Paragraph('Hardware amortization, server costs, HBK inference engine maintenance, field service operations', styles['TC'])],
+   615→        [Paragraph('Growth & R&D', styles['TC']),
+   616→         Paragraph('30%', styles['TCC']),
+   617→         Paragraph('Software + Research', styles['TC']),
+   618→         Paragraph('Software refinement, Bayesian algorithm improvement, academic collaboration funding, next-generation terminal development', styles['TC'])],
+   619→        [Paragraph('Risk & Compliance', styles['TC']),
+   620→         Paragraph('10%', styles['TCC']),
+   621→         Paragraph('Audit + Regulatory', styles['TC']),
+   622→         Paragraph('ProofBridge-Liner audit chain operations, regulatory alignment, SRS parameter verification, compliance documentation', styles['TC'])],
+   623→    ]
+   624→
+   625→    rev_col_widths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.12,
+   626→                      CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.50]
+   627→
+   628→    revenue_table = Table(revenue_data, colWidths=rev_col_widths, repeatRows=1)
+   629→    revenue_table.setStyle(TableStyle([
+   630→        ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_COLOR),
+   631→        ('TEXTCOLOR', (0, 0), (-1, 0), TABLE_HEADER_TEXT),
+   632→        ('BACKGROUND', (0, 1), (-1, 1), TABLE_ROW_EVEN),
+   633→        ('BACKGROUND', (0, 2), (-1, 2), TABLE_ROW_ODD),
+   634→        ('BACKGROUND', (0, 3), (-1, 3), TABLE_ROW_EVEN),
+   635→        ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
+   636→        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+   637→        ('TOPPADDING', (0, 0), (-1, -1), 5),
+   638→        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+   639→        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+   640→        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+   641→    ]))
+   642→    story.append(revenue_table)
+   643→    story.append(Spacer(1, 8))
+   644→
+   645→    story.append(add_heading('3.3 Incentive Alignment', styles['H2'], level=1))
+   646→    story.append(Paragraph(
+   647→        'The 30% Growth & R&D allocation is not merely a cost center—it is the incentive alignment '
+   648→        'mechanism that ensures continuous improvement in the terminal\'s leak-localization accuracy. '
+   649→        'Under the TaaS SLA framework (Section 5), VVU commits to achieving a search radius of '
+   650→        '500 meters or less for leak localization. The 30% R&D allocation funds the Bayesian '
+   651→        'algorithm refinement, academic research partnerships, and next-generation sensor development '
+   652→        'that continuously narrow the search radius toward this target. This creates a self-reinforcing '
+   653→        'commercial cycle: improved accuracy increases client satisfaction and contract renewal rates, '
+   654→        'which in turn generates additional subscription revenue that funds further R&D investment. '
+   655→        'The 60/30/10 split ensures that this cycle is structurally financed—not dependent on ad hoc '
+   656→        'budget allocations or external grant funding.',
+   657→        styles['BodyTaaS']
+   658→    ))
+   659→
+   660→    # ════════════════════════════════════════════════════════
+   661→    # SECTION 4: Risk Mitigation & "Zero Fabrication" Governance
+   662→    # ════════════════════════════════════════════════════════
+   663→    story.append(CondPageBreak(PAGE_HEIGHT * 0.25))
+   664→    story.append(add_heading('4. Risk Mitigation & "Zero Fabrication" Governance', styles['H1'], level=0))
+   665→    story.append(GoldRule(CONTENT_WIDTH))
+   666→    story.append(Spacer(1, 6))
+   667→
+   668→    story.append(add_heading('4.1 Administrative Shielding — Triparty SRS Delegation', styles['H2'], level=1))
+   669→    story.append(Paragraph(
+   670→        'The TaaS governance framework implements a Triparty SRS (System Requirements Specification) '
+   671→        'Delegation Addendum known as the "Three Keys" mechanism. Under this governance structure, '
+   672→        'no single party can unilaterally modify, waive, or bypass any SRS parameter. The three '
+   673→        'keyholders are: <b>VVU</b> (the service provider and hardware owner), <b>Academic Leads</b> '
+   674→        '(the independent research validators), and <b>Municipal Client</b> (the service subscriber '
+   675→        'and infrastructure operator). Any modification to the SRS requires simultaneous authorization '
+   676→        'from all three keyholders, ensuring that commercial pressures from VVU, research ambitions '
+   677→        'from academic partners, or operational convenience from the municipality cannot individually '
+   678→        'compromise the terminal\'s safety and performance parameters.',
+   679→        styles['BodyTaaS']
+   680→    ))
+   681→    story.append(Spacer(1, 3))
+   682→    story.append(Paragraph(
+   683→        'This administrative shielding is particularly critical in the context of the Zero Fabrication '
+   684→        'Mandate (Section 4.2). The Three Keys mechanism ensures that no manufacturing funds can be '
+   685→        'released, no SRS parameter can be relaxed, and no deployment can proceed without triparty '
+   686→        'consensus. The governance structure transforms the SRS from a unilateral specification into '
+   687→        'a multilateral contract—protecting all parties from the consequences of premature or '
+   688→        'under-specified hardware production.',
+   689→        styles['BodyTaaS']
+   690→    ))
+   691→
+   692→    story.append(add_heading('4.2 Zero Fabrication Mandate', styles['H2'], level=1))
+   693→    story.append(Paragraph(
+   694→        'The Zero Fabrication Mandate is the foundational risk governance principle of the TaaS '
+   695→        'framework: no manufacturing funds shall be released until all 32 SRS parameters have been '
+   696→        'verified and validated. This mandate exists to prevent the most catastrophic failure mode '
+   697→        'in infrastructure hardware production—manufacturing a terminal that has not been fully '
+   698→        'specified, tested, and certified. The 32 SRS parameters encompass every dimension of the '
+   699→        'terminal\'s operational specification: hydraulic performance, structural integrity, '
+   700→        'electromagnetic compatibility, environmental resilience, and Bayesian inference accuracy.',
+   701→        styles['BodyTaaS']
+   702→    ))
+   703→    story.append(Spacer(1, 8))
+   704→
+   705→    # ── Safe Harbor Boundaries Table ──
+   706→    safe_harbor_data = [
+   707→        [Paragraph('<b>Parameter</b>', styles['TH']),
+   708→         Paragraph('<b>Boundary Value</b>', styles['TH']),
+   709→         Paragraph('<b>Unit</b>', styles['TH']),
+   710→         Paragraph('<b>Governance Scope</b>', styles['TH'])],
+   711→        [Paragraph('Surge Maximum', styles['TC']),
+   712→         Paragraph('20', styles['TCC']),
+   713→         Paragraph('bar', styles['TCC']),
+   714→         Paragraph('Hydraulic pressure safety ceiling — no deployment above this threshold', styles['TC'])],
+   715→        [Paragraph('Wave Celerity', styles['TC']),
+   716→         Paragraph('1400', styles['TCC']),
+   717→         Paragraph('m/s', styles['TCC']),
+   718→         Paragraph('Acoustic propagation speed limit for Bayesian inference calibration', styles['TC'])],
+   719→        [Paragraph('Corrosion Limit', styles['TC']),
+   720→         Paragraph('10.00', styles['TCC']),
+   721→         Paragraph('mm', styles['TCC']),
+   722→         Paragraph('Maximum permissible material degradation before mandatory component replacement', styles['TC'])],
+   723→        [Paragraph('Structural Bound (FoS)', styles['TC']),
+   724→         Paragraph('1.5 - 3.0', styles['TCC']),
+   725→         Paragraph('ratio', styles['TCC']),
+   726→         Paragraph('Factor of Safety range for structural load-bearing components under all operating conditions', styles['TC'])],
+   727→    ]
+   728→
+   729→    sh_col_widths = [CONTENT_WIDTH * 0.18, CONTENT_WIDTH * 0.12,
+   730→                     CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.62]
+   731→
+   732→    safe_harbor_table = Table(safe_harbor_data, colWidths=sh_col_widths, repeatRows=1)
+   733→    safe_harbor_table.setStyle(TableStyle([
+   734→        ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_COLOR),
+   735→        ('TEXTCOLOR', (0, 0), (-1, 0), TABLE_HEADER_TEXT),
+   736→        ('BACKGROUND', (0, 1), (-1, 1), TABLE_ROW_EVEN),
+   737→        ('BACKGROUND', (0, 2), (-1, 2), TABLE_ROW_ODD),
+   738→        ('BACKGROUND', (0, 3), (-1, 3), TABLE_ROW_EVEN),
+   739→        ('BACKGROUND', (0, 4), (-1, 4), TABLE_ROW_ODD),
+   740→        ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
+   741→        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+   742→        ('TOPPADDING', (0, 0), (-1, -1), 5),
+   743→        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+   744→        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+   745→        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+   746→    ]))
+   747→    story.append(safe_harbor_table)
+   748→    story.append(Spacer(1, 8))
+   749→
+   750→    story.append(add_heading('4.3 Verification Gates VR1-VR5', styles['H2'], level=1))
+   751→    story.append(Paragraph(
+   752→        'The Zero Fabrication Mandate is enforced through a five-stage verification gate system '
+   753→        'that progressively validates the terminal from geometric specification through field '
+   754→        'acceptance. Each gate represents a mandatory checkpoint that must be passed before the '
+   755→        'next stage can proceed. No gate may be skipped, combined, or conditionally waived. The '
+   756→        'verification gates establish a linear, non-parallel validation path that ensures every '
+   757→        'dimension of the terminal\'s specification is independently confirmed.',
+   758→        styles['BodyTaaS']
+   759→    ))
+   760→    story.append(Spacer(1, 8))
+   761→
+   762→    # ── Verification Gates Table ──
+   763→    gate_data = [
+   764→        [Paragraph('<b>Gate</b>', styles['TH']),
+   765→         Paragraph('<b>Designation</b>', styles['TH']),
+   766→         Paragraph('<b>Scope</b>', styles['TH']),
+   767→         Paragraph('<b>Validation Criteria</b>', styles['TH'])],
+   768→        [Paragraph('VR1', styles['TCC']),
+   769→         Paragraph('Geometry', styles['TC']),
+   770→         Paragraph('Physical dimensions and spatial layout', styles['TC']),
+   771→         Paragraph('All 11 component XYZ positions verified against SRS coordinate specification', styles['TC'])],
+   772→        [Paragraph('VR2', styles['TCC']),
+   773→         Paragraph('Material', styles['TC']),
+   774→         Paragraph('Material composition and properties', styles['TC']),
+   775→         Paragraph('Material certificates, corrosion resistance testing, and structural strength validation', styles['TC'])],
+   776→        [Paragraph('VR3', styles['TCC']),
+   777→         Paragraph('Assembly', styles['TC']),
+   778→         Paragraph('Component integration and coupling', styles['TC']),
+   779→         Paragraph('Inter-component connectivity, hydraulic seal integrity, and electrical bonding verification', styles['TC'])],
+   780→        [Paragraph('VR4', styles['TCC']),
+   781→         Paragraph('Functional (FAT)', styles['TC']),
+   782→         Paragraph('Factory Acceptance Testing', styles['TC']),
+   783→         Paragraph('Full functional testing under simulated operational conditions, Bayesian inference output validation', styles['TC'])],
+   784→        [Paragraph('VR5', styles['TCC']),
+   785→         Paragraph('Field Acceptance (SAT)', styles['TC']),
+   786→         Paragraph('Site Acceptance Testing', styles['TC']),
+   787→         Paragraph('In-situ performance validation at deployment site, live hydraulic conditions, telemetry confirmation', styles['TC'])],
+   788→    ]
+   789→
+   790→    gate_col_widths = [CONTENT_WIDTH * 0.08, CONTENT_WIDTH * 0.14,
+   791→                       CONTENT_WIDTH * 0.28, CONTENT_WIDTH * 0.50]
+   792→
+   793→    gate_table = Table(gate_data, colWidths=gate_col_widths, repeatRows=1)
+   794→    gate_table.setStyle(TableStyle([
+   795→        ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_COLOR),
+   796→        ('TEXTCOLOR', (0, 0), (-1, 0), TABLE_HEADER_TEXT),
+   797→        ('BACKGROUND', (0, 1), (-1, 1), TABLE_ROW_EVEN),
+   798→        ('BACKGROUND', (0, 2), (-1, 2), TABLE_ROW_ODD),
+   799→        ('BACKGROUND', (0, 3), (-1, 3), TABLE_ROW_EVEN),
+   800→        ('BACKGROUND', (0, 4), (-1, 4), TABLE_ROW_ODD),
+   801→        ('BACKGROUND', (0, 5), (-1, 5), TABLE_ROW_EVEN),
+   802→        ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
+   803→        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+   804→        ('TOPPADDING', (0, 0), (-1, -1), 5),
+   805→        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+   806→        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+   807→        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+   808→    ]))
+   809→    story.append(gate_table)
+   810→    story.append(Spacer(1, 8))
+   811→
+   812→    # ════════════════════════════════════════════════════════
+   813→    # SECTION 5: Operational Performance Targets (SLA Metrics)
+   814→    # ════════════════════════════════════════════════════════
+   815→    story.append(CondPageBreak(PAGE_HEIGHT * 0.25))
+   816→    story.append(add_heading('5. Operational Performance Targets (SLA Metrics)', styles['H1'], level=0))
+   817→    story.append(GoldRule(CONTENT_WIDTH))
+   818→    story.append(Spacer(1, 6))
+   819→
+   820→    story.append(add_heading('5.1 Leak Localization Accuracy', styles['H2'], level=1))
+   821→    story.append(Paragraph(
+   822→        'The primary SLA metric for the TaaS framework is leak localization accuracy, measured as '
+   823→        'the reduction in search uncertainty relative to conventional detection methods. The HBK Mk-II '
+   824→        'terminal, operating under its Bayesian inference engine, commits to achieving a <b>95% '
+   825→        'reduction in search uncertainty</b> compared to traditional acoustic correlation methods. '
+   826→        'This translates to a <b>maximum search radius of 500 meters</b> for any detected leak event. '
+   827→        'The search radius metric is the most operationally significant performance indicator: it '
+   828→        'defines the physical area that municipal repair teams must inspect to locate the leak source. '
+   829→        'A 500-meter search radius means that excavation and repair resources can be deployed with '
+   830→        'precision rather than dispersed across kilometers of pipeline infrastructure.',
+   831→        styles['BodyTaaS']
+   832→    ))
+   833→    story.append(Spacer(1, 3))
+   834→    story.append(Paragraph(
+   835→        'The accuracy target is achieved through the convergence of three technical capabilities: '
+   836→        'the Observation Vector\'s four-dimensional sensor data (P, F, A, T), the Bayesian inference '
+   837→        'engine\'s probabilistic spatial mapping, and the SHA-256 hash-chained data integrity that '
+   838→        'ensures no sensor drift or data corruption degrades the localization output. The 95% '
+   839→        'reduction target is not a static benchmark—it is a continuously improving metric driven by '
+   840→        'the 30% R&D revenue allocation that funds ongoing algorithm refinement and sensor calibration '
+   841→        'research.',
+   842→        styles['BodyTaaS']
+   843→    ))
+   844→
+   845→    story.append(add_heading('5.2 False-Positive Suppression', styles['H2'], level=1))
+   846→    story.append(Paragraph(
+   847→        'False-positive events represent the most costly failure mode in leak detection operations: '
+   848→        'each false alarm triggers unnecessary excavation, pipeline shutdown, and resource deployment '
+   849→        'that wastes municipal operational budget and erodes confidence in the detection system. The '
+   850→        'TaaS SLA framework addresses this through a strict <b>False-Positive Rate (FPR) target of '
+   851→        '5% or less</b>, enforced via Poisson-Gaussian mixture distributions in the Bayesian inference '
+   852→        'engine. The Poisson component models the discrete event frequency (how many leak events occur '
+   853→        'in a given observation window), while the Gaussian component models the continuous measurement '
+   854→        'noise (sensor signal variability under normal operating conditions). The mixture distribution '
+   855→        'enables the inference engine to distinguish between genuine hydraulic anomalies (actual leaks) '
+   856→        'and statistical noise fluctuations (false triggers) with high confidence.',
+   857→        styles['BodyTaaS']
+   858→    ))
+   859→    story.append(Spacer(1, 3))
+   860→    story.append(Paragraph(
+   861→        'The 5% FPR target is validated against historical pipeline data from comparable municipal '
+   862→        'networks and is subject to continuous recalibration as the terminal accumulates site-specific '
+   863→        'operational data. Each false-positive event is logged, analyzed, and fed back into the '
+   864→        'inference engine\'s training dataset—ensuring that the FPR metric improves over the '
+   865→        'deployment lifecycle rather than degrading.',
+   866→        styles['BodyTaaS']
+   867→    ))
+   868→
+   869→    story.append(add_heading('5.3 Information Density Guarantee', styles['H2'], level=1))
+   870→    story.append(Paragraph(
+   871→        'The Information Density (ID) metric is the ultimate efficiency indicator for the TaaS '
+   872→        'framework, defined as: <b>ID = Information Gained / Deployment Cost</b>. This ratio '
+   873→        'measures the operational intelligence yield per unit of financial investment. Unlike raw '
+   874→        'accuracy metrics that measure detection performance in isolation, Information Density '
+   875→        'contextualizes performance within the commercial framework—ensuring that the intelligence '
+   876→        'delivery is not merely accurate but economically efficient.',
+   877→        styles['BodyTaaS']
+   878→    ))
+   879→    story.append(Spacer(1, 3))
+   880→    story.append(Paragraph(
+   881→        'The ID metric serves two governance functions. First, it provides the Municipal Client with '
+   882→        'a quantifiable return-on-investment indicator: each subscription payment can be evaluated '
+   883→        'against the volume and precision of infrastructure intelligence received. Second, it provides '
+   884→        'VVU with an internal efficiency benchmark: if the ID ratio declines (indicating that '
+   885→        'deployment costs are rising faster than intelligence yield), the 30% R&D allocation is '
+   886→        'directed toward the specific technical bottlenecks—sensor calibration, algorithm refinement, '
+   887→        'or hardware optimization—that are degrading the ratio.',
+   888→        styles['BodyTaaS']
+   889→    ))
+   890→    story.append(Spacer(1, 8))
+   891→
+   892→    # ── SLA Metrics Table ──
+   893→    sla_data = [
+   894→        [Paragraph('<b>SLA Metric</b>', styles['TH']),
+   895→         Paragraph('<b>Target</b>', styles['TH']),
+   896→         Paragraph('<b>Measurement Method</b>', styles['TH']),
+   897→         Paragraph('<b>Governance Mechanism</b>', styles['TH'])],
+   898→        [Paragraph('Leak Localization Accuracy', styles['TC']),
+   899→         Paragraph('95% reduction / 500m radius', styles['TC']),
+   900→         Paragraph('Bayesian inference spatial probability mapping', styles['TC']),
+   901→         Paragraph('30% R&D allocation for continuous algorithm refinement', styles['TC'])],
+   902→        [Paragraph('False-Positive Rate', styles['TC']),
+   903→         Paragraph('5% or less', styles['TC']),
+   904→         Paragraph('Poisson-Gaussian mixture distribution analysis', styles['TC']),
+   905→         Paragraph('Continuous recalibration against site-specific operational data', styles['TC'])],
+   906→        [Paragraph('Information Density', styles['TC']),
+   907→         Paragraph('ID = Info Gained / Deploy Cost', styles['TC']),
+   908→         Paragraph('Ratio of intelligence yield to subscription investment', styles['TC']),
+   909→         Paragraph('Internal efficiency benchmark driving R&D priority allocation', styles['TC'])],
+   910→    ]
+   911→
+   912→    sla_col_widths = [CONTENT_WIDTH * 0.20, CONTENT_WIDTH * 0.18,
+   913→                      CONTENT_WIDTH * 0.30, CONTENT_WIDTH * 0.32]
+   914→
+   915→    sla_table = Table(sla_data, colWidths=sla_col_widths, repeatRows=1)
+   916→    sla_table.setStyle(TableStyle([
+   917→        ('BACKGROUND', (0, 0), (-1, 0), TABLE_HEADER_COLOR),
+   918→        ('TEXTCOLOR', (0, 0), (-1, 0), TABLE_HEADER_TEXT),
+   919→        ('BACKGROUND', (0, 1), (-1, 1), TABLE_ROW_EVEN),
+   920→        ('BACKGROUND', (0, 2), (-1, 2), TABLE_ROW_ODD),
+   921→        ('BACKGROUND', (0, 3), (-1, 3), TABLE_ROW_EVEN),
+   922→        ('GRID', (0, 0), (-1, -1), 0.5, BORDER),
+   923→        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+   924→        ('TOPPADDING', (0, 0), (-1, -1), 5),
+   925→        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+   926→        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+   927→        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+   928→    ]))
+   929→    story.append(sla_table)
+   930→
+   931→    # ════════════════════════════════════════════════════════
+   932→    # SECTION 6: Vendor Financing Terms
+   933→    # ════════════════════════════════════════════════════════
+   934→    story.append(CondPageBreak(PAGE_HEIGHT * 0.25))
+   935→    story.append(add_heading('6. Vendor Financing Terms', styles['H1'], level=0))
+   936→    story.append(GoldRule(CONTENT_WIDTH))
+   937→    story.append(Spacer(1, 6))
+   938→
+   939→    story.append(add_heading('6.1 Tooling Deposit — Tranche 1 Budget Lock', styles['H2'], level=1))
+   940→    story.append(Paragraph(
+   941→        'The TaaS vendor financing framework establishes a structured capital release mechanism '
+   942→        'that enforces the Zero Fabrication Mandate at the financial level. The <b>Tranche 1 Budget '
+   943→        'Lock</b> of <b>R812,490.00</b> is a ring-fenced tooling deposit that covers the production '
+   944→        'mold fabrication and the KCL (Kinematic Calibration Library) parametric library development. '
+   945→        'This deposit is released only upon successful completion of Verification Gate VR1 (Geometry) '
+   946→        'and VR2 (Material)—ensuring that no manufacturing capital is deployed before the terminal\'s '
+   947→        'physical and material specifications have been independently validated by the triparty '
+   948→        'keyholder structure.',
+   949→        styles['BodyTaaS']
+   950→    ))
+   951→    story.append(Spacer(1, 3))
+   952→    story.append(Paragraph(
+   953→        'The Tranche 1 deposit structure serves two protective functions. First, it ensures that VVU\'s '
+   954→        'manufacturing investment is preceded by validated specifications—preventing the costly scenario '
+   955→        'of producing molds against unverified or incomplete SRS parameters. Second, it provides the '
+   956→        'fabrication partner with a committed capital baseline that enables production planning without '
+   957→        'financial uncertainty. The Budget Lock is non-revocable once released: VVU cannot retract the '
+   958→        'tooling deposit after VR1/VR2 completion, providing the fabrication partner with contractual '
+   959→        'assurance that their production investment will be honored.',
+   960→        styles['BodyTaaS']
+   961→    ))
+   962→
+   963→    story.append(add_heading('6.2 Prototyping Exemptions — Limited Experimental Validation Builds', styles['H2'], level=1))
+   964→    story.append(Paragraph(
+   965→        'While the Zero Fabrication Mandate prohibits production manufacturing before full SRS '
+   966→        'verification, the framework recognizes the necessity of limited experimental validation '
+   967→        'builds for testing and calibration purposes. The <b>Prototyping Exemptions</b> clause '
+   968→        'permits fractional, ring-fenced capital releases for Limited Experimental Validation Builds—'
+   969→        'small-scale production runs (typically 1-3 units) intended solely for laboratory testing, '
+   970→        'Bayesian inference calibration, and field simulation exercises. These exemption builds are '
+   971→        'strictly governed: they may not be deployed at client sites, they may not be sold or '
+   972→        'transferred, and they must be decommissioned after their validation lifecycle concludes.',
+   973→        styles['BodyTaaS']
+   974→    ))
+   975→    story.append(Spacer(1, 3))
+   976→    story.append(Paragraph(
+   977→        'The prototyping exemption framework ensures that VVU can validate the terminal\'s inference '
+   978→        'accuracy, sensor calibration, and hydraulic performance under controlled conditions without '
+   979→        'violating the Zero Fabrication principle. The exemption builds are funded from the 30% '
+   980→        'R&D allocation—not from the Tranche 1 tooling deposit—ensuring that production capital and '
+   981→        'validation capital are financially separated. This separation prevents the common failure mode '
+   982→        'where prototyping costs erode production budgets, forcing manufacturing compromises that '
+   983→        'degrade the final product.',
+   984→        styles['BodyTaaS']
+   985→    ))
+   986→
+   987→    story.append(add_heading('6.3 Default & Asset Recovery', styles['H2'], level=1))
+   988→    story.append(Paragraph(
+   989→        'The default and asset recovery framework is the ultimate enforcement mechanism of VVU\'s '
+   990→        '100% equity retention principle. In the event of client default—whether through subscription '
+   991→        'payment failure, contract violation, or operational non-compliance—VVU exercises its '
+   992→        '<b>unilateral right to recover and redeploy HBK Mk-II assets</b>. This right is absolute '
+   993→        'and non-negotiable: no client agreement, municipal regulation, or third-party claim may '
+   994→        'prevent VVU from physically extracting the deployed terminal and relocating it to a new '
+   995→        'service engagement.',
+   996→        styles['BodyTaaS']
+   997→    ))
+   998→    story.append(Spacer(1, 3))
+   999→    story.append(Paragraph(
+  1000→        'The recovery framework operates under a defined procedural sequence. Upon default event '
+  1001→        'confirmation, VVU issues a formal Recovery Notice to the Municipal Client with a 30-day '
+  1002→        'compliance window. If the default is not remediated within this window, VVU dispatches a '
+  1003→        'field recovery team to decommission and extract the terminal assembly. The recovered asset '
+  1004→        'enters VVU\'s refurbishment pipeline: components are inspected, recalibrated, and upgraded '
+  1005→        'as necessary before redeployment at a subsequent service location. The recovery cost is '
+  1006→        'absorbed by VVU\'s 10% Risk & Compliance allocation—ensuring that asset recovery does not '
+  1007→        'impose additional financial burden on the Operational Baseline or R&D budget lines.',
+  1008→        styles['BodyTaaS']
+  1009→    ))
+  1010→    story.append(Spacer(1, 3))
+  1011→    story.append(Paragraph(
+  1012→        'This recovery mechanism transforms the TaaS model from a rental arrangement into a true '
+  1013→        'service lifecycle: the hardware is never "sold and forgotten" but remains a perpetually '
+  1014→        'managed commercial asset that generates revenue across multiple deployment cycles. The '
+  1015→        'unilateral recovery right ensures that VVU\'s capital investment in each HBK Mk-II unit '
+  1016→        'is protected regardless of individual client outcomes—de-risking the overall portfolio '
+  1017→        'and enabling confident investment in next-generation terminal development.',
+  1018→        styles['BodyTaaS']
+  1019→    ))
+  1020→
+  1021→    # ── End of document marker ──
+  1022→    story.append(Spacer(1, 16))
+  1023→    story.append(SectionDivider(CONTENT_WIDTH, 'VVU-TaaS-CFS-2026-001 — END OF SPECIFICATION'))
+  1024→
+  1025→    return story
+  1026→
+  1027→
+  1028→# ─── Main ───
+  1029→def main():
+  1030→    styles = create_styles()
+  1031→
+  1032→    # Define frame
+  1033→    frame = Frame(
+  1034→        LEFT_MARGIN, BOTTOM_MARGIN,
+  1035→        CONTENT_WIDTH, PAGE_HEIGHT - TOP_MARGIN - BOTTOM_MARGIN,
+  1036→        id='body_frame'
+  1037→    )
+  1038→
+  1039→    # Page template with Arabic footer
+  1040→    body_template = PageTemplate(
+  1041→        id='body',
+  1042→        frames=[frame],
+  1043→        onPage=footer_arabic,
+  1044→    )
+  1045→
+  1046→    # Build document with custom template as default
+  1047→    doc = TocDocTemplate(
+  1048→        OUTPUT_PATH,
+  1049→        pagesize=A4,
+  1050→        title='VVU HBK Mk-II Terminal-as-a-Service (TaaS) Commercial Framework Specification',
+  1051→        author='VVU EARTH TECH',
+  1052→        subject='Commercial Framework Specification for TaaS Deployment',
+  1053→        creator='ReportLab via VVU Document Pipeline',
+  1054→    )
+  1055→
+  1056→    # Add the body template with footer — this becomes the only template
+  1057→    doc.addPageTemplates([body_template])
+  1058→
+  1059→    story = build_story(styles)
+  1060→    doc.multiBuild(story)
+  1061→
+  1062→    print(f'Body PDF generated: {OUTPUT_PATH}')
+  1063→
+  1064→
+  1065→if __name__ == '__main__':
+  1066→    main()
+  1067→

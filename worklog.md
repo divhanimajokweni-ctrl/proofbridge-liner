@@ -878,3 +878,25 @@ Stage Summary:
 - PDF generated at /home/z/my-project/public/hbk/docs/taas-commercial-framework-spec.pdf
 - 13 pages, 47,885 bytes (46.8 KB)
 - Script at /home/z/my-project/scripts/generate-taas-pdf.py
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: TaaS Commercial Framework + CAD Renders + PDF Specifications + Dashboard Integration
+
+Work Log:
+- Added comprehensive TaaS data structures to types.ts: HydroGatewayComponent (11), RevenueSplit (3), VerificationGate (5), SLAMetric (3), FinancingTerm (6), InfrastructureRight (4), ZeroFabParameter (32), TripartyKey (3), AssetRecoveryProvision (5), TaasPillar (3)
+- Added TaaS tab (12th tab) to HBK dashboard with 10 sub-sections: Overview, Hydro-Gateway, Revenue Split, VR1-VR5 Gates, SLA Metrics, Financing, Zero Fab, Three Keys, Asset Recovery, CAD Renders
+- Updated API route with full TaaS data model
+- Generated 3 AI technical CAD renders: blueprint isometric, line art schematic, photorealistic top-down
+- Generated 2 PDF specification documents: TaaS Commercial Framework (47KB, 13 pages) and HBK Mk-II Engineering Spec (17KB)
+- All 12 tabs verified working via agent-browser
+- Created feature branch feat/taas-commercial-framework with commit
+- Zero lint errors, zero console errors
+
+Stage Summary:
+- TaaS tab fully integrated into HBK dashboard with all 10 sub-sections
+- 3 CAD render images in /public/hbk/images/
+- 2 PDF specifications in /public/hbk/docs/
+- Feature branch created: feat/taas-commercial-framework
+- Git push requires GitHub credentials (not available in sandbox)
