@@ -1,0 +1,67 @@
+# Dependabot Configuration — VVU Earth Tech
+# https://docs.github.com/en/code-security/dependabot/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # Next.js dashboard (npm)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Johannesburg"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "npm"
+    reviewers:
+      - "@vvu-earth-tech/frontend"
+    commit-message:
+      prefix: "build(deps)"
+      prefix-development: "build(deps-dev)"
+    ignore:
+      # Ignore major version updates for core dependencies
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+
+  # Python ledger (pip)
+  - package-ecosystem: "pip"
+    directory: "/vvu-earth-ledger"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Johannesburg"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "pip"
+    reviewers:
+      - "@vvu-earth-tech/ledger"
+    commit-message:
+      prefix: "build(deps)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Africa/Johannesburg"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    reviewers:
+      - "@vvu-earth-tech/infra"
+    commit-message:
+      prefix: "ci(deps)"

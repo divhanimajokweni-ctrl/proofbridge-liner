@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-python:
+    name: Build Python Artifacts
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vvu-earth-ledger
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          pip install --upgrade pip
+          pip install build
+
+      - name: Build Python wheel and source tarball
+        run: python -m build
+
+      - name: Upload Python dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist-release
+          path: vvu-earth-ledger/dist/
+          retention-days: 30
+
+  build-nextjs:
+    name: Build Next.js Export
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Next.js
+        run: bun run build
+
+      - name: Upload Next.js build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build-release
+          path: .next/
+          retention-days: 30
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-python, build-nextjs]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Python dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-dist-release
+          path: dist/
+
+      - name: Download Next.js build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build-release
+          path: nextjs-out/
+
+      - name: Package Next.js build
+        run: tar -czf nextjs-build.tar.gz nextjs-out/
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd dist/
+          sha256sum *.whl *.tar.gz > ../SHA256SUMS-python.txt
+          cd ..
+          sha256sum nextjs-build.tar.gz >> SHA256SUMS-python.txt
+          mv SHA256SUMS-python.txt SHA256SUMS
+
+      - name: Sign checksums
+        run: |
+          gpg --batch --import <(echo "${{ secrets.GPG_PRIVATE_KEY }}") 2>/dev/null || true
+          gpg --batch --default-key "${{ secrets.GPG_KEY_ID }}" --pinentry-mode loopback \
+              --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+              --detach-sign SHA256SUMS || true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          generate_release_notes: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            nextjs-build.tar.gz
+            SHA256SUMS
+            SHA256SUMS.sig
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

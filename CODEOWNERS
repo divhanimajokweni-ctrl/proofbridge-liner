@@ -1,0 +1,24 @@
+# VVU Earth Tech — Code Owners
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything
+* @vvu-earth-tech/core
+
+# Ledger subsystem
+/vvu-earth-ledger/ @vvu-earth-tech/ledger
+
+# Frontend dashboard
+/src/ @vvu-earth-tech/frontend
+
+# Cryptographic modules
+/vvu-earth-ledger/src/production_ledger/ed25519.py @vvu-earth-tech/crypto
+/vvu-earth-ledger/src/production_ledger/mmr.py @vvu-earth-tech/crypto
+/vvu-earth-ledger/src/production_ledger/crypto.py @vvu-earth-tech/crypto
+
+# Infrastructure
+/.github/ @vvu-earth-tech/infra
+/deployments/ @vvu-earth-tech/infra
+/scripts/ @vvu-earth-tech/infra
+
+# Documentation
+/docs/ @vvu-earth-tech/docs

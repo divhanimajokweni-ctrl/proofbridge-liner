@@ -1,0 +1,98 @@
+# VVU Earth Tech — Pre-commit Configuration
+# Install: pip install pre-commit && pre-commit install
+# Run all:  pre-commit run --all-files
+
+repos:
+  # ── Python: Ruff (linter + formatter) ──────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        name: ruff (linter)
+        args: [--fix, --exit-non-zero-on-fix]
+        types_or: [python, pyi, jupyter]
+      - id: ruff-format
+        name: ruff (formatter)
+        types_or: [python, pyi, jupyter]
+
+  # ── Python: Black (backup formatter for legacy compatibility) ──────────
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 24.10.0
+    hooks:
+      - id: black
+        name: black (formatter)
+        language_version: python3.12
+        types: [python]
+
+  # ── Python: MyPy (type checker) ───────────────────────────────────────
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        name: mypy (type checker)
+        additional_dependencies:
+          - types-pynacl
+          - types-setuptools
+        args: [--config-file=vvu-earth-ledger/mypy.ini]
+        files: ^vvu-earth-ledger/
+
+  # ── Node.js: ESLint ──────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.16.0
+    hooks:
+      - id: eslint
+        name: eslint (linter)
+        additional_dependencies:
+          - eslint@9
+          - eslint-config-next@16
+          - "@typescript-eslint/eslint-plugin"
+          - "@typescript-eslint/parser"
+        files: \.[jt]sx?$
+        types: [file]
+
+  # ── General: Trailing whitespace ─────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        name: trim trailing whitespace
+        args: [--markdown-linebreak-ext=md]
+
+      - id: end-of-file-fixer
+        name: fix end of files
+
+      - id: check-yaml
+        name: check YAML syntax
+        args: [--unsafe]
+
+      - id: check-toml
+        name: check TOML syntax
+
+      - id: check-json
+        name: check JSON syntax
+
+      - id: check-merge-conflict
+        name: check for merge conflicts
+
+      - id: detect-private-key
+        name: detect private keys
+
+      - id: check-added-large-files
+        name: check large files
+        args: [--maxkb=1024]
+
+      - id: check-case-conflict
+        name: check case conflicts
+
+      - id: check-shebang-scripts-are-executable
+        name: check shebang scripts are executable
+
+      - id: no-commit-to-branch
+        name: prevent direct commits to main
+        args: [--branch, main]
+
+# ── Global settings ────────────────────────────────────────────────────
+ci:
+  autofix_commit_msg: "style: auto-fix by pre-commit hooks"
+  autofix_prs: true
+  skip: [mypy, eslint]

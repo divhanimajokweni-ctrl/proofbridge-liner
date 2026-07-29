@@ -1,0 +1,887 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "vvu-earth-tech",
+  "documentNamespace": "https://vvu-earth.tech/spdxdocs/vvu-earth-tech-0.2.0",
+  "creationInfo": {
+    "created": "2026-03-04T00:00:00Z",
+    "creators": [
+      "Tool: manual-sbom-generator-1.0.0",
+      "Organization: VVU Earth Tech"
+    ]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Package-vvu-earth-tech",
+      "name": "vvu-earth-tech",
+      "versionInfo": "0.2.0",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "summaryDescription": "VVU Earth Tech — Epistemic DAG Runtime Dashboard and Production Ledger"
+    },
+    {
+      "SPDXID": "SPDXRef-Package-next",
+      "name": "next",
+      "versionInfo": "16.1.1",
+      "downloadLocation": "https://registry.npmjs.org/next/-/next-16.1.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/next@16.1.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-react",
+      "name": "react",
+      "versionInfo": "19.0.0",
+      "downloadLocation": "https://registry.npmjs.org/react/-/react-19.0.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/react@19.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-react-dom",
+      "name": "react-dom",
+      "versionInfo": "19.0.0",
+      "downloadLocation": "https://registry.npmjs.org/react-dom/-/react-dom-19.0.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/react-dom@19.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-tailwindcss",
+      "name": "tailwindcss",
+      "versionInfo": "4.0.0",
+      "downloadLocation": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.0.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/tailwindcss@4.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-prisma-client",
+      "name": "@prisma/client",
+      "versionInfo": "6.11.1",
+      "downloadLocation": "https://registry.npmjs.org/@prisma/client/-/prisma-client-6.11.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40prisma/client@6.11.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-prisma",
+      "name": "prisma",
+      "versionInfo": "6.11.1",
+      "downloadLocation": "https://registry.npmjs.org/prisma/-/prisma-6.11.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/prisma@6.11.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-next-auth",
+      "name": "next-auth",
+      "versionInfo": "4.24.11",
+      "downloadLocation": "https://registry.npmjs.org/next-auth/-/next-auth-4.24.11.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/next-auth@4.24.11"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-next-intl",
+      "name": "next-intl",
+      "versionInfo": "4.3.4",
+      "downloadLocation": "https://registry.npmjs.org/next-intl/-/next-intl-4.3.4.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/next-intl@4.3.4"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-next-themes",
+      "name": "next-themes",
+      "versionInfo": "0.4.6",
+      "downloadLocation": "https://registry.npmjs.org/next-themes/-/next-themes-0.4.6.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/next-themes@0.4.6"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-tanstack-react-query",
+      "name": "@tanstack/react-query",
+      "versionInfo": "5.82.0",
+      "downloadLocation": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.82.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40tanstack/react-query@5.82.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-tanstack-react-table",
+      "name": "@tanstack/react-table",
+      "versionInfo": "8.21.3",
+      "downloadLocation": "https://registry.npmjs.org/@tanstack/react-table/-/react-table-8.21.3.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40tanstack/react-table@8.21.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-zustand",
+      "name": "zustand",
+      "versionInfo": "5.0.6",
+      "downloadLocation": "https://registry.npmjs.org/zustand/-/zustand-5.0.6.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/zustand@5.0.6"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-zod",
+      "name": "zod",
+      "versionInfo": "4.0.2",
+      "downloadLocation": "https://registry.npmjs.org/zod/-/zod-4.0.2.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/zod@4.0.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-react-hook-form",
+      "name": "react-hook-form",
+      "versionInfo": "7.60.0",
+      "downloadLocation": "https://registry.npmjs.org/react-hook-form/-/react-hook-form-7.60.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/react-hook-form@7.60.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-hookform-resolvers",
+      "name": "@hookform/resolvers",
+      "versionInfo": "5.1.1",
+      "downloadLocation": "https://registry.npmjs.org/@hookform/resolvers/-/resolvers-5.1.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40hookform/resolvers@5.1.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-recharts",
+      "name": "recharts",
+      "versionInfo": "2.15.4",
+      "downloadLocation": "https://registry.npmjs.org/recharts/-/recharts-2.15.4.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/recharts@2.15.4"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-framer-motion",
+      "name": "framer-motion",
+      "versionInfo": "12.23.2",
+      "downloadLocation": "https://registry.npmjs.org/framer-motion/-/framer-motion-12.23.2.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/framer-motion@12.23.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-lucide-react",
+      "name": "lucide-react",
+      "versionInfo": "0.525.0",
+      "downloadLocation": "https://registry.npmjs.org/lucide-react/-/lucide-react-0.525.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/lucide-react@0.525.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-socket-io",
+      "name": "socket.io",
+      "versionInfo": "4.8.3",
+      "downloadLocation": "https://registry.npmjs.org/socket.io/-/socket.io-4.8.3.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/socket.io@4.8.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-socket-io-client",
+      "name": "socket.io-client",
+      "versionInfo": "4.8.3",
+      "downloadLocation": "https://registry.npmjs.org/socket.io-client/-/socket.io-client-4.8.3.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/socket.io-client@4.8.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-aws-sdk-client-kms",
+      "name": "@aws-sdk/client-kms",
+      "versionInfo": "3.1092.0",
+      "downloadLocation": "https://registry.npmjs.org/@aws-sdk/client-kms/-/client-kms-3.1092.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40aws-sdk/client-kms@3.1092.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-aws-sdk-client-s3",
+      "name": "@aws-sdk/client-s3",
+      "versionInfo": "3.1092.0",
+      "downloadLocation": "https://registry.npmjs.org/@aws-sdk/client-s3/-/client-s3-3.1092.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40aws-sdk/client-s3@3.1092.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-aws-sdk-client-sts",
+      "name": "@aws-sdk/client-sts",
+      "versionInfo": "3.1092.0",
+      "downloadLocation": "https://registry.npmjs.org/@aws-sdk/client-sts/-/client-sts-3.1092.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40aws-sdk/client-sts@3.1092.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-noble-curves",
+      "name": "@noble/curves",
+      "versionInfo": "2.2.0",
+      "downloadLocation": "https://registry.npmjs.org/@noble/curves/-/curves-2.2.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40noble/curves@2.2.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-noble-ed25519",
+      "name": "@noble/ed25519",
+      "versionInfo": "3.1.0",
+      "downloadLocation": "https://registry.npmjs.org/@noble/ed25519/-/ed25519-3.1.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40noble/ed25519@3.1.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-noble-hashes",
+      "name": "@noble/hashes",
+      "versionInfo": "2.2.0",
+      "downloadLocation": "https://registry.npmjs.org/@noble/hashes/-/hashes-2.2.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40noble/hashes@2.2.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-class-variance-authority",
+      "name": "class-variance-authority",
+      "versionInfo": "0.7.1",
+      "downloadLocation": "https://registry.npmjs.org/class-variance-authority/-/class-variance-authority-0.7.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/class-variance-authority@0.7.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-clsx",
+      "name": "clsx",
+      "versionInfo": "2.1.1",
+      "downloadLocation": "https://registry.npmjs.org/clsx/-/clsx-2.1.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/clsx@2.1.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-tailwind-merge",
+      "name": "tailwind-merge",
+      "versionInfo": "3.3.1",
+      "downloadLocation": "https://registry.npmjs.org/tailwind-merge/-/tailwind-merge-3.3.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/tailwind-merge@3.3.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-tailwindcss-animate",
+      "name": "tailwindcss-animate",
+      "versionInfo": "1.0.7",
+      "downloadLocation": "https://registry.npmjs.org/tailwindcss-animate/-/tailwindcss-animate-1.0.7.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/tailwindcss-animate@1.0.7"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-cmdk",
+      "name": "cmdk",
+      "versionInfo": "1.1.1",
+      "downloadLocation": "https://registry.npmjs.org/cmdk/-/cmdk-1.1.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/cmdk@1.1.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-date-fns",
+      "name": "date-fns",
+      "versionInfo": "4.1.0",
+      "downloadLocation": "https://registry.npmjs.org/date-fns/-/date-fns-4.1.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/date-fns@4.1.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-sonner",
+      "name": "sonner",
+      "versionInfo": "2.0.6",
+      "downloadLocation": "https://registry.npmjs.org/sonner/-/sonner-2.0.6.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/sonner@2.0.6"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-vaul",
+      "name": "vaul",
+      "versionInfo": "1.1.2",
+      "downloadLocation": "https://registry.npmjs.org/vaul/-/vaul-1.1.2.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/vaul@1.1.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-uuid",
+      "name": "uuid",
+      "versionInfo": "11.1.0",
+      "downloadLocation": "https://registry.npmjs.org/uuid/-/uuid-11.1.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/uuid@11.1.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-sharp",
+      "name": "sharp",
+      "versionInfo": "0.34.3",
+      "downloadLocation": "https://registry.npmjs.org/sharp/-/sharp-0.34.3.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/sharp@0.34.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-embla-carousel-react",
+      "name": "embla-carousel-react",
+      "versionInfo": "8.6.0",
+      "downloadLocation": "https://registry.npmjs.org/embla-carousel-react/-/embla-carousel-react-8.6.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/embla-carousel-react@8.6.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-react-markdown",
+      "name": "react-markdown",
+      "versionInfo": "10.1.0",
+      "downloadLocation": "https://registry.npmjs.org/react-markdown/-/react-markdown-10.1.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/react-markdown@10.1.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-react-syntax-highlighter",
+      "name": "react-syntax-highlighter",
+      "versionInfo": "15.6.1",
+      "downloadLocation": "https://registry.npmjs.org/react-syntax-highlighter/-/react-syntax-highlighter-15.6.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/react-syntax-highlighter@15.6.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-react-resizable-panels",
+      "name": "react-resizable-panels",
+      "versionInfo": "3.0.3",
+      "downloadLocation": "https://registry.npmjs.org/react-resizable-panels/-/react-resizable-panels-3.0.3.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/react-resizable-panels@3.0.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-react-day-picker",
+      "name": "react-day-picker",
+      "versionInfo": "9.8.0",
+      "downloadLocation": "https://registry.npmjs.org/react-day-picker/-/react-day-picker-9.8.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/react-day-picker@9.8.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-input-otp",
+      "name": "input-otp",
+      "versionInfo": "1.4.2",
+      "downloadLocation": "https://registry.npmjs.org/input-otp/-/input-otp-1.4.2.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/input-otp@1.4.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dnd-kit-core",
+      "name": "@dnd-kit/core",
+      "versionInfo": "6.3.1",
+      "downloadLocation": "https://registry.npmjs.org/@dnd-kit/core/-/core-6.3.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40dnd-kit/core@6.3.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-dnd-kit-sortable",
+      "name": "@dnd-kit/sortable",
+      "versionInfo": "10.0.0",
+      "downloadLocation": "https://registry.npmjs.org/@dnd-kit/sortable/-/sortable-10.0.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40dnd-kit/sortable@10.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-mdxeditor-editor",
+      "name": "@mdxeditor/editor",
+      "versionInfo": "3.39.1",
+      "downloadLocation": "https://registry.npmjs.org/@mdxeditor/editor/-/editor-3.39.1.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40mdxeditor/editor@3.39.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-reactuses-core",
+      "name": "@reactuses/core",
+      "versionInfo": "6.0.5",
+      "downloadLocation": "https://registry.npmjs.org/@reactuses/core/-/core-6.0.5.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/%40reactuses/core@6.0.5"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-pagedjs",
+      "name": "pagedjs",
+      "versionInfo": "0.4.3",
+      "downloadLocation": "https://registry.npmjs.org/pagedjs/-/pagedjs-0.4.3.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/pagedjs@0.4.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-typescript",
+      "name": "typescript",
+      "versionInfo": "5.0.0",
+      "downloadLocation": "https://registry.npmjs.org/typescript/-/typescript-5.0.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/typescript@5.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-vitest",
+      "name": "vitest",
+      "versionInfo": "4.1.10",
+      "downloadLocation": "https://registry.npmjs.org/vitest/-/vitest-4.1.10.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/vitest@4.1.10"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-eslint",
+      "name": "eslint",
+      "versionInfo": "9.0.0",
+      "downloadLocation": "https://registry.npmjs.org/eslint/-/eslint-9.0.0.tgz",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/eslint@9.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-pynacl",
+      "name": "pynacl",
+      "versionInfo": "1.5.0",
+      "downloadLocation": "https://pypi.org/project/PyNaCl/1.5.0/",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pynacl@1.5.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-pytest",
+      "name": "pytest",
+      "versionInfo": "7.0.0",
+      "downloadLocation": "https://pypi.org/project/pytest/7.0.0/",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pytest@7.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-pytest-cov",
+      "name": "pytest-cov",
+      "versionInfo": "4.0.0",
+      "downloadLocation": "https://pypi.org/project/pytest-cov/4.0.0/",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/pytest-cov@4.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-hypothesis",
+      "name": "hypothesis",
+      "versionInfo": "6.0.0",
+      "downloadLocation": "https://pypi.org/project/hypothesis/6.0.0/",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/hypothesis@6.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-mypy",
+      "name": "mypy",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "https://pypi.org/project/mypy/1.0.0/",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/mypy@1.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-ruff",
+      "name": "ruff",
+      "versionInfo": "0.1.0",
+      "downloadLocation": "https://pypi.org/project/ruff/0.1.0/",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/ruff@0.1.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-bandit",
+      "name": "bandit",
+      "versionInfo": "1.7.0",
+      "downloadLocation": "https://pypi.org/project/bandit/1.7.0/",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/bandit@1.7.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-setuptools",
+      "name": "setuptools",
+      "versionInfo": "68.0.0",
+      "downloadLocation": "https://pypi.org/project/setuptools/68.0.0/",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/setuptools@68.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-wheel",
+      "name": "wheel",
+      "versionInfo": "0.42.0",
+      "downloadLocation": "https://pypi.org/project/wheel/0.42.0/",
+      "filesAnalyzed": false,
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE_MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:pypi/wheel@0.42.0"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-Package-vvu-earth-tech"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vvu-earth-tech",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-next"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vvu-earth-tech",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-react"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vvu-earth-tech",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-react-dom"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vvu-earth-tech",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-tailwindcss"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vvu-earth-tech",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-prisma-client"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-vvu-earth-tech",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-pynacl"
+    }
+  ]
+}

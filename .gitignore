@@ -30,12 +30,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+.env
+.env.local
+.env.*.local
 
 # vercel
 .vercel
-
 
 # typescript
 *.tsbuildinfo
@@ -52,3 +53,28 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Tool results (agent artifacts)
+tool-results/
+
+# Python bytecode
+*.pyc
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Python build artifacts
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Coverage
+coverage/
+.coverage
+htmlcov/
+
+# Database files
+*.db
+*.sqlite

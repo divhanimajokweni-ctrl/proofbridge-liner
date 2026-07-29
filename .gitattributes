@@ -1,0 +1,29 @@
+# Git Attributes — VVU Earth Tech
+# Normalize line endings and set diff drivers
+
+# Auto-detect text files and normalize to LF
+* text=auto eol=lf
+
+# Python
+*.py text diff=python
+
+# TypeScript / JavaScript
+*.ts text diff=typescript
+*.tsx text diff=typescript
+
+# Data & Config
+*.json text
+*.toml text
+*.yaml text
+*.yml text
+*.md text
+
+# Shell scripts — enforce LF
+*.sh text eol=lf
+
+# Lock files
+*.lock text
+
+# Binary files
+*.db binary
+*.sqlite binary

@@ -1,0 +1,137 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# VVU Earth Ledger — Metrics Configuration
+#
+# Controls the Prometheus metrics endpoint, exposed metrics,
+# histogram buckets, and label cardinality limits.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[metrics]
+# Enable Prometheus metrics endpoint
+enabled = true
+
+# ─── Prometheus Endpoint ────────────────────────────────────────────────────
+[metrics.endpoint]
+# Port for the Prometheus metrics HTTP server
+# Can be overridden by the PROMETHEUS_PORT environment variable.
+port = 9090
+# HTTP path for the metrics endpoint
+path = "/metrics"
+# Bind address (use "0.0.0.0" to expose on all interfaces, "127.0.0.1" for local only)
+host = "0.0.0.0"
+# Request timeout for the metrics endpoint (seconds)
+timeout = 10
+
+# ─── Exposed Metrics ────────────────────────────────────────────────────────
+
+# Counter metrics
+[metrics.counters]
+[metrics.counters.append_count]
+description = "Total facts appended to the ledger"
+labels = ["validator_id", "fact_type"]
+
+[metrics.counters.proof_generation_count]
+description = "Total proofs generated"
+labels = ["validator_id", "proof_type"]
+
+[metrics.counters.replay_count]
+description = "Total replays executed"
+labels = ["validator_id", "status"]
+
+[metrics.counters.consensus_vote_count]
+description = "Total consensus votes cast"
+labels = ["validator_id", "vote"]
+
+[metrics.counters.error_count]
+description = "Total errors encountered"
+labels = ["validator_id", "error_type", "module"]
+
+[metrics.counters.tls_handshake_count]
+description = "Total TLS handshakes"
+labels = ["status", "tls_version"]
+
+# Gauge metrics
+[metrics.gauges]
+[metrics.gauges.mmr_size]
+description = "Current MMR tree size"
+labels = ["validator_id"]
+
+[metrics.gauges.active_validators]
+description = "Number of active validators in quorum"
+labels = ["quorum_id"]
+
+[metrics.gauges.quorum_threshold]
+description = "Current quorum threshold"
+labels = ["quorum_id"]
+
+[metrics.gauges.ledger_height]
+description = "Current ledger height (number of facts)"
+labels = ["validator_id"]
+
+[metrics.gauges.pending_operations]
+description = "Number of pending operations"
+labels = ["validator_id", "operation_type"]
+
+# Histogram metrics
+[metrics.histograms]
+[metrics.histograms.proof_generation_time]
+description = "Time to generate a proof (seconds)"
+labels = ["validator_id", "proof_type"]
+buckets = [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
+
+[metrics.histograms.replay_duration]
+description = "Time to replay the ledger (seconds)"
+labels = ["validator_id"]
+buckets = [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0]
+
+[metrics.histograms.append_latency]
+description = "Time to append a fact (seconds)"
+labels = ["validator_id", "fact_type"]
+buckets = [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
+
+[metrics.histograms.consensus_round_duration]
+description = "Time for a consensus round (seconds)"
+labels = ["validator_id"]
+buckets = [0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+
+[metrics.histograms.grpc_request_duration]
+description = "gRPC request duration (seconds)"
+labels = ["method", "status_code"]
+buckets = [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
+
+# ─── Histogram Buckets ──────────────────────────────────────────────────────
+# Default histogram bucket configuration for custom metrics.
+[metrics.default_buckets]
+# Fast operations (sub-second)
+fast = [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
+# Medium operations (up to 10 seconds)
+medium = [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0]
+# Slow operations (up to 60 seconds)
+slow = [0.1, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0]
+
+# ─── Label Cardinality Limits ───────────────────────────────────────────────
+# Prevent metric explosion by limiting the number of unique label values.
+[metrics.cardinality_limits]
+validator_id = 100
+fact_type = 50
+error_type = 50
+proof_type = 10
+operation_type = 20
+method = 50
+status_code = 20
+tls_version = 5
+quorum_id = 10
+vote = 5
+status = 10
+
+# ─── Collection Settings ────────────────────────────────────────────────────
+[metrics.collection]
+# Interval for collecting internal metrics (seconds)
+scrape_interval = 15
+# Include process metrics (CPU, memory, file descriptors)
+include_process_metrics = true
+# Include Python runtime metrics (GC, threads)
+include_runtime_metrics = true
+# Namespace prefix for all metrics
+namespace = "vvu_ledger"
+# Subsystem prefix for all metrics
+subsystem = ""

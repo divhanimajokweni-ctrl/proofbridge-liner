@@ -1,0 +1,122 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# VVU Earth Ledger — Logging Configuration
+#
+# Controls structured JSON logging, console output, log rotation,
+# per-module log levels, and correlation ID injection.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[logging]
+# Global log level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+# Can be overridden by the LOG_LEVEL environment variable.
+level = "INFO"
+
+# Log format: "json" for production, "console" for development
+# Can be overridden by the LOG_FORMAT environment variable.
+format = "json"
+
+# ─── Console Output (Development) ───────────────────────────────────────────
+[logging.console]
+# Enable colorful console output for development
+enabled = true
+# Timestamp format for console output
+timestamp_format = "%Y-%m-%d %H:%M:%S"
+# Color coding by level
+colors = true
+
+# ─── JSON Structured Output (Production) ────────────────────────────────────
+[logging.json]
+# Enable JSON structured output for production
+enabled = true
+# Include these fields in every JSON log entry
+required_fields = [
+    "timestamp",
+    "level",
+    "logger",
+    "message",
+    "correlation_id",
+    "trace_id",
+    "replay_id",
+    "module",
+    "function",
+    "line",
+]
+# ISO 8601 timestamp format
+timestamp_format = "iso8601"
+# Pretty-print JSON (only for debugging; set to false in production)
+pretty_print = false
+
+# ─── Log Rotation ───────────────────────────────────────────────────────────
+[logging.rotation]
+# Enable automatic log file rotation
+enabled = true
+# Directory for log files (relative to LEDGER_DATA_DIR)
+directory = "logs"
+# Maximum size of a single log file before rotation (bytes)
+max_file_size = 104857600  # 100 MB
+# Number of rotated log files to keep
+max_files = 10
+# Rotate logs daily regardless of file size
+rotate_daily = true
+# Compress rotated log files older than this many days
+compress_after_days = 1
+# Delete rotated log files older than this many days
+retention_days = 30
+
+# ─── Per-Module Log Levels ──────────────────────────────────────────────────
+# Override the global log level for specific modules.
+# This allows fine-grained control over logging verbosity.
+[logging.modules]
+# Core ledger operations — INFO level
+"production_ledger.ledger" = "INFO"
+"production_ledger.append" = "INFO"
+"production_ledger.replay" = "INFO"
+
+# Cryptographic operations — WARNING level (reduces noise from key operations)
+"production_ledger.ed25519" = "WARNING"
+"production_ledger.crypto" = "WARNING"
+"production_ledger.hashing" = "WARNING"
+
+# MMR tree operations — INFO level
+"production_ledger.mmr" = "INFO"
+
+# gRPC server — WARNING level (reduces noise from routine requests)
+"production_ledger.api" = "WARNING"
+
+# Metrics and observability — WARNING level
+"production_ledger.metrics" = "WARNING"
+"production_ledger.tracing" = "WARNING"
+"production_ledger.logging" = "WARNING"
+
+# Quorum and consensus — INFO level
+"production_ledger.quorum" = "INFO"
+"production_ledger.validator_registry" = "INFO"
+
+# Replication — INFO level
+"production_ledger.replication" = "INFO"
+"production_ledger.replication_protocol" = "INFO"
+
+# Storage — WARNING level
+"production_ledger.storage" = "WARNING"
+
+# Snapshots — INFO level
+"production_ledger.snapshots" = "INFO"
+
+# Audit — INFO level (always log audit events)
+"production_ledger.audit" = "INFO"
+
+# ─── Correlation ID Injection ───────────────────────────────────────────────
+[logging.correlation]
+# Enable automatic correlation ID injection into log entries
+enabled = true
+# Header name for correlation ID propagation (HTTP)
+http_header = "X-Correlation-ID"
+# Metadata key for correlation ID propagation (gRPC)
+grpc_metadata_key = "x-correlation-id"
+# Format for auto-generated correlation IDs
+id_format = "corr-{hex:8}"
+# Include trace_id from OpenTelemetry in log entries
+include_trace_id = true
+# Include replay_id in log entries during replay operations
+include_replay_id = true
+# Span attribute key for replay ID
+replay_id_attribute = "replay.id"

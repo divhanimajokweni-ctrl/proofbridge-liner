@@ -1,0 +1,54 @@
+# VVU Earth Ledger — Ruff Configuration
+# https://docs.astral.sh/ruff/configuration/
+
+line-length = 120
+target-version = "py312"
+
+# ── Linter rules ───────────────────────────────────────────────────────
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "A",    # flake8-builtins
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "TCH",  # flake8-type-checking
+]
+
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "B008",    # function call in default argument (common in FastAPI)
+    "B905",    # zip without strict (not always needed)
+    "N803",    # argument name should be lowercase (crypto vars like X, Y)
+    "N806",    # variable name should be lowercase (crypto vars like X, Y)
+    "SIM108",  # use ternary operator (sometimes less readable)
+]
+
+# ── Per-file ignores ──────────────────────────────────────────────────
+[lint.per-file-ignores]
+"tests/**/*" = [
+    "D",      # no docstring required in tests
+    "S101",   # assert is fine in tests
+    "ARG001", # unused args are fine in test fixtures
+]
+"__init__.py" = [
+    "F401",   # unused imports in __init__.py are re-exports
+]
+
+# ── Isort configuration ───────────────────────────────────────────────
+[lint.isort]
+known-first-party = ["production_ledger"]
+force-single-line = false
+lines-after-imports = 2
+
+# ── Formatter configuration ───────────────────────────────────────────
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true

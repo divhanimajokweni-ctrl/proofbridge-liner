@@ -1,0 +1,120 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# VVU Earth Ledger — TLS Configuration
+#
+# Controls TLS certificate paths, protocol versions, cipher suites,
+# mTLS client CA verification, and certificate rotation settings.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[tls]
+# Enable TLS for all connections (gRPC and HTTP)
+enabled = true
+
+# ─── Certificate Paths ──────────────────────────────────────────────────────
+# Paths are relative to the LEDGER_DATA_DIR unless absolute.
+# Can be overridden by environment variables (LEDGER_TLS_CERT_PATH, LEDGER_TLS_KEY_PATH).
+
+[tls.certificates]
+# Server TLS certificate (PEM format)
+server_cert = "./certs/server.crt"
+# Server TLS private key (PEM format)
+server_key = "./certs/server.key"
+# CA certificate for verifying client certificates (mTLS)
+client_ca_cert = "./certs/ca.crt"
+
+# ─── TLS Protocol Version ───────────────────────────────────────────────────
+[tls.protocol]
+# Minimum TLS version. Only TLS 1.3 is supported for production.
+# Options: "1.2", "1.3"
+min_version = "1.3"
+# Maximum TLS version
+max_version = "1.3"
+# Prefer server cipher suite order (prevents client-driven downgrade)
+prefer_server_cipher_order = true
+
+# ─── Cipher Suites ──────────────────────────────────────────────────────────
+# Only TLS 1.3 cipher suites are configured. TLS 1.2 cipher suites are
+# disabled in production (min_version = "1.3").
+[tls.cipher_suites]
+# TLS 1.3 cipher suites (in order of preference)
+tls13 = [
+    "TLS_AES_256_GCM_SHA384",
+    "TLS_CHACHA20_POLY1305_SHA256",
+    "TLS_AES_128_GCM_SHA256",
+]
+# TLS 1.2 cipher suites (only used if min_version = "1.2")
+# These are disabled by default in production.
+tls12 = [
+    "ECDHE-ECDSA-AES256-GCM-SHA384",
+    "ECDHE-ECDSA-CHACHA20-POLY1305",
+    "ECDHE-ECDSA-AES128-GCM-SHA256",
+]
+
+# ─── mTLS Client CA ────────────────────────────────────────────────────────
+[tls.mtls]
+# Enable mutual TLS (require client certificates)
+enabled = true
+# Client certificate verification mode
+# Options: "require" (fail if no client cert), "optional" (allow without cert)
+client_auth = "require"
+# Path to the CA certificate used to verify client certificates
+client_ca_cert = "./certs/ca.crt"
+# Verify client certificate revocation via CRL
+check_revocation = false
+# CRL distribution point URL (if check_revocation is true)
+crl_url = ""
+# Verify client certificate against OCSP responder
+check_ocsp = false
+# OCSP responder URL (if check_ocsp is true)
+ocsp_url = ""
+
+# ─── Certificate Rotation Settings ──────────────────────────────────────────
+# These settings control automated certificate rotation and expiry monitoring.
+[tls.rotation]
+# Enable automatic certificate rotation
+auto_rotate = false
+# Number of days before expiry to trigger rotation
+rotation_threshold_days = 30
+# Certificate validity period for newly generated certificates (days)
+certificate_validity_days = 90
+# Grace period after rotation before old certificates are removed (hours)
+grace_period_hours = 24
+# Command to execute after rotation (e.g., service restart)
+post_rotation_command = "systemctl reload vvu-earth-ledger"
+
+# ─── Certificate Monitoring ─────────────────────────────────────────────────
+[tls.monitoring]
+# Enable certificate expiry monitoring via Prometheus metrics
+monitor_expiry = true
+# Metric name for certificate expiry timestamp
+expiry_metric_name = "x509_cert_not_after"
+# Alert when certificate expires within this many days
+alert_threshold_days = 30
+# Alert when certificate expires within this many days (critical)
+critical_threshold_days = 7
+
+# ─── Session Settings ───────────────────────────────────────────────────────
+[tls.session]
+# Enable TLS session resumption
+session_resumption = true
+# Session cache size (number of sessions)
+session_cache_size = 1024
+# Session timeout (seconds)
+session_timeout = 7200
+# Enable session tickets (TLS 1.3 only)
+session_tickets = true
+
+# ─── OCSP Stapling ─────────────────────────────────────────────────────────
+[tls.ocsp_stapling]
+# Enable OCSP stapling for server certificates
+enabled = false
+# OCSP responder URL (auto-detected from certificate if empty)
+responder_url = ""
+
+# ─── Perfect Forward Secrecy ────────────────────────────────────────────────
+[tls.forward_secrecy]
+# Require perfect forward secrecy (PFS) for all connections
+# TLS 1.3 provides PFS by default (all cipher suites use ephemeral keys).
+require_pfs = true
+# Ephemeral key size for DHE key exchange (bits)
+# Only relevant if TLS 1.2 is enabled.
+dhe_key_size = 2048

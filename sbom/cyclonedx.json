@@ -1,0 +1,440 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.5.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "serialNumber": "urn:uuid:550e8400-e29b-41d4-a716-446655440000",
+  "metadata": {
+    "timestamp": "2026-03-04T00:00:00Z",
+    "tools": [
+      {
+        "vendor": "vvu-earth-tech",
+        "name": "manual-sbom-generator",
+        "version": "1.0.0"
+      }
+    ],
+    "component": {
+      "type": "application",
+      "name": "vvu-earth-tech",
+      "version": "0.2.0",
+      "description": "VVU Earth Tech — Epistemic DAG Runtime Dashboard and Production Ledger",
+      "purl": "pkg:github/vvu-earth-tech/epistemic-dag-runtime@0.2.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "next",
+      "version": "16.1.1",
+      "purl": "pkg:npm/next@16.1.1"
+    },
+    {
+      "type": "library",
+      "name": "react",
+      "version": "19.0.0",
+      "purl": "pkg:npm/react@19.0.0"
+    },
+    {
+      "type": "library",
+      "name": "react-dom",
+      "version": "19.0.0",
+      "purl": "pkg:npm/react-dom@19.0.0"
+    },
+    {
+      "type": "library",
+      "name": "tailwindcss",
+      "version": "4.0.0",
+      "purl": "pkg:npm/tailwindcss@4.0.0"
+    },
+    {
+      "type": "library",
+      "name": "@prisma/client",
+      "version": "6.11.1",
+      "purl": "pkg:npm/%40prisma/client@6.11.1"
+    },
+    {
+      "type": "library",
+      "name": "prisma",
+      "version": "6.11.1",
+      "purl": "pkg:npm/prisma@6.11.1"
+    },
+    {
+      "type": "library",
+      "name": "next-auth",
+      "version": "4.24.11",
+      "purl": "pkg:npm/next-auth@4.24.11"
+    },
+    {
+      "type": "library",
+      "name": "next-intl",
+      "version": "4.3.4",
+      "purl": "pkg:npm/next-intl@4.3.4"
+    },
+    {
+      "type": "library",
+      "name": "next-themes",
+      "version": "0.4.6",
+      "purl": "pkg:npm/next-themes@0.4.6"
+    },
+    {
+      "type": "library",
+      "name": "@tanstack/react-query",
+      "version": "5.82.0",
+      "purl": "pkg:npm/%40tanstack/react-query@5.82.0"
+    },
+    {
+      "type": "library",
+      "name": "@tanstack/react-table",
+      "version": "8.21.3",
+      "purl": "pkg:npm/%40tanstack/react-table@8.21.3"
+    },
+    {
+      "type": "library",
+      "name": "zustand",
+      "version": "5.0.6",
+      "purl": "pkg:npm/zustand@5.0.6"
+    },
+    {
+      "type": "library",
+      "name": "zod",
+      "version": "4.0.2",
+      "purl": "pkg:npm/zod@4.0.2"
+    },
+    {
+      "type": "library",
+      "name": "react-hook-form",
+      "version": "7.60.0",
+      "purl": "pkg:npm/react-hook-form@7.60.0"
+    },
+    {
+      "type": "library",
+      "name": "@hookform/resolvers",
+      "version": "5.1.1",
+      "purl": "pkg:npm/%40hookform/resolvers@5.1.1"
+    },
+    {
+      "type": "library",
+      "name": "recharts",
+      "version": "2.15.4",
+      "purl": "pkg:npm/recharts@2.15.4"
+    },
+    {
+      "type": "library",
+      "name": "framer-motion",
+      "version": "12.23.2",
+      "purl": "pkg:npm/framer-motion@12.23.2"
+    },
+    {
+      "type": "library",
+      "name": "lucide-react",
+      "version": "0.525.0",
+      "purl": "pkg:npm/lucide-react@0.525.0"
+    },
+    {
+      "type": "library",
+      "name": "socket.io",
+      "version": "4.8.3",
+      "purl": "pkg:npm/socket.io@4.8.3"
+    },
+    {
+      "type": "library",
+      "name": "socket.io-client",
+      "version": "4.8.3",
+      "purl": "pkg:npm/socket.io-client@4.8.3"
+    },
+    {
+      "type": "library",
+      "name": "@aws-sdk/client-kms",
+      "version": "3.1092.0",
+      "purl": "pkg:npm/%40aws-sdk/client-kms@3.1092.0"
+    },
+    {
+      "type": "library",
+      "name": "@aws-sdk/client-s3",
+      "version": "3.1092.0",
+      "purl": "pkg:npm/%40aws-sdk/client-s3@3.1092.0"
+    },
+    {
+      "type": "library",
+      "name": "@aws-sdk/client-sts",
+      "version": "3.1092.0",
+      "purl": "pkg:npm/%40aws-sdk/client-sts@3.1092.0"
+    },
+    {
+      "type": "library",
+      "name": "@noble/curves",
+      "version": "2.2.0",
+      "purl": "pkg:npm/%40noble/curves@2.2.0"
+    },
+    {
+      "type": "library",
+      "name": "@noble/ed25519",
+      "version": "3.1.0",
+      "purl": "pkg:npm/%40noble/ed25519@3.1.0"
+    },
+    {
+      "type": "library",
+      "name": "@noble/hashes",
+      "version": "2.2.0",
+      "purl": "pkg:npm/%40noble/hashes@2.2.0"
+    },
+    {
+      "type": "library",
+      "name": "@radix-ui/react-accordion",
+      "version": "1.2.11",
+      "purl": "pkg:npm/%40radix-ui/react-accordion@1.2.11"
+    },
+    {
+      "type": "library",
+      "name": "@radix-ui/react-alert-dialog",
+      "version": "1.1.14",
+      "purl": "pkg:npm/%40radix-ui/react-alert-dialog@1.1.14"
+    },
+    {
+      "type": "library",
+      "name": "@radix-ui/react-dialog",
+      "version": "1.1.14",
+      "purl": "pkg:npm/%40radix-ui/react-dialog@1.1.14"
+    },
+    {
+      "type": "library",
+      "name": "@radix-ui/react-dropdown-menu",
+      "version": "2.1.15",
+      "purl": "pkg:npm/%40radix-ui/react-dropdown-menu@2.1.15"
+    },
+    {
+      "type": "library",
+      "name": "@radix-ui/react-select",
+      "version": "2.2.5",
+      "purl": "pkg:npm/%40radix-ui/react-select@2.2.5"
+    },
+    {
+      "type": "library",
+      "name": "@radix-ui/react-tabs",
+      "version": "1.1.12",
+      "purl": "pkg:npm/%40radix-ui/react-tabs@1.1.12"
+    },
+    {
+      "type": "library",
+      "name": "@radix-ui/react-toast",
+      "version": "1.2.14",
+      "purl": "pkg:npm/%40radix-ui/react-toast@1.2.14"
+    },
+    {
+      "type": "library",
+      "name": "@radix-ui/react-tooltip",
+      "version": "1.2.7",
+      "purl": "pkg:npm/%40radix-ui/react-tooltip@1.2.7"
+    },
+    {
+      "type": "library",
+      "name": "class-variance-authority",
+      "version": "0.7.1",
+      "purl": "pkg:npm/class-variance-authority@0.7.1"
+    },
+    {
+      "type": "library",
+      "name": "clsx",
+      "version": "2.1.1",
+      "purl": "pkg:npm/clsx@2.1.1"
+    },
+    {
+      "type": "library",
+      "name": "tailwind-merge",
+      "version": "3.3.1",
+      "purl": "pkg:npm/tailwind-merge@3.3.1"
+    },
+    {
+      "type": "library",
+      "name": "tailwindcss-animate",
+      "version": "1.0.7",
+      "purl": "pkg:npm/tailwindcss-animate@1.0.7"
+    },
+    {
+      "type": "library",
+      "name": "cmdk",
+      "version": "1.1.1",
+      "purl": "pkg:npm/cmdk@1.1.1"
+    },
+    {
+      "type": "library",
+      "name": "date-fns",
+      "version": "4.1.0",
+      "purl": "pkg:npm/date-fns@4.1.0"
+    },
+    {
+      "type": "library",
+      "name": "sonner",
+      "version": "2.0.6",
+      "purl": "pkg:npm/sonner@2.0.6"
+    },
+    {
+      "type": "library",
+      "name": "vaul",
+      "version": "1.1.2",
+      "purl": "pkg:npm/vaul@1.1.2"
+    },
+    {
+      "type": "library",
+      "name": "uuid",
+      "version": "11.1.0",
+      "purl": "pkg:npm/uuid@11.1.0"
+    },
+    {
+      "type": "library",
+      "name": "sharp",
+      "version": "0.34.3",
+      "purl": "pkg:npm/sharp@0.34.3"
+    },
+    {
+      "type": "library",
+      "name": "embla-carousel-react",
+      "version": "8.6.0",
+      "purl": "pkg:npm/embla-carousel-react@8.6.0"
+    },
+    {
+      "type": "library",
+      "name": "react-markdown",
+      "version": "10.1.0",
+      "purl": "pkg:npm/react-markdown@10.1.0"
+    },
+    {
+      "type": "library",
+      "name": "react-syntax-highlighter",
+      "version": "15.6.1",
+      "purl": "pkg:npm/react-syntax-highlighter@15.6.1"
+    },
+    {
+      "type": "library",
+      "name": "react-resizable-panels",
+      "version": "3.0.3",
+      "purl": "pkg:npm/react-resizable-panels@3.0.3"
+    },
+    {
+      "type": "library",
+      "name": "react-day-picker",
+      "version": "9.8.0",
+      "purl": "pkg:npm/react-day-picker@9.8.0"
+    },
+    {
+      "type": "library",
+      "name": "input-otp",
+      "version": "1.4.2",
+      "purl": "pkg:npm/input-otp@1.4.2"
+    },
+    {
+      "type": "library",
+      "name": "@dnd-kit/core",
+      "version": "6.3.1",
+      "purl": "pkg:npm/%40dnd-kit/core@6.3.1"
+    },
+    {
+      "type": "library",
+      "name": "@dnd-kit/sortable",
+      "version": "10.0.0",
+      "purl": "pkg:npm/%40dnd-kit/sortable@10.0.0"
+    },
+    {
+      "type": "library",
+      "name": "@dnd-kit/utilities",
+      "version": "3.2.2",
+      "purl": "pkg:npm/%40dnd-kit/utilities@3.2.2"
+    },
+    {
+      "type": "library",
+      "name": "@mdxeditor/editor",
+      "version": "3.39.1",
+      "purl": "pkg:npm/%40mdxeditor/editor@3.39.1"
+    },
+    {
+      "type": "library",
+      "name": "@reactuses/core",
+      "version": "6.0.5",
+      "purl": "pkg:npm/%40reactuses/core@6.0.5"
+    },
+    {
+      "type": "library",
+      "name": "pagedjs",
+      "version": "0.4.3",
+      "purl": "pkg:npm/pagedjs@0.4.3"
+    },
+    {
+      "type": "library",
+      "name": "typescript",
+      "version": "5.0.0",
+      "purl": "pkg:npm/typescript@5.0.0"
+    },
+    {
+      "type": "library",
+      "name": "vitest",
+      "version": "4.1.10",
+      "purl": "pkg:npm/vitest@4.1.10"
+    },
+    {
+      "type": "library",
+      "name": "eslint",
+      "version": "9.0.0",
+      "purl": "pkg:npm/eslint@9.0.0"
+    },
+    {
+      "type": "library",
+      "name": "eslint-config-next",
+      "version": "16.1.1",
+      "purl": "pkg:npm/eslint-config-next@16.1.1"
+    },
+    {
+      "type": "library",
+      "name": "pynacl",
+      "version": "1.5.0",
+      "purl": "pkg:pypi/pynacl@1.5.0"
+    },
+    {
+      "type": "library",
+      "name": "pytest",
+      "version": "7.0.0",
+      "purl": "pkg:pypi/pytest@7.0.0"
+    },
+    {
+      "type": "library",
+      "name": "pytest-cov",
+      "version": "4.0.0",
+      "purl": "pkg:pypi/pytest-cov@4.0.0"
+    },
+    {
+      "type": "library",
+      "name": "hypothesis",
+      "version": "6.0.0",
+      "purl": "pkg:pypi/hypothesis@6.0.0"
+    },
+    {
+      "type": "library",
+      "name": "mypy",
+      "version": "1.0.0",
+      "purl": "pkg:pypi/mypy@1.0.0"
+    },
+    {
+      "type": "library",
+      "name": "ruff",
+      "version": "0.1.0",
+      "purl": "pkg:pypi/ruff@0.1.0"
+    },
+    {
+      "type": "library",
+      "name": "bandit",
+      "version": "1.7.0",
+      "purl": "pkg:pypi/bandit@1.7.0"
+    },
+    {
+      "type": "library",
+      "name": "setuptools",
+      "version": "68.0.0",
+      "purl": "pkg:pypi/setuptools@68.0.0"
+    },
+    {
+      "type": "library",
+      "name": "wheel",
+      "version": "0.42.0",
+      "purl": "pkg:pypi/wheel@0.42.0"
+    }
+  ]
+}

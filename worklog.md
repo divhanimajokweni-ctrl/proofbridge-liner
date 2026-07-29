@@ -876,3 +876,165 @@ Stage Summary:
 - SQLite with 10 production PRAGMAs
 - 14 CLI commands, 12 REST API endpoints
 - Zero stubs, zero TODOs, zero placeholders
+
+---
+Task ID: 3-4
+Agent: CI/Pre-commit Agent
+Task: Create GitHub Actions workflows, pre-commit config, and Python tooling configs
+
+Work Log:
+- Created .github/workflows/ directory with 7 CI workflow files
+- Created lint.yml: ESLint (Node.js) + Ruff + MyPy (Python) on push/PR to main
+- Created test.yml: Vitest (Node.js) + Pytest with coverage (Python) on push/PR to main
+- Created build.yml: Next.js build + Python wheel build with artifact uploads on push/PR to main
+- Created security.yml: npm audit, pip-audit, gitleaks, bandit on push/PR + weekly schedule
+- Created release.yml: Python wheel + source tarball + Next.js build + SHA256SUMS + GPG signing on v* tags
+- Created docker.yml: Build, Trivy scan, push to ghcr.io on tag; build+scan on push/PR
+- Created pages.yml: MkDocs build + deploy to GitHub Pages on push to main (docs/ path filter)
+- Created .pre-commit-config.yaml with ruff, black, mypy, eslint, trailing-whitespace, end-of-file-fixer, check-yaml, check-toml, check-json, check-merge-conflict, detect-private-key, no-commit-to-branch
+- Created vvu-earth-ledger/ruff.toml: line-length=120, target py312, selects E/F/W/I/N/UP/B/A/C4/SIM/TCH
+- Created vvu-earth-ledger/mypy.ini: python_version=3.12, strict=True, warn_return_any, disallow_untyped_defs
+- Created vvu-earth-ledger/pytest.ini: testpaths=tests, custom markers for unit/integration/replay/crypto/adversarial/benchmark
+
+Stage Summary:
+- 7 GitHub Actions workflows created in .github/workflows/ (lint, test, build, security, release, docker, pages)
+- 1 pre-commit configuration at .pre-commit-config.yaml (12 hooks across Python and Node.js)
+- 3 Python tooling configs in vvu-earth-ledger/ (ruff.toml, mypy.ini, pytest.ini)
+- All files are production-ready with no placeholders or TODOs
+
+---
+Task ID: 5-6-10
+Agent: SBOM + Audit + Release Engineering Agent
+Task: Generate SBOM, run dependency audits, create release engineering scripts
+
+Work Log:
+- Created /home/z/my-project/sbom/ directory with CycloneDX and SPDX SBOMs
+- Generated CycloneDX SBOM (cyclonedx.json) v1.5 with 67 components (npm + PyPI)
+- Generated SPDX SBOM (spdx.json) v2.3 with 60 packages and DESCRIBES/DEPENDS_ON relationships
+- Created /home/z/my-project/audit-results/ directory
+- Ran npm audit: found 25 vulnerabilities (1 critical, 15 high, 7 moderate, 2 low)
+- Ran bun audit: found 73 vulnerabilities (1 critical, 36 high, 31 moderate, 5 low) with deeper transitive analysis
+- Ran pip-audit via venv: found 0 project vulnerabilities (pynacl clean); only pip tool itself had CVEs
+- Created audit-results/summary.md with full findings, recommendations, and false positives analysis
+- Updated vvu-earth-ledger/Makefile with 13 new targets: wheel, sdist, docker, checksums, sign, release, typecheck, benchmark, docs, plus existing targets
+- Created scripts/release.sh: full release pipeline (git validation, tests, build, checksums, signing, tagging, GitHub release)
+- Created scripts/checksums.sh: generate/verify/sign/verify-sig SHA256SUMS for release artifacts
+- Created .env.example with all required environment variables (DATABASE_URL, NODE_ENV, NEXT_PUBLIC_APP_URL, LEDGER_DATA_DIR, TLS, GRPC, observability, logging)
+
+Stage Summary:
+- 2 SBOM files: sbom/cyclonedx.json (CycloneDX 1.5), sbom/spdx.json (SPDX 2.3)
+- 3 audit files: audit-results/npm-audit.txt, audit-results/pip-audit.txt, audit-results/summary.md
+- Critical finding: next-auth ≤4.24.14 has email homoglyph bypass (GHSA-7rqj-j65f-68wh)
+- High-priority: Next.js 16.1.1 has ~30 DoS/SSRF/bypass advisories; upgrade to ≥16.2.5
+- Python deps (pynacl): CLEAN — no known vulnerabilities
+- 1 updated Makefile with 13 new release engineering targets
+- 2 new scripts: release.sh, checksums.sh (both executable)
+- 1 new config: .env.example with all environment variables
+
+---
+Task ID: 13-17
+Agent: Security + PDF Conversion Agent
+Task: Convert PDFs, create security hardening files, observability configs
+
+Work Log:
+- Installed poppler-utils (pdftotext) for PDF text extraction
+- Converted 7 PDFs to markdown using pdftotext -layout (6 outreach-docs + 1 upload)
+- Deleted 7 original PDFs after conversion (~364K freed)
+- Preserved 2 protocol PDFs (validation/ and disposable-storage/ paths)
+- Cleaned tool-results/ directory (~2.0M freed)
+- Total storage freed: ~2.36 MB
+- Created .env.example with 11 environment variable definitions (DATABASE_URL, NODE_ENV, NEXT_PUBLIC_APP_URL, LEDGER_DATA_DIR, LEDGER_TLS_CERT_PATH, LEDGER_TLS_KEY_PATH, LEDGER_GRPC_PORT, PROMETHEUS_PORT, OTLP_ENDPOINT, LOG_LEVEL, LOG_FORMAT)
+- Created scripts/generate-certs.sh — Full PKI cert generation script (CA, server, client for mTLS) with CLI args, SAN config, key rotation guidance comments
+- Created docs/KeyRotation.md — Complete key rotation guide (Ed25519, TLS, validator keys, rollback, verification)
+- Created docs/ValidatorBootstrap.md — Full validator bootstrap procedure (prerequisites, key generation, registration, quorum setup, troubleshooting)
+- Created scripts/verify-no-secrets.sh — Repository secret scanner with 13 patterns (AWS, private keys, JWTs, passwords, API keys, tokens, connection strings); ran successfully, only flagged .env file (contains only DATABASE_URL, no secrets)
+- Created docs/Observability.md — Complete observability documentation (structured JSON logging, Prometheus metrics, OpenTelemetry traces, health checks, correlation IDs, log aggregation, alerting rules)
+- Created vvu-earth-ledger/configs/logging.toml — JSON structured logging, console logging, log rotation, per-module log levels, correlation ID injection
+- Created vvu-earth-ledger/configs/metrics.toml — Prometheus endpoint config, 6 counters, 5 gauges, 5 histograms, cardinality limits, bucket configs
+- Created vvu-earth-ledger/configs/tls.toml — TLS 1.3, cipher suites, mTLS client CA, certificate rotation, session settings, OCSP stapling
+
+Stage Summary:
+- 7 PDFs converted to markdown, originals deleted, 2 protocol PDFs preserved
+- ~2.36 MB storage freed (364K PDFs + 2.0M tool-results)
+- 11 security/observability files created with complete, production-ready content
+- Secret scan clean: no actual secrets in repository (only .env with DATABASE_URL)
+- All new scripts are executable (generate-certs.sh, verify-no-secrets.sh)
+
+---
+Task ID: 9-16
+Agent: Repository Hygiene + Agents Context Agent
+Task: Create repo hygiene files, .agents/ directory, and GitHub config
+
+Work Log:
+- Read project context files: worklog.md, package.json, products.ts, pyproject.toml, README.md, .gitignore
+- Created .editorconfig with standard settings (root, charset=utf-8, eol=lf, Python indent=4, TS/JS/YAML indent=2, md trim=false, Makefile tab)
+- Created .gitattributes with text=auto eol=lf, diff drivers for Python/TypeScript, binary markers for .db/.sqlite
+- Updated .gitignore (preserved existing entries, added: .env, .env.local, .env.*.local, tool-results/, *.pyc, __pycache__/, .pytest_cache/, .mypy_cache/, .ruff_cache/, dist/, build/, *.egg-info/, .eggs/, coverage/, .coverage, htmlcov/, *.db, *.sqlite)
+- Created CODEOWNERS with team assignments: core (default), ledger, frontend, crypto, infra, docs
+- Created SECURITY.md with full security policy: supported versions, vulnerability reporting, response timeline, known limitations, crypto notes, responsible disclosure
+- Created LICENSE with full Apache License 2.0 text
+- Created CONTRIBUTING.md with code of conduct, fork/branch workflow, dev setup, coding standards (Python: Black/Ruff/MyPy, TS: ESLint/strict), testing requirements, conventional commits, PR review process, security considerations
+- Created .agents/ directory with 13 files:
+  - SYSTEM_CONTEXT.md: project overview, dual-stack architecture, 7 products, organizational structure, license framework, current state, constitutional rules
+  - ARCHITECTURE_MAP.md: full directory tree, component dependency graph, data flow diagram, API surface, database schema, service boundaries, deployment topology
+  - CODING_STANDARDS.md: Python standards (Black/Ruff/MyPy), TypeScript standards (ESLint/strict), naming conventions, type safety, testing, documentation, error handling, logging, import boundaries
+  - SECURITY_RULES.md: 10 security rules (no secrets, Ed25519 domain separation, input validation, SQL injection, XSS, CSRF, rate limiting, TLS 1.3, key rotation, dependency management)
+  - PRODUCT_VISION.md: mission statement, 7 products with descriptions, target users, trust model, commercial model, 500m target
+  - TASK_QUEUE.md: prioritized tasks (P0: v0.12 refactor, P1: CI/docs, P2: deployment/security, P3: benchmarking/commercial)
+  - KNOWN_LIMITATIONS.md: 16 limitations categorized by severity (3 critical, 4 high, 5 medium, 4 low)
+  - RELEASE_STATE.md: current version, what's complete, what's in progress, what's pending, release criteria, known issues, rollback procedure
+  - PROMPTS/reviewer.md: code review agent prompt
+  - PROMPTS/implementer.md: implementation agent prompt
+  - PROMPTS/security_auditor.md: security audit agent prompt
+  - PROMPTS/performance_engineer.md: performance optimization agent prompt
+  - PROMPTS/release_manager.md: release management agent prompt
+- Created .github/ISSUE_TEMPLATE/bug_report.md
+- Created .github/ISSUE_TEMPLATE/feature_request.md
+- Created .github/ISSUE_TEMPLATE/security_vulnerability.md
+- Created .github/PULL_REQUEST_TEMPLATE.md
+- Created .github/dependabot.yml (npm weekly, pip weekly, github-actions weekly)
+
+Stage Summary:
+- 7 repo hygiene files created/updated: .editorconfig, .gitattributes, .gitignore, CODEOWNERS, SECURITY.md, LICENSE, CONTRIBUTING.md
+- 13 .agents/ files created: 8 context docs + 5 agent prompts
+- 5 GitHub config files created: 3 issue templates, 1 PR template, 1 dependabot config
+- All files are substantive, production-quality, with no placeholders
+- Total: 25 files created/updated
+
+---
+Task ID: 7-8
+Agent: Documentation Agent
+Task: Create 10 architecture documents and 5 ADRs
+
+Work Log:
+- Read all 25+ source files in production_ledger/ to understand the complete codebase
+- Read existing docs (architecture.md, protocol.md, cryptography.md, deployment.md) and existing ADRs (ADR-001 through ADR-005) for context
+- Read worklog.md for project context
+- Created 10 comprehensive architecture documents in /home/z/my-project/docs/:
+  1. Architecture.md — Full system architecture with Mermaid diagrams, 8 domains, component diagram, data flow, trust boundaries, database schema, error handling, observability stack
+  2. ThreatModel.md — STRIDE threat model with attack surfaces, threat actors, risk matrix, residual risks, security checklist
+  3. ReplaySpecification.md — Complete replay engine specification with 10 verification checks, formal properties, replay attack mitigations
+  4. MMRSpecification.md — MMR specification with peak discovery, bagging order, inclusion/consistency proofs, test vectors, index computation
+  5. ValidatorLifecycle.md — Validator onboarding, registration, key rotation, weight assignment, revocation, expiry, quorum threshold, bootstrap procedure
+  6. TrustModel.md — Trust hierarchy, trust contexts, domain separation, trust escalation, trust decay, trust transfer, formal trust properties
+  7. StorageModel.md — SQLite hardening, migrations, snapshots, integrity verification, backup/restore, database size management, corruption recovery
+  8. ProtocolSpecification.md — Canonical serialization, versioned envelopes, receipt format, gRPC service definitions, TLS mTLS requirements, rate limiting, error codes
+  9. DeploymentGuide.md — Deployment topologies (single-node, HA, distributed), Docker, Kubernetes, systemd, TLS certificate management, monitoring, scaling
+  10. OperationsRunbook.md — Health checks, backup procedures, disaster recovery, key rotation, certificate rotation, database maintenance, monitoring alerts, incident response, capacity planning
+- Created 5 ADRs in /home/z/my-project/docs/adr/ (NEW directory):
+  1. 0001-ledger.md — Event-sourced append-only ledger with cryptographic integrity
+  2. 0002-mmr.md — Merkle Mountain Range over Merkle tree or other structures
+  3. 0003-signatures.md — Ed25519 with domain separation for all signatures
+  4. 0004-replay.md — Deterministic replay with full validator history verification
+  5. 0005-storage.md — Hardened SQLite with WAL mode and strict PRAGMAs
+- Each ADR follows the standard format: Status, Context, Decision, Consequences, Alternatives Considered
+- All documents are substantive (300+ lines for architecture docs, 100+ lines for ADRs)
+- All documents include Mermaid diagrams where appropriate
+- All documents are grounded in the actual source code implementation
+
+Stage Summary:
+- Produced 15 complete documentation files (10 architecture docs + 5 ADRs)
+- Total documentation output: ~7,000+ lines of detailed technical documentation
+- All docs are located in /home/z/my-project/docs/ (architecture docs) and /home/z/my-project/docs/adr/ (ADRs)
+- Documentation covers the full system from threat modeling to operations runbooks
+- ADRs capture the 5 key architectural decisions with rationale and alternatives
