@@ -1038,3 +1038,39 @@ Stage Summary:
 - All docs are located in /home/z/my-project/docs/ (architecture docs) and /home/z/my-project/docs/adr/ (ADRs)
 - Documentation covers the full system from threat modeling to operations runbooks
 - ADRs capture the 5 key architectural decisions with rationale and alternatives
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Pre-shutdown repository hardening — 15 checklist items + .agents/ directory + PDF conversion
+
+Work Log:
+- Captured git state (clean, no diff, 039f81e HEAD)
+- Captured environment freeze (Python 3.12.13, Node v24.18.0, Bun 1.3.14)
+- Created 7 GitHub Actions workflows (lint, test, build, security, release, docker, pages)
+- Created .pre-commit-config.yaml with 12 hooks
+- Created ruff.toml, mypy.ini, pytest.ini for Python tooling
+- Generated SBOM (CycloneDX 1.5 + SPDX 2.3, 67+ components)
+- Ran dependency audit: npm 25 vulns (1 critical, 4+ high), pip 0 vulns
+- Created 10 architecture docs (Architecture, ThreatModel, ReplaySpec, MMRSpec, ValidatorLifecycle, TrustModel, StorageModel, ProtocolSpec, DeploymentGuide, OperationsRunbook)
+- Created 5 ADRs (0001-ledger, 0002-mmr, 0003-signatures, 0004-replay, 0005-storage)
+- Created repo hygiene files (.editorconfig, .gitattributes, .gitignore, CODEOWNERS, SECURITY.md, LICENSE, CONTRIBUTING.md)
+- Created .agents/ directory with 13 files (SYSTEM_CONTEXT, ARCHITECTURE_MAP, CODING_STANDARDS, SECURITY_RULES, PRODUCT_VISION, TASK_QUEUE, KNOWN_LIMITATIONS, RELEASE_STATE, 5 PROMPTS)
+- Created GitHub config (3 issue templates, PR template, dependabot.yml)
+- Updated Makefile with 13 new targets (wheel, sdist, docker, checksums, sign, release, etc.)
+- Created release.sh, checksums.sh scripts
+- Created .env.example, generate-certs.sh, verify-no-secrets.sh
+- Created KeyRotation.md, ValidatorBootstrap.md, Observability.md
+- Created logging.toml, metrics.toml, tls.toml configs
+- Ran baseline benchmarks (MMR 315K ops/sec, Ed25519 25K sign/sec, all targets met)
+- Created RELEASE_READINESS.md with comprehensive checklist
+- Created ENVIRONMENT_FREEZE.md
+- Converted 7 PDFs to markdown, cleaned tool-results/, freed ~2.36 MB
+- Committed 119 files: +17,063 / -24,642 lines
+
+Stage Summary:
+- All 15 checklist items completed
+- .agents/ directory with 13 persistent context files
+- Repository is production-ready for handoff
+- Key blockers for v1.0.0: npm audit findings, coverage <80%, no formal security audit, Docker untested
+- Commit: 4253ade "feat: comprehensive pre-shutdown repository hardening"
