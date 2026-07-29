@@ -1,0 +1,40 @@
+name: Replit Production Readiness
+
+on:
+  push:
+    branches: [compliance-fabric]
+
+jobs:
+  diagnostic:
+    name: Execute Diagnostic Script
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Run VVU Diagnostic
+        env:
+          # These secrets must be configured in GitHub Repository Secrets
+          CANTON_JSON_API: ${{ secrets.CANTON_JSON_API }}
+          POLYGON_AMOY_RPC: ${{ secrets.POLYGON_AMOY_RPC }}
+          CIRCUIT_BREAKER_UPDATER_KEY: ${{ secrets.CIRCUIT_BREAKER_UPDATER_KEY }}
+          CIRCUIT_BREAKER_UPDATER_ADDRESS: ${{ secrets.CIRCUIT_BREAKER_UPDATER_ADDRESS }}
+          CIRCUIT_BREAKER_ADDRESS: ${{ secrets.CIRCUIT_BREAKER_ADDRESS }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FROST_SHARE_1_HEX: ${{ secrets.FROST_SHARE_1_HEX }}
+          FROST_GROUP_KEY: ${{ secrets.FROST_GROUP_KEY }}
+        run: |
+          # Ensure script is executable and run it
+          chmod +x scripts/replit-diagnostic.sh
+          ./scripts/replit-diagnostic.sh

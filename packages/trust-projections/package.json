@@ -1,0 +1,23 @@
+{
+  "name": "@proofbridge/trust-projections",
+  "version": "1.0.0-rc1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  },
+  "dependencies": {
+    "@proofbridge/contracts": "workspace:*",
+    "@proofbridge/trust-types": "workspace:*",
+    "@proofbridge/trust-events": "workspace:*",
+    "@proofbridge/trust-crypto": "workspace:*",
+    "drizzle-orm": "^0.33.0",
+    "postgres": "^3.4.4"
+  }
+}

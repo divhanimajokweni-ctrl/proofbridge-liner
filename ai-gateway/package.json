@@ -1,0 +1,21 @@
+{
+  "name": "ai-gateway",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "@mistralai/mistralai": "^2.4.1",
+    "@types/node": "^25.9.1",
+    "ai": "^6.0.196",
+    "dotenv": "^17.4.2",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3"
+  }
+}

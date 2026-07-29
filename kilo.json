@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/kilocode-ai/kilocode/main/config.schema.json",
+  "name": "VVU Trust Runtime",
+  "version": "2.0.0",
+  "agents": {
+    "default": {
+      "model": "claude-3-5-sonnet-20241022",
+      "temperature": 0.3,
+      "maxTokens": 8000
+    }
+  },
+  "permissions": {
+    "allow": ["file_read", "file_write", "terminal"]
+  }
+}

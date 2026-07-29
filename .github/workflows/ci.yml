@@ -1,0 +1,37 @@
+name: Gate-1 CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      # Local unit tests use a known dev secret
+      PROOFBRIDGE_HMAC_SECRET: ci-gate-1-hmac-secret
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack (pnpm)
+        run: corepack enable && corepack prepare pnpm@11.11.0 --activate
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Local unit: Gate-1 smoke test ─────────────────────────────────────
+      - name: Unit — Gate-1 smoke (local)
+        run: |
+          PROOFBRIDGE_HMAC_SECRET="${PROOFBRIDGE_HMAC_SECRET}" \
+          node --test test/gate1-smoke.test.js
+
+      # ── Production verification handled by deployment-loop.yml ──────────────
