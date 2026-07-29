@@ -837,3 +837,44 @@ Stage Summary:
   - `/home/z/my-project/outreach-docs/VVU-TaaS-Financial-Model-OnePager.pdf` — 1 page landscape poster, dark theme, gold accent, 60/30/10 visualization, SLA metrics cards, Zero Fabrication governance, VVU 100% equity retention
 - All PDFs use proper typography, embedded fonts, A4 page size
 - Cover pages use Template 01 HUD Data Terminal with gold (#C9A84C) vertical anchor line
+
+---
+Task ID: 5b
+Agent: Engineering PDF Generation Agent
+Task: Generate HBK Mk-II Engineering Specification PDF
+
+Work Log:
+- Read worklog.md to understand project context
+- Verified ReportLab 4.4.9 available and output directory structure
+- Created /home/z/my-project/scripts/generate-engineering-pdf.py using ReportLab
+- Generated professional 4-page A4 PDF with:
+  - VVU-branded header/footer with page numbers
+  - 8 sections: System Overview, CAD Module Layout, Battery Spec, Star Ground Wiring, Epistemic Thermal Governance, Thermal Containment, BOM, EMI/RFI Isolation
+  - Engineering-style tables with alternating row colors and dark header rows
+  - Professional typography and color palette
+  - Callout box for critical EMI constraint
+- Ran script successfully, verified output: 4 pages, 16,616 bytes
+
+Stage Summary:
+- PDF generated at /home/z/my-project/public/hbk/docs/hbk-mk2-engineering-spec.pdf
+- 4 pages, 16,616 bytes (16.2 KB)
+- Script at /home/z/my-project/scripts/generate-engineering-pdf.py
+
+---
+Task ID: 5
+Agent: PDF Generation Agent
+Task: Generate TaaS Commercial Framework Specification PDF
+
+Work Log:
+- Read worklog.md and project structure for context
+- Studied existing TaaS PDF generation script at /home/z/my-project/outreach-docs/generate-taas-pdf.py for reference
+- Created comprehensive Python script at /home/z/my-project/scripts/generate-taas-pdf.py using ReportLab
+- Implemented all 10 sections: Executive Summary, TaaS Core Pillars, Hydro-Gateway Assembly (11 components), Revenue Split (60/30/10), Verification Gates (VR1-VR5), Zero Fabrication Mandate (32 SRS Parameters), SLA Metrics, Vendor Financing, Triparty SRS Delegation Addendum ("Three Keys"), Default & Asset Recovery Provisions
+- Applied dark theme with gold (#C9A84C) accent color, VVU branding, page numbers, TOC, A4 page size
+- Generated professional PDF with cover page, table of contents, and all content sections
+- Verified output: 13 pages, 47,885 bytes (46.8 KB)
+
+Stage Summary:
+- PDF generated at /home/z/my-project/public/hbk/docs/taas-commercial-framework-spec.pdf
+- 13 pages, 47,885 bytes (46.8 KB)
+- Script at /home/z/my-project/scripts/generate-taas-pdf.py

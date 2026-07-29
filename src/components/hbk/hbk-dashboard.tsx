@@ -17,6 +17,8 @@ import {
   Users, CircleDot, Sparkles, Crown, Briefcase,
   Scale, Medal, BookOpen, Lightbulb, Gem,
   ShieldAlert, Layers, Flame, Plug,
+  Key, DollarSign, BarChart3, ShieldCheck, FileWarning,
+  ArrowUpRight, TrendingUp, AlertCircle, Wallet,
 } from "lucide-react";
 import {
   Card, CardHeader, CardContent, CardTitle, CardDescription,
@@ -28,13 +30,20 @@ import {
   VALIDATION_PHASES, HBK_TABS,
   BATTERY_SPEC, WIRING_RAILS, THERMAL_THRESHOLDS,
   THERMAL_CONTAINMENT, PHASE2_BOM,
+  HYDRO_GATEWAY_ASSEMBLY, TAAS_REVENUE_SPLIT, VERIFICATION_GATES,
+  TAAS_SLA_METRICS, TAAS_FINANCING, INFRASTRUCTURE_RIGHTS,
+  ZERO_FAB_PARAMETERS, TRIPARTY_KEYS, ASSET_RECOVERY_PROVISIONS,
+  TAAS_CORE_PILLARS,
   type HbkTabId, type CADModule, type GitAction,
   type ResourceItem, type ValidationPhase,
   type OwnershipEntry, type ConsortiumPartner,
   type ConsortiumArchitecture, type IPCategory, type RoadmapPhase,
   type BatterySpecification, type WiringRail,
   type ThermalThreshold, type ThermalContainmentLayer,
-  type BOMItem,
+  type BOMItem, type HydroGatewayComponent, type RevenueSplit,
+  type VerificationGate, type SLAMetric, type FinancingTerm,
+  type InfrastructureRight, type ZeroFabParameter,
+  type TripartyKey, type AssetRecoveryProvision, type TaasPillar,
 } from "@/lib/hbk/types";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -253,6 +262,7 @@ export function HbkDashboard() {
       case "roadmap": return <RoadmapTab />;
       case "power-thermal": return <PowerThermalTab />;
       case "twin": return <DigitalTwinTab selectedModule={selectedModule} setSelectedModule={setSelectedModule} hoveredModule={hoveredModule} setHoveredModule={setHoveredModule} />;
+      case "taas": return <TaasTab />;
       case "resources": return <ResourcesTab />;
       case "simulation": return <SimulationTab simRunning={simRunning} setSimRunning={setSimRunning} simElapsed={simElapsed} setSimElapsed={setSimElapsed} simHours={simHours} simMins={simMins} simSecs={simSecs} />;
       case "timeline": return <TimelineTab />;
@@ -1654,6 +1664,558 @@ function PowerThermalTab() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// TAAS TAB — Terminal-as-a-Service Commercial Framework
+// ════════════════════════════════════════════════════════════════════════
+
+function TaasTab() {
+  const [taasSection, setTaasSection] = useState<string>("overview");
+
+  const taasSections = [
+    { id: "overview", label: "Overview", icon: <Briefcase className="h-3.5 w-3.5" /> },
+    { id: "hydro-gateway", label: "Hydro-Gateway", icon: <Cpu className="h-3.5 w-3.5" /> },
+    { id: "revenue", label: "Revenue Split", icon: <BarChart3 className="h-3.5 w-3.5" /> },
+    { id: "verification", label: "VR1–VR5 Gates", icon: <ShieldCheck className="h-3.5 w-3.5" /> },
+    { id: "sla", label: "SLA Metrics", icon: <Target className="h-3.5 w-3.5" /> },
+    { id: "financing", label: "Financing", icon: <Wallet className="h-3.5 w-3.5" /> },
+    { id: "zero-fab", label: "Zero Fab", icon: <ShieldAlert className="h-3.5 w-3.5" /> },
+    { id: "triparty", label: "Three Keys", icon: <Key className="h-3.5 w-3.5" /> },
+    { id: "recovery", label: "Asset Recovery", icon: <FileWarning className="h-3.5 w-3.5" /> },
+    { id: "cad-images", label: "CAD Renders", icon: <Eye className="h-3.5 w-3.5" /> },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* Section Navigation */}
+      <div className="flex flex-wrap gap-1.5">
+        {taasSections.map(s => (
+          <button
+            key={s.id}
+            onClick={() => setTaasSection(s.id)}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 font-mono text-[9px] transition-all ${
+              taasSection === s.id
+                ? "border-[#C9A84C]/30 bg-[#C9A84C]/10 text-[#C9A84C]"
+                : "border-white/[0.06] bg-white/[0.03] text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {s.icon}
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Overview Section */}
+      {taasSection === "overview" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          {/* Core Pillars */}
+          <div className="grid gap-3 sm:grid-cols-3">
+            {TAAS_CORE_PILLARS.map(pillar => (
+              <div key={pillar.id} className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${pillar.color}20`, border: `1px solid ${pillar.color}40` }}>
+                    {pillar.icon === "Shield" ? <Shield className="h-4 w-4" style={{ color: pillar.color }} /> :
+                     pillar.icon === "Lock" ? <Lock className="h-4 w-4" style={{ color: pillar.color }} /> :
+                     <Key className="h-4 w-4" style={{ color: pillar.color }} />}
+                  </div>
+                  <span className="font-mono text-[10px] font-bold" style={{ color: pillar.color }}>{pillar.pillar}</span>
+                </div>
+                <p className="font-mono text-[9px] leading-relaxed text-muted-foreground">{pillar.description}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Value Proposition */}
+          <div className="rounded-xl border border-[#C9A84C]/20 p-4" style={{ background: "rgba(201,168,76,0.05)" }}>
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign className="h-4 w-4" style={{ color: "#C9A84C" }} />
+              <span className="font-mono text-[10px] font-bold text-[#C9A84C]">TaaS Value Proposition</span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <ArrowUpRight className="h-3.5 w-3.5 mt-0.5 text-[#10b981]" />
+                  <div>
+                    <p className="font-mono text-[9px] font-bold text-foreground">CapEx → OpEx Pivot</p>
+                    <p className="font-mono text-[9px] text-muted-foreground">Municipalities subscribe to outcomes, not equipment. No capital expenditure for hardware procurement.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className="h-3.5 w-3.5 mt-0.5 text-[#3B82F6]" />
+                  <div>
+                    <p className="font-mono text-[9px] font-bold text-foreground">Balance Sheet De-Risking</p>
+                    <p className="font-mono text-[9px] text-muted-foreground">Terminal hardware remains VVU property. No asset depreciation or maintenance liability on municipal books.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <TrendingUp className="h-3.5 w-3.5 mt-0.5 text-[#C9A84C]" />
+                  <div>
+                    <p className="font-mono text-[9px] font-bold text-foreground">100% Equity Retention</p>
+                    <p className="font-mono text-[9px] text-muted-foreground">VVU retains all technology, IP, and data. Partnerships through contracts, not ownership dilution.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Lock className="h-3.5 w-3.5 mt-0.5 text-[#8B5CF6]" />
+                  <div>
+                    <p className="font-mono text-[9px] font-bold text-foreground">Sole Data Sovereignty</p>
+                    <p className="font-mono text-[9px] text-muted-foreground">All data collected by VVU Terminals belongs to VVU. Municipal partners receive operational reports, never raw data.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Infrastructure Rights */}
+          <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Key className="h-4 w-4" style={{ color: "#3B82F6" }} />
+              <span className="font-mono text-[10px] font-bold text-[#3B82F6]">InfrastructureRight Abstraction</span>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-4">
+              {INFRASTRUCTURE_RIGHTS.map(ir => (
+                <div key={ir.id} className="rounded-lg border border-white/[0.06] p-3" style={{ background: `${ir.color}08`, borderColor: `${ir.color}30` }}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    {ir.icon === "Droplets" ? <Droplets className="h-3.5 w-3.5" style={{ color: ir.color }} /> :
+                     ir.icon === "Zap" ? <Zap className="h-3.5 w-3.5" style={{ color: ir.color }} /> :
+                     ir.icon === "Cpu" ? <Cpu className="h-3.5 w-3.5" style={{ color: ir.color }} /> :
+                     <HardDrive className="h-3.5 w-3.5" style={{ color: ir.color }} />}
+                    <span className="font-mono text-[9px] font-bold" style={{ color: ir.color }}>{ir.right}</span>
+                  </div>
+                  <p className="font-mono text-[8px] leading-relaxed text-muted-foreground">{ir.description}</p>
+                  <p className="font-mono text-[8px] mt-1" style={{ color: ir.color }}>{ir.unit}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Hydro-Gateway Assembly Section */}
+      {taasSection === "hydro-gateway" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Cpu className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Hydro-Gateway Assembly — 11 Integrated HBK Mk-II Components</span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {HYDRO_GATEWAY_ASSEMBLY.map(comp => (
+              <div key={comp.id} className="rounded-xl border border-white/[0.06] p-3" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-[9px] font-bold text-foreground">{comp.name}</span>
+                  <span className="rounded-full border px-1.5 py-0.5 font-mono text-[7px]" style={{
+                    borderColor: comp.category === "structural" ? "#6B728040" : comp.category === "metering" ? "#3B82F640" : comp.category === "control" ? "#10b98140" : comp.category === "power" ? "#F59E0B40" : comp.category === "telemetry" ? "#8B5CF640" : "#C9A84C40",
+                    color: comp.category === "structural" ? "#6B7280" : comp.category === "metering" ? "#3B82F6" : comp.category === "control" ? "#10b981" : comp.category === "power" ? "#F59E0B" : comp.category === "telemetry" ? "#8B5CF6" : "#C9A84C",
+                  }}>
+                    {comp.category}
+                  </span>
+                </div>
+                <p className="font-mono text-[8px] text-muted-foreground mb-2">{comp.function}</p>
+                <div className="flex items-center gap-3 font-mono text-[8px]">
+                  <span className="text-muted-foreground">X: <span className="text-foreground">{comp.position.x}</span></span>
+                  <span className="text-muted-foreground">Y: <span className="text-foreground">{comp.position.y}</span></span>
+                  <span className="text-muted-foreground">Z: <span className="text-foreground">{comp.position.z}</span></span>
+                </div>
+                <div className="mt-1.5 flex items-center gap-1">
+                  <div className="h-1.5 w-1.5 rounded-full" style={{ background: comp.status === "specification" ? "#F59E0B" : comp.status === "sourced" ? "#3B82F6" : comp.status === "installed" ? "#10b981" : "#6B7280" }} />
+                  <span className="font-mono text-[7px] text-muted-foreground">{comp.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Revenue Split Section */}
+      {taasSection === "revenue" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">60 / 30 / 10 Revenue Split</span>
+          </div>
+          <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+            <div className="flex h-10 w-full overflow-hidden rounded-lg">
+              {TAAS_REVENUE_SPLIT.map(rs => (
+                <div key={rs.category} className="flex items-center justify-center font-mono text-[9px] font-bold text-white" style={{ width: `${rs.percentage}%`, background: rs.color }}>
+                  {rs.percentage}%
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              {TAAS_REVENUE_SPLIT.map(rs => (
+                <div key={rs.category} className="rounded-lg border p-3" style={{ borderColor: `${rs.color}30`, background: `${rs.color}08` }}>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="h-3 w-3 rounded-sm" style={{ background: rs.color }} />
+                    <span className="font-mono text-[9px] font-bold" style={{ color: rs.color }}>{rs.category}</span>
+                    <span className="font-mono text-[9px] font-bold text-foreground">{rs.percentage}%</span>
+                  </div>
+                  <p className="font-mono text-[8px] text-muted-foreground">{rs.allocation}</p>
+                  <p className="font-mono text-[8px] mt-1 text-muted-foreground/70">{rs.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Verification Gates Section */}
+      {taasSection === "verification" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">VR1–VR5 Verification Gates</span>
+          </div>
+          <div className="space-y-2">
+            {VERIFICATION_GATES.map((gate, idx) => (
+              <div key={gate.id} className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border font-mono text-[9px] font-bold" style={{
+                    background: gate.status === "locked" ? "#F59E0B10" : gate.status === "passed" ? "#10b98110" : "#3B82F610",
+                    borderColor: gate.status === "locked" ? "#F59E0B40" : gate.status === "passed" ? "#10b98140" : "#3B82F640",
+                    color: gate.status === "locked" ? "#F59E0B" : gate.status === "passed" ? "#10b981" : "#3B82F6",
+                  }}>
+                    {gate.id}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono text-[10px] font-bold text-foreground">{gate.name}</span>
+                      <span className="rounded-full border px-1.5 py-0.5 font-mono text-[7px]" style={{
+                        borderColor: gate.status === "locked" ? "#F59E0B40" : gate.status === "passed" ? "#10b98140" : "#3B82F640",
+                        color: gate.status === "locked" ? "#F59E0B" : gate.status === "passed" ? "#10b981" : "#3B82F6",
+                      }}>
+                        {gate.status}
+                      </span>
+                    </div>
+                    <p className="font-mono text-[9px] text-muted-foreground mb-1">{gate.description}</p>
+                    <div className="grid gap-1 sm:grid-cols-2">
+                      <div className="font-mono text-[8px]">
+                        <span className="text-muted-foreground">Method: </span>
+                        <span className="text-foreground">{gate.method}</span>
+                      </div>
+                      <div className="font-mono text-[8px]">
+                        <span className="text-muted-foreground">Criteria: </span>
+                        <span className="text-foreground">{gate.criteria}</span>
+                      </div>
+                    </div>
+                    <div className="font-mono text-[8px] mt-1">
+                      <span className="text-muted-foreground">Authority: </span>
+                      <span className="text-[#C9A84C]">{gate.authority}</span>
+                    </div>
+                  </div>
+                  {idx < VERIFICATION_GATES.length - 1 && (
+                    <div className="hidden sm:flex items-center">
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/30" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* SLA Metrics Section */}
+      {taasSection === "sla" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">TaaS SLA Metrics</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {TAAS_SLA_METRICS.map(metric => (
+              <div key={metric.id} className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <div className="mb-3">
+                  <span className="font-mono text-[10px] font-bold text-foreground">{metric.name}</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="rounded-lg border border-[#C9A84C]/20 p-2" style={{ background: "#C9A84C08" }}>
+                    <span className="font-mono text-[8px] text-muted-foreground">Target</span>
+                    <p className="font-mono text-[9px] font-bold text-[#C9A84C]">{metric.target}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="font-mono text-[8px] text-muted-foreground">Baseline</span>
+                      <p className="font-mono text-[9px] text-foreground">{metric.baseline}</p>
+                    </div>
+                    <div>
+                      <span className="font-mono text-[8px] text-muted-foreground">Improvement</span>
+                      <p className="font-mono text-[9px] font-bold text-[#10b981]">{metric.improvement}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[8px] text-muted-foreground">Method</span>
+                    <p className="font-mono text-[8px] text-foreground/80">{metric.method}</p>
+                  </div>
+                </div>
+                <p className="font-mono text-[8px] mt-2 leading-relaxed text-muted-foreground/70">{metric.description}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Financing Section */}
+      {taasSection === "financing" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Wallet className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Vendor Financing — Tranche Structure</span>
+          </div>
+          <div className="rounded-xl border border-[#C9A84C]/20 p-4" style={{ background: "rgba(201,168,76,0.05)" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Tranche 1 Budget Lock</span>
+                <p className="font-mono text-[9px] text-muted-foreground">R812,490 — Conditioned on VR1–VR3 passage and SRS 32-parameter baseline verification</p>
+              </div>
+              <div className="text-right">
+                <span className="font-mono text-2xl font-bold text-[#C9A84C]">R812,490</span>
+                <p className="font-mono text-[8px] text-muted-foreground">Tranche 1 Total</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(15,15,24,0.6)" }}>
+            <div className="max-h-96 overflow-y-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Item</th>
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Amount</th>
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Tranche</th>
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Condition</th>
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {TAAS_FINANCING.map(fin => (
+                    <tr key={fin.id} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                      <td className="p-2 font-mono text-[9px] text-foreground">{fin.item}</td>
+                      <td className="p-2 font-mono text-[9px] font-bold text-[#C9A84C]">{fin.amount}</td>
+                      <td className="p-2 font-mono text-[9px] text-muted-foreground">{fin.tranche}</td>
+                      <td className="p-2 font-mono text-[8px] text-muted-foreground">{fin.condition}</td>
+                      <td className="p-2">
+                        <span className="rounded-full border px-1.5 py-0.5 font-mono text-[7px]" style={{
+                          borderColor: fin.status === "locked" ? "#F59E0B40" : fin.status === "released" ? "#10b98140" : "#6B728040",
+                          color: fin.status === "locked" ? "#F59E0B" : fin.status === "released" ? "#10b981" : "#6B7280",
+                        }}>
+                          {fin.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Zero Fabrication Mandate Section */}
+      {taasSection === "zero-fab" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldAlert className="h-4 w-4" style={{ color: "#EF4444" }} />
+            <span className="font-mono text-[10px] font-bold text-[#EF4444]">Zero Fabrication Mandate — 32 SRS Parameters</span>
+          </div>
+          <div className="rounded-xl border border-[#EF4444]/20 p-3" style={{ background: "rgba(239,68,68,0.05)" }}>
+            <p className="font-mono text-[9px] text-muted-foreground">No manufacturing begins until all 32 SRS parameters are empirically verified. Each parameter is locked to a specific VR verification gate.</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-5">
+            {["Geometry", "Material", "Assembly", "Functional", "Field"].map(cat => {
+              const params = ZERO_FAB_PARAMETERS.filter(p => p.category === cat);
+              return (
+                <div key={cat} className="rounded-xl border border-white/[0.06] p-3" style={{ background: "rgba(15,15,24,0.6)" }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-[9px] font-bold text-foreground">{cat}</span>
+                    <span className="font-mono text-[9px] font-bold text-[#C9A84C]">{params.length}</span>
+                  </div>
+                  <div className="space-y-1">
+                    {params.map(p => (
+                      <div key={p.id} className="flex items-center gap-1.5">
+                        <div className="h-1.5 w-1.5 rounded-full" style={{ background: p.verified ? "#10b981" : "#EF4444" }} />
+                        <span className="font-mono text-[7px] text-muted-foreground truncate">{p.parameter}</span>
+                        <span className="font-mono text-[7px] text-muted-foreground/50 ml-auto">{p.verificationGate}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(15,15,24,0.6)" }}>
+            <div className="max-h-96 overflow-y-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/[0.06]">
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">#</th>
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Parameter</th>
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Category</th>
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Target</th>
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Gate</th>
+                    <th className="p-2 text-left font-mono text-[8px] text-muted-foreground">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ZERO_FAB_PARAMETERS.map(p => (
+                    <tr key={p.id} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                      <td className="p-2 font-mono text-[8px] text-muted-foreground">{p.id.replace("zfp-", "")}</td>
+                      <td className="p-2 font-mono text-[9px] text-foreground">{p.parameter}</td>
+                      <td className="p-2 font-mono text-[8px] text-muted-foreground">{p.category}</td>
+                      <td className="p-2 font-mono text-[9px] text-foreground">{p.target}</td>
+                      <td className="p-2 font-mono text-[9px] font-bold text-[#C9A84C]">{p.verificationGate}</td>
+                      <td className="p-2">
+                        <div className="flex items-center gap-1">
+                          <div className="h-2 w-2 rounded-full" style={{ background: p.verified ? "#10b981" : "#EF4444" }} />
+                          <span className="font-mono text-[7px]" style={{ color: p.verified ? "#10b981" : "#EF4444" }}>{p.verified ? "VERIFIED" : "PENDING"}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Triparty Keys Section */}
+      {taasSection === "triparty" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Key className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Triparty SRS Delegation Addendum — &quot;Three Keys&quot;</span>
+          </div>
+          <div className="rounded-xl border border-[#C9A84C]/20 p-3" style={{ background: "rgba(201,168,76,0.05)" }}>
+            <p className="font-mono text-[9px] text-muted-foreground">No SRS modification or Terminal commissioning can proceed without all three keys. This is a cryptographic, not procedural, requirement.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {TRIPARTY_KEYS.map(tk => (
+              <div key={tk.id} className="rounded-xl border p-4" style={{ background: "rgba(15,15,24,0.6)", borderColor: `${tk.color}30` }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg border" style={{ background: `${tk.color}15`, borderColor: `${tk.color}40` }}>
+                    <Key className="h-5 w-5" style={{ color: tk.color }} />
+                  </div>
+                  <div>
+                    <span className="font-mono text-[10px] font-bold" style={{ color: tk.color }}>{tk.party}</span>
+                    <p className="font-mono text-[8px] text-muted-foreground">{tk.role}</p>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-white/[0.06] p-2 mb-2" style={{ background: `${tk.color}08` }}>
+                  <span className="font-mono text-[8px] text-muted-foreground">Key Type</span>
+                  <p className="font-mono text-[9px] font-bold" style={{ color: tk.color }}>{tk.keyType}</p>
+                </div>
+                <p className="font-mono text-[8px] leading-relaxed text-muted-foreground">{tk.description}</p>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+            <div className="flex items-center justify-center gap-2 py-4">
+              {TRIPARTY_KEYS.map((tk, idx) => (
+                <div key={tk.id} className="flex items-center gap-2">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="h-10 w-10 rounded-lg flex items-center justify-center border" style={{ background: `${tk.color}15`, borderColor: `${tk.color}40` }}>
+                      <Key className="h-4 w-4" style={{ color: tk.color }} />
+                    </div>
+                    <span className="font-mono text-[8px] font-bold" style={{ color: tk.color }}>{tk.party}</span>
+                  </div>
+                  {idx < TRIPARTY_KEYS.length - 1 && (
+                    <div className="flex items-center gap-1 px-2">
+                      <div className="h-px w-6" style={{ background: "#C9A84C40" }} />
+                      <span className="font-mono text-[7px] text-[#C9A84C]">+</span>
+                      <div className="h-px w-6" style={{ background: "#C9A84C40" }} />
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center gap-1 px-2">
+                <div className="h-px w-6" style={{ background: "#C9A84C40" }} />
+                <span className="font-mono text-[7px] text-[#C9A84C]">&rarr;</span>
+                <div className="h-px w-6" style={{ background: "#C9A84C40" }} />
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <div className="h-10 w-10 rounded-lg flex items-center justify-center border border-[#C9A84C]/40" style={{ background: "#C9A84C15" }}>
+                  <ShieldCheck className="h-4 w-4 text-[#C9A84C]" />
+                </div>
+                <span className="font-mono text-[8px] font-bold text-[#C9A84C]">SRS Unlock</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Asset Recovery Section */}
+      {taasSection === "recovery" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <FileWarning className="h-4 w-4" style={{ color: "#EF4444" }} />
+            <span className="font-mono text-[10px] font-bold text-[#EF4444]">Default &amp; Asset Recovery Provisions</span>
+          </div>
+          <div className="space-y-2">
+            {ASSET_RECOVERY_PROVISIONS.map(arp => (
+              <div key={arp.id} className="rounded-xl border border-white/[0.06] p-3" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-[10px] font-bold text-foreground">{arp.provision}</span>
+                  <span className="rounded-full border px-1.5 py-0.5 font-mono text-[7px]" style={{ borderColor: "#C9A84C40", color: "#C9A84C" }}>
+                    {arp.party}
+                  </span>
+                </div>
+                <div className="grid gap-1 sm:grid-cols-2">
+                  <div>
+                    <span className="font-mono text-[8px] text-muted-foreground">Trigger: </span>
+                    <span className="font-mono text-[8px] text-foreground">{arp.trigger}</span>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[8px] text-muted-foreground">Action: </span>
+                    <span className="font-mono text-[8px] text-foreground">{arp.action}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* CAD Renders Section */}
+      {taasSection === "cad-images" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Eye className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">HBK Mk-II CAD Technical Renders</span>
+          </div>
+          <div className="space-y-4">
+            <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(15,15,24,0.6)" }}>
+              <div className="p-3 border-b border-white/[0.06]">
+                <span className="font-mono text-[9px] font-bold text-foreground">Isometric Blueprint — Engineering Layout</span>
+                <p className="font-mono text-[8px] text-muted-foreground">Power Management Unit (bottom-left) + Analog Sensor Interface PCB (top-left) with 15.0mm EMI/RFI isolation gap</p>
+              </div>
+              <div className="p-2">
+                <img src="/hbk/images/hbk-blueprint-isometric.png" alt="HBK Mk-II Isometric Blueprint" className="w-full rounded-lg" />
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(15,15,24,0.6)" }}>
+              <div className="p-3 border-b border-white/[0.06]">
+                <span className="font-mono text-[9px] font-bold text-foreground">Vector Line Art Schematic — Hydro-Bayesian Assembly</span>
+                <p className="font-mono text-[8px] text-muted-foreground">PMU at X:20 Y:20, Sensor PCB at X:20 Y:180, 15mm EMI/RFI Clear Air Zone</p>
+              </div>
+              <div className="p-2">
+                <img src="/hbk/images/hbk-schematic-lineart.png" alt="HBK Mk-II Line Art Schematic" className="w-full rounded-lg" />
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/[0.06] overflow-hidden" style={{ background: "rgba(15,15,24,0.6)" }}>
+              <div className="p-3 border-b border-white/[0.06]">
+                <span className="font-mono text-[9px] font-bold text-foreground">Top-Down Product Rendering — 500x400mm Electronics Tray</span>
+                <p className="font-mono text-[8px] text-muted-foreground">3.0mm CNC 6061-T6 aluminum tray, Power BMS (potted, copper coils) + 4-Channel Acoustic Sensor PCB (gold traces), 15mm gap</p>
+              </div>
+              <div className="p-2">
+                <img src="/hbk/images/hbk-topdown-photoreal.png" alt="HBK Mk-II Top-Down Rendering" className="w-full rounded-lg" />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

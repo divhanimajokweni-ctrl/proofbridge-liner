@@ -926,9 +926,215 @@ export const PHASE2_BOM: BOMItem[] = [
   { id: "bom-12", component: "Copper Heat Block", specification: "Custom AMD Ryzen APU heat spreader", quantity: "1", source: "CNC machining", category: "thermal", status: "specified" },
 ];
 
-// ── HBK Dashboard Tabs (updated for Consortium Model + Phase 2) ───────────
+// ── TaaS: Terminal-as-a-Service Commercial Framework ──────────────────────
 
-export type HbkTabId = "consortium" | "ownership" | "contracts" | "ip" | "roadmap" | "power-thermal" | "twin" | "resources" | "simulation" | "timeline" | "gitlog";
+// Hydro-Gateway Assembly Components (11 integrated HBK Mk-II modules)
+export interface HydroGatewayComponent {
+  id: string;
+  name: string;
+  position: { x: number; y: number; z: number };
+  function: string;
+  category: "structural" | "metering" | "control" | "power" | "telemetry" | "beacon";
+  status: "specification" | "sourced" | "fabrication" | "installed" | "commissioned";
+}
+
+export const HYDRO_GATEWAY_ASSEMBLY: HydroGatewayComponent[] = [
+  { id: "hga-1", name: "Pressure Pipe", position: { x: 0, y: 0, z: 750 }, function: "Nodal Head Estimation — primary hydraulic conduit", category: "structural", status: "specification" },
+  { id: "hga-2", name: "South Datum Skid", position: { x: 0, y: -560, z: 40 }, function: "Base structural support — south anchor point", category: "structural", status: "specification" },
+  { id: "hga-3", name: "North Datum Skid", position: { x: 0, y: 560, z: 40 }, function: "Base structural support — north anchor point", category: "structural", status: "specification" },
+  { id: "hga-4", name: "Left Service Rack", position: { x: -720, y: -240, z: 290 }, function: "Lateral mounting — left-side service access", category: "structural", status: "specification" },
+  { id: "hga-5", name: "Right Service Rack", position: { x: 720, y: 240, z: 290 }, function: "Lateral mounting — right-side service access", category: "structural", status: "specification" },
+  { id: "hga-6", name: "Edge Control Cabinet", position: { x: 0, y: 400, z: 400 }, function: "Bayesian inference engine — edge compute & decision layer", category: "control", status: "specification" },
+  { id: "hga-7", name: "Power Backup Module", position: { x: 0, y: -400, z: 400 }, function: "8S4P LiFePO₄ power redundancy — 614Wh backup", category: "power", status: "specification" },
+  { id: "hga-8", name: "Inlet Meter Pod", position: { x: -750, y: -160, z: 930 }, function: "Primary flow measurement — inlet volumetric & velocity", category: "metering", status: "specification" },
+  { id: "hga-9", name: "Outlet Meter Pod", position: { x: 750, y: 160, z: 930 }, function: "Secondary flow measurement — outlet volumetric & velocity", category: "metering", status: "specification" },
+  { id: "hga-10", name: "Telemetry Mast", position: { x: 0, y: 0, z: 1290 }, function: "Cellular/GNSS/LoRa data transmission — IP67 sealed", category: "telemetry", status: "specification" },
+  { id: "hga-11", name: "Top Height Beacon", position: { x: 100, y: 0, z: 1465 }, function: "Site identification — visual & RF beacon for field crews", category: "beacon", status: "specification" },
+];
+
+// TaaS Revenue Split (60/30/10)
+export interface RevenueSplit {
+  category: string;
+  percentage: number;
+  allocation: string;
+  color: string;
+  description: string;
+}
+
+export const TAAS_REVENUE_SPLIT: RevenueSplit[] = [
+  { category: "Operational Baseline", percentage: 60, allocation: "Hardware amortization, server costs, HBK inference runtime", color: "#C9A84C", description: "Core operational expenditure — the cost of keeping every Terminal online, updated, and returning data" },
+  { category: "Growth & R&D", percentage: 30, allocation: "Software refinement, scaling, academic collaboration", color: "#10b981", description: "Reinvestment in the platform — Bayesian model improvement, new sensor integration, and university research partnerships" },
+  { category: "Risk & Compliance", percentage: 10, allocation: "ProofBridge-Liner audit chain, regulatory alignment", color: "#3B82F6", description: "Funding the compliance apparatus — independent audit trails, regulatory filing, and the ProofBridge-Liner cryptographic chain" },
+];
+
+// VR1-VR5 Verification Gates
+export interface VerificationGate {
+  id: string;
+  name: string;
+  method: string;
+  criteria: string;
+  authority: string;
+  status: "locked" | "in_progress" | "passed" | "failed";
+  description: string;
+}
+
+export const VERIFICATION_GATES: VerificationGate[] = [
+  { id: "VR1", name: "Geometry Verification", method: "CMM data, nominal diameter (114.3 mm)", criteria: "All dimensions within ±0.5mm of nominal", authority: "VVU Engineering", status: "locked", description: "Coordinate Measuring Machine validation of all physical dimensions against the CAD nominal model" },
+  { id: "VR2", name: "Material Verification", method: "Mill test reports, NDT (Non-Destructive Testing)", criteria: "Material certificates match specification; NDT clear", authority: "VVU Engineering + Academic Partner", status: "locked", description: "Verification that all raw materials and sub-assemblies meet their specified material grades and are free of defects" },
+  { id: "VR3", name: "Assembly Verification", method: "Torque logs, route card sign-offs", criteria: "All fasteners torqued to spec; all route cards signed", authority: "VVU Engineering + Municipal Observer", status: "locked", description: "Confirmation that every assembly step was completed per the route card, with torque and fastener records" },
+  { id: "VR4", name: "Functional Verification", method: "Factory Acceptance Test (FAT), sensor calibration", criteria: "All sensors calibrated; FAT passed with zero critical defects", authority: "VVU Engineering + Academic Partner", status: "locked", description: "End-to-end functional test of the assembled Terminal — sensor calibration, power-on self-test, and Bayesian inference validation" },
+  { id: "VR5", name: "Field Acceptance", method: "Site Acceptance Test (SAT), municipal commissioning", criteria: "SAT passed; municipal sign-off obtained", authority: "VVU + Municipal + Academic (Triparty)", status: "locked", description: "Final field deployment verification — the Terminal operates correctly in its installed environment with live municipal water data" },
+];
+
+// TaaS SLA Metrics
+export interface SLAMetric {
+  id: string;
+  name: string;
+  target: string;
+  baseline: string;
+  improvement: string;
+  method: string;
+  description: string;
+}
+
+export const TAAS_SLA_METRICS: SLAMetric[] = [
+  { id: "sla-1", name: "Leak Localization", target: "≤500m search radius", baseline: "~10km manual search", improvement: "95% reduction", method: "Bayesian inference on O_t = (P, F, A, T)", description: "The Terminal must localize water loss events to within 500m — a 95% improvement over the current manual inspection paradigm" },
+  { id: "sla-2", name: "False Positive Rate", target: "≤5%", baseline: "~30% industry average", improvement: "83% reduction", method: "Poisson-Gaussian mixture distributions", description: "False alarm rate bounded at ≤5% using Poisson-Gaussian mixture distributions to distinguish true leak signatures from transient noise" },
+  { id: "sla-3", name: "Information Density", target: "ID = Information Gained / Deployment Cost", baseline: "N/A — new metric", improvement: "Novel KPI", method: "Shannon entropy × Bayesian posterior improvement / ZAR", description: "Information Density (ID) normalizes the value of inference output against deployment cost — a novel KPI unique to VVU's TaaS model" },
+];
+
+// TaaS Financing Terms
+export interface FinancingTerm {
+  id: string;
+  item: string;
+  amount: string;
+  tranche: string;
+  condition: string;
+  status: "pending" | "locked" | "released" | "allocated";
+}
+
+export const TAAS_FINANCING: FinancingTerm[] = [
+  { id: "fin-1", item: "Tranche 1 Budget Lock", amount: "R812,490", tranche: "Tranche 1", condition: "VR1–VR3 passed; SRS 32-parameter baseline verified", status: "locked" },
+  { id: "fin-2", item: "Vendor Financing — Hardware", amount: "R340,000", tranche: "Tranche 1", condition: "Signed vendor agreement; 30-day payment terms", status: "pending" },
+  { id: "fin-3", item: "Vendor Financing — Software", amount: "R185,000", tranche: "Tranche 1", condition: "License agreement executed; SRS parameter mapping", status: "pending" },
+  { id: "fin-4", item: "Academic Collaboration Fund", amount: "R127,490", tranche: "Tranche 1", condition: "Research Collaboration Agreement executed", status: "pending" },
+  { id: "fin-5", item: "Municipal Pilot Deployment", amount: "R160,000", tranche: "Tranche 2", condition: "VR4 passed; Pilot Partner Agreement signed", status: "pending" },
+  { id: "fin-6", item: "Operational Scaling Reserve", amount: "R500,000", tranche: "Tranche 3", condition: "VR5 passed; ≥3 municipal contracts signed", status: "pending" },
+];
+
+// InfrastructureRight Abstraction
+export interface InfrastructureRight {
+  id: string;
+  right: string;
+  description: string;
+  unit: string;
+  color: string;
+  icon: string;
+}
+
+export const INFRASTRUCTURE_RIGHTS: InfrastructureRight[] = [
+  { id: "ir-1", right: "Water", description: "Leak detection, pressure monitoring, flow analytics — the core Terminal function", unit: "per km of reticulation monitored", color: "#3B82F6", icon: "Droplets" },
+  { id: "ir-2", right: "Energy", description: "Solar MPPT + 8S4P LiFePO₄ autonomy — the Terminal's self-sustaining power envelope", unit: "per Terminal deployed", color: "#F59E0B", icon: "Zap" },
+  { id: "ir-3", right: "Compute", description: "Bayesian inference at the edge — the HBK decision layer running on AMD Ryzen AI", unit: "per inference cycle", color: "#10b981", icon: "Cpu" },
+  { id: "ir-4", right: "Storage", description: "NVMe data persistence + ProofBridge-Liner audit chain — data sovereignty at the edge", unit: "per GB stored per month", color: "#8B5CF6", icon: "HardDrive" },
+];
+
+// Zero Fabrication Mandate
+export interface ZeroFabParameter {
+  id: string;
+  parameter: string;
+  category: string;
+  target: string;
+  verified: boolean;
+  verificationGate: string;
+}
+
+export const ZERO_FAB_PARAMETERS: ZeroFabParameter[] = [
+  { id: "zfp-1", parameter: "Nominal Pipe Diameter", category: "Geometry", target: "114.3 mm ±0.5mm", verified: false, verificationGate: "VR1" },
+  { id: "zfp-2", parameter: "EMI/RFI Isolation Gap", category: "Geometry", target: "≥15.0mm", verified: false, verificationGate: "VR1" },
+  { id: "zfp-3", parameter: "Base Plate Flatness", category: "Geometry", target: "≤0.1mm over 460mm", verified: false, verificationGate: "VR1" },
+  { id: "zfp-4", parameter: "6061-T6 Tensile Strength", category: "Material", target: "≥310 MPa", verified: false, verificationGate: "VR2" },
+  { id: "zfp-5", parameter: "LiFePO₄ Cell Voltage", category: "Material", target: "3.2V ±0.05V per cell", verified: false, verificationGate: "VR2" },
+  { id: "zfp-6", parameter: "Pyrogel XTE Conductivity", category: "Material", target: "≤0.015 W/m·K", verified: false, verificationGate: "VR2" },
+  { id: "zfp-7", parameter: "BMS Torque Spec", category: "Assembly", target: "Per route card ±5%", verified: false, verificationGate: "VR3" },
+  { id: "zfp-8", parameter: "Star Ground P0–P3 Isolation", category: "Assembly", target: "≥100MΩ between rails", verified: false, verificationGate: "VR3" },
+  { id: "zfp-9", parameter: "Sensor Calibration Accuracy", category: "Functional", target: "≤2% full-scale", verified: false, verificationGate: "VR4" },
+  { id: "zfp-10", parameter: "Bayesian Inference Latency", category: "Functional", target: "≤500ms per cycle", verified: false, verificationGate: "VR4" },
+  { id: "zfp-11", parameter: "Leak Localization Radius", category: "Functional", target: "≤500m (95% CI)", verified: false, verificationGate: "VR4" },
+  { id: "zfp-12", parameter: "False Positive Rate", category: "Functional", target: "≤5%", verified: false, verificationGate: "VR4" },
+  { id: "zfp-13", parameter: "Thermal Threshold (Advisory)", category: "Functional", target: "65°C", verified: false, verificationGate: "VR4" },
+  { id: "zfp-14", parameter: "Thermal Threshold (Warning)", category: "Functional", target: "75°C", verified: false, verificationGate: "VR4" },
+  { id: "zfp-15", parameter: "Thermal Threshold (Critical)", category: "Functional", target: "85°C", verified: false, verificationGate: "VR4" },
+  { id: "zfp-16", parameter: "IP67 Seal Integrity", category: "Functional", target: "No ingress after 30min @ 1m depth", verified: false, verificationGate: "VR4" },
+  { id: "zfp-17", parameter: "Battery Pack Capacity", category: "Functional", target: "≥20Ah @ 25.6V", verified: false, verificationGate: "VR4" },
+  { id: "zfp-18", parameter: "Solar MPPT Efficiency", category: "Functional", target: "≥95%", verified: false, verificationGate: "VR4" },
+  { id: "zfp-19", parameter: "Field SAT Duration", category: "Field", target: "72h continuous operation", verified: false, verificationGate: "VR5" },
+  { id: "zfp-20", parameter: "Municipal Commissioning", category: "Field", target: "Signed commissioning report", verified: false, verificationGate: "VR5" },
+  { id: "zfp-21", parameter: "Telemetry Uptime", category: "Field", target: "≥99.5% over 72h", verified: false, verificationGate: "VR5" },
+  { id: "zfp-22", parameter: "Acoustic SNR", category: "Functional", target: "≥20dB in-field", verified: false, verificationGate: "VR4" },
+  { id: "zfp-23", parameter: "Observation Vector (O_t)", category: "Functional", target: "P, F, A, T streaming at ≥1Hz", verified: false, verificationGate: "VR4" },
+  { id: "zfp-24", parameter: "ProofBridge-Liner Hash", category: "Functional", target: "SHA-256 chain integrity", verified: false, verificationGate: "VR4" },
+  { id: "zfp-25", parameter: "GNSS Position Fix", category: "Field", target: "≤3m CEP", verified: false, verificationGate: "VR5" },
+  { id: "zfp-26", parameter: "Cellular Data Throughput", category: "Field", target: "≥100kbps sustained", verified: false, verificationGate: "VR5" },
+  { id: "zfp-27", parameter: "NVMe Write Endurance", category: "Functional", target: "≥1 DWPD", verified: false, verificationGate: "VR4" },
+  { id: "zfp-28", parameter: "Power Budget Balance", category: "Functional", target: "Solar input ≥ consumption (24h avg)", verified: false, verificationGate: "VR4" },
+  { id: "zfp-29", parameter: "Vibration Survival", category: "Field", target: "IEC 60068-2-6, 10–150Hz", verified: false, verificationGate: "VR5" },
+  { id: "zfp-30", parameter: "EMC Compliance", category: "Field", target: "IEC 61000-6-2/4", verified: false, verificationGate: "VR5" },
+  { id: "zfp-31", parameter: "LoRa Range", category: "Field", target: "≥2km urban", verified: false, verificationGate: "VR5" },
+  { id: "zfp-32", parameter: "Hydro-Gateway Assembly Alignment", category: "Field", target: "All 11 components within ±2mm", verified: false, verificationGate: "VR5" },
+];
+
+// Triparty SRS Delegation Addendum ("Three Keys")
+export interface TripartyKey {
+  id: string;
+  party: string;
+  role: string;
+  keyType: string;
+  color: string;
+  description: string;
+}
+
+export const TRIPARTY_KEYS: TripartyKey[] = [
+  { id: "key-1", party: "VVU", role: "Technology Owner", keyType: "Master Key", color: "#C9A84C", description: "VVU holds the master key — no SRS modification proceeds without VVU's cryptographic authorization" },
+  { id: "key-2", party: "Academic Partner", role: "Independent Validator", keyType: "Validation Key", color: "#3B82F6", description: "The academic partner holds the validation key — ensuring that SRS parameter changes are empirically grounded" },
+  { id: "key-3", party: "Municipal Authority", role: "Operational Authority", keyType: "Operational Key", color: "#10b981", description: "The municipal authority holds the operational key — no Terminal enters live service without municipal commissioning sign-off" },
+];
+
+// Default & Asset Recovery
+export interface AssetRecoveryProvision {
+  id: string;
+  provision: string;
+  trigger: string;
+  action: string;
+  party: string;
+}
+
+export const ASSET_RECOVERY_PROVISIONS: AssetRecoveryProvision[] = [
+  { id: "arp-1", provision: "Terminal Return", trigger: "Contract termination (any reason)", action: "Terminal hardware returned to VVU within 30 days", party: "Municipal" },
+  { id: "arp-2", provision: "Data Extraction", trigger: "Terminal return", action: "VVU extracts all stored data; municipal copy provided within 14 days", party: "VVU" },
+  { id: "arp-3", provision: "IP Preservation", trigger: "Any circumstance", action: "VVU retains all IP, model weights, and inference code — no transfer", party: "VVU" },
+  { id: "arp-4", provision: "ProofBridge-Liner Audit", trigger: "Dispute or default", action: "Independent audit chain activated; cryptographic evidence preserved", party: "Academic Partner" },
+  { id: "arp-5", provision: "Escalation Protocol", trigger: "Payment default >60 days", action: "Terminal enters reduced-function mode; data continues logging", party: "VVU" },
+];
+
+// TaaS Core Pillars
+export interface TaasPillar {
+  id: string;
+  pillar: string;
+  description: string;
+  color: string;
+  icon: string;
+}
+
+export const TAAS_CORE_PILLARS: TaasPillar[] = [
+  { id: "pillar-1", pillar: "100% Equity Retention", description: "VVU retains full ownership of all core technology, platform IP, and Terminal hardware. No equity dilution at any stage.", color: "#C9A84C", icon: "Shield" },
+  { id: "pillar-2", pillar: "Sole Data Sovereignty", description: "All data collected by VVU Terminals belongs to VVU. Municipal partners receive operational reports and anonymised datasets — never raw data.", color: "#10b981", icon: "Lock" },
+  { id: "pillar-3", pillar: "InfrastructureRight Abstraction", description: "Water, Energy, Compute, and Storage are delivered as digital rights — not physical assets. The municipality subscribes to outcomes, not equipment.", color: "#3B82F6", icon: "Key" },
+];
+
+// ── HBK Dashboard Tabs (updated for Consortium Model + Phase 2 + TaaS) ────
+
+export type HbkTabId = "consortium" | "ownership" | "contracts" | "ip" | "roadmap" | "power-thermal" | "twin" | "taas" | "resources" | "simulation" | "timeline" | "gitlog";
 
 export interface HbkTab {
   id: HbkTabId;
@@ -945,6 +1151,7 @@ export const HBK_TABS: HbkTab[] = [
   { id: "roadmap", label: "3-Phase Roadmap", icon: "Route", description: "Research Enablement → Industrial Validation → Commercialisation" },
   { id: "power-thermal", label: "Power & Thermal", icon: "Zap", description: "Phase 2: 8S4P battery, Star Ground wiring, Epistemic thermal governance" },
   { id: "twin", label: "Digital Twin", icon: "Cpu", description: "HBK Mk-II 3D CAD layout and module status" },
+  { id: "taas", label: "TaaS", icon: "Briefcase", description: "Terminal-as-a-Service: Commercial framework, revenue split, verification gates, SLA metrics" },
   { id: "resources", label: "Resource Register", icon: "ClipboardList", description: "Live tracking of commitments and gaps" },
   { id: "simulation", label: "72h Validation", icon: "Activity", description: "Full 72-hour validation loop with digital twin" },
   { id: "timeline", label: "Programme Timeline", icon: "Calendar", description: "Phase tracking, milestones, delivery" },
