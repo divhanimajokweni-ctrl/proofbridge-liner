@@ -1,0 +1,69 @@
+[database]
+db_path = "./data/ledger.db"
+journal_mode = "WAL"
+synchronous = "FULL"
+busy_timeout = 5000
+cache_size = -64000
+page_size = 4096
+secure_delete = true
+trusted_schema = false
+foreign_keys = true
+temp_store = "MEMORY"
+locking_mode = "NORMAL"
+
+[crypto]
+hash_algorithm = "SHA-256"
+key_rotation_enabled = true
+key_rotation_interval_days = 30
+
+[replay]
+verify_sequence = true
+verify_parent_chain = true
+verify_payload_hash = true
+verify_envelope_hash = true
+verify_revision_hash = true
+verify_mmr = true
+verify_validator_history = true
+verify_quorum = true
+verify_snapshots = true
+verify_proofs = true
+verify_schema_versions = true
+max_replay_entries = 1000000
+
+[validator]
+max_validators = 256
+min_quorum = 2
+max_weight = 1000
+key_expiry_days = 365
+
+[logging]
+json_logging = true
+severity = "INFO"
+include_stack_trace = false
+
+[metrics]
+expose_prometheus = true
+expose_otel = false
+health_endpoint = true
+
+[network]
+host = "0.0.0.0"
+port = 50051
+tls_enabled = true
+mtls_enabled = true
+cert_path = "/etc/ledger/tls/server.crt"
+key_path = "/etc/ledger/tls/server.key"
+ca_path = "/etc/ledger/tls/ca.crt"
+max_message_size = 4194304
+keepalive_ms = 30000
+compression_enabled = true
+
+[serializer]
+max_depth = 64
+max_object_size = 16777216
+max_int_width = 256
+max_string_length = 2097152
+canonical_utf8 = true
+strict_ordering = true
+streaming_decoder = true
+version_header = true

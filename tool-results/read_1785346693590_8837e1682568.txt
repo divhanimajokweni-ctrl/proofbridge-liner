@@ -1,0 +1,956 @@
+     1→"""VVU Earth Tech Ledger — Complete exception hierarchy.
+     2→
+     3→Every exception carries a machine-readable ``code`` attribute and an optional
+     4→``detail`` dictionary so that callers can programmatically inspect failures
+     5→without parsing message strings.
+     6→
+     7→Hierarchy::
+     8→
+     9→    LedgerError
+    10→    ├── SerializationError
+    11→    │   ├── DepthExceededError
+    12→    │   ├── SizeExceededError
+    13→    │   └── InvalidTypeError
+    14→    ├── HashError
+    15→    │   ├── DomainViolationError
+    16→    │   └── HashMismatchError
+    17→    ├── CryptoError
+    18→    │   ├── SignatureError
+    19→    │   │   ├── InvalidSignatureError
+    20→    │   │   ├── KeyNotFoundError
+    21→    │   │   └── KeyExpiredError
+    22→    │   └── KeyRotationError
+    23→    │       ├── RotationInProgressError
+    24→    │       └── InvalidEpochError
+    25→    ├── MMRError
+    26→    │   ├── InvalidIndexError
+    27→    │   ├── InvalidProofError
+    28→    │   └── RootMismatchError
+    29→    ├── StorageError
+    30→    │   ├── DatabaseError
+    31→    │   │   ├── DBConnectionFailedError
+    32→    │   │   ├── DatabaseBusyError
+    33→    │   │   ├── DatabaseCorruptError
+    34→    │   │   └── MigrationFailedError
+    35→    │   └── SnapshotError
+    36→    │       ├── SnapshotCreationError
+    37→    │       ├── SnapshotRestorationError
+    38→    │       └── SnapshotIntegrityError
+    39→    ├── ReplayError
+    40→    │   ├── SequenceViolationError
+    41→    │   ├── ParentChainBrokenError
+    42→    │   ├── ReplayHashMismatchError
+    43→    │   └── ValidatorHistoryError
+    44→    ├── ValidatorError
+    45→    │   ├── ValidatorNotFoundError
+    46→    │   ├── DuplicateValidatorError
+    47→    │   ├── ValidatorExpiredError
+    48→    │   ├── WeightInvalidError
+    49→    │   └── QuorumFailedError
+    50→    ├── EnvelopeError
+    51→    │   ├── InvalidEnvelopeFormatError
+    52→    │   ├── MissingFieldError
+    53→    │   └── EnvelopeSignatureError
+    54→    ├── ConfigError
+    55→    │   ├── InvalidValueError
+    56→    │   ├── MissingConfigFieldError
+    57→    │   └── ImmutableAfterStartupError
+    58→    └── NetworkError
+    59→        ├── NetworkConnectionFailedError
+    60→        ├── TLSError
+    61→        ├── AuthFailedError
+    62→        └── RateLimitedError
+    63→"""
+    64→
+    65→from __future__ import annotations
+    66→
+    67→from typing import Any
+    68→
+    69→
+    70→# ---------------------------------------------------------------------------
+    71→# Base
+    72→# ---------------------------------------------------------------------------
+    73→
+    74→class LedgerError(Exception):
+    75→    """Base exception for all ledger errors.
+    76→
+    77→    Attributes:
+    78→        code: Machine-readable error code (e.g. ``"LEDGER_UNKNOWN"``).
+    79→        detail: Optional dictionary with additional context.
+    80→    """
+    81→
+    82→    def __init__(
+    83→        self,
+    84→        message: str = "",
+    85→        *,
+    86→        code: str = "LEDGER_UNKNOWN",
+    87→        detail: dict[str, Any] | None = None,
+    88→    ) -> None:
+    89→        super().__init__(message)
+    90→        self.code: str = code
+    91→        self.detail: dict[str, Any] | None = detail
+    92→
+    93→    def __repr__(self) -> str:  # pragma: no cover
+    94→        return f"{type(self).__name__}(code={self.code!r}, message={str(self)!r})"
+    95→
+    96→
+    97→# ---------------------------------------------------------------------------
+    98→# Serialization
+    99→# ---------------------------------------------------------------------------
+   100→
+   101→class SerializationError(LedgerError):
+   102→    """Raised when canonical serialization or deserialization fails."""
+   103→
+   104→    def __init__(
+   105→        self,
+   106→        message: str = "",
+   107→        *,
+   108→        code: str = "SERIALIZATION_ERROR",
+   109→        detail: dict[str, Any] | None = None,
+   110→    ) -> None:
+   111→        super().__init__(message, code=code, detail=detail)
+   112→
+   113→
+   114→class DepthExceededError(SerializationError):
+   115→    """Nesting depth exceeded MAX_DEPTH during encoding."""
+   116→
+   117→    def __init__(
+   118→        self,
+   119→        depth: int,
+   120→        max_depth: int,
+   121→        *,
+   122→        detail: dict[str, Any] | None = None,
+   123→    ) -> None:
+   124→        super().__init__(
+   125→            f"Serialization depth {depth} exceeds maximum {max_depth}",
+   126→            code="SERIALIZATION_DEPTH_EXCEEDED",
+   127→            detail={"depth": depth, "max_depth": max_depth, **(detail or {})},
+   128→        )
+   129→
+   130→
+   131→class SizeExceededError(SerializationError):
+   132→    """Encoded object size exceeds MAX_OBJECT_SIZE."""
+   133→
+   134→    def __init__(
+   135→        self,
+   136→        size: int,
+   137→        max_size: int,
+   138→        *,
+   139→        detail: dict[str, Any] | None = None,
+   140→    ) -> None:
+   141→        super().__init__(
+   142→            f"Serialized size {size} exceeds maximum {max_size}",
+   143→            code="SERIALIZATION_SIZE_EXCEEDED",
+   144→            detail={"size": size, "max_size": max_size, **(detail or {})},
+   145→        )
+   146→
+   147→
+   148→class InvalidTypeError(SerializationError):
+   149→    """An unsupported type was encountered during serialization."""
+   150→
+   151→    def __init__(
+   152→        self,
+   153→        type_name: str,
+   154→        *,
+   155→        detail: dict[str, Any] | None = None,
+   156→    ) -> None:
+   157→        super().__init__(
+   158→            f"Unsupported type for canonical serialization: {type_name}",
+   159→            code="SERIALIZATION_INVALID_TYPE",
+   160→            detail={"type": type_name, **(detail or {})},
+   161→        )
+   162→
+   163→
+   164→# ---------------------------------------------------------------------------
+   165→# Hashing
+   166→# ---------------------------------------------------------------------------
+   167→
+   168→class HashError(LedgerError):
+   169→    """Raised when a domain-separated hash operation fails."""
+   170→
+   171→    def __init__(
+   172→        self,
+   173→        message: str = "",
+   174→        *,
+   175→        code: str = "HASH_ERROR",
+   176→        detail: dict[str, Any] | None = None,
+   177→    ) -> None:
+   178→        super().__init__(message, code=code, detail=detail)
+   179→
+   180→
+   181→class DomainViolationError(HashError):
+   182→    """A domain prefix was used in an inappropriate context."""
+   183→
+   184→    def __init__(
+   185→        self,
+   186→        domain: bytes,
+   187→        *,
+   188→        detail: dict[str, Any] | None = None,
+   189→    ) -> None:
+   190→        super().__init__(
+   191→            f"Domain violation for prefix {domain!r}",
+   192→            code="HASH_DOMAIN_VIOLATION",
+   193→            detail={"domain": domain.decode("ascii", errors="replace"), **(detail or {})},
+   194→        )
+   195→
+   196→
+   197→class HashMismatchError(HashError):
+   198→    """Computed hash does not match the expected value."""
+   199→
+   200→    def __init__(
+   201→        self,
+   202→        expected: bytes,
+   203→        actual: bytes,
+   204→        *,
+   205→        detail: dict[str, Any] | None = None,
+   206→    ) -> None:
+   207→        super().__init__(
+   208→            f"Hash mismatch: expected {expected.hex()}, got {actual.hex()}",
+   209→            code="HASH_MISMATCH",
+   210→            detail={"expected": expected.hex(), "actual": actual.hex(), **(detail or {})},
+   211→        )
+   212→
+   213→
+   214→# ---------------------------------------------------------------------------
+   215→# Crypto
+   216→# ---------------------------------------------------------------------------
+   217→
+   218→class CryptoError(LedgerError):
+   219→    """Base exception for cryptographic operations."""
+   220→
+   221→    def __init__(
+   222→        self,
+   223→        message: str = "",
+   224→        *,
+   225→        code: str = "CRYPTO_ERROR",
+   226→        detail: dict[str, Any] | None = None,
+   227→    ) -> None:
+   228→        super().__init__(message, code=code, detail=detail)
+   229→
+   230→
+   231→class SignatureError(CryptoError):
+   232→    """Raised when a digital signature operation fails."""
+   233→
+   234→    def __init__(
+   235→        self,
+   236→        message: str = "",
+   237→        *,
+   238→        code: str = "SIGNATURE_ERROR",
+   239→        detail: dict[str, Any] | None = None,
+   240→    ) -> None:
+   241→        super().__init__(message, code=code, detail=detail)
+   242→
+   243→
+   244→class InvalidSignatureError(SignatureError):
+   245→    """A signature could not be verified."""
+   246→
+   247→    def __init__(
+   248→        self,
+   249→        *,
+   250→        detail: dict[str, Any] | None = None,
+   251→    ) -> None:
+   252→        super().__init__(
+   253→            "Invalid signature",
+   254→            code="SIGNATURE_INVALID",
+   255→            detail=detail,
+   256→        )
+   257→
+   258→
+   259→class KeyNotFoundError(SignatureError):
+   260→    """The signing key was not found."""
+   261→
+   262→    def __init__(
+   263→        self,
+   264→        key_id: str = "",
+   265→        *,
+   266→        detail: dict[str, Any] | None = None,
+   267→    ) -> None:
+   268→        super().__init__(
+   269→            f"Key not found: {key_id}",
+   270→            code="SIGNATURE_KEY_NOT_FOUND",
+   271→            detail={"key_id": key_id, **(detail or {})},
+   272→        )
+   273→
+   274→
+   275→class KeyExpiredError(SignatureError):
+   276→    """The signing key has expired."""
+   277→
+   278→    def __init__(
+   279→        self,
+   280→        key_id: str = "",
+   281→        *,
+   282→        detail: dict[str, Any] | None = None,
+   283→    ) -> None:
+   284→        super().__init__(
+   285→            f"Key expired: {key_id}",
+   286→            code="SIGNATURE_KEY_EXPIRED",
+   287→            detail={"key_id": key_id, **(detail or {})},
+   288→        )
+   289→
+   290→
+   291→class KeyRotationError(CryptoError):
+   292→    """Raised when a key rotation operation fails."""
+   293→
+   294→    def __init__(
+   295→        self,
+   296→        message: str = "",
+   297→        *,
+   298→        code: str = "KEY_ROTATION_ERROR",
+   299→        detail: dict[str, Any] | None = None,
+   300→    ) -> None:
+   301→        super().__init__(message, code=code, detail=detail)
+   302→
+   303→
+   304→class RotationInProgressError(KeyRotationError):
+   305→    """A key rotation is already in progress."""
+   306→
+   307→    def __init__(
+   308→        self,
+   309→        *,
+   310→        detail: dict[str, Any] | None = None,
+   311→    ) -> None:
+   312→        super().__init__(
+   313→            "Key rotation already in progress",
+   314→            code="KEY_ROTATION_IN_PROGRESS",
+   315→            detail=detail,
+   316→        )
+   317→
+   318→
+   319→class InvalidEpochError(KeyRotationError):
+   320→    """The supplied epoch is not valid for the current rotation state."""
+   321→
+   322→    def __init__(
+   323→        self,
+   324→        epoch: int,
+   325→        *,
+   326→        detail: dict[str, Any] | None = None,
+   327→    ) -> None:
+   328→        super().__init__(
+   329→            f"Invalid key rotation epoch: {epoch}",
+   330→            code="KEY_ROTATION_INVALID_EPOCH",
+   331→            detail={"epoch": epoch, **(detail or {})},
+   332→        )
+   333→
+   334→
+   335→# ---------------------------------------------------------------------------
+   336→# MMR (Merkle Mountain Range)
+   337→# ---------------------------------------------------------------------------
+   338→
+   339→class MMRError(LedgerError):
+   340→    """Raised when an MMR operation fails."""
+   341→
+   342→    def __init__(
+   343→        self,
+   344→        message: str = "",
+   345→        *,
+   346→        code: str = "MMR_ERROR",
+   347→        detail: dict[str, Any] | None = None,
+   348→    ) -> None:
+   349→        super().__init__(message, code=code, detail=detail)
+   350→
+   351→
+   352→class InvalidIndexError(MMRError):
+   353→    """An MMR index is out of range."""
+   354→
+   355→    def __init__(
+   356→        self,
+   357→        index: int,
+   358→        *,
+   359→        detail: dict[str, Any] | None = None,
+   360→    ) -> None:
+   361→        super().__init__(
+   362→            f"Invalid MMR index: {index}",
+   363→            code="MMR_INVALID_INDEX",
+   364→            detail={"index": index, **(detail or {})},
+   365→        )
+   366→
+   367→
+   368→class InvalidProofError(MMRError):
+   369→    """An MMR proof is malformed or cannot be verified."""
+   370→
+   371→    def __init__(
+   372→        self,
+   373→        message: str = "Invalid MMR proof",
+   374→        *,
+   375→        detail: dict[str, Any] | None = None,
+   376→    ) -> None:
+   377→        super().__init__(message, code="MMR_INVALID_PROOF", detail=detail)
+   378→
+   379→
+   380→class RootMismatchError(MMRError):
+   381→    """The computed MMR root does not match the expected value."""
+   382→
+   383→    def __init__(
+   384→        self,
+   385→        expected: bytes,
+   386→        actual: bytes,
+   387→        *,
+   388→        detail: dict[str, Any] | None = None,
+   389→    ) -> None:
+   390→        super().__init__(
+   391→            f"MMR root mismatch: expected {expected.hex()}, got {actual.hex()}",
+   392→            code="MMR_ROOT_MISMATCH",
+   393→            detail={"expected": expected.hex(), "actual": actual.hex(), **(detail or {})},
+   394→        )
+   395→
+   396→
+   397→# ---------------------------------------------------------------------------
+   398→# Storage
+   399→# ---------------------------------------------------------------------------
+   400→
+   401→class StorageError(LedgerError):
+   402→    """Base exception for storage operations."""
+   403→
+   404→    def __init__(
+   405→        self,
+   406→        message: str = "",
+   407→        *,
+   408→        code: str = "STORAGE_ERROR",
+   409→        detail: dict[str, Any] | None = None,
+   410→    ) -> None:
+   411→        super().__init__(message, code=code, detail=detail)
+   412→
+   413→
+   414→class DatabaseError(StorageError):
+   415→    """Raised when a database operation fails."""
+   416→
+   417→    def __init__(
+   418→        self,
+   419→        message: str = "",
+   420→        *,
+   421→        code: str = "DATABASE_ERROR",
+   422→        detail: dict[str, Any] | None = None,
+   423→    ) -> None:
+   424→        super().__init__(message, code=code, detail=detail)
+   425→
+   426→
+   427→class DBConnectionFailedError(DatabaseError):
+   428→    """Could not establish a database connection."""
+   429→
+   430→    def __init__(
+   431→        self,
+   432→        path: str = "",
+   433→        *,
+   434→        detail: dict[str, Any] | None = None,
+   435→    ) -> None:
+   436→        super().__init__(
+   437→            f"Database connection failed: {path}",
+   438→            code="DATABASE_CONNECTION_FAILED",
+   439→            detail={"path": path, **(detail or {})},
+   440→        )
+   441→
+   442→
+   443→class DatabaseBusyError(DatabaseError):
+   444→    """The database is locked and the busy timeout expired."""
+   445→
+   446→    def __init__(
+   447→        self,
+   448→        *,
+   449→        detail: dict[str, Any] | None = None,
+   450→    ) -> None:
+   451→        super().__init__(
+   452→            "Database busy: timeout expired",
+   453→            code="DATABASE_BUSY",
+   454→            detail=detail,
+   455→        )
+   456→
+   457→
+   458→class DatabaseCorruptError(DatabaseError):
+   459→    """The database file is corrupt."""
+   460→
+   461→    def __init__(
+   462→        self,
+   463→        reason: str = "",
+   464→        *,
+   465→        detail: dict[str, Any] | None = None,
+   466→    ) -> None:
+   467→        super().__init__(
+   468→            f"Database corrupt: {reason}",
+   469→            code="DATABASE_CORRUPT",
+   470→            detail={"reason": reason, **(detail or {})},
+   471→        )
+   472→
+   473→
+   474→class MigrationFailedError(DatabaseError):
+   475→    """A database migration failed."""
+   476→
+   477→    def __init__(
+   478→        self,
+   479→        version: int,
+   480→        reason: str = "",
+   481→        *,
+   482→        detail: dict[str, Any] | None = None,
+   483→    ) -> None:
+   484→        super().__init__(
+   485→            f"Database migration to version {version} failed: {reason}",
+   486→            code="DATABASE_MIGRATION_FAILED",
+   487→            detail={"version": version, "reason": reason, **(detail or {})},
+   488→        )
+   489→
+   490→
+   491→class SnapshotError(StorageError):
+   492→    """Raised when a snapshot operation fails."""
+   493→
+   494→    def __init__(
+   495→        self,
+   496→        message: str = "",
+   497→        *,
+   498→        code: str = "SNAPSHOT_ERROR",
+   499→        detail: dict[str, Any] | None = None,
+   500→    ) -> None:
+   501→        super().__init__(message, code=code, detail=detail)
+   502→
+   503→
+   504→class SnapshotCreationError(SnapshotError):
+   505→    """Failed to create a snapshot."""
+   506→
+   507→    def __init__(
+   508→        self,
+   509→        reason: str = "",
+   510→        *,
+   511→        detail: dict[str, Any] | None = None,
+   512→    ) -> None:
+   513→        super().__init__(
+   514→            f"Snapshot creation failed: {reason}",
+   515→            code="SNAPSHOT_CREATION_FAILED",
+   516→            detail={"reason": reason, **(detail or {})},
+   517→        )
+   518→
+   519→
+   520→class SnapshotRestorationError(SnapshotError):
+   521→    """Failed to restore a snapshot."""
+   522→
+   523→    def __init__(
+   524→        self,
+   525→        reason: str = "",
+   526→        *,
+   527→        detail: dict[str, Any] | None = None,
+   528→    ) -> None:
+   529→        super().__init__(
+   530→            f"Snapshot restoration failed: {reason}",
+   531→            code="SNAPSHOT_RESTORATION_FAILED",
+   532→            detail={"reason": reason, **(detail or {})},
+   533→        )
+   534→
+   535→
+   536→class SnapshotIntegrityError(SnapshotError):
+   537→    """A snapshot failed an integrity check."""
+   538→
+   539→    def __init__(
+   540→        self,
+   541→        reason: str = "",
+   542→        *,
+   543→        detail: dict[str, Any] | None = None,
+   544→    ) -> None:
+   545→        super().__init__(
+   546→            f"Snapshot integrity check failed: {reason}",
+   547→            code="SNAPSHOT_INTEGRITY_FAILED",
+   548→            detail={"reason": reason, **(detail or {})},
+   549→        )
+   550→
+   551→
+   552→# ---------------------------------------------------------------------------
+   553→# Replay
+   554→# ---------------------------------------------------------------------------
+   555→
+   556→class ReplayError(LedgerError):
+   557→    """Raised when a replay verification fails."""
+   558→
+   559→    def __init__(
+   560→        self,
+   561→        message: str = "",
+   562→        *,
+   563→        code: str = "REPLAY_ERROR",
+   564→        detail: dict[str, Any] | None = None,
+   565→    ) -> None:
+   566→        super().__init__(message, code=code, detail=detail)
+   567→
+   568→
+   569→class SequenceViolationError(ReplayError):
+   570→    """Entries are not in sequential order."""
+   571→
+   572→    def __init__(
+   573→        self,
+   574→        expected: int,
+   575→        actual: int,
+   576→        *,
+   577→        detail: dict[str, Any] | None = None,
+   578→    ) -> None:
+   579→        super().__init__(
+   580→            f"Sequence violation: expected sequence {expected}, got {actual}",
+   581→            code="REPLAY_SEQUENCE_VIOLATION",
+   582→            detail={"expected": expected, "actual": actual, **(detail or {})},
+   583→        )
+   584→
+   585→
+   586→class ParentChainBrokenError(ReplayError):
+   587→    """A parent reference does not point to the previous entry."""
+   588→
+   589→    def __init__(
+   590→        self,
+   591→        expected_parent: bytes,
+   592→        actual_parent: bytes,
+   593→        *,
+   594→        detail: dict[str, Any] | None = None,
+   595→    ) -> None:
+   596→        super().__init__(
+   597→            "Parent chain broken",
+   598→            code="REPLAY_PARENT_CHAIN_BROKEN",
+   599→            detail={
+   600→                "expected_parent": expected_parent.hex(),
+   601→                "actual_parent": actual_parent.hex(),
+   602→                **(detail or {}),
+   603→            },
+   604→        )
+   605→
+   606→
+   607→class ReplayHashMismatchError(ReplayError):
+   608→    """A hash computed during replay does not match the stored hash."""
+   609→
+   610→    def __init__(
+   611→        self,
+   612→        field: str,
+   613→        expected: bytes,
+   614→        actual: bytes,
+   615→        *,
+   616→        detail: dict[str, Any] | None = None,
+   617→    ) -> None:
+   618→        super().__init__(
+   619→            f"Replay hash mismatch for {field}",
+   620→            code="REPLAY_HASH_MISMATCH",
+   621→            detail={
+   622→                "field": field,
+   623→                "expected": expected.hex(),
+   624→                "actual": actual.hex(),
+   625→                **(detail or {}),
+   626→            },
+   627→        )
+   628→
+   629→
+   630→class ValidatorHistoryError(ReplayError):
+   631→    """A validator history check failed during replay."""
+   632→
+   633→    def __init__(
+   634→        self,
+   635→        validator_id: str,
+   636→        reason: str = "",
+   637→        *,
+   638→        detail: dict[str, Any] | None = None,
+   639→    ) -> None:
+   640→        super().__init__(
+   641→            f"Validator history error for {validator_id}: {reason}",
+   642→            code="REPLAY_VALIDATOR_HISTORY",
+   643→            detail={"validator_id": validator_id, "reason": reason, **(detail or {})},
+   644→        )
+   645→
+   646→
+   647→# ---------------------------------------------------------------------------
+   648→# Validator
+   649→# ---------------------------------------------------------------------------
+   650→
+   651→class ValidatorError(LedgerError):
+   652→    """Raised when a validator operation fails."""
+   653→
+   654→    def __init__(
+   655→        self,
+   656→        message: str = "",
+   657→        *,
+   658→        code: str = "VALIDATOR_ERROR",
+   659→        detail: dict[str, Any] | None = None,
+   660→    ) -> None:
+   661→        super().__init__(message, code=code, detail=detail)
+   662→
+   663→
+   664→class ValidatorNotFoundError(ValidatorError):
+   665→    """The requested validator was not found."""
+   666→
+   667→    def __init__(
+   668→        self,
+   669→        validator_id: str,
+   670→        *,
+   671→        detail: dict[str, Any] | None = None,
+   672→    ) -> None:
+   673→        super().__init__(
+   674→            f"Validator not found: {validator_id}",
+   675→            code="VALIDATOR_NOT_FOUND",
+   676→            detail={"validator_id": validator_id, **(detail or {})},
+   677→        )
+   678→
+   679→
+   680→class DuplicateValidatorError(ValidatorError):
+   681→    """A validator with the same identifier already exists."""
+   682→
+   683→    def __init__(
+   684→        self,
+   685→        validator_id: str,
+   686→        *,
+   687→        detail: dict[str, Any] | None = None,
+   688→    ) -> None:
+   689→        super().__init__(
+   690→            f"Duplicate validator: {validator_id}",
+   691→            code="VALIDATOR_DUPLICATE",
+   692→            detail={"validator_id": validator_id, **(detail or {})},
+   693→        )
+   694→
+   695→
+   696→class ValidatorExpiredError(ValidatorError):
+   697→    """A validator's key has expired."""
+   698→
+   699→    def __init__(
+   700→        self,
+   701→        validator_id: str,
+   702→        *,
+   703→        detail: dict[str, Any] | None = None,
+   704→    ) -> None:
+   705→        super().__init__(
+   706→            f"Validator key expired: {validator_id}",
+   707→            code="VALIDATOR_EXPIRED",
+   708→            detail={"validator_id": validator_id, **(detail or {})},
+   709→        )
+   710→
+   711→
+   712→class WeightInvalidError(ValidatorError):
+   713→    """A validator's weight is outside the valid range."""
+   714→
+   715→    def __init__(
+   716→        self,
+   717→        validator_id: str,
+   718→        weight: int,
+   719→        *,
+   720→        detail: dict[str, Any] | None = None,
+   721→    ) -> None:
+   722→        super().__init__(
+   723→            f"Invalid weight {weight} for validator {validator_id}",
+   724→            code="VALIDATOR_WEIGHT_INVALID",
+   725→            detail={"validator_id": validator_id, "weight": weight, **(detail or {})},
+   726→        )
+   727→
+   728→
+   729→class QuorumFailedError(ValidatorError):
+   730→    """Quorum was not reached for a decision."""
+   731→
+   732→    def __init__(
+   733→        self,
+   734→        required: int,
+   735→        actual: int,
+   736→        *,
+   737→        detail: dict[str, Any] | None = None,
+   738→    ) -> None:
+   739→        super().__init__(
+   740→            f"Quorum failed: required {required}, got {actual}",
+   741→            code="VALIDATOR_QUORUM_FAILED",
+   742→            detail={"required": required, "actual": actual, **(detail or {})},
+   743→        )
+   744→
+   745→
+   746→# ---------------------------------------------------------------------------
+   747→# Envelope
+   748→# ---------------------------------------------------------------------------
+   749→
+   750→class EnvelopeError(LedgerError):
+   751→    """Raised when an envelope operation fails."""
+   752→
+   753→    def __init__(
+   754→        self,
+   755→        message: str = "",
+   756→        *,
+   757→        code: str = "ENVELOPE_ERROR",
+   758→        detail: dict[str, Any] | None = None,
+   759→    ) -> None:
+   760→        super().__init__(message, code=code, detail=detail)
+   761→
+   762→
+   763→class InvalidEnvelopeFormatError(EnvelopeError):
+   764→    """The envelope format is not recognised."""
+   765→
+   766→    def __init__(
+   767→        self,
+   768→        reason: str = "",
+   769→        *,
+   770→        detail: dict[str, Any] | None = None,
+   771→    ) -> None:
+   772→        super().__init__(
+   773→            f"Invalid envelope format: {reason}",
+   774→            code="ENVELOPE_INVALID_FORMAT",
+   775→            detail={"reason": reason, **(detail or {})},
+   776→        )
+   777→
+   778→
+   779→class MissingFieldError(EnvelopeError):
+   780→    """A required envelope field is missing."""
+   781→
+   782→    def __init__(
+   783→        self,
+   784→        field: str,
+   785→        *,
+   786→        detail: dict[str, Any] | None = None,
+   787→    ) -> None:
+   788→        super().__init__(
+   789→            f"Missing envelope field: {field}",
+   790→            code="ENVELOPE_MISSING_FIELD",
+   791→            detail={"field": field, **(detail or {})},
+   792→        )
+   793→
+   794→
+   795→class EnvelopeSignatureError(EnvelopeError):
+   796→    """An envelope signature could not be verified."""
+   797→
+   798→    def __init__(
+   799→        self,
+   800→        reason: str = "",
+   801→        *,
+   802→        detail: dict[str, Any] | None = None,
+   803→    ) -> None:
+   804→        super().__init__(
+   805→            f"Envelope signature verification failed: {reason}",
+   806→            code="ENVELOPE_SIGNATURE_VERIFICATION_FAILED",
+   807→            detail={"reason": reason, **(detail or {})},
+   808→        )
+   809→
+   810→
+   811→# ---------------------------------------------------------------------------
+   812→# Configuration
+   813→# ---------------------------------------------------------------------------
+   814→
+   815→class ConfigError(LedgerError):
+   816→    """Raised when a configuration error is detected."""
+   817→
+   818→    def __init__(
+   819→        self,
+   820→        message: str = "",
+   821→        *,
+   822→        code: str = "CONFIG_ERROR",
+   823→        detail: dict[str, Any] | None = None,
+   824→    ) -> None:
+   825→        super().__init__(message, code=code, detail=detail)
+   826→
+   827→
+   828→class InvalidValueError(ConfigError):
+   829→    """A configuration value is outside the valid range."""
+   830→
+   831→    def __init__(
+   832→        self,
+   833→        field: str,
+   834→        value: Any,
+   835→        reason: str = "",
+   836→        *,
+   837→        detail: dict[str, Any] | None = None,
+   838→    ) -> None:
+   839→        super().__init__(
+   840→            f"Invalid config value for {field}: {value!r} ({reason})",
+   841→            code="CONFIG_INVALID_VALUE",
+   842→            detail={"field": field, "value": repr(value), "reason": reason, **(detail or {})},
+   843→        )
+   844→
+   845→
+   846→class MissingConfigFieldError(ConfigError):
+   847→    """A required configuration field is missing."""
+   848→
+   849→    def __init__(
+   850→        self,
+   851→        field: str,
+   852→        *,
+   853→        detail: dict[str, Any] | None = None,
+   854→    ) -> None:
+   855→        super().__init__(
+   856→            f"Missing config field: {field}",
+   857→            code="CONFIG_MISSING_FIELD",
+   858→            detail={"field": field, **(detail or {})},
+   859→        )
+   860→
+   861→
+   862→class ImmutableAfterStartupError(ConfigError):
+   863→    """Attempted to modify a configuration value after startup."""
+   864→
+   865→    def __init__(
+   866→        self,
+   867→        field: str,
+   868→        *,
+   869→        detail: dict[str, Any] | None = None,
+   870→    ) -> None:
+   871→        super().__init__(
+   872→            f"Config field {field!r} is immutable after startup",
+   873→            code="CONFIG_IMMUTABLE_AFTER_STARTUP",
+   874→            detail={"field": field, **(detail or {})},
+   875→        )
+   876→
+   877→
+   878→# ---------------------------------------------------------------------------
+   879→# Network
+   880→# ---------------------------------------------------------------------------
+   881→
+   882→class NetworkError(LedgerError):
+   883→    """Raised when a network operation fails."""
+   884→
+   885→    def __init__(
+   886→        self,
+   887→        message: str = "",
+   888→        *,
+   889→        code: str = "NETWORK_ERROR",
+   890→        detail: dict[str, Any] | None = None,
+   891→    ) -> None:
+   892→        super().__init__(message, code=code, detail=detail)
+   893→
+   894→
+   895→class NetworkConnectionFailedError(NetworkError):
+   896→    """Could not establish a network connection."""
+   897→
+   898→    def __init__(
+   899→        self,
+   900→        target: str = "",
+   901→        *,
+   902→        detail: dict[str, Any] | None = None,
+   903→    ) -> None:
+   904→        super().__init__(
+   905→            f"Network connection failed: {target}",
+   906→            code="NETWORK_CONNECTION_FAILED",
+   907→            detail={"target": target, **(detail or {})},
+   908→        )
+   909→
+   910→
+   911→class TLSError(NetworkError):
+   912→    """A TLS handshake or certificate error occurred."""
+   913→
+   914→    def __init__(
+   915→        self,
+   916→        reason: str = "",
+   917→        *,
+   918→        detail: dict[str, Any] | None = None,
+   919→    ) -> None:
+   920→        super().__init__(
+   921→            f"TLS error: {reason}",
+   922→            code="NETWORK_TLS_ERROR",
+   923→            detail={"reason": reason, **(detail or {})},
+   924→        )
+   925→
+   926→
+   927→class AuthFailedError(NetworkError):
+   928→    """Authentication failed."""
+   929→
+   930→    def __init__(
+   931→        self,
+   932→        reason: str = "",
+   933→        *,
+   934→        detail: dict[str, Any] | None = None,
+   935→    ) -> None:
+   936→        super().__init__(
+   937→            f"Authentication failed: {reason}",
+   938→            code="NETWORK_AUTH_FAILED",
+   939→            detail={"reason": reason, **(detail or {})},
+   940→        )
+   941→
+   942→
+   943→class RateLimitedError(NetworkError):
+   944→    """The request was rate-limited."""
+   945→
+   946→    def __init__(
+   947→        self,
+   948→        *,
+   949→        detail: dict[str, Any] | None = None,
+   950→    ) -> None:
+   951→        super().__init__(
+   952→            "Rate limited",
+   953→            code="NETWORK_RATE_LIMITED",
+   954→            detail=detail,
+   955→        )
+   956→

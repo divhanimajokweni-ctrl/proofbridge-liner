@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  ledger:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: production-ledger
+    restart: unless-stopped
+    ports:
+      - "50051:50051"
+    volumes:
+      - ledger-data:/app/data
+      - ledger-logs:/app/logs
+      - ./configs/production.toml:/app/configs/production.toml:ro
+    environment:
+      - LEDGER_CONFIG=/app/configs/production.toml
+      - LEDGER_DATA_DIR=/app/data
+      - LEDGER_LOG_DIR=/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:50051/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  ledger-data:
+    driver: local
+  ledger-logs:
+    driver: local
