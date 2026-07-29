@@ -68,9 +68,15 @@ export function ContactSection() {
   const contactInfo = [
     {
       icon: Mail,
-      label: 'Email',
-      value: 'info@venturevisionubuntu.org',
-      description: 'General enquiries and partnership discussions',
+      label: 'General Enquiries',
+      value: 'hello@venturevisionubuntu.co.za',
+      description: 'Partnership discussions and general questions',
+    },
+    {
+      icon: Mail,
+      label: 'Founder',
+      value: 'divh@venturevisionubuntu.co.za',
+      description: 'Direct contact for the founder and CEO',
     },
     {
       icon: MapPin,
