@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, ChevronDown } from 'lucide-react';
+import { Menu, X, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const navLinks = [
@@ -15,7 +15,11 @@ const navLinks = [
   { label: 'Contact', href: '#contact' },
 ];
 
-export function Navigation() {
+interface NavigationProps {
+  onEnterWorkspace?: () => void;
+}
+
+export function Navigation({ onEnterWorkspace }: NavigationProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -78,13 +82,16 @@ export function Navigation() {
                   {link.label}
                 </button>
               ))}
-              <Button
-                size="sm"
-                className="ml-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20"
-                onClick={() => handleNav('#contact')}
-              >
-                Get Involved
-              </Button>
+              {onEnterWorkspace && (
+                <Button
+                  size="sm"
+                  className="ml-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20 gap-2"
+                  onClick={onEnterWorkspace}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Enter Workspace
+                </Button>
+              )}
             </div>
 
             {/* Mobile Toggle */}
@@ -122,12 +129,15 @@ export function Navigation() {
                   {link.label}
                 </button>
               ))}
-              <Button
-                className="mt-4 w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white"
-                onClick={() => handleNav('#contact')}
-              >
-                Get Involved
-              </Button>
+              {onEnterWorkspace && (
+                <Button
+                  className="mt-4 w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white gap-2"
+                  onClick={() => { setMobileOpen(false); onEnterWorkspace(); }}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Enter Workspace
+                </Button>
+              )}
             </div>
           </motion.div>
         )}

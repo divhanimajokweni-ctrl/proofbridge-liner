@@ -17,7 +17,7 @@ import {
   Download, ChevronRight, X, Shield, Eye, Droplets, Zap,
   BrainCircuit, Boxes, ShieldCheck, FileCheck2, Workflow,
   Activity as ActivityIcon, CheckCircle2, Lock, Unlock,
-  ArrowRight, Sparkles, BookOpen, Scale, FileText,
+  ArrowRight, ArrowLeft, Sparkles, BookOpen, Scale, FileText,
 } from "lucide-react";
 import {
   PRODUCTS, PRODUCT_MAP, type ProductId,
@@ -357,7 +357,11 @@ function BottomBar({ activeMeta, verifiedCount, trustDensity, cbState }: {
 }
 
 // ─── Main Workbench Shell ───────────────────────────────────────────────
-export function WorkbenchShell() {
+interface WorkbenchShellProps {
+  onBackToLanding?: () => void;
+}
+
+export function WorkbenchShell({ onBackToLanding }: WorkbenchShellProps) {
   const [activeProduct, setActiveProduct] = useState<ProductId>("sphere");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -510,6 +514,12 @@ export function WorkbenchShell() {
       {/* Thin Header */}
       <header className="relative z-50 flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-2 backdrop-blur-xl" style={{ background: "rgba(12,12,18,0.8)" }}>
         <div className="flex items-center gap-2.5">
+          {onBackToLanding && (
+            <button onClick={onBackToLanding} className="flex items-center gap-1.5 rounded-md border border-white/[0.08] px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground hover:border-white/[0.15]" title="Back to VVU website">
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Website</span>
+            </button>
+          )}
           <svg width="24" height="24" viewBox="0 0 100 100" fill="none" aria-hidden className="flex-none">
             <circle cx="35" cy="40" r="16" stroke="#8A9A5B" strokeWidth="5" /><circle cx="65" cy="40" r="16" stroke="#CC7722" strokeWidth="5" /><circle cx="50" cy="64" r="16" stroke="#E2E3DB" strokeWidth="5" />
           </svg>

@@ -10,6 +10,7 @@ import {
   ArrowRight,
   CheckCircle2,
   ExternalLink,
+  LayoutDashboard,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -131,7 +132,11 @@ const programs: Program[] = [
   },
 ];
 
-export function ProgramsSection() {
+interface ProgramsSectionProps {
+  onEnterWorkspace?: () => void;
+}
+
+export function ProgramsSection({ onEnterWorkspace }: ProgramsSectionProps) {
   return (
     <section id="programs" className="relative py-24 sm:py-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -207,6 +212,38 @@ export function ProgramsSection() {
             </motion.div>
           ))}
         </div>
+
+        {/* Launch Workspace CTA */}
+        {onEnterWorkspace && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-100px' }}
+            transition={{ duration: 0.6 }}
+            className="mt-12 sm:mt-16 text-center"
+          >
+            <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-950/30 to-card max-w-2xl mx-auto">
+              <CardContent className="p-6 sm:p-8">
+                <LayoutDashboard className="w-10 h-10 text-emerald-400 mx-auto mb-4" />
+                <h3 className="text-xl sm:text-2xl font-bold mb-3">
+                  Try the VVU Workspace
+                </h3>
+                <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
+                  Launch the Trust Operating Environment — a capability-driven workspace
+                  with edge docks, trust-based onboarding, and live product dashboards.
+                </p>
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/25 gap-2"
+                  onClick={onEnterWorkspace}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  Enter Workspace
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
       </div>
     </section>
   );

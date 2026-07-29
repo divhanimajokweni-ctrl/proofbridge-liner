@@ -30,3 +30,27 @@ Stage Summary:
 - Emerald green and amber/gold color scheme reflecting VVU brand
 - Organization-first messaging throughout (not individual-centric)
 - All content reflects the VVU mission, programs, partnerships, and community engine
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Connect landing page to WorkbenchShell dashboard
+
+Work Log:
+- Connected VVU landing page to WorkbenchShell via state-based view toggle
+- Added `onEnterWorkspace` prop to Navigation, HeroSection, and ProgramsSection
+- Added "Enter Workspace" button in nav bar (with LayoutDashboard icon)
+- Added "Enter Workspace" as primary CTA in hero section
+- Added "Try the VVU Workspace" CTA card at bottom of Programs section
+- Added `onBackToLanding` prop to WorkbenchShell with "Website" back button
+- Added ArrowLeft import to workbench-shell.tsx
+- Updated page.tsx to use AnimatePresence for smooth crossfade between views
+- Fixed email addresses: hello@venturevisionubuntu.co.za and divh@venturevisionubuntu.co.za
+- Verified with agent-browser: landing→workspace transition works, workspace→landing transition works, no errors
+
+Stage Summary:
+- VVU landing page now flows directly into the WorkbenchShell dashboard
+- Three entry points: nav bar button, hero CTA, programs section CTA
+- One exit point: "Website" back button in WorkbenchShell header
+- Smooth crossfade animation between views
+- All email addresses corrected to .co.za domain

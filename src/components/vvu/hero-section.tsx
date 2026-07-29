@@ -1,10 +1,14 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ArrowDown, Sparkles, Shield, Cpu } from 'lucide-react';
+import { ArrowDown, Sparkles, Shield, Cpu, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-export function HeroSection() {
+interface HeroSectionProps {
+  onEnterWorkspace?: () => void;
+}
+
+export function HeroSection({ onEnterWorkspace }: HeroSectionProps) {
   const handleScroll = (href: string) => {
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -84,20 +88,23 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.8 }}
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
         >
-          <Button
-            size="lg"
-            className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/25 px-8 py-6 text-base"
-            onClick={() => handleScroll('#programs')}
-          >
-            Explore Our Programs
-          </Button>
+          {onEnterWorkspace && (
+            <Button
+              size="lg"
+              className="bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/25 px-8 py-6 text-base gap-2"
+              onClick={onEnterWorkspace}
+            >
+              <LayoutDashboard className="w-5 h-5" />
+              Enter Workspace
+            </Button>
+          )}
           <Button
             size="lg"
             variant="outline"
             className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 px-8 py-6 text-base"
-            onClick={() => handleScroll('#partners')}
+            onClick={() => handleScroll('#programs')}
           >
-            Partner With Us
+            Explore Our Programs
           </Button>
         </motion.div>
 
@@ -109,7 +116,7 @@ export function HeroSection() {
           className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 max-w-3xl mx-auto"
         >
           {[
-            { value: '5', label: 'Active Programs', icon: Cpu },
+            { value: '7', label: 'Trust Products', icon: Cpu },
             { value: '10+', label: 'Strategic Partners', icon: Shield },
             { value: '1 Aug', label: 'Public Launch', icon: Sparkles },
             { value: 'ZA', label: 'South African Built', icon: ArrowDown },
