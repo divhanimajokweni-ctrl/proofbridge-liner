@@ -1132,9 +1132,307 @@ export const TAAS_CORE_PILLARS: TaasPillar[] = [
   { id: "pillar-3", pillar: "InfrastructureRight Abstraction", description: "Water, Energy, Compute, and Storage are delivered as digital rights — not physical assets. The municipality subscribes to outcomes, not equipment.", color: "#3B82F6", icon: "Key" },
 ];
 
-// ── HBK Dashboard Tabs (updated for Consortium Model + Phase 2 + TaaS) ────
+// ════════════════════════════════════════════════════════════════════════
+// Founding Partners Campaign Framework — "Founding 100"
+// ════════════════════════════════════════════════════════════════════════
 
-export type HbkTabId = "consortium" | "ownership" | "contracts" | "ip" | "roadmap" | "power-thermal" | "twin" | "taas" | "resources" | "simulation" | "timeline" | "gitlog";
+// ── Campaign Narrative ─────────────────────────────────────────────────
+
+export const FOUNDING100_NARRATIVE = {
+  coreQuote: "We are not requesting unrestricted funding. We are inviting your organization to sponsor one operational resource that enables the HBK Applied Research Programme to continue building South African technology for water infrastructure.",
+  oneSentenceAsk: "Will you become one of the first 100 organizations helping establish South Africa's HBK Applied Research Programme?",
+};
+
+// ── Campaign Psychology ────────────────────────────────────────────────
+
+export interface CampaignPsychology {
+  oldApproach: string;
+  newApproach: string;
+}
+
+export const CAMPAIGN_PSYCHOLOGY: CampaignPsychology[] = [
+  { oldApproach: "Will you sponsor us?", newApproach: "Will you become one of the first 100 organizations helping establish South Africa's HBK Applied Research Programme?" },
+  { oldApproach: "Asking for help", newApproach: "Inviting participation" },
+  { oldApproach: "One large sponsor needed", newApproach: "Many small contributions build momentum" },
+  { oldApproach: "Passive request", newApproach: "Active campaign" },
+  { oldApproach: "Uncertainty about what's needed", newApproach: "Clear menu of opportunities" },
+];
+
+// ── Sponsorship Catalogue Packages ─────────────────────────────────────
+
+export interface SponsorshipPackage {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  estimatedValue: string;
+  impact: string;
+  items: { name: string; quantity: string; typicalProvider: string }[];
+}
+
+export const FOUNDING100_PACKAGES: SponsorshipPackage[] = [
+  {
+    id: "pkg-ops",
+    name: "Operations Package",
+    icon: "Building2",
+    color: "#C9A84C",
+    estimatedValue: "R15,000–30,000",
+    impact: "Enables dedicated research workspace",
+    items: [
+      { name: "Desk", quantity: "2", typicalProvider: "University, office provider" },
+      { name: "Chair", quantity: "2", typicalProvider: "University, office provider" },
+      { name: "Lockable cabinet", quantity: "1", typicalProvider: "University, office provider" },
+    ],
+  },
+  {
+    id: "pkg-eng",
+    name: "Engineering Package",
+    icon: "Laptop",
+    color: "#10b981",
+    estimatedValue: "R30,000–90,000",
+    impact: "Powers engineering development and algorithm validation",
+    items: [
+      { name: "Laptop", quantity: "1–3", typicalProvider: "Dell, Lenovo, HP" },
+      { name: "External monitor", quantity: "1–3", typicalProvider: "Hardware manufacturer, retail" },
+      { name: "UPS", quantity: "1–2", typicalProvider: "Makro, Builders" },
+      { name: "Keyboard & mouse", quantity: "1–3", typicalProvider: "Hardware manufacturer, retail" },
+    ],
+  },
+  {
+    id: "pkg-conn",
+    name: "Connectivity Package",
+    icon: "Wifi",
+    color: "#3B82F6",
+    estimatedValue: "R5,000–15,000/year",
+    impact: "Enables field data transmission and cloud connectivity",
+    items: [
+      { name: "Router", quantity: "1", typicalProvider: "MTN, Vodacom" },
+      { name: "SIM card", quantity: "1–2", typicalProvider: "Telecom provider" },
+      { name: "Monthly data allocation", quantity: "200+ GB", typicalProvider: "Telecom provider" },
+    ],
+  },
+  {
+    id: "pkg-field",
+    name: "Field Operations Package",
+    icon: "HardHat",
+    color: "#F59E0B",
+    estimatedValue: "R10,000–25,000",
+    impact: "Enables safe field deployment",
+    items: [
+      { name: "Reflective jackets", quantity: "3–5", typicalProvider: "PPE supplier, textile company" },
+      { name: "Safety boots", quantity: "3–5", typicalProvider: "PPE supplier" },
+      { name: "Hard hats", quantity: "3–5", typicalProvider: "PPE supplier" },
+      { name: "Equipment bags", quantity: "2–3", typicalProvider: "PPE supplier, local manufacturer" },
+    ],
+  },
+  {
+    id: "pkg-workshop",
+    name: "Workshop Package",
+    icon: "Users",
+    color: "#8B5CF6",
+    estimatedValue: "R5,000–15,000/workshop",
+    impact: "Enables research workshops and stakeholder meetings",
+    items: [
+      { name: "Printing services", quantity: "Up to 500 pages", typicalProvider: "Local print shop, university" },
+      { name: "Meeting room", quantity: "As needed", typicalProvider: "University, municipality" },
+      { name: "Coffee/refreshments", quantity: "For 20 participants", typicalProvider: "Local café, restaurant" },
+      { name: "Lunch", quantity: "For 20 participants", typicalProvider: "Catering company, restaurant" },
+    ],
+  },
+  {
+    id: "pkg-brand",
+    name: "Branding Package",
+    icon: "Tshirt",
+    color: "#EF4444",
+    estimatedValue: "R8,000–25,000",
+    impact: "Professional presence and programme identity",
+    items: [
+      { name: "Branded shirts", quantity: "5–10", typicalProvider: "Textile company, embroidery business" },
+      { name: "Jackets", quantity: "3–5", typicalProvider: "Textile company" },
+      { name: "Caps", quantity: "5–10", typicalProvider: "Textile company, embroidery business" },
+      { name: "Name badges", quantity: "5–10", typicalProvider: "Signage company, print shop" },
+      { name: "Vehicle branding", quantity: "1 (optional)", typicalProvider: "Signage company" },
+    ],
+  },
+];
+
+// ── Partner Categories ─────────────────────────────────────────────────
+
+export interface PartnerCategory {
+  id: string;
+  tier: string;
+  partners: string[];
+  agreementType: string;
+  color: string;
+  description: string;
+}
+
+export const PARTNER_CATEGORIES: PartnerCategory[] = [
+  // Consortium Members
+  { id: "pc-research", tier: "Consortium — Research", partners: ["UCT", "Wits", "Other universities"], agreementType: "Research Collaboration Agreement", color: "#3B82F6", description: "Formal research collaboration with academic institutions" },
+  { id: "pc-government", tier: "Consortium — Government", partners: ["WRC", "NRF", "DSTI"], agreementType: "Grant Agreement", color: "#10b981", description: "Government funding bodies supporting applied research" },
+  { id: "pc-industry", tier: "Consortium — Industry", partners: ["AMD", "Sensor manufacturers", "Tech partners"], agreementType: "Technology Partnership Agreement", color: "#C9A84C", description: "Technology companies providing hardware and expertise" },
+  { id: "pc-municipal", tier: "Consortium — Municipalities", partners: ["NMBM", "Other municipalities"], agreementType: "Pilot Agreement", color: "#F59E0B", description: "Municipal partners providing pilot sites and operational validation" },
+  // Friends of VVU
+  { id: "fv-small", tier: "Friends of VVU — Small Business", partners: ["Local shops", "Hardware stores"], agreementType: "In-kind support, discounts", color: "#8B5CF6", description: "Informal support — no lengthy agreements required" },
+  { id: "fv-food", tier: "Friends of VVU — Restaurants", partners: ["Local cafés", "Catering"], agreementType: "Refreshments, meals", color: "#EF4444", description: "Food and refreshment contributions for workshops" },
+  { id: "fv-community", tier: "Friends of VVU — Community", partners: ["Churches", "Community centers"], agreementType: "Space, volunteers", color: "#06B6D4", description: "Community organizations providing space and volunteers" },
+  { id: "fv-print", tier: "Friends of VVU — Printing", partners: ["Local print shops"], agreementType: "Documentation, signage", color: "#84CC16", description: "Printing companies supporting documentation" },
+  { id: "fv-transport", tier: "Friends of VVU — Transport", partners: ["Taxi companies"], agreementType: "Transport, logistics", color: "#F97316", description: "Transport companies providing logistics support" },
+  // Founding Community Partners
+  { id: "fc-catering", tier: "Founding Community — Catering", partners: ["Meeting refreshments", "Workshop meals"], agreementType: "In-kind", color: "#EC4899", description: "Catering for research workshops" },
+  { id: "fc-uniform", tier: "Founding Community — Uniforms", partners: ["Branded shirts", "Jackets", "Caps"], agreementType: "In-kind", color: "#14B8A6", description: "Professional field presence" },
+  { id: "fc-logistics", tier: "Founding Community — Logistics", partners: ["Equipment transport", "Storage"], agreementType: "In-kind", color: "#A855F7", description: "Logistics for field operations" },
+  { id: "fc-marketing", tier: "Founding Community — Marketing", partners: ["Photography", "Videography", "Social media"], agreementType: "In-kind", color: "#6366F1", description: "Marketing and visibility support" },
+];
+
+// ── Impact Language Framework ──────────────────────────────────────────
+
+export interface ImpactLanguage {
+  needStatement: string;
+  impactStatement: string;
+}
+
+export const IMPACT_LANGUAGE: ImpactLanguage[] = [
+  { needStatement: "We require office space.", impactStatement: "A contribution of temporary workspace will directly accelerate engineering development, field validation, and student collaboration during the foundational phase of the HBK Applied Research Programme." },
+  { needStatement: "We need laptops.", impactStatement: "Sponsoring a workstation enables our engineering team to develop and validate the HBK Mk-II platform, advancing South Africa's hydraulic intelligence capabilities." },
+  { needStatement: "We require mobile data.", impactStatement: "A data contribution allows our field teams to transmit critical acoustic and pressure evidence in real-time, accelerating validation of Bayesian leak detection algorithms." },
+  { needStatement: "We need branded shirts.", impactStatement: "Supporting field uniforms establishes a professional research presence during municipal site visits, building trust with partners and communities." },
+  { needStatement: "We require workshop catering.", impactStatement: "Sponsoring workshop refreshments enables productive collaboration among researchers, municipalities, and industry partners working on water infrastructure solutions." },
+];
+
+// ── Network Effect Contributions ───────────────────────────────────────
+
+export interface NetworkEffect {
+  contribution: string;
+  partnerType: string;
+  impact: string;
+}
+
+export const NETWORK_EFFECTS: NetworkEffect[] = [
+  { contribution: "2 desks", partnerType: "University", impact: "Enables research workspace" },
+  { contribution: "1 laptop", partnerType: "Dell", impact: "Powers engineering development" },
+  { contribution: "10 shirts", partnerType: "Local textile company", impact: "Professional field presence" },
+  { contribution: "200 GB/month", partnerType: "MTN", impact: "Connectivity for field data" },
+  { contribution: "Whiteboard", partnerType: "Makro", impact: "Planning and collaboration" },
+  { contribution: "Printing", partnerType: "Local print shop", impact: "Documentation and reporting" },
+  { contribution: "Coffee", partnerType: "Local café", impact: "Meeting refreshments" },
+  { contribution: "Safety boots", partnerType: "PPE supplier", impact: "Field operations safety" },
+];
+
+// ── Campaign Success Metrics ───────────────────────────────────────────
+
+export interface SuccessMetric {
+  metric: string;
+  target: string;
+  measurement: string;
+}
+
+export const CAMPAIGN_SUCCESS_METRICS: SuccessMetric[] = [
+  { metric: "Founding 100 partners", target: "100 within 12 months", measurement: "Signed response forms" },
+  { metric: "Resources secured", target: "All priority resources", measurement: "Resource register" },
+  { metric: "Programme visibility", target: "50+ mentions", measurement: "Media, social media" },
+  { metric: "Grant funding", target: "2+ grants secured", measurement: "Grant agreements" },
+  { metric: "Research outputs", target: "2+ papers submitted", measurement: "Publications" },
+];
+
+// ── Outreach Strategy Tiers ────────────────────────────────────────────
+
+export interface OutreachTier {
+  tier: number;
+  targets: string;
+  approach: string;
+  keyMessage: string;
+}
+
+export const OUTREACH_TIERS: OutreachTier[] = [
+  { tier: 1, targets: "Universities (UCT, Wits)", approach: "Research office, engineering faculty", keyMessage: "Enable research collaboration and student training" },
+  { tier: 2, targets: "Funding bodies (WRC, NRF)", approach: "Programme officers, grants managers", keyMessage: "Fund applied research with national impact" },
+  { tier: 3, targets: "Municipalities (NMBM)", approach: "Engineering department, city management", keyMessage: "Pilot site access and operational validation" },
+  { tier: 4, targets: "Technology companies (AMD, Dell, Lenovo)", approach: "Regional directors, CSR managers", keyMessage: "Showcase your hardware in African water infrastructure research" },
+  { tier: 5, targets: "Telecom providers (MTN, Vodacom)", approach: "Corporate affairs, CSR", keyMessage: "Enable connectivity for field research" },
+  { tier: 6, targets: "Retail (Makro, Builders)", approach: "Corporate social investment, store managers", keyMessage: "Support local technology development through in-kind contributions" },
+  { tier: 7, targets: "Local manufacturers", approach: "Owners, managers", keyMessage: "Contribute to a nationally relevant programme" },
+  { tier: 8, targets: "Food/catering", approach: "Owners, managers", keyMessage: "Support research workshops and meetings" },
+];
+
+// ════════════════════════════════════════════════════════════════════════
+// Operator Runbook VVU-VAL-001 — 72h Validation
+// ════════════════════════════════════════════════════════════════════════
+
+// ── Golden Rules ───────────────────────────────────────────────────────
+
+export interface GoldenRule {
+  id: string;
+  rule: string;
+  rationale: string;
+  severity: "mandatory" | "high" | "medium";
+}
+
+export const OPERATOR_GOLDEN_RULES: GoldenRule[] = [
+  { id: "gr-1", rule: "No code changes", rationale: "The frozen commit hash must remain the build under test for the full 72 hours.", severity: "mandatory" },
+  { id: "gr-2", rule: "No configuration edits", rationale: "Config changes could alter the runtime's behaviour mid-run, invalidating earlier phases.", severity: "mandatory" },
+  { id: "gr-3", rule: "No manual Fact Log edits", rationale: "The Fact Log is append-only and immutable. Any edit is a Critical failure (§3.1).", severity: "mandatory" },
+  { id: "gr-4", rule: "No manual Circuit Breaker transitions", rationale: "The CB must transition per the state machine. Manual transitions permitted only for P5/P7 documented recovery sequences.", severity: "mandatory" },
+  { id: "gr-5", rule: "Hardware replacement only", rationale: "If a physical node fails, you may replace it. Log timestamp, node ID, and sign the entry.", severity: "high" },
+  { id: "gr-6", rule: "All interventions logged", rationale: "Every SSH session, kubectl command, hardware touch — logged to an append-only operator log.", severity: "mandatory" },
+  { id: "gr-7", rule: "All interventions signed", rationale: "Every log entry is signed with your Ed25519 key (published before T=0).", severity: "mandatory" },
+  { id: "gr-8", rule: "No touching evidence bundles", rationale: "Evidence bundles are produced by the archiver and are immutable. You have no write access.", severity: "mandatory" },
+];
+
+// ── Validation Phases (72h) ────────────────────────────────────────────
+
+export interface ValidationPhase {
+  id: string;
+  phase: string;
+  hours: string;
+  whatToWatch: string;
+  whenToAct: string;
+  status: "pending" | "active" | "passed" | "critical";
+}
+
+export const VALIDATION_PHASES_72H: ValidationPhase[] = [
+  { id: "vp-1", phase: "P1 Nominal", hours: "0–12", whatToWatch: "CB stays NORMAL", whenToAct: "Only if CB goes FAIL-CLOSED (Critical)", status: "pending" },
+  { id: "vp-2", phase: "P2 Flood", hours: "12–24", whatToWatch: "Queue depth, CB may go DEGRADED", whenToAct: "Only if CB goes FAIL-CLOSED (Critical)", status: "pending" },
+  { id: "vp-3", phase: "P3 Network Chaos", hours: "24–36", whatToWatch: "Replay status, latency", whenToAct: "Only if replay goes DIVERGENT (Critical)", status: "pending" },
+  { id: "vp-4", phase: "P4 Storage Pressure", hours: "36–48", whatToWatch: "Disk usage, CB DEGRADED expected", whenToAct: "Only if disk fills to 100% (replace PV)", status: "pending" },
+  { id: "vp-5", phase: "P5 Node Failure", hours: "48–60", whatToWatch: "Pods restarting, CB recovery", whenToAct: "Only if a pod doesn't restart within 5 min", status: "pending" },
+  { id: "vp-6", phase: "P6 Security", hours: "60–66", whatToWatch: "Rejected payloads, HF gates", whenToAct: "Only if a spoofed payload is ACCEPTED (Critical)", status: "pending" },
+  { id: "vp-7", phase: "P7 Partition", hours: "66–72", whatToWatch: "NATS queue, then HLC merge", whenToAct: "Only if merge produces conflicts (Critical)", status: "pending" },
+];
+
+// ── Critical Failure Response ──────────────────────────────────────────
+
+export interface CriticalFailureResponse {
+  step: string;
+  action: string;
+}
+
+export const CRITICAL_FAILURE_RESPONSE: CriticalFailureResponse[] = [
+  { step: "1. Do NOT attempt to fix it", action: "The run terminates immediately; the outcome is FAIL." },
+  { step: "2. Log the failure", action: "Log in operator log with timestamp and description." },
+  { step: "3. Notify stakeholders", action: "Notify VVU engineering lead and independent observers." },
+  { step: "4. Preserve all evidence", action: "Do not delete or modify any logs, bundles, or state." },
+  { step: "5. File postmortem", action: "Postmortem within 48 hours, published alongside evidence package." },
+];
+
+// ── Companion Documents ────────────────────────────────────────────────
+
+export interface CompanionDocument {
+  name: string;
+  purpose: string;
+  audience: string;
+}
+
+export const COMPANION_DOCUMENTS: CompanionDocument[] = [
+  { name: "Master Programme & Governance Document", purpose: "Programme framework, governance, partner types, agreements", audience: "All partners, formal reference" },
+  { name: "Founding Resource Partnership Prospectus", purpose: "Visual catalogue of sponsorship opportunities", audience: "Prospective partners, decision-makers" },
+  { name: "Partner Outreach Pack", purpose: "Cover letter, one-pager, catalogue, FAQs, response form", audience: "Outreach contacts, all prospects" },
+];
+
+// ── HBK Dashboard Tabs (updated for Consortium Model + Phase 2 + TaaS + Founding 100 + VVU-VAL-001) ────
+
+export type HbkTabId = "consortium" | "ownership" | "contracts" | "ip" | "roadmap" | "power-thermal" | "twin" | "taas" | "founding100" | "resources" | "simulation" | "timeline" | "gitlog";
 
 export interface HbkTab {
   id: HbkTabId;
@@ -1152,6 +1450,7 @@ export const HBK_TABS: HbkTab[] = [
   { id: "power-thermal", label: "Power & Thermal", icon: "Zap", description: "Phase 2: 8S4P battery, Star Ground wiring, Epistemic thermal governance" },
   { id: "twin", label: "Digital Twin", icon: "Cpu", description: "HBK Mk-II 3D CAD layout and module status" },
   { id: "taas", label: "TaaS", icon: "Briefcase", description: "Terminal-as-a-Service: Commercial framework, revenue split, verification gates, SLA metrics" },
+  { id: "founding100", label: "Founding 100", icon: "Users", description: "Founding Partners Campaign — sponsorship catalogue, partner categories, outreach strategy" },
   { id: "resources", label: "Resource Register", icon: "ClipboardList", description: "Live tracking of commitments and gaps" },
   { id: "simulation", label: "72h Validation", icon: "Activity", description: "Full 72-hour validation loop with digital twin" },
   { id: "timeline", label: "Programme Timeline", icon: "Calendar", description: "Phase tracking, milestones, delivery" },

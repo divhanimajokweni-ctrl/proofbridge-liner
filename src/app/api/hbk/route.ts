@@ -9,6 +9,10 @@ import {
   TAAS_SLA_METRICS, TAAS_FINANCING, INFRASTRUCTURE_RIGHTS,
   ZERO_FAB_PARAMETERS, TRIPARTY_KEYS, ASSET_RECOVERY_PROVISIONS,
   TAAS_CORE_PILLARS,
+  FOUNDING100_NARRATIVE, CAMPAIGN_PSYCHOLOGY, FOUNDING100_PACKAGES,
+  PARTNER_CATEGORIES, IMPACT_LANGUAGE, NETWORK_EFFECTS,
+  CAMPAIGN_SUCCESS_METRICS, OUTREACH_TIERS, COMPANION_DOCUMENTS,
+  OPERATOR_GOLDEN_RULES, VALIDATION_PHASES_72H, CRITICAL_FAILURE_RESPONSE,
 } from "@/lib/hbk/types";
 
 export async function GET() {
@@ -42,11 +46,28 @@ export async function GET() {
       tripartyKeys: TRIPARTY_KEYS,
       assetRecovery: ASSET_RECOVERY_PROVISIONS,
     },
+    founding100: {
+      narrative: FOUNDING100_NARRATIVE,
+      psychology: CAMPAIGN_PSYCHOLOGY,
+      packages: FOUNDING100_PACKAGES,
+      partnerCategories: PARTNER_CATEGORIES,
+      impactLanguage: IMPACT_LANGUAGE,
+      networkEffects: NETWORK_EFFECTS,
+      successMetrics: CAMPAIGN_SUCCESS_METRICS,
+      outreachTiers: OUTREACH_TIERS,
+      companionDocuments: COMPANION_DOCUMENTS,
+    },
+    operatorRunbook: {
+      goldenRules: OPERATOR_GOLDEN_RULES,
+      validationPhases72h: VALIDATION_PHASES_72H,
+      criticalFailureResponse: CRITICAL_FAILURE_RESPONSE,
+    },
     meta: {
       project: "VVU HBK Mk-II",
       phase: "Phase 2 — Power & Thermal Architecture",
       capitalization: "VVU 100% — No equity dilution. Partnerships through contracts, not ownership.",
       commercialModel: "Terminal-as-a-Service (TaaS) — CapEx → OpEx pivot, balance sheet de-risking for municipalities",
+      campaign: "Founding 100 — Will you become one of the first 100 organizations helping establish South Africa's HBK Applied Research Programme?",
       compute: "AMD Ryzen AI Embedded APU / Kria SoM (Edge-Compute)",
       power: "8S4P 32700 LiFePO₄ (25.6V, 20Ah, 614Wh) — Daly 8S 20A BMS",
       thermal: "3-tier containment: TIM PCM → Structural conduction → Aerogel isolation (0.015 W/m·K)",
@@ -56,6 +77,7 @@ export async function GET() {
       consortiumModel: "VVU coordinates the HBK Applied Research Programme through tailored agreements: Research Collaboration (academic), Grant (funding), Pilot (municipal), Technology Partnership (industrial).",
       zeroFabrication: "32 SRS parameters must be empirically verified before manufacturing begins",
       verificationGates: "VR1 (Geometry) → VR2 (Material) → VR3 (Assembly) → VR4 (Functional) → VR5 (Field Acceptance)",
+      operatorRunbook: "VVU-VAL-001 — 72h validation run with 8 golden rules, 7 phases (P1–P7), and critical failure response protocol",
     },
   });
 }

@@ -19,6 +19,7 @@ import {
   ShieldAlert, Layers, Flame, Plug,
   Key, DollarSign, BarChart3, ShieldCheck, FileWarning,
   ArrowUpRight, TrendingUp, AlertCircle, Wallet,
+  Megaphone, Package, Send, HardHat, Tshirt,
 } from "lucide-react";
 import {
   Card, CardHeader, CardContent, CardTitle, CardDescription,
@@ -34,6 +35,10 @@ import {
   TAAS_SLA_METRICS, TAAS_FINANCING, INFRASTRUCTURE_RIGHTS,
   ZERO_FAB_PARAMETERS, TRIPARTY_KEYS, ASSET_RECOVERY_PROVISIONS,
   TAAS_CORE_PILLARS,
+  FOUNDING100_NARRATIVE, CAMPAIGN_PSYCHOLOGY, FOUNDING100_PACKAGES,
+  PARTNER_CATEGORIES, IMPACT_LANGUAGE, NETWORK_EFFECTS,
+  CAMPAIGN_SUCCESS_METRICS, OUTREACH_TIERS, COMPANION_DOCUMENTS,
+  OPERATOR_GOLDEN_RULES, VALIDATION_PHASES_72H, CRITICAL_FAILURE_RESPONSE,
   type HbkTabId, type CADModule, type GitAction,
   type ResourceItem, type ValidationPhase,
   type OwnershipEntry, type ConsortiumPartner,
@@ -263,6 +268,7 @@ export function HbkDashboard() {
       case "power-thermal": return <PowerThermalTab />;
       case "twin": return <DigitalTwinTab selectedModule={selectedModule} setSelectedModule={setSelectedModule} hoveredModule={hoveredModule} setHoveredModule={setHoveredModule} />;
       case "taas": return <TaasTab />;
+      case "founding100": return <Founding100Tab />;
       case "resources": return <ResourcesTab />;
       case "simulation": return <SimulationTab simRunning={simRunning} setSimRunning={setSimRunning} simElapsed={simElapsed} setSimElapsed={setSimElapsed} simHours={simHours} simMins={simMins} simSecs={simSecs} />;
       case "timeline": return <TimelineTab />;
@@ -2576,6 +2582,277 @@ function ResourcesTab() {
 }
 
 // ════════════════════════════════════════════════════════════════════════
+// FOUNDING 100 CAMPAIGN TAB
+// ════════════════════════════════════════════════════════════════════════
+
+function Founding100Tab() {
+  const [f100Section, setF100Section] = useState<string>("campaign");
+
+  const f100Sections = [
+    { id: "campaign", label: "Campaign", icon: <Megaphone className="h-3.5 w-3.5" /> },
+    { id: "packages", label: "Packages", icon: <Package className="h-3.5 w-3.5" /> },
+    { id: "partners", label: "Partners", icon: <Users className="h-3.5 w-3.5" /> },
+    { id: "impact", label: "Impact", icon: <Target className="h-3.5 w-3.5" /> },
+    { id: "outreach", label: "Outreach", icon: <Send className="h-3.5 w-3.5" /> },
+    { id: "metrics", label: "Metrics", icon: <BarChart3 className="h-3.5 w-3.5" /> },
+    { id: "documents", label: "Documents", icon: <FileText className="h-3.5 w-3.5" /> },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Section navigation */}
+      <div className="flex flex-wrap gap-1.5">
+        {f100Sections.map(s => (
+          <button key={s.id} onClick={() => setF100Section(s.id)}
+            className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-mono text-[9px] transition-all ${
+              f100Section === s.id
+                ? "bg-[#C9A84C]/15 text-[#C9A84C] border border-[#C9A84C]/30"
+                : "text-muted-foreground hover:text-foreground bg-white/[0.03] border border-white/[0.06]"
+            }`}
+          >
+            {s.icon}
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Campaign section */}
+      {f100Section === "campaign" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          {/* Core narrative */}
+          <div className="rounded-xl border border-[#C9A84C]/20 p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+            <div className="flex items-center gap-2 mb-3">
+              <Megaphone className="h-4 w-4" style={{ color: "#C9A84C" }} />
+              <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Founding 100 Campaign</span>
+            </div>
+            <blockquote className="border-l-2 border-[#C9A84C]/40 pl-3 mb-3">
+              <p className="font-mono text-[10px] text-foreground/80 italic">{FOUNDING100_NARRATIVE.coreQuote}</p>
+            </blockquote>
+            <div className="rounded-lg border border-[#C9A84C]/20 p-3" style={{ background: "rgba(201,168,76,0.05)" }}>
+              <span className="font-mono text-[9px] font-bold text-[#C9A84C]">The One-Sentence Ask</span>
+              <p className="font-mono text-[10px] text-foreground mt-1">{FOUNDING100_NARRATIVE.oneSentenceAsk}</p>
+            </div>
+          </div>
+
+          {/* Campaign Psychology */}
+          <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+            <span className="font-mono text-[10px] font-bold text-foreground">Campaign Psychology Shift</span>
+            <div className="mt-3 space-y-2">
+              {CAMPAIGN_PSYCHOLOGY.map((cp, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-lg border border-white/[0.06] p-2.5" style={{ background: "rgba(15,15,24,0.4)" }}>
+                  <span className="font-mono text-[9px] text-red-400/70 line-through flex-1">{cp.oldApproach}</span>
+                  <span className="text-[9px] text-[#C9A84C]">→</span>
+                  <span className="font-mono text-[9px] text-emerald-400 flex-1">{cp.newApproach}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Network Effect */}
+          <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+            <span className="font-mono text-[10px] font-bold text-foreground">The Network Effect</span>
+            <p className="font-mono text-[9px] text-muted-foreground mb-3 italic">Large programmes are built from many small contributions.</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {NETWORK_EFFECTS.map((ne, i) => (
+                <div key={i} className="rounded-lg border border-white/[0.06] p-2.5" style={{ background: "rgba(15,15,24,0.4)" }}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[9px] font-bold text-foreground">{ne.contribution}</span>
+                    <span className="font-mono text-[8px] text-muted-foreground">{ne.partnerType}</span>
+                  </div>
+                  <p className="font-mono text-[8px] text-[#C9A84C] mt-1">{ne.impact}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Packages section */}
+      {f100Section === "packages" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Package className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Sponsorship Catalogue</span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {FOUNDING100_PACKAGES.map(pkg => (
+              <div key={pkg.id} className="rounded-xl border p-4" style={{ background: "rgba(15,15,24,0.6)", borderColor: `${pkg.color}30` }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full" style={{ background: pkg.color }} />
+                    <span className="font-mono text-[10px] font-bold" style={{ color: pkg.color }}>{pkg.name}</span>
+                  </div>
+                  <span className="font-mono text-[9px] text-muted-foreground">{pkg.estimatedValue}</span>
+                </div>
+                <div className="space-y-1.5 mb-3">
+                  {pkg.items.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-lg border border-white/[0.04] p-1.5" style={{ background: "rgba(15,15,24,0.3)" }}>
+                      <span className="font-mono text-[9px] text-foreground">{item.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[8px] text-muted-foreground">×{item.quantity}</span>
+                        <span className="font-mono text-[8px] text-muted-foreground/50">{item.typicalProvider}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-lg border border-white/[0.06] p-2" style={{ background: `${pkg.color}08` }}>
+                  <span className="font-mono text-[8px] font-bold" style={{ color: pkg.color }}>Impact:</span>
+                  <span className="font-mono text-[8px] text-muted-foreground ml-1">{pkg.impact}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Partners section */}
+      {f100Section === "partners" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Partner Categories</span>
+          </div>
+          {/* Group by tier type */}
+          {["Consortium", "Friends of VVU", "Founding Community"].map(group => {
+            const partners = PARTNER_CATEGORIES.filter(p => p.tier.startsWith(group));
+            return (
+              <div key={group} className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <span className="font-mono text-[10px] font-bold text-foreground">{group}</span>
+                <p className="font-mono text-[8px] text-muted-foreground mb-3">
+                  {group === "Consortium" ? "Formal agreements" : group === "Friends of VVU" ? "Informal support, no lengthy agreements" : "Operational support"}
+                </p>
+                <div className="space-y-2">
+                  {partners.map(p => (
+                    <div key={p.id} className="rounded-lg border p-2.5" style={{ background: "rgba(15,15,24,0.4)", borderColor: `${p.color}20` }}>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[9px] font-bold" style={{ color: p.color }}>{p.tier}</span>
+                        <span className="font-mono text-[8px] text-muted-foreground">{p.agreementType}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {p.partners.map((partner, i) => (
+                          <span key={i} className="font-mono text-[8px] rounded px-1.5 py-0.5" style={{ background: `${p.color}15`, color: p.color }}>{partner}</span>
+                        ))}
+                      </div>
+                      <p className="font-mono text-[8px] text-muted-foreground mt-1">{p.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </motion.div>
+      )}
+
+      {/* Impact section */}
+      {f100Section === "impact" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Impact Language Framework</span>
+          </div>
+          <div className="space-y-3">
+            {IMPACT_LANGUAGE.map((il, i) => (
+              <div key={i} className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <div className="rounded-lg border border-red-500/20 p-2.5 mb-2" style={{ background: "rgba(239,68,68,0.05)" }}>
+                  <span className="font-mono text-[8px] font-bold text-red-400/70">NEED</span>
+                  <p className="font-mono text-[9px] text-foreground/70 line-through">{il.needStatement}</p>
+                </div>
+                <div className="flex items-center justify-center mb-2">
+                  <ArrowDown className="h-3 w-3 text-[#C9A84C]" />
+                </div>
+                <div className="rounded-lg border border-emerald-500/20 p-2.5" style={{ background: "rgba(16,185,129,0.05)" }}>
+                  <span className="font-mono text-[8px] font-bold text-emerald-400">IMPACT</span>
+                  <p className="font-mono text-[9px] text-foreground">{il.impactStatement}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Outreach section */}
+      {f100Section === "outreach" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Send className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Outreach Strategy</span>
+          </div>
+          <div className="space-y-2">
+            {OUTREACH_TIERS.map(tier => (
+              <div key={tier.tier} className="rounded-xl border border-white/[0.06] p-3" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#C9A84C]/30" style={{ background: "rgba(201,168,76,0.1)" }}>
+                    <span className="font-mono text-[10px] font-bold text-[#C9A84C]">T{tier.tier}</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-[9px] font-bold text-foreground">{tier.targets}</span>
+                      <span className="font-mono text-[8px] text-muted-foreground">{tier.approach}</span>
+                    </div>
+                    <p className="font-mono text-[8px] text-[#C9A84C] mt-0.5">{tier.keyMessage}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Metrics section */}
+      {f100Section === "metrics" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Campaign Success Metrics</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {CAMPAIGN_SUCCESS_METRICS.map((m, i) => (
+              <div key={i} className="rounded-xl border border-white/[0.06] p-3" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <span className="font-mono text-[9px] font-bold text-foreground">{m.metric}</span>
+                <p className="font-mono text-[10px] text-[#C9A84C] mt-1">{m.target}</p>
+                <span className="font-mono text-[8px] text-muted-foreground">Measured by: {m.measurement}</span>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Documents section */}
+      {f100Section === "documents" && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-4 w-4" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Three Companion Documents</span>
+          </div>
+          <div className="space-y-3">
+            {COMPANION_DOCUMENTS.map((doc, i) => (
+              <div key={i} className="rounded-xl border border-[#C9A84C]/20 p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-6 w-6 rounded-lg flex items-center justify-center border border-[#C9A84C]/30" style={{ background: "rgba(201,168,76,0.1)" }}>
+                    <span className="font-mono text-[10px] font-bold text-[#C9A84C]">{i + 1}</span>
+                  </div>
+                  <span className="font-mono text-[10px] font-bold text-foreground">{doc.name}</span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <span className="font-mono text-[8px] font-bold text-[#C9A84C]">Purpose</span>
+                    <p className="font-mono text-[9px] text-muted-foreground">{doc.purpose}</p>
+                  </div>
+                  <div>
+                    <span className="font-mono text-[8px] font-bold text-[#C9A84C]">Audience</span>
+                    <p className="font-mono text-[9px] text-muted-foreground">{doc.audience}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
 // 72h VALIDATION SIMULATION TAB
 // ════════════════════════════════════════════════════════════════════════
 
@@ -2735,6 +3012,99 @@ function SimulationTab({
             </div>
           </motion.div>
         ))}
+      </div>
+
+      {/* ═══ Operator Runbook VVU-VAL-001 ═══ */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <HardHat className="h-4 w-4" style={{ color: "#C9A84C" }} />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Operator Runbook VVU-VAL-001</h3>
+        </div>
+
+        {/* Golden Rules */}
+        <div className="rounded-xl border border-[#C9A84C]/20 p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+          <div className="flex items-center gap-2 mb-3">
+            <ShieldAlert className="h-3.5 w-3.5" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">Golden Rules — Non-Negotiable</span>
+          </div>
+          <div className="space-y-2">
+            {OPERATOR_GOLDEN_RULES.map(rule => (
+              <div key={rule.id} className="flex items-start gap-2 rounded-lg border border-white/[0.06] p-2.5" style={{ background: "rgba(15,15,24,0.4)" }}>
+                <div className="mt-0.5 flex-none">
+                  <span className={`font-mono text-[7px] font-bold uppercase rounded px-1.5 py-0.5 ${
+                    rule.severity === "mandatory" ? "bg-red-500/15 text-red-400 border border-red-500/30" :
+                    rule.severity === "high" ? "bg-amber-500/15 text-amber-400 border border-amber-500/30" :
+                    "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                  }`}>{rule.severity}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-mono text-[9px] font-bold text-foreground">{rule.rule}</span>
+                  <p className="font-mono text-[8px] text-muted-foreground mt-0.5">{rule.rationale}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 72h Phase-by-Phase */}
+        <div className="rounded-xl border border-white/[0.06] p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="h-3.5 w-3.5" style={{ color: "#C9A84C" }} />
+            <span className="font-mono text-[10px] font-bold text-[#C9A84C]">72h Phase-by-Phase Guide</span>
+          </div>
+          <div className="space-y-2">
+            {VALIDATION_PHASES_72H.map(vp => {
+              const statusColor = vp.status === "critical" ? "#EF4444" : vp.status === "active" ? "#3B82F6" : vp.status === "passed" ? "#10b981" : "#6B7280";
+              const statusIcon = vp.status === "critical" ? <XCircle className="h-3.5 w-3.5" style={{ color: "#EF4444" }} /> :
+                vp.status === "active" ? <Activity className="h-3.5 w-3.5" style={{ color: "#3B82F6" }} /> :
+                vp.status === "passed" ? <CheckCircle2 className="h-3.5 w-3.5" style={{ color: "#10b981" }} /> :
+                <Clock className="h-3.5 w-3.5" style={{ color: "#6B7280" }} />;
+              return (
+                <div key={vp.id} className="rounded-lg border p-3" style={{ background: "rgba(15,15,24,0.4)", borderColor: `${statusColor}20` }}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      {statusIcon}
+                      <span className="font-mono text-[9px] font-bold" style={{ color: statusColor }}>{vp.phase}</span>
+                      <span className="font-mono text-[8px] text-muted-foreground">{vp.hours}</span>
+                    </div>
+                    <span className="font-mono text-[8px] uppercase rounded px-1.5 py-0.5" style={{ color: statusColor, background: `${statusColor}15`, border: `1px solid ${statusColor}30` }}>{vp.status}</span>
+                  </div>
+                  <div className="grid gap-1.5 sm:grid-cols-2">
+                    <div className="rounded-md border border-white/[0.04] p-2" style={{ background: "rgba(15,15,24,0.3)" }}>
+                      <span className="font-mono text-[7px] font-bold text-[#C9A84C]">WATCH</span>
+                      <p className="font-mono text-[8px] text-foreground/80">{vp.whatToWatch}</p>
+                    </div>
+                    <div className="rounded-md border border-white/[0.04] p-2" style={{ background: "rgba(15,15,24,0.3)" }}>
+                      <span className="font-mono text-[7px] font-bold text-red-400/80">ACT ONLY IF</span>
+                      <p className="font-mono text-[8px] text-foreground/80">{vp.whenToAct}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Critical Failure Response */}
+        <div className="rounded-xl border border-red-500/20 p-4" style={{ background: "rgba(15,15,24,0.6)" }}>
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="h-3.5 w-3.5" style={{ color: "#EF4444" }} />
+            <span className="font-mono text-[10px] font-bold text-red-400">Critical Failure Response Protocol</span>
+          </div>
+          <div className="space-y-2">
+            {CRITICAL_FAILURE_RESPONSE.map((cf, i) => (
+              <div key={i} className="flex items-start gap-2 rounded-lg border border-red-500/10 p-2.5" style={{ background: "rgba(239,68,68,0.03)" }}>
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-red-500/30" style={{ background: "rgba(239,68,68,0.1)" }}>
+                  <span className="font-mono text-[8px] font-bold text-red-400">{i + 1}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-mono text-[9px] font-bold text-foreground">{cf.step}</span>
+                  <p className="font-mono text-[8px] text-muted-foreground mt-0.5">{cf.action}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -928,3 +928,88 @@ Stage Summary:
 - Project verified working: all HBK tabs and TaaS sub-sections functional
 - Key challenge: local main and remote main have completely divergent histories (no common ancestor)
 - Solution: Created new branch from remote main, manually added TaaS files as a single commit
+
+---
+
+## Task 1 — Add Founding Partners Campaign Framework & Operator Runbook VVU-VAL-001 to types.ts
+
+**Date**: 2026-03-04
+**Status**: ✅ COMPLETE
+
+### What was done
+Added two major data structure sections to `/home/z/my-project/src/lib/hbk/types.ts` (after the TAAS_CORE_PILLARS section, line 1133):
+
+#### 1. Founding Partners Campaign Framework ("Founding 100")
+- `FOUNDING100_NARRATIVE` — Core quote and one-sentence ask
+- `CampaignPsychology` interface + `CAMPAIGN_PSYCHOLOGY` — 5 old→new approach pairs
+- `SponsorshipPackage` interface + `FOUNDING100_PACKAGES` — 6 packages (Operations, Engineering, Connectivity, Field Operations, Workshop, Branding)
+- `PartnerCategory` interface + `PARTNER_CATEGORIES` — 13 categories across Consortium, Friends of VVU, and Founding Community tiers
+- `ImpactLanguage` interface + `IMPACT_LANGUAGE` — 5 need→impact statement pairs
+- `NetworkEffect` interface + `NETWORK_EFFECTS` — 8 contribution examples
+- `SuccessMetric` interface + `CAMPAIGN_SUCCESS_METRICS` — 5 metrics
+- `OutreachTier` interface + `OUTREACH_TIERS` — 8 outreach tiers
+
+#### 2. Operator Runbook VVU-VAL-001
+- `GoldenRule` interface + `OPERATOR_GOLDEN_RULES` — 8 mandatory/high severity rules
+- `ValidationPhase` interface + `VALIDATION_PHASES_72H` — 7 phases (P1–P7, 0–72h)
+- `CriticalFailureResponse` interface + `CRITICAL_FAILURE_RESPONSE` — 5-step failure protocol
+- `CompanionDocument` interface + `COMPANION_DOCUMENTS` — 3 companion documents
+
+#### 3. HBK_TABS Update
+- `HbkTabId` type updated to include `"founding100"`
+- `HBK_TABS` array updated with new `"founding100"` entry (label: "Founding 100", icon: "Users")
+- Tab comment updated to reflect + Founding 100 + VVU-VAL-001
+
+### Verification
+- `bun run lint`: 0 errors, 0 warnings (1 pre-existing unrelated warning)
+- File grew from 1160 lines → ~1459 lines
+- All existing content preserved — only additions made
+
+---
+
+## Task 2-a: Founding 100 Tab + Operator Runbook in 72h Validation Tab
+
+**Date:** 2025-07-10
+**Agent:** agent-2a
+
+### Changes Made
+
+**File:** `/home/z/my-project/src/components/hbk/hbk-dashboard.tsx`
+
+1. **Added new icon imports** from lucide-react:
+   - `Megaphone`, `Package`, `Send`, `HardHat`, `Tshirt`
+
+2. **Added new data imports** from `@/lib/hbk/types`:
+   - `FOUNDING100_NARRATIVE`, `CAMPAIGN_PSYCHOLOGY`, `FOUNDING100_PACKAGES`, `PARTNER_CATEGORIES`, `IMPACT_LANGUAGE`, `NETWORK_EFFECTS`, `CAMPAIGN_SUCCESS_METRICS`, `OUTREACH_TIERS`, `COMPANION_DOCUMENTS`
+   - `OPERATOR_GOLDEN_RULES`, `VALIDATION_PHASES_72H`, `CRITICAL_FAILURE_RESPONSE`
+
+3. **Added `founding100` case** to the switch statement in `renderTabContent()`:
+   - `case "founding100": return <Founding100Tab />;`
+
+4. **Created `Founding100Tab` component** (~270 lines) with 7 sub-sections:
+   - **Campaign** — Core narrative quote, one-sentence ask, campaign psychology shift (old→new), network effect contributions
+   - **Packages** — 6 sponsorship packages (Operations, Engineering, Connectivity, Field Ops, Workshop, Branding) with items, quantities, typical providers, and impact
+   - **Partners** — Partner categories grouped by tier type (Consortium, Friends of VVU, Founding Community) with color-coded badges
+   - **Impact** — Impact language framework showing NEED→IMPACT transformation with strikethrough/emphasis
+   - **Outreach** — 8 outreach tiers (T1-T8) with targets, approach, and key message
+   - **Metrics** — 5 campaign success metrics with targets and measurement methods
+   - **Documents** — 3 companion documents with purpose and audience
+
+5. **Added Operator Runbook section** to the existing `SimulationTab` function:
+   - **Golden Rules** — 8 non-negotiable rules with severity badges (mandatory=red, high=amber, medium=blue)
+   - **72h Phase-by-Phase Guide** — 7 phases (P1-P7) from `VALIDATION_PHASES_72H` with WATCH and ACT ONLY IF fields
+   - **Critical Failure Response** — 5-step protocol from `CRITICAL_FAILURE_RESPONSE` with numbered steps
+
+### Design Style
+- Dark glass-morphism cards (`rgba(15,15,24,0.6)` background)
+- Gold accent color (`#C9A84C`) for headers and highlights
+- `font-mono` text at small sizes (8-10px)
+- `motion.div` for section transitions
+- `rounded-xl border border-white/[0.06]` card styling
+- Consistent with existing TaaS tab visual language
+
+### Verification
+- `bun run lint` — 0 errors, 1 pre-existing warning (no-page-custom-font)
+- Dev server compiling successfully, HTTP 200 responses
+- No new TypeScript or import errors
+
