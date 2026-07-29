@@ -1074,3 +1074,36 @@ Stage Summary:
 - Repository is production-ready for handoff
 - Key blockers for v1.0.0: npm audit findings, coverage <80%, no formal security audit, Docker untested
 - Commit: 4253ade "feat: comprehensive pre-shutdown repository hardening"
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Implement WorkbenchShell — capability-driven Trust Operating Environment
+
+Work Log:
+- Read full UX refactor specification (1763 lines) from uploaded file
+- Created workbench-shell.tsx (709 lines) implementing all 10 features from the spec
+- Replaced VvuShell with WorkbenchShell in page.tsx
+- Implemented 4 edge docks (left: products, right: telemetry, top: commands, bottom: tasks)
+- Implemented magnetic proximity detection with 20-30px glow zone
+- Implemented workspace focus mode (F key) with active product overlay
+- Created capability registry with 8 capabilities mapped to 7 products across 3 missions
+- Created trust-based onboarding with interactive trust journeys (4+ step journeys)
+- Created knowledge checks with correct/incorrect answer validation
+- Created Trust Passport tracking competency across capabilities
+- Implemented consistent motion language (150ms expand, 120ms collapse, 100ms fade)
+- Thin header with "Trust Operating Environment" branding
+- "I want to…" button opens capability-driven modal
+- Product cards with hover expansion revealing "Powered by" labels
+- Deleted uploaded file and cleaned tool-results for storage
+- Lint: 0 errors, 1 warning (existing)
+- Dev server: running, page compiles and renders correctly
+- Commit: 5c3949c
+
+Stage Summary:
+- VVU dashboard converted from product-oriented to capability-driven UX
+- Core principle: "Users should never need to learn our architecture"
+- The shell is capability-driven while the platform is product-driven
+- Users interact with capabilities; the platform composes products behind the scenes
+- Trust onboarding teaches understanding before granting access
+- Trust Passport records demonstrated competency, not just legal acceptance
