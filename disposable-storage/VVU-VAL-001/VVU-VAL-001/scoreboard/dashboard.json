@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VVU-VAL-001 Mission Control Dashboard Config",
+  "description": "Configuration for the public Mission Control scoreboard. Read by src/app/page.tsx.",
+  "type": "object",
+  "properties": {
+    "validation_event": { "type": "string", "const": "VAL-001" },
+    "protocol_version": { "type": "string", "const": "1.1" },
+    "total_hours": { "type": "integer", "const": 72 },
+    "tick_ms": { "type": "integer", "default": 1000, "description": "Simulation tick interval in milliseconds" },
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "enum": ["P1","P2","P3","P4","P5","P6","P7"] },
+          "name": { "type": "string" },
+          "hours": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+          "gate": { "type": "string" },
+          "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+        },
+        "required": ["id","name","hours","gate","color"]
+      }
+    },
+    "index_dimensions": {
+      "type": "array",
+      "description": "The 6 published Validation Index dimensions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "label": { "type": "string" },
+          "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+          "hint": { "type": "string" }
+        }
+      }
+    },
+    "pass_threshold": { "type": "number", "const": 90.0, "description": "Minimum Validation Index for PASS (§7.2)" },
+    "mode": { "type": "string", "enum": ["SIM","LIVE"], "default": "SIM" }
+  },
+  "required": ["validation_event","protocol_version","total_hours","phases","index_dimensions","pass_threshold"]
+}

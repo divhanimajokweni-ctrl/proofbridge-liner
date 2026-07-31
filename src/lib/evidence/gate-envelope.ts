@@ -1,9 +1,11 @@
 // src/lib/evidence/gate-envelope.ts
 // ───────────────────────────────────────────────────────────────
-// BOTTLENECK 1: Gate Integration
+// Epistemic Runtime — Gate Integration
 // Wraps existing gate evaluation to emit signed evidence envelopes.
 // Non-breaking: existing gate functions are called as-is; envelopes
 // are generated from their results.
+// Adapted from proofbridge-liner: uses injected providers instead
+// of Date.now() or crypto.randomUUID().
 // ───────────────────────────────────────────────────────────────
 
 import {
@@ -11,15 +13,14 @@ import {
   type UnsignedEnvelope,
   type ExecutionEnvelope,
   type PolicyDecisionStage,
-  type OutputStage,
   type ValidationStage,
-} from "./envelope";
-import { hashExecutionEnvelope } from "./hashing";
-import { signEnvelope, type EvidenceSigner } from "./signer";
+  type EnvelopeProviders,
+} from './envelope';
+import { signEnvelope, type EvidenceSigner } from './signer';
 import {
   InMemoryEvidenceLedger,
   type EvidenceLedgerStorage,
-} from "./ledger";
+} from './ledger';
 
 // ─── Gate Result Types ────────────────────────────────────────
 
@@ -39,7 +40,7 @@ export interface PolicyGateResult {
 export interface ExecutionGateResult {
   allowed: boolean;
   reason?: string;
-  verificationStatus: "pending" | "verified" | "rejected";
+  verificationStatus: 'pending' | 'verified' | 'rejected';
   violations: Array<{
     ruleId: string;
     severity: string;
@@ -53,12 +54,15 @@ export interface ExecutionGateResult {
 export class EnvelopeEmittingGate {
   private signer: EvidenceSigner;
   private ledger: EvidenceLedgerStorage;
+  private providers: EnvelopeProviders;
 
   constructor(
     signer: EvidenceSigner,
+    providers: EnvelopeProviders,
     ledger?: EvidenceLedgerStorage,
   ) {
     this.signer = signer;
+    this.providers = providers;
     this.ledger = ledger ?? new InMemoryEvidenceLedger();
   }
 
@@ -87,8 +91,6 @@ export class EnvelopeEmittingGate {
     matchedPolicies: string[];
     policyExplanation?: string;
   }): Promise<ExecutionEnvelope> {
-    const now = new Date();
-
     const unsigned: UnsignedEnvelope = buildUnsignedEnvelope({
       tenant_id: params.tenantId,
       capability_id: params.capabilityId,
@@ -101,25 +103,25 @@ export class EnvelopeEmittingGate {
       routing_reason: params.routingReason,
       policy_decision: {
         matched_policies: params.matchedPolicies,
-        decision: params.result.allowed ? "allow" : "deny",
+        decision: params.result.allowed ? 'allow' : 'deny',
         denied_by: params.result.violations
-          .filter((v) => v.severity === "block")
+          .filter((v) => v.severity === 'block')
           .map((v) => v.ruleId),
         policy_explanation:
-          params.policyExplanation ?? params.result.reason ?? "",
+          params.policyExplanation ?? params.result.reason ?? '',
       },
       validation: {
         validation_score: 1.0 - params.result.riskScore / 100,
-        validation_method: "policy_gate",
+        validation_method: 'policy_gate',
         passed: params.result.allowed,
         validation_details: {
           riskScore: params.result.riskScore,
           violations: params.result.violations,
         },
       },
-    });
+    }, this.providers);
 
-    const signed = await signEnvelope(unsigned, this.signer);
+    const signed = await signEnvelope(unsigned, this.signer, this.providers.clock);
     await this.ledger.append(signed);
     return signed;
   }
@@ -153,7 +155,7 @@ export class EnvelopeEmittingGate {
       routing_reason: params.routingReason,
       validation: {
         validation_score: params.result.allowed ? 1.0 : 0.0,
-        validation_method: "execution_contract",
+        validation_method: 'execution_contract',
         passed: params.result.allowed,
         validation_details: {
           verificationStatus: params.result.verificationStatus,
@@ -161,9 +163,9 @@ export class EnvelopeEmittingGate {
           evidence: params.evidence,
         },
       },
-    });
+    }, this.providers);
 
-    const signed = await signEnvelope(unsigned, this.signer);
+    const signed = await signEnvelope(unsigned, this.signer, this.providers.clock);
     await this.ledger.append(signed);
     return signed;
   }

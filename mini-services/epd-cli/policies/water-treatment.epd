@@ -1,0 +1,67 @@
+# Municipal water treatment — chemical dosing & pressure safety envelope
+# Shadow bridge can hot-takeover the SCADA plant when invariants breach.
+
+policy "water_treatment_safety" {
+  description "Chemical dosing and pressure safety for municipal water treatment"
+  domain "water_utility"
+  version "0.8.0"
+
+  shard by subsystem {
+    key "plant_unit"
+    strategy subsystem
+    count 3
+    replication 2
+  }
+
+  invariant "chlorine_residual" "Free chlorine residual must stay within potable bounds" {
+    predicate chlorine_residual in [0.2, 4.0]
+    severity critical
+    tags ["safety", "potable"]
+  }
+
+  invariant "ph_range" "pH must stay within regulatory range" {
+    predicate ph in [6.5, 8.5]
+    severity critical
+  }
+
+  invariant "main_pressure" "Main pressure must stay below pipe burst threshold" {
+    predicate main_pressure <= 8.5
+    severity critical
+  }
+
+  soft invariant "turbidity" "Turbidity should stay below 1.0 NTU" {
+    predicate turbidity <= 1.0
+    severity medium
+  }
+
+  expect merge {
+    preserves max(main_pressure)
+    preserves min(chlorine_residual)
+    locality_preserving true
+  }
+
+  on_violation {
+    strategy self_repair
+    objective min_disruption
+    max_iters 30
+    notify "plant-ops@epistemic.io"
+  }
+
+  ancestry {
+    proof mmr
+    zk false
+    gossip p2p
+    anchor rekor
+  }
+
+  shadow_bridge {
+    enabled true
+    takeover_latency_ms 120
+    whatif_branching true
+    replay true
+    authoritative true
+  }
+
+  export to wasm
+  export to tla
+}

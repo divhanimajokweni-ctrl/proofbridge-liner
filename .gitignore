@@ -1,46 +1,58 @@
-/deer-flow/
-/.env*
-.env*.local
-.wwebjs_auth/
-whatsapp-bridge/.env
-*.log
-.next/
-node_modules/
-/proofbridge-liner/
-tsconfig.tsbuildinfo
-.vercel
-.vercel/
-package-lock.json.bak
-docs/legal/corporate/sha-vv-llc.docx
-out/
-broadcast/
-cache/
-/lib/
-!/lib/forge-std/
-!/lib/db/
-!/lib/db/**
-!/lib/governance/**
-!/lib/HmacSecurityGuard.js
-!/lib/amd-init.ts
-!/lib/slack-notifier.ts
-!/lib/discord-notifier.ts
-!/lib/compliance/**
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-.env.deployed
-local/share/com.vercel.cli/auth.json
-local/share/com.vercel.cli/config.json
-.env.vercel
-.env.production.local
-.env.production
-.vscode/mcp.json
-.config/gh/hosts.yml
-.config/
-.local/
-auth/
-dist/
-data/public-keys/
-supabase/.temp/
-supabase/.temp/
+# dependencies
+node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
 .env*
-!secrets/*.example
-test-campaign-results
+
+# vercel
+.vercel
+
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+local-*
+.claude
+.z-ai-config
+*.log
+dev.log
+dev.out.log
+test
+prompt
+
+server.log
+# Skills directory
+/skills/
+# clerk configuration (can include secrets)
+/.clerk/
+tool-results/
+upload/

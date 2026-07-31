@@ -1,38 +1,14 @@
 // src/lib/evidence/hashing.ts
 // ───────────────────────────────────────────────────────────────
-// BOTTLENECK 1: Envelope Hashing
+// Epistemic Runtime — Envelope Hashing
 // Deterministic SHA-256 hash of stages 1-6 for immutable fingerprint.
+// Adapted from proofbridge-liner: uses kernel canonicalization and
+// hashing instead of node:crypto and ad-hoc canonical JSON.
 // ───────────────────────────────────────────────────────────────
 
-import { createHash } from "node:crypto";
-import type { UnsignedEnvelope } from "./envelope";
-
-// ─── Deterministic Serialization ──────────────────────────────
-
-/**
- * Deep-sort object keys for deterministic JSON serialization.
- * Handles nested objects and arrays recursively.
- */
-function deepSortKeys(obj: unknown): unknown {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj === "string" || typeof obj === "number" || typeof obj === "boolean") return obj;
-  if (obj instanceof Date) return obj.toISOString();
-  if (Array.isArray(obj)) return obj.map(deepSortKeys);
-
-  const sorted: Record<string, unknown> = {};
-  const keys = Object.keys(obj as Record<string, unknown>).sort();
-  for (const key of keys) {
-    sorted[key] = deepSortKeys((obj as Record<string, unknown>)[key]);
-  }
-  return sorted;
-}
-
-/**
- * Canonical JSON: deterministic serialization with sorted keys at all depths.
- */
-function canonicalJson(obj: unknown): string {
-  return JSON.stringify(deepSortKeys(obj));
-}
+import { canonicalize } from '@/lib/kernel/canonicalization';
+import { computeSHA256 } from '@/lib/kernel/hashing';
+import type { UnsignedEnvelope } from './envelope';
 
 // ─── Envelope Hashing ─────────────────────────────────────────
 
@@ -54,15 +30,15 @@ function extractStages(envelope: UnsignedEnvelope) {
 
 /**
  * Hash an unsigned envelope to create an immutable fingerprint.
- * Uses SHA-256 over the deterministic JSON of stages 1-6.
+ * Uses SHA-256 over the RFC 8785 canonical JSON of stages 1-6.
  *
  * Deterministic: same input → same hash (always).
  * Collision-sensitive: any change → different hash.
  */
 export function hashExecutionEnvelope(envelope: UnsignedEnvelope): string {
   const stages = extractStages(envelope);
-  const payload = canonicalJson(stages);
-  return createHash("sha256").update(payload, "utf8").digest("hex");
+  const payload = canonicalize(stages);
+  return computeSHA256(payload);
 }
 
 /**

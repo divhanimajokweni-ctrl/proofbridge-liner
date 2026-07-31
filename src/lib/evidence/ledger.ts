@@ -1,10 +1,13 @@
 // src/lib/evidence/ledger.ts
 // ───────────────────────────────────────────────────────────────
-// BOTTLENECK 1: Evidence Ledger Storage
+// Epistemic Runtime — Evidence Ledger Storage
 // Append-only ledger for immutable evidence envelopes.
+// Adapted from proofbridge-liner: uses numeric timestamps from
+// injected clock instead of Date objects.
 // ───────────────────────────────────────────────────────────────
 
-import type { ExecutionEnvelope } from "./envelope";
+import type { ExecutionEnvelope, EvidenceLedgerEntry as EnvelopeLedgerEntry } from './envelope';
+import type { ClockProvider } from '@/lib/kernel/types';
 
 // ─── Storage Interface ────────────────────────────────────────
 
@@ -15,8 +18,8 @@ export interface EvidenceLedgerStorage {
     tenantId?: string;
     capabilityId?: string;
     agentId?: string;
-    startTime?: Date;
-    endTime?: Date;
+    startTime?: number;
+    endTime?: number;
     limit?: number;
   }): Promise<ExecutionEnvelope[]>;
   count(): Promise<number>;
@@ -42,8 +45,8 @@ export class InMemoryEvidenceLedger implements EvidenceLedgerStorage {
     tenantId?: string;
     capabilityId?: string;
     agentId?: string;
-    startTime?: Date;
-    endTime?: Date;
+    startTime?: number;
+    endTime?: number;
     limit?: number;
   }): Promise<ExecutionEnvelope[]> {
     let results = this.envelopes;
@@ -57,15 +60,11 @@ export class InMemoryEvidenceLedger implements EvidenceLedgerStorage {
     if (filter.agentId) {
       results = results.filter((e) => e.agent_id === filter.agentId);
     }
-    if (filter.startTime) {
-      results = results.filter(
-        (e) => e.created_at >= filter.startTime!,
-      );
+    if (filter.startTime !== undefined) {
+      results = results.filter((e) => e.created_at >= filter.startTime!);
     }
-    if (filter.endTime) {
-      results = results.filter(
-        (e) => e.created_at <= filter.endTime!,
-      );
+    if (filter.endTime !== undefined) {
+      results = results.filter((e) => e.created_at <= filter.endTime!);
     }
 
     if (filter.limit) {
@@ -90,31 +89,25 @@ export class InMemoryEvidenceLedger implements EvidenceLedgerStorage {
 
 // ─── Ledger Entry Builder ─────────────────────────────────────
 
-export interface EvidenceLedgerEntry {
-  action: string;
-  evidence_type: string;
-  value?: string;
-  envelope?: ExecutionEnvelope;
-  envelope_id?: string;
-  is_cryptographically_verified: boolean;
-  verification_timestamp?: Date;
-  created_at: Date;
-}
+export type { EnvelopeLedgerEntry };
 
 /**
  * Build an EvidenceLedgerEntry from a signed envelope.
+ * Uses injected clock for timestamps (no Date.now()).
  */
 export function buildLedgerEntry(
   envelope: ExecutionEnvelope,
   verified: boolean,
-): EvidenceLedgerEntry {
+  clock: ClockProvider,
+): EnvelopeLedgerEntry {
+  const now = clock.now();
   return {
-    action: "gate_evaluation",
-    evidence_type: "execution_envelope",
+    action: 'gate_evaluation',
+    evidence_type: 'execution_envelope',
     envelope,
     envelope_id: envelope.envelope_id,
     is_cryptographically_verified: verified,
-    verification_timestamp: verified ? new Date() : undefined,
-    created_at: new Date(),
+    verification_timestamp: verified ? now : undefined,
+    created_at: now,
   };
 }

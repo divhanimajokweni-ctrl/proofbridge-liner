@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VVU-VAL-001 Stream Overlay Config",
+  "description": "Configuration for the headless streaming service's overlay. Displayed on the public stream (supporting evidence only — real evidence is the logs/hashes).",
+  "type": "object",
+  "properties": {
+    "stream_target": { "type": "string", "enum": ["youtube","twitch","rtmp"], "default": "youtube" },
+    "resolution": { "type": "string", "enum": ["720p","1080p","1440p"], "default": "1080p" },
+    "framerate": { "type": "integer", "enum": [24, 30, 60], "default": 30 },
+    "overlay_elements": {
+      "type": "object",
+      "properties": {
+        "elapsed_timer": { "type": "boolean", "default": true, "description": "Show elapsed time top-left" },
+        "validation_index": { "type": "boolean", "default": true, "description": "Show Validation Index top-right" },
+        "circuit_breaker": { "type": "boolean", "default": true, "description": "Show CB state as colored dot" },
+        "current_phase": { "type": "boolean", "default": true, "description": "Show current phase name + gate" },
+        "mmr_root": { "type": "boolean", "default": true, "description": "Show current MMR root (first 12 chars)" },
+        "commit_hash": { "type": "boolean", "default": true, "description": "Show frozen commit hash" },
+        "mode_indicator": { "type": "boolean", "default": true, "description": "Show SIMULATION / PRODUCTION EVIDENCE label" },
+        "evidence_hash": { "type": "boolean", "default": true, "description": "Show the latest evidence bundle SHA-256" }
+      }
+    },
+    "grafana_dashboard_uid": { "type": "string", "default": "vvu-val-001" },
+    "label": {
+      "type": "object",
+      "description": "The mandatory SIMULATION / PRODUCTION label (§6.1 of protocol)",
+      "properties": {
+        "simulation": { "type": "string", "const": "⚠ SIMULATION — NOT PRODUCTION EVIDENCE" },
+        "production": { "type": "string", "description": "Format: PRODUCTION EVIDENCE · VVU-VAL-001 · commit {hash}" }
+      }
+    }
+  }
+}

@@ -1,27 +1,35 @@
 // ============================================================================
-// VVU Trust Runtime — Reducer / Projection
+// Epistemic Runtime — Trust Runtime Reducer / Projection
 // ============================================================================
 // Layer:        Reducer / Projection
 // Responsibility: Pure function: (state, event) → nextState
 //                 Side-effect free. No networking, logging, or persistence.
+// Adapted from proofbridge-liner: createInitialState takes injected clock
+// for startedAt/lastEventAt timestamps.
 // ============================================================================
 
 import {
-  RuntimeEvent,
-  RuntimeState,
-  KernelState,
+  type RuntimeEvent,
+  type RuntimeState,
+  type KernelState,
   isValidTransition,
-  EvidenceLeaf,
-  ReceiptEntry,
-} from "./types";
+  type EvidenceLeaf,
+  type ReceiptEntry,
+} from './types';
+import type { ClockProvider } from '@/lib/kernel/types';
 
 // ---------------------------------------------------------------------------
 // Initial State
 // ---------------------------------------------------------------------------
 
-export function createInitialState(): RuntimeState {
+/**
+ * Create the initial runtime state.
+ * Uses injected clock for timestamps — no Date.now().
+ */
+export function createInitialState(clock: ClockProvider): RuntimeState {
+  const now = clock.now();
   return {
-    kernelState: "IDLE",
+    kernelState: 'IDLE',
     sequence: 0,
     trust: 0.5,
     sigma: 0.1,
@@ -34,8 +42,8 @@ export function createInitialState(): RuntimeState {
     circuitBreakerOpen: false,
     hazardReason: null,
     lastError: null,
-    startedAt: Date.now(),
-    lastEventAt: Date.now(),
+    startedAt: now,
+    lastEventAt: now,
   };
 }
 
@@ -60,35 +68,34 @@ export function reduce(state: RuntimeState, event: RuntimeEvent): RuntimeState {
   };
 
   switch (event.type) {
-    case "EvidenceReceived": {
+    case 'EvidenceReceived': {
       const payload = event.payload as { claim: string; source: string; confidence: string; tags?: string[] };
       const leaf: EvidenceLeaf = {
         id: `leaf-${event.eventId}`,
         claim: payload.claim,
         source: payload.source,
-        confidence: payload.confidence as "low" | "medium" | "high",
+        confidence: payload.confidence as 'low' | 'medium' | 'high',
         tags: payload.tags ?? [],
         verified: false,
         addedAt: event.timestamp,
       };
       next.evidenceLeaves.push(leaf);
-      next.kernelState = transitionTo(next.kernelState, "INGESTING");
+      next.kernelState = transitionTo(next.kernelState, 'INGESTING');
       break;
     }
 
-    case "EvidenceRejected": {
-      next.kernelState = transitionTo(next.kernelState, "IDLE");
+    case 'EvidenceRejected': {
+      next.kernelState = transitionTo(next.kernelState, 'IDLE');
       break;
     }
 
-    case "AttestationStarted": {
-      next.kernelState = transitionTo(next.kernelState, "ATTESTING");
+    case 'AttestationStarted': {
+      next.kernelState = transitionTo(next.kernelState, 'ATTESTING');
       break;
     }
 
-    case "AttestationVerified": {
-      const payload = event.payload as { receiptId: string; platform: string; measurement: string };
-      next.kernelState = transitionTo(next.kernelState, "VERIFYING");
+    case 'AttestationVerified': {
+      next.kernelState = transitionTo(next.kernelState, 'VERIFYING');
       // Mark matching evidence as verified (by receiptId → leaf correlation)
       for (const leaf of next.evidenceLeaves) {
         if (!leaf.verified) {
@@ -107,23 +114,23 @@ export function reduce(state: RuntimeState, event: RuntimeEvent): RuntimeState {
       break;
     }
 
-    case "AttestationFailed": {
+    case 'AttestationFailed': {
       next.quorum = { pass: next.quorum.pass, total: next.quorum.total + 1 };
       // Stay in verifying state to allow retry
-      if (next.kernelState === "VERIFYING") {
+      if (next.kernelState === 'VERIFYING') {
         // stay
       } else {
-        next.kernelState = transitionTo(next.kernelState, "VERIFYING");
+        next.kernelState = transitionTo(next.kernelState, 'VERIFYING');
       }
       break;
     }
 
-    case "AttestationRetrying": {
+    case 'AttestationRetrying': {
       // Stay in current state, retry is transparent to kernel
       break;
     }
 
-    case "BayesianUpdated": {
+    case 'BayesianUpdated': {
       const payload = event.payload as {
         trust: number;
         sigma: number;
@@ -140,7 +147,7 @@ export function reduce(state: RuntimeState, event: RuntimeEvent): RuntimeState {
       break;
     }
 
-    case "ReceiptCommitted": {
+    case 'ReceiptCommitted': {
       const payload = event.payload as {
         receiptId: string;
         receiptHash: string;
@@ -157,26 +164,26 @@ export function reduce(state: RuntimeState, event: RuntimeEvent): RuntimeState {
         committedAt: event.timestamp,
       };
       next.receipts.push(entry);
-      next.kernelState = transitionTo(next.kernelState, "COMMITTING");
+      next.kernelState = transitionTo(next.kernelState, 'COMMITTING');
       break;
     }
 
-    case "ReceiptFailed": {
-      next.kernelState = transitionTo(next.kernelState, "COMMITTING");
+    case 'ReceiptFailed': {
+      next.kernelState = transitionTo(next.kernelState, 'COMMITTING');
       break;
     }
 
-    case "LedgerConfirmed": {
-      next.kernelState = transitionTo(next.kernelState, "SETTLED");
+    case 'LedgerConfirmed': {
+      next.kernelState = transitionTo(next.kernelState, 'SETTLED');
       next.hashChainIntact = true;
       next.epoch++;
       break;
     }
 
-    case "CircuitBreakerOpened": {
-      const newState = transitionTo(next.kernelState, "HAZARD");
+    case 'CircuitBreakerOpened': {
+      const newState = transitionTo(next.kernelState, 'HAZARD');
       // Only set circuit breaker flag if the state machine allowed the transition
-      if (newState === "HAZARD") {
+      if (newState === 'HAZARD') {
         next.circuitBreakerOpen = true;
         next.kernelState = newState;
         const payload = event.payload as { action: string; reason: string };
@@ -186,25 +193,25 @@ export function reduce(state: RuntimeState, event: RuntimeEvent): RuntimeState {
       break;
     }
 
-    case "CircuitBreakerClosed": {
+    case 'CircuitBreakerClosed': {
       next.circuitBreakerOpen = false;
       next.hazardReason = null;
-      next.kernelState = "IDLE";
+      next.kernelState = 'IDLE';
       break;
     }
 
-    case "QueueDrained": {
+    case 'QueueDrained': {
       // No state change, but pulse remains
       break;
     }
 
-    case "RuntimeIdle": {
-      next.kernelState = "IDLE";
+    case 'RuntimeIdle': {
+      next.kernelState = 'IDLE';
       next.hazardReason = null;
       break;
     }
 
-    case "SystemError": {
+    case 'SystemError': {
       const payload = event.payload as {
         code: string;
         message: string;
@@ -217,8 +224,8 @@ export function reduce(state: RuntimeState, event: RuntimeEvent): RuntimeState {
         recoverable: payload.recoverable,
       };
       if (!payload.recoverable) {
-        const newState = transitionTo(next.kernelState, "HAZARD");
-        if (newState === "HAZARD") {
+        const newState = transitionTo(next.kernelState, 'HAZARD');
+        if (newState === 'HAZARD') {
           next.kernelState = newState;
           next.hazardReason = payload.message;
         }
@@ -259,14 +266,12 @@ export function reduceBatch(
 
 /**
  * Transition to a new kernel state if legal. If illegal, stays in current
- * state and logs a warning (but does not throw — the state machine guard
- * is in the command handler).
+ * state. The reducer is pure — no side effects.
  */
 function transitionTo(from: KernelState, to: KernelState): KernelState {
   if (isValidTransition(from, to)) {
     return to;
   }
-  // Console.warn would be a side effect — reducer is pure.
   // Illegal transitions are caught upstream in the command handler.
   // Here we just stay put.
   return from;

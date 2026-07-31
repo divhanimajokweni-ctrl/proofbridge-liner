@@ -1,0 +1,345 @@
+// Epistemic Runtime — Prisma schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A compiled .epd policy stored in the runtime.
+model Policy {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  filename    String
+  source      String
+  domain      String?
+  version     String?
+  description String?
+  ok          Boolean  @default(true)
+  errorCount  Int      @default(0)
+  warningCount Int     @default(0)
+  invariantCount Int   @default(0)
+  shardCount  Int      @default(0)
+  shardKey    String?
+  shardStrategy String?
+  repairStrategy String?
+  zkEnabled   Boolean  @default(false)
+  proofKind   String?
+  shadowEnabled Boolean @default(false)
+  takeoverLatencyMs Int?
+  wasmFingerprint String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  shards     Shard[]
+  merges     MergeProposal[]
+  proofs     AncestryProof[]
+  violations InvariantViolation[]
+  shadowEvents ShadowEvent[]
+  mined      MinedInvariant[]
+  revisions  PolicyRevision[]
+
+  @@index([domain])
+}
+
+// A historical revision of a policy's .epd source (versioning).
+model PolicyRevision {
+  id          String   @id @default(cuid())
+  policyId    String
+  policy      Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  version     Int      // sequential revision number
+  source      String   // the .epd source at this revision
+  wasmFingerprint String?
+  invariantCount Int   @default(0)
+  changeSummary String? // short description of what changed
+  author      String?
+  createdAt   DateTime @default(now())
+
+  @@index([policyId])
+  @@unique([policyId, version])
+}
+
+// A shard owning a subset of the state space for a policy.
+model Shard {
+  id         String   @id @default(cuid())
+  policyId   String
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  shardKey   String
+  region     String
+  nodeId     String
+  state      String   // JSON
+  invariantStatus String // "healthy" | "repairing" | "violating"
+  mmrRoot    String
+  peerCount  Int      @default(0)
+  lastMergeAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  merges     MergeProposal[]
+
+  @@index([policyId])
+  @@index([shardKey])
+}
+
+// A merge proposal between two shards, possibly self-repaired.
+model MergeProposal {
+  id           String   @id @default(cuid())
+  policyId     String
+  policy       Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  sourceShardId String?
+  sourceShard  Shard?   @relation(fields: [sourceShardId], references: [id], onDelete: SetNull)
+  targetShard  String
+  sourceShardName String
+  proposedState String   // JSON
+  repairedState String?  // JSON
+  status       String   // pending | repairing | applied | rejected
+  violations   String   // JSON array of names
+  divergence   Float    @default(0)
+  iterations   Int      @default(0)
+  mmrProof     String
+  zkProof      String?
+  createdAt    DateTime @default(now())
+
+  @@index([policyId])
+  @@index([status])
+}
+
+// An MMR ancestry proof anchored for a policy/shard.
+model AncestryProof {
+  id         String   @id @default(cuid())
+  policyId   String
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  shardKey   String
+  mmrRoot    String
+  proofPath  String   // JSON array of sibling hashes
+  zkProof    String?
+  anchored   Boolean  @default(false)
+  anchor     String?  // rekor | blockchain | transparency_log
+  createdAt  DateTime @default(now())
+
+  @@index([policyId])
+}
+
+// A recorded invariant violation (for the miner / drift log).
+model InvariantViolation {
+  id         String   @id @default(cuid())
+  policyId   String
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  invariant  String
+  severity   String
+  soft       Boolean  @default(false)
+  shardKey   String
+  actual     String?
+  expected   String?
+  repaired   Boolean  @default(false)
+  driftDelta Float?
+  createdAt  DateTime @default(now())
+
+  @@index([policyId])
+  @@index([invariant])
+}
+
+// Shadow bridge events: what-if branches, takeovers, replays.
+model ShadowEvent {
+  id         String   @id @default(cuid())
+  policyId   String
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  kind       String   // takeover | whatif | replay | divergence | handback
+  summary    String
+  liveState  String   // JSON
+  shadowState String  // JSON
+  divergence Float    @default(0)
+  authoritative Boolean @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([policyId])
+  @@index([kind])
+}
+
+// Candidate invariants proposed by the AI miner.
+model MinedInvariant {
+  id         String   @id @default(cuid())
+  policyId   String?
+  policy     Policy?  @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  predicate  String
+  rationale  String
+  confidence Float
+  severity   String
+  accepted   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+// Append-only Fact Log — the kernel's event store.
+// WORM: No updates, no deletes. Every fact that passes the AcceptancePipeline.
+model FactLog {
+  id             String   @id // SHA-256 of canonical bytes (deterministic)
+  type           String   // observation | migration_* | projection_* | etc.
+  body           String   // JSON — the fact payload
+  canonicalBytes String   // RFC 8785 canonical JSON
+  hash           String   // SHA-256 hash of canonicalBytes
+  sequence       Int      // Monotonically increasing
+  timestamp      Int      // Logical timestamp from injected clock
+  submittedBy    String   // Identity that submitted this fact
+  signature      String   // Ed25519 signature over canonicalBytes
+  acceptedAt     Int      // When the acceptance pipeline accepted this fact
+  schemaId       String   // Schema that validated this fact's body
+  mmrRoot        String?  // MMR root at time of insertion
+  createdAt      DateTime @default(now())
+
+  @@index([type])
+  @@index([sequence])
+  @@index([submittedBy])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THREE-ROOT ARCHITECTURE
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── HISTORY ROOT ──────────────────────────────────────────────────────────────
+// Immutable event ledger. INSERT only. Never UPDATE. Never DELETE.
+// "What objectively happened?"
+
+model EngineeringEvent {
+  id            String   @id @default(cuid())
+  timestamp     DateTime @default(now())
+  type          String   // observation | hypothesis | simulation | evidence | verification | attestation | operational | memory
+  payload       String   // JSON — the event payload
+  previousHash  String   // Hash of the previous event in the chain
+  eventHash     String   // SHA-256 hash of this event's canonical bytes
+  maturity      String   // unknown | observed | investigated | verified | attested | operational | institutional-memory
+  workspaceId   String   // The workspace this event belongs to
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  capabilityId  String?  // The capability that produced this event
+  submittedBy   String   // Identity that submitted this event
+  signature     String?  // Ed25519 signature over canonical bytes
+  createdAt     DateTime @default(now())
+
+  @@index([type])
+  @@index([workspaceId])
+  @@index([maturity])
+  @@index([capabilityId])
+  @@index([timestamp])
+}
+
+// ── SEMANTIC ROOT ─────────────────────────────────────────────────────────────
+// Versioned execution environments. "How history is interpreted."
+
+model EnvironmentDescriptor {
+  id                    String   @id @default(cuid())
+  solverHash            String   // Hash of the solver version
+  ontologyHash          String   // Hash of the ontology
+  policyHash            String   // Hash of the execution policy
+  canonicalizationHash  String   // Hash of canonicalization rules
+  runtimeHash           String   // Hash of the runtime
+  lifecycle             String   // ACTIVE | SUPERSEDED | RETIRED
+  integrity             String   // SOUND | DEFECTIVE
+  supersededAt          DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  approvals             EnvironmentApproval[]
+  certificates          AttestationCertificate[]
+  integrityEvents       SemanticIntegrityEvent[]
+
+  @@index([lifecycle])
+  @@index([integrity])
+}
+
+// Environment approval — immutable, never changes.
+model EnvironmentApproval {
+  id              String   @id @default(cuid())
+  environmentId   String
+  environment     EnvironmentDescriptor @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  approvedBy      String
+  approvedAt      DateTime @default(now())
+  conditions      String   // JSON array of conditions
+
+  @@index([environmentId])
+}
+
+// Attestation certificate — can rotate, expire, migrate independently.
+model AttestationCertificate {
+  id              String   @id @default(cuid())
+  environmentId   String
+  environment     EnvironmentDescriptor @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  certificateType String   // x509 | ed25519 | hsm
+  issuer          String
+  subject         String
+  issuedAt        DateTime @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  serialNumber    String   @unique
+
+  @@index([environmentId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+// Semantic integrity event — records interpreter defects without rewriting history.
+model SemanticIntegrityEvent {
+  id                        String   @id @default(cuid())
+  environmentId             String
+  environment               EnvironmentDescriptor @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  defect                    String   // e.g. "fraud_model", "bayesian_scoring_bug"
+  classification            String   // logic | implementation | configuration | data
+  discoveryEvidence         String   // JSON — evidence of the defect
+  remediationStrategy       String   // full_reverification | patch | replacement
+  affectedBlockRangeStart   Int      // Start of affected block range
+  affectedBlockRangeEnd     Int      // End of affected block range
+  replacementEnvironmentId  String?  // ID of the replacement environment
+  timestamp                 DateTime @default(now())
+  createdAt                 DateTime @default(now())
+
+  @@index([environmentId])
+  @@index([defect])
+  @@index([timestamp])
+}
+
+// ── TRUST ROOT ────────────────────────────────────────────────────────────────
+// Certificate & attestation management. "Who is currently authorized?"
+
+model TrustLog {
+  id              String   @id @default(cuid())
+  eventType       String   // certificate_issued | certificate_revoked | attestation_created | approval_granted
+  subject         String   // The entity being trusted
+  actor           String   // The entity granting trust
+  certificateId   String?  // Reference to AttestationCertificate
+  details         String   // JSON — event details
+  timestamp       DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([eventType])
+  @@index([subject])
+  @@index([timestamp])
+}
+
+// ── WORKSPACE ─────────────────────────────────────────────────────────────────
+// A workspace is a single investigation / project. Work moves through maturity stages.
+
+model Workspace {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  maturity        String   // unknown | observed | investigated | verified | attested | operational | institutional-memory
+  mode            String   // engineering | review | operations | compliance | executive
+  ownerId         String   // Clerk user ID
+  capabilityIds   String   // JSON array of capability IDs
+  tags            String?  // JSON array of tags
+  currentMaturity String   @default("unknown")
+  targetMaturity  String   @default("verified")
+  eventCount      Int      @default(0)
+  attestationCount Int     @default(0)
+  confidenceScore Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  events          EngineeringEvent[]
+
+  @@index([ownerId])
+  @@index([maturity])
+  @@index([mode])
+  @@index([updatedAt])
+}

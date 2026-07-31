@@ -1,9 +1,13 @@
 // src/lib/evidence/envelope.ts
 // ───────────────────────────────────────────────────────────────
-// BOTTLENECK 1: 8-Stage Execution Envelope
+// Epistemic Runtime — 8-Stage Execution Envelope
 // Structured envelope that captures the full execution trace
 // for cryptographic verification and third-party auditing.
+// Adapted from proofbridge-liner: uses injected providers instead
+// of Date.now(), crypto.randomUUID(), or Math.random().
 // ───────────────────────────────────────────────────────────────
+
+import type { ClockProvider, UuidProvider } from '@/lib/kernel/types';
 
 // ─── Stage 1: Request ─────────────────────────────────────────
 
@@ -12,18 +16,20 @@ export interface RequestStage {
   tools: string[];
   model_hint?: string;
   cost_budget?: number;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock (NOT Date) */
+  timestamp: number;
 }
 
 // ─── Stage 2: Policy Decision ─────────────────────────────────
 
 export interface PolicyDecisionStage {
   matched_policies: string[];
-  decision: "allow" | "deny" | "require_approval";
+  decision: 'allow' | 'deny' | 'require_approval';
   denied_by?: string[];
   approval_required_by?: string[];
   policy_explanation: string;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock */
+  timestamp: number;
 }
 
 // ─── Stage 3: Model Selection ─────────────────────────────────
@@ -32,7 +38,8 @@ export interface ModelStage {
   model_id: string;
   provider: string;
   routing_reason: string;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock */
+  timestamp: number;
 }
 
 // ─── Stage 4: Tool Calls ──────────────────────────────────────
@@ -44,7 +51,8 @@ export interface ToolCallStage {
   duration_ms: number;
   success: boolean;
   error?: string;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock */
+  timestamp: number;
 }
 
 // ─── Stage 5: Output ──────────────────────────────────────────
@@ -57,7 +65,8 @@ export interface OutputStage {
     output: number;
   };
   cost_usd: number;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock */
+  timestamp: number;
 }
 
 // ─── Stage 6: Validation ──────────────────────────────────────
@@ -67,7 +76,8 @@ export interface ValidationStage {
   validation_method: string;
   passed: boolean;
   validation_details: Record<string, unknown>;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock */
+  timestamp: number;
 }
 
 // ─── Unsigned Envelope (stages 1-6, no crypto) ────────────────
@@ -93,8 +103,10 @@ export interface ExecutionEnvelope extends UnsignedEnvelope {
   envelope_hash: string;
   digital_signature: string;
   signing_key_id: string;
-  created_at: Date;
-  signed_at: Date;
+  /** Numeric timestamp from injected clock */
+  created_at: number;
+  /** Numeric timestamp from injected clock */
+  signed_at: number;
 }
 
 // ─── Evidence Ledger Entry ────────────────────────────────────
@@ -108,31 +120,44 @@ export interface EvidenceLedgerEntry {
   envelope_id?: string;
 
   is_cryptographically_verified: boolean;
-  verification_timestamp?: Date;
+  /** Numeric timestamp from injected clock */
+  verification_timestamp?: number;
 
-  created_at: Date;
+  /** Numeric timestamp from injected clock */
+  created_at: number;
+}
+
+// ─── Provider Interface for Envelope Construction ─────────────
+
+export interface EnvelopeProviders {
+  clock: ClockProvider;
+  uuid: UuidProvider;
 }
 
 // ─── Helper: Build an UnsignedEnvelope ────────────────────────
 
-export function buildUnsignedEnvelope(params: {
-  tenant_id: string;
-  capability_id: string;
-  agent_id?: string;
-  goal_id?: string;
-  prompt: string;
-  tools?: string[];
-  model_id?: string;
-  provider?: string;
-  routing_reason?: string;
-  policy_decision?: Partial<PolicyDecisionStage>;
-  output?: Partial<OutputStage>;
-  validation?: Partial<ValidationStage>;
-}): UnsignedEnvelope {
-  const now = new Date();
+export function buildUnsignedEnvelope(
+  params: {
+    tenant_id: string;
+    capability_id: string;
+    agent_id?: string;
+    goal_id?: string;
+    prompt: string;
+    tools?: string[];
+    model_id?: string;
+    provider?: string;
+    routing_reason?: string;
+    policy_decision?: Partial<PolicyDecisionStage>;
+    output?: Partial<OutputStage>;
+    validation?: Partial<ValidationStage>;
+  },
+  providers: EnvelopeProviders,
+): UnsignedEnvelope {
+  const now = providers.clock.now();
+  const envelopeId = providers.uuid.generate();
 
   return {
-    envelope_id: crypto.randomUUID(),
+    envelope_id: envelopeId,
     tenant_id: params.tenant_id,
     capability_id: params.capability_id,
     agent_id: params.agent_id,
@@ -146,24 +171,24 @@ export function buildUnsignedEnvelope(params: {
 
     policy_decision: {
       matched_policies: params.policy_decision?.matched_policies ?? [],
-      decision: params.policy_decision?.decision ?? "allow",
+      decision: params.policy_decision?.decision ?? 'allow',
       denied_by: params.policy_decision?.denied_by,
       approval_required_by: params.policy_decision?.approval_required_by,
-      policy_explanation: params.policy_decision?.policy_explanation ?? "",
+      policy_explanation: params.policy_decision?.policy_explanation ?? '',
       timestamp: now,
     },
 
     selected_model: {
-      model_id: params.model_id ?? "unknown",
-      provider: params.provider ?? "unknown",
-      routing_reason: params.routing_reason ?? "default",
+      model_id: params.model_id ?? 'unknown',
+      provider: params.provider ?? 'unknown',
+      routing_reason: params.routing_reason ?? 'default',
       timestamp: now,
     },
 
     tool_calls: [],
 
     output: {
-      text: params.output?.text ?? "",
+      text: params.output?.text ?? '',
       structured_data: params.output?.structured_data,
       tokens_used: params.output?.tokens_used ?? { input: 0, output: 0 },
       cost_usd: params.output?.cost_usd ?? 0,
@@ -172,7 +197,7 @@ export function buildUnsignedEnvelope(params: {
 
     validation: {
       validation_score: params.validation?.validation_score ?? 1.0,
-      validation_method: params.validation?.validation_method ?? "default",
+      validation_method: params.validation?.validation_method ?? 'default',
       passed: params.validation?.passed ?? true,
       validation_details: params.validation?.validation_details ?? {},
       timestamp: now,
