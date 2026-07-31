@@ -12,14 +12,13 @@ Last handoff    : active/HANDOFF.md
 Plain-English system guide (ELI5) : docs/HOW-IT-WORKS.md
 Tenant isolation spec              : docs/tenant-isolation.md
 Auth (Supabase) test report       : active/test-report-supabase-auth.md
-ProofBridge audit (18 findings)  : docs/audit/proofbridge-findings.md
-Hard failures detail (HF 1-5)    : docs/audit/hard-failures.md
-Ubuntu Pools Stitch config        : docs/ubuntu-pools/stitch-config.md
-SafeKrypte FROST-DAML spec        : docs/safekrypte/frost-daml-spec.md
-Ubuntu Data Bus event schema (34) : docs/data-bus/event-schema.md
-Branch protection policy          : docs/governance/branch-policy.md
-Shareholders agreement            : docs/governance/shareholders.md
-ADR registry                      : (in vvu-architecture skill body)
+Constitution                      : CONSTITUTION.md
+Master Specification               : MASTER_SPEC.md
+Verification Status               : VERIFICATION.md
+ADRs (governance)                 : docs/governance/adrs/
+ADRs (AIR)                        : air/adr/
+Engineering Constitution          : docs/governance/ENGINEERING_CONSTITUTION.md
+VVU Colony Constitution           : docs/governance/VVU_COLONY_CONSTITUTION.md
 
 ## WORKING SET HEALTH
 Pinned context estimate: ~3,070 tokens total (CLAUDE.md + AGENTS.md + MEMORY.md + skill descs)

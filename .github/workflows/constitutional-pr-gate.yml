@@ -1,0 +1,216 @@
+name: Constitutional PR Gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  constitutional-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check PR Description for Answered Constitutional Questions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            
+            // Helper: extract content after a heading until the next heading or end
+            function extractAnswer(text, headingPattern) {
+              const match = text.match(headingPattern);
+              if (!match) return null;
+              const startIdx = match.index + match[0].length;
+              // Find next heading (## or ###) or end of string
+              const rest = text.slice(startIdx);
+              const nextHeading = rest.match(/\n#{1,3}\s/);
+              const answer = nextHeading
+                ? rest.slice(0, nextHeading.index)
+                : rest;
+              return answer.replace(/^\n+|\n+$/g, '').trim();
+            }
+            
+            // Helper: check if answer is substantive (not empty, not just whitespace/punctuation)
+            function isSubstantive(answer) {
+              if (!answer) return false;
+              // Strip markdown formatting, bullets, numbers, whitespace
+              const cleaned = answer
+                .replace(/^[\s\-\*\d\.\)\(]+/gm, '')
+                .replace(/\n/g, ' ')
+                .trim();
+              // Must have at least 5 meaningful characters
+              return cleaned.length >= 5;
+            }
+            
+            // Define the four constitutional questions with their heading patterns
+            const questions = [
+              {
+                id: 'CONSTITUTION_SECTION',
+                heading: /Which section of this Constitution does it implement\?/i,
+                hint: 'Reference a specific Part/Section (e.g., "Part 1.1 – Three Surfaces", "CI-001", "SEC-003")'
+              },
+              {
+                id: 'ADR_REFERENCE',
+                heading: /Which ADR does it satisfy\?/i,
+                hint: 'Reference a specific ADR number (e.g., "ADR-004", "ADR-001")'
+              },
+              {
+                id: 'RFC_REFERENCE',
+                heading: /Which RFC defines the interface\?/i,
+                hint: 'Reference an RFC number or state "No interface changes" with reasoning'
+              },
+              {
+                id: 'TEST_REFERENCE',
+                heading: /Which test proves compliance\?/i,
+                hint: 'Reference a test file (e.g., "hash.test.ts") or test command (e.g., "vitest run")'
+              }
+            ];
+            
+            const results = [];
+            
+            for (const question of questions) {
+              const answer = extractAnswer(body, question.heading);
+              if (!answer) {
+                results.push({
+                  id: question.id,
+                  status: 'MISSING_HEADING',
+                  message: `Heading "${question.heading}" not found in PR description`
+                });
+              } else if (!isSubstantive(answer)) {
+                results.push({
+                  id: question.id,
+                  status: 'EMPTY_ANSWER',
+                  message: `Heading found but no substantive answer provided. ${question.hint}`
+                });
+              } else {
+                results.push({
+                  id: question.id,
+                  status: 'PASS',
+                  message: `Answered: "${answer.slice(0, 80)}${answer.length > 80 ? '...' : ''}"`
+                });
+              }
+            }
+            
+            // Check for "None", "N/A", "n/a", "none", "—", "-" as placeholder answers
+            const placeholderPatterns = /^(none|n\/a|na|no|todo|tbd|fixme|placeholder|-\s*)$/i;
+            const placeholders = results.filter(r => {
+              if (r.status !== 'PASS') return false;
+              const answer = extractAnswer(body, questions.find(q => q.id === r.id).heading);
+              return placeholderPatterns.test(answer.replace(/^[\s\-\*\d\.\)\(]+/gm, '').trim());
+            });
+            
+            // Mark placeholders as failures
+            for (const p of placeholders) {
+              p.status = 'PLACEHOLDER';
+              p.message = `Answer is a placeholder ("${p.message.slice(10, 40)}"). Provide a real answer. ${questions.find(q => q.id === p.id).hint}`;
+            }
+            
+            // Report
+            const failures = results.filter(r => r.status !== 'PASS');
+            
+            if (failures.length > 0) {
+              const report = `## ❌ Constitutional PR Gate Failed\n\n` +
+                `This PR does not meet the constitutional traceability requirements:\n\n` +
+                failures.map(f => `- **${f.id}** (${f.status}): ${f.message}`).join('\n') +
+                `\n\n### Required Format\n\n` +
+                `Each heading must be followed by a substantive answer:\n\n` +
+                `**Which section of this Constitution does it implement?**\n` +
+                `Part 1.1 – Three Surfaces, implementing CI-009\n\n` +
+                `**Which ADR does it satisfy?**\n` +
+                `ADR-004 – Three-Surface Architecture\n\n` +
+                `**Which RFC defines the interface?**\n` +
+                `RFC-0001 – Trust Runtime API v2 (or "No interface changes – documentation only")\n\n` +
+                `**Which test proves compliance?**\n` +
+                `334/334 unit tests passing (vitest run)\n\n` +
+                `**Constitution Reference:** Part 8, Gate 1`;
+              
+              core.setFailed(report);
+            } else {
+              const summary = results.map(r => `- **${r.id}**: ${r.message}`).join('\n');
+              core.info(`✅ All constitutional questions answered substantively:\n${summary}`);
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## ✅ Constitutional PR Gate Passed\n\n` +
+                  `All four constitutional questions have substantive answers:\n\n` +
+                  summary + `\n\n` +
+                  `**Constitution Reference:** Part 8, Gate 1`
+              });
+            }
+
+      - name: Verify ADR Reference Exists
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            
+            const adrMatches = body.match(/ADR[- ](\d+)/gi);
+            if (!adrMatches || adrMatches.length === 0) {
+              core.setFailed('No ADR reference found. Every PR must reference at least one ADR. If no new ADR is needed, state "ADR-001 (existing decision) – no new ADR required" with reasoning.');
+              return;
+            }
+            
+            const checkedAdrs = new Set();
+            for (const match of adrMatches) {
+              const num = match.match(/\d+/)[0].padStart(3, '0');
+              if (checkedAdrs.has(num)) continue;
+              checkedAdrs.add(num);
+              
+              const glob = require('glob');
+              const patterns = [
+                `docs/governance/adrs/ADR-${num}-*.md`,
+                `air/adr/ADR-${num}-*.md`
+              ];
+              
+              let found = false;
+              for (const pattern of patterns) {
+                const files = glob.sync(pattern);
+                if (files.length > 0) {
+                  core.info(`✅ ADR-${num} found: ${files[0]}`);
+                  found = true;
+                  break;
+                }
+              }
+              
+              if (!found) {
+                core.setFailed(`❌ ADR-${num} referenced in PR body does not exist in docs/governance/adrs/ or air/adr/.`);
+              }
+            }
+
+      - name: Verify Test Reference Exists
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            
+            const testMatches = body.match(/[a-zA-Z0-9_\-\.]+\.test\.[a-zA-Z]+/g);
+            if (!testMatches || testMatches.length === 0) {
+              core.info('No specific test file references found. Verifying general test claim...');
+              if (/334\/334|all.*pass|tests.*pass/i.test(body)) {
+                core.info('✅ General test passing claim found.');
+              } else {
+                core.warning('No test reference found. Consider referencing specific test files or test results.');
+              }
+              return;
+            }
+            
+            for (const testFile of [...new Set(testMatches)]) {
+              const found = fs.existsSync(testFile) ||
+                fs.existsSync(`test/${testFile}`) ||
+                fs.existsSync(`tests/${testFile}`) ||
+                fs.existsSync(`__tests__/${testFile}`);
+              
+              if (found) {
+                core.info(`✅ Test file found: ${testFile}`);
+              } else {
+                core.warning(`⚠️ Test file ${testFile} not found at expected paths.`);
+              }
+            }
