@@ -1,46 +1,71 @@
-import type { Metadata } from "next";
-import ClerkProvider from "@/components/ClerkProvider";
-import ThemeProvider from "@/components/ThemeProvider";
-import ThemeToggle from "@/components/ThemeToggle";
-import "./styles/variables.css";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
+import { dark } from "@clerk/themes";
+import "./globals.css";
+import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 
-export const metadata: Metadata = {
-  title: "VVU · Trust Runtime — Venture Vision Ubuntu",
-  description:
-    "Venture Vision Ubuntu — Trust Runtime Operating System. Deterministic projection of the Bayesian Safety Kernel.",
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const metadata: Metadata = {
+  title: "Venture Vision Ubuntu — Trusted Digital Infrastructure for South Africa",
+  description: "Building trusted digital infrastructure for South African communities through deterministic engineering, cryptographic provenance, and the Ubuntu philosophy.",
+  icons: { icon: "/vvu-logo.svg", apple: "/vvu-logo-github.png" },
+  openGraph: {
+    title: "Venture Vision Ubuntu",
+    description: "Trusted Digital Infrastructure for South Africa",
+    siteName: "Venture Vision Ubuntu",
+    type: "website",
+  },
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en-ZA" className="h-full" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-(function() {
-  try {
-    var theme = localStorage.getItem('vvu-theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
-    if (theme === 'dark') document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  } catch(e) {}
-})();`,
-          }}
-        />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet" />
-      </head>
-      <body className="h-full antialiased text-slate-100 flex selection:bg-cyan-500/30" style={{ margin: 0, padding: 0 }}>
-        <ClerkProvider>
-          <ThemeProvider>
-            <main className="flex-1 min-w-0 flex flex-col min-h-screen">
-              {children}
-            </main>
-            <ThemeToggle />
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+        variables: {
+          colorPrimary: "#059669",
+          colorBackground: "#0a0a0f",
+          colorInputBackground: "#141420",
+          colorInputText: "#e2e3db",
+          colorText: "#e2e3db",
+          colorTextSecondary: "#7b7d8c",
+          colorNeutral: "#1a1a2e",
+        },
+        elements: {
+          formButtonPrimary: "bg-emerald-600 hover:bg-emerald-700 text-white",
+          card: "bg-[#0f0f18] border-white/10",
+          socialButtonsBlockButton: "border-white/10 bg-white/5 hover:bg-white/10 text-foreground",
+          formFieldLabel: "text-foreground",
+          formFieldInput: "bg-[#141420] border-white/10 text-foreground",
+          dividerLine: "bg-white/10",
+          dividerText: "text-muted-foreground",
+          footerActionLink: "text-emerald-400 hover:text-emerald-300",
+        },
+      }}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      afterSignInUrl="/"
+      afterSignUpUrl="/"
+    >
+      <html lang="en" suppressHydrationWarning>
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen`}>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
+            {children}
+            <Toaster />
           </ThemeProvider>
-        </ClerkProvider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 
 interface NavigationProps {
   onEnterWorkspace: () => void;
+  onPartnerWithUs?: () => void;
 }
 
 const NAV_LINKS = [
@@ -19,7 +20,7 @@ const NAV_LINKS = [
   { label: 'Contact', href: '#contact' },
 ];
 
-export function Navigation({ onEnterWorkspace }: NavigationProps) {
+export function Navigation({ onEnterWorkspace, onPartnerWithUs }: NavigationProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -87,6 +88,16 @@ export function Navigation({ onEnterWorkspace }: NavigationProps) {
 
             {/* Desktop CTAs */}
             <div className="hidden items-center gap-3 lg:flex">
+              {onPartnerWithUs && (
+                <Button
+                  onClick={onPartnerWithUs}
+                  variant="outline"
+                  size="sm"
+                  className="border-emerald-600/40 text-emerald-600 hover:bg-emerald-600/10 hover:text-emerald-500"
+                >
+                  Partner With Us
+                </Button>
+              )}
               <Button
                 onClick={() => handleLinkClick('#contact')}
                 variant="outline"
@@ -138,6 +149,15 @@ export function Navigation({ onEnterWorkspace }: NavigationProps) {
                 </button>
               ))}
               <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4">
+                {onPartnerWithUs && (
+                  <Button
+                    onClick={() => { setMobileOpen(false); onPartnerWithUs(); }}
+                    variant="outline"
+                    className="w-full border-emerald-600/40 text-emerald-600 hover:bg-emerald-600/10"
+                  >
+                    Partner With Us
+                  </Button>
+                )}
                 <Button
                   onClick={() => { setMobileOpen(false); handleLinkClick('#contact'); }}
                   variant="outline"

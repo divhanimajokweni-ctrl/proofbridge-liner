@@ -362,24 +362,25 @@ export function ExplainabilityPanel({
                       ? `linear-gradient(90deg, ${barColor}88, ${barColor})`
                       : `linear-gradient(270deg, ${barColor}88, ${barColor})`,
                     boxShadow: `0 0 6px ${barColor}44`,
+                    width: `${barWidth / 2}%`,
+                    transformOrigin: isPositive ? 'left' : 'right',
+                    ...(isPositive
+                      ? { left: '50%', right: 'auto' }
+                      : { right: '50%', left: 'auto' }),
                   }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${barWidth / 2}%` }}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
-                  {...(isPositive
-                    ? { style: { left: '50%', right: 'auto' } }
-                    : { style: { right: '50%', left: 'auto' } })}
                 />
               </div>
               {/* What-if slider */}
               <AnimatePresence>
                 {showWhatIf && (
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                     transition={{ duration: 0.25, ease: 'easeOut' }}
-                    className="overflow-hidden"
                   >
                     <div className="mt-1.5 flex items-center gap-3 pl-1">
                       <span className="font-mono text-[9px] text-white/30">
@@ -427,11 +428,10 @@ export function ExplainabilityPanel({
       <AnimatePresence>
         {showWhatIf && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="overflow-hidden"
           >
             <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
               <div className="flex items-center gap-2">
@@ -589,9 +589,11 @@ export function RiskIndicator({
               style={{
                 background: `linear-gradient(90deg, ${levelColor}88, ${levelColor})`,
                 boxShadow: `0 0 8px ${levelColor}44`,
+                width: `${riskScore}%`,
+                transformOrigin: 'left',
               }}
-              initial={{ width: 0 }}
-              animate={{ width: `${riskScore}%` }}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
               transition={{ duration: 1, ease: 'easeOut' }}
             />
           </div>
@@ -638,9 +640,11 @@ export function RiskIndicator({
                   style={{
                     background: factorColor,
                     boxShadow: `0 0 4px ${factorColor}44`,
+                    width: `${f.score}%`,
+                    transformOrigin: 'left',
                   }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${f.score}%` }}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                 />
               </div>
@@ -648,11 +652,10 @@ export function RiskIndicator({
               <AnimatePresence>
                 {showWhatIf && (
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: 'easeOut' }}
-                    className="overflow-hidden"
                   >
                     <div className="mt-1 flex items-center gap-3 pl-1">
                       <Slider
@@ -679,11 +682,10 @@ export function RiskIndicator({
       <AnimatePresence>
         {showWhatIf && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
-            className="overflow-hidden"
           >
             <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/[0.06] px-4 py-3">
               <div className="flex items-center gap-2">
@@ -778,9 +780,11 @@ export function MaturityProgress({
             style={{
               background: `linear-gradient(90deg, ${MATURITY_COLORS.unknown}, ${currentColor})`,
               boxShadow: `0 0 8px ${currentColor}44`,
+              width: `${progress * 100}%`,
+              transformOrigin: 'left',
             }}
-            initial={{ width: 0 }}
-            animate={{ width: `${progress * 100}%` }}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
             transition={{ duration: 1.2, ease: 'easeOut' }}
           />
         </div>

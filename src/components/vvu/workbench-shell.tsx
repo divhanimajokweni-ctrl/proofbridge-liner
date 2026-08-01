@@ -12,6 +12,7 @@ import {
   Activity,
   ShieldCheck,
   ChevronRight,
+  ChevronDown,
   Boxes,
   FileCheck2,
   Workflow,
@@ -25,10 +26,24 @@ import {
   GitBranch,
   FlaskConical,
   Share2,
+  X,
+  Settings,
+  FolderKanban,
+  Paintbrush,
+  User,
+  ArrowRight,
+  GraduationCap,
+  Palette,
+  Rocket,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from '@/components/ui/collapsible';
 import { useWorkspaceStore } from '@/lib/vvu/workspace-store';
 import {
   PRODUCT_MANIFESTS,
@@ -54,6 +69,7 @@ import { TrustJourneyModal } from '@/components/vvu/trust-journey-modal';
 import { VvuCommandPalette } from '@/components/vvu/command-palette';
 import { AuthGate, WorkspaceAuthBar } from '@/components/vvu/landing/auth-gate';
 import { VvuErrorBoundary } from '@/components/vvu/error-boundary';
+import { ComputeEngineWidget } from '@/components/vvu/compute-engine-widget';
 
 // ---------------------------------------------------------------------------
 // Dynamic product imports
@@ -147,11 +163,32 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Boxes,
   Workflow,
   Sparkles,
+  GraduationCap,
+  Palette,
+  Rocket,
 };
 
 // ---------------------------------------------------------------------------
 // Left Dock Content — Workspace Navigation
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Sidebar workspace mode items (the 7 dropdown items)
+// ---------------------------------------------------------------------------
+
+const SIDEBAR_WORKSPACE_MODES: {
+  key: WorkspaceMode;
+  label: string;
+  icon: string;
+}[] = [
+  { key: 'engineering', label: 'Custom', icon: 'FlaskConical' },
+  { key: 'learning', label: 'Academics', icon: 'GraduationCap' },
+  { key: 'engineering', label: 'Developers', icon: 'BrainCircuit' },
+  { key: 'compliance', label: 'Regulators', icon: 'FileCheck2' },
+  { key: 'operations', label: 'Operators', icon: 'Activity' },
+  { key: 'review', label: 'Researchers', icon: 'Eye' },
+  { key: 'executive', label: 'Organisations', icon: 'TrendingUp' },
+];
 
 function LeftDockContent() {
   const activeProduct = useWorkspaceStore((s) => s.activeProduct);
@@ -159,154 +196,253 @@ function LeftDockContent() {
   const workspaceMode = useWorkspaceStore((s) => s.workspaceMode);
   const setWorkspaceMode = useWorkspaceStore((s) => s.setWorkspaceMode);
   const toggleTrustPassport = useWorkspaceStore((s) => s.toggleTrustPassport);
-  const toggleAgentPanel = useWorkspaceStore((s) => s.toggleAgentPanel);
+  const toggleDock = useWorkspaceStore((s) => s.toggleDock);
+
+  // Collapsible dropdown states — collapsed by default
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [projectsOpen, setProjectsOpen] = useState(false);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const modeConfig = WORKSPACE_MODES[workspaceMode];
 
   return (
-    <div className="flex flex-col gap-1 p-2">
-      {/* Home button */}
-      <button
-        onClick={() => setActiveProduct(null)}
-        className={`group relative flex items-center gap-2.5 rounded-md border px-2 py-2 text-left transition-all ${
-          activeProduct === null
-            ? 'border-emerald-500/20 bg-emerald-500/10 text-foreground'
-            : 'border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
-        }`}
-      >
-        {activeProduct === null && (
-          <span className="absolute inset-y-1 left-0 w-[2px] rounded-full bg-emerald-500" />
-        )}
-        <span className="flex h-7 w-7 flex-none items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10">
-          <Home className="h-3.5 w-3.5 text-emerald-400" strokeWidth={1.8} />
-        </span>
-        <span className="text-xs font-medium">What do you want to do?</span>
-      </button>
-
-      <div className="my-1 h-px bg-white/[0.06]" />
-
-      {/* Workspace Mode section */}
-      <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/60 px-2 pb-1">
-        Workspace Mode
-      </div>
-      {(Object.entries(WORKSPACE_MODES) as [WorkspaceMode, typeof WORKSPACE_MODES[WorkspaceMode]][]).map(
-        ([key, config]) => {
-          const isActive = workspaceMode === key;
-          const ModeIcon = ICON_MAP[config.icon] ?? Activity;
-
-          return (
-            <button
-              key={key}
-              onClick={() => setWorkspaceMode(key)}
-              className={`group relative flex items-center gap-2.5 rounded-md border px-2 py-1.5 text-left transition-all ${
-                isActive
-                  ? 'border-white/10 bg-white/[0.05] text-foreground'
-                  : 'border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
-              }`}
-            >
-              {isActive && (
-                <span
-                  className="absolute inset-y-1 left-0 w-[2px] rounded-full"
-                  style={{ background: config.color }}
-                />
-              )}
-              <ModeIcon
-                className="h-3.5 w-3.5"
-                style={{ color: isActive ? config.color : undefined }}
-                strokeWidth={1.8}
-              />
-              <div className="flex min-w-0 flex-1 flex-col leading-none">
-                <span className="truncate text-xs font-medium">{config.label}</span>
-                <span className="mt-0.5 truncate font-mono text-[8px] text-muted-foreground/50">
-                  {config.maturityRange[0]} → {config.maturityRange[1]}
-                </span>
-              </div>
-            </button>
-          );
-        },
-      )}
-
-      <div className="my-1 h-px bg-white/[0.06]" />
-
-      {/* Products section */}
-      <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/60 px-2 pb-1">
-        Products
-      </div>
-      {PRODUCT_MANIFESTS.map((product) => {
-        const Icon = resolveProductIcon(product.icon);
-        const isActive = activeProduct === product.id;
-
-        return (
-          <button
-            key={product.id}
-            onClick={() => setActiveProduct(product.id)}
-            className={`group relative flex items-center gap-2.5 rounded-md border px-2 py-2 text-left transition-all ${
-              isActive
-                ? 'border-white/10 bg-white/[0.05] text-foreground'
-                : 'border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
-            }`}
-          >
-            {isActive && (
-              <span
-                className="absolute inset-y-1 left-0 w-[2px] rounded-full"
-                style={{ background: product.color }}
-              />
-            )}
+    <div className="flex h-full flex-col gap-0 p-0">
+      {/* ── VVU Logo + Close ── */}
+      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+        <div className="flex items-center gap-2">
+          {/* VVU Logo — styled monospace */}
+          <div className="flex items-center gap-0.5">
             <span
-              className="flex h-7 w-7 flex-none items-center justify-center rounded-md border"
-              style={{
-                borderColor: isActive ? `${product.color}50` : 'rgba(255,255,255,0.06)',
-                background: isActive ? `${product.color}12` : 'transparent',
-              }}
+              className="font-mono text-base font-black tracking-[0.18em]"
+              style={{ color: '#3dffb0' }}
             >
-              <Icon
-                className="h-3.5 w-3.5"
-                style={{ color: isActive ? product.color : undefined }}
+              V
+            </span>
+            <span
+              className="font-mono text-base font-black tracking-[0.18em]"
+              style={{ color: '#C9A84C' }}
+            >
+              V
+            </span>
+            <span
+              className="font-mono text-base font-black tracking-[0.18em]"
+              style={{ color: '#3dd6ff' }}
+            >
+              U
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={() => toggleDock('left')}
+          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/50 hover:text-foreground hover:bg-white/[0.06] transition-colors"
+          title="Close sidebar"
+        >
+          <X className="h-3.5 w-3.5" strokeWidth={1.8} />
+        </button>
+      </div>
+
+      {/* ── Scrollable content area ── */}
+      <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.06) transparent' }}>
+        {/* ── Workspace Mode dropdown ── */}
+        <Collapsible open={workspaceOpen} onOpenChange={setWorkspaceOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
+              <Activity
+                className="h-3.5 w-3.5 flex-none"
+                style={{ color: modeConfig.color }}
                 strokeWidth={1.8}
               />
-            </span>
-            <div className="flex min-w-0 flex-1 flex-col leading-none">
-              <span className="truncate text-xs font-medium">{product.label}</span>
-              <span className="mt-0.5 truncate font-mono text-[9px] text-muted-foreground/70">
-                {product.tagline}
+              <span className="flex-1 text-xs font-medium">Workspace Mode</span>
+              <ChevronDown
+                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${workspaceOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col gap-0.5 pl-2 pb-1 pt-0.5"
+            >
+              {SIDEBAR_WORKSPACE_MODES.map((item) => {
+                const isActive = workspaceMode === item.key;
+                const ItemIcon = ICON_MAP[item.icon] ?? Activity;
+
+                return (
+                  <button
+                    key={item.label}
+                    onClick={() => setWorkspaceMode(item.key)}
+                    className={`group relative flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-all ${
+                      isActive
+                        ? 'border-white/10 bg-white/[0.05] text-foreground'
+                        : 'border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
+                    }`}
+                  >
+                    {isActive && (
+                      <span
+                        className="absolute inset-y-0.5 left-0 w-[2px] rounded-full"
+                        style={{ background: modeConfig.color }}
+                      />
+                    )}
+                    <ItemIcon
+                      className="h-3 w-3 flex-none"
+                      style={{ color: isActive ? modeConfig.color : undefined }}
+                      strokeWidth={1.8}
+                    />
+                    <span className="text-xs">{item.label}</span>
+                  </button>
+                );
+              })}
+            </motion.div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* ── Products dropdown ── */}
+        <Collapsible open={productsOpen} onOpenChange={setProductsOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
+              <Boxes className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
+              <span className="flex-1 text-xs font-medium">Products</span>
+              <ChevronDown
+                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${productsOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col gap-0.5 pl-2 pb-1 pt-0.5"
+            >
+              {PRODUCT_MANIFESTS.map((product) => {
+                const Icon = resolveProductIcon(product.icon);
+                const isActive = activeProduct === product.id;
+
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => setActiveProduct(product.id)}
+                    className={`group relative flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-all ${
+                      isActive
+                        ? 'border-white/10 bg-white/[0.05] text-foreground'
+                        : 'border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
+                    }`}
+                  >
+                    {isActive && (
+                      <span
+                        className="absolute inset-y-0.5 left-0 w-[2px] rounded-full"
+                        style={{ background: product.color }}
+                      />
+                    )}
+                    <Icon
+                      className="h-3 w-3 flex-none"
+                      style={{ color: isActive ? product.color : undefined }}
+                      strokeWidth={1.8}
+                    />
+                    <div className="flex min-w-0 flex-1 flex-col leading-none">
+                      <span className="truncate text-xs font-medium">{product.label}</span>
+                      <span className="mt-0.5 truncate font-mono text-[8px] text-muted-foreground/50">
+                        {product.tagline}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </motion.div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* ── Projects dropdown (placeholder) ── */}
+        <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
+              <FolderKanban className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
+              <span className="flex-1 text-xs font-medium">Projects</span>
+              <ChevronDown
+                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${projectsOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="pl-4 py-2">
+              <span className="font-mono text-[9px] text-muted-foreground/40">
+                No projects yet
               </span>
             </div>
-          </button>
-        );
-      })}
+          </CollapsibleContent>
+        </Collapsible>
 
-      {/* Shortcuts & quick actions */}
-      <div className="mt-auto border-t border-white/[0.06] pt-3 px-2">
-        <div className="flex flex-col gap-1.5">
-          <button
-            onClick={toggleTrustPassport}
-            className="flex items-center gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ShieldCheck className="h-3 w-3" strokeWidth={1.8} />
-            <span className="text-xs">Trust Passport</span>
-          </button>
-          <button
-            onClick={toggleAgentPanel}
-            className="flex items-center gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <Sparkles className="h-3 w-3" strokeWidth={1.8} />
-            <span className="text-xs">AI Agents</span>
-          </button>
-        </div>
-        <div className="mt-3 font-mono text-[9px] leading-relaxed text-muted-foreground/60">
-          <div className="flex items-center gap-1.5">
-            <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 text-[8.5px]">⌘K</kbd>
-            <span>palette</span>
-          </div>
-          <div className="mt-1 flex items-center gap-1.5">
-            <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 text-[8.5px]">Esc</kbd>
-            <span>← Home</span>
-          </div>
-          <div className="mt-1 flex items-center gap-1.5">
-            <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 text-[8.5px]">F</kbd>
-            <span>focus mode</span>
-          </div>
-        </div>
+        {/* ── Customize dropdown (placeholder) ── */}
+        <Collapsible open={customizeOpen} onOpenChange={setCustomizeOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
+              <Paintbrush className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
+              <span className="flex-1 text-xs font-medium">Customize</span>
+              <ChevronDown
+                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${customizeOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="pl-4 py-2">
+              <span className="font-mono text-[9px] text-muted-foreground/40">
+                Appearance & preferences
+              </span>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* ── Settings dropdown (placeholder) ── */}
+        <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
+              <Settings className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
+              <span className="flex-1 text-xs font-medium">Settings</span>
+              <ChevronDown
+                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${settingsOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="pl-4 py-2">
+              <span className="font-mono text-[9px] text-muted-foreground/40">
+                System configuration
+              </span>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* ── Standalone: Trust Passport ── */}
+        <button
+          onClick={toggleTrustPassport}
+          className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors"
+        >
+          <ShieldCheck className="h-3.5 w-3.5 flex-none text-emerald-400/70" strokeWidth={1.8} />
+          <span className="text-xs font-medium">Trust Passport</span>
+        </button>
+
+        {/* ── Standalone: Partner With Us ── */}
+        <button
+          className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors"
+          title="Partner With Us"
+        >
+          <Share2 className="h-3.5 w-3.5 flex-none text-amber-400/70" strokeWidth={1.8} />
+          <span className="flex-1 text-xs font-medium">Partner With Us</span>
+          <ArrowRight className="h-3 w-3 flex-none text-muted-foreground/30" strokeWidth={1.8} />
+        </button>
+      </div>
+
+      {/* ── Bottom anchored: User Account ── */}
+      <div className="border-t border-white/[0.06] px-2 py-2">
+        <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
+          <User className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
+          <span className="flex-1 text-xs font-medium">User Account</span>
+          <Settings className="h-3 w-3 flex-none text-muted-foreground/30" strokeWidth={1.8} />
+        </button>
       </div>
     </div>
   );
@@ -922,42 +1058,48 @@ export function WorkbenchShell() {
         </EdgeDock>
 
         {/* ── Stage ── */}
-        <main className="relative min-h-0 flex-1 overflow-hidden">
-          <AnimatePresence mode="wait">
-            {activeProduct === null ? (
-              <motion.div
-                key="intent-screen"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-                className="absolute inset-0"
-              >
-                <IntentScreen
-                  onCapabilitySelect={handleCapabilitySelect}
-                  onProductSelect={handleProductSelect}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key={activeProduct}
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-                className="absolute inset-0"
-              >
-                <WorkspaceContent
-                  activeProduct={activeProduct}
-                  sphereMode={sphereMode}
-                  onSphereMetrics={handleSphereMetrics}
-                  epistemicSection={epistemicSection}
-                  onEpistemicSectionChange={setEpistemicSection}
-                  onBackToSphere={() => setActiveProduct(null)}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {/* ── Compute Engine Widget (always visible, above content) ── */}
+          <ComputeEngineWidget />
+
+          {/* ── Content area ── */}
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <AnimatePresence mode="wait">
+              {activeProduct === null ? (
+                <motion.div
+                  key="intent-screen"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="absolute inset-0"
+                >
+                  <IntentScreen
+                    onCapabilitySelect={handleCapabilitySelect}
+                    onProductSelect={handleProductSelect}
+                  />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={activeProduct}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+                  className="absolute inset-0"
+                >
+                  <WorkspaceContent
+                    activeProduct={activeProduct}
+                    sphereMode={sphereMode}
+                    onSphereMetrics={handleSphereMetrics}
+                    epistemicSection={epistemicSection}
+                    onEpistemicSectionChange={setEpistemicSection}
+                    onBackToSphere={() => setActiveProduct(null)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Focus mode indicator */}
           {focusMode && activeProduct && (

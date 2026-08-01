@@ -378,9 +378,9 @@ function CapabilityEntryCard({
             <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
               <motion.div
                 className="h-full rounded-full"
-                style={{ backgroundColor: color }}
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercent}%` }}
+                style={{ backgroundColor: color, width: `${progressPercent}%`, transformOrigin: 'left' }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
                 transition={{ duration: 0.6, delay: 0.2 + index * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
               />
             </div>

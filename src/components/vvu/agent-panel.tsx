@@ -348,11 +348,10 @@ function AgentConversation({
 
   return (
     <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-      className="overflow-hidden"
     >
       <div className="border-t border-white/[0.06] bg-white/[0.01]">
         {/* Agent header */}

@@ -694,6 +694,14 @@
   border-radius: inherit;
 }
 
+/* 15. VVU No-Layout-Shift Utility ------------------------------------------- */
+/* Promotes element to its own compositor layer and prevents layout recalculation.
+ * Use on animated containers that should never shift surrounding layout. */
+.vvu-no-layout-shift {
+  will-change: transform, opacity;
+  contain: layout style paint;
+}
+
 /* 14. Tooltip arrow ------------------------------------------------------- */
 .tooltip {
   position: relative;
