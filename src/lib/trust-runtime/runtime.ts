@@ -1,24 +1,36 @@
 // ============================================================================
-// VVU Trust Runtime — Runtime Orchestrator
+// Epistemic Runtime — Trust Runtime Orchestrator
 // ============================================================================
 // Layer:        Orchestration
 // Responsibility: Tie all layers together — command → event → store → reducer → transport.
-//                 Also provides a convenience hook for the React UI.
+// Adapted from proofbridge-liner: uses injected providers for clock,
+// entropy, and UUID. No Date.now(), Math.random(), or crypto.randomUUID().
 // ============================================================================
 
 import {
-  RuntimeEvent,
-  RuntimeState,
-  Command,
-} from "./types";
-import { InMemoryEventStore, EventStore } from "./event-store";
-import { DefaultCommandHandler, CommandHandler } from "./command-handler";
-import { createInitialState, reduce, reduceBatch } from "./reducer";
+  type RuntimeEvent,
+  type RuntimeState,
+  type Command,
+} from './types';
+import { InMemoryEventStore, type EventStore } from './event-store';
+import { DefaultCommandHandler, type CommandHandler, type CommandHandlerProviders } from './command-handler';
+import { createInitialState, reduce, reduceBatch } from './reducer';
 import {
-  AllProjections,
+  type AllProjections,
   buildAllProjections,
-} from "./projection-manager";
-import { SSETransport, connectSSE, SSEConnectionState } from "./sse-transport";
+} from './projection-manager';
+import { SSETransport, type SSEConnectionState } from './sse-transport';
+import type { ClockProvider, EntropyProvider, UuidProvider } from '@/lib/kernel/types';
+
+// ---------------------------------------------------------------------------
+// Runtime Providers
+// ---------------------------------------------------------------------------
+
+export interface RuntimeProviders {
+  clock: ClockProvider;
+  entropy: EntropyProvider;
+  uuid: UuidProvider;
+}
 
 // ---------------------------------------------------------------------------
 // Runtime Orchestrator
@@ -34,12 +46,21 @@ export class TrustRuntime {
   private eventListeners: Array<(event: RuntimeEvent) => void> = [];
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private recentEvents: RuntimeEvent[] = [];
+  private providers: RuntimeProviders;
 
-  constructor(store?: EventStore) {
-    this.store = store ?? new InMemoryEventStore();
-    this.commandHandler = new DefaultCommandHandler(this.store);
+  constructor(providers: RuntimeProviders, store?: EventStore) {
+    this.providers = providers;
+    this.store = store ?? new InMemoryEventStore(providers.clock);
+    this.commandHandler = new DefaultCommandHandler(
+      this.store,
+      {
+        clock: providers.clock,
+        entropy: providers.entropy,
+        uuid: providers.uuid,
+      },
+    );
     this.sseTransport = new SSETransport(this.store);
-    this.state = createInitialState();
+    this.state = createInitialState(providers.clock);
   }
 
   /** Get the current derived projections. */
@@ -55,7 +76,7 @@ export class TrustRuntime {
   /** Rebuild state from the event store (replay). */
   async replay(): Promise<void> {
     const events = await this.store.readFrom(1);
-    this.state = reduceBatch(createInitialState(), events);
+    this.state = reduceBatch(createInitialState(this.providers.clock), events);
     this.recentEvents = events.slice(-50); // keep last 50 in memory
   }
 
@@ -181,10 +202,13 @@ export class TrustRuntime {
 
 let globalRuntime: TrustRuntime | null = null;
 
-/** Get or create the global TrustRuntime singleton. */
-export function getRuntime(): TrustRuntime {
+/** Get or create the global TrustRuntime singleton. Requires providers on first call. */
+export function getRuntime(providers?: RuntimeProviders): TrustRuntime {
   if (!globalRuntime) {
-    globalRuntime = new TrustRuntime();
+    if (!providers) {
+      throw new Error('TrustRuntime.getRuntime() requires providers on first call. Inject ClockProvider, EntropyProvider, and UuidProvider.');
+    }
+    globalRuntime = new TrustRuntime(providers);
     globalRuntime.startHeartbeat();
   }
   return globalRuntime;

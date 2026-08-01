@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "epistemic://runtime/v0.8/schemas/fact",
+  "title": "Fact",
+  "description": "A Fact — what happened. Immutable, append-only. The fundamental evidence unit.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Deterministic fact ID: SHA-256 of canonicalBytes"
+    },
+    "type": {
+      "$ref": "epistemic://runtime/v0.8/schemas/fact-types",
+      "description": "Type of fact"
+    },
+    "body": {
+      "type": "object",
+      "description": "The payload — what actually happened. PII-redacted before canonicalization.",
+      "additionalProperties": true
+    },
+    "canonicalBytes": {
+      "type": "string",
+      "description": "RFC 8785 JSON Canonicalization Scheme output (JCS)"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 hash of canonicalBytes"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonically increasing sequence number from DeterministicSequencer"
+    },
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Logical timestamp from injected ClockProvider (NOT Date.now())"
+    },
+    "submittedBy": {
+      "type": "string",
+      "description": "Identity that submitted this fact"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Ed25519/RSA-PSS/ECDSA signature over canonicalBytes"
+    },
+    "acceptedAt": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Timestamp when the AcceptancePipeline accepted this fact"
+    },
+    "schemaId": {
+      "type": "string",
+      "description": "Schema ID that validated this fact's body"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "body",
+    "canonicalBytes",
+    "hash",
+    "sequence",
+    "timestamp",
+    "submittedBy",
+    "signature",
+    "acceptedAt",
+    "schemaId"
+  ],
+  "additionalProperties": false
+}

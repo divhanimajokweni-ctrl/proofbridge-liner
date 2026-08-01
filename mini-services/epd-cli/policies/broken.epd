@@ -1,0 +1,31 @@
+# Demonstrates validator diagnostics
+policy "broken_demo" {
+  invariant "no_pred" {
+    severity critical
+  }
+
+  invariant "dup" "first" {
+    predicate temperature in [2, 8]
+  }
+  invariant "dup" "second" {
+    predicate temperature in [2, 8]
+  }
+
+  shard by region {
+    strategy unknown_strategy
+  }
+
+  on_violation {
+    strategy self_repair
+  }
+
+  ancestry {
+    proof merkle
+    zk true
+  }
+
+  shadow_bridge {
+    enabled true
+    takeover_latency_ms 5000
+  }
+}

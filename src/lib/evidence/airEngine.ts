@@ -1,22 +1,25 @@
 // src/lib/evidence/airEngine.ts
 // ───────────────────────────────────────────────────────────────
-// BOTTLENECK 1: AIR (Automated Integrity Review) Engine
+// Epistemic Runtime — AIR (Automated Integrity Review) Engine
 // Compiled engine that combines types, hashing, signing, and ledger
 // for end-to-end evidence envelope management.
+// Adapted from proofbridge-liner: uses kernel providers instead of
+// node:crypto, Date.now(), crypto.randomUUID(), or Math.random().
 // ───────────────────────────────────────────────────────────────
 
-import { createHash, generateKeyPairSync, sign, verify } from "node:crypto";
+import { canonicalize } from '@/lib/kernel/canonicalization';
+import { computeSHA256 } from '@/lib/kernel/hashing';
+import type { SignerProvider, ClockProvider, UuidProvider } from '@/lib/kernel/types';
 import {
   buildUnsignedEnvelope,
   type UnsignedEnvelope,
   type ExecutionEnvelope,
-  type RequestStage,
   type PolicyDecisionStage,
-  type ModelStage,
-  type ToolCallStage,
   type OutputStage,
   type ValidationStage,
-} from "./envelope";
+  type EnvelopeProviders,
+} from './envelope';
+import type { EvidenceSigner } from './signer';
 
 // ─── AIR-Specific Stage Types ──────────────────────────────────
 
@@ -24,21 +27,24 @@ export interface TeeAttestationStage {
   enclave_id: string;
   attestation_report: string;
   policy_hash: string;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock */
+  timestamp: number;
 }
 
 export interface ZkProofStage {
   proof_hash: string;
-  proof_system: "groth16" | "plonk" | "bulletproofs";
+  proof_system: 'groth16' | 'plonk' | 'bulletproofs';
   verified: boolean;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock */
+  timestamp: number;
 }
 
 export interface BayesianSafetyStage {
   hazard_probability: number;
   confidence_interval: [number, number];
   model_version: string;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock */
+  timestamp: number;
 }
 
 // ─── AIR Envelope (extends base envelope with TEE/ZK/Bayesian) ──
@@ -63,38 +69,24 @@ export interface AirEvidenceSigner {
   getKeyId(): string;
 }
 
-export class NodeCryptoAirEvidenceSigner implements AirEvidenceSigner {
-  private privateKey: ReturnType<typeof generateKeyPairSync>["privateKey"];
-  private publicKeyObj: ReturnType<typeof generateKeyPairSync>["publicKey"];
-  private publicKeyHex: string;
+/**
+ * AIR Evidence Signer backed by the kernel's SignerProvider.
+ * Delegates crypto to the deterministic kernel — no node:crypto.
+ */
+export class KernelAirEvidenceSigner implements AirEvidenceSigner {
+  private kernelSigner: SignerProvider;
   private keyId: string;
 
-  constructor(privateKeyPem?: string) {
-    const keypair = generateKeyPairSync("ed25519");
-    this.privateKey = keypair.privateKey;
-    this.publicKeyObj = keypair.publicKey;
-
-    const rawPub = this.publicKeyObj.export({
-      type: "spki",
-      format: "der",
-    }) as Buffer;
-    const raw32 = rawPub.subarray(rawPub.length - 32);
-    this.publicKeyHex = raw32.toString("hex");
-
-    this.keyId =
-      "air-ed25519-" +
-      createHash("sha256")
-        .update(raw32)
-        .digest("hex")
-        .substring(0, 16);
+  constructor(kernelSigner: SignerProvider) {
+    this.kernelSigner = kernelSigner;
+    this.keyId = `air-ed25519-${kernelSigner.getPublicKey().slice(0, 16)}`;
   }
 
   async sign(envelope: UnsignedEnvelope): Promise<{ signature: string; key_id: string }> {
     const hash = computeEnvelopeHash(envelope);
-    const hashBuffer = Buffer.from(hash, "hex");
-    const signatureBuffer = sign(null, hashBuffer, this.privateKey) as Buffer;
+    const signature = this.kernelSigner.sign(hash);
     return {
-      signature: signatureBuffer.toString("base64"),
+      signature,
       key_id: this.keyId,
     };
   }
@@ -105,16 +97,18 @@ export class NodeCryptoAirEvidenceSigner implements AirEvidenceSigner {
       const expectedHash = computeEnvelopeHash(baseEnvelope);
       if (expectedHash !== envelope.envelope_hash) return false;
 
-      const hashBuffer = Buffer.from(envelope.envelope_hash, "hex");
-      const signatureBuffer = Buffer.from(envelope.digital_signature, "base64");
-      return verify(null, hashBuffer, this.publicKeyObj, signatureBuffer);
+      return this.kernelSigner.verify(
+        envelope.envelope_hash,
+        envelope.digital_signature,
+        this.kernelSigner.getPublicKey(),
+      );
     } catch {
       return false;
     }
   }
 
   async getPublicKey(): Promise<string> {
-    return this.publicKeyHex;
+    return this.kernelSigner.getPublicKey();
   }
 
   getKeyId(): string {
@@ -129,7 +123,8 @@ export interface AirLedgerEntry {
   envelope_id: string;
   envelope_hash: string;
   stage: string;
-  timestamp: Date;
+  /** Numeric timestamp from injected clock */
+  timestamp: number;
   metadata: Record<string, unknown>;
 }
 
@@ -157,6 +152,9 @@ export class InMemoryAirEvidenceLedger implements AirEvidenceLedgerStorage {
 
 // ─── Hash Computation ──────────────────────────────────────────
 
+/**
+ * Compute the envelope hash using kernel's canonicalization and SHA-256.
+ */
 export function computeEnvelopeHash(envelope: UnsignedEnvelope): string {
   const stages = {
     request: envelope.request,
@@ -166,8 +164,8 @@ export function computeEnvelopeHash(envelope: UnsignedEnvelope): string {
     output: envelope.output,
     validation: envelope.validation,
   };
-  const canonical = JSON.stringify(stages, Object.keys(stages).sort());
-  return createHash("sha256").update(canonical).digest("hex");
+  const canonical = canonicalize(stages);
+  return computeSHA256(canonical);
 }
 
 // ─── AIR Engine ────────────────────────────────────────────────
@@ -176,17 +174,32 @@ export interface AirEngineConfig {
   signer?: AirEvidenceSigner;
   ledger?: AirEvidenceLedgerStorage;
   engineVersion?: string;
+  kernelSigner?: SignerProvider;
+}
+
+export interface AirEngineProviders {
+  clock: ClockProvider;
+  uuid: UuidProvider;
 }
 
 export class ProofBridgeAirEngine {
   private signer: AirEvidenceSigner;
   private ledger: AirEvidenceLedgerStorage;
   private engineVersion: string;
+  private providers: AirEngineProviders;
 
-  constructor(config?: AirEngineConfig) {
-    this.signer = config?.signer ?? new NodeCryptoAirEvidenceSigner();
-    this.ledger = config?.ledger ?? new InMemoryAirEvidenceLedger();
-    this.engineVersion = config?.engineVersion ?? "1.0.0";
+  constructor(config: AirEngineConfig, providers: AirEngineProviders) {
+    // Use provided signer, or create one from kernel signer
+    if (config.signer) {
+      this.signer = config.signer;
+    } else if (config.kernelSigner) {
+      this.signer = new KernelAirEvidenceSigner(config.kernelSigner);
+    } else {
+      throw new Error('AirEngine requires either signer or kernelSigner in config');
+    }
+    this.ledger = config.ledger ?? new InMemoryAirEvidenceLedger();
+    this.engineVersion = config.engineVersion ?? '1.0.0';
+    this.providers = providers;
   }
 
   getLedger(): AirEvidenceLedgerStorage {
@@ -199,6 +212,7 @@ export class ProofBridgeAirEngine {
 
   /**
    * Create a signed AIR envelope from an unsigned envelope + optional AIR stages.
+   * Uses injected providers — no Date.now(), crypto.randomUUID(), or Math.random().
    */
   async createEnvelope(
     params: {
@@ -218,8 +232,13 @@ export class ProofBridgeAirEngine {
       zkProof?: ZkProofStage;
       bayesianSafety?: BayesianSafetyStage;
       pipelineId?: string;
-    }
+    },
   ): Promise<ProofBridgeAirEnvelope> {
+    const envelopeProviders: EnvelopeProviders = {
+      clock: this.providers.clock,
+      uuid: this.providers.uuid,
+    };
+
     const unsigned = buildUnsignedEnvelope({
       tenant_id: params.tenantId,
       capability_id: params.capabilityId,
@@ -233,35 +252,36 @@ export class ProofBridgeAirEngine {
       policy_decision: params.policyDecision,
       output: params.output,
       validation: params.validation,
-    });
+    }, envelopeProviders);
 
     const { signature, key_id } = await this.signer.sign(unsigned);
     const envelopeHash = computeEnvelopeHash(unsigned);
+    const now = this.providers.clock.now();
 
     const airEnvelope: ProofBridgeAirEnvelope = {
       ...unsigned,
       envelope_hash: envelopeHash,
       digital_signature: signature,
       signing_key_id: key_id,
-      created_at: new Date(),
-      signed_at: new Date(),
+      created_at: now,
+      signed_at: now,
       tee_attestation: params.teeAttestation,
       zk_proof: params.zkProof,
       bayesian_safety: params.bayesianSafety,
       air_metadata: {
         engine_version: this.engineVersion,
-        pipeline_id: params.pipelineId ?? "default",
-        run_id: crypto.randomUUID(),
+        pipeline_id: params.pipelineId ?? 'default',
+        run_id: this.providers.uuid.generate(),
       },
     };
 
     // Commit to ledger
     await this.ledger.append({
-      entry_id: crypto.randomUUID(),
+      entry_id: this.providers.uuid.generate(),
       envelope_id: airEnvelope.envelope_id,
       envelope_hash: airEnvelope.envelope_hash,
-      stage: "created",
-      timestamp: new Date(),
+      stage: 'created',
+      timestamp: now,
       metadata: { engine_version: this.engineVersion },
     });
 
@@ -281,32 +301,32 @@ export class ProofBridgeAirEngine {
     const { tee_attestation, zk_proof, bayesian_safety, air_metadata, ...baseEnvelope } = envelope;
     const expectedHash = computeEnvelopeHash(baseEnvelope);
     if (expectedHash !== envelope.envelope_hash) {
-      reasons.push("Hash mismatch");
+      reasons.push('Hash mismatch');
     }
 
     // Verify signature
     const sigValid = await this.signer.verify(envelope);
     if (!sigValid) {
-      reasons.push("Signature verification failed");
+      reasons.push('Signature verification failed');
     }
 
     // Verify TEE attestation if present
     if (envelope.tee_attestation) {
       if (!envelope.tee_attestation.enclave_id) {
-        reasons.push("TEE attestation missing enclave_id");
+        reasons.push('TEE attestation missing enclave_id');
       }
       if (!envelope.tee_attestation.attestation_report) {
-        reasons.push("TEE attestation missing attestation_report");
+        reasons.push('TEE attestation missing attestation_report');
       }
     }
 
     // Verify ZK proof if present
     if (envelope.zk_proof) {
       if (!envelope.zk_proof.proof_hash) {
-        reasons.push("ZK proof missing proof_hash");
+        reasons.push('ZK proof missing proof_hash');
       }
-      if (!["groth16", "plonk", "bulletproofs"].includes(envelope.zk_proof.proof_system)) {
-        reasons.push("ZK proof has invalid proof_system");
+      if (!['groth16', 'plonk', 'bulletproofs'].includes(envelope.zk_proof.proof_system)) {
+        reasons.push('ZK proof has invalid proof_system');
       }
     }
 
@@ -314,10 +334,10 @@ export class ProofBridgeAirEngine {
     if (envelope.bayesian_safety) {
       const bs = envelope.bayesian_safety;
       if (bs.hazard_probability < 0 || bs.hazard_probability > 1) {
-        reasons.push("Bayesian hazard_probability out of range [0, 1]");
+        reasons.push('Bayesian hazard_probability out of range [0, 1]');
       }
       if (bs.confidence_interval[0] > bs.confidence_interval[1]) {
-        reasons.push("Bayesian confidence_interval lower bound > upper bound");
+        reasons.push('Bayesian confidence_interval lower bound > upper bound');
       }
     }
 

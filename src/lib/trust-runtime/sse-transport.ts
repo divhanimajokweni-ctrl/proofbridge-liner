@@ -1,14 +1,16 @@
 // ============================================================================
-// VVU Trust Runtime — SSE Transport
+// Epistemic Runtime — Trust Runtime SSE Transport (Server-Side)
 // ============================================================================
 // Layer:        Transport
 // Responsibility: Deliver RuntimeEvents to consumers via Server-Sent Events.
 //                 This is a **consumer** of the event store — not the owner.
 //                 Reconnection, backfill, and last-event-ID are supported.
+// Adapted from proofbridge-liner: server-side transport only.
+// Client-side connection logic is in ./use-sse-transport.ts for Next.js.
 // ============================================================================
 
-import { RuntimeEvent } from "./types";
-import { EventStore } from "./event-store";
+import type { RuntimeEvent } from './types';
+import type { EventStore } from './event-store';
 
 export type SSEClient = {
   id: string;
@@ -53,7 +55,7 @@ export class SSETransport {
         }
 
         // Send initial keepalive
-        this.sendComment(client, "connected");
+        this.sendComment(client, 'connected');
       },
       cancel: () => {
         cancelled = true;
@@ -63,10 +65,10 @@ export class SSETransport {
 
     return new Response(stream, {
       headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
       },
     });
   }
@@ -121,8 +123,8 @@ export class SSETransport {
       `id: ${event.sequence}`,
       `event: ${event.type}`,
       `data: ${data}`,
-      "",
-    ].join("\n");
+      '',
+    ].join('\n');
 
     const encoder = new TextEncoder();
     client.controller.enqueue(encoder.encode(message));
@@ -137,7 +139,7 @@ export class SSETransport {
   heartbeat(): void {
     for (const client of this.clients.values()) {
       try {
-        this.sendComment(client, "heartbeat");
+        this.sendComment(client, 'heartbeat');
       } catch {
         this.clients.delete(client.id);
       }
@@ -146,7 +148,7 @@ export class SSETransport {
 }
 
 // ---------------------------------------------------------------------------
-// SSE Client Hook (for React)
+// SSE Connection State (shared type for client-side)
 // ---------------------------------------------------------------------------
 
 export interface SSEConnectionState {
@@ -162,73 +164,5 @@ export function createSSEConnectionState(): SSEConnectionState {
     lastEvent: null,
     reconnects: 0,
     error: null,
-  };
-}
-
-/**
- * Open an EventSource connection to the runtime SSE endpoint.
- * Returns a cleanup function for use in React useEffect.
- */
-export function connectSSE(
-  url: string,
-  onEvent: (event: RuntimeEvent) => void,
-  onStateChange: (state: SSEConnectionState) => void,
-): () => void {
-  let eventSource: EventSource | null = null;
-  let reconnectAttempts = 0;
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  let aborted = false;
-
-  function connect() {
-    if (aborted) return;
-
-    eventSource = new EventSource(url);
-
-    onStateChange({
-      connected: true,
-      lastEvent: null,
-      reconnects: reconnectAttempts,
-      error: null,
-    });
-
-    eventSource.onmessage = (msg: MessageEvent) => {
-      try {
-        const event = JSON.parse(msg.data) as RuntimeEvent;
-        onEvent(event);
-        onStateChange({
-          connected: true,
-          lastEvent: event,
-          reconnects: reconnectAttempts,
-          error: null,
-        });
-      } catch {
-        // Ignore malformed events
-      }
-    };
-
-    eventSource.onerror = () => {
-      eventSource?.close();
-      onStateChange({
-        connected: false,
-        lastEvent: null,
-        reconnects: reconnectAttempts,
-        error: "Connection lost",
-      });
-
-      // Exponential backoff reconnect
-      if (!aborted) {
-        reconnectAttempts++;
-        const delay = Math.min(1000 * 2 ** reconnectAttempts, 30000);
-        reconnectTimer = setTimeout(connect, delay);
-      }
-    };
-  }
-
-  connect();
-
-  return () => {
-    aborted = true;
-    eventSource?.close();
-    if (reconnectTimer) clearTimeout(reconnectTimer);
   };
 }

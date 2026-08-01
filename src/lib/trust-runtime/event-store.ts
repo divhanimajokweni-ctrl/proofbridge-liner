@@ -1,12 +1,16 @@
 // ============================================================================
-// VVU Trust Runtime — Event Store (Append-Only Log)
+// Epistemic Runtime — Trust Runtime Event Store (Append-Only Log)
 // ============================================================================
 // Layer:        Event Store
 // Responsibility: Append-only log with replay, snapshot/checkpoint,
 //                 duplicate detection, and ordering guarantees.
+// Adapted from proofbridge-liner: InMemoryEventStore uses injected clock
+// for snapshot timestamps. PostgresEventStore is a stub (no Postgres
+// configured in this project). No Date.now() used.
 // ============================================================================
 
-import { RuntimeEvent } from "./types";
+import type { RuntimeEvent } from './types';
+import type { ClockProvider } from '@/lib/kernel/types';
 
 // ---------------------------------------------------------------------------
 // Event Store Interface
@@ -58,6 +62,11 @@ export class InMemoryEventStore implements EventStore {
   private eventIds = new Set<string>();
   private snapshots: SnapshotEntry[] = [];
   private seqCounter = 0;
+  private clock: ClockProvider;
+
+  constructor(clock: ClockProvider) {
+    this.clock = clock;
+  }
 
   async append(event: RuntimeEvent): Promise<number> {
     // Duplicate detection
@@ -110,7 +119,7 @@ export class InMemoryEventStore implements EventStore {
     this.snapshots.push({
       sequence,
       state,
-      savedAt: Date.now(),
+      savedAt: this.clock.now(),
     });
   }
 
@@ -144,81 +153,56 @@ export class InMemoryEventStore implements EventStore {
 }
 
 // ---------------------------------------------------------------------------
-// PostgreSQL Event Store (durable implementation)
+// PostgreSQL Event Store (stub — no Postgres configured)
 // ---------------------------------------------------------------------------
 
-import { EventStoreRepository, DomainEvent, OccConflictError, SnapshotCorruptionError } from "../../../lib/db/src/repositories/event-store.repository";
-
+/**
+ * PostgresEventStore is a stub implementation. The interface is preserved
+ * for future integration, but all methods throw "not implemented" errors.
+ * In production, this would use a real EventStoreRepository.
+ */
 export class PostgresEventStore implements EventStore {
-  constructor(private readonly repo: EventStoreRepository) {}
-
-  async append(event: RuntimeEvent): Promise<number> {
-    const domainEvent: DomainEvent = {
-      eventId: event.eventId,
-      eventType: event.type,
-      payload: event.payload as Record<string, any>,
-      metadata: {},
-    };
-
-    const result = await this.repo.append(
-      event.tenantId,
-      event.streamId,
-      event.streamVersion - 1, // expectedVersion is 0-indexed
-      [domainEvent]
-    );
-
-    return Number(result.lastSequenceNumber);
+  async append(_event: RuntimeEvent): Promise<number> {
+    throw new Error('PostgresEventStore.append() not implemented. No Postgres configured.');
   }
 
-  async read(sequence: number): Promise<RuntimeEvent | null> {
-    // This implementation requires stream context; use readStream instead
-    throw new Error('PostgresEventStore.read() not supported. Use loadStream() instead.');
+  async read(_sequence: number): Promise<RuntimeEvent | null> {
+    throw new Error('PostgresEventStore.read() not implemented. No Postgres configured.');
   }
 
-  async readRange(fromSequence: number, toSequence: number): Promise<RuntimeEvent[]> {
-    throw new Error('PostgresEventStore.readRange() not supported. Use loadStream() instead.');
+  async readRange(_fromSequence: number, _toSequence: number): Promise<RuntimeEvent[]> {
+    throw new Error('PostgresEventStore.readRange() not implemented. No Postgres configured.');
   }
 
-  async readFrom(fromSequence: number): Promise<RuntimeEvent[]> {
-    throw new Error('PostgresEventStore.readFrom() not supported. Use loadStream() instead.');
+  async readFrom(_fromSequence: number): Promise<RuntimeEvent[]> {
+    throw new Error('PostgresEventStore.readFrom() not implemented. No Postgres configured.');
   }
 
   async getCurrentSequence(): Promise<number> {
-    // This requires stream context; use getCurrentVersion() instead
-    throw new Error('PostgresEventStore.getCurrentSequence() not supported. Use repo.getCurrentVersion() instead.');
+    throw new Error('PostgresEventStore.getCurrentSequence() not implemented. No Postgres configured.');
   }
 
-  async exists(eventId: string): Promise<boolean> {
-    // Check via repository query
-    throw new Error('PostgresEventStore.exists() not yet implemented');
+  async exists(_eventId: string): Promise<boolean> {
+    throw new Error('PostgresEventStore.exists() not implemented. No Postgres configured.');
   }
 
-  async saveSnapshot<T>(sequence: number, state: T): Promise<void> {
-    // Requires tenantId/streamId context
-    throw new Error('PostgresEventStore.saveSnapshot() not yet implemented');
+  async saveSnapshot<T>(_sequence: number, _state: T): Promise<void> {
+    throw new Error('PostgresEventStore.saveSnapshot() not implemented. No Postgres configured.');
   }
 
-  async loadLatestSnapshot<T>(atSequence?: number): Promise<{ sequence: number; state: T } | null> {
-    // Requires tenantId/streamId context
-    throw new Error('PostgresEventStore.loadLatestSnapshot() not yet implemented');
+  async loadLatestSnapshot<T>(_atSequence?: number): Promise<{ sequence: number; state: T } | null> {
+    throw new Error('PostgresEventStore.loadLatestSnapshot() not implemented. No Postgres configured.');
   }
 
   async size(): Promise<number> {
-    throw new Error('PostgresEventStore.size() not yet implemented');
+    throw new Error('PostgresEventStore.size() not implemented. No Postgres configured.');
   }
 }
 
 /**
- * Auto-select event store implementation based on environment.
- * If DATABASE_URL is present, use PostgreSQL; otherwise fall back to in-memory.
+ * Create an event store instance. Always returns InMemoryEventStore
+ * since Postgres is not configured in this project.
  */
-export function createEventStore(): EventStore {
-  if (process.env.DATABASE_URL) {
-    const { getDb } = require('../../../lib/db/src/index');
-    const db = getDb();
-    const repo = new EventStoreRepository(db);
-    return new PostgresEventStore(repo);
-  }
-
-  return new InMemoryEventStore();
+export function createEventStore(clock: ClockProvider): EventStore {
+  return new InMemoryEventStore(clock);
 }

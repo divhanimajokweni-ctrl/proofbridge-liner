@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "epistemic://runtime/v0.8/schemas/proof",
+  "title": "Proof",
+  "description": "A Proof — why we believe it. Cryptographic evidence attesting to a fact.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA-256 identifier of this proof"
+    },
+    "factId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "The fact this proof attests to"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "ancestry",
+        "inclusion",
+        "consistency",
+        "batch"
+      ],
+      "description": "Kind of proof"
+    },
+    "mmrRoot": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "MMR root at time of proof generation"
+    },
+    "proofPath": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Authentication path (sibling hashes) for Merkle Mountain Range inclusion"
+    },
+    "mmrIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Index in the MMR at time of proof generation"
+    },
+    "signature": {
+      "type": "string",
+      "description": "Ed25519 signature over the proof data"
+    },
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Timestamp from injected ClockProvider"
+    }
+  },
+  "required": [
+    "id",
+    "factId",
+    "kind",
+    "mmrRoot",
+    "proofPath",
+    "mmrIndex",
+    "signature",
+    "timestamp"
+  ],
+  "additionalProperties": false
+}

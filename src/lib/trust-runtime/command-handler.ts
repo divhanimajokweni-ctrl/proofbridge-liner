@@ -1,21 +1,23 @@
 // ============================================================================
-// VVU Trust Runtime — Command Handler
+// Epistemic Runtime — Trust Runtime Command Handler
 // ============================================================================
 // Layer:        Command Handler
 // Responsibility: Validate commands, authorize, check idempotency, produce events.
 //                 Commands express intent. Events record facts.
 //                 This layer is the only place that produces RuntimeEvents.
+// Adapted from proofbridge-liner: uses injected clock and entropy instead
+// of Date.now() and Math.random(). No dependency on EventStoreRepository.
 // ============================================================================
 
 import {
-  Command,
-  RuntimeEvent,
-  RuntimeEventType,
-  KernelState,
+  type Command,
+  type RuntimeEvent,
+  type RuntimeEventType,
+  type KernelState,
   isValidTransition,
-} from "./types";
-import { EventStore } from "./event-store";
-import { EventStoreRepository, OccConflictError, DomainEvent } from '../../../lib/db/src/repositories/event-store.repository';
+} from './types';
+import type { EventStore } from './event-store';
+import type { ClockProvider, EntropyProvider, UuidProvider } from '@/lib/kernel/types';
 
 export interface CommandResult {
   events: RuntimeEvent[];
@@ -28,54 +30,62 @@ export interface CommandHandler {
 }
 
 // ---------------------------------------------------------------------------
+// Command Handler Providers
+// ---------------------------------------------------------------------------
+
+export interface CommandHandlerProviders {
+  clock: ClockProvider;
+  entropy: EntropyProvider;
+  uuid: UuidProvider;
+}
+
+// ---------------------------------------------------------------------------
 // Default Command Handler Implementation
 // ---------------------------------------------------------------------------
 
-type EventFactory = {
-  eventId: string;
-  type: RuntimeEventType;
-  source: string;
-  causationId: string | null;
-  correlationId: string;
-  payload: Record<string, unknown>;
-};
-
 let globalSequenceCounter = 0;
 
-/** Generate a deterministic-looking eventId from an idempotency key. */
+/** Generate an eventId from an idempotency key (deterministic). */
 function eventIdFromKey(key: string): string {
-  // In production, use a proper UUID v7 or hash-based ID.
-  // For now, prefix the key to make it unique and deterministic.
   return `evt-${key}-${++globalSequenceCounter}`;
 }
 
-/** Generate a unique eventId. */
-function generateEventId(): string {
-  return `evt-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+/** Generate a unique eventId using injected providers. */
+function generateEventId(uuid: UuidProvider): string {
+  return `evt-${uuid.generate()}`;
 }
 
 /** Build a RuntimeEvent from a factory partial. */
 function buildEvent(
-  factory: EventFactory,
+  factory: {
+    eventId: string;
+    type: RuntimeEventType;
+    source: string;
+    causationId: string | null;
+    correlationId: string;
+    payload: Record<string, unknown>;
+    tenantId: string;
+    streamId: string;
+  },
   sequence: number,
-  causationId: string | null,
+  timestamp: number,
 ): RuntimeEvent {
   return {
     eventId: factory.eventId,
     type: factory.type,
     version: 1,
-    timestamp: Date.now(),
+    timestamp,
     sequence,
     correlationId: factory.correlationId,
-    causationId: factory.causationId ?? causationId,
+    causationId: factory.causationId,
     source: factory.source,
-    payload: factory.payload as RuntimeEvent["payload"],
-    tenantId: "",
-    streamId: "",
+    payload: factory.payload as RuntimeEvent['payload'],
+    tenantId: factory.tenantId,
+    streamId: factory.streamId,
     streamVersion: sequence,
     schemaVersion: 1,
-    payloadHash: "",
-    eventHash: "",
+    payloadHash: '',
+    eventHash: '',
     previousHash: null,
   };
 }
@@ -83,9 +93,11 @@ function buildEvent(
 export class DefaultCommandHandler implements CommandHandler {
   private store: EventStore;
   private source: string;
+  private providers: CommandHandlerProviders;
 
-  constructor(store: EventStore, source = "command-handler") {
+  constructor(store: EventStore, providers: CommandHandlerProviders, source = 'command-handler') {
     this.store = store;
+    this.providers = providers;
     this.source = source;
   }
 
@@ -94,17 +106,17 @@ export class DefaultCommandHandler implements CommandHandler {
     currentState: { kernelState: KernelState; sequence: number },
   ): Promise<CommandResult> {
     switch (command.type) {
-      case "SubmitEvidence":
+      case 'SubmitEvidence':
         return this.handleSubmitEvidence(command, currentState);
-      case "VerifyAttestation":
+      case 'VerifyAttestation':
         return this.handleVerifyAttestation(command, currentState);
-      case "CommitReceipt":
+      case 'CommitReceipt':
         return this.handleCommitReceipt(command, currentState);
-      case "ConfirmLedger":
+      case 'ConfirmLedger':
         return this.handleConfirmLedger(command, currentState);
-      case "TriggerCircuitBreaker":
+      case 'TriggerCircuitBreaker':
         return this.handleTriggerCircuitBreaker(command, currentState);
-      case "ResetRuntime":
+      case 'ResetRuntime':
         return this.handleResetRuntime(command, currentState);
       default:
         throw new Error(`Unknown command type: ${(command as Command).type}`);
@@ -116,7 +128,7 @@ export class DefaultCommandHandler implements CommandHandler {
   // -----------------------------------------------------------------------
 
   private async handleSubmitEvidence(
-    command: Command & { type: "SubmitEvidence" },
+    command: Command & { type: 'SubmitEvidence' },
     currentState: { kernelState: KernelState; sequence: number },
   ): Promise<CommandResult> {
     // Idempotency check
@@ -125,18 +137,16 @@ export class DefaultCommandHandler implements CommandHandler {
     }
 
     const correlationId = `corr-${command.idempotencyKey}`;
-    const tenantId = command.tenantId ?? "default";
+    const tenantId = command.tenantId ?? 'default';
     const streamId = command.streamId ?? `tenant:${tenantId}`;
+    const now = this.providers.clock.now();
 
-    const event: RuntimeEvent = {
+    const event: RuntimeEvent = buildEvent({
       eventId: command.idempotencyKey,
-      type: "EvidenceReceived",
-      version: 1,
-      timestamp: Date.now(),
-      sequence: currentState.sequence + 1,
-      correlationId,
-      causationId: null,
+      type: 'EvidenceReceived',
       source: this.source,
+      causationId: null,
+      correlationId,
       payload: {
         claim: command.evidence.claim,
         source: command.evidence.source,
@@ -145,123 +155,110 @@ export class DefaultCommandHandler implements CommandHandler {
       },
       tenantId,
       streamId,
-      streamVersion: currentState.sequence + 1,
-      schemaVersion: 1,
-      payloadHash: "",
-      eventHash: "",
-      previousHash: null,
-    };
+    }, currentState.sequence + 1, now);
 
     return { events: [event] };
   }
 
   private async handleVerifyAttestation(
-    command: Command & { type: "VerifyAttestation" },
+    command: Command & { type: 'VerifyAttestation' },
     currentState: { kernelState: KernelState; sequence: number },
   ): Promise<CommandResult> {
     // Validate state machine — can only verify if ATTESTING is reachable
     const canAttest =
-      isValidTransition(currentState.kernelState, "ATTESTING") ||
-      currentState.kernelState === "ATTESTING" ||
-      currentState.kernelState === "VERIFYING";
+      isValidTransition(currentState.kernelState, 'ATTESTING') ||
+      currentState.kernelState === 'ATTESTING' ||
+      currentState.kernelState === 'VERIFYING';
     if (!canAttest) {
+      const tenantId = command.tenantId ?? 'default';
+      const streamId = command.streamId ?? `tenant:${tenantId}`;
+      const now = this.providers.clock.now();
       return {
         events: [
           this.errorEvent(
-            "ILLEGAL_TRANSITION",
+            'ILLEGAL_TRANSITION',
             `Cannot verify attestation in state ${currentState.kernelState}`,
             currentState,
-            command.tenantId ?? "default",
-            command.streamId ?? `tenant:${command.tenantId ?? "default"}`,
+            tenantId,
+            streamId,
+            now,
           ),
         ],
       };
     }
 
     const correlationId = `attest-${command.receiptId}`;
-    const tenantId = command.tenantId ?? "default";
+    const tenantId = command.tenantId ?? 'default';
     const streamId = command.streamId ?? `tenant:${tenantId}`;
+    const now1 = this.providers.clock.now();
+    const now2 = this.providers.clock.now();
 
-    const startEvent: RuntimeEvent = {
-      eventId: generateEventId(),
-      type: "AttestationStarted",
-      version: 1,
-      timestamp: Date.now(),
-      sequence: currentState.sequence + 1,
-      correlationId,
-      causationId: null,
+    const startEvent: RuntimeEvent = buildEvent({
+      eventId: generateEventId(this.providers.uuid),
+      type: 'AttestationStarted',
       source: this.source,
+      causationId: null,
+      correlationId,
       payload: { receiptId: command.receiptId, platform: command.platform },
       tenantId,
       streamId,
-      streamVersion: currentState.sequence + 1,
-      schemaVersion: 1,
-      payloadHash: "",
-      eventHash: "",
-      previousHash: null,
-    };
+    }, currentState.sequence + 1, now1);
 
     // In production, the actual verification happens here asynchronously.
     // For now, produce the verified event inline.
-    const verifiedEvent: RuntimeEvent = {
-      eventId: generateEventId(),
-      type: "AttestationVerified",
-      version: 1,
-      timestamp: Date.now(),
-      sequence: currentState.sequence + 2,
-      correlationId,
-      causationId: startEvent.eventId,
+    const verifiedEvent: RuntimeEvent = buildEvent({
+      eventId: generateEventId(this.providers.uuid),
+      type: 'AttestationVerified',
       source: this.source,
+      causationId: startEvent.eventId,
+      correlationId,
       payload: {
         receiptId: command.receiptId,
-        platform: command.platform as "AMD SEV-SNP" | "Intel SGX" | "AWS Nitro" | "software",
-        measurement: "a3f19c0b7e24d817",
+        platform: command.platform as 'AMD SEV-SNP' | 'Intel SGX' | 'AWS Nitro' | 'software',
+        measurement: 'a3f19c0b7e24d817',
       },
       tenantId,
       streamId,
-      streamVersion: currentState.sequence + 2,
-      schemaVersion: 1,
-      payloadHash: "",
-      eventHash: "",
-      previousHash: null,
-    };
+    }, currentState.sequence + 2, now2);
 
     return { events: [startEvent, verifiedEvent] };
   }
 
   private async handleCommitReceipt(
-    command: Command & { type: "CommitReceipt" },
+    command: Command & { type: 'CommitReceipt' },
     currentState: { kernelState: KernelState; sequence: number },
   ): Promise<CommandResult> {
     if (
-      !isValidTransition(currentState.kernelState, "COMMITTING") &&
-      currentState.kernelState !== "COMMITTING"
+      !isValidTransition(currentState.kernelState, 'COMMITTING') &&
+      currentState.kernelState !== 'COMMITTING'
     ) {
+      const tenantId = command.tenantId ?? 'default';
+      const streamId = command.streamId ?? `tenant:${tenantId}`;
+      const now = this.providers.clock.now();
       return {
         events: [
           this.errorEvent(
-            "ILLEGAL_TRANSITION",
+            'ILLEGAL_TRANSITION',
             `Cannot commit receipt in state ${currentState.kernelState}`,
             currentState,
-            command.tenantId ?? "default",
-            command.streamId ?? `tenant:${command.tenantId ?? "default"}`,
+            tenantId,
+            streamId,
+            now,
           ),
         ],
       };
     }
 
-    const tenantId = command.tenantId ?? "default";
+    const tenantId = command.tenantId ?? 'default';
     const streamId = command.streamId ?? `tenant:${tenantId}`;
+    const now = this.providers.clock.now();
 
-    const event: RuntimeEvent = {
-      eventId: generateEventId(),
-      type: "ReceiptCommitted",
-      version: 1,
-      timestamp: Date.now(),
-      sequence: currentState.sequence + 1,
-      correlationId: `receipt-${command.receipt.receiptId}`,
-      causationId: null,
+    const event: RuntimeEvent = buildEvent({
+      eventId: generateEventId(this.providers.uuid),
+      type: 'ReceiptCommitted',
       source: this.source,
+      causationId: null,
+      correlationId: `receipt-${command.receipt.receiptId}`,
       payload: {
         receiptId: command.receipt.receiptId,
         receiptHash: command.receipt.receiptHash,
@@ -271,111 +268,91 @@ export class DefaultCommandHandler implements CommandHandler {
       },
       tenantId,
       streamId,
-      streamVersion: currentState.sequence + 1,
-      schemaVersion: 1,
-      payloadHash: "",
-      eventHash: "",
-      previousHash: null,
-    };
+    }, currentState.sequence + 1, now);
 
     return { events: [event] };
   }
 
   private async handleConfirmLedger(
-    command: Command & { type: "ConfirmLedger" },
+    command: Command & { type: 'ConfirmLedger' },
     currentState: { kernelState: KernelState; sequence: number },
   ): Promise<CommandResult> {
-    const tenantId = command.tenantId ?? "default";
+    const tenantId = command.tenantId ?? 'default';
     const streamId = command.streamId ?? `tenant:${tenantId}`;
+    const now = this.providers.clock.now();
 
-    const event: RuntimeEvent = {
-      eventId: generateEventId(),
-      type: "LedgerConfirmed",
-      version: 1,
-      timestamp: Date.now(),
-      sequence: currentState.sequence + 1,
-      correlationId: `ledger-${command.blockHeight}`,
-      causationId: null,
+    // Generate deterministic txHash from entropy instead of Math.random()
+    const entropyBytes = this.providers.entropy.bytes(32);
+    const txHashHex = Array.from(entropyBytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    const event: RuntimeEvent = buildEvent({
+      eventId: generateEventId(this.providers.uuid),
+      type: 'LedgerConfirmed',
       source: this.source,
+      causationId: null,
+      correlationId: `ledger-${command.blockHeight}`,
       payload: {
         seq: command.seq,
         blockHeight: command.blockHeight,
-        txHash: `0x${Math.random().toString(16).slice(2, 66)}`,
+        txHash: `0x${txHashHex}`,
       },
       tenantId,
       streamId,
-      streamVersion: currentState.sequence + 1,
-      schemaVersion: 1,
-      payloadHash: "",
-      eventHash: "",
-      previousHash: null,
-    };
+    }, currentState.sequence + 1, now);
 
     return { events: [event] };
   }
 
   private async handleTriggerCircuitBreaker(
-    command: Command & { type: "TriggerCircuitBreaker" },
+    command: Command & { type: 'TriggerCircuitBreaker' },
     currentState: { kernelState: KernelState; sequence: number },
   ): Promise<CommandResult> {
     const eventType: RuntimeEventType =
-      command.action === "open"
-        ? "CircuitBreakerOpened"
-        : "CircuitBreakerClosed";
+      command.action === 'open'
+        ? 'CircuitBreakerOpened'
+        : 'CircuitBreakerClosed';
 
-    const tenantId = command.tenantId ?? "default";
+    const tenantId = command.tenantId ?? 'default';
     const streamId = command.streamId ?? `tenant:${tenantId}`;
+    const now = this.providers.clock.now();
 
-    const event: RuntimeEvent = {
-      eventId: generateEventId(),
+    const event: RuntimeEvent = buildEvent({
+      eventId: generateEventId(this.providers.uuid),
       type: eventType,
-      version: 1,
-      timestamp: Date.now(),
-      sequence: currentState.sequence + 1,
-      correlationId: `cb-${Date.now()}`,
-      causationId: null,
       source: this.source,
+      causationId: null,
+      correlationId: `cb-${this.providers.uuid.generate()}`,
       payload: {
         action: command.action,
         reason: command.reason,
       },
       tenantId,
       streamId,
-      streamVersion: currentState.sequence + 1,
-      schemaVersion: 1,
-      payloadHash: "",
-      eventHash: "",
-      previousHash: null,
-    };
+    }, currentState.sequence + 1, now);
 
     return { events: [event] };
   }
 
   private async handleResetRuntime(
-    command: Command & { type: "ResetRuntime" },
+    command: Command & { type: 'ResetRuntime' },
     currentState: { kernelState: KernelState; sequence: number },
   ): Promise<CommandResult> {
-    const tenantId = command.tenantId ?? "default";
+    const tenantId = command.tenantId ?? 'default';
     const streamId = command.streamId ?? `tenant:${tenantId}`;
+    const now = this.providers.clock.now();
 
-    const event: RuntimeEvent = {
-      eventId: generateEventId(),
-      type: "RuntimeIdle",
-      version: 1,
-      timestamp: Date.now(),
-      sequence: currentState.sequence + 1,
-      correlationId: `reset-${Date.now()}`,
-      causationId: null,
+    const event: RuntimeEvent = buildEvent({
+      eventId: generateEventId(this.providers.uuid),
+      type: 'RuntimeIdle',
       source: this.source,
+      causationId: null,
+      correlationId: `reset-${this.providers.uuid.generate()}`,
       payload: { idleDuration: 0 },
       tenantId,
       streamId,
-      streamVersion: currentState.sequence + 1,
-      schemaVersion: 1,
-      payloadHash: "",
-      eventHash: "",
-      previousHash: null,
-    };
+    }, currentState.sequence + 1, now);
 
     return { events: [event] };
   }
@@ -388,88 +365,19 @@ export class DefaultCommandHandler implements CommandHandler {
     code: string,
     message: string,
     currentState: { sequence: number },
-    tenantId = "default",
-    streamId = "default",
+    tenantId: string,
+    streamId: string,
+    timestamp: number,
   ): RuntimeEvent {
-    return {
-      eventId: generateEventId(),
-      type: "SystemError",
-      version: 1,
-      timestamp: Date.now(),
-      sequence: currentState.sequence + 1,
-      correlationId: `error-${Date.now()}`,
-      causationId: null,
+    return buildEvent({
+      eventId: generateEventId(this.providers.uuid),
+      type: 'SystemError',
       source: this.source,
+      causationId: null,
+      correlationId: `error-${this.providers.uuid.generate()}`,
       payload: { code, message, subsystem: this.source, recoverable: true },
       tenantId,
       streamId,
-      streamVersion: currentState.sequence + 1,
-      schemaVersion: 1,
-      payloadHash: "",
-      eventHash: "",
-      previousHash: null,
-    };
-  }
-}
-
-/**
- * OCC Retry Wrapper for CommandHandler
- *
- * Wraps the command handler with optimistic concurrency control retry logic.
- * On OCC conflict, reloads expected version, recomputes events, and retries.
- */
-export class RetryingCommandHandler implements CommandHandler {
-  private maxRetries = 5;
-
-  constructor(
-    private readonly delegate: CommandHandler,
-    private readonly repo: EventStoreRepository,
-  ) {}
-
-  async handle(
-    command: Command,
-    currentState: { kernelState: KernelState; sequence: number },
-  ): Promise<CommandResult> {
-    let attempt = 0;
-
-    while (attempt <= this.maxRetries) {
-      // Reload current version from repository
-      const tenantId = (command as any).tenantId ?? "default";
-      const streamId = (command as any).streamId ?? "default";
-      const expectedVersion = await this.repo.getCurrentVersion(tenantId, streamId);
-
-      // Produce events from current state
-      const result = await this.delegate.handle(command, {
-        ...currentState,
-        sequence: expectedVersion,
-      });
-
-      if (result.events.length === 0) {
-        return result;
-      }
-
-      try {
-        // Attempt atomic batch append
-        await this.repo.append(tenantId, streamId, expectedVersion, result.events as unknown as DomainEvent[]);
-        return result;
-      } catch (error) {
-        if (error instanceof OccConflictError) {
-          attempt++;
-          if (attempt > this.maxRetries) {
-            throw error;
-          }
-
-          // Jittered exponential backoff
-          const delay = Math.random() * (50 * Math.pow(2, attempt));
-          await new Promise(resolve => setTimeout(resolve, delay));
-
-          // Loop continues -> reloads expectedVersion -> re-evaluates command
-          continue;
-        }
-        throw error; // Propagate non-OCC errors
-      }
-    }
-
-    throw new Error(`OCC retry exhausted after ${this.maxRetries} attempts`);
+    }, currentState.sequence + 1, timestamp);
   }
 }

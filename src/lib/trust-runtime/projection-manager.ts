@@ -1,5 +1,5 @@
 // ============================================================================
-// VVU Trust Runtime — Projection Manager
+// Epistemic Runtime — Trust Runtime Projection Manager
 // ============================================================================
 // Layer:        Projection Manager
 // Responsibility: Derive consumer-specific projections from RuntimeState.
@@ -7,15 +7,15 @@
 // ============================================================================
 
 import {
-  RuntimeState,
-  ColonyProjection,
-  UIProjection,
-  MetricsProjection,
-  NotificationProjection,
-  Alert,
-  RuntimeEvent,
-  RuntimeEventType,
-} from "./types";
+  type RuntimeState,
+  type ColonyProjection,
+  type UIProjection,
+  type MetricsProjection,
+  type NotificationProjection,
+  type Alert,
+  type RuntimeEvent,
+  type RuntimeEventType,
+} from './types';
 
 // ---------------------------------------------------------------------------
 // Colony Projection
@@ -34,19 +34,19 @@ export function buildColonyProjection(state: RuntimeState): ColonyProjection {
   const verifiedLeaves = state.evidenceLeaves.filter((l) => l.verified).length;
 
   return {
-    activeCarriers: state.kernelState === "VERIFYING" ? 4 : state.kernelState === "INGESTING" ? 2 : 0,
+    activeCarriers: state.kernelState === 'VERIFYING' ? 4 : state.kernelState === 'INGESTING' ? 2 : 0,
     verificationQueueDepth: Math.max(0, totalLeaves - verifiedLeaves),
     canopyLeafCount: totalLeaves,
     canopyGrowthRate: computeGrowthRate(state),
     sentinelPatrolIntensity:
       state.circuitBreakerOpen ? 1.0
-      : state.kernelState === "HAZARD" ? 0.9
-      : state.kernelState === "SETTLED" ? 0.3
-      : state.kernelState === "IDLE" ? 0.1
+      : state.kernelState === 'HAZARD' ? 0.9
+      : state.kernelState === 'SETTLED' ? 0.3
+      : state.kernelState === 'IDLE' ? 0.1
       : 0.5,
     kernelState: state.kernelState,
     trustScore: state.trust,
-    hazardMode: state.kernelState === "HAZARD",
+    hazardMode: state.kernelState === 'HAZARD',
     hasUnverifiedEvidence: totalLeaves > verifiedLeaves,
   };
 }
@@ -122,15 +122,15 @@ export function buildMetricsProjection(
 // Notification Projection
 // ---------------------------------------------------------------------------
 
-const SEVERITY_MAP: Record<string, "info" | "warning" | "critical"> = {
-  CircuitBreakerOpened: "critical",
-  SystemError: "critical",
-  AttestationFailed: "warning",
-  EvidenceRejected: "warning",
-  ReceiptFailed: "warning",
-  CircuitBreakerClosed: "info",
-  ReceiptCommitted: "info",
-  LedgerConfirmed: "info",
+const SEVERITY_MAP: Record<string, 'info' | 'warning' | 'critical'> = {
+  CircuitBreakerOpened: 'critical',
+  SystemError: 'critical',
+  AttestationFailed: 'warning',
+  EvidenceRejected: 'warning',
+  ReceiptFailed: 'warning',
+  CircuitBreakerClosed: 'info',
+  ReceiptCommitted: 'info',
+  LedgerConfirmed: 'info',
 };
 
 export function buildNotificationProjection(
@@ -144,7 +144,7 @@ export function buildNotificationProjection(
     .slice(-10) // keep last 10 alertable events
     .map((e) => ({
       id: e.eventId,
-      severity: SEVERITY_MAP[e.type] ?? "info",
+      severity: SEVERITY_MAP[e.type] ?? 'info',
       message: alertMessage(e.type, e.payload as Record<string, string>),
       eventType: e.type,
       timestamp: e.timestamp,
@@ -153,31 +153,31 @@ export function buildNotificationProjection(
 
   return {
     activeAlerts: alerts,
-    hazardMode: state.kernelState === "HAZARD",
+    hazardMode: state.kernelState === 'HAZARD',
     circuitBreakerOpen: state.circuitBreakerOpen,
     unverifiedCount,
-    pendingVerifications: state.kernelState === "VERIFYING" ? unverifiedCount : 0,
+    pendingVerifications: state.kernelState === 'VERIFYING' ? unverifiedCount : 0,
   };
 }
 
 function alertMessage(type: RuntimeEventType, payload: Record<string, string>): string {
   switch (type) {
-    case "CircuitBreakerOpened":
-      return `Circuit breaker opened: ${payload.reason ?? "unknown"}`;
-    case "SystemError":
-      return `[${payload.code}] ${payload.message ?? "system error"}`;
-    case "AttestationFailed":
-      return `Attestation failed for ${payload.receiptId ?? "unknown receipt"}`;
-    case "EvidenceRejected":
-      return `Evidence rejected: ${payload.reason ?? "no reason"}`;
-    case "ReceiptFailed":
-      return `Receipt commit failed: ${payload.receiptId ?? "unknown"}`;
-    case "CircuitBreakerClosed":
-      return "Circuit breaker closed — resuming operations.";
-    case "ReceiptCommitted":
-      return `Receipt ${payload.receiptId?.slice(0, 8) ?? ""} committed.`;
-    case "LedgerConfirmed":
-      return `Ledger confirmed at block ${payload.blockHeight ?? "?"}`;
+    case 'CircuitBreakerOpened':
+      return `Circuit breaker opened: ${payload.reason ?? 'unknown'}`;
+    case 'SystemError':
+      return `[${payload.code}] ${payload.message ?? 'system error'}`;
+    case 'AttestationFailed':
+      return `Attestation failed for ${payload.receiptId ?? 'unknown receipt'}`;
+    case 'EvidenceRejected':
+      return `Evidence rejected: ${payload.reason ?? 'no reason'}`;
+    case 'ReceiptFailed':
+      return `Receipt commit failed: ${payload.receiptId ?? 'unknown'}`;
+    case 'CircuitBreakerClosed':
+      return 'Circuit breaker closed — resuming operations.';
+    case 'ReceiptCommitted':
+      return `Receipt ${payload.receiptId?.slice(0, 8) ?? ''} committed.`;
+    case 'LedgerConfirmed':
+      return `Ledger confirmed at block ${payload.blockHeight ?? '?'}`;
     default:
       return `Event: ${type}`;
   }
