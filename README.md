@@ -1,4 +1,6 @@
-# Epistemic Runtime (ER) — Autonomous Infrastructure Runtime & Trust Gateway
+# proofbridge-liner
+
+## **Epistemic Runtime (ER) — Autonomous Infrastructure Runtime & Trust Gateway**
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Production_Ready-00C853?style=for-the-badge&logo=vercel&logoColor=white" alt="Production Ready">
@@ -15,27 +17,27 @@
 </p>
 
 <div align="center">
-
-<img src="https://img.shields.io/badge/TypeScript-5.9+-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-<img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
-<img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React">
-<img src="https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express">
-<img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
-<img src="https://img.shields.io/badge/pgvector-v0.3+-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="pgvector">
-<img src="https://img.shields.io/badge/Helm-3-0F1689?style=for-the-badge&logo=helm&logoColor=white" alt="Helm">
-<img src="https://img.shields.io/badge/GitOps-2B7489?style=for-the-badge&logo=git&logoColor=white" alt="GitOps">
-<img src="https://img.shields.io/badge/AWS_KMS-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white" alt="AWS KMS">
-<img src="https://img.shields.io/badge/S3_Object_Lock-569A31?style=for-the-badge&logo=amazons3&logoColor=white" alt="S3 Object Lock">
-<img src="https://img.shields.io/badge/OIDC-F05032?style=for-the-badge&logo=openid&logoColor=white" alt="OIDC">
-<img src="https://img.shields.io/badge/mTLS-0033A0?style=for-the-badge&logo=cloudflare&logoColor=white" alt="mTLS">
+  
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![Express](https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![pgvector](https://img.shields.io/badge/pgvector-v0.3+-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![Helm](https://img.shields.io/badge/Helm-3-0F1689?style=for-the-badge&logo=helm&logoColor=white)](https://helm.sh/)
+[![GitOps](https://img.shields.io/badge/GitOps-2B7489?style=for-the-badge&logo=git&logoColor=white)](https://www.gitops.tech/)
+[![AWS KMS](https://img.shields.io/badge/AWS_KMS-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)](https://aws.amazon.com/kms/)
+[![S3](https://img.shields.io/badge/S3_Object_Lock-569A31?style=for-the-badge&logo=amazons3&logoColor=white)](https://aws.amazon.com/s3/)
+[![OIDC](https://img.shields.io/badge/OIDC-F05032?style=for-the-badge&logo=openid&logoColor=white)](https://openid.net/connect/)
+[![mTLS](https://img.shields.io/badge/mTLS-0033A0?style=for-the-badge&logo=cloudflare&logoColor=white)](https://www.cloudflare.com/learning/access-management/what-is-mtls/)
 
 </div>
 
 ---
 
-## 🏛️ Architecture Overview
+## 🏛️ **Architecture Overview**
 
-The Epistemic Runtime (ER) is a deterministic evidence engine that transforms observations into cryptographically verifiable facts through an 11-step acceptance pipeline.
+The Epistemic Runtime (ER) is a **deterministic evidence engine** that transforms observations into cryptographically verifiable facts through an 11-step acceptance pipeline.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -82,7 +84,7 @@ The Epistemic Runtime (ER) is a deterministic evidence engine that transforms ob
 
 ---
 
-## 🧩 The Four Primitives
+## 🧩 **The Four Primitives**
 
 | Primitive | Purpose | Identity | Storage |
 |-----------|---------|----------|---------|
@@ -93,7 +95,7 @@ The Epistemic Runtime (ER) is a deterministic evidence engine that transforms ob
 
 ---
 
-## ⚖️ Constitutional Rules
+## ⚖️ **Constitutional Rules**
 
 <details>
 <summary><strong>Seven Inviolable Rules of the Runtime</strong></summary>
@@ -110,12 +112,12 @@ The Epistemic Runtime (ER) is a deterministic evidence engine that transforms ob
 
 ---
 
-## 🛡️ Runtime Fortification — 10 Strengthening Concepts
+## 🛡️ **Runtime Fortification — 10 Strengthening Concepts**
 
 Institutional-grade architecture strengthening — making the runtime durable across multiple automation ecosystems while preserving deterministic guarantees.
 
 | # | Concept | Status | Key Addition |
-|---|---------|--------|-------------|
+|---|---------|--------|--------------|
 | 1 | Observation Versioning | ✅ | `schemaVersion`, `producer`, `producerVersion` on Fact |
 | 2 | Capability Sets | ✅ | 9 vendor-neutral capabilities (automation.review, etc.) |
 | 3 | Correlation Graph | ✅ | `causationId`, `correlationId`, `parentFactId` |
@@ -127,7 +129,7 @@ Institutional-grade architecture strengthening — making the runtime durable ac
 | 9 | Automation Provenance | ✅ | Prompt/Tool/Output hashes, not content |
 | 10 | Drift Facts | ✅ | `operational_drift_observed` fact type |
 
-### 🔌 Observation Adapter Layer
+### 🔌 **Observation Adapter Layer**
 
 Vendor-neutral translation between external systems and ER:
 
@@ -137,7 +139,7 @@ Kilo/GitHub/GitLab/Jenkins/etc. → Observation Adapter → Collector → Accept
 
 ER shouldn't know what Kilo is. It only understands observations.
 
-### 📦 Typed Observation SDK Example
+### 📦 **Typed Observation SDK Example**
 
 ```typescript
 import { emitBotCommand, emitFixCreated, emitDriftObserved } from '@/lib/kernel/typed-observation-sdk';
@@ -156,7 +158,7 @@ const obs = emitBotCommand({
 // — preventing schema drift
 ```
 
-### 🧾 Replay Certificate Example
+### 🧾 **Replay Certificate Example**
 
 ```typescript
 interface ReplayCertificate {
@@ -176,7 +178,7 @@ Auditors love this — first-class evidence of deterministic replay verification
 
 ---
 
-## 🔗 Production Integrations
+## 🔗 **Production Integrations**
 
 ### 🗄️ S3 Object Lock Storage
 
@@ -244,7 +246,7 @@ const signer = new OIDCSigner({
 
 ---
 
-## 📋 Schema Emitter
+## 📋 **Schema Emitter**
 
 Generates portable Draft 2020-12 JSON Schema `.json` files from runtime type definitions:
 
@@ -271,7 +273,7 @@ npx tsx scripts/generate-schema.ts --outdir ./dist/schemas
 
 ---
 
-## ✅ Kernel Verification
+## ✅ **Kernel Verification**
 
 ### 12-Assertion Check
 
@@ -280,7 +282,7 @@ npx tsx scripts/verify-kernel.ts
 ```
 
 | # | Assertion | What It Verifies |
-|---|-----------|-----------------|
+|---|-----------|------------------|
 | 01 | Deterministic Replay | Bit-identical output across runs |
 | 02 | SHA-256 Determinism | Same input → same hash |
 | 03 | RFC 8785 Canonicalization | Key-order independent serialization |
@@ -300,7 +302,7 @@ npx tsx scripts/verify-kernel.ts
 npx vitest run
 ```
 
-57 tests across 12 describe blocks covering all kernel components.
+**57 tests** across **12 describe blocks** covering all kernel components.
 
 ### 📊 Projection Client (Read-Only)
 
@@ -314,7 +316,7 @@ npx vitest run
 
 ---
 
-## 📂 Project Structure
+## 📂 **Project Structure**
 
 ```
 ├── src/
@@ -381,7 +383,7 @@ npx vitest run
 
 ---
 
-## 🧬 Dependency Injection
+## 🧬 **Dependency Injection**
 
 All non-deterministic operations are injected through provider interfaces:
 
@@ -399,12 +401,12 @@ Development uses deterministic providers. Production swaps them via `RuntimeKern
 
 ---
 
-## 📜 Policy IR Opcodes
+## 📜 **Policy IR Opcodes**
 
-20 deterministic opcodes — no `eval()`, no scripting, no dynamic execution:
+**20 deterministic opcodes** — no `eval()`, no scripting, no dynamic execution:
 
 | Opcode | Stack Effect | Description |
-|--------|-------------|-------------|
+|--------|--------------|-------------|
 | `LOAD_FIELD` | +1 | Push nested field from body |
 | `LOAD_CONST` | +1 | Push constant value |
 | `EQ` | -1 | Equality comparison |
@@ -418,11 +420,11 @@ Development uses deterministic providers. Production swaps them via `RuntimeKern
 | `LOOKUP` | 0 | Deterministic table lookup |
 | `RESULT` | +1 | Set accept/reject/defer |
 
-Unknown opcodes **terminate evaluation** — never silently ignored.
+**Unknown opcodes terminate evaluation** — never silently ignored.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 **Quick Start**
 
 ### Installation
 
@@ -470,7 +472,7 @@ const result = await kernel.processObservation({
 
 ---
 
-## 📊 Status Dashboard
+## 📊 **Status Dashboard**
 
 | Check | Result |
 |-------|--------|
@@ -488,30 +490,30 @@ const result = await kernel.processObservation({
 
 ---
 
-## 🏗️ Architecture Decision Records
+## 🏗️ **Architecture Decision Records**
 
 Comprehensive ADRs document all architectural decisions:
 
-- **ADR-001**: Event Sourcing Foundation
-- **ADR-002**: Ed25519 Signatures
-- **ADR-003**: RFC 8785 Canonicalization
-- **ADR-004**: Production Integrations
-- **ADR-005**: Runtime Fortification
+- [ADR-001: Event Sourcing Foundation](docs/governance/adrs/ADR-001-event-sourcing.md)
+- [ADR-002: Ed25519 Signatures](docs/governance/adrs/ADR-002-ed25519-signatures.md)
+- [ADR-003: RFC 8785 Canonicalization](docs/governance/adrs/ADR-003-canonical-json.md)
+- [ADR-004: Production Integrations](docs/governance/adrs/ADR-004-production-integrations.md)
+- [ADR-005: Runtime Fortification](docs/governance/adrs/ADR-005-runtime-fortification.md)
 
 ---
 
-## 🤝 Research Collaboration
+## 🤝 **Research Collaboration**
 
 The Epistemic Runtime represents a significant advancement in deterministic systems, cryptographic evidence, and verifiable computation. We actively collaborate with academic institutions and research organizations to advance the state of the art.
 
 ### 🎓 Current Research Partners
 
 | Institution | Focus Area | Collaboration Type |
-|-------------|-----------|-------------------|
-| University of Cape Town | Cryptographic Verification & Zero-Knowledge Proofs | Joint Research |
-| Stellenbosch University | Distributed Systems & Consensus Protocols | Academic Partnership |
-| African Institute for Mathematical Sciences | Formal Verification & Type Theory | Research Fellowship |
-| CSIR | Post-Quantum Cryptography & Security | Industry-Academia |
+|-------------|------------|-------------------|
+| **University of Cape Town** | Cryptographic Verification & Zero-Knowledge Proofs | Joint Research |
+| **Stellenbosch University** | Distributed Systems & Consensus Protocols | Academic Partnership |
+| **African Institute for Mathematical Sciences** | Formal Verification & Type Theory | Research Fellowship |
+| **CSIR** | Post-Quantum Cryptography & Security | Industry-Academia |
 
 ### 🔬 Open Research Areas
 
@@ -535,14 +537,14 @@ We invite collaboration in the following domains:
 
 ### 🧪 Research Internship Program
 
-We host 6-month research internships focusing on:
+We host **6-month research internships** focusing on:
 
 - Implementing novel cryptographic primitives
 - Formal verification of runtime components
 - Performance optimization of deterministic engines
 - Security auditing and penetration testing
 
-**Applications open:** Rolling basis
+**Applications open:** Rolling basis  
 **Contact:** research@proofbridge-liner.io
 
 ### 🏆 Research Grants & Funding
@@ -550,70 +552,66 @@ We host 6-month research internships focusing on:
 | Grant | Amount | Focus |
 |-------|--------|-------|
 | NRF Innovation Grant | ZAR 2.5M | Post-Quantum Cryptography |
-| Google Research Fund | $150,000 | Verifiable AI Pipeline |
+| Google Research Fund | $150,000 | Verifiable AI Pipelines |
 | EU Horizon 2020 | €500,000 | Zero-Knowledge Infrastructure |
 
 ---
 
-## 💼 Sponsorship & Partnership
+## 💼 **Sponsorship & Partnership**
 
-### 🌟 Strategic Partners
+### 🌟 **Strategic Partners**
 
 | Partner | Tier | Engagement |
-|---------|------|-----------|
-| AWS | Platinum | Infrastructure & KMS Integration |
-| Kilo | Platinum | Automation Orchestration |
-| GitHub | Gold | Developer Ecosystem & Actions |
-| Vercel | Gold | Edge Deployment & Distribution |
-| Supabase | Gold | Database & Auth Integration |
+|---------|------|------------|
+| **AWS** | Platinum | Infrastructure & KMS Integration |
+| **Kilo** | Platinum | Automation Orchestration |
+| **GitHub** | Gold | Developer Ecosystem & Actions |
+| **Vercel** | Gold | Edge Deployment & Distribution |
+| **Supabase** | Gold | Database & Auth Integration |
 
-### 💰 Sponsorship Tiers
+### 💰 **Sponsorship Tiers**
 
-#### 🥇 Platinum Sponsors — $100,000+/year
+#### 🥇 **Platinum Sponsors** — $100,000+/year
+- **Strategic influence** on the project roadmap
+- **Dedicated engineering support** (2 engineers allocated)
+- **Priority feature development** (3/year)
+- **Premier branding** on all marketing materials and website
+- **Executive briefings** (quarterly)
+- **Joint case studies** and co-marketing opportunities
 
-- Strategic influence on the project roadmap
-- Dedicated engineering support (2 engineers allocated)
-- Priority feature development (3/year)
-- Premier branding on all marketing materials and website
-- Executive briefings (quarterly)
-- Joint case studies and co-marketing opportunities
+#### 🥈 **Gold Sponsors** — $50,000+/year
+- **Roadmap input** with voting rights
+- **Dedicated engineering support** (1 engineer allocated)
+- **Feature development** (1/year)
+- **Prominent branding** on website and social media
+- **Technical briefings** (quarterly)
+- **Co-marketing opportunities**
 
-#### 🥈 Gold Sponsors — $50,000+/year
+#### 🥉 **Silver Sponsors** — $25,000+/year
+- **Community input** on feature planning
+- **Technical support** (1 engineer, 20 hours/month)
+- **Branding** on website sponsors page
+- **Annual technical briefing**
+- **Case study participation**
 
-- Roadmap input with voting rights
-- Dedicated engineering support (1 engineer allocated)
-- Feature development (1/year)
-- Prominent branding on website and social media
-- Technical briefings (quarterly)
-- Co-marketing opportunities
+#### 🎖️ **Bronze Sponsors** — $10,000+/year
+- **Community recognition**
+- **Technical support** (1 engineer, 10 hours/month)
+- **Branding** on website
+- **Newsletter mentions**
 
-#### 🥉 Silver Sponsors — $25,000+/year
-
-- Community input on feature planning
-- Technical support (1 engineer, 20 hours/month)
-- Branding on website sponsors page
-- Annual technical briefing
-- Case study participation
-
-#### 🎖️ Bronze Sponsors — $10,000+/year
-
-- Community recognition
-- Technical support (1 engineer, 10 hours/month)
-- Branding on website
-- Newsletter mentions
-
-### 🤝 Technology Partners
+### 🤝 **Technology Partners**
 
 | Partner | Integration Area | Status |
-|---------|-----------------|--------|
-| AWS | S3 Object Lock, KMS, IAM Federation | Production |
-| Kilo | Observation Adapter, GitOps | Production |
-| GitHub | CI/CD, Actions, Bot Commands | Production |
-| Vercel | Edge Runtime, Deployment | Production |
-| Supabase | Database, Auth, Realtime | Production |
-| Cloudflare | mTLS, Edge Computing | Beta |
+|---------|------------------|--------|
+| **AWS** | S3 Object Lock, KMS, IAM Federation | Production |
+| **Kilo** | Observation Adapter, GitOps | Production |
+| **GitHub** | CI/CD, Actions, Bot Commands | Production |
+| **Vercel** | Edge Runtime, Deployment | Production |
+| **Supabase** | Database, Auth, Realtime | Production |
+| **Cloudflare** | mTLS, Edge Computing | Beta |
 
-### 📋 Become a Sponsor
+### 📋 **Become a Sponsor**
 
 Join organizations committed to building verifiable infrastructure:
 
@@ -623,9 +621,9 @@ Website: https://proofbridge-liner.io/sponsors
 GitHub: https://github.com/sponsors/proofbridge-liner
 ```
 
-### 📄 Sponsorship Agreement
+### 📄 **Sponsorship Agreement**
 
-All sponsors receive a Standard Sponsorship Agreement covering:
+All sponsors receive a **Standard Sponsorship Agreement** covering:
 
 - IP ownership and licensing
 - Confidentiality provisions
@@ -636,15 +634,15 @@ All sponsors receive a Standard Sponsorship Agreement covering:
 
 ---
 
-## 📄 License
+## 📄 **License**
 
-Proprietary. See EXECUTION_CONTRACT.md for governance.
+Proprietary. See [EXECUTION_CONTRACT.md](EXECUTION_CONTRACT.md) for governance.
 
 ---
 
-## 🤝 Contributing
+## 🤝 **Contributing**
 
-This project follows strict deterministic principles and constitutional rules. Please read EXECUTION_CONTRACT.md before contributing.
+This project follows strict deterministic principles and constitutional rules. Please read [EXECUTION_CONTRACT.md](EXECUTION_CONTRACT.md) before contributing.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -655,20 +653,20 @@ This project follows strict deterministic principles and constitutional rules. P
 ---
 
 <div align="center">
-
+  
 **Built with precision, proven with evidence.**
 
-<img src="https://img.shields.io/badge/TypeScript-5.9+-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-<img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
-<img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React">
-<img src="https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express">
-<img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
-<img src="https://img.shields.io/badge/pgvector-v0.3+-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="pgvector">
-<img src="https://img.shields.io/badge/Helm-3-0F1689?style=for-the-badge&logo=helm&logoColor=white" alt="Helm">
-<img src="https://img.shields.io/badge/GitOps-2B7489?style=for-the-badge&logo=git&logoColor=white" alt="GitOps">
-<img src="https://img.shields.io/badge/AWS_KMS-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white" alt="AWS KMS">
-<img src="https://img.shields.io/badge/S3_Object_Lock-569A31?style=for-the-badge&logo=amazons3&logoColor=white" alt="S3 Object Lock">
-<img src="https://img.shields.io/badge/OIDC-F05032?style=for-the-badge&logo=openid&logoColor=white" alt="OIDC">
-<img src="https://img.shields.io/badge/mTLS-0033A0?style=for-the-badge&logo=cloudflare&logoColor=white" alt="mTLS">
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![Express](https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white)](https://expressjs.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![pgvector](https://img.shields.io/badge/pgvector-v0.3+-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
+[![Helm](https://img.shields.io/badge/Helm-3-0F1689?style=for-the-badge&logo=helm&logoColor=white)](https://helm.sh/)
+[![GitOps](https://img.shields.io/badge/GitOps-2B7489?style=for-the-badge&logo=git&logoColor=white)](https://www.gitops.tech/)
+[![AWS KMS](https://img.shields.io/badge/AWS_KMS-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)](https://aws.amazon.com/kms/)
+[![S3](https://img.shields.io/badge/S3_Object_Lock-569A31?style=for-the-badge&logo=amazons3&logoColor=white)](https://aws.amazon.com/s3/)
+[![OIDC](https://img.shields.io/badge/OIDC-F05032?style=for-the-badge&logo=openid&logoColor=white)](https://openid.net/connect/)
+[![mTLS](https://img.shields.io/badge/mTLS-0033A0?style=for-the-badge&logo=cloudflare&logoColor=white)](https://www.cloudflare.com/learning/access-management/what-is-mtls/)
 
 </div>
