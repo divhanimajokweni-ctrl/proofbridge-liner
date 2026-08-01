@@ -647,6 +647,54 @@ All sponsors receive a **Standard Sponsorship Agreement** covering:
 
 ---
 
+## 🤖 **Partnership Automation**
+
+VVU operates a deterministic partnership outreach system powered by Sequenzy, with five automation state machines (AUT-001 through AUT-005) driving the entire lifecycle from first contact to resource commitment.
+
+### Automation State Machines
+
+| ID | Name | Trigger | Templates |
+|----|------|---------|-----------|
+| AUT-001 | Catalyst Welcome & Briefing | New contact | TMPL-001, TMPL-001-REMINDER (48h) |
+| AUT-002 | Tri-Party Agreement Follow-up | `document_review_started` | TMPL-002 (24h) |
+| AUT-003 | Dashboard Access Prompt | `nda_signed` | TMPL-003 (1h), TMPL-003-REMINDER (48h) |
+| AUT-004 | Resource Commitment Recovery | `resource_pledge_stalled` | TMPL-004, TMPL-004-FINAL (7d) |
+| AUT-005 | Institutional Inactivity Check-in | 21-day inactivity | TMPL-005 |
+
+### Portal Routes
+
+| Purpose | Route | Auth |
+|---------|-------|------|
+| Technical briefing (public) | `vvu.africa/hbk/briefing` | None |
+| Technical briefing (tracked) | `vvu.africa/hbk/briefing?ref={contact_id}` | None |
+| Document signing | `vvu.africa/hbk/documents/{room_id}` | Magic link |
+| Dashboard login | `vvu.africa/hbk/dashboard/login?token={token}` | Magic link |
+| Consortium portal | `vvu.africa/hbk/consortium/portal?token={token}` | Magic link |
+
+### Evidence Versioning
+
+Every template and portal references an evidence package for audit trail:
+
+```
+Evidence Package: VVU-EVD-001
+Revision: Rev 1.4
+Generated: 2026-08-01 UTC
+```
+
+See [Partnership Agent Specification](docs/partnership-agent.md) for full templates, variables, and portal structures.
+
+---
+
+## 📖 **Getting Started**
+
+End-to-end guide for local development, staging deployment, and production release:
+
+👉 **[VVU Getting Started Manual](docs/getting-started.md)**
+
+Covers: Prerequisites, Local Dev, Architecture, Workspace, Programs, Engineering Gates, Partnership Automation, Staging, Production, CI/CD, Troubleshooting.
+
+---
+
 ## 📄 **License**
 
 Proprietary. See [EXECUTION_CONTRACT.md](EXECUTION_CONTRACT.md) for governance.

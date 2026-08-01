@@ -30,7 +30,8 @@ export default function AuthControl() {
     try {
       supabase = createClient();
     } catch {
-      setReady(true);
+      // Schedule state update as microtask to avoid synchronous setState in effect
+      queueMicrotask(() => setReady(true));
       return;
     }
 

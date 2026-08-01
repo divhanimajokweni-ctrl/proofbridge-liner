@@ -19,7 +19,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     try {
       const stored = localStorage.getItem('vvu-theme') as Theme | null
       if (stored === 'light' || stored === 'dark') {
-        setTheme(stored)
+        queueMicrotask(() => setTheme(stored))
         applyTheme(stored)
       } else {
         applyTheme('dark')
