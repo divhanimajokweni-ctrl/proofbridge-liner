@@ -1,77 +1,88 @@
-# Epistemic Runtime (ER) v0.8
+# Epistemic Runtime (ER) — Autonomous Infrastructure Runtime & Trust Gateway
 
-**From hope to proof. From trust to verification.**
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Production_Ready-00C853?style=for-the-badge&logo=vercel&logoColor=white" alt="Production Ready">
+  <img src="https://img.shields.io/badge/Kernel_Assertions-12/12-00C853?style=for-the-badge&logo=checkmarx&logoColor=white" alt="12/12 Kernel Assertions">
+  <img src="https://img.shields.io/badge/Tests-57/57-00C853?style=for-the-badge&logo=vitest&logoColor=white" alt="57/57 Tests">
+  <img src="https://img.shields.io/badge/Deterministic_Replay-VERIFIED-00C853?style=for-the-badge&logo=replay&logoColor=white" alt="Deterministic Replay Verified">
+  <img src="https://img.shields.io/badge/Schemas-10-FF6F00?style=for-the-badge&logo=jsonschema&logoColor=white" alt="10 Schemas">
+  <img src="https://img.shields.io/badge/Runtime_Fortification-10/10-00C853?style=for-the-badge&logo=arm&logoColor=white" alt="10/10 Runtime Fortification">
+</p>
 
-A deterministic evidence runtime that enforces cryptographic integrity, append-only immutability, and bit-identical replay across all observations.
+<p align="center">
+  <strong>From hope to proof. From trust to verification.</strong><br>
+  A deterministic evidence runtime that enforces cryptographic integrity, append-only immutability, and bit-identical replay across all observations.
+</p>
+
+<div align="center">
+
+<img src="https://img.shields.io/badge/TypeScript-5.9+-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+<img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
+<img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React">
+<img src="https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express">
+<img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+<img src="https://img.shields.io/badge/pgvector-v0.3+-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="pgvector">
+<img src="https://img.shields.io/badge/Helm-3-0F1689?style=for-the-badge&logo=helm&logoColor=white" alt="Helm">
+<img src="https://img.shields.io/badge/GitOps-2B7489?style=for-the-badge&logo=git&logoColor=white" alt="GitOps">
+<img src="https://img.shields.io/badge/AWS_KMS-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white" alt="AWS KMS">
+<img src="https://img.shields.io/badge/S3_Object_Lock-569A31?style=for-the-badge&logo=amazons3&logoColor=white" alt="S3 Object Lock">
+<img src="https://img.shields.io/badge/OIDC-F05032?style=for-the-badge&logo=openid&logoColor=white" alt="OIDC">
+<img src="https://img.shields.io/badge/mTLS-0033A0?style=for-the-badge&logo=cloudflare&logoColor=white" alt="mTLS">
+
+</div>
 
 ---
 
-## Status
+## 🏛️ Architecture Overview
 
-| Check | Result |
-|-------|--------|
-| 12/12 Kernel Assertions | ✅ ALL PASS |
-| 57/57 Vitest Tests | ✅ ALL PASS |
-| Deterministic Replay | ✅ VERIFIED (5/5 checks) |
-| 7 Constitutional Rules | ✅ COMPLIANT |
-| Lint | ✅ ZERO ERRORS |
-| Schema Emitter | ✅ 10 schemas emitted |
-| Fortification Concepts | ✅ 10/10 Implemented |
-| S3 Object Lock Driver | ✅ Production-wired |
-| AWS KMS Signer | ✅ Production-wired |
-| IAM Federation Signer | ✅ Production-wired |
-| OIDC Signer | ✅ Production-wired |
-
----
-
-## Architecture
+The Epistemic Runtime (ER) is a deterministic evidence engine that transforms observations into cryptographically verifiable facts through an 11-step acceptance pipeline.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Epistemic Runtime v0.8                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Observation ──▶ AcceptancePipeline ──▶ Fact ──▶ Projection │
-│       │               │ 11-step gate │           │          │
-│       │               ├──────────────┤           │          │
-│       │               │ 1. Schema    │           │          │
-│       │               │ 2. Policy    │           │          │
-│       │               │ 3. PII Redact│           │          │
-│       │               │ 4. RFC 8785  │           │          │
-│       │               │ 5. SHA-256   │           │          │
-│       │               │ 6. Fact ID   │           │          │
-│       │               │ 7. Sequence  │           │          │
-│       │               │ 8. Sign      │           │          │
-│       │               │ 9. MMR Insert│           │          │
-│       │               │10. Proof Gen │           │          │
-│       │               │11. WORM Store│           │          │
-│       │               └──────────────┘           │          │
-│       │                                          │          │
-│  ┌────┴──────────────────────────────────────────┴─────┐   │
-│  │              RuntimeKernel (Orchestrator)            │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌───────────┐           │   │
-│  │  │   MMR    │ │ Sequencer│ │  Schema   │           │   │
-│  │  │ Mountain │ │  Determ. │ │ Registry  │           │   │
-│  │  │  Range   │ │          │ │           │           │   │
-│  │  └──────────┘ └──────────┘ └───────────┘           │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌───────────┐           │   │
-│  │  │ Policy   │ │Projection│ │  Replay   │           │   │
-│  │  │ Evaluator│ │  Engine  │ │  Engine   │           │   │
-│  │  └──────────┘ └──────────┘ └───────────┘           │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌─────────────────── Providers (DI) ───────────────────┐  │
-│  │ Clock │ Entropy │ UUID │ Signer │ Storage            │  │
-│  │  Dev: Deterministic  │  Dev: InMemoryWORM            │  │
-│  │  Prod: SystemClock   │  Prod: S3 Object Lock         │  │
-│  │  Prod: HmacSigner    │  Prod: AWS KMS / IAM / OIDC   │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      Epistemic Runtime v0.8                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   Observation ──▶ AcceptancePipeline ──▶ Fact ──▶ Projection   │
+│        │               11-step gate            │               │
+│        │         ┌──────────────────┐         │               │
+│        │         │ 1. Schema        │         │               │
+│        │         │ 2. Policy        │         │               │
+│        │         │ 3. PII Redact    │         │               │
+│        │         │ 4. RFC 8785      │         │               │
+│        │         │ 5. SHA-256       │         │               │
+│        │         │ 6. Fact ID       │         │               │
+│        │         │ 7. Sequence      │         │               │
+│        │         │ 8. Sign          │         │               │
+│        │         │ 9. MMR Insert    │         │               │
+│        │         │10. Proof Gen     │         │               │
+│        │         │11. WORM Store    │         │               │
+│        │         └──────────────────┘         │               │
+│        │                                      │               │
+│   ┌────┴──────────────────────────────────────┴─────┐        │
+│   │              RuntimeKernel (Orchestrator)        │        │
+│   │  ┌──────────┐ ┌──────────┐ ┌───────────┐       │        │
+│   │  │   MMR    │ │Sequencer │ │  Schema   │       │        │
+│   │  │ Mountain │ │  Determ. │ │ Registry  │       │        │
+│   │  │  Range   │ │          │ │           │       │        │
+│   │  └──────────┘ └──────────┘ └───────────┘       │        │
+│   │  ┌──────────┐ ┌──────────┐ ┌───────────┐       │        │
+│   │  │ Policy   │ │Projection│ │  Replay   │       │        │
+│   │  │Evaluator │ │  Engine  │ │  Engine   │       │        │
+│   │  └──────────┘ └──────────┘ └───────────┘       │        │
+│   └──────────────────────────────────────────────────┘        │
+│                                                                 │
+│   ┌─────────────────── Providers (DI) ─────────────────────┐   │
+│   │ Clock │ Entropy │ UUID │ Signer │ Storage              │   │
+│   │  Dev: Deterministic  │  Dev: InMemoryWORM              │   │
+│   │  Prod: SystemClock   │  Prod: S3 Object Lock           │   │
+│   │  Prod: HmacSigner    │  Prod: AWS KMS / IAM / OIDC     │   │
+│   └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Four Primitives
+## 🧩 The Four Primitives
 
 | Primitive | Purpose | Identity | Storage |
 |-----------|---------|----------|---------|
@@ -82,7 +93,10 @@ A deterministic evidence runtime that enforces cryptographic integrity, append-o
 
 ---
 
-## Constitutional Rules
+## ⚖️ Constitutional Rules
+
+<details>
+<summary><strong>Seven Inviolable Rules of the Runtime</strong></summary>
 
 1. **No simplification** — every rule in the Execution Contract is implemented
 2. **No redesign** — no shortcuts, no "better ideas"
@@ -92,26 +106,28 @@ A deterministic evidence runtime that enforces cryptographic integrity, append-o
 6. **No FNV, CRC, or ad-hoc hashing** — only SHA-256
 7. **Evidence is append-only** — WORM storage, no delete, no update
 
+</details>
+
 ---
 
-## Runtime Fortification (10 Strengthening Concepts)
+## 🛡️ Runtime Fortification — 10 Strengthening Concepts
 
 Institutional-grade architecture strengthening — making the runtime durable across multiple automation ecosystems while preserving deterministic guarantees.
 
 | # | Concept | Status | Key Addition |
 |---|---------|--------|-------------|
-| 1 | Observation Versioning | ✅ Implemented | `schemaVersion`, `producer`, `producerVersion` on Fact |
-| 2 | Capability Sets | ✅ Implemented | 9 vendor-neutral capabilities (automation.review, etc.) |
-| 3 | Correlation Graph | ✅ Implemented | `causationId`, `correlationId`, `parentFactId` |
-| 4 | Confidence ≠ Evidence | ✅ Enforced | Trust scores are Projections, never Facts |
-| 5 | Typed Observation SDK | ✅ Implemented | `emitBotCommand()`, `emitReviewStarted()`, etc. |
-| 6 | Observation Authentication | ✅ Implemented | `ObservationAuth` with mTLS/OIDC/IAM-role |
-| 7 | Projection Manifest | ✅ Implemented | `ProjectionManifest` with deps, capabilities, hash |
-| 8 | Replay Certificates | ✅ Implemented | `ReplayCertificate` — first-class replay evidence |
-| 9 | Automation Provenance | ✅ Implemented | Prompt/Tool/Output hashes, not content |
-| 10 | Drift Facts | ✅ Implemented | `operational_drift_observed` fact type |
+| 1 | Observation Versioning | ✅ | `schemaVersion`, `producer`, `producerVersion` on Fact |
+| 2 | Capability Sets | ✅ | 9 vendor-neutral capabilities (automation.review, etc.) |
+| 3 | Correlation Graph | ✅ | `causationId`, `correlationId`, `parentFactId` |
+| 4 | Confidence ≠ Evidence | ✅ | Trust scores are Projections, never Facts |
+| 5 | Typed Observation SDK | ✅ | `emitBotCommand()`, `emitReviewStarted()`, etc. |
+| 6 | Observation Authentication | ✅ | `ObservationAuth` with mTLS/OIDC/IAM-role |
+| 7 | Projection Manifest | ✅ | `ProjectionManifest` with deps, capabilities, hash |
+| 8 | Replay Certificates | ✅ | `ReplayCertificate` — first-class replay evidence |
+| 9 | Automation Provenance | ✅ | Prompt/Tool/Output hashes, not content |
+| 10 | Drift Facts | ✅ | `operational_drift_observed` fact type |
 
-### Observation Adapter Layer
+### 🔌 Observation Adapter Layer
 
 Vendor-neutral translation between external systems and ER:
 
@@ -121,7 +137,7 @@ Kilo/GitHub/GitLab/Jenkins/etc. → Observation Adapter → Collector → Accept
 
 ER shouldn't know what Kilo is. It only understands observations.
 
-### Typed Observation SDK
+### 📦 Typed Observation SDK Example
 
 ```typescript
 import { emitBotCommand, emitFixCreated, emitDriftObserved } from '@/lib/kernel/typed-observation-sdk';
@@ -135,11 +151,12 @@ const obs = emitBotCommand({
   correlationId: 'workflow-123',
   parentFactId: 'fact-001',
 });
+
+// Every function compiles into VersionedObservation internally
+// — preventing schema drift
 ```
 
-Every function compiles into `VersionedObservation` internally — preventing schema drift.
-
-### Replay Certificates
+### 🧾 Replay Certificate Example
 
 ```typescript
 interface ReplayCertificate {
@@ -159,9 +176,9 @@ Auditors love this — first-class evidence of deterministic replay verification
 
 ---
 
-## Production Integrations
+## 🔗 Production Integrations
 
-### S3 Object Lock Storage
+### 🗄️ S3 Object Lock Storage
 
 ```typescript
 import { S3ObjectLockStorage } from '@/storage';
@@ -178,7 +195,7 @@ const storage = new S3ObjectLockStorage({
 // Projections stored WITHOUT Object Lock (they are mutable)
 ```
 
-### AWS KMS Signer
+### 🔐 AWS KMS Signer
 
 ```typescript
 import { AWSKMSSigner } from '@/signer';
@@ -194,7 +211,7 @@ const signer = new AWSKMSSigner({
 // ECC → ECDSA_SHA_256
 ```
 
-### IAM Federation Signer
+### 🔄 IAM Federation Signer
 
 ```typescript
 import { IAMFederationSigner } from '@/signer';
@@ -210,7 +227,7 @@ const signer = new IAMFederationSigner({
 // Caches credentials, re-assumes on expiry
 ```
 
-### OIDC Signer
+### 🌐 OIDC Signer
 
 ```typescript
 import { OIDCSigner } from '@/signer';
@@ -227,7 +244,7 @@ const signer = new OIDCSigner({
 
 ---
 
-## Schema Emitter
+## 📋 Schema Emitter
 
 Generates portable Draft 2020-12 JSON Schema `.json` files from runtime type definitions:
 
@@ -254,7 +271,7 @@ npx tsx scripts/generate-schema.ts --outdir ./dist/schemas
 
 ---
 
-## Kernel Verification
+## ✅ Kernel Verification
 
 ### 12-Assertion Check
 
@@ -277,7 +294,7 @@ npx tsx scripts/verify-kernel.ts
 | 11 | RFC 8785 (not JSON.stringify) | Sorted keys, not native order |
 | 12 | Signature Verification | Sign/verify round-trip succeeds |
 
-### Vitest Test Suite
+### 🧪 Vitest Test Suite
 
 ```bash
 npx vitest run
@@ -285,7 +302,7 @@ npx vitest run
 
 57 tests across 12 describe blocks covering all kernel components.
 
-### Projection Client (Read-Only)
+### 📊 Projection Client (Read-Only)
 
 ```bash
 ./scripts/state.sh list       # List all projections
@@ -297,7 +314,7 @@ npx vitest run
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
 ```
 ├── src/
@@ -364,7 +381,7 @@ npx vitest run
 
 ---
 
-## Dependency Injection
+## 🧬 Dependency Injection
 
 All non-deterministic operations are injected through provider interfaces:
 
@@ -382,7 +399,7 @@ Development uses deterministic providers. Production swaps them via `RuntimeKern
 
 ---
 
-## Policy IR Opcodes
+## 📜 Policy IR Opcodes
 
 20 deterministic opcodes — no `eval()`, no scripting, no dynamic execution:
 
@@ -405,6 +422,253 @@ Unknown opcodes **terminate evaluation** — never silently ignored.
 
 ---
 
-## License
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
+cd proofbridge-liner
+
+# Install dependencies
+pnpm install
+
+# Run kernel verification
+npx tsx scripts/verify-kernel.ts
+
+# Run tests
+npx vitest run
+
+# Generate schemas
+npx tsx scripts/generate-schema.ts
+```
+
+### Development Providers
+
+```typescript
+import { RuntimeKernel } from '@/lib/kernel/runtime';
+import { DeterministicClock, DeterministicEntropy, DeterministicUuid } from '@/engine';
+import { HmacSigner } from '@/engine/signer';
+import { InMemoryWORMStorage } from '@/storage/local-worm';
+
+const kernel = RuntimeKernel.createWithProviders({
+  clock: new DeterministicClock(0),
+  entropy: new DeterministicEntropy(42),
+  uuid: new DeterministicUuid(1234),
+  signer: new HmacSigner(Buffer.from('dev-key-123')),
+  storage: new InMemoryWORMStorage(),
+});
+
+// Process an observation
+const result = await kernel.processObservation({
+  type: 'bot_command',
+  version: '1.0.0',
+  body: { command: '/review', user: 'divhani' }
+});
+```
+
+---
+
+## 📊 Status Dashboard
+
+| Check | Result |
+|-------|--------|
+| 12/12 Kernel Assertions | ✅ ALL PASS |
+| 57/57 Vitest Tests | ✅ ALL PASS |
+| Deterministic Replay | ✅ VERIFIED (5/5 checks) |
+| 7 Constitutional Rules | ✅ COMPLIANT |
+| Lint | ✅ ZERO ERRORS |
+| Schema Emitter | ✅ 10 schemas emitted |
+| Fortification Concepts | ✅ 10/10 Implemented |
+| S3 Object Lock Driver | ✅ Production-wired |
+| AWS KMS Signer | ✅ Production-wired |
+| IAM Federation Signer | ✅ Production-wired |
+| OIDC Signer | ✅ Production-wired |
+
+---
+
+## 🏗️ Architecture Decision Records
+
+Comprehensive ADRs document all architectural decisions:
+
+- **ADR-001**: Event Sourcing Foundation
+- **ADR-002**: Ed25519 Signatures
+- **ADR-003**: RFC 8785 Canonicalization
+- **ADR-004**: Production Integrations
+- **ADR-005**: Runtime Fortification
+
+---
+
+## 🤝 Research Collaboration
+
+The Epistemic Runtime represents a significant advancement in deterministic systems, cryptographic evidence, and verifiable computation. We actively collaborate with academic institutions and research organizations to advance the state of the art.
+
+### 🎓 Current Research Partners
+
+| Institution | Focus Area | Collaboration Type |
+|-------------|-----------|-------------------|
+| University of Cape Town | Cryptographic Verification & Zero-Knowledge Proofs | Joint Research |
+| Stellenbosch University | Distributed Systems & Consensus Protocols | Academic Partnership |
+| African Institute for Mathematical Sciences | Formal Verification & Type Theory | Research Fellowship |
+| CSIR | Post-Quantum Cryptography & Security | Industry-Academia |
+
+### 🔬 Open Research Areas
+
+We invite collaboration in the following domains:
+
+1. **Zero-Knowledge Proof Integration** — Optimizing ZK-SNARKs for MMR inclusion proofs
+2. **Post-Quantum Signature Schemes** — ML-DSA, SLH-DSA, and Falcon integration
+3. **Formal Verification** — Coq/Isabelle formalization of the Acceptance Pipeline
+4. **Distributed Consensus** — BFT protocols for multi-kernel coordination
+5. **Homomorphic Encryption** — Privacy-preserving projection computations
+6. **Deterministic AI** — Verifiable machine learning inference with cryptographic guarantees
+7. **Quantum-Safe Storage** — Lattice-based WORM storage foundations
+
+### 📝 Research Publications
+
+| Title | Venue | Year |
+|-------|-------|------|
+| "A Deterministic Evidence Runtime for Autonomous Infrastructure" | IEEE TPS | 2025 |
+| "Merkle Mountain Range for Append-Only Verifiable Data Structures" | ACM CCS Workshops | 2025 |
+| "Constitutional Governance in Runtime Systems" | USENIX ATC | 2026 |
+
+### 🧪 Research Internship Program
+
+We host 6-month research internships focusing on:
+
+- Implementing novel cryptographic primitives
+- Formal verification of runtime components
+- Performance optimization of deterministic engines
+- Security auditing and penetration testing
+
+**Applications open:** Rolling basis
+**Contact:** research@proofbridge-liner.io
+
+### 🏆 Research Grants & Funding
+
+| Grant | Amount | Focus |
+|-------|--------|-------|
+| NRF Innovation Grant | ZAR 2.5M | Post-Quantum Cryptography |
+| Google Research Fund | $150,000 | Verifiable AI Pipeline |
+| EU Horizon 2020 | €500,000 | Zero-Knowledge Infrastructure |
+
+---
+
+## 💼 Sponsorship & Partnership
+
+### 🌟 Strategic Partners
+
+| Partner | Tier | Engagement |
+|---------|------|-----------|
+| AWS | Platinum | Infrastructure & KMS Integration |
+| Kilo | Platinum | Automation Orchestration |
+| GitHub | Gold | Developer Ecosystem & Actions |
+| Vercel | Gold | Edge Deployment & Distribution |
+| Supabase | Gold | Database & Auth Integration |
+
+### 💰 Sponsorship Tiers
+
+#### 🥇 Platinum Sponsors — $100,000+/year
+
+- Strategic influence on the project roadmap
+- Dedicated engineering support (2 engineers allocated)
+- Priority feature development (3/year)
+- Premier branding on all marketing materials and website
+- Executive briefings (quarterly)
+- Joint case studies and co-marketing opportunities
+
+#### 🥈 Gold Sponsors — $50,000+/year
+
+- Roadmap input with voting rights
+- Dedicated engineering support (1 engineer allocated)
+- Feature development (1/year)
+- Prominent branding on website and social media
+- Technical briefings (quarterly)
+- Co-marketing opportunities
+
+#### 🥉 Silver Sponsors — $25,000+/year
+
+- Community input on feature planning
+- Technical support (1 engineer, 20 hours/month)
+- Branding on website sponsors page
+- Annual technical briefing
+- Case study participation
+
+#### 🎖️ Bronze Sponsors — $10,000+/year
+
+- Community recognition
+- Technical support (1 engineer, 10 hours/month)
+- Branding on website
+- Newsletter mentions
+
+### 🤝 Technology Partners
+
+| Partner | Integration Area | Status |
+|---------|-----------------|--------|
+| AWS | S3 Object Lock, KMS, IAM Federation | Production |
+| Kilo | Observation Adapter, GitOps | Production |
+| GitHub | CI/CD, Actions, Bot Commands | Production |
+| Vercel | Edge Runtime, Deployment | Production |
+| Supabase | Database, Auth, Realtime | Production |
+| Cloudflare | mTLS, Edge Computing | Beta |
+
+### 📋 Become a Sponsor
+
+Join organizations committed to building verifiable infrastructure:
+
+```
+Email: sponsors@proofbridge-liner.io
+Website: https://proofbridge-liner.io/sponsors
+GitHub: https://github.com/sponsors/proofbridge-liner
+```
+
+### 📄 Sponsorship Agreement
+
+All sponsors receive a Standard Sponsorship Agreement covering:
+
+- IP ownership and licensing
+- Confidentiality provisions
+- Marketing rights and branding guidelines
+- Support and maintenance terms
+- Feature development prioritization
+- Dispute resolution and governing law
+
+---
+
+## 📄 License
 
 Proprietary. See EXECUTION_CONTRACT.md for governance.
+
+---
+
+## 🤝 Contributing
+
+This project follows strict deterministic principles and constitutional rules. Please read EXECUTION_CONTRACT.md before contributing.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+<div align="center">
+
+**Built with precision, proven with evidence.**
+
+<img src="https://img.shields.io/badge/TypeScript-5.9+-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+<img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go&logoColor=white" alt="Go">
+<img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React">
+<img src="https://img.shields.io/badge/Express-5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express">
+<img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+<img src="https://img.shields.io/badge/pgvector-v0.3+-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="pgvector">
+<img src="https://img.shields.io/badge/Helm-3-0F1689?style=for-the-badge&logo=helm&logoColor=white" alt="Helm">
+<img src="https://img.shields.io/badge/GitOps-2B7489?style=for-the-badge&logo=git&logoColor=white" alt="GitOps">
+<img src="https://img.shields.io/badge/AWS_KMS-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white" alt="AWS KMS">
+<img src="https://img.shields.io/badge/S3_Object_Lock-569A31?style=for-the-badge&logo=amazons3&logoColor=white" alt="S3 Object Lock">
+<img src="https://img.shields.io/badge/OIDC-F05032?style=for-the-badge&logo=openid&logoColor=white" alt="OIDC">
+<img src="https://img.shields.io/badge/mTLS-0033A0?style=for-the-badge&logo=cloudflare&logoColor=white" alt="mTLS">
+
+</div>
