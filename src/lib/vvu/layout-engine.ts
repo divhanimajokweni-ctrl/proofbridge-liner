@@ -89,8 +89,8 @@ export function createDefaultLayout(): LayoutConfig {
     docks: {
       left: {
         visible: true,
-        pinned: true,
-        width: 240,
+        pinned: false, // Icon Rail: collapsed by default, hover-to-expand
+        width: 68, // Icon Rail collapsed width
         items: PRODUCT_MANIFESTS.map((p) => p.id),
       },
       right: {

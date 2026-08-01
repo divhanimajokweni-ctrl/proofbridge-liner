@@ -64,6 +64,7 @@ import {
   type EpistemicMaturity,
 } from '@/lib/vvu/three-roots';
 import { EdgeDock, type DockPosition } from '@/components/vvu/edge-dock';
+import { IconRail } from '@/components/vvu/icon-rail';
 import { IntentScreen } from '@/components/vvu/intent-screen';
 import { TrustJourneyModal } from '@/components/vvu/trust-journey-modal';
 import { VvuCommandPalette } from '@/components/vvu/command-palette';
@@ -1039,29 +1040,17 @@ export function WorkbenchShell() {
 
       {/* ── Main area ── */}
       <div className="relative flex min-h-0 flex-1">
-        {/* ── Left Dock ── */}
-        <EdgeDock
-          position="left"
-          pinned={docks.left.pinned}
-          visible={docks.left.visible}
-          size={docks.left.width}
-          onPinChange={(pinned) => pinDock('left')}
-          onSizeChange={(size) => setDockWidth('left', size)}
-          onVisibleChange={(visible) => toggleDock('left')}
-          label="Workspace"
-          focusMode={focusMode}
-          hideInFocusMode={true}
-          className="border-r border-white/[0.06]"
-          style={{ background: 'rgba(15,15,24,0.65)' }}
-        >
-          <LeftDockContent />
-        </EdgeDock>
+        {/* ── Icon Rail (left sidebar) ── */}
+        {docks.left.visible && (
+          <IconRail
+            pinned={docks.left.pinned}
+            onPinChange={(pinned) => pinDock('left')}
+            focusMode={focusMode}
+          />
+        )}
 
         {/* ── Stage ── */}
         <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {/* ── Compute Engine Widget (always visible, above content) ── */}
-          <ComputeEngineWidget />
-
           {/* ── Content area ── */}
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <AnimatePresence mode="wait">
@@ -1180,6 +1169,9 @@ export function WorkbenchShell() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* ── Compute Engine Widget (always visible, anchored to bottom) ── */}
+          <ComputeEngineWidget />
         </main>
 
         {/* ── Right Dock ── */}

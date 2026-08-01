@@ -504,16 +504,22 @@ Comprehensive ADRs document all architectural decisions:
 
 ## 🤝 **Research Collaboration**
 
-The Epistemic Runtime represents a significant advancement in deterministic systems, cryptographic evidence, and verifiable computation. We actively collaborate with academic institutions and research organizations to advance the state of the art.
+The Epistemic Runtime represents a significant advancement in deterministic systems, cryptographic evidence, and verifiable computation. We are actively pursuing research collaborations with academic institutions and research organizations to advance the state of the art.
 
-### 🎓 Current Research Partners
+> **⚠️ Transparency Notice:** All research partnerships listed below are **target integrations** — actively pursued but not yet confirmed. No official agreements are currently in place. Every relationship represents a proposed pathway, not a done deal.
 
-| Institution | Focus Area | Collaboration Type |
-|-------------|------------|-------------------|
-| **University of Cape Town** | Cryptographic Verification & Zero-Knowledge Proofs | Joint Research |
-| **Stellenbosch University** | Distributed Systems & Consensus Protocols | Academic Partnership |
-| **African Institute for Mathematical Sciences** | Formal Verification & Type Theory | Research Fellowship |
-| **CSIR** | Post-Quantum Cryptography & Security | Industry-Academia |
+### 🎓 Target Research Partners
+
+| Institution | Focus Area | Status |
+|-------------|-----------|--------|
+| **University of Cape Town** | Cryptographic Verification & Zero-Knowledge Proofs | TARGET |
+| **University of the Witwatersrand** | Formal Verification & Type Theory | TARGET |
+| **University of Pretoria** | Distributed Systems & Consensus Protocols | TARGET |
+| **Stellenbosch University** | Cryptographic Engineering & Protocol Design | PROPOSED |
+| **African Institute for Mathematical Sciences** | Formal Verification & Type Theory | PROPOSED |
+| **CSIR** | Post-Quantum Cryptography & Security | PROPOSED |
+
+*UCT, Wits, and UP are South Africa's top-ranked engineering schools — our priority academic targets.*
 
 ### 🔬 Open Research Areas
 
@@ -537,15 +543,15 @@ We invite collaboration in the following domains:
 
 ### 🧪 Research Internship Program
 
-We host **6-month research internships** focusing on:
+We intend to launch a **6-month research internship programme** starting **June 2026**, focusing on:
 
 - Implementing novel cryptographic primitives
 - Formal verification of runtime components
 - Performance optimization of deterministic engines
 - Security auditing and penetration testing
 
-**Applications open:** Rolling basis  
-**Contact:** research@proofbridge-liner.io
+**Status:** Not yet active — intended launch June 2026  
+**Contact:** research@venturevisionubuntu.co.za
 
 ### 🏆 Research Grants & Funding
 
@@ -559,15 +565,22 @@ We host **6-month research internships** focusing on:
 
 ## 💼 **Sponsorship & Partnership**
 
-### 🌟 **Strategic Partners**
+> **⚠️ Transparency Notice:** All partnerships listed below are **target integrations** — organizations we are actively pursuing but have not yet reached agreements with. No confirmed partnerships exist at this time. Every relationship represents a proposed pathway, not a done deal.
 
-| Partner | Tier | Engagement |
-|---------|------|------------|
-| **AWS** | Platinum | Infrastructure & KMS Integration |
-| **Kilo** | Platinum | Automation Orchestration |
-| **GitHub** | Gold | Developer Ecosystem & Actions |
-| **Vercel** | Gold | Edge Deployment & Distribution |
-| **Supabase** | Gold | Database & Auth Integration |
+### 🌟 **Target Ecosystem — Organizations We Are Building For**
+
+| Partner | Sector | Status | What We're Pursuing |
+|---------|--------|--------|--------------------|
+| **AWS** | Infrastructure | TARGET | S3 Object Lock, KMS, IAM Federation |
+| **Kilo** | Automation | TARGET | Observation Adapter, GitOps Integration |
+| **GitHub** | Developer Tools | PROPOSED | CI/CD, Actions, Bot Commands |
+| **Vercel** | Deployment | PROPOSED | Edge Runtime, Distribution |
+| **Supabase** | Database | PROPOSED | Database, Auth, Realtime |
+| **Makro** | Retail | TARGET | Retail Distribution Infrastructure |
+| **Vodacom** | Telecom | TARGET | Telecommunications Integration |
+| **Standard Bank** | Finance | TARGET | Financial Services Infrastructure |
+| **AMD** | Hardware | TARGET | TEE-Attested Compute Infrastructure |
+| **UCT / Wits / UP** | Academic | TARGET | Research Collaboration |
 
 ### 💰 **Sponsorship Tiers**
 
@@ -604,21 +617,21 @@ We host **6-month research internships** focusing on:
 
 | Partner | Integration Area | Status |
 |---------|------------------|--------|
-| **AWS** | S3 Object Lock, KMS, IAM Federation | Production |
-| **Kilo** | Observation Adapter, GitOps | Production |
-| **GitHub** | CI/CD, Actions, Bot Commands | Production |
-| **Vercel** | Edge Runtime, Deployment | Production |
-| **Supabase** | Database, Auth, Realtime | Production |
-| **Cloudflare** | mTLS, Edge Computing | Beta |
+| **AWS** | S3 Object Lock, KMS, IAM Federation | TARGET |
+| **Kilo** | Observation Adapter, GitOps | TARGET |
+| **GitHub** | CI/CD, Actions, Bot Commands | PROPOSED |
+| **Vercel** | Edge Runtime, Deployment | PROPOSED |
+| **Supabase** | Database, Auth, Realtime | PROPOSED |
+| **Cloudflare** | mTLS, Edge Computing | PROPOSED |
 
 ### 📋 **Become a Sponsor**
 
 Join organizations committed to building verifiable infrastructure:
 
 ```
-Email: sponsors@proofbridge-liner.io
-Website: https://proofbridge-liner.io/sponsors
-GitHub: https://github.com/sponsors/proofbridge-liner
+Email: partners@venturevisionubuntu.co.za
+Website: https://venturevisionubuntu.co.za
+GitHub: https://github.com/divhanimajokweni-ctrl/proofbridge-liner
 ```
 
 ### 📄 **Sponsorship Agreement**
@@ -637,6 +650,18 @@ All sponsors receive a **Standard Sponsorship Agreement** covering:
 ## 📄 **License**
 
 Proprietary. See [EXECUTION_CONTRACT.md](EXECUTION_CONTRACT.md) for governance.
+
+---
+
+## 📞 **Contact**
+
+| Channel | Address |
+|---------|--------|
+| General Enquiries | hello@venturevisionubuntu.co.za |
+| Founder (Divhani) | divh@venturevisionubuntu.co.za |
+| Research | research@venturevisionubuntu.co.za |
+| Partnerships | partners@venturevisionubuntu.co.za |
+| Location | Gqeberha, Eastern Cape, South Africa |
 
 ---
 

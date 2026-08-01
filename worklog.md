@@ -557,3 +557,43 @@ Stage Summary:
 - South African research institutions (UCT, Stellenbosch, AIMS, CSIR) preserved
 - Sponsorship tiers with bold formatting as specified
 - Technology badges at both top and bottom of file
+---
+Task ID: 5
+Agent: Main
+Task: Fix README honesty, move Compute Engine to bottom, implement Icon Rail sidebar
+
+Work Log:
+- Read full workbench-shell.tsx (1310 lines), edge-dock.tsx, icon-rail.tsx to understand current architecture
+- Fixed README.md: 
+  - All partnerships now marked TARGET/PROPOSED with transparency disclaimers
+  - "No confirmed partnerships exist at this time" explicitly stated
+  - Emails changed from proofbridge-liner.io to venturevisionubuntu.co.za
+  - Research internship changed from "currently active" to "intended launch June 2026"
+  - Added Wits and UP as target research partners (top SA engineering schools)
+  - Kept UCT, Stellenbosch, AIMS, CSIR with PROPOSED status
+  - Strategic Partners renamed to "Target Ecosystem — Organizations We Are Building For"
+  - Technology Partners all marked TARGET/PROPOSED (not Production/Beta)
+  - Added Contact section with hello@, divh@, research@, partners@venturevisionubuntu.co.za
+- Moved ComputeEngineWidget from top of main stage to bottom (before </main> closing tag)
+- Created new IconRail component (/src/components/vvu/icon-rail.tsx):
+  - 68px collapsed (icons only) → 250px expanded (icons + labels + dropdowns)
+  - 150ms ease-out expand, 120ms ease-in collapse
+  - 300ms collapse delay to prevent accidental flicker
+  - Pin (📌) toggle to lock open
+  - Floats OVER content with shadow (position: absolute, z-index: 50)
+  - Zero layout shifts — main content does not move
+  - VVU Logo at top, middle icons (Workspace, Products, Projects, Customize), bottom anchored (Trust Passport, Partner, Settings, Account)
+  - Collapsible dropdowns for Workspace Mode (7 items), Products, Projects, Customize, Settings
+- Updated workbench-shell.tsx to use IconRail instead of EdgeDock for left dock
+- Changed layout-engine.ts default: left dock pinned=false, width=68 (Icon Rail defaults)
+- Fixed lint error: removed useEffect for isExpanded, made it a derived value (hovered || pinned)
+- Verified via agent-browser: Icon Rail shows correctly, Compute Engine at bottom, all features working
+
+Stage Summary:
+- README.md is now HONEST — all partnerships are target/proposed, no fake confirmed deals
+- Emails all use venturevisionubuntu.co.za domain
+- Internships marked as intended June 2026, not currently active
+- Wits and UP added as target research partners alongside UCT
+- Compute Engine widget now anchored at BOTTOM of the workspace stage
+- Icon Rail sidebar implemented: 68px → 250px hover-to-expand with pin lock
+- Icon Rail floats over content with shadow — ZERO layout shifts
