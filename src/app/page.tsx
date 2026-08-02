@@ -15,6 +15,7 @@ import { PartnersSection } from '@/components/vvu/landing/partners-section';
 import { CommunitySection } from '@/components/vvu/landing/community-section';
 import { NewsSection } from '@/components/vvu/landing/news-section';
 import { ContactSection } from '@/components/vvu/landing/contact-section';
+import { PricingSection } from '@/components/vvu/landing/pricing-section';
 import { Footer } from '@/components/vvu/landing/footer';
 import { PartnerModal } from '@/components/vvu/partner-modal';
 
@@ -67,6 +68,7 @@ export default function Home() {
             <MissionSection />
             <ProgramsSection />
             <EngineeringSection />
+            <PricingSection />
             <PartnersSection onPartnerWithUs={() => setPartnerModalOpen(true)} />
             <CommunitySection />
             <NewsSection />

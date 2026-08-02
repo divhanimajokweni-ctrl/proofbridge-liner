@@ -620,3 +620,53 @@ Stage Summary:
 - Getting Started manual covers e2e from clone to production release
 - README updated with partnership automation and getting started references
 - Evidence versioning format (VVU-EVD-001 Rev 1.4) added throughout
+
+---
+Task ID: 7
+Agent: Main
+Task: Create clear Pricing & Proprietary Structure for VVU
+
+Work Log:
+- Created pricing-structure.ts at `/home/z/my-project/src/lib/vvu/pricing-structure.ts` (~400 lines)
+  - Defined 3 Editions: Community (Free), Professional (R1,499/mo), Enterprise (Custom)
+  - Defined 4 Trust Tiers: Browse, Verified, Financial, Web3
+  - Defined 8 Product Licenses with open-source vs proprietary boundaries
+  - Defined 8-row Product Pricing Grid with per-product per-edition pricing
+  - South African Rand (ZAR) pricing
+  - Annual billing option (R14,990/yr = ~2 months free)
+  - Clear boundary descriptions for each product
+- Created PricingSection component at `/home/z/my-project/src/components/vvu/landing/pricing-section.tsx` (~430 lines)
+  - 4 sub-sections: Pricing Tiers, Trust Tiers, Product Pricing Grid, Proprietary Structure
+  - Pricing Tiers: 3 cards with features, CTAs, limits
+  - Trust Tiers: 4 cards with authentication levels and unlocks
+  - Product Pricing Grid: Full table with Community/Professional/Enterprise columns
+  - Proprietary Structure: 8 expandable cards showing free vs paid features per product
+  - Annual billing toggle with savings calculation
+  - Bottom CTA card
+- Added "Pricing" to navigation bar
+- Integrated PricingSection into landing page (between Engineering and Partners)
+- Fixed middleware ethers import (again — was reverted)
+- Copied page.tsx to app/ directory for dual-directory compatibility
+- Browser verified: all 4 pricing sub-sections rendering correctly
+
+Stage Summary:
+- ✅ Clear 3-tier pricing structure: Community (Free), Professional (R1,499/mo), Enterprise (Custom)
+- ✅ 4 Trust Tiers: Browse, Verified, Financial, Web3
+- ✅ 8 Product Licenses with clear open-source vs proprietary boundaries
+- ✅ Per-product pricing grid showing what each product costs per edition
+- ✅ Expandable proprietary structure cards showing free vs paid features
+- ✅ SA Rand pricing with annual billing option
+- ✅ "Pricing" link in navigation bar
+- ✅ Browser verified: all sections rendering
+
+Product Licensing Summary:
+- Open Source (Apache 2.0): AIR Runtime
+- Open Core: Epistemic Runtime, 72h Simulation
+- Freemium: ProofBridge
+- Community Free: Ubuntu Pools, Trust Sphere
+- Proprietary: HBK, Growth Infrastructure
+
+Unresolved Issues:
+- README needs updating with pricing structure
+- Capability registry could be updated with real pricing metadata
+- The partner modal's "Sponsor Tiers" should be updated to align with the new pricing structure

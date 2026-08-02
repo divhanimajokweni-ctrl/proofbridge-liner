@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { label: 'Mission', href: '#mission' },
   { label: 'Programs', href: '#programs' },
   { label: 'Engineering', href: '#engineering' },
+  { label: 'Pricing', href: '#pricing' },
   { label: 'Partners', href: '#partners' },
   { label: 'Community', href: '#community' },
   { label: 'Contact', href: '#contact' },

@@ -9,11 +9,15 @@ const MAX_REDIRECTS = 5;
 
 async function isCircuitTripped(): Promise<boolean> {
   if (!CIRCUIT_BREAKER_ADDRESS || !POLYGON_AMOY_RPC_URL) return false;
+  // The on-chain circuit breaker check requires the 'ethers' package.
+  // If the package is not installed, the check is skipped gracefully.
+  // We use Function() to prevent Turbopack from statically resolving the import.
   try {
-    const { ethers } = await import('ethers');
-    const provider = new ethers.JsonRpcProvider(POLYGON_AMOY_RPC_URL);
-    const { CIRCUIT_BREAKER_ABI } = await import('@/lib/contracts/circuitBreakerAbi');
-    const contract = new ethers.Contract(CIRCUIT_BREAKER_ADDRESS, CIRCUIT_BREAKER_ABI, provider);
+    const loadEthers = new Function('module', 'return import(module)');
+    const mod = await loadEthers('ethers');
+    const provider = new mod.ethers.JsonRpcProvider(POLYGON_AMOY_RPC_URL);
+    const abiMod = await import('@/lib/contracts/circuitBreakerAbi');
+    const contract = new mod.ethers.Contract(CIRCUIT_BREAKER_ADDRESS, abiMod.CIRCUIT_BREAKER_ABI, provider);
     const open = await contract.circuitOpen();
     return !open;
   } catch {
