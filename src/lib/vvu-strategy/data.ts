@@ -49,7 +49,7 @@ const trackB: ResourceTrack = {
   objective: 'Scientific validation and research capacity',
   status: 'active_outreach',
   statusDetail: 'Active outreach · No executed agreements',
-  targets: ['UCT', 'Wits', 'Stellenbosch University', 'CSIR'],
+  targets: ['UCT'],
   requestedSupport: [
     { description: 'HPC and GPU compute', status: 'strategy' },
     { description: 'Cloud compute credits', status: 'strategy' },

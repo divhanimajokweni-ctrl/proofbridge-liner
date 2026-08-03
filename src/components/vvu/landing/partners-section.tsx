@@ -44,9 +44,7 @@ const PARTNERS: Partner[] = [
   { name: 'MTN', category: 'Telecom', desc: 'Mobile Networks', badge: 'Telecom', status: 'PROPOSED' },
   { name: 'Standard Bank', category: 'Finance', desc: 'Financial Services', badge: 'Finance', status: 'TARGET' },
   { name: 'Absa', category: 'Finance', desc: 'Banking', badge: 'Finance', status: 'PROPOSED' },
-  { name: 'University of Cape Town', category: 'Academic', desc: 'Academic Research (UCT)', badge: 'Academic', status: 'TARGET', abbreviation: 'UCT' },
-  { name: 'University of the Witwatersrand', category: 'Academic', desc: 'Academic Research (Wits)', badge: 'Academic', status: 'TARGET', abbreviation: 'Wits' },
-  { name: 'University of Pretoria', category: 'Academic', desc: 'Academic Research (UP)', badge: 'Academic', status: 'PROPOSED', abbreviation: 'UP' },
+  { name: 'University of Cape Town', category: 'Academic', desc: 'Top Engineering Institution (UCT)', badge: 'Academic', status: 'TARGET', abbreviation: 'UCT' },
   { name: 'AMD', category: 'Hardware', desc: 'Hardware & Compute', badge: 'Hardware', status: 'TARGET' },
   { name: 'Sarah Baartman DM', category: 'Government', desc: 'Local Government — Gqeberha', badge: 'Government', status: 'PROPOSED' },
 ];
@@ -126,7 +124,7 @@ export function PartnersSection({ onPartnerWithUs }: PartnersSectionProps) {
         <motion.div {...fadeInUp} className="mt-12">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-center text-xl font-semibold text-foreground flex-1">
-              12 Target Integrations
+              10 Target Integrations
             </h3>
             {onPartnerWithUs && (
               <Button

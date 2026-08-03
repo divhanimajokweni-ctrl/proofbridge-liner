@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Command as CommandIcon,
@@ -35,6 +35,8 @@ import {
   GraduationCap,
   Palette,
   Rocket,
+  Wallet,
+  ChevronUp,
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -63,7 +65,6 @@ import {
   type WorkspaceMode,
   type EpistemicMaturity,
 } from '@/lib/vvu/three-roots';
-import { EdgeDock, type DockPosition } from '@/components/vvu/edge-dock';
 import { IconRail } from '@/components/vvu/icon-rail';
 import { IntentScreen } from '@/components/vvu/intent-screen';
 import { TrustJourneyModal } from '@/components/vvu/trust-journey-modal';
@@ -86,7 +87,7 @@ import {
 } from '@/components/vvu/epistemic-runtime-dashboard';
 import { SimulationDashboard } from '@/components/simulation/simulation-dashboard';
 
-// Dynamic imports for new components
+// Dynamic imports for overlay components
 const TrustPassport = dynamic(
   () => import('@/components/vvu/trust-passport').then((m) => m.TrustPassport),
   { ssr: false, loading: () => <div className="p-4 text-center font-mono text-[10px] text-muted-foreground">Loading Trust Passport…</div> },
@@ -99,6 +100,8 @@ const TransparencyPanel = dynamic(
   () => import('@/components/vvu/transparency-panel').then((m) => m.TransparencyPanel),
   { ssr: false, loading: () => <div className="p-4 text-center font-mono text-[10px] text-muted-foreground">Loading Transparency…</div> },
 );
+// Growth Infrastructure is handled via ProductStub for now
+// Will be upgraded to a full dashboard component when available
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -123,27 +126,11 @@ const PRODUCT_ICON_MAP: Record<string, LucideIcon> = {
   Droplets,
   BrainCircuit,
   Activity,
+  Rocket,
 };
 
 function resolveProductIcon(iconName: string): LucideIcon {
   return PRODUCT_ICON_MAP[iconName] ?? Boxes;
-}
-
-// ---------------------------------------------------------------------------
-// Workspace Mode Badge
-// ---------------------------------------------------------------------------
-
-function WorkspaceModeBadge() {
-  const workspaceMode = useWorkspaceStore((s) => s.workspaceMode);
-  const config = WORKSPACE_MODES[workspaceMode];
-  const ModeIcon = ICON_MAP[config.icon] ?? Activity;
-
-  return (
-    <div className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5">
-      <ModeIcon className="h-3.5 w-3.5" style={{ color: config.color }} strokeWidth={1.8} />
-      <span className="text-xs font-medium" style={{ color: config.color }}>{config.label}</span>
-    </div>
-  );
 }
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -167,658 +154,237 @@ const ICON_MAP: Record<string, LucideIcon> = {
   GraduationCap,
   Palette,
   Rocket,
+  Wallet,
 };
 
 // ---------------------------------------------------------------------------
-// Left Dock Content — Workspace Navigation
+// Architectural Shortcuts (for the top header)
 // ---------------------------------------------------------------------------
 
+const ARCH_SHORTCUTS = [
+  { id: 'ubuntu-pools', label: 'Ubuntu Pools', icon: Droplets, color: '#3dd6ff' },
+  { id: 'proofbridge', label: 'ProofBridge-Liner', icon: ShieldCheck, color: '#3dffb0' },
+  { id: 'hbk', label: 'HBK', icon: BrainCircuit, color: '#C9A84C' },
+  { id: 'air-runtime', label: 'AIR', icon: Sparkles, color: '#b23dff' },
+  { id: 'growth', label: 'Compute', icon: Activity, color: '#3dffb0' },
+] as const;
+
 // ---------------------------------------------------------------------------
-// Sidebar workspace mode items (the 7 dropdown items)
+// Progressive Disclosure Top Header
 // ---------------------------------------------------------------------------
 
-const SIDEBAR_WORKSPACE_MODES: {
-  key: WorkspaceMode;
-  label: string;
-  icon: string;
-}[] = [
-  { key: 'engineering', label: 'Custom', icon: 'FlaskConical' },
-  { key: 'learning', label: 'Academics', icon: 'GraduationCap' },
-  { key: 'engineering', label: 'Developers', icon: 'BrainCircuit' },
-  { key: 'compliance', label: 'Regulators', icon: 'FileCheck2' },
-  { key: 'operations', label: 'Operators', icon: 'Activity' },
-  { key: 'review', label: 'Researchers', icon: 'Eye' },
-  { key: 'executive', label: 'Organisations', icon: 'TrendingUp' },
-];
-
-function LeftDockContent() {
+function TopHeader({ focusMode }: { focusMode: boolean }) {
+  const [scrolled, setScrolled] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const activeProduct = useWorkspaceStore((s) => s.activeProduct);
   const setActiveProduct = useWorkspaceStore((s) => s.setActiveProduct);
   const workspaceMode = useWorkspaceStore((s) => s.workspaceMode);
-  const setWorkspaceMode = useWorkspaceStore((s) => s.setWorkspaceMode);
-  const toggleTrustPassport = useWorkspaceStore((s) => s.toggleTrustPassport);
-  const toggleDock = useWorkspaceStore((s) => s.toggleDock);
-
-  // Collapsible dropdown states — collapsed by default
-  const [workspaceOpen, setWorkspaceOpen] = useState(false);
-  const [productsOpen, setProductsOpen] = useState(false);
-  const [projectsOpen, setProjectsOpen] = useState(false);
-  const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
-  const modeConfig = WORKSPACE_MODES[workspaceMode];
-
-  return (
-    <div className="flex h-full flex-col gap-0 p-0">
-      {/* ── VVU Logo + Close ── */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-        <div className="flex items-center gap-2">
-          {/* VVU Logo — styled monospace */}
-          <div className="flex items-center gap-0.5">
-            <span
-              className="font-mono text-base font-black tracking-[0.18em]"
-              style={{ color: '#3dffb0' }}
-            >
-              V
-            </span>
-            <span
-              className="font-mono text-base font-black tracking-[0.18em]"
-              style={{ color: '#C9A84C' }}
-            >
-              V
-            </span>
-            <span
-              className="font-mono text-base font-black tracking-[0.18em]"
-              style={{ color: '#3dd6ff' }}
-            >
-              U
-            </span>
-          </div>
-        </div>
-        <button
-          onClick={() => toggleDock('left')}
-          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/50 hover:text-foreground hover:bg-white/[0.06] transition-colors"
-          title="Close sidebar"
-        >
-          <X className="h-3.5 w-3.5" strokeWidth={1.8} />
-        </button>
-      </div>
-
-      {/* ── Scrollable content area ── */}
-      <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 py-2" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.06) transparent' }}>
-        {/* ── Workspace Mode dropdown ── */}
-        <Collapsible open={workspaceOpen} onOpenChange={setWorkspaceOpen}>
-          <CollapsibleTrigger asChild>
-            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
-              <Activity
-                className="h-3.5 w-3.5 flex-none"
-                style={{ color: modeConfig.color }}
-                strokeWidth={1.8}
-              />
-              <span className="flex-1 text-xs font-medium">Workspace Mode</span>
-              <ChevronDown
-                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${workspaceOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15 }}
-              className="flex flex-col gap-0.5 pl-2 pb-1 pt-0.5"
-            >
-              {SIDEBAR_WORKSPACE_MODES.map((item) => {
-                const isActive = workspaceMode === item.key;
-                const ItemIcon = ICON_MAP[item.icon] ?? Activity;
-
-                return (
-                  <button
-                    key={item.label}
-                    onClick={() => setWorkspaceMode(item.key)}
-                    className={`group relative flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-all ${
-                      isActive
-                        ? 'border-white/10 bg-white/[0.05] text-foreground'
-                        : 'border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
-                    }`}
-                  >
-                    {isActive && (
-                      <span
-                        className="absolute inset-y-0.5 left-0 w-[2px] rounded-full"
-                        style={{ background: modeConfig.color }}
-                      />
-                    )}
-                    <ItemIcon
-                      className="h-3 w-3 flex-none"
-                      style={{ color: isActive ? modeConfig.color : undefined }}
-                      strokeWidth={1.8}
-                    />
-                    <span className="text-xs">{item.label}</span>
-                  </button>
-                );
-              })}
-            </motion.div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* ── Products dropdown ── */}
-        <Collapsible open={productsOpen} onOpenChange={setProductsOpen}>
-          <CollapsibleTrigger asChild>
-            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
-              <Boxes className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
-              <span className="flex-1 text-xs font-medium">Products</span>
-              <ChevronDown
-                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${productsOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15 }}
-              className="flex flex-col gap-0.5 pl-2 pb-1 pt-0.5"
-            >
-              {PRODUCT_MANIFESTS.map((product) => {
-                const Icon = resolveProductIcon(product.icon);
-                const isActive = activeProduct === product.id;
-
-                return (
-                  <button
-                    key={product.id}
-                    onClick={() => setActiveProduct(product.id)}
-                    className={`group relative flex items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-all ${
-                      isActive
-                        ? 'border-white/10 bg-white/[0.05] text-foreground'
-                        : 'border-transparent text-muted-foreground hover:bg-white/[0.03] hover:text-foreground'
-                    }`}
-                  >
-                    {isActive && (
-                      <span
-                        className="absolute inset-y-0.5 left-0 w-[2px] rounded-full"
-                        style={{ background: product.color }}
-                      />
-                    )}
-                    <Icon
-                      className="h-3 w-3 flex-none"
-                      style={{ color: isActive ? product.color : undefined }}
-                      strokeWidth={1.8}
-                    />
-                    <div className="flex min-w-0 flex-1 flex-col leading-none">
-                      <span className="truncate text-xs font-medium">{product.label}</span>
-                      <span className="mt-0.5 truncate font-mono text-[8px] text-muted-foreground/50">
-                        {product.tagline}
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-            </motion.div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* ── Projects dropdown (placeholder) ── */}
-        <Collapsible open={projectsOpen} onOpenChange={setProjectsOpen}>
-          <CollapsibleTrigger asChild>
-            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
-              <FolderKanban className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
-              <span className="flex-1 text-xs font-medium">Projects</span>
-              <ChevronDown
-                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${projectsOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="pl-4 py-2">
-              <span className="font-mono text-[9px] text-muted-foreground/40">
-                No projects yet
-              </span>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* ── Customize dropdown (placeholder) ── */}
-        <Collapsible open={customizeOpen} onOpenChange={setCustomizeOpen}>
-          <CollapsibleTrigger asChild>
-            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
-              <Paintbrush className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
-              <span className="flex-1 text-xs font-medium">Customize</span>
-              <ChevronDown
-                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${customizeOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="pl-4 py-2">
-              <span className="font-mono text-[9px] text-muted-foreground/40">
-                Appearance & preferences
-              </span>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* ── Settings dropdown (placeholder) ── */}
-        <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-          <CollapsibleTrigger asChild>
-            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
-              <Settings className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
-              <span className="flex-1 text-xs font-medium">Settings</span>
-              <ChevronDown
-                className={`h-3 w-3 flex-none text-muted-foreground/40 transition-transform duration-200 ${settingsOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="pl-4 py-2">
-              <span className="font-mono text-[9px] text-muted-foreground/40">
-                System configuration
-              </span>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-
-        {/* ── Standalone: Trust Passport ── */}
-        <button
-          onClick={toggleTrustPassport}
-          className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors"
-        >
-          <ShieldCheck className="h-3.5 w-3.5 flex-none text-emerald-400/70" strokeWidth={1.8} />
-          <span className="text-xs font-medium">Trust Passport</span>
-        </button>
-
-        {/* ── Standalone: Partner With Us ── */}
-        <button
-          className="flex items-center gap-2 rounded-md px-2 py-2 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors"
-          title="Partner With Us"
-        >
-          <Share2 className="h-3.5 w-3.5 flex-none text-amber-400/70" strokeWidth={1.8} />
-          <span className="flex-1 text-xs font-medium">Partner With Us</span>
-          <ArrowRight className="h-3 w-3 flex-none text-muted-foreground/30" strokeWidth={1.8} />
-        </button>
-      </div>
-
-      {/* ── Bottom anchored: User Account ── */}
-      <div className="border-t border-white/[0.06] px-2 py-2">
-        <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-muted-foreground hover:bg-white/[0.03] hover:text-foreground transition-colors">
-          <User className="h-3.5 w-3.5 flex-none" strokeWidth={1.8} />
-          <span className="flex-1 text-xs font-medium">User Account</span>
-          <Settings className="h-3 w-3 flex-none text-muted-foreground/30" strokeWidth={1.8} />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Right Dock Content — Context-Aware
-// ---------------------------------------------------------------------------
-
-function RightDockContent() {
-  const activeProduct = useWorkspaceStore((s) => s.activeProduct);
-  const workspaceMode = useWorkspaceStore((s) => s.workspaceMode);
-  const trustPassport = useWorkspaceStore((s) => s.trustPassport);
   const currentMaturity = useWorkspaceStore((s) => s.currentMaturity);
+  const toggleFocusMode = useWorkspaceStore((s) => s.toggleFocusMode);
+  const mainRef = useRef<HTMLElement | null>(null);
 
-  const capabilities = activeProduct
-    ? getCapabilitiesForProduct(activeProduct)
-    : CAPABILITIES;
+  // Listen for scroll in the main content area
+  useEffect(() => {
+    const mainEl = document.querySelector('[data-vvu-main]');
+    if (!mainEl) return;
 
-  const product = activeProduct ? PRODUCT_MANIFEST_MAP[activeProduct] : null;
+    const handleScroll = () => {
+      setScrolled(mainEl.scrollTop > 20);
+    };
+
+    mainEl.addEventListener('scroll', handleScroll, { passive: true });
+    return () => mainEl.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Focus mode: hide header entirely
+  if (focusMode) return null;
+
   const modeConfig = WORKSPACE_MODES[workspaceMode];
 
   return (
-    <div className="flex flex-col gap-3 p-3">
-      {/* Workspace mode indicator */}
-      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/60">
-            Mode
-          </span>
-          <span className="font-mono text-[9px]" style={{ color: modeConfig.color }}>
-            {modeConfig.label}
-          </span>
-        </div>
-        <p className="text-[10px] text-muted-foreground/70">{modeConfig.description}</p>
-      </div>
+    <header
+      className="relative flex items-center h-12 shrink-0 border-b border-white/[0.06] bg-[rgba(15,15,24,0.85)] backdrop-blur-xl select-none"
+      style={{ zIndex: 9999 }}
+    >
+      {/* ── Left: VVU Logo ── */}
+      <div className="flex items-center gap-3 pl-4 shrink-0">
+        {/* Dropdown arrow when scrolled (shortcuts hidden) */}
+        <AnimatePresence>
+          {scrolled && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.1 }}
+              onClick={() => setShortcutsOpen(!shortcutsOpen)}
+              className="flex items-center justify-center h-6 w-6 rounded-md hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-150 ${shortcutsOpen ? 'rotate-180' : ''}`} />
+            </motion.button>
+          )}
+        </AnimatePresence>
 
-      {/* Product header */}
-      {product && (
-        <div className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg border"
-            style={{ borderColor: `${product.color}40`, background: `${product.color}10` }}
-          >
-            {(() => {
-              const Icon = resolveProductIcon(product.icon);
-              return <Icon className="h-4 w-4" style={{ color: product.color }} strokeWidth={1.8} />;
-            })()}
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-foreground">{product.label}</span>
-            <span className="font-mono text-[9px] text-muted-foreground/60">{product.tagline}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Maturity indicator */}
-      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-        <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/60 mb-2">
-          Trust Maturity
-        </div>
-        <div className="flex gap-1">
-          {MATURITY_STAGES.map((stage, idx) => {
-            const currentIdx = MATURITY_STAGES.indexOf(currentMaturity);
-            const isCompleted = idx <= currentIdx;
-            const isCurrent = idx === currentIdx;
-
-            return (
-              <div
-                key={stage}
-                className={`h-1.5 flex-1 rounded-full transition-all ${
-                  isCurrent ? 'animate-pulse' : ''
-                }`}
-                style={{
-                  background: isCompleted
-                    ? isCurrent
-                      ? MATURITY_COLORS[stage]
-                      : `${MATURITY_COLORS[stage]}80`
-                    : 'rgba(255,255,255,0.06)',
-                  boxShadow: isCurrent ? `0 0 6px ${MATURITY_COLORS[stage]}60` : undefined,
-                }}
-                title={MATURITY_LABELS[stage]}
-              />
-            );
-          })}
-        </div>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-[10px] text-muted-foreground/70">Current</span>
-          <span className="font-mono text-[9px]" style={{ color: MATURITY_COLORS[currentMaturity] }}>
-            {MATURITY_LABELS[currentMaturity]}
-          </span>
+        {/* VVU Logo */}
+        <div className="flex items-center gap-0.5">
+          <span className="text-lg font-black tracking-tight" style={{ color: '#3dffb0' }}>V</span>
+          <span className="text-lg font-black tracking-tight" style={{ color: '#C9A84C' }}>V</span>
+          <span className="text-lg font-black tracking-tight" style={{ color: '#3dd6ff' }}>U</span>
         </div>
       </div>
 
-      {/* AI Agents (compact) */}
-      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-3 w-3 text-emerald-400" />
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/60">
-            Agents
-          </span>
-        </div>
-        {VVU_AGENTS.filter(a => a.status === 'running' || a.status === 'watching').map((agent) => (
-          <div key={agent.id} className="flex items-center gap-2 mb-1.5">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{
-                background: agent.color,
-                boxShadow: `0 0 4px ${agent.color}80`,
-                animation: 'vvu-live-pulse 2s ease-in-out infinite',
-              }}
-            />
-            <span className="text-[10px] text-foreground">{agent.name}</span>
-            <span className="font-mono text-[9px] text-muted-foreground/50">{agent.role}</span>
-            {agent.confidence !== undefined && (
-              <span className="ml-auto font-mono text-[9px] text-emerald-400/70">{agent.confidence}%</span>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Capabilities */}
-      <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/60">
-        Capabilities
-      </div>
-      {capabilities.slice(0, 3).map((cap) => {
-        const progress = trustPassport[cap.id];
-        const completedCount = progress?.completedSteps.length ?? 0;
-        const totalSteps = cap.trustJourney.length;
-        const percentage = totalSteps > 0 ? (completedCount / totalSteps) * 100 : 0;
-
-        return (
-          <div
-            key={cap.id}
-            className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-foreground">{cap.label}</span>
+      {/* ── Center: Architectural Shortcuts (Progressive Disclosure) ── */}
+      <div className="flex-1 flex items-center justify-center overflow-hidden">
+        <AnimatePresence>
+          {!scrolled ? (
+            <motion.div
+              key="shortcuts"
+              initial={{ opacity: 0, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.15, ease: 'easeIn' }}
+              className="flex items-center gap-1"
+            >
+              {ARCH_SHORTCUTS.map((shortcut, idx) => {
+                const isActive = activeProduct === shortcut.id;
+                return (
+                  <button
+                    key={shortcut.id}
+                    onClick={() => setActiveProduct(shortcut.id)}
+                    className={`
+                      flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors duration-150
+                      ${isActive
+                        ? 'bg-white/[0.08] text-foreground'
+                        : 'text-muted-foreground hover:bg-white/[0.06] hover:text-foreground'
+                      }
+                    `}
+                  >
+                    <shortcut.icon className="h-3.5 w-3.5" style={{ color: isActive ? shortcut.color : undefined }} strokeWidth={1.8} />
+                    <span>{shortcut.label}</span>
+                    {idx < ARCH_SHORTCUTS.length - 1 && (
+                      <span className="text-muted-foreground/20 ml-1.5">|</span>
+                    )}
+                  </button>
+                );
+              })}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="collapsed-info"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
+              className="flex items-center gap-2"
+            >
+              {activeProduct && PRODUCT_MANIFEST_MAP[activeProduct] && (
+                <Badge
+                  variant="outline"
+                  className="gap-1.5 font-mono text-[9px]"
+                  style={{
+                    borderColor: `${PRODUCT_MANIFEST_MAP[activeProduct].color}40`,
+                    background: `${PRODUCT_MANIFEST_MAP[activeProduct].color}10`,
+                    color: PRODUCT_MANIFEST_MAP[activeProduct].color,
+                  }}
+                >
+                  {(() => {
+                    const Icon = resolveProductIcon(PRODUCT_MANIFEST_MAP[activeProduct].icon);
+                    return <Icon className="h-2.5 w-2.5" />;
+                  })()}
+                  {PRODUCT_MANIFEST_MAP[activeProduct].label}
+                </Badge>
+              )}
               <Badge
                 variant="outline"
-                className={`font-mono text-[8px] ${
-                  cap.trustTier === 'browse'
-                    ? 'text-muted-foreground border-white/[0.08]'
-                    : cap.trustTier === 'verified'
-                      ? 'text-emerald-400 border-emerald-500/20'
-                      : cap.trustTier === 'financial'
-                        ? 'text-amber-400 border-amber-500/20'
-                        : 'text-purple-400 border-purple-500/20'
-                }`}
+                className="gap-1.5 font-mono text-[9px]"
+                style={{
+                  borderColor: `${modeConfig.color}40`,
+                  background: `${modeConfig.color}10`,
+                  color: modeConfig.color,
+                }}
               >
-                {cap.trustTier}
+                {(() => {
+                  const Icon = ICON_MAP[modeConfig.icon] ?? Activity;
+                  return <Icon className="h-2.5 w-2.5" />;
+                })()}
+                {modeConfig.label}
               </Badge>
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <div className="h-1 flex-1 rounded-full bg-white/[0.06]">
-                <div
-                  className="h-full rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${percentage}%` }}
-                />
-              </div>
-              <span className="font-mono text-[9px] text-muted-foreground/60">
-                {completedCount}/{totalSteps}
-              </span>
-            </div>
-          </div>
-        );
-      })}
+              <Badge
+                variant="outline"
+                className="gap-1.5 font-mono text-[9px]"
+                style={{
+                  borderColor: `${MATURITY_COLORS[currentMaturity]}40`,
+                  background: `${MATURITY_COLORS[currentMaturity]}10`,
+                  color: MATURITY_COLORS[currentMaturity],
+                }}
+              >
+                {MATURITY_LABELS[currentMaturity]}
+              </Badge>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* Trust metrics */}
-      <div className="mt-auto border-t border-white/[0.06] pt-3">
-        <div className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/60 mb-2">
-          Three Roots
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground/70">History</span>
-            <span className="font-mono text-[10px] text-emerald-400">Intact</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground/70">Semantic</span>
-            <span className="font-mono text-[10px] text-emerald-400">SOUND</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-muted-foreground/70">Trust</span>
-            <span className="font-mono text-[10px] text-amber-400">3 certs</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Top Dock Content — Global Actions Bar
-// ---------------------------------------------------------------------------
-
-function TopDockContent() {
-  const activeProduct = useWorkspaceStore((s) => s.activeProduct);
-  const focusMode = useWorkspaceStore((s) => s.focusMode);
-  const toggleFocusMode = useWorkspaceStore((s) => s.toggleFocusMode);
-  const workspaceMode = useWorkspaceStore((s) => s.workspaceMode);
-  const currentMaturity = useWorkspaceStore((s) => s.currentMaturity);
-
-  const product = activeProduct ? PRODUCT_MANIFEST_MAP[activeProduct] : null;
-  const modeConfig = WORKSPACE_MODES[workspaceMode];
-
-  return (
-    <div className="flex items-center gap-3 px-4 py-2">
-      {/* Search */}
-      <div className="flex items-center gap-2">
-        <Search className="h-3.5 w-3.5 text-muted-foreground/50" />
-        <span className="text-xs text-muted-foreground/50">Search</span>
+        {/* Dropdown menu when scrolled */}
+        <AnimatePresence>
+          {scrolled && shortcutsOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.1 }}
+              className="absolute top-full left-14 mt-1 rounded-lg border border-white/[0.08] bg-[rgba(15,15,24,0.95)] backdrop-blur-xl p-2 min-w-[200px]"
+              style={{ zIndex: 10000 }}
+            >
+              {ARCH_SHORTCUTS.map((shortcut) => {
+                const isActive = activeProduct === shortcut.id;
+                return (
+                  <button
+                    key={shortcut.id}
+                    onClick={() => { setActiveProduct(shortcut.id); setShortcutsOpen(false); }}
+                    className={`
+                      flex items-center gap-2.5 w-full px-3 py-2 rounded-md text-sm transition-colors duration-150 text-left
+                      ${isActive
+                        ? 'bg-white/[0.08] text-foreground'
+                        : 'text-muted-foreground hover:bg-white/[0.06] hover:text-foreground'
+                      }
+                    `}
+                  >
+                    <shortcut.icon className="h-4 w-4" style={{ color: shortcut.color }} strokeWidth={1.8} />
+                    <span>{shortcut.label}</span>
+                    {isActive && <ArrowRight className="h-3 w-3 ml-auto" style={{ color: shortcut.color }} />}
+                  </button>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Active product indicator */}
-      {product && (
-        <div className="flex items-center gap-2">
-          <ChevronRight className="h-3 w-3 text-muted-foreground/30" />
-          <Badge
-            variant="outline"
-            className="gap-1.5 font-mono text-[9px]"
-            style={{
-              borderColor: `${product.color}40`,
-              background: `${product.color}10`,
-              color: product.color,
-            }}
-          >
-            {(() => {
-              const Icon = resolveProductIcon(product.icon);
-              return <Icon className="h-2.5 w-2.5" />;
-            })()}
-            {product.label}
-          </Badge>
-        </div>
-      )}
-
-      {/* Workspace mode indicator */}
-      <div className="flex items-center gap-2">
-        <ChevronRight className="h-3 w-3 text-muted-foreground/30" />
-        <Badge
-          variant="outline"
-          className="gap-1.5 font-mono text-[9px]"
-          style={{
-            borderColor: `${modeConfig.color}40`,
-            background: `${modeConfig.color}10`,
-            color: modeConfig.color,
-          }}
+      {/* ── Right: Wallet + Controls ── */}
+      <div className="flex items-center gap-2 pr-4 shrink-0">
+        {/* Focus mode toggle */}
+        <button
+          onClick={toggleFocusMode}
+          className="flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 font-mono text-[9px] text-muted-foreground hover:text-foreground transition-colors"
+          title="Toggle focus mode (F)"
         >
-          {(() => {
-            const Icon = ICON_MAP[modeConfig.icon] ?? Activity;
-            return <Icon className="h-2.5 w-2.5" />;
-          })()}
-          {modeConfig.label}
-        </Badge>
-      </div>
-
-      {/* Maturity indicator */}
-      <div className="flex items-center gap-2">
-        <ChevronRight className="h-3 w-3 text-muted-foreground/30" />
-        <Badge
-          variant="outline"
-          className="gap-1.5 font-mono text-[9px]"
-          style={{
-            borderColor: `${MATURITY_COLORS[currentMaturity]}40`,
-            background: `${MATURITY_COLORS[currentMaturity]}10`,
-            color: MATURITY_COLORS[currentMaturity],
-          }}
-        >
-          {MATURITY_LABELS[currentMaturity]}
-        </Badge>
-      </div>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Focus mode toggle */}
-      <button
-        onClick={toggleFocusMode}
-        className={`flex items-center gap-1.5 rounded-md border px-2 py-1 font-mono text-[9px] transition-all ${
-          focusMode
-            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-            : 'border-white/[0.08] bg-white/[0.03] text-muted-foreground hover:text-foreground'
-        }`}
-        title={focusMode ? 'Exit focus mode (Esc)' : 'Enter focus mode (F)'}
-      >
-        {focusMode ? (
-          <Minimize2 className="h-3 w-3" />
-        ) : (
           <Maximize2 className="h-3 w-3" />
-        )}
-        {focusMode ? 'Exit Focus' : 'Focus'}
-      </button>
+          Focus
+        </button>
 
-      {/* Auth bar */}
-      <VvuErrorBoundary label="Auth Bar" fallback={<span className="font-mono text-[10px] text-muted-foreground">Auth unavailable</span>}>
-        <WorkspaceAuthBar />
-      </VvuErrorBoundary>
-    </div>
-  );
-}
+        {/* Auth bar */}
+        <VvuErrorBoundary label="Auth Bar" fallback={<span className="font-mono text-[10px] text-muted-foreground">Auth unavailable</span>}>
+          <WorkspaceAuthBar />
+        </VvuErrorBoundary>
 
-// ---------------------------------------------------------------------------
-// Bottom Dock Content — Status Bar
-// ---------------------------------------------------------------------------
-
-function BottomDockContent() {
-  const activeProduct = useWorkspaceStore((s) => s.activeProduct);
-  const workspaceMode = useWorkspaceStore((s) => s.workspaceMode);
-  const currentMaturity = useWorkspaceStore((s) => s.currentMaturity);
-  const focusMode = useWorkspaceStore((s) => s.focusMode);
-  const product = activeProduct ? PRODUCT_MANIFEST_MAP[activeProduct] : null;
-
-  const activeAgentCount = VVU_AGENTS.filter(a => a.status === 'running' || a.status === 'watching').length;
-
-  return (
-    <div className="flex items-center justify-between gap-4 px-4 py-1 font-mono text-[10px] text-muted-foreground">
-      <div className="flex items-center gap-3">
-        {/* Circuit breaker */}
-        <div className="flex items-center gap-1.5">
-          <span
-            className="h-1.5 w-1.5 rounded-full"
-            style={{
-              background: CB_COLORS.NORMAL,
-              boxShadow: `0 0 6px ${CB_COLORS.NORMAL}80`,
-              animation: 'vvu-live-pulse 2s ease-in-out infinite',
-            }}
-          />
-          <span className="text-muted-foreground/80">CB:</span>
-          <span className="font-medium" style={{ color: CB_COLORS.NORMAL }}>NORMAL</span>
-        </div>
-
-        {/* Maturity */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-muted-foreground/80">Maturity:</span>
-          <span className="font-medium" style={{ color: MATURITY_COLORS[currentMaturity] }}>
-            {MATURITY_LABELS[currentMaturity]}
-          </span>
-        </div>
-
-        {/* Workspace mode */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-muted-foreground/80">Mode:</span>
-          <span className="font-medium" style={{ color: WORKSPACE_MODES[workspaceMode].color }}>
-            {WORKSPACE_MODES[workspaceMode].label}
-          </span>
-        </div>
-
-        {/* Active product */}
-        {product && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-muted-foreground/80">Active:</span>
-            <span className="font-medium" style={{ color: product.color }}>{product.label}</span>
-          </div>
-        )}
-
-        {/* Agents */}
-        <div className="flex items-center gap-1.5">
-          <Sparkles className="h-3 w-3 text-emerald-400/70" />
-          <span className="text-muted-foreground/80">Agents:</span>
-          <span className="font-medium text-emerald-400">{activeAgentCount} active</span>
-        </div>
+        {/* Wallet / Ubuntu Pools ID */}
+        <button
+          className="flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          title="Ubuntu Pools Wallet"
+        >
+          <Wallet className="h-3.5 w-3.5" style={{ color: '#C9A84C' }} />
+          <span className="hidden sm:inline">Wallet</span>
+        </button>
       </div>
-
-      {/* Shortcuts */}
-      <div className="hidden items-center gap-2 md:flex">
-        <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 text-[9px]">⌘K</kbd>
-        <span>palette</span>
-        <span className="text-white/10">·</span>
-        <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 text-[9px]">F</kbd>
-        <span>focus</span>
-        <span className="text-white/10">·</span>
-        <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1 py-0.5 text-[9px]">Esc</kbd>
-        <span>home</span>
-      </div>
-    </div>
+    </header>
   );
 }
 
@@ -902,7 +468,7 @@ function WorkspaceContent({
 }
 
 // ---------------------------------------------------------------------------
-// Workbench Shell
+// Workbench Shell — CSS Grid Layout
 // ---------------------------------------------------------------------------
 
 export function WorkbenchShell() {
@@ -914,7 +480,6 @@ export function WorkbenchShell() {
   const toggleFocusMode = useWorkspaceStore((s) => s.toggleFocusMode);
   const toggleDock = useWorkspaceStore((s) => s.toggleDock);
   const pinDock = useWorkspaceStore((s) => s.pinDock);
-  const setDockWidth = useWorkspaceStore((s) => s.setDockWidth);
   const loadLayout = useWorkspaceStore((s) => s.loadLayout);
   const showTrustPassport = useWorkspaceStore((s) => s.showTrustPassport);
   const toggleTrustPassport = useWorkspaceStore((s) => s.toggleTrustPassport);
@@ -1011,8 +576,18 @@ export function WorkbenchShell() {
 
   return (
     <div
-      className="relative flex h-screen flex-col overflow-hidden"
-      style={{ background: '#0a0a0f' }}
+      className="relative h-screen overflow-hidden"
+      style={{
+        background: '#0a0a0f',
+        display: 'grid',
+        gridTemplateRows: focusMode ? '1fr auto' : 'auto 1fr auto',
+        gridTemplateColumns: docks.left.visible ? 'auto 1fr' : '1fr',
+        gridTemplateAreas: focusMode
+          ? '"main" "compute"'
+          : docks.left.visible
+            ? '"header header" "sidebar main" "compute compute"'
+            : '"header" "main" "compute"',
+      }}
     >
       <style
         dangerouslySetInnerHTML={{
@@ -1020,196 +595,154 @@ export function WorkbenchShell() {
         }}
       />
 
-      {/* ── Top Dock ── */}
-      <EdgeDock
-        position="top"
-        pinned={docks.top.pinned}
-        visible={docks.top.visible}
-        size={docks.top.width}
-        onPinChange={(pinned) => pinDock('top')}
-        onSizeChange={(size) => setDockWidth('top', size)}
-        onVisibleChange={(visible) => toggleDock('top')}
-        label="Global Actions"
-        focusMode={focusMode}
-        hideInFocusMode={true}
-        className="border-b border-white/[0.06]"
-        style={{ background: 'rgba(15,15,24,0.65)' }}
-      >
-        <TopDockContent />
-      </EdgeDock>
+      {/* ── Grid Area: Header ── */}
+      {!focusMode && (
+        <div style={{ gridArea: 'header' }}>
+          <TopHeader focusMode={focusMode} />
+        </div>
+      )}
 
-      {/* ── Main area ── */}
-      <div className="relative flex min-h-0 flex-1">
-        {/* ── Icon Rail (left sidebar) ── */}
-        {docks.left.visible && (
+      {/* ── Grid Area: Sidebar (Icon Rail) ── */}
+      {docks.left.visible && !focusMode && (
+        <div style={{ gridArea: 'sidebar' }} className="relative overflow-hidden">
           <IconRail
             pinned={docks.left.pinned}
             onPinChange={(pinned) => pinDock('left')}
             focusMode={focusMode}
           />
+        </div>
+      )}
+
+      {/* ── Grid Area: Main Content ── */}
+      <main
+        data-vvu-main
+        style={{ gridArea: 'main' }}
+        className="relative flex min-h-0 flex-col overflow-hidden"
+      >
+        {/* ── Content area ── */}
+        <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <AnimatePresence mode="wait">
+            {activeProduct === null ? (
+              <motion.div
+                key="intent-screen"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+                className="min-h-full"
+              >
+                <IntentScreen
+                  onCapabilitySelect={handleCapabilitySelect}
+                  onProductSelect={handleProductSelect}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key={activeProduct}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
+                className="min-h-full"
+              >
+                <WorkspaceContent
+                  activeProduct={activeProduct}
+                  sphereMode={sphereMode}
+                  onSphereMetrics={handleSphereMetrics}
+                  epistemicSection={epistemicSection}
+                  onEpistemicSectionChange={setEpistemicSection}
+                  onBackToSphere={() => setActiveProduct(null)}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Focus mode indicator */}
+        {focusMode && activeProduct && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-3 left-1/2 z-50 -translate-x-1/2"
+          >
+            <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 backdrop-blur-md">
+              <Maximize2 className="h-3 w-3 text-emerald-400" />
+              <span className="font-mono text-[10px] text-emerald-400">
+                Focus Mode — {PRODUCT_MANIFEST_MAP[activeProduct]?.label ?? 'Unknown'}
+              </span>
+              <span className="font-mono text-[9px] text-muted-foreground/50">
+                Esc to exit
+              </span>
+            </div>
+          </motion.div>
         )}
 
-        {/* ── Stage ── */}
-        <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {/* ── Content area ── */}
-          <div className="relative min-h-0 flex-1 overflow-hidden">
-            <AnimatePresence mode="wait">
-              {activeProduct === null ? (
-                <motion.div
-                  key="intent-screen"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="absolute inset-0"
-                >
-                  <IntentScreen
-                    onCapabilitySelect={handleCapabilitySelect}
-                    onProductSelect={handleProductSelect}
-                  />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key={activeProduct}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
-                  className="absolute inset-0"
-                >
-                  <WorkspaceContent
-                    activeProduct={activeProduct}
-                    sphereMode={sphereMode}
-                    onSphereMetrics={handleSphereMetrics}
-                    epistemicSection={epistemicSection}
-                    onEpistemicSectionChange={setEpistemicSection}
-                    onBackToSphere={() => setActiveProduct(null)}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Focus mode indicator */}
-          {focusMode && activeProduct && (
+        {/* Trust Passport overlay */}
+        <AnimatePresence>
+          {showTrustPassport && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute top-3 left-1/2 z-50 -translate-x-1/2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+              className="absolute inset-0 z-30 overflow-y-auto"
+              style={{ background: 'rgba(10,10,15,0.95)' }}
             >
-              <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 backdrop-blur-md">
-                <Maximize2 className="h-3 w-3 text-emerald-400" />
-                <span className="font-mono text-[10px] text-emerald-400">
-                  Focus Mode — {PRODUCT_MANIFEST_MAP[activeProduct]?.label ?? 'Unknown'}
-                </span>
-                <span className="font-mono text-[9px] text-muted-foreground/50">
-                  Esc to exit
-                </span>
+              <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-3">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                  <span className="text-sm font-semibold text-foreground">Trust Passport</span>
+                </div>
+                <button
+                  onClick={toggleTrustPassport}
+                  className="rounded-md border border-white/[0.08] px-2 py-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Esc
+                </button>
               </div>
+              <VvuErrorBoundary label="Trust Passport">
+                <TrustPassport />
+              </VvuErrorBoundary>
             </motion.div>
           )}
+        </AnimatePresence>
 
-          {/* Trust Passport overlay */}
-          <AnimatePresence>
-            {showTrustPassport && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                className="absolute inset-0 z-30 overflow-y-auto"
-                style={{ background: 'rgba(10,10,15,0.95)' }}
-              >
-                <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-3">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                    <span className="text-sm font-semibold text-foreground">Trust Passport</span>
-                  </div>
-                  <button
-                    onClick={toggleTrustPassport}
-                    className="rounded-md border border-white/[0.08] px-2 py-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Esc
-                  </button>
+        {/* Agent Panel overlay */}
+        <AnimatePresence>
+          {showAgentPanel && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+              className="absolute right-0 top-0 bottom-0 z-30 w-[400px] max-w-full overflow-y-auto border-l border-white/[0.06]"
+              style={{ background: 'rgba(10,10,15,0.95)' }}
+            >
+              <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-emerald-400" />
+                  <span className="text-sm font-semibold text-foreground">AI Collaborators</span>
                 </div>
-                <VvuErrorBoundary label="Trust Passport">
-                  <TrustPassport />
-                </VvuErrorBoundary>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <button
+                  onClick={toggleAgentPanel}
+                  className="rounded-md border border-white/[0.08] px-2 py-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Esc
+                </button>
+              </div>
+              <VvuErrorBoundary label="Agent Panel">
+                <AgentPanel />
+              </VvuErrorBoundary>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
 
-          {/* Agent Panel overlay */}
-          <AnimatePresence>
-            {showAgentPanel && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-                className="absolute right-0 top-0 bottom-0 z-30 w-[400px] max-w-full overflow-y-auto border-l border-white/[0.06]"
-                style={{ background: 'rgba(10,10,15,0.95)' }}
-              >
-                <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-emerald-400" />
-                    <span className="text-sm font-semibold text-foreground">AI Collaborators</span>
-                  </div>
-                  <button
-                    onClick={toggleAgentPanel}
-                    className="rounded-md border border-white/[0.08] px-2 py-1 font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Esc
-                  </button>
-                </div>
-                <VvuErrorBoundary label="Agent Panel">
-                  <AgentPanel />
-                </VvuErrorBoundary>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* ── Compute Engine Widget (always visible, anchored to bottom) ── */}
-          <ComputeEngineWidget />
-        </main>
-
-        {/* ── Right Dock ── */}
-        <EdgeDock
-          position="right"
-          pinned={docks.right.pinned}
-          visible={docks.right.visible}
-          size={docks.right.width}
-          onPinChange={(pinned) => pinDock('right')}
-          onSizeChange={(size) => setDockWidth('right', size)}
-          onVisibleChange={(visible) => toggleDock('right')}
-          label="Context"
-          focusMode={focusMode}
-          hideInFocusMode={true}
-          className="border-l border-white/[0.06]"
-          style={{ background: 'rgba(15,15,24,0.65)' }}
-        >
-          <RightDockContent />
-        </EdgeDock>
+      {/* ── Grid Area: Compute Engine (permanently anchored at bottom) ── */}
+      <div style={{ gridArea: 'compute' }} className="shrink-0">
+        <ComputeEngineWidget />
       </div>
-
-      {/* ── Bottom Dock ── */}
-      <EdgeDock
-        position="bottom"
-        pinned={docks.bottom.pinned}
-        visible={docks.bottom.visible}
-        size={docks.bottom.width}
-        onPinChange={(pinned) => pinDock('bottom')}
-        onSizeChange={(size) => setDockWidth('bottom', size)}
-        onVisibleChange={(visible) => toggleDock('bottom')}
-        label="Status"
-        focusMode={focusMode}
-        hideInFocusMode={false}
-        className="border-t border-white/[0.06]"
-        style={{ background: 'rgba(15,15,24,0.7)' }}
-      >
-        <BottomDockContent />
-      </EdgeDock>
 
       {/* ── Command Palette ── */}
       <VvuCommandPalette
@@ -1280,8 +813,8 @@ export function WorkbenchShell() {
                   {[
                     ['Trust Passport', 'Trust Passport overlay'],
                     ['AI Agents', 'Agent collaboration panel'],
-                    ['Pin button', 'Pin/unpin a dock'],
-                    ['Drag edge', 'Resize dock width'],
+                    ['Pin button', 'Pin/unpin the sidebar'],
+                    ['Click shortcut', 'Jump to product'],
                   ].map(([k, l]) => (
                     <div key={k} className="flex items-center justify-between gap-3">
                       <span className="text-xs text-foreground/85">{l}</span>

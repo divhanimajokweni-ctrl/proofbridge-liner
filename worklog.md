@@ -670,3 +670,123 @@ Unresolved Issues:
 - README needs updating with pricing structure
 - Capability registry could be updated with real pricing metadata
 - The partner modal's "Sponsor Tiers" should be updated to align with the new pricing structure
+
+---
+Task ID: 5
+Agent: Partnership Transparency Update
+Task: Update VVU Partners section to match Execution Contract spec — UCT only, no Wits/UP, correct counts
+
+Work Log:
+- Read worklog.md and identified all files referencing Wits, UP, University of the Witwatersrand, University of Pretoria, Stellenbosch, CSIR
+- Modified `src/components/vvu/landing/partners-section.tsx`:
+  - Removed University of the Witwatersrand (Wits) entry from PARTNERS array
+  - Removed University of Pretoria (UP) entry from PARTNERS array
+  - Updated UCT description to "Top Engineering Institution (UCT)" per Execution Contract
+  - Changed "12 Target Integrations" to "10 Target Integrations"
+- Modified `src/components/vvu/partner-modal.tsx`:
+  - Removed Wits and UP entries from MODAL_PARTNERS array
+  - Updated UCT whyThem text to include "the top engineering institution in the country"
+  - Changed "12 target organizations" to "10 target organizations"
+- Modified `src/lib/validation-suite/data.ts`:
+  - Removed "To be confirmed — Wits" entry from researchers list, keeping only UCT
+- Modified `src/lib/vvu-strategy/data.ts`:
+  - Updated Track B targets from ['UCT', 'Wits', 'Stellenbosch University', 'CSIR'] to ['UCT'] only
+- Verified no remaining references to Wits, University of the Witwatersrand, University of Pretoria, Stellenbosch, or CSIR in the codebase
+- Confirmed "UP" tag in products.ts refers to "Ubuntu Pools", not University of Pretoria — no change needed
+- Lint passes with no errors
+
+Stage Summary:
+- VVU Partners section now strictly matches the Execution Contract spec
+- UCT is the sole academic target across all files
+- Partner count updated from 12 to 10 in both landing section and partner modal
+- No active integrations message preserved
+- "No official partnership is currently in place" tooltip preserved for all partners
+
+Unresolved Issues:
+- None
+
+---
+Task ID: 2
+Agent: Icon Rail Refactor
+Task: Refactor VVU Icon Rail to match Execution Contract spec — flush fixed rail, click-to-pin only, no hover-to-expand
+
+Work Log:
+- Read existing icon-rail.tsx and worklog.md to understand current state
+- Removed hover-to-expand logic: `hovered` state, `handleMouseEnter`, `handleMouseLeave`, `collapseTimerRef`, `COLLAPSE_DELAY_MS` constant
+- Changed `isExpanded = hovered || pinned` to `isExpanded = pinned` (click-to-pin ONLY)
+- Removed `onMouseEnter`/`onMouseLeave` from the container motion.div
+- Changed positioning from `absolute left-0 top-0 bottom-0 z-50` to `relative shrink-0` (flush, fixed flex child)
+- Removed `boxShadow` style prop since rail is no longer floating
+- Updated `RAIL_WIDTH_COLLAPSED` from 68 to 80 per spec
+- Cleaned up unused imports: removed `useRef`, `useEffect` (only `useState`, `useCallback` remain)
+- Kept all existing content: Workspace Mode, Products, Projects, Customize, Trust Passport, Partner With Us, Settings, Account
+- Kept pin toggle button (📌) as the ONLY way to expand/collapse
+- Kept close button (X) that toggles dock visibility via `toggleDock('left')`
+- Kept `focusMode` prop that returns null to hide rail entirely
+- Kept animation specs: expand 150ms ease-out, collapse 120ms ease-in, fade 100ms linear
+- Kept `overflow-hidden`, `backdrop-blur-xl`, `bg-[rgba(10,10,15,0.92)]`, `border-r border-white/[0.06]`
+- Ran lint: passed with no errors
+
+Stage Summary:
+- Icon Rail is now a flush, fixed 80px strip showing only icons when collapsed
+- The rail is a regular flex child of the grid, not overlapping content
+- Click-to-pin ONLY: the pin (📌) is the sole mechanism to expand to 250px
+- No hover-to-expand behavior exists
+- No auto-hide ghosting — the rail is always visible
+- The rail never disappears or auto-hides; it is permanently anchored to the grid margin
+
+Unresolved Issues:
+- None
+
+---
+Task ID: 4
+Agent: Ignition Login Sequence
+Task: Create the Divergent "Ignition" Login Sequence for VVU
+
+Work Log:
+- Read worklog.md (Tasks 1-3 history) and existing codebase structure
+- Studied existing TrustSphere component as reference for Fibonacci sphere implementation
+- Created `/home/z/my-project/src/components/vvu/ignition-sequence.tsx` — a cinematic 3D GPU-accelerated boot sequence
+- Implemented Phase 0 (0-3s): Fibonacci Node Activation
+  - 380 nodes distributed on a Fibonacci sphere using golden ratio distribution
+  - Nodes start red, a random "session node" appears and snaps to neon green
+  - Activation wave propagates from session node, snapping all nodes to green
+  - Connection lines drawn between adjacent activated nodes with green glow
+  - Data sparks animate between nodes
+  - Sphere tumbles slowly with dual-axis rotation
+  - Ambient glow behind sphere
+- Implemented Phase 1 (3-5s): Convergence
+  - Sphere spins rapidly with accelerating rotation
+  - Nodes interpolate from sphere positions to VVU logo letter positions
+  - VVU logo formed by distributing nodes along V, V, U letter paths
+  - Color transitions from green to VVU brand colors (V=#3dffb0, V=#C9A84C, U=#3dd6ff)
+  - Terminal text typewriter effect: "> Secure Handshake Established. Welcome, [Name]."
+- Implemented Phase 2 (5-7s): Divergence
+  - Path A (community): Canvas fades out, onComplete callback fires after 2s
+  - Path B (professional/enterprise): Ludicrous Demonstration with 3 panels
+    - Top Left: ProofBridge Receipt with real SHA-256 hash (Web Crypto API)
+    - Center: Wireframe HBK Mk-II simulation target SVG with "AWAITING RESOURCES" badge
+    - Right: AIR Intake agentic terminal with blinking cursor and input prompt
+    - "Continue to Workspace →" button to proceed
+- Integrated IgnitionSequence into page.tsx with 3-state view: landing → ignition → workspace
+- Added license tier state (default: community) for demo purposes
+- All animation driven by requestAnimationFrame at 60fps
+- Used HTML5 Canvas (no Three.js) for 3D Fibonacci sphere
+- Responsive canvas that fills viewport
+- Lint: 0 errors, page compiles and returns HTTP 200
+
+Stage Summary:
+- The Ignition Sequence is a self-contained 'use client' component
+- 3-phase cinematic boot sequence: Fibonacci activation → VVU logo convergence → tier-based divergence
+- Path A drops community users cleanly into workspace
+- Path B shows the Ludicrous Demonstration with ProofBridge receipt, simulation target, and AIR Intake
+- Uses Web Crypto API for real SHA-256 hash generation
+- No external 3D libraries — pure Canvas API with perspective projection
+- VVU logo formed by distributing nodes along geometric letter paths (V, V, U)
+- Color interpolation helper for smooth transitions between phases
+- Props interface: { userName, licenseTier, onComplete }
+
+Unresolved Issues:
+- The license tier is hardcoded to 'community' in page.tsx — needs to be resolved from Clerk auth + license lookup
+- The userName is hardcoded to "Operator" — needs to come from Clerk auth
+- Path B could be enhanced with more dynamic content (live hash computation animation, etc.)

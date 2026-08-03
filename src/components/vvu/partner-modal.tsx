@@ -51,9 +51,7 @@ const MODAL_PARTNERS: ModalPartner[] = [
   { name: 'MTN', category: 'Telecom', badge: 'Telecom', status: 'PROPOSED', whyThem: 'Proposed integration with MTN for mobile network identity verification across African markets.' },
   { name: 'Standard Bank', category: 'Finance', badge: 'Finance', status: 'TARGET', whyThem: 'Proposed integration with Standard Bank for verified financial identity anchoring.' },
   { name: 'Absa', category: 'Finance', badge: 'Finance', status: 'PROPOSED', whyThem: 'Targeting Absa for cross-bank trust attestation in financial services pipelines.' },
-  { name: 'University of Cape Town', category: 'Academic', badge: 'Academic', status: 'TARGET', abbreviation: 'UCT', whyThem: 'Targeting UCT for collaborative research on epistemic trust maturation in academic settings.' },
-  { name: 'University of the Witwatersrand', category: 'Academic', badge: 'Academic', status: 'TARGET', abbreviation: 'Wits', whyThem: 'Targeting Wits for joint research on computational trust and Bayesian inference in education.' },
-  { name: 'University of Pretoria', category: 'Academic', badge: 'Academic', status: 'PROPOSED', abbreviation: 'UP', whyThem: 'Proposed research partnership with UP for engineering systems trust verification.' },
+  { name: 'University of Cape Town', category: 'Academic', badge: 'Academic', status: 'TARGET', abbreviation: 'UCT', whyThem: 'Targeting UCT — the top engineering institution in the country — for collaborative research on epistemic trust maturation in academic settings.' },
   { name: 'AMD', category: 'Hardware', badge: 'Hardware', status: 'TARGET', whyThem: 'Targeting AMD for TEE-attested compute infrastructure powering the Epistemic Runtime.' },
   { name: 'Sarah Baartman DM', category: 'Government', badge: 'Government', status: 'PROPOSED', whyThem: 'Proposed integration with Sarah Baartman District Municipality for community governance trust infrastructure.' },
 ];
@@ -185,7 +183,7 @@ export function PartnerModal({ open, onOpenChange }: PartnerModalProps) {
               Who We Are Looking For
             </h3>
             <p className="text-sm text-muted-foreground mb-6">
-              12 target organizations across retail, telecom, finance, academia, hardware, and government.
+              10 target organizations across retail, telecom, finance, academia, hardware, and government.
               None of these are confirmed partnerships — they represent the ecosystem we are building toward.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

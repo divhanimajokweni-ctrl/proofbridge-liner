@@ -259,7 +259,6 @@ const RECIPIENTS: RecipientAudience[] = [
     name: 'researchers',
     releaseStage: 1,
     entries: [
-      { name: 'To be confirmed — Wits', email: 'to-be-confirmed', personalized: true },
       { name: 'To be confirmed — UCT', email: 'to-be-confirmed', personalized: true },
     ],
   },

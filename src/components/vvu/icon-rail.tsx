@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity,
@@ -56,23 +56,24 @@ export interface IconRailProps {
 // Constants
 // ---------------------------------------------------------------------------
 
-const RAIL_WIDTH_COLLAPSED = 68;
+const RAIL_WIDTH_COLLAPSED = 80;
 const RAIL_WIDTH_EXPANDED = 250;
-const COLLAPSE_DELAY_MS = 300;
 
-/** Workspace mode items shown in the Workspace Mode dropdown */
+/** Workspace mode items — the 8 Dynamic Workspaces from the Execution Contract */
 const RAIL_WORKSPACE_MODES: {
   key: WorkspaceMode;
   label: string;
   icon: LucideIcon;
+  description: string;
 }[] = [
-  { key: 'engineering', label: 'Custom', icon: FlaskConical },
-  { key: 'learning', label: 'Academics', icon: GraduationCap },
-  { key: 'engineering', label: 'Developers', icon: BrainCircuit },
-  { key: 'compliance', label: 'Regulators', icon: FileCheck2 },
-  { key: 'operations', label: 'Operators', icon: Activity },
-  { key: 'review', label: 'Researchers', icon: Eye },
-  { key: 'executive', label: 'Organisations', icon: TrendingUp },
+  { key: 'engineering', label: 'Developers', icon: BrainCircuit, description: 'DAG visualizers, API logs, Terminal feeds' },
+  { key: 'operations', label: 'Operators', icon: Activity, description: 'Geospatial maps, edge-node hardware diagnostics' },
+  { key: 'compliance', label: 'Regulators', icon: FileCheck2, description: 'Trust Passport ledger, cryptographic audit trails' },
+  { key: 'review', label: 'Researchers', icon: Eye, description: 'MCMC pipeline tuning, high-fidelity charts' },
+  { key: 'learning', label: 'Academics', icon: GraduationCap, description: 'LaTeX data exports, peer review collaboration hub' },
+  { key: 'executive', label: 'Organisations', icon: TrendingUp, description: 'Executive ROI dashboards, NRW reduction metrics' },
+  { key: 'business', label: 'Sponsors', icon: TrendingUp, description: 'Direct impact metrics, milestone trackers' },
+  { key: 'engineering', label: 'Custom', icon: FlaskConical, description: 'Snap-to-grid modular widgets' },
 ];
 
 /** Map string icon names from product manifests to Lucide components */
@@ -200,9 +201,6 @@ function RailItem({
 // ---------------------------------------------------------------------------
 
 export function IconRail({ pinned, onPinChange, focusMode }: IconRailProps) {
-  const [hovered, setHovered] = useState(false);
-  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Collapsible dropdown open states
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
@@ -221,34 +219,8 @@ export function IconRail({ pinned, onPinChange, focusMode }: IconRailProps) {
     showTrustPassport,
   } = useWorkspaceStore();
 
-  // Derive expanded from hover or pinned (computed, not state)
-  const isExpanded = hovered || pinned;
-
-  // Mouse enter — clear any pending collapse and expand
-  const handleMouseEnter = useCallback(() => {
-    if (collapseTimerRef.current) {
-      clearTimeout(collapseTimerRef.current);
-      collapseTimerRef.current = null;
-    }
-    setHovered(true);
-  }, []);
-
-  // Mouse leave — delay collapse to prevent accidental flicker
-  const handleMouseLeave = useCallback(() => {
-    if (pinned) return; // pinned stays open
-    collapseTimerRef.current = setTimeout(() => {
-      setHovered(false);
-    }, COLLAPSE_DELAY_MS);
-  }, [pinned]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (collapseTimerRef.current) {
-        clearTimeout(collapseTimerRef.current);
-      }
-    };
-  }, []);
+  // Derive expanded from pinned only — click-to-pin, no hover-to-expand
+  const isExpanded = pinned;
 
   // Pin toggle
   const handlePinToggle = useCallback(() => {
@@ -273,8 +245,6 @@ export function IconRail({ pinned, onPinChange, focusMode }: IconRailProps) {
 
   return (
     <motion.div
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       initial={false}
       animate={{
         width: railWidth,
@@ -285,22 +255,24 @@ export function IconRail({ pinned, onPinChange, focusMode }: IconRailProps) {
           : { duration: 0.12, ease: 'easeIn' },
       }}
       className={`
-        absolute left-0 top-0 bottom-0 z-50
+        relative shrink-0
         flex flex-col
         bg-[rgba(10,10,15,0.92)] backdrop-blur-xl
         border-r border-white/[0.06]
         overflow-hidden
         select-none
       `}
-      style={{
-        boxShadow: isExpanded
-          ? '4px 0 24px rgba(0,0,0,0.5)'
-          : '2px 0 8px rgba(0,0,0,0.2)',
-      }}
     >
       {/* ── Top Section: Logo + Controls ── */}
       <div className="flex items-center shrink-0 px-3 py-3 min-h-[52px]">
-        <VVULogo expanded={isExpanded} />
+        {/* VVU Logo — clicking toggles expand/collapse when not pinned */}
+        <button
+          onClick={handlePinToggle}
+          className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+          title={pinned ? 'Unpin rail (collapse)' : 'Pin rail open (expand)'}
+        >
+          <VVULogo expanded={isExpanded} />
+        </button>
         <AnimatePresence>
           {isExpanded && (
             <motion.div
@@ -310,7 +282,7 @@ export function IconRail({ pinned, onPinChange, focusMode }: IconRailProps) {
               transition={{ duration: 0.1 }}
               className="ml-auto flex items-center gap-1"
             >
-              {/* Pin button */}
+              {/* Pin/Unpin button */}
               <button
                 onClick={handlePinToggle}
                 className="p-1.5 rounded-md hover:bg-white/[0.08] text-muted-foreground hover:text-foreground transition-colors"
@@ -377,7 +349,10 @@ export function IconRail({ pinned, onPinChange, focusMode }: IconRailProps) {
                       `}
                     >
                       <ModeIcon className="h-3.5 w-3.5 shrink-0" />
-                      <span className="text-xs truncate">{mode.label}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs truncate block">{mode.label}</span>
+                        <span className="text-[9px] text-muted-foreground/50 truncate block">{mode.description}</span>
+                      </div>
                       {isActive && (
                         <ArrowRight className="h-3 w-3 ml-auto shrink-0 text-emerald-400" />
                       )}

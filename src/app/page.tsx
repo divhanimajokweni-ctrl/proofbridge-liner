@@ -18,6 +18,7 @@ import { ContactSection } from '@/components/vvu/landing/contact-section';
 import { PricingSection } from '@/components/vvu/landing/pricing-section';
 import { Footer } from '@/components/vvu/landing/footer';
 import { PartnerModal } from '@/components/vvu/partner-modal';
+import { IgnitionSequence } from '@/components/vvu/ignition-sequence';
 
 const WorkbenchShell = dynamic(
   () => import('@/components/vvu/workbench-shell').then((m) => m.WorkbenchShell),
@@ -43,12 +44,19 @@ const WorkbenchShell = dynamic(
   },
 );
 
+type View = 'landing' | 'ignition' | 'workspace';
+
 export default function Home() {
-  const [view, setView] = useState<'landing' | 'workspace'>('landing');
+  const [view, setView] = useState<View>('landing');
   const [partnerModalOpen, setPartnerModalOpen] = useState(false);
 
-  const enterWorkspace = () => setView('workspace');
+  // For demo purposes, default to community tier.
+  // In production, this would be resolved from Clerk auth + license lookup.
+  const [licenseTier] = useState<'community' | 'professional' | 'enterprise'>('community');
+
+  const enterWorkspace = () => setView('ignition');
   const enterLanding = () => setView('landing');
+  const handleIgnitionComplete = () => setView('workspace');
 
   return (
     <AnimatePresence mode="wait">
@@ -76,6 +84,21 @@ export default function Home() {
           </main>
           <Footer />
           <PartnerModal open={partnerModalOpen} onOpenChange={setPartnerModalOpen} />
+        </motion.div>
+      ) : view === 'ignition' ? (
+        <motion.div
+          key="ignition"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+          className="fixed inset-0"
+        >
+          <IgnitionSequence
+            userName="Operator"
+            licenseTier={licenseTier}
+            onComplete={handleIgnitionComplete}
+          />
         </motion.div>
       ) : (
         <motion.div
