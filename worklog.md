@@ -34,7 +34,56 @@ Stage Summary:
 - 15-minute cron job active for periodic review
 - Pipeline files in /pipeline/ directory with compute_provider.py and .env.example
 
+---
+Task ID: 2
+Agent: Main
+Task: VS Code Paradigm Shift — Build Deterministic Operating Environment
+
+Work Log:
+- Completed full paradigm shift from traditional web app to VS Code-like IDE architecture
+- Created new IDE component directory: src/components/vvu/ide/
+- Built IDE Store (ide-store.ts): Zustand state for plugins, tabs, autonomy levels, circuit breaker, compute metrics
+- Built Activity Bar (activity-bar.tsx): Far-left plugin rail with 6 core plugins + Wallet + Settings
+- Built Primary Sidebar (primary-sidebar.tsx): Dynamic contextual content for each plugin
+  - HBK: Simulation nodes, pipeline parameters, provenance, Run/Stop buttons
+  - Ubuntu Pools: Active stokvels, governance, members, Create Stokvel/Propose Amendment
+  - ProofBridge: Receipt ledger, MMR anchors, verification queue
+  - AIR/Compute: GPU cluster, inference endpoints, telemetry
+  - Lindiwe: Autonomy Matrix (3 levels), Circuit Breaker status, Agent Status
+  - Explorer: Open editors, VVU Workspace file tree
+- Built Command Palette (command-palette.tsx): ⌘K omnibar with 19 commands, keyboard navigation
+- Built Main Canvas (main-canvas.tsx): Tab system with Trust Sphere, Terminal, CAD Viewer, System Log
+- Built Status Bar (status-bar.tsx): Compute engine metrics + Trust Dial + Circuit Breaker indicator
+- Built Lindiwe Panel (lindiwe-panel.tsx): Advisor modality — chat interface with simulated responses
+- Built Lindiwe Terminal (lindiwe-terminal.tsx): Operator modality — CLI with lindiwe commands
+- Built IDE Shell (ide-shell.tsx): Main container with keyboard shortcuts, telemetry simulation
+- Updated page.tsx to use new IDEShell instead of WorkbenchShell
+- Lint passes clean (fixed useEffect/useState ordering in command-palette.tsx)
+- Full QA with agent-browser: Verified all 6 plugin sidebars render correctly
+- Verified Trust Dial cycles through L1→L2→L3 correctly
+- Verified Run Simulation button works
+- Verified Trust Sphere renders with 380 nodes
+- Verified Status Bar shows live metrics
+- Verified Circuit Breaker shows NOMINAL state
+- Verified Website button navigates back to landing page
+- Verified all tabs (Trust Sphere, output.log, CAD Visualizer) are present
+
+Stage Summary:
+- VVU is now a Deterministic Operating Environment, not a traditional web app
+- Every module is a "plugin" in the Activity Bar
+- The Main Canvas is the absolute authority — the 3D Trust Sphere is always mounted
+- Lindiwe has dual modality: Terminal (operator) + Side Panel (advisor)
+- Autonomy Matrix with Trust Dial: Observer (L1) → Action-Safe (L2) → Watchdog (L3)
+- Circuit Breaker system with visual lockdown overlay
+- All 6 plugin sidebars render with contextual content
+- Command Palette with 19 commands for all plugins
+- Keyboard shortcuts: ⌘K (palette), ⌘⇧L (Lindiwe), ⌘` (terminal), F11 (focus), ESC (close)
+
 Unresolved Issues:
-- Dev server stability: The Next.js process keeps dying after a few minutes, likely due to memory pressure during compilation. The server works when it's running but needs to be restarted periodically.
-- The /api/hbk route works when the server is running but the server needs to be kept alive
+- Dev server stability: Periodic restarts needed due to memory pressure
+- The Clerk keyless prompt overlay still appears and needs to be dismissed
+- Circuit Breaker TRIGGERED state needs full testing (trigger + reset)
+- Need to add more commands to Command Palette
+- Need to add real API integration for HBK pipeline status
+- CAD Viewer tab is a placeholder — needs Three.js/WebGL integration
 - Need to commit all changes to git

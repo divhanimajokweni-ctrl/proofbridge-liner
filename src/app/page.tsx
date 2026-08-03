@@ -20,25 +20,26 @@ import { Footer } from '@/components/vvu/landing/footer';
 import { PartnerModal } from '@/components/vvu/partner-modal';
 import { IgnitionSequence } from '@/components/vvu/ignition-sequence';
 
-const WorkbenchShell = dynamic(
-  () => import('@/components/vvu/workbench-shell').then((m) => m.WorkbenchShell),
+// The Deterministic Operating Environment — VS Code-like IDE Shell
+const IDEShell = dynamic(
+  () => import('@/components/vvu/ide/ide-shell').then((m) => m.IDEShell),
   {
     ssr: false,
     loading: () => (
       <div
         style={{
           minHeight: '100vh',
-          background: '#0a0a0f',
+          background: '#1e1e1e',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#7b7d8c',
+          color: '#858585',
           fontFamily: 'monospace',
           fontSize: '11px',
           letterSpacing: '0.12em',
         }}
       >
-        VVU · initializing operating environment…
+        VVU · Initializing Deterministic Operating Environment…
       </div>
     ),
   },
@@ -124,18 +125,18 @@ export default function Home() {
           className="relative h-screen overflow-hidden"
         >
           {/* Back to website button */}
-          <div className="absolute top-3 right-3 z-50">
+          <div className="absolute top-3 right-3 z-[100]">
             <Button
               onClick={enterLanding}
               size="sm"
               variant="outline"
-              className="border-amber-600/40 text-amber-500 hover:bg-amber-600/10 hover:text-amber-400 gap-2 backdrop-blur-sm"
+              className="border-[#3c3c3c] text-[#858585] hover:bg-[#2a2d2e] hover:text-white gap-2 backdrop-blur-sm bg-[#1c1c1c]/80"
             >
               <Globe className="h-4 w-4" />
               Website
             </Button>
           </div>
-          <WorkbenchShell />
+          <IDEShell />
         </motion.div>
       )}
     </AnimatePresence>
