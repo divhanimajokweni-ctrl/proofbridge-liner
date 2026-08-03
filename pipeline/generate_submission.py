@@ -51,7 +51,7 @@ REPORT_TEMPLATE = """# HBK MK-II Hydro-Gateway — Submission Report
 
 ## 1. Executive Summary
 Dual-tier compute (AMD Kria K26 edge inference + AMD MI300X training/simulation).
-Measured this run: **{speedup}x** ROCm speedup, **{accuracy}%** validation accuracy
+Measured this run: **{speedup}** ROCm speedup, **{accuracy}%** validation accuracy
 on **synthetic** sensor data (see Section 4 for what "synthetic" means here).
 
 **Read before citing this report externally:** any field below marked
@@ -64,14 +64,14 @@ generation — it does not certify that unverified values are correct.
 ## 2. Performance Metrics (Measured This Run)
 | Metric | Value | Source |
 | :--- | :--- | :--- |
-| ROCm Speedup | {speedup}x | `benchmark_results` in `results.json` |
+| ROCm Speedup | {speedup} | `benchmark_results` in `results.json` |
 | Validation Accuracy | {accuracy}% | `training.final_val_acc` in `results.json` |
 | Simulation Samples | {samples:,} | `metrics.json` |
 | Training Time | {train_time}s | `results.json` |
 | Physics Engine | {physics_engine} | `simulation_meta` in `results.json` |
 
 ### Environment
-- GPU: {gpu_name} ({gpu_count}x) | ROCm: {rocm_ver} | PyTorch: {torch_ver}
+| GPU: {gpu_name} | ROCm: {rocm_ver} | PyTorch: {torch_ver}
 - OS: {os_ver}
 
 ---
@@ -148,20 +148,27 @@ def main():
     )
 
     git_info = sys_info.get("git", {})
+    speedup_val = metrics.get("speedup")
+    speedup_display = f"{speedup_val}x" if speedup_val is not None else "N/A (CPU-only)"
+    gpu_info = sys_info["gpu"]
+    gpu_name = gpu_info["name"]
+    gpu_count = gpu_info["count"]
+    gpu_display = f"{gpu_name} ({gpu_count}x)" if gpu_info.get("available") else "CPU-only (no ROCm GPU)"
+
     report = REPORT_TEMPLATE.format(
         timestamp=datetime.datetime.now().strftime("%B %d, %Y"),
         git_commit=git_info.get("commit", "unknown")[:12],
         git_branch=git_info.get("branch", "unknown"),
         dirty_flag=" [DIRTY]" if git_info.get("is_dirty") else "",
-        speedup=metrics.get("speedup", "N/A"),
+        speedup=speedup_display,
         accuracy=round(metrics.get("accuracy", 0.0) * 100, 2),
         samples=metrics.get("samples", 0),
         train_time=round(results.get("training", {}).get("train_time_s", 0.0), 2),
         physics_engine="Genesis (GPU)" if metrics.get("used_genesis_physics") else "synthetic (numpy, no physics engine)",
-        gpu_name=sys_info["gpu"]["name"],
-        gpu_count=sys_info["gpu"]["count"],
-        rocm_ver=sys_info["gpu"]["rocm_version"],
-        torch_ver=sys_info["gpu"]["torch_version"],
+        gpu_name=gpu_display,
+        gpu_count=gpu_count,
+        rocm_ver=gpu_info.get("rocm_version", "N/A") or "N/A",
+        torch_ver=gpu_info.get("torch_version", "N/A"),
         os_ver=f"{sys_info['platform']['system']} {sys_info['platform']['release']}",
         engineering_rows=engineering_rows,
         genesis_used="used" if metrics.get("used_genesis_physics") else "NOT used (Genesis unavailable — synthetic fallback)",
@@ -186,17 +193,22 @@ def main():
     with open(output_dir / "submission_data.json", "w") as f:
         json.dump(submission_data, f, indent=2, default=str)
 
-    # checksums + manifest
+    # manifest first (so its hash is included in checksums)
+    artifact_names = [f.name for f in sorted(output_dir.iterdir())
+                      if f.is_file() and f.name not in ("checksums.txt", "manifest.json")
+                      and not f.name.endswith("_tampered.json")]
+    manifest = {"generated": datetime.datetime.now().isoformat(), "files": artifact_names}
+    with open(output_dir / "manifest.json", "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    # checksums — includes fresh manifest.json, excludes tampered demo artifacts
     checksums = {}
     for f in sorted(output_dir.iterdir()):
-        if f.is_file() and f.name != "checksums.txt":
+        if f.is_file() and f.name not in ("checksums.txt",) and not f.name.endswith("_tampered.json"):
             checksums[f.name] = hashlib.sha256(f.read_bytes()).hexdigest()
     (output_dir / "checksums.txt").write_text(
         "\n".join(f"{h}  {name}" for name, h in checksums.items())
     )
-    manifest = {"generated": datetime.datetime.now().isoformat(), "files": list(checksums.keys())}
-    with open(output_dir / "manifest.json", "w") as f:
-        json.dump(manifest, f, indent=2)
 
     print("✅ Submission artifacts generated:")
     print(f"   - {output_dir / 'HBK_MKII_Submission_Report.md'}")

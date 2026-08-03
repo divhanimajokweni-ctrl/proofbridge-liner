@@ -2,13 +2,13 @@
 **Version:** 2.0 (Provenance-Tracked)
 **Date:** August 03, 2026
 **Competition:** Zoo Makeathon (Aug 5) | AMD Radeon Robotics Hackathon (Aug 6)
-**Git Commit:** `unknown` (unknown)
+**Git Commit:** `8711215716ff` (main [DIRTY])
 
 ---
 
 ## 1. Executive Summary
 Dual-tier compute (AMD Kria K26 edge inference + AMD MI300X training/simulation).
-Measured this run: **Nonex** ROCm speedup, **81.0%** validation accuracy
+Measured this run: **N/A (CPU-only)** ROCm speedup, **77.5%** validation accuracy
 on **synthetic** sensor data (see Section 4 for what "synthetic" means here).
 
 **Read before citing this report externally:** any field below marked
@@ -21,14 +21,14 @@ generation — it does not certify that unverified values are correct.
 ## 2. Performance Metrics (Measured This Run)
 | Metric | Value | Source |
 | :--- | :--- | :--- |
-| ROCm Speedup | Nonex | `benchmark_results` in `results.json` |
-| Validation Accuracy | 81.0% | `training.final_val_acc` in `results.json` |
-| Simulation Samples | 500 | `metrics.json` |
-| Training Time | 0.02s | `results.json` |
+| ROCm Speedup | N/A (CPU-only) | `benchmark_results` in `results.json` |
+| Validation Accuracy | 77.5% | `training.final_val_acc` in `results.json` |
+| Simulation Samples | 1,000 | `metrics.json` |
+| Training Time | 0.34s | `results.json` |
 | Physics Engine | synthetic (numpy, no physics engine) | `simulation_meta` in `results.json` |
 
 ### Environment
-- GPU: N/A (0x) | ROCm: None | PyTorch: 2.13.0+cpu
+| GPU: CPU-only (no ROCm GPU) | ROCm: N/A | PyTorch: 2.13.0+cpu
 - OS: Linux 5.10.134-013.8.3.kangaroo.al8.x86_64
 
 ---
@@ -80,4 +80,4 @@ performance.
 - Provenance manifest: `provenance.json`
 - Metrics: `metrics.json`
 
-*Generated 2026-08-03T02:24:21.365620*
+*Generated 2026-08-03T19:23:07.275216*

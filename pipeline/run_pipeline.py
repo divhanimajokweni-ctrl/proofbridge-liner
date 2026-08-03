@@ -121,7 +121,7 @@ def collect_provenance(config: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
 
 def get_system_info() -> Dict[str, Any]:
     info = {
-        "timestamp": datetime.datetime.utcnow().isoformat(),
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "platform": {
             "system": platform.system(),
             "release": platform.release(),
@@ -132,7 +132,7 @@ def get_system_info() -> Dict[str, Any]:
             "available": torch.cuda.is_available(),
             "count": torch.cuda.device_count() if torch.cuda.is_available() else 0,
             "name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A",
-            "rocm_version": getattr(torch.version, "hip", "N/A"),
+            "rocm_version": getattr(torch.version, "hip", None) or "N/A",
             "torch_version": torch.__version__,
         },
         "git": {"commit": "unknown", "branch": "unknown", "repo_root": "unknown"},
@@ -435,7 +435,8 @@ class Benchmark:
             result["gpu_time_s"] = None
             result["speedup_factor"] = None
             print("⚠️ ROCm not available — GPU benchmark skipped")
-        print(f"📈 Speedup: {result.get('speedup_factor', 'N/A')}x")
+        speedup_str = f"{result['speedup_factor']}x" if result.get('speedup_factor') is not None else "N/A (CPU-only)"
+        print(f"📈 Speedup: {speedup_str}")
         return result
 
 
@@ -448,7 +449,7 @@ class SHA256Ledger:
         self.entries = []
 
     def add_entry(self, name: str, data: Any, provenance_status: str = "n/a"):
-        timestamp = datetime.datetime.utcnow().isoformat()
+        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
         data_str = json.dumps(data, sort_keys=True, default=str)
         data_hash = hashlib.sha256(data_str.encode()).hexdigest()
         prev_hash = self.entries[-1]["chain_hash"] if self.entries else "0" * 64
