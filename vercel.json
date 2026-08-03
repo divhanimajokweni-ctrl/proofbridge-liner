@@ -1,5 +1,11 @@
 {
   "framework": "nextjs",
   "outputDirectory": ".next",
-  "installCommand": "PNPM_APPROVE_BUILDS=all pnpm install"
+  "installCommand": "bun install",
+  "buildCommand": "bun run build",
+  "regions": ["iad1"],
+  "env": {
+    "COMPUTE_PROVIDER": "local",
+    "NEXT_TELEMETRY_DISABLED": "1"
+  }
 }

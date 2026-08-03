@@ -1,0 +1,211 @@
+#!/usr/bin/env python3
+"""
+generate_submission.py — Submission Generator (HBK MK-II Hydro-Gateway)
+
+Ingests results.json, system_info.json, metrics.json, provenance.json.
+Generates: HBK_MKII_Submission_Report.md, submission_data.json,
+checksums.txt, manifest.json.
+
+PROVENANCE RULE: this script NEVER labels a value "Verified" unless its
+provenance status in provenance.json is literally "signed". Anything else
+(unverified_placeholder, unspecified) is rendered with an explicit
+"⚠ UNVERIFIED" tag and its source note. No exceptions, no rounding up.
+"""
+
+import json
+import hashlib
+import datetime
+from pathlib import Path
+from typing import Dict, Any
+
+
+def load_json(path: Path) -> Dict:
+    with open(path, "r") as f:
+        return json.load(f)
+
+
+def status_badge(status: str) -> str:
+    return {
+        "signed": "✅ Verified",
+        "unverified_placeholder": "⚠️ UNVERIFIED (placeholder)",
+        "unspecified": "⚠️ UNVERIFIED (no provenance recorded)",
+    }.get(status, f"⚠️ UNVERIFIED ({status})")
+
+
+def provenance_row(provenance: Dict[str, Any], key: str, unit: str = "") -> str:
+    entry = provenance.get(key)
+    if entry is None:
+        return f"| `{key}` | N/A | {unit} | ⚠️ NOT FOUND in provenance.json |"
+    badge = status_badge(entry["status"])
+    source = entry.get("source", "unspecified")
+    return f"| `{key}` | {entry['value']} | {unit} | {badge} — {source} |"
+
+
+REPORT_TEMPLATE = """# HBK MK-II Hydro-Gateway — Submission Report
+**Version:** 2.0 (Provenance-Tracked)
+**Date:** {timestamp}
+**Competition:** Zoo Makeathon (Aug 5) | AMD Radeon Robotics Hackathon (Aug 6)
+**Git Commit:** `{git_commit}` ({git_branch}{dirty_flag})
+
+---
+
+## 1. Executive Summary
+Dual-tier compute (AMD Kria K26 edge inference + AMD MI300X training/simulation).
+Measured this run: **{speedup}x** ROCm speedup, **{accuracy}%** validation accuracy
+on **synthetic** sensor data (see Section 4 for what "synthetic" means here).
+
+**Read before citing this report externally:** any field below marked
+⚠️ UNVERIFIED is a placeholder value, not a signed engineering input. Ledger
+verification (Section 5) proves the record hasn't been tampered with after
+generation — it does not certify that unverified values are correct.
+
+---
+
+## 2. Performance Metrics (Measured This Run)
+| Metric | Value | Source |
+| :--- | :--- | :--- |
+| ROCm Speedup | {speedup}x | `benchmark_results` in `results.json` |
+| Validation Accuracy | {accuracy}% | `training.final_val_acc` in `results.json` |
+| Simulation Samples | {samples:,} | `metrics.json` |
+| Training Time | {train_time}s | `results.json` |
+| Physics Engine | {physics_engine} | `simulation_meta` in `results.json` |
+
+### Environment
+- GPU: {gpu_name} ({gpu_count}x) | ROCm: {rocm_ver} | PyTorch: {torch_ver}
+- OS: {os_ver}
+
+---
+
+## 3. Engineering Specifications — Provenance-Tagged
+
+**None of the values in this section have been certified by process,
+materials, or controls & safety engineering as of report generation,
+unless explicitly marked ✅ Verified below.**
+
+{engineering_rows}
+
+---
+
+## 4. What "Synthetic Data" Means Here
+Sensor data (pressure, temperature, flow, acoustic signature) used for
+training is generated numerically from the config values in Section 3, not
+sampled from physical instrumentation on a built unit. Genesis GPU physics
+scene was {genesis_used} for this run. This is appropriate for demonstrating
+the anomaly-detection approach; it is not evidence of real-world sensor
+performance.
+
+---
+
+## 5. Ledger Verification
+- Chain integrity: {ledger_status}
+- Entries: {ledger_count}
+- **Scope of this guarantee:** proves the recorded entries have not been
+  altered after the fact. It does **not** validate that any underlying
+  number is engineering-correct — see Section 3 for that.
+
+---
+
+## 6. Deliverables
+- Code: `run_pipeline.py`, `generate_submission.py`
+- Model: `{model_file}`
+- Ledger: `ledger.json` ({ledger_count} entries)
+- Provenance manifest: `provenance.json`
+- Metrics: `metrics.json`
+
+*Generated {gen_time}*
+"""
+
+
+def main():
+    output_dir = Path("outputs")
+    required = ["results.json", "system_info.json", "metrics.json", "provenance.json"]
+    missing = [f for f in required if not (output_dir / f).exists()]
+    if missing:
+        print(f"❌ Missing required artifacts: {missing}. Run run_pipeline.py first.")
+        return 1
+
+    results = load_json(output_dir / "results.json")
+    sys_info = load_json(output_dir / "system_info.json")
+    metrics = load_json(output_dir / "metrics.json")
+    provenance = load_json(output_dir / "provenance.json")
+    ledger = load_json(output_dir / "ledger.json")
+
+    engineering_keys_units = [
+        ("kcl.pressure_system.design_pressure_bar", "bar"),
+        ("kcl.pressure_system.mop_bar", "bar"),
+        ("kcl.pressure_system.temp_min_c", "°C"),
+        ("kcl.pressure_system.temp_max_c", "°C"),
+        ("kcl.pressure_system.corrosion_allowance_mm", "mm"),
+        ("kcl.materials.pipe", "-"),
+        ("kcl.materials.flange", "-"),
+        ("kcl.materials.base_plate", "-"),
+        ("safety.temp_cutoff_c", "°C"),
+        ("safety.inference_latency_target_ms", "ms"),
+    ]
+    engineering_rows = "| Parameter | Value | Unit | Status |\n| :--- | :--- | :--- | :--- |\n"
+    engineering_rows += "\n".join(
+        provenance_row(provenance, k, u) for k, u in engineering_keys_units
+    )
+
+    git_info = sys_info.get("git", {})
+    report = REPORT_TEMPLATE.format(
+        timestamp=datetime.datetime.now().strftime("%B %d, %Y"),
+        git_commit=git_info.get("commit", "unknown")[:12],
+        git_branch=git_info.get("branch", "unknown"),
+        dirty_flag=" [DIRTY]" if git_info.get("is_dirty") else "",
+        speedup=metrics.get("speedup", "N/A"),
+        accuracy=round(metrics.get("accuracy", 0.0) * 100, 2),
+        samples=metrics.get("samples", 0),
+        train_time=round(results.get("training", {}).get("train_time_s", 0.0), 2),
+        physics_engine="Genesis (GPU)" if metrics.get("used_genesis_physics") else "synthetic (numpy, no physics engine)",
+        gpu_name=sys_info["gpu"]["name"],
+        gpu_count=sys_info["gpu"]["count"],
+        rocm_ver=sys_info["gpu"]["rocm_version"],
+        torch_ver=sys_info["gpu"]["torch_version"],
+        os_ver=f"{sys_info['platform']['system']} {sys_info['platform']['release']}",
+        engineering_rows=engineering_rows,
+        genesis_used="used" if metrics.get("used_genesis_physics") else "NOT used (Genesis unavailable — synthetic fallback)",
+        ledger_status="✅ PASS" if metrics.get("ledger_chain_valid") else "❌ FAIL",
+        ledger_count=len(ledger),
+        model_file="anomaly_model.pt",
+        gen_time=datetime.datetime.now().isoformat(),
+    )
+
+    (output_dir / "HBK_MKII_Submission_Report.md").write_text(report)
+
+    # submission_data.json — machine-readable, same provenance discipline
+    submission_data = {
+        "metrics": metrics,
+        "engineering_specs": {
+            k: {"value": v["value"], "status": v["status"], "source": v.get("source")}
+            for k, v in provenance.items()
+        },
+        "git": git_info,
+        "ledger_valid": metrics.get("ledger_chain_valid"),
+    }
+    with open(output_dir / "submission_data.json", "w") as f:
+        json.dump(submission_data, f, indent=2, default=str)
+
+    # checksums + manifest
+    checksums = {}
+    for f in sorted(output_dir.iterdir()):
+        if f.is_file() and f.name != "checksums.txt":
+            checksums[f.name] = hashlib.sha256(f.read_bytes()).hexdigest()
+    (output_dir / "checksums.txt").write_text(
+        "\n".join(f"{h}  {name}" for name, h in checksums.items())
+    )
+    manifest = {"generated": datetime.datetime.now().isoformat(), "files": list(checksums.keys())}
+    with open(output_dir / "manifest.json", "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    print("✅ Submission artifacts generated:")
+    print(f"   - {output_dir / 'HBK_MKII_Submission_Report.md'}")
+    print(f"   - {output_dir / 'submission_data.json'}")
+    print(f"   - {output_dir / 'checksums.txt'}")
+    unverified_count = sum(1 for v in provenance.values() if v["status"] != "signed")
+    print(f"   ⚠️  {unverified_count} engineering values are UNVERIFIED in this report.")
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())

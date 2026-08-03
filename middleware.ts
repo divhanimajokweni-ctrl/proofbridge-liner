@@ -17,7 +17,7 @@ async function isCircuitTripped(): Promise<boolean> {
 }
 
 const PROTECTED_PREFIXES = ['/dashboard', '/safekrypte', '/pools', '/api/pools'];
-const PUBLIC_PREFIXES = ['/login', '/session', '/clerk', '/api/health', '/api/verify'];
+const PUBLIC_PREFIXES = ['/login', '/session', '/clerk', '/api/health', '/api/verify', '/api/hbk'];
 
 type AuthUser = { id: string; metadata: Record<string, unknown> };
 

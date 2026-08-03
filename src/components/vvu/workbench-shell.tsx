@@ -86,6 +86,7 @@ import {
   type SectionId,
 } from '@/components/vvu/epistemic-runtime-dashboard';
 import { SimulationDashboard } from '@/components/simulation/simulation-dashboard';
+import { HBKPipelineDashboard } from '@/components/hbk/pipeline-dashboard';
 
 // Dynamic imports for overlay components
 const TrustPassport = dynamic(
@@ -456,7 +457,12 @@ function WorkspaceContent({
           </VvuErrorBoundary>
         </AuthGate>
       )}
-      {!['sphere', 'epistemic', 'ubuntu-pools', 'simulation'].includes(activeProduct) && (
+      {activeProduct === 'hbk' && (
+        <VvuErrorBoundary label="HBK MK-II Pipeline">
+          <HBKPipelineDashboard />
+        </VvuErrorBoundary>
+      )}
+      {!['sphere', 'epistemic', 'ubuntu-pools', 'simulation', 'hbk'].includes(activeProduct) && (
         <VvuErrorBoundary label={product.label}>
           <AuthGate action={`use ${product.label}`} requiredTier="verified">
             <ProductStub product={{ ...product, id: activeProduct as 'proofbridge' | 'air-runtime' | 'hbk', icon: resolveProductIcon(product.icon), mission: product.tagline, tag: product.id.slice(0, 2).toUpperCase(), shortcut: PRODUCT_MANIFESTS.findIndex(p => p.id === activeProduct) + 1, signals: [], status: 'ONLINE' as const, fullPage: false }} onBackToSphere={onBackToSphere} />
