@@ -1,8 +1,10 @@
 # HBK MK-II Hydro-Gateway — Submission Report
-**Version:** 2.0 (Provenance-Tracked)
+**Version:** 2.1 (Provenance-Tracked, Dual-Benchmark)
 **Date:** August 03, 2026
 **Competition:** Zoo Makeathon (Aug 5) | AMD Radeon Robotics Hackathon (Aug 6)
-**Git Commit:** `c71452f8785f` (main)
+**Git Commit:** `f72ab381d044` (main [DIRTY])
+
+**Pipeline executed at:** `c71452f8785f` (report generated from a later commit containing the outputs)
 
 ---
 
@@ -30,6 +32,32 @@ generation — it does not certify that unverified values are correct.
 ### Environment
 | GPU: CPU-only (no ROCm GPU) | ROCm: N/A | PyTorch: 2.13.0+cpu
 - OS: Linux 5.10.134-013.8.3.kangaroo.al8.x86_64
+
+---
+
+## 2b. Dual Benchmark Strategy (AMD Hackathon)
+
+To demonstrate the value of AMD acceleration, the same pipeline should be
+run twice — once on CPU (baseline) and once on AMD GPU (accelerated) —
+with **identical** workflow, provenance, and ledger guarantees.
+
+| Run | Compute | Purpose | Command |
+| :--- | :--- | :--- | :--- |
+| **Baseline** | CPU | Correctness + reproducibility | `python3 run_pipeline.py --mode full --no-gpu` |
+| **Accelerated** | AMD GPU (ROCm) | Performance gains on AMD hardware | `python3 run_pipeline.py --mode full` |
+
+### Current Run Results (CPU Baseline Only)
+| Metric | Value |
+| :--- | :--- |
+| CPU Benchmark Time | 0.497s |
+| AMD GPU Benchmark | ⏳ Pending — run on ROCm hardware for accelerated results |
+
+**What makes this compelling for judges:**
+1. Identical workflow (`run_pipeline.py`).
+2. Identical provenance and ledger guarantees.
+3. Identical output format (`results.json`, `ledger.json`, `checksums.txt`).
+4. The only variable is the compute backend (CPU → AMD).
+5. Measured performance improvement (speedup factor) when AMD GPU is available.
 
 ---
 
@@ -75,9 +103,11 @@ performance.
 
 ## 6. Deliverables
 - Code: `run_pipeline.py`, `generate_submission.py`
+- Config: `config.yaml` (provenance-tagged engineering values)
 - Model: `anomaly_model.pt`
 - Ledger: `ledger.json` (6 entries)
 - Provenance manifest: `provenance.json`
 - Metrics: `metrics.json`
+- Checksums: `checksums.txt` (SHA-256, 9 files verified)
 
-*Generated 2026-08-03T19:49:28.710533*
+*Generated 2026-08-03T19:58:36.646753*

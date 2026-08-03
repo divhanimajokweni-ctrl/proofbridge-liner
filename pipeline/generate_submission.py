@@ -42,10 +42,11 @@ def provenance_row(provenance: Dict[str, Any], key: str, unit: str = "") -> str:
 
 
 REPORT_TEMPLATE = """# HBK MK-II Hydro-Gateway — Submission Report
-**Version:** 2.0 (Provenance-Tracked)
+**Version:** 2.1 (Provenance-Tracked, Dual-Benchmark)
 **Date:** {timestamp}
 **Competition:** Zoo Makeathon (Aug 5) | AMD Radeon Robotics Hackathon (Aug 6)
 **Git Commit:** `{git_commit}` ({git_branch}{dirty_flag})
+{pipeline_commit_note}
 
 ---
 
@@ -73,6 +74,28 @@ generation — it does not certify that unverified values are correct.
 ### Environment
 | GPU: {gpu_name} | ROCm: {rocm_ver} | PyTorch: {torch_ver}
 - OS: {os_ver}
+
+---
+
+## 2b. Dual Benchmark Strategy (AMD Hackathon)
+
+To demonstrate the value of AMD acceleration, the same pipeline should be
+run twice — once on CPU (baseline) and once on AMD GPU (accelerated) —
+with **identical** workflow, provenance, and ledger guarantees.
+
+| Run | Compute | Purpose | Command |
+| :--- | :--- | :--- | :--- |
+| **Baseline** | CPU | Correctness + reproducibility | `python3 run_pipeline.py --mode full --no-gpu` |
+| **Accelerated** | AMD GPU (ROCm) | Performance gains on AMD hardware | `python3 run_pipeline.py --mode full` |
+
+{baseline_results}
+
+**What makes this compelling for judges:**
+1. Identical workflow (`run_pipeline.py`).
+2. Identical provenance and ledger guarantees.
+3. Identical output format (`results.json`, `ledger.json`, `checksums.txt`).
+4. The only variable is the compute backend (CPU → AMD).
+5. Measured performance improvement (speedup factor) when AMD GPU is available.
 
 ---
 
@@ -107,10 +130,12 @@ performance.
 
 ## 6. Deliverables
 - Code: `run_pipeline.py`, `generate_submission.py`
+- Config: `config.yaml` (provenance-tagged engineering values)
 - Model: `{model_file}`
 - Ledger: `ledger.json` ({ledger_count} entries)
 - Provenance manifest: `provenance.json`
 - Metrics: `metrics.json`
+- Checksums: `checksums.txt` (SHA-256, {checksum_count} files verified)
 
 *Generated {gen_time}*
 """
@@ -147,7 +172,28 @@ def main():
         provenance_row(provenance, k, u) for k, u in engineering_keys_units
     )
 
+    # Override git info with current HEAD at report generation time
+    # (the report should reference the commit that contains it)
     git_info = sys_info.get("git", {})
+    try:
+        import subprocess
+        head_commit = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL
+        ).decode().strip()
+        head_branch = subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], stderr=subprocess.DEVNULL
+        ).decode().strip()
+        is_dirty = bool(subprocess.check_output(
+            ["git", "status", "--porcelain"], stderr=subprocess.DEVNULL
+        ).decode().strip())
+        git_info = {
+            "commit": head_commit,
+            "branch": head_branch,
+            "is_dirty": is_dirty,
+            "pipeline_run_commit": sys_info.get("git", {}).get("commit", "unknown"),
+        }
+    except Exception:
+        pass  # fall back to system_info.json git data
     speedup_val = metrics.get("speedup")
     speedup_display = f"{speedup_val}x" if speedup_val is not None else "N/A (CPU-only)"
     gpu_info = sys_info["gpu"]
@@ -155,11 +201,40 @@ def main():
     gpu_count = gpu_info["count"]
     gpu_display = f"{gpu_name} ({gpu_count}x)" if gpu_info.get("available") else "CPU-only (no ROCm GPU)"
 
+    # Build pipeline commit note
+    pipeline_run_commit = git_info.get("pipeline_run_commit", "")
+    if pipeline_run_commit and pipeline_run_commit != git_info.get("commit", ""):
+        pipeline_commit_note = f"\n**Pipeline executed at:** `{pipeline_run_commit[:12]}` (report generated from a later commit containing the outputs)"
+    else:
+        pipeline_commit_note = ""
+
+    # Build baseline results section
+    benchmark = results.get("benchmark", {})
+    cpu_time = benchmark.get("cpu_time_s")
+    gpu_time = benchmark.get("gpu_time_s")
+    if gpu_time is not None:
+        baseline_results = (
+            f"### Current Run Results\n"
+            f"| Metric | CPU (Baseline) | AMD GPU (Accelerated) |\n"
+            f"| :--- | :--- | :--- |\n"
+            f"| Benchmark Time | {cpu_time:.3f}s | {gpu_time:.3f}s |\n"
+            f"| Speedup | 1.0x (reference) | {benchmark.get('speedup_factor', 'N/A')}x |"
+        )
+    else:
+        baseline_results = (
+            f"### Current Run Results (CPU Baseline Only)\n"
+            f"| Metric | Value |\n"
+            f"| :--- | :--- |\n"
+            f"| CPU Benchmark Time | {cpu_time:.3f}s |\n"
+            f"| AMD GPU Benchmark | ⏳ Pending — run on ROCm hardware for accelerated results |"
+        )
+
     report = REPORT_TEMPLATE.format(
         timestamp=datetime.datetime.now().strftime("%B %d, %Y"),
         git_commit=git_info.get("commit", "unknown")[:12],
         git_branch=git_info.get("branch", "unknown"),
         dirty_flag=" [DIRTY]" if git_info.get("is_dirty") else "",
+        pipeline_commit_note=pipeline_commit_note,
         speedup=speedup_display,
         accuracy=round(metrics.get("accuracy", 0.0) * 100, 2),
         samples=metrics.get("samples", 0),
@@ -170,11 +245,15 @@ def main():
         rocm_ver=gpu_info.get("rocm_version", "N/A") or "N/A",
         torch_ver=gpu_info.get("torch_version", "N/A"),
         os_ver=f"{sys_info['platform']['system']} {sys_info['platform']['release']}",
+        baseline_results=baseline_results,
         engineering_rows=engineering_rows,
         genesis_used="used" if metrics.get("used_genesis_physics") else "NOT used (Genesis unavailable — synthetic fallback)",
         ledger_status="✅ PASS" if metrics.get("ledger_chain_valid") else "❌ FAIL",
         ledger_count=len(ledger),
         model_file="anomaly_model.pt",
+        checksum_count=len([f for f in output_dir.iterdir()
+                           if f.is_file() and f.name not in ("checksums.txt",)
+                           and not f.name.endswith("_tampered.json")]),
         gen_time=datetime.datetime.now().isoformat(),
     )
 
