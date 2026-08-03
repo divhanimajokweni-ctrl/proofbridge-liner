@@ -2,13 +2,13 @@
 **Version:** 2.0 (Provenance-Tracked)
 **Date:** August 03, 2026
 **Competition:** Zoo Makeathon (Aug 5) | AMD Radeon Robotics Hackathon (Aug 6)
-**Git Commit:** `8711215716ff` (main [DIRTY])
+**Git Commit:** `c71452f8785f` (main)
 
 ---
 
 ## 1. Executive Summary
 Dual-tier compute (AMD Kria K26 edge inference + AMD MI300X training/simulation).
-Measured this run: **N/A (CPU-only)** ROCm speedup, **77.5%** validation accuracy
+Measured this run: **N/A (CPU-only)** ROCm speedup, **99.2%** validation accuracy
 on **synthetic** sensor data (see Section 4 for what "synthetic" means here).
 
 **Read before citing this report externally:** any field below marked
@@ -22,9 +22,9 @@ generation — it does not certify that unverified values are correct.
 | Metric | Value | Source |
 | :--- | :--- | :--- |
 | ROCm Speedup | N/A (CPU-only) | `benchmark_results` in `results.json` |
-| Validation Accuracy | 77.5% | `training.final_val_acc` in `results.json` |
-| Simulation Samples | 1,000 | `metrics.json` |
-| Training Time | 0.34s | `results.json` |
+| Validation Accuracy | 99.2% | `training.final_val_acc` in `results.json` |
+| Simulation Samples | 10,000 | `metrics.json` |
+| Training Time | 13.84s | `results.json` |
 | Physics Engine | synthetic (numpy, no physics engine) | `simulation_meta` in `results.json` |
 
 ### Environment
@@ -80,4 +80,4 @@ performance.
 - Provenance manifest: `provenance.json`
 - Metrics: `metrics.json`
 
-*Generated 2026-08-03T19:23:07.275216*
+*Generated 2026-08-03T19:49:28.710533*
