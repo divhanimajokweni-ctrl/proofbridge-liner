@@ -10,12 +10,14 @@ import {
   Bot,
   Wallet,
   Settings,
+  Hexagon,
+  ShieldAlert,
   type LucideIcon,
 } from 'lucide-react';
 import { useIDEStore, PLUGINS, type PluginId } from './ide-store';
 
 // ---------------------------------------------------------------------------
-// Icon resolver — maps string icon names to Lucide components
+// Icon resolver
 // ---------------------------------------------------------------------------
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -27,6 +29,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Bot,
   Wallet,
   Settings,
+  Hexagon,
+  ShieldAlert,
 };
 
 function resolveIcon(name: string): LucideIcon {
@@ -40,12 +44,11 @@ function resolveIcon(name: string): LucideIcon {
 export function ActivityBar() {
   const activePlugin = useIDEStore((s) => s.activePlugin);
   const setActivePlugin = useIDEStore((s) => s.setActivePlugin);
-  const sidebarOpen = useIDEStore((s) => s.sidebarOpen);
   const toggleSidebar = useIDEStore((s) => s.toggleSidebar);
   const circuitBreaker = useIDEStore((s) => s.circuitBreaker);
+  const zookeeperOnline = useIDEStore((s) => s.zookeeperOnline);
 
   const handlePluginClick = (id: PluginId) => {
-    // If clicking the already-active plugin, toggle sidebar
     if (id === activePlugin) {
       toggleSidebar();
     } else {
@@ -53,18 +56,21 @@ export function ActivityBar() {
     }
   };
 
+  // Group plugins: Core (Zookeeper) → Products → Specialists → Bottom
+  const corePlugins = PLUGINS.filter((p) => p.isCore);
+  const productPlugins = PLUGINS.filter((p) => !p.isCore && !p.isSpecialist);
+  const specialistPlugins = PLUGINS.filter((p) => p.isSpecialist);
+
   return (
     <nav
       className="w-[52px] bg-[#1c1c1c] flex flex-col items-center py-3 gap-1 shrink-0 z-50 border-r border-[#2d2d2d]"
-      aria-label="Activity Bar — Plugin Rail"
+      aria-label="Activity Bar — Zookeeper Plugin Rail"
     >
-      {/* Top plugin icons */}
-      <div className="flex flex-col items-center gap-1">
-        {PLUGINS.map((plugin) => {
+      {/* Core Runtime — Zookeeper is always at the top */}
+      <div className="flex flex-col items-center gap-1 mb-1">
+        {corePlugins.map((plugin) => {
           const Icon = resolveIcon(plugin.icon);
           const isActive = activePlugin === plugin.id;
-          const isLindiwe = plugin.id === 'LINDIWE';
-          const isWatchdog = isLindiwe && circuitBreaker === 'TRIGGERED';
 
           return (
             <button
@@ -82,7 +88,6 @@ export function ActivityBar() {
               aria-label={plugin.label}
               aria-pressed={isActive}
             >
-              {/* Active indicator — left border */}
               {isActive && (
                 <motion.div
                   layoutId="activity-indicator"
@@ -92,8 +97,123 @@ export function ActivityBar() {
                 />
               )}
 
-              {/* Watchdog pulsing glow */}
-              {isWatchdog && (
+              {/* Zookeeper online pulse */}
+              {zookeeperOnline && (
+                <motion.div
+                  className="absolute inset-0 rounded-md"
+                  style={{ boxShadow: `0 0 8px 1px ${plugin.color}20` }}
+                  animate={{ opacity: [0.3, 0.7, 0.3] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                />
+              )}
+
+              <Icon
+                className="h-[22px] w-[22px]"
+                strokeWidth={isActive ? 2 : 1.5}
+                style={isActive ? { color: plugin.color } : undefined}
+              />
+
+              <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1c1c1c] border border-[#3c3c3c] rounded text-[11px] text-white whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-[100] shadow-xl">
+                <span className="font-semibold">{plugin.label}</span>
+                <span className="ml-2 text-[10px] text-[#3dffb0]">● CORE</span>
+                {plugin.shortcut && (
+                  <span className="ml-2 text-[10px] text-[#858585]">{plugin.shortcut}</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Separator */}
+      <div className="w-6 h-px bg-[#3c3c3c] my-1" />
+
+      {/* Product Plugins */}
+      <div className="flex flex-col items-center gap-1">
+        {productPlugins.map((plugin) => {
+          const Icon = resolveIcon(plugin.icon);
+          const isActive = activePlugin === plugin.id;
+
+          return (
+            <button
+              key={plugin.id}
+              onClick={() => handlePluginClick(plugin.id)}
+              className={`
+                relative w-11 h-11 flex items-center justify-center rounded-md
+                transition-all duration-150 group
+                ${isActive
+                  ? 'text-white bg-[#2a2d2e]'
+                  : 'text-[#858585] hover:text-white hover:bg-[#2a2d2e]/50'
+                }
+              `}
+              title={plugin.label}
+              aria-label={plugin.label}
+              aria-pressed={isActive}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="activity-indicator"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 rounded-r"
+                  style={{ backgroundColor: plugin.color }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              )}
+
+              <Icon
+                className="h-[22px] w-[22px]"
+                strokeWidth={isActive ? 2 : 1.5}
+                style={isActive ? { color: plugin.color } : undefined}
+              />
+
+              <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1c1c1c] border border-[#3c3c3c] rounded text-[11px] text-white whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-[100] shadow-xl">
+                <span className="font-semibold">{plugin.label}</span>
+                {plugin.shortcut && (
+                  <span className="ml-2 text-[10px] text-[#858585]">{plugin.shortcut}</span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Separator */}
+      <div className="w-6 h-px bg-[#3c3c3c] my-1" />
+
+      {/* Specialist Agents — Lindiwe & Watchdog */}
+      <div className="flex flex-col items-center gap-1">
+        {specialistPlugins.map((plugin) => {
+          const Icon = resolveIcon(plugin.icon);
+          const isActive = activePlugin === plugin.id;
+          const isWatchdog = plugin.id === 'WATCHDOG';
+          const isTriggered = isWatchdog && circuitBreaker === 'TRIGGERED';
+
+          return (
+            <button
+              key={plugin.id}
+              onClick={() => handlePluginClick(plugin.id)}
+              className={`
+                relative w-11 h-11 flex items-center justify-center rounded-md
+                transition-all duration-150 group
+                ${isActive
+                  ? 'text-white bg-[#2a2d2e]'
+                  : 'text-[#858585] hover:text-white hover:bg-[#2a2d2e]/50'
+                }
+              `}
+              title={plugin.label}
+              aria-label={plugin.label}
+              aria-pressed={isActive}
+            >
+              {isActive && (
+                <motion.div
+                  layoutId="activity-indicator"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-6 rounded-r"
+                  style={{ backgroundColor: plugin.color }}
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              )}
+
+              {/* Watchdog triggered glow */}
+              {isTriggered && (
                 <motion.div
                   className="absolute inset-0 rounded-md"
                   style={{ boxShadow: `0 0 12px 2px ${plugin.color}40` }}
@@ -108,9 +228,9 @@ export function ActivityBar() {
                 style={isActive ? { color: plugin.color } : undefined}
               />
 
-              {/* Tooltip on hover */}
               <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1c1c1c] border border-[#3c3c3c] rounded text-[11px] text-white whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-[100] shadow-xl">
                 <span className="font-semibold">{plugin.label}</span>
+                <span className="ml-2 text-[10px] text-[#a855f7]">● SPECIALIST</span>
                 {plugin.shortcut && (
                   <span className="ml-2 text-[10px] text-[#858585]">{plugin.shortcut}</span>
                 )}

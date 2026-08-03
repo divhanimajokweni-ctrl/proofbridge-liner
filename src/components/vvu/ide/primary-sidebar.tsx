@@ -18,19 +18,36 @@ import {
   FileText,
   Plus,
   Circle,
-  AlertTriangle,
   CheckCircle2,
   XCircle,
   Eye,
   Bot,
   Zap,
+  Hexagon,
+  ShieldAlert,
+  Download,
+  Power,
+  PowerOff,
   type LucideIcon,
 } from 'lucide-react';
-import { useIDEStore, PLUGINS, type PluginId, AUTONOMY_LABELS, AUTONOMY_COLORS } from './ide-store';
+import {
+  useIDEStore,
+  PLUGINS,
+  ADAPTER_METHODS,
+  LIFECYCLE_COLORS,
+  LIFECYCLE_LABELS,
+  type PluginId,
+  type Adapter,
+  type PluginLifecycle,
+  type AdapterMethod,
+  type CoreService,
+  AUTONOMY_LABELS,
+  AUTONOMY_COLORS,
+} from './ide-store';
 import { useState } from 'react';
 
 // ---------------------------------------------------------------------------
-// Sidebar Section Header
+// Shared UI Components
 // ---------------------------------------------------------------------------
 
 function SectionHeader({ label, action }: { label: string; action?: React.ReactNode }) {
@@ -42,10 +59,6 @@ function SectionHeader({ label, action }: { label: string; action?: React.ReactN
   );
 }
 
-// ---------------------------------------------------------------------------
-// Tree Item
-// ---------------------------------------------------------------------------
-
 function TreeItem({
   label,
   icon: Icon,
@@ -54,20 +67,23 @@ function TreeItem({
   color,
   onClick,
   active = false,
+  badge,
 }: {
   label: string;
   icon?: LucideIcon;
   depth?: number;
-  status?: 'active' | 'standby' | 'error' | 'idle';
+  status?: 'active' | 'standby' | 'error' | 'idle' | 'dormant';
   color?: string;
   onClick?: () => void;
   active?: boolean;
+  badge?: string;
 }) {
   const statusColors = {
     active: '#3dffb0',
     standby: '#eab308',
     error: '#ef4444',
     idle: '#858585',
+    dormant: '#8b5cf6',
   };
 
   return (
@@ -87,7 +103,12 @@ function TreeItem({
           style={{ color: statusColors[status] }}
         />
       )}
-      <span className="truncate">{label}</span>
+      <span className="truncate flex-1 text-left">{label}</span>
+      {badge && (
+        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#3c3c3c] text-[#858585]">
+          {badge}
+        </span>
+      )}
       {status && Icon && (
         <Circle
           className="h-2 w-2 shrink-0 ml-auto fill-current"
@@ -97,10 +118,6 @@ function TreeItem({
     </button>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Collapsible Section
-// ---------------------------------------------------------------------------
 
 function CollapsibleSection({
   label,
@@ -140,7 +157,221 @@ function CollapsibleSection({
 }
 
 // ---------------------------------------------------------------------------
-// Plugin Sidebar Content
+// Zookeeper Sidebar — The Core Runtime
+// ---------------------------------------------------------------------------
+
+function ZookeeperSidebar() {
+  const coreServices = useIDEStore((s) => s.coreServices);
+  const adapters = useIDEStore((s) => s.adapters);
+  const activateAdapter = useIDEStore((s) => s.activateAdapter);
+  const shutdownAdapter = useIDEStore((s) => s.shutdownAdapter);
+  const installAdapter = useIDEStore((s) => s.installAdapter);
+  const zookeeperOnline = useIDEStore((s) => s.zookeeperOnline);
+
+  // Count by lifecycle
+  const lifecycleCounts = adapters.reduce((acc, a) => {
+    acc[a.lifecycle] = (acc[a.lifecycle] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <div className="flex flex-col gap-0">
+      {/* Core Runtime Services */}
+      <CollapsibleSection label="Core Runtime">
+        {coreServices.map((service) => (
+          <TreeItem
+            key={service.id}
+            label={service.label}
+            icon={service.status === 'running' ? CheckCircle2 : service.status === 'error' ? XCircle : Activity}
+            depth={0}
+            status={service.status === 'running' ? 'active' : service.status === 'error' ? 'error' : 'idle'}
+            color="#3dffb0"
+            badge={`${service.eventsProcessed.toLocaleString()}`}
+          />
+        ))}
+      </CollapsibleSection>
+
+      {/* Adapter Registry */}
+      <CollapsibleSection label="Adapter Registry">
+        {adapters.map((adapter) => (
+          <AdapterItem
+            key={adapter.id}
+            adapter={adapter}
+            onActivate={() => activateAdapter(adapter.id)}
+            onShutdown={() => shutdownAdapter(adapter.id)}
+            onInstall={() => installAdapter(adapter.id)}
+          />
+        ))}
+      </CollapsibleSection>
+
+      {/* Lifecycle Summary */}
+      <CollapsibleSection label="Lifecycle Summary" defaultOpen={false}>
+        <div className="px-3 py-2 flex flex-col gap-1.5">
+          {(['running', 'activated', 'dormant', 'installed', 'not_installed'] as PluginLifecycle[]).map((lc) => {
+            const count = lifecycleCounts[lc] ?? 0;
+            if (count === 0) return null;
+            return (
+              <div key={lc} className="flex items-center gap-2 text-[11px]">
+                <div
+                  className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: LIFECYCLE_COLORS[lc] }}
+                />
+                <span className="text-[#858585]">{LIFECYCLE_LABELS[lc]}</span>
+                <span className="ml-auto font-mono text-white">{count}</span>
+              </div>
+            );
+          })}
+        </div>
+      </CollapsibleSection>
+
+      {/* Adapter Lifecycle Interface */}
+      <CollapsibleSection label="Adapter Interface" defaultOpen={false}>
+        <div className="px-3 py-2">
+          <div className="text-[10px] text-[#858585] font-mono mb-2">
+            Every integration conforms to the same lifecycle:
+          </div>
+          <div className="flex flex-col gap-1">
+            {ADAPTER_METHODS.map((method, i) => (
+              <div key={method} className="flex items-center gap-2 text-[11px] font-mono">
+                <span className="text-[#555] w-3">{i + 1}.</span>
+                <span className="text-[#3dffb0]">{method}()</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Quick Actions */}
+      <div className="px-3 mt-4 flex flex-col gap-2">
+        <button
+          className="w-full flex items-center justify-center gap-2 bg-[#3dffb0]/20 hover:bg-[#3dffb0]/30 text-[#3dffb0] border border-[#3dffb0]/30 py-1.5 px-3 rounded text-xs font-mono transition-colors"
+        >
+          <Download className="h-3 w-3" /> vvu plugin install…
+        </button>
+        <button
+          className="w-full flex items-center justify-center gap-2 bg-[#3dffb0]/10 hover:bg-[#3dffb0]/20 text-[#3dffb0] border border-[#3dffb0]/30 py-1.5 px-3 rounded text-xs font-mono transition-colors"
+        >
+          <RefreshCw className="h-3 w-3" /> Replay Event Log
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Adapter Item — shows lifecycle state and actions
+// ---------------------------------------------------------------------------
+
+function AdapterItem({
+  adapter,
+  onActivate,
+  onShutdown,
+  onInstall,
+}: {
+  adapter: Adapter;
+  onActivate: () => void;
+  onShutdown: () => void;
+  onInstall: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div>
+      <div className="flex items-center gap-0">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex-1 flex items-center gap-1.5 px-3 py-[3px] text-[13px] cursor-pointer hover:bg-[#2a2d2e] transition-colors"
+          style={{ paddingLeft: '12px' }}
+        >
+          <Circle
+            className="h-2.5 w-2.5 shrink-0 fill-current"
+            style={{ color: LIFECYCLE_COLORS[adapter.lifecycle] }}
+          />
+          <span className="truncate text-[#cccccc]">{adapter.label}</span>
+          <span
+            className="text-[9px] font-mono ml-auto px-1 py-0.5 rounded"
+            style={{
+              backgroundColor: `${LIFECYCLE_COLORS[adapter.lifecycle]}15`,
+              color: LIFECYCLE_COLORS[adapter.lifecycle],
+            }}
+          >
+            {adapter.lifecycle.replace('_', ' ')}
+          </span>
+        </button>
+      </div>
+
+      {/* Expanded details */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.1 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 py-2 ml-4 border-l border-[#3c3c3c] flex flex-col gap-2">
+              <div className="text-[10px] text-[#858585]">{adapter.description}</div>
+              {adapter.vendor && (
+                <div className="text-[10px] text-[#858585]">Vendor: {adapter.vendor}</div>
+              )}
+
+              {/* Lifecycle progress */}
+              <div className="flex gap-1">
+                {ADAPTER_METHODS.map((method) => {
+                  const done = adapter.completedMethods.includes(method);
+                  return (
+                    <div
+                      key={method}
+                      className="text-[8px] font-mono px-1 py-0.5 rounded"
+                      style={{
+                        backgroundColor: done ? '#3dffb015' : '#3c3c3c',
+                        color: done ? '#3dffb0' : '#555',
+                      }}
+                    >
+                      {method.slice(0, 3)}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-1.5">
+                {adapter.lifecycle === 'not_installed' && (
+                  <button
+                    onClick={onInstall}
+                    className="flex items-center gap-1 text-[10px] text-[#3dffb0] hover:text-white font-mono"
+                  >
+                    <Download className="h-3 w-3" /> install
+                  </button>
+                )}
+                {(adapter.lifecycle === 'dormant' || adapter.lifecycle === 'installed' || adapter.lifecycle === 'idle') && (
+                  <button
+                    onClick={onActivate}
+                    className="flex items-center gap-1 text-[10px] text-[#3b82f6] hover:text-white font-mono"
+                  >
+                    <Power className="h-3 w-3" /> activate
+                  </button>
+                )}
+                {(adapter.lifecycle === 'activated' || adapter.lifecycle === 'running') && (
+                  <button
+                    onClick={onShutdown}
+                    className="flex items-center gap-1 text-[10px] text-[#ef4444] hover:text-white font-mono"
+                  >
+                    <PowerOff className="h-3 w-3" /> shutdown
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Other Plugin Sidebars (unchanged from before, but with Zookeeper references)
 // ---------------------------------------------------------------------------
 
 function HBKSidebar() {
@@ -195,24 +426,18 @@ function UbuntuPoolsSidebar() {
         <TreeItem label="Gauteng Infrastructure Fund" icon={Users} depth={0} color="#3dd6ff" status="active" />
         <TreeItem label="KZN Community Pool" icon={Users} depth={0} color="#3dd6ff" status="standby" />
       </CollapsibleSection>
-
       <CollapsibleSection label="Governance">
         <TreeItem label="Constitution v2.1" icon={FileText} depth={0} />
         <TreeItem label="Active Proposals (3)" icon={Vote} depth={0} />
         <TreeItem label="Amendment Queue" icon={FileText} depth={0} />
       </CollapsibleSection>
-
       <CollapsibleSection label="Members">
         <TreeItem label="42 Active Members" icon={Users} depth={0} />
         <TreeItem label="7 Pending Approval" icon={Users} depth={0} />
       </CollapsibleSection>
-
       <div className="px-3 mt-4 flex flex-col gap-2">
         <button className="w-full flex items-center justify-center gap-2 bg-[#3dd6ff]/20 hover:bg-[#3dd6ff]/30 text-[#3dd6ff] border border-[#3dd6ff]/30 py-1.5 px-3 rounded text-xs font-mono transition-colors">
           <Plus className="h-3 w-3" /> Create Stokvel
-        </button>
-        <button className="w-full flex items-center justify-center gap-2 bg-[#3dd6ff]/10 hover:bg-[#3dd6ff]/20 text-[#3dd6ff] border border-[#3dd6ff]/30 py-1.5 px-3 rounded text-xs font-mono transition-colors">
-          <Vote className="h-3 w-3" /> Propose Amendment
         </button>
       </div>
     </div>
@@ -227,24 +452,13 @@ function ProofBridgeSidebar() {
         <TreeItem label="Receipt #846 (Signed)" icon={FileCheck} depth={0} status="active" color="#3dffb0" />
         <TreeItem label="Receipt #845 (Unverified)" icon={FileText} depth={0} status="standby" />
       </CollapsibleSection>
-
       <CollapsibleSection label="MMR Anchors">
         <TreeItem label="Root Hash: 0x7f3a..." icon={Hash} depth={0} />
         <TreeItem label="Last Anchor: 2m ago" icon={Shield} depth={0} />
-        <TreeItem label="Tree Size: 847 leaves" icon={Activity} depth={0} />
       </CollapsibleSection>
-
-      <CollapsibleSection label="Verification Queue">
-        <TreeItem label="3 Pending" icon={Eye} depth={0} />
-        <TreeItem label="12 Verified Today" icon={CheckCircle2} depth={0} />
-      </CollapsibleSection>
-
       <div className="px-3 mt-4 flex flex-col gap-2">
         <button className="w-full flex items-center justify-center gap-2 bg-[#3dffb0]/20 hover:bg-[#3dffb0]/30 text-[#3dffb0] border border-[#3dffb0]/30 py-1.5 px-3 rounded text-xs font-mono transition-colors">
           <Shield className="h-3 w-3" /> Verify Canvas State
-        </button>
-        <button className="w-full flex items-center justify-center gap-2 bg-[#3dffb0]/10 hover:bg-[#3dffb0]/20 text-[#3dffb0] border border-[#3dffb0]/30 py-1.5 px-3 rounded text-xs font-mono transition-colors">
-          <Hash className="h-3 w-3" /> Anchor Receipt
         </button>
       </div>
     </div>
@@ -259,18 +473,10 @@ function AIRComputeSidebar() {
         <TreeItem label="GPU_1 (ROCm MI250)" icon={Cpu} depth={0} status="active" color="#b23dff" />
         <TreeItem label="GPU_2 (Standby)" icon={Cpu} depth={0} status="standby" />
       </CollapsibleSection>
-
       <CollapsibleSection label="Inference Endpoints">
         <TreeItem label="Lindiwe-v3 (Live)" icon={Zap} depth={0} status="active" />
         <TreeItem label="HBK-Model (Warm)" icon={Zap} depth={0} status="standby" />
       </CollapsibleSection>
-
-      <CollapsibleSection label="Telemetry">
-        <TreeItem label="CPU: 34% | Memory: 2.7/8 GB" icon={HardDrive} depth={0} />
-        <TreeItem label="Events: 12,847 processed" icon={Activity} depth={0} />
-        <TreeItem label="Trust Score: 72/100" icon={Shield} depth={0} />
-      </CollapsibleSection>
-
       <div className="px-3 mt-4 flex flex-col gap-2">
         <button className="w-full flex items-center justify-center gap-2 bg-[#b23dff]/20 hover:bg-[#b23dff]/30 text-[#b23dff] border border-[#b23dff]/30 py-1.5 px-3 rounded text-xs font-mono transition-colors">
           <Zap className="h-3 w-3" /> Deploy Model
@@ -287,6 +493,13 @@ function LindiweSidebar() {
 
   return (
     <div className="flex flex-col gap-0">
+      <CollapsibleSection label="Specialist Agent">
+        <div className="px-3 py-2 text-[10px] text-[#858585]">
+          Lindiwe is a specialist agent under Zookeeper — not the orchestrator.
+          She observes, learns, and advises rather than controlling everything.
+        </div>
+      </CollapsibleSection>
+
       <CollapsibleSection label="Autonomy Matrix">
         <div className="px-3 py-2 flex flex-col gap-2">
           {([1, 2, 3] as const).map((level) => (
@@ -310,12 +523,12 @@ function LindiweSidebar() {
               />
               <div className="flex flex-col items-start">
                 <span className="font-semibold text-white">
-                  Level {level}: {AUTONOMY_LABELS[level]}
+                  L{level}: {AUTONOMY_LABELS[level]}
                 </span>
                 <span className="text-[10px] text-[#858585] mt-0.5">
                   {level === 1 && 'Passive monitoring'}
                   {level === 2 && 'Pre-writes fixes, awaits confirmation'}
-                  {level === 3 && 'Full override authority (armed)'}
+                  {level === 3 && 'Override authority (armed)'}
                 </span>
               </div>
             </button>
@@ -323,11 +536,35 @@ function LindiweSidebar() {
         </div>
       </CollapsibleSection>
 
+      <CollapsibleSection label="Capabilities">
+        <TreeItem label="Behavioural Analysis" icon={Eye} depth={0} status="active" />
+        <TreeItem label="Anomaly Detection" icon={Activity} depth={0} status="active" />
+        <TreeItem label="Recommendations" icon={Bot} depth={0} status="active" />
+      </CollapsibleSection>
+    </div>
+  );
+}
+
+function WatchdogSidebar() {
+  const circuitBreaker = useIDEStore((s) => s.circuitBreaker);
+  const watchdogActive = useIDEStore((s) => s.watchdogActive);
+  const setWatchdogActive = useIDEStore((s) => s.setWatchdogActive);
+  const setCircuitBreaker = useIDEStore((s) => s.setCircuitBreaker);
+
+  return (
+    <div className="flex flex-col gap-0">
+      <CollapsibleSection label="Specialist Agent">
+        <div className="px-3 py-2 text-[10px] text-[#858585]">
+          Watchdog is a specialist agent under Zookeeper — compliance, provenance, safety.
+          Can circuit-break the environment on critical events.
+        </div>
+      </CollapsibleSection>
+
       <CollapsibleSection label="Circuit Breaker">
-        <div className="px-3 py-2">
+        <div className="px-3 py-2 flex flex-col gap-2">
           <div className="flex items-center gap-2">
             {circuitBreaker === 'NORMAL' && <CheckCircle2 className="h-4 w-4 text-[#3dffb0]" />}
-            {circuitBreaker === 'DEGRADED' && <AlertTriangle className="h-4 w-4 text-[#eab308]" />}
+            {circuitBreaker === 'DEGRADED' && <Activity className="h-4 w-4 text-[#eab308]" />}
             {circuitBreaker === 'TRIGGERED' && <XCircle className="h-4 w-4 text-[#ef4444]" />}
             <span className="text-xs font-mono" style={{
               color: circuitBreaker === 'NORMAL' ? '#3dffb0' : circuitBreaker === 'DEGRADED' ? '#eab308' : '#ef4444'
@@ -335,15 +572,36 @@ function LindiweSidebar() {
               {circuitBreaker}
             </span>
           </div>
+          {circuitBreaker === 'TRIGGERED' && (
+            <button
+              onClick={() => setCircuitBreaker('NORMAL')}
+              className="text-[10px] text-[#3dffb0] hover:text-white font-mono"
+            >
+              Reset Circuit Breaker
+            </button>
+          )}
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection label="Agent Status">
-        <TreeItem label="Lindiwe-v3 (Online)" icon={Bot} depth={0} status="active" color="#a855f7" />
-        <TreeItem label="Fraud Detection Agent" icon={Eye} depth={0} status="active" />
-        <TreeItem label="Compliance Agent" icon={Shield} depth={0} status="standby" />
-        <TreeItem label="Simulation Agent" icon={Activity} depth={0} status="idle" />
+      <CollapsibleSection label="Capabilities">
+        <TreeItem label="Compliance Monitoring" icon={ShieldAlert} depth={0} status="active" />
+        <TreeItem label="Provenance Auditing" icon={Shield} depth={0} status="active" />
+        <TreeItem label="Safety & Circuit-Breaking" icon={ShieldAlert} depth={0} status="active" />
       </CollapsibleSection>
+
+      <div className="px-3 mt-4 flex flex-col gap-2">
+        <button
+          onClick={() => setWatchdogActive(!watchdogActive)}
+          className={`w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded text-xs font-mono transition-colors ${
+            watchdogActive
+              ? 'bg-[#ef4444]/10 hover:bg-[#ef4444]/20 text-[#ef4444] border border-[#ef4444]/30'
+              : 'bg-[#3dffb0]/20 hover:bg-[#3dffb0]/30 text-[#3dffb0] border border-[#3dffb0]/30'
+          }`}
+        >
+          {watchdogActive ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
+          {watchdogActive ? 'Deactivate Watchdog' : 'Activate Watchdog'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -356,7 +614,6 @@ function ExplorerSidebar() {
         <TreeItem label="output.log" icon={FileText} depth={0} />
         <TreeItem label="CAD Visualizer" icon={FileText} depth={0} />
       </CollapsibleSection>
-
       <CollapsibleSection label="VVU Workspace">
         <TreeItem label="src/" icon={ChevronDown} depth={0} />
         <TreeItem label="components/" icon={ChevronRight} depth={1} />
@@ -364,12 +621,13 @@ function ExplorerSidebar() {
         <TreeItem label="app/" icon={ChevronRight} depth={1} />
         <TreeItem label="pipeline/" icon={ChevronRight} depth={1} />
         <TreeItem label="config.yaml" icon={FileText} depth={1} />
-        <TreeItem label="schema.prisma" icon={FileText} depth={1} />
       </CollapsibleSection>
-
-      <CollapsibleSection label="Outlines">
-        <TreeItem label="Trust Architecture" icon={Shield} depth={0} />
-        <TreeItem label="Three-Root Model" icon={Hash} depth={0} />
+      <CollapsibleSection label="plugins/">
+        <TreeItem label="amd/" icon={ChevronRight} depth={0} />
+        <TreeItem label="github/" icon={ChevronRight} depth={0} />
+        <TreeItem label="zoom/" icon={ChevronRight} depth={0} />
+        <TreeItem label="cad/" icon={ChevronRight} depth={0} />
+        <TreeItem label="my_company_internal/" icon={ChevronRight} depth={0} />
       </CollapsibleSection>
     </div>
   );
@@ -380,13 +638,15 @@ function ExplorerSidebar() {
 // ---------------------------------------------------------------------------
 
 const SIDEBAR_CONTENT: Record<PluginId, React.ComponentType> = {
+  ZOOKEEPER: ZookeeperSidebar,
   EXPLORER: ExplorerSidebar,
   UBUNTU_POOLS: UbuntuPoolsSidebar,
   PROOFBRIDGE: ProofBridgeSidebar,
   HBK: HBKSidebar,
   AIR_COMPUTE: AIRComputeSidebar,
   LINDIWE: LindiweSidebar,
-  WALLET: ExplorerSidebar, // placeholder
+  WATCHDOG: WatchdogSidebar,
+  WALLET: ExplorerSidebar,
 };
 
 // ---------------------------------------------------------------------------
@@ -420,6 +680,8 @@ export function PrimarySidebar() {
           style={{ backgroundColor: pluginMeta?.color ?? '#858585' }}
         />
         {pluginMeta?.label ?? 'Explorer'}
+        {pluginMeta?.isCore && <span className="text-[#3dffb0] text-[9px]">CORE</span>}
+        {pluginMeta?.isSpecialist && <span className="text-[#a855f7] text-[9px]">SPECIALIST</span>}
       </div>
 
       {/* Scrollable Content */}

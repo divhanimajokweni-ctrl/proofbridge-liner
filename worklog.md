@@ -87,3 +87,52 @@ Unresolved Issues:
 - Need to add real API integration for HBK pipeline status
 - CAD Viewer tab is a placeholder — needs Three.js/WebGL integration
 - Need to commit all changes to git
+
+---
+Task ID: 3
+Agent: Main
+Task: Zookeeper Runtime Architecture — Vendor-Neutral Orchestration
+
+Work Log:
+- Complete paradigm shift: Zookeeper is the native orchestration runtime, not Lindiwe
+- Lindiwe is now a specialist agent under Zookeeper (behavioural analysis, anomaly detection, recommendations)
+- Watchdog is now a separate specialist agent under Zookeeper (compliance, provenance, safety, circuit-breaking)
+- Rewrote IDE Store with full Zookeeper state: core services, adapter registry, plugin lifecycle
+- Updated Activity Bar: Zookeeper at top with "● CORE" badge, Lindiwe & Watchdog with "● SPECIALIST" badges
+- Built Zookeeper Sidebar with:
+  - Core Runtime Services (6 services always running): Scheduler, Event Bus, Cryptographic Ledger, Provenance Engine, Plugin Manager, Policy Engine
+  - Adapter Registry (8 adapters): AMD Compute, GitHub, Zoom, Figma, CAD, MATLAB, ROS2, PLC
+  - Adapter lifecycle interface: initialize() → discover() → authenticate() → execute() → observe() → shutdown()
+  - Lifecycle Summary with counts per state
+  - Quick Actions: vvu plugin install, Replay Event Log
+- Built Adapter Item with expandable details, lifecycle progress, and action buttons (install/activate/shutdown)
+- Built Watchdog Sidebar with Circuit Breaker status, capabilities, activate/deactivate toggle
+- Updated Lindiwe Sidebar with "Specialist Agent" context, capabilities (behavioural analysis, anomaly detection, recommendations)
+- Built System Boot canvas tab showing full architecture diagram, core services, adapter registry, specialist agents, plugin lifecycle
+- Updated Status Bar with Zookeeper Runtime indicator (ZK + active adapter count)
+- Updated terminal commands: help, status, zk status, vvu plugin install/activate/shutdown
+- Verified with agent-browser:
+  - Zookeeper sidebar renders with all 6 core services and 8 adapters
+  - Lifecycle transitions work: Zoom "not installed" → "installed", AMD "dormant" → "activated"
+  - Watchdog sidebar shows Circuit Breaker status and capabilities
+  - Lindiwe sidebar shows specialist agent context and autonomy matrix
+  - System Boot tab shows architecture diagram
+  - Status bar shows ZK indicator
+
+Stage Summary:
+- VVU is now a vendor-neutral platform with Zookeeper as the orchestration runtime
+- AMD is one backend among many — not the center of the architecture
+- Every integration conforms to the same lifecycle: initialize → discover → authenticate → execute → observe → shutdown
+- Plugin lifecycle: Not Installed → Installed → Dormant → Activated → Running → Idle → Dormant
+- Core Runtime (always running): Scheduler, Event Bus, Ledger, Provenance, Plugin Manager, Policy Engine
+- Specialist Agents: Lindiwe (analysis) and Watchdog (safety) are under Zookeeper
+- User-defined adapters are supported via vvu plugin install/enable/activate/shutdown
+- Lint passes clean, 15-minute cron job active
+
+Unresolved Issues:
+- Dev server stability: Periodic restarts needed due to memory pressure
+- Clerk keyless prompt overlay still appears
+- Need to add real API integration for Zookeeper runtime status
+- Need to add user-defined adapter creation UI
+- System Boot tab partially covered by status bar in some screen sizes
+- Need to commit all changes to git

@@ -12,6 +12,8 @@ import {
   XCircle,
   CheckCircle2,
   Bot,
+  Hexagon,
+  ShieldAlert,
 } from 'lucide-react';
 import { useIDEStore, AUTONOMY_LABELS, AUTONOMY_COLORS, type AutonomyLevel } from './ide-store';
 
@@ -44,6 +46,31 @@ function MetricCell({
 }
 
 // ---------------------------------------------------------------------------
+// Zookeeper Runtime Indicator
+// ---------------------------------------------------------------------------
+
+function ZookeeperIndicator() {
+  const zookeeperOnline = useIDEStore((s) => s.zookeeperOnline);
+  const adapters = useIDEStore((s) => s.adapters);
+  const runningCount = adapters.filter((a) => a.lifecycle === 'running' || a.lifecycle === 'activated').length;
+
+  return (
+    <div className="flex items-center gap-1.5 px-2 py-0.5">
+      <Hexagon className="h-3 w-3 text-[#3dffb0]" strokeWidth={1.5} />
+      <motion.div
+        className="w-2 h-2 rounded-full bg-[#3dffb0]"
+        animate={{ opacity: [0.6, 1, 0.6] }}
+        transition={{ duration: 3, repeat: Infinity }}
+      />
+      <span className="font-mono text-[10px] text-[#3dffb0]">ZK</span>
+      <span className="font-mono text-[9px] text-[#858585]">
+        {runningCount} active
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Trust Dial — Lindiwe Autonomy Indicator
 // ---------------------------------------------------------------------------
 
@@ -51,7 +78,6 @@ function TrustDial() {
   const autonomyLevel = useIDEStore((s) => s.autonomyLevel);
   const setAutonomyLevel = useIDEStore((s) => s.setAutonomyLevel);
   const circuitBreaker = useIDEStore((s) => s.circuitBreaker);
-  const lindiweMode = useIDEStore((s) => s.lindiweMode);
 
   const color = AUTONOMY_COLORS[autonomyLevel];
   const label = AUTONOMY_LABELS[autonomyLevel];
@@ -79,7 +105,6 @@ function TrustDial() {
               : 'none',
         }}
       >
-        {/* Pulse animation for Watchdog */}
         {autonomyLevel === 3 && (
           <motion.div
             className="w-full h-full rounded-full"
@@ -92,15 +117,12 @@ function TrustDial() {
       <span className="font-mono text-[10px] text-[#858585] group-hover:text-[#cccccc] transition-colors">
         L{autonomyLevel}: {label}
       </span>
-      <span className="font-mono text-[9px] text-[#555] hidden md:inline">
-        [{lindiweMode}]
-      </span>
     </button>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Circuit Breaker Indicator
+// Circuit Breaker Indicator (Watchdog)
 // ---------------------------------------------------------------------------
 
 function CircuitBreakerIndicator() {
@@ -109,7 +131,6 @@ function CircuitBreakerIndicator() {
 
   const handleClick = () => {
     if (circuitBreaker === 'TRIGGERED') {
-      // Reset to NORMAL
       setCircuitBreaker('NORMAL');
     }
   };
@@ -165,8 +186,10 @@ export function StatusBar() {
       role="status"
       aria-label="Status Bar"
     >
-      {/* Left — Compute Engine Metrics */}
+      {/* Left — Zookeeper Runtime + Compute Engine Metrics */}
       <div className="flex items-center gap-0">
+        <ZookeeperIndicator />
+        <div className="w-px h-3 bg-[#3c3c3c]" />
         <MetricCell icon={Zap} label="Pipelines" value={String(computeMetrics.activePipelines)} color="#3dffb0" />
         <MetricCell icon={Cpu} label="CPU" value={`${computeMetrics.cpuUtilisation}%`} color="#3dd6ff" />
         <MetricCell icon={HardDrive} label="Memory" value={`${computeMetrics.memoryUsed}/${computeMetrics.memoryTotal}GB`} color="#C9A84C" />
@@ -175,7 +198,7 @@ export function StatusBar() {
         <MetricCell icon={Clock} label="Uptime" value={computeMetrics.uptime} color="#858585" />
       </div>
 
-      {/* Right — Lindiwe + Circuit Breaker + Status */}
+      {/* Right — Watchdog + Lindiwe + Plugin Status */}
       <div className="flex items-center gap-2">
         <CircuitBreakerIndicator />
         <div className="w-px h-3 bg-[#3c3c3c]" />
