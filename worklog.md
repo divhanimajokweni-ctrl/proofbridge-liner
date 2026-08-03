@@ -236,3 +236,38 @@ Unresolved Issues:
 - Need real API integration for Zookeeper runtime status
 - Need user-defined adapter creation UI
 - System Boot tab partially covered by status bar in some screen sizes
+
+---
+Task ID: 6
+Agent: Main
+Task: HBK MKII Pipeline — Fix and Verify Python Submission Scripts
+
+Work Log:
+- Checked existing pipeline: run_pipeline.py + generate_submission.py + config.yaml
+- Installed Python deps: numpy, torch (CPU-only), pyyaml, GitPython into venv
+- First run: SUCCESS — 3 phases (simulation, training, benchmark) complete, ledger chain valid
+- generate_submission.py: SUCCESS — report, submission_data.json, checksums.txt generated
+- Found and fixed 6 bugs:
+  1. "Nonex" speedup → "N/A (CPU-only)" when ROCm unavailable
+  2. DeprecationWarning: utcnow() → now(timezone.utc)
+  3. GPU "N/A (0x)" → "CPU-only (no ROCm GPU)"
+  4. ROCm version "None" → "N/A"
+  5. Manifest/checksum ordering: manifest.json generated first
+  6. results_tampered.json excluded from checksums
+- Verified: ledger 6 entries valid ✅, checksums 9 files match ✅, provenance 10 fields ✅
+- Committed: SHA cd3a6ce
+
+Stage Summary:
+- HBK MKII pipeline fully operational end-to-end
+- run_pipeline.py: simulation → training → benchmark → ledger
+- generate_submission.py: report + submission_data + checksums + manifest
+- All artifact integrity verified (SHA-256 checksums, ledger chain, provenance)
+- 10 engineering values correctly labeled UNVERIFIED
+- CPU-only mode works; zero warnings, zero format bugs
+
+What's Next for Submission Readiness:
+- Run --mode full (10K samples, 50 epochs) for production results
+- Add self-auditing verification script
+- Add report viewer in VVU IDE (Main Canvas tab)
+- Add /api/hbk/status endpoint reading latest outputs/
+- On ROCm GPU: re-run for real speedup numbers
