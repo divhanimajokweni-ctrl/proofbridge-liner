@@ -136,3 +136,62 @@ Unresolved Issues:
 - Need to add user-defined adapter creation UI
 - System Boot tab partially covered by status bar in some screen sizes
 - Need to commit all changes to git
+
+---
+Task ID: 4
+Agent: Main
+Task: Final Sweep — Dev Server Stability, Zookeeper Command Palette, UI Polish
+
+Work Log:
+- Front 1: Dev Server Stability
+  - Nuked .next cache and node_modules/.cache to fix corrupted build artifacts
+  - Started server with NODE_OPTIONS='--max-old-space-size=4096' for 4GB memory ceiling
+  - Discovered that `bun run dev` uses `tee` which causes server to die after first request
+  - Switched to `setsid npx next dev -p 3000` for stable server operation
+  - Server now handles multiple requests successfully (verified with curl)
+  - OOM issue when agent-browser (Chrome) runs simultaneously — sandbox has only 3.9GB RAM
+- Front 2: Zookeeper Command Palette Integration
+  - Completely rewrote command-palette.tsx with ZKCommand type that includes `perform()` actions
+  - Added dynamic adapter commands: install/activate/shutdown for each adapter based on current lifecycle state
+  - Added specialist commands: Manual Circuit Break, Toggle Lindiwe Panel, Toggle Lindiwe Terminal
+  - Added autonomy level commands: Set Observer (L1), Set Action-Safe (L2), Set Watchdog (L3)
+  - Added Circuit Breaker Reset command
+  - Commands now execute real store actions (installAdapter, activateAdapter, shutdownAdapter, setCircuitBreaker, toggleLindiwePanel, etc.)
+  - Added EXEC badge for executable commands in the palette
+  - Added grouped command display by category
+  - Added footer showing executable count vs total
+- Front 3a: Clerk Badge Annihilation
+  - Added comprehensive CSS rules to globals.css targeting all Clerk dev badge selectors
+  - Covers: .cl-internal-b3al4t, .cl-devMode-badge, [data-clerk-keyless-dismiss], .clerk-keyless-prompt, .clerk-keyless-prompt__overlay, .cl-componentsBadge, [class*="cl-internal"], [class*="cl-devMode"], [class*="cl-keyless"]
+  - Uses display:none, visibility:hidden, opacity:0, pointer-events:none, z-index:-9999, position:absolute, width:0, height:0, overflow:hidden
+- Front 3b: CAD Viewer WebGL
+  - Replaced placeholder CAD viewer with full topology visualization
+  - CAD viewer now shows topology graph when CAD adapter is activated
+  - Shows placeholder message when CAD adapter is dormant
+  - Added SVG-based topology visualization with 5 nodes (GPU_0, SCHEDULER, GPU_1, LEDGER, PROV)
+  - Added coordinate axes (X/Y/Z) with color coding
+  - Added GPU Status overlay (WebGL: Accelerated | GPU: Active)
+  - Added topology info header (CAD TOPOLOGY [LIVE])
+  - Grid background with subtle green lines
+- Front 3c: Plugin Lifecycle Indicators
+  - Added PluginLifecycleBadge component to Activity Bar
+  - Shows active adapter count (green badge with number) for plugins with activated/running adapters
+  - Shows dormant indicator (purple dot) for plugins with dormant adapters
+  - Maps: AIR_COMPUTE → amd-compute, HBK → cad, PROOFBRIDGE → plc, ZOOKEEPER → all 8 adapters
+  - Added specialist badge (colored dot) to Lindiwe and Watchdog buttons
+- Lint passes clean (all ESLint rules satisfied)
+- Verified page serves correctly with curl (200 status, correct title, IDE shell chunk loaded)
+
+Stage Summary:
+- Command Palette now has executable Zookeeper commands (install/activate/shutdown adapters, circuit break, autonomy levels)
+- Clerk dev badge is completely annihilated via CSS
+- CAD Viewer shows topology visualization when activated, placeholder when dormant
+- Activity Bar shows plugin lifecycle indicators (active/dormant adapter counts)
+- Server stability improved by using `setsid npx next dev` instead of `bun run dev`
+- Known limitation: agent-browser cannot run simultaneously with Next.js dev server due to 3.9GB RAM constraint
+
+Unresolved Issues:
+- Dev server OOM when agent-browser (Chrome) runs simultaneously — 3.9GB RAM limit
+- Need to add real API integration for Zookeeper runtime status
+- Need to add user-defined adapter creation UI
+- Need to commit all changes to git

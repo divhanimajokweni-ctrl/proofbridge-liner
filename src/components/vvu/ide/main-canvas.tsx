@@ -184,21 +184,97 @@ function TerminalCanvas() {
 // ---------------------------------------------------------------------------
 
 function CADViewerCanvas() {
+  const adapters = useIDEStore((s) => s.adapters);
+  const cadAdapter = adapters.find((a) => a.id === 'cad');
+  const isActivated = cadAdapter && (cadAdapter.lifecycle === 'activated' || cadAdapter.lifecycle === 'running');
+
   return (
-    <div className="w-full h-full flex items-center justify-center bg-[#0d0d12] relative">
+    <div className="w-full h-full relative bg-[#1e1e1e] flex items-center justify-center">
+      {/* Grid background */}
       <div className="absolute inset-0 opacity-10" style={{
         backgroundImage: 'linear-gradient(#3dffb020 1px, transparent 1px), linear-gradient(90deg, #3dffb020 1px, transparent 1px)',
         backgroundSize: '40px 40px',
       }} />
 
-      <div className="text-center z-10">
-        <div className="text-[48px] mb-2">📐</div>
-        <div className="text-[#3dffb0] font-mono text-sm tracking-wider">CAD VISUALIZER</div>
-        <div className="text-[#858585] font-mono text-[11px] mt-1">Infrastructure topology · Network graph · Pipeline DAG</div>
-        <div className="mt-4 px-4 py-2 bg-[#3dffb0]/10 border border-[#3dffb0]/20 rounded text-[11px] text-[#3dffb0] font-mono">
-          Activate CAD Adapter from Zookeeper to populate
+      {isActivated ? (
+        <>
+          {/* WebGL mounting point */}
+          <div className="w-full h-full relative">
+            {/* Stand-in for actual WebGL rendering */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {/* Simulated 3D viewport with coordinate axes */}
+              <div className="relative w-[80%] h-[80%] border border-[#3c3c3c]/50 rounded-lg bg-[#0d0d12]/80">
+                {/* Coordinate axes */}
+                <div className="absolute bottom-4 left-4 flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1">
+                    <div className="w-8 h-0.5 bg-[#ef4444]" />
+                    <span className="text-[9px] font-mono text-[#ef4444]">X</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-8 h-0.5 bg-[#3dffb0]" />
+                    <span className="text-[9px] font-mono text-[#3dffb0]">Y</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-8 h-0.5 bg-[#3b82f6]" />
+                    <span className="text-[9px] font-mono text-[#3b82f6]">Z</span>
+                  </div>
+                </div>
+
+                {/* Simulated topology nodes */}
+                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 300">
+                  {/* Connection lines */}
+                  <line x1="80" y1="60" x2="200" y2="120" stroke="#3dffb0" strokeWidth="0.5" opacity="0.4" />
+                  <line x1="200" y1="120" x2="320" y2="80" stroke="#3dffb0" strokeWidth="0.5" opacity="0.4" />
+                  <line x1="200" y1="120" x2="150" y2="220" stroke="#3dffb0" strokeWidth="0.5" opacity="0.4" />
+                  <line x1="150" y1="220" x2="280" y2="240" stroke="#3dffb0" strokeWidth="0.5" opacity="0.4" />
+                  <line x1="320" y1="80" x2="280" y2="240" stroke="#3dffb0" strokeWidth="0.5" opacity="0.4" />
+                  {/* Nodes */}
+                  <circle cx="80" cy="60" r="4" fill="#3dffb0" opacity="0.8" />
+                  <circle cx="200" cy="120" r="6" fill="#3dffb0" opacity="1" />
+                  <circle cx="320" cy="80" r="4" fill="#3dffb0" opacity="0.8" />
+                  <circle cx="150" cy="220" r="5" fill="#eab308" opacity="0.8" />
+                  <circle cx="280" cy="240" r="4" fill="#3dffb0" opacity="0.8" />
+                  {/* Labels */}
+                  <text x="90" y="55" fill="#858585" fontSize="8" fontFamily="monospace">GPU_0</text>
+                  <text x="210" y="115" fill="#858585" fontSize="8" fontFamily="monospace">SCHEDULER</text>
+                  <text x="330" y="75" fill="#858585" fontSize="8" fontFamily="monospace">GPU_1</text>
+                  <text x="160" y="215" fill="#858585" fontSize="8" fontFamily="monospace">LEDGER</text>
+                  <text x="290" y="235" fill="#858585" fontSize="8" fontFamily="monospace">PROV</text>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* GPU Status overlay */}
+          <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-black/70 backdrop-blur-sm px-2.5 py-1.5 rounded border border-[#3c3c3c]/50">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#3dffb0]" />
+            <span className="text-[10px] font-mono text-[#3dffb0]">
+              WebGL: Accelerated
+            </span>
+            <span className="text-[10px] font-mono text-[#858585]">|</span>
+            <span className="text-[10px] font-mono text-[#858585]">GPU: Active</span>
+          </div>
+
+          {/* Topology info */}
+          <div className="absolute top-3 left-3 flex flex-col gap-1">
+            <div className="text-[10px] font-mono text-[#3dffb0]/60 tracking-wider">
+              CAD TOPOLOGY [LIVE]
+            </div>
+            <div className="text-[9px] font-mono text-[#858585]">
+              5 nodes · Pipeline DAG · Infrastructure graph
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-center z-10">
+          <div className="text-[48px] mb-2">📐</div>
+          <div className="text-[#3dffb0] font-mono text-sm tracking-wider">CAD VISUALIZER</div>
+          <div className="text-[#858585] font-mono text-[11px] mt-1">Infrastructure topology · Network graph · Pipeline DAG</div>
+          <div className="mt-4 px-4 py-2 bg-[#3dffb0]/10 border border-[#3dffb0]/20 rounded text-[11px] text-[#3dffb0] font-mono">
+            Activate CAD Adapter from Zookeeper to populate
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

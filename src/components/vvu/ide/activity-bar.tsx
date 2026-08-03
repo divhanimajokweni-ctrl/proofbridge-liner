@@ -14,7 +14,7 @@ import {
   ShieldAlert,
   type LucideIcon,
 } from 'lucide-react';
-import { useIDEStore, PLUGINS, type PluginId } from './ide-store';
+import { useIDEStore, PLUGINS, LIFECYCLE_COLORS, type PluginId, type Adapter } from './ide-store';
 
 // ---------------------------------------------------------------------------
 // Icon resolver
@@ -35,6 +35,59 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 function resolveIcon(name: string): LucideIcon {
   return ICON_MAP[name] ?? Files;
+}
+
+// ---------------------------------------------------------------------------
+// Adapter Lifecycle Indicator — shows dormant/active count per plugin
+// ---------------------------------------------------------------------------
+
+function PluginLifecycleBadge({ pluginId }: { pluginId: PluginId }) {
+  const adapters = useIDEStore((s) => s.adapters);
+
+  // Map plugins to their relevant adapters
+  const pluginAdapterMap: Record<string, string[]> = {
+    AIR_COMPUTE: ['amd-compute'],
+    HBK: ['cad'],
+    PROOFBRIDGE: ['plc'],
+    ZOOKEEPER: ['amd-compute', 'github', 'zoom', 'figma', 'cad', 'matlab', 'ros2', 'plc'],
+  };
+
+  const relevantIds = pluginAdapterMap[pluginId];
+  if (!relevantIds) return null;
+
+  const relevantAdapters = adapters.filter((a) => relevantIds.includes(a.id));
+  const activeCount = relevantAdapters.filter(
+    (a) => a.lifecycle === 'activated' || a.lifecycle === 'running'
+  ).length;
+  const dormantCount = relevantAdapters.filter(
+    (a) => a.lifecycle === 'dormant' || a.lifecycle === 'installed'
+  ).length;
+  const notInstalledCount = relevantAdapters.filter(
+    (a) => a.lifecycle === 'not_installed'
+  ).length;
+
+  if (activeCount === 0 && dormantCount === 0) return null;
+
+  return (
+    <div className="absolute -bottom-0.5 -right-0.5 flex items-center gap-0">
+      {activeCount > 0 && (
+        <div
+          className="w-2.5 h-2.5 rounded-full border border-[#1c1c1c] flex items-center justify-center"
+          style={{ backgroundColor: LIFECYCLE_COLORS.running }}
+          title={`${activeCount} active adapter(s)`}
+        >
+          <span className="text-[5px] font-bold text-[#1c1c1c]">{activeCount}</span>
+        </div>
+      )}
+      {dormantCount > 0 && activeCount === 0 && (
+        <div
+          className="w-2 h-2 rounded-full border border-[#1c1c1c]"
+          style={{ backgroundColor: LIFECYCLE_COLORS.dormant }}
+          title={`${dormantCount} dormant adapter(s)`}
+        />
+      )}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +166,9 @@ export function ActivityBar() {
                 style={isActive ? { color: plugin.color } : undefined}
               />
 
+              {/* Lifecycle badge */}
+              <PluginLifecycleBadge pluginId={plugin.id} />
+
               <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1c1c1c] border border-[#3c3c3c] rounded text-[11px] text-white whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-[100] shadow-xl">
                 <span className="font-semibold">{plugin.label}</span>
                 <span className="ml-2 text-[10px] text-[#3dffb0]">● CORE</span>
@@ -164,6 +220,9 @@ export function ActivityBar() {
                 strokeWidth={isActive ? 2 : 1.5}
                 style={isActive ? { color: plugin.color } : undefined}
               />
+
+              {/* Lifecycle badge */}
+              <PluginLifecycleBadge pluginId={plugin.id} />
 
               <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1c1c1c] border border-[#3c3c3c] rounded text-[11px] text-white whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-[100] shadow-xl">
                 <span className="font-semibold">{plugin.label}</span>
@@ -227,6 +286,9 @@ export function ActivityBar() {
                 strokeWidth={isActive ? 2 : 1.5}
                 style={isActive ? { color: plugin.color } : undefined}
               />
+
+              {/* Specialist badge */}
+              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#1c1c1c]" style={{ backgroundColor: plugin.color }} />
 
               <div className="absolute left-full ml-3 px-2.5 py-1.5 bg-[#1c1c1c] border border-[#3c3c3c] rounded text-[11px] text-white whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-[100] shadow-xl">
                 <span className="font-semibold">{plugin.label}</span>

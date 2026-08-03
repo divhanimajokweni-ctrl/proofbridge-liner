@@ -822,3 +822,26 @@
     animation: none !important;
   }
 }
+
+/* ==========================================================================
+   Clerk Dev Badge Annihilation — IDE Mode
+   ========================================================================== */
+.cl-internal-b3al4t,
+.cl-devMode-badge,
+[data-clerk-keyless-dismiss],
+.clerk-keyless-prompt,
+.clerk-keyless-prompt__overlay,
+.cl-componentsBadge,
+[class*="cl-internal"],
+[class*="cl-devMode"],
+[class*="cl-keyless"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -9999 !important;
+  position: absolute !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
