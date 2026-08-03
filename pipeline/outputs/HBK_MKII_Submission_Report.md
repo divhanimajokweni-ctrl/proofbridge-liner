@@ -2,7 +2,7 @@
 **Version:** 2.1 (Provenance-Tracked, Dual-Benchmark)
 **Date:** August 03, 2026
 **Competition:** Zoo Makeathon (Aug 5) | AMD Radeon Robotics Hackathon (Aug 6)
-**Git Commit:** `c7d155022925` (main)
+**Git Commit:** `1c84a50e3f48` (main)
 
 **Pipeline executed at:** `c71452f8785f` (report generated from a later commit containing the outputs)
 
@@ -110,4 +110,4 @@ performance.
 - Metrics: `metrics.json`
 - Checksums: `checksums.txt` (SHA-256, 9 files verified)
 
-*Generated 2026-08-03T19:59:09.539283*
+*Generated 2026-08-03T19:59:38.604270*
