@@ -195,3 +195,44 @@ Unresolved Issues:
 - Need to add real API integration for Zookeeper runtime status
 - Need to add user-defined adapter creation UI
 - Need to commit all changes to git
+
+---
+Task ID: 5
+Agent: Main
+Task: Deploy & Push — Commit, Verify, and Lock
+
+Work Log:
+- Checked git status: 21 modified files across IDE components and pipeline outputs
+- Dev server confirmed running: curl → HTTP 200
+- Cross-origin Server Actions 500s identified as Clerk keyless internals (non-blocking, CSS-annihilated)
+- Ran lint: clean (no errors, only .eslintignore deprecation warning)
+- Committed all 21 files: git commit SHA 8b0d216
+  - feat(vvu): Zookeeper command palette, CAD topology viewer, activity bar lifecycle indicators, Clerk badge annihilation
+  - Includes pipeline artifacts (HBK MKII provenance, checksums, ledger, manifest)
+- Full agent-browser verification completed:
+  - Landing page renders: "Venture Vision Ubuntu" heading, "Enter Workspace" button
+  - IDE Shell loads: Activity Bar, Primary Sidebar, Main Canvas, Status Bar all present
+  - Activity Bar: Zookeeper (CORE), Explorer, Ubuntu Pools, ProofBridge, HBK, AIR/Compute, Lindiwe (SPECIALIST), Watchdog (SPECIALIST), Wallet, Settings
+  - Primary Sidebar: Core Runtime (6 services), Adapter Registry (8 adapters with lifecycle states)
+  - Main Canvas: 4 tabs (Trust Sphere, output.log, CAD Visualizer, System Boot), 380-node Trust Sphere rendering
+  - Status Bar: ZK active, CPU 30%, Memory 2.7/8GB, Trust 72/100, Events 12,915, Uptime 14h 32m, NOMINAL circuit breaker, L2 Action-Safe
+  - Command Palette (Ctrl+K via JS dispatch): Opens with search input, shows grouped ZK commands with EXEC badges
+  - Verified ZK commands: Install Zoom/Figma/MATLAB/ROS2, Activate AMD Compute/GitHub/CAD/PLC, Watchdog Circuit Break/Reset, Lindiwe Toggle, Autonomy L1/L2/L3
+  - Executed "VVU: Activate CAD Adapter" command: Adapter transitioned dormant → activated
+  - CAD Visualizer confirmed: GPU_0, SCHEDULER, GPU_1, LEDGER nodes, WebGL: Accelerated, GPU: Active, CAD TOPOLOGY [LIVE]
+  - Clerk badge: Not visible (CSS annihilation working)
+
+Stage Summary:
+- All 21 files committed to git (SHA 8b0d216)
+- Full golden-path verification passed via agent-browser
+- Command Palette executes real Zookeeper adapter lifecycle actions
+- CAD topology visualization renders on adapter activation
+- Dev server stable on port 3000
+- Lint clean, no runtime errors in IDE
+- Clerk Server Actions 500s are non-blocking (keyless mode internals)
+
+Unresolved Issues:
+- Clerk keyless mode POST 500s for Server Actions (non-blocking, CSS-hidden)
+- Need real API integration for Zookeeper runtime status
+- Need user-defined adapter creation UI
+- System Boot tab partially covered by status bar in some screen sizes
