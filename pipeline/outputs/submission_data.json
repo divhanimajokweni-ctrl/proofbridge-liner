@@ -1,0 +1,68 @@
+{
+  "metrics": {
+    "accuracy": 0.8100000023841858,
+    "speedup": null,
+    "samples": 500,
+    "ledger_chain_valid": true,
+    "used_genesis_physics": false
+  },
+  "engineering_specs": {
+    "kcl.pressure_system.design_pressure_bar": {
+      "value": 25.0,
+      "status": "unverified_placeholder",
+      "source": "engineering estimate \u2014 not signed off, see HYDRO_GATEWAY_VALIDATION.md Section 1"
+    },
+    "kcl.pressure_system.mop_bar": {
+      "value": 37.5,
+      "status": "unverified_placeholder",
+      "source": "engineering estimate \u2014 not signed off"
+    },
+    "kcl.pressure_system.temp_min_c": {
+      "value": -20.0,
+      "status": "unverified_placeholder",
+      "source": "unspecified"
+    },
+    "kcl.pressure_system.temp_max_c": {
+      "value": 65.0,
+      "status": "unverified_placeholder",
+      "source": "unspecified"
+    },
+    "kcl.pressure_system.corrosion_allowance_mm": {
+      "value": 10.0,
+      "status": "unverified_placeholder",
+      "source": "unspecified"
+    },
+    "kcl.materials.pipe": {
+      "value": "SANS 35S (STS2)",
+      "status": "unverified_placeholder",
+      "source": "not signed off by materials engineering"
+    },
+    "kcl.materials.flange": {
+      "value": "SANS 1123 Table 1600, PN25",
+      "status": "unverified_placeholder",
+      "source": "unspecified"
+    },
+    "kcl.materials.base_plate": {
+      "value": "5052-H32 Aluminum",
+      "status": "unverified_placeholder",
+      "source": "unspecified"
+    },
+    "safety.temp_cutoff_c": {
+      "value": 85.0,
+      "status": "unverified_placeholder",
+      "source": "not confirmed by Controls & Safety \u2014 see action item 7 in validation report"
+    },
+    "safety.inference_latency_target_ms": {
+      "value": 2.1,
+      "status": "unverified_placeholder",
+      "source": "unspecified"
+    }
+  },
+  "git": {
+    "commit": "unknown",
+    "branch": "unknown",
+    "repo_root": "unknown",
+    "error": "GitPython not installed"
+  },
+  "ledger_valid": true
+}
