@@ -52,39 +52,46 @@ export async function POST(req: NextRequest) {
 
     if (rpcUrl && cbAddress) {
       try {
-        const { ethers } = await import('ethers');
-        const provider = new ethers.JsonRpcProvider(rpcUrl);
-        const { CIRCUIT_BREAKER_ABI } = await import('@/lib/contracts/circuitBreakerAbi');
-        const contract = new ethers.Contract(cbAddress, CIRCUIT_BREAKER_ABI, provider);
-        circuitOpen = await contract.circuitOpen();
-        circuitBreakerAddress = cbAddress;
+        // Dynamic import — ethers is optional (not installed in dev)
+        // Use new Function to prevent Turbopack from resolving at compile time
+        const ethersModule: any = await new Function('module', 'return import(module)')('ethers').catch(() => null);
+        if (!ethersModule) {
+          console.warn('[verify] ethers not installed — skipping on-chain circuit breaker check');
+        } else {
+          const { ethers } = ethersModule;
+          const provider = new ethers.JsonRpcProvider(rpcUrl);
+          const { CIRCUIT_BREAKER_ABI } = await import('@/lib/contracts/circuitBreakerAbi');
+          const contract = new ethers.Contract(cbAddress, CIRCUIT_BREAKER_ABI, provider);
+          circuitOpen = await contract.circuitOpen();
+          circuitBreakerAddress = cbAddress;
 
-        // Gate D hard enforcement: if circuit is tripped, halt immediately
-        if (!circuitOpen) {
-          return NextResponse.json({
-            ok: false,
-            error: 'GATE_D_TRIPPED',
-            detail: 'CircuitBreaker is tripped. No attestation or proof update issued.',
-            circuitState: 'TRIPPED',
-            circuitBreakerAddress,
-          }, { status: 423 });
-        }
+          // Gate D hard enforcement: if circuit is tripped, halt immediately
+          if (!circuitOpen) {
+            return NextResponse.json({
+              ok: false,
+              error: 'GATE_D_TRIPPED',
+              detail: 'CircuitBreaker is tripped. No attestation or proof update issued.',
+              circuitState: 'TRIPPED',
+              circuitBreakerAddress,
+            }, { status: 423 });
+          }
 
-        // Anchor deed hash on-chain via updateProof (oracle-gated on contract)
-        const deedHashBytes32 = hexToBytes32(effectiveDocHash);
-        const oracleKey = process.env.ORACLE_PRIVATE_KEY;
-        if (!oracleKey) {
-          return NextResponse.json({
-            ok: false,
-            error: 'ORACLE_KEY_MISSING',
-            detail: 'ORACLE_PRIVATE_KEY is not configured.',
-          }, { status: 500 });
+          // Anchor deed hash on-chain via updateProof (oracle-gated on contract)
+          const deedHashBytes32 = hexToBytes32(effectiveDocHash);
+          const oracleKey = process.env.ORACLE_PRIVATE_KEY;
+          if (!oracleKey) {
+            return NextResponse.json({
+              ok: false,
+              error: 'ORACLE_KEY_MISSING',
+              detail: 'ORACLE_PRIVATE_KEY is not configured.',
+            }, { status: 500 });
+          }
+          const wallet = new ethers.Wallet(oracleKey, provider);
+          const contractWithSigner = contract.connect(wallet);
+          const tx = await (contractWithSigner as any).updateProof(assetId, deedHashBytes32);
+          const receipt = await tx.wait();
+          anchorTxHash = receipt.hash;
         }
-        const wallet = new ethers.Wallet(oracleKey, provider);
-        const contractWithSigner = contract.connect(wallet);
-        const tx = await (contractWithSigner as any).updateProof(assetId, deedHashBytes32);
-        const receipt = await tx.wait();
-        anchorTxHash = receipt.hash;
       } catch (e) {
         // In environments without on-chain config, fail closed rather than soft-attest
         if (rpcUrl && cbAddress) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Globe } from 'lucide-react';
@@ -54,9 +54,23 @@ export default function Home() {
   // In production, this would be resolved from Clerk auth + license lookup.
   const [licenseTier] = useState<'community' | 'professional' | 'enterprise'>('community');
 
-  const enterWorkspace = () => setView('ignition');
-  const enterLanding = () => setView('landing');
-  const handleIgnitionComplete = () => setView('workspace');
+  const enterWorkspace = useCallback(() => setView('ignition'), []);
+  const enterLanding = useCallback(() => setView('landing'), []);
+  const handleIgnitionComplete = useCallback(() => setView('workspace'), []);
+
+  // Dismiss the Clerk keyless prompt overlay when in workspace mode
+  // so it doesn't interfere with workspace interactions
+  useEffect(() => {
+    if (view === 'workspace') {
+      // Try to dismiss the Clerk keyless prompt
+      const dismissBtn = document.querySelector('[data-clerk-keyless-dismiss]') as HTMLElement;
+      if (dismissBtn) dismissBtn.click();
+
+      // Also try to close the Clerk overlay by clicking its close button
+      const clerkOverlay = document.querySelector('.clerk-keyless-prompt') as HTMLElement;
+      if (clerkOverlay) clerkOverlay.style.display = 'none';
+    }
+  }, [view]);
 
   return (
     <AnimatePresence mode="wait">
@@ -107,7 +121,7 @@ export default function Home() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          className="relative"
+          className="relative h-screen overflow-hidden"
         >
           {/* Back to website button */}
           <div className="absolute top-3 right-3 z-50">

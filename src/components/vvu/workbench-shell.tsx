@@ -167,7 +167,7 @@ const ARCH_SHORTCUTS = [
   { id: 'proofbridge', label: 'ProofBridge-Liner', icon: ShieldCheck, color: '#3dffb0' },
   { id: 'hbk', label: 'HBK', icon: BrainCircuit, color: '#C9A84C' },
   { id: 'air-runtime', label: 'AIR', icon: Sparkles, color: '#b23dff' },
-  { id: 'growth', label: 'Compute', icon: Activity, color: '#3dffb0' },
+  { id: 'simulation', label: 'Simulation', icon: Activity, color: '#10b981' },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -415,7 +415,22 @@ function WorkspaceContent({
   }
 
   const product = PRODUCT_MANIFEST_MAP[activeProduct];
-  if (!product) return null;
+  if (!product) {
+    // Fallback: show a product-not-found state instead of blank
+    return (
+      <div className="flex items-center justify-center h-full" style={{ background: '#0a0a0f' }}>
+        <div className="text-center space-y-3">
+          <Boxes className="h-10 w-10 mx-auto text-muted-foreground/30" />
+          <p className="font-mono text-[11px] text-muted-foreground/50">
+            Product &quot;{activeProduct}&quot; is not yet available.
+          </p>
+          <p className="font-mono text-[9px] text-muted-foreground/30">
+            Select a different product from the sidebar or header.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full">

@@ -4,14 +4,25 @@
  * Uses Redis sorted sets (ZREMRANGEBYSCORE + ZCARD) for sliding window rate limiting.
  * Falls back to in-memory if Upstash is not configured.
  */
-import { Redis } from '@upstash/redis';
+
 import crypto from 'node:crypto';
+
+// Conditional import — @upstash/redis is optional
+// If not installed, rate limiting falls back to in-memory
+let Redis: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  Redis = require('@upstash/redis').Redis;
+} catch {
+  // @upstash/redis not installed — will use in-memory fallback
+  Redis = null;
+}
 
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-let redisClient: Redis | null = null;
-if (UPSTASH_URL && UPSTASH_TOKEN) {
+let redisClient: any = null;
+if (UPSTASH_URL && UPSTASH_TOKEN && Redis) {
   try {
     redisClient = new Redis({ url: UPSTASH_URL, token: UPSTASH_TOKEN });
   } catch {
