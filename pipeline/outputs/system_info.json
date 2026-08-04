@@ -1,22 +1,22 @@
 {
-  "timestamp": "2026-08-03T19:49:04.699057+00:00",
+  "timestamp": "2026-08-04T23:17:20.035439+00:00",
   "platform": {
     "system": "Linux",
-    "release": "5.10.134-013.8.3.kangaroo.al8.x86_64",
+    "release": "6.8.0-134-generic",
     "machine": "x86_64",
-    "python_version": "3.12.13"
+    "python_version": "3.12.3"
   },
   "gpu": {
-    "available": false,
-    "count": 0,
-    "name": "N/A",
-    "rocm_version": "N/A",
-    "torch_version": "2.13.0+cpu"
+    "available": true,
+    "count": 1,
+    "name": "AMD Instinct MI300X VF",
+    "rocm_version": "7.0.51831",
+    "torch_version": "2.10.0+rocm7.0"
   },
   "git": {
-    "commit": "c71452f8785f60c1ccde6d37f9932d4abbdd682c",
+    "commit": "6ae853b3a7962c041e8e0777ff52f105fb9aee10",
     "branch": "main",
-    "repo_root": "/home/z/my-project",
-    "is_dirty": false
+    "repo_root": "/root/workspace/proofbridge-liner",
+    "is_dirty": true
   }
 }
