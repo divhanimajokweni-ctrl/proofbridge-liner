@@ -121,6 +121,14 @@ export interface IveState {
 
   /* ---- recently visited panels (for header quick-switch) ---- */
   recentPanels: WorkspacePanelId[];
+
+  /* ---- guided tour ---- */
+  tourActive: boolean;
+  tourStep: number;
+  startTour: () => void;
+  stopTour: () => void;
+  advanceTour: () => void;
+  setTourStep: (step: number) => void;
 }
 
 export interface ActivityNotification {
@@ -441,7 +449,87 @@ export const useIveStore = create<IveState>((set, get) => ({
 
   /* ---- recently visited panels ---- */
   recentPanels: ["overview" as WorkspacePanelId],
+
+  /* ---- guided tour ---- */
+  tourActive: false,
+  tourStep: 0,
+  startTour: () => set({ tourActive: true, tourStep: 0, activePanel: "overview" }),
+  stopTour: () => set({ tourActive: false }),
+  advanceTour: () => {
+    const { tourStep, pushNotification } = get();
+    const next = tourStep + 1;
+    const steps = TOUR_STEPS;
+    if (next >= steps.length) {
+      set({ tourActive: false });
+      pushNotification({
+        level: "success",
+        source: "Guided Tour",
+        title: "Tour complete",
+        detail: "Walked all 8 tour stops. Explore freely — press Esc or click Exit to dismiss.",
+        panel: "overview",
+      });
+    } else {
+      set({ tourStep: next, activePanel: steps[next].panel });
+    }
+  },
+  setTourStep: (step) => {
+    const steps = TOUR_STEPS;
+    const clamped = Math.max(0, Math.min(step, steps.length - 1));
+    set({ tourStep: clamped, activePanel: steps[clamped].panel });
+  },
 }));
+
+/** Guided tour stops — each navigates to a panel and shows an explanation. */
+export const TOUR_STEPS: { panel: WorkspacePanelId; title: string; detail: string }[] = [
+  {
+    panel: "overview",
+    title: "Welcome to IVE",
+    detail:
+      "The VVU Integrated Verification Environment. Engineer systems that can prove themselves. This tour walks the core workflow in 8 stops.",
+  },
+  {
+    panel: "trust",
+    title: "Trust Sphere",
+    detail:
+      "A Fibonacci verification state space with 380 living nodes. The frozen dimensions below show evidence status — Safety is OUT_OF_SCOPE, Integrity VERIFIED, Determinism NOT_EVALUATED. No aggregate percentage. Engineering Release: BLOCKED.",
+  },
+  {
+    panel: "proof",
+    title: "Proof Graph",
+    detail:
+      "The engineering DAG: Input Provenance → Geometry → Specification → Proof Obligations → Solver → Evidence → Ledger → Engineering Release. Click Advance to walk the graph. The terminal node stays BLOCKED until evidence exists.",
+  },
+  {
+    panel: "evidence",
+    title: "Evidence Runtime",
+    detail:
+      "A deterministic timeline of engineering events. Every event is tagged EVIDENCED or NOT EVIDENCED. The runtime never fabricates evidence — missing inputs surface explicitly.",
+  },
+  {
+    panel: "release",
+    title: "Release Report",
+    detail:
+      "The release-readiness report ends in exactly one disposition. Currently NO-GO with 3 BLOCKER required fixes — the adapter script, the release-gate script, and on-disk results.json are not yet exposed for inspection.",
+  },
+  {
+    panel: "amd",
+    title: "AMD Runtime",
+    detail:
+      "Local Radeon emulation context on branch mi300x-rocm-run-20260804. 4.249× speedup against the CPU baseline. Remote cloud compute is NotImplemented. Seed determinism NOT_EVALUATED.",
+  },
+  {
+    panel: "hbk",
+    title: "HBK MK-II Hydro-Gateway",
+    detail:
+      "The demonstration application — NOT the platform. A hydraulic infrastructure case study showing how IVE maps geometry limits and tracks execution traces. Hydraulic actuation authority is UNDEFINED; the baseline fails to non-actuating.",
+  },
+  {
+    panel: "acceptance",
+    title: "Acceptance Checklist",
+    detail:
+      "8/8 dashboard acceptance checks pass: build, startup, contract-load, missing-state handling, no-hardcoded values, no-raw-reads, no-cert-wording, artifact-driven. A screenshot alone does not prove the dashboard is artifact-driven.",
+  },
+];
 
 /* Panel catalog (used by sidebar + command palette). */
 export interface PanelMeta {

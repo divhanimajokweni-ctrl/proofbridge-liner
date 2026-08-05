@@ -327,3 +327,55 @@ Unresolved issues / next-phase recommendations:
 6. [MEDIUM] Add a "demo walkthrough" guided-tour mode that auto-advances panels with explanatory overlays (for the 3-5 minute demo video).
 7. [LOW] Add a mini-map / panel-Overview card on the Overview panel showing all 20 panels as a visual grid with current-state indicators.
 8. [LOW] Produce the 3-5 minute demonstration video.
+
+---
+Task ID: 13 (cron review round 4)
+Agent: Principal (orchestrator)
+Task: MiniMap (system-map grid of all 20 panels with live state indicators) + GuidedTour mode (8-stop auto-advancing walkthrough) + styling polish.
+
+Work Log:
+- Reviewed worklog.md (RC1 + release-engineering + activity center + live events + keyboard shortcuts complete, 20 panels). QA'd via agent-browser: 0 lint errors, 0 console errors, all 20 panels render. Project stable.
+- Selected work focus per worklog recommendation #7 (mini-map / panel overview grid) and #6 (demo walkthrough guided-tour mode), plus mandatory styling improvements.
+- NEW FEATURE: MiniMap (`src/components/ive/MiniMap.tsx`).
+  - A compact visual grid of all 20 IVE workspace panels, grouped by category (Core/Release/Runtime/Case Study/System).
+  - Each cell shows: panel tag (accent-colored), label, and a live state indicator dot + label.
+  - State indicators are derived from the store: Trust Sphere shows "X/6" verified dimensions, Proof Graph shows "X/8" progress, Release Report shows "NO-GO", AMD shows "4.249×", Zoo shows "WRAPPER", Plugins shows "X run", Watchdog shows "NORMAL", Lindiwe shows "DORMANT", Acceptance shows "8/8", Integrity shows "6/7", others show "READY".
+  - Active panel highlighted with accent left-bar + glow. Click any cell to navigate.
+  - Legend: green=ready, blue=pending, red=blocked.
+  - Replaced the old "Workspace Surfaces" quick-nav on the Overview panel with this richer MiniMap. Cleaned up unused imports (PANELS, PANEL_MAP, setActivePanel) from OverviewPanel.
+- NEW FEATURE: GuidedTour (`src/components/ive/workspace/GuidedTour.tsx`).
+  - 8-stop auto-advancing panel walkthrough with explanatory overlays: Overview (Welcome), Trust Sphere, Proof Graph, Evidence Runtime, Release Report, AMD Runtime, HBK Workspace, Acceptance Checklist.
+  - Each stop navigates the active panel via the store and shows a bottom-center overlay card with: accent top bar, compass icon, "Stop X / 8" counter, panel label, title, narration detail, progress dots (clickable), and controls (Prev, Pause/Play, Restart, Next/Finish).
+  - Auto-advances every 12s; pause/resume. Arrow keys for prev/next, space to pause, Esc to exit.
+  - Completion pushes a "Tour complete" notification to the activity center.
+  - TourTrigger: header compass button (next to NotificationBell). Pulses gold when tour is active. `t` / `T` keyboard shortcut toggles globally. Added to ShortcutsOverlay documentation.
+  - TOUR_STEPS array exported from the store for inspectability.
+  - Extended `useIveStore.ts` with: tourActive, tourStep, startTour, stopTour, advanceTour, setTourStep.
+- STYLING:
+  - MiniMap uses staggered framer-motion entrance (delay i*0.03), accent-colored group dividers, state-indicator dots with glow.
+  - GuidedTour overlay uses spring animation (y: 80→0), accent top bar matching the current panel, backdrop blur, shadow-2xl.
+  - TourTrigger pulses gold when active.
+- VERIFIED:
+  - MiniMap renders on Overview with all 5 groups (CORE 4, RELEASE 5, RUNTIME 3, CASE STUDY 2, SYSTEM 6) and state indicators (READY, NO-GO confirmed).
+  - MiniMap click-to-navigate: clicked "RR Release Report" cell → navigated to Release Report panel.
+  - TourTrigger present in header. Pressing `t` starts tour → "GUIDED TOUR · STOP 1 / 8" + "Welcome to IVE" narration.
+  - Tour Next button: stop 1 → Trust Sphere (stop 2) → Proof Graph (stop 3). Esc exits tour.
+  - Final full 20-panel sweep: ALL 20 panels render with 0 console errors. 0 lint errors.
+
+Stage Summary:
+- 20 panels, all 0 errors. 0 lint errors. Clean build.
+- MiniMap: visual system-map grid with live per-panel state indicators, click-to-navigate, on the Overview panel.
+- GuidedTour: 8-stop auto-advancing walkthrough with narration, progress dots, keyboard controls (t/arrows/space/esc). For the 3-5 minute demo video.
+- TourTrigger: header compass button + `t` shortcut. Pulses when active.
+- Activity center, live events, keyboard navigation, boot ring, count badges all preserved from previous rounds.
+
+Current project status: STABLE + FEATURE-COMPLETE. The workspace now has a system-map overview, a guided tour for demo purposes, live event tracking, keyboard navigation, and polished visual feedback. The engineering operating system is production-ready for demonstration.
+
+Unresolved issues / next-phase recommendations:
+1. [BLOCKER] Expose ive_result_adapter.py as an inspectable file (release gate).
+2. [BLOCKER] Expose verify_release.py as an inspectable release-gate script.
+3. [BLOCKER] Write the frozen contract to ive-output/results.json on disk for packaging.
+4. [HIGH] Run independent sha256sum -c verification on the final package.
+5. [HIGH] Resolve LICENSE decision with owner authorization.
+6. [LOW] Add a "tour transcript" export so the guided tour can produce a written demo script.
+7. [LOW] Produce the 3-5 minute demonstration video (the GuidedTour mode is ready for this).

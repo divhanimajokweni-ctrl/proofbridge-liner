@@ -13,9 +13,10 @@ import {
   Activity,
   Layers,
 } from "lucide-react";
-import { useIveStore, PANELS, PANEL_MAP } from "@/store/useIveStore";
+import { useIveStore } from "@/store/useIveStore";
 import { VVULogo } from "../VVULogo";
 import { PanelFrame, SectionLabel, StatCard, StatusPill } from "../primitives";
+import { MiniMap } from "../MiniMap";
 
 const WORKFLOW = [
   { icon: Boxes, label: "Procedural CAD", detail: "Zoo Engine · KCL", accent: "#3dffb0" },
@@ -29,7 +30,6 @@ const WORKFLOW = [
 
 export function OverviewPanel() {
   const contract = useIveStore((s) => s.contract);
-  const setActivePanel = useIveStore((s) => s.setActivePanel);
   const trustSphere = useIveStore((s) => s.trustSphere);
 
   const provenDims = [
@@ -180,27 +180,10 @@ export function OverviewPanel() {
         />
       </div>
 
-      {/* Quick nav */}
+      {/* System Map — visual grid of all 20 panels */}
       <div className="mt-6">
-        <SectionLabel>Workspace Surfaces</SectionLabel>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
-          {PANELS.filter((p) => p.id !== "overview").map((p) => (
-            <button
-              key={p.id}
-              onClick={() => setActivePanel(p.id)}
-              className="group flex flex-col gap-1.5 rounded-lg border border-white/[0.06] p-3 text-left transition-all hover:border-white/15 hover:bg-white/[0.03]"
-            >
-              <span
-                className="ive-mono flex h-7 w-7 items-center justify-center rounded border text-[9px] font-bold"
-                style={{ borderColor: `${p.accent}40`, background: `${p.accent}10`, color: p.accent }}
-              >
-                {p.tag}
-              </span>
-              <span className="text-[11px] font-medium text-foreground">{p.label}</span>
-              <span className="ive-mono truncate text-[9px] text-muted-foreground/60">{p.mission}</span>
-            </button>
-          ))}
-        </div>
+        <SectionLabel>System Map · All Surfaces</SectionLabel>
+        <MiniMap />
       </div>
 
       {/* Evidence model */}
