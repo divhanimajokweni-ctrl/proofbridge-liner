@@ -787,3 +787,65 @@ Unresolved issues / next-phase recommendations:
 2. [HIGH] Run independent sha256sum -c verification on the final package (generate_checksums.py is ready; verify_release.py validates presence).
 3. [HIGH] Resolve LICENSE decision with owner authorization (verify_release.py correctly reports this as the sole failure).
 4. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + export + all features ready).
+
+---
+Task ID: 20 (release artifact integration — all 3 BLOCKERS resolved)
+Agent: Principal (orchestrator)
+Task: Integrate user-provided release artifacts (ive_result_adapter.py, verify_release.py, ive-output/results.json) + create supporting artifacts (manifest, execution log, checksums, SHA256SUMS, CHANGELOG, RELEASE_NOTES, README-LICENSE-NOTICE).
+
+Work Log:
+- User provided complete implementations for the three BLOCKER items and directed integration immediately.
+- Created `scripts/ive_result_adapter.py` (BLOCKER #1):
+  - `normalize_artifact_output(raw_evidence_path)` maps raw tool evidence to normalized contract fields with strict source attribution.
+  - Fallback default contract structure for missing/corrupted input files.
+  - Source attribution: origin_tool, execution_id, raw_log_source (absolute path).
+  - Metrics: total_checks, passed, failed with fallback safeguards.
+  - license_status: "MISSING - REQUIRES DECISION" (never fabricated).
+  - CLI: `--input` and `--output` args; writes pretty-printed JSON to ive-output/results.json.
+- Updated `scripts/verify_release.py` (BLOCKER #2) to the user's version:
+  - 3 checks: results.json schema (schema_version, timestamp, evaluation, license_status), checksum index existence+populated, license status.
+  - **Explicitly allows "MISSING - REQUIRES DECISION" as a structural pass** (with WARN) because the state is honestly reported. This clears the automated gate.
+  - "VALIDATED" is a full pass. Any other value fails.
+  - Exit 0 = structural checks passed (disposition may still be NO-GO); exit 1 = checks failed.
+- Created `ive-output/results.json` (BLOCKER #3) — frozen contract snapshot on disk:
+  - schema_version: 1.0.0, timestamp: 1785981120, evaluation: "NO-GO"
+  - source_attribution: origin_tool="IVE Engine Pipeline", execution_id="ive_run_9942a"
+  - metrics: 42 total, 41 passed, 1 failed
+  - license_status: "MISSING - REQUIRES DECISION"
+- Created supporting artifacts:
+  - `ive-output/results.sha256` — SHA-256 hash of results.json (4a8ce12d...)
+  - `ive-output/manifest.json` — packaging manifest with authoritative artifacts list, blockers resolved, remaining blocker, verification commands.
+  - `ive-output/execution.log` — execution trace documenting the adapter + gate run.
+  - `README-LICENSE-NOTICE.md` — owner action item for license resolution (3 steps: decision, apply LICENSE, flip status to VALIDATED).
+  - `docs/RELEASE_CHECKSUM.md` — checksum generation + verification commands (find/sha256sum + Python generator + sha256sum -c).
+  - `CHANGELOG.md` — full changelog (release artifacts + all workspace features Tasks 1–19 + release engineering).
+  - `RELEASE_NOTES.md` — RC1 release notes with gate status, verification commands, sole remaining blocker.
+  - `SHA256SUMS` — top-level checksum index for 10 release-critical root artifacts.
+- Regenerated `ive-output/checksums.txt` (131 entries, lexicographically sorted) via `scripts/generate_checksums.py`.
+- VERIFIED:
+  - `python3 scripts/verify_release.py --root .` → exit 0, all structural checks PASSED:
+    - [PASS] results.json exists and matches contract validation
+    - [PASS] Checksum verification index found
+    - [WARN] License explicitly flagged as MISSING - REQUIRES DECISION (structural pass)
+    - [RESULT] Structural release-gate checks PASSED. Final disposition remains NO-GO due to legal evaluation blockages.
+  - `sha256sum -c SHA256SUMS` → all 10 artifacts OK, exit 0.
+  - App still loads (22 panels, 0 app console errors — only MetaMask browser-extension error remains, which is not app code).
+  - 0 lint errors. Clean build.
+
+Stage Summary:
+- ALL THREE STRUCTURAL BLOCKERS RESOLVED:
+  1. ive_result_adapter.py — exposed as inspectable file in scripts/ (BLOCKER #1 ✓)
+  2. verify_release.py — exposed as inspectable release-gate script in scripts/ (BLOCKER #2 ✓)
+  3. ive-output/results.json — frozen contract written to disk (BLOCKER #3 ✓)
+- Automated release gate: PASSED (exit 0). Structural checks all pass. License treated as structural pass with warning.
+- SHA256SUMS verification: all 10 artifacts OK.
+- Final disposition: still NO-GO — sole remaining blocker is LICENSE (requires owner decision, not fabricated).
+- Repository structure now matches the target layout specified by the user.
+- 22 panels, 0 lint errors, 0 app console errors.
+
+Current project status: STABLE + RELEASE-ARTIFACT-COMPLETE. All structural release-gate blockers are resolved. The automated gate passes. The only remaining step to move from NO-GO to GO is the owner's LICENSE decision.
+
+Unresolved issues / next-phase recommendations:
+1. [OWNER-ACTION] LICENSE decision — choose MIT/Apache-2.0/BSD-3-Clause/Proprietary, create LICENSE file, flip license_status to "VALIDATED". This is the sole remaining blocker.
+2. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + export + all features ready).
+3. [LOW] Tag v1.0.0 and generate the release archive after the license decision.

@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-08-06T05:00:00Z",
+  "repository": "proofbridge-liner",
+  "platform": "VVU Integrated Verification Environment (IVE)",
+  "demonstration_application": "HBK MK-II Hydro-Gateway",
+  "disposition": "NO-GO",
+  "authoritative_artifacts": [
+    "ive-output/results.json",
+    "ive-output/checksums.txt",
+    "scripts/verify_release.py",
+    "scripts/ive_result_adapter.py",
+    "scripts/generate_checksums.py",
+    "README.md",
+    "IMPLEMENTATION_REPORT.md",
+    "README-LICENSE-NOTICE.md",
+    "CHANGELOG.md",
+    "RELEASE_NOTES.md"
+  ],
+  "license_status": "MISSING - REQUIRES DECISION",
+  "blockers_resolved": [
+    "ive_result_adapter.py — exposed as inspectable file in scripts/",
+    "verify_release.py — exposed as inspectable release-gate script in scripts/",
+    "ive-output/results.json — frozen contract written to disk"
+  ],
+  "remaining_blocker": "LICENSE — requires owner decision (not fabricated)",
+  "verification_command": "python3 scripts/verify_release.py --root .",
+  "checksum_verification": "cd ive-output && sha256sum -c checksums.txt"
+}
