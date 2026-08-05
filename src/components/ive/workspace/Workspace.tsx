@@ -62,9 +62,38 @@ export function Workspace() {
       if (e.key === "?") {
         e.preventDefault();
         setShortcutsOpen((o) => !o);
+        return;
+      }
+      // [ and ] navigate prev / next panel within the full panel order.
+      if (e.key === "[" || e.key === "]") {
+        e.preventDefault();
+        const order = PANELS.map((p) => p.id);
+        const idx = order.indexOf(activePanel);
+        const dir = e.key === "]" ? 1 : -1;
+        const nextIdx = (idx + dir + order.length) % order.length;
+        setActivePanel(order[nextIdx]);
+        return;
+      }
+      // g then a letter jumps to a group's first panel.
+      if (e.key === "g") {
+        e.preventDefault();
+        // queue the next keypress via a one-shot listener
+        const groupListener = (ev: KeyboardEvent) => {
+          window.removeEventListener("keydown", groupListener);
+          const map: Record<string, PanelMeta["group"]> = {
+            c: "core", r: "release", u: "runtime", h: "case-study", s: "system",
+          };
+          const g = map[ev.key.toLowerCase()];
+          if (g) {
+            ev.preventDefault();
+            const first = PANELS.find((p) => p.group === g);
+            if (first) setActivePanel(first.id);
+          }
+        };
+        window.addEventListener("keydown", groupListener, { once: true });
       }
     },
-    [paletteOpen],
+    [paletteOpen, activePanel, setActivePanel],
   );
 
   useEffect(() => {
@@ -191,7 +220,15 @@ export function Workspace() {
                   <span className="ive-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/50">
                     {GROUP_LABELS[group]}
                   </span>
-                  <span className="ml-auto h-px flex-1 bg-gradient-to-r from-white/[0.06] to-transparent" />
+                  <span
+                    className="ive-mono ml-auto rounded px-1 py-0.5 text-[8px] font-bold"
+                    style={{
+                      color: `${GROUP_ACCENTS[group]}99`,
+                      background: `${GROUP_ACCENTS[group]}12`,
+                    }}
+                  >
+                    {PANELS.filter((p) => p.group === group).length}
+                  </span>
                 </div>
                 {PANELS.filter((p) => p.group === group).map((p) => {
                   const isActive = activePanel === p.id;
@@ -323,7 +360,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
           <div>
             <div className="ive-mono mb-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Navigation</div>
             <div className="flex flex-col gap-1.5">
-              {[["Sidebar", "Click any panel"], ["Status bar", "Live telemetry"]].map(([k, l]) => (
+              {[["[ / ]", "Prev / next panel"], ["g c", "Jump to Core"], ["g r", "Jump to Release"], ["g u", "Jump to Runtime"], ["g h", "Jump to Case Study"], ["g s", "Jump to System"]].map(([k, l]) => (
                 <div key={k} className="flex items-center justify-between gap-3">
                   <span className="text-xs text-foreground/85">{l}</span>
                   <Kbd>{k}</Kbd>

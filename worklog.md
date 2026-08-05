@@ -282,3 +282,48 @@ Unresolved issues / next-phase recommendations:
 6. [MEDIUM] Wire real-time event sources (proof runtime, evidence runtime) to pushNotification so the activity center updates live as the user advances the proof graph or evidence timeline.
 7. [LOW] Add per-panel keyboard shortcuts (e.g. [ and ] for prev/next panel within a group).
 8. [LOW] Produce the 3-5 minute demonstration video.
+
+---
+Task ID: 12 (cron review round 3)
+Agent: Principal (orchestrator)
+Task: Live event wiring (proof/evidence/plugin → notification center) + per-panel keyboard shortcuts + styling (boot stage-counter ring, sidebar group count badges).
+
+Work Log:
+- Reviewed worklog.md (RC1 + release-engineering + activity center complete, 20 panels). QA'd via agent-browser: 0 lint errors, 0 console errors, all 20 panels render. Project stable.
+- Selected work focus per worklog recommendation #6 (wire real-time event sources) and #7 (per-panel keyboard shortcuts), plus mandatory styling improvements.
+- LIVE EVENT WIRING (`useIveStore.ts`):
+  - `advanceProof`: now pushes a notification with level based on stage (info for stages 1-5, success for 6-7, error for stage 8 Engineering Release BLOCKED). Title includes the node label (Input Provenance, Geometry, ..., Engineering Release). Detail includes stage count and evidence status.
+  - `resetProof`: pushes a warn notification ("Proof graph reset — all stages returned to PENDING, no evidence discarded").
+  - `advanceEvidence`: pushes a notification matching the evidence event's level (info/warn/error/success), with the stage and message as title, timestamp + EVIDENCED/NOT_EVIDENCED as detail.
+  - `resetEvidence`: pushes a warn notification ("Evidence timeline reset — cursor returned to start, events preserved").
+  - `setPluginState`: pushes a notification with level based on new state (success for RUNNING, error for NOT_INSTALLED, info otherwise), title `${plugin.label}: ${state}`, detail with native/wrapper + description.
+  - Fixed a type issue: removed invalid `FAIL_CLOSED` from the PluginState level check (PluginState union is NOT_INSTALLED/INSTALLED/DORMANT/ACTIVATED/RUNNING/IDLE).
+- VERIFIED live wiring: navigated to Proof Graph, clicked Advance twice → bell badge increased from 3 unread to 5 unread. Opened notification center → saw "Proof Graph" source entries with stage labels. 0 console errors.
+- KEYBOARD SHORTCUTS (`Workspace.tsx` handleKey):
+  - `[` / `]`: navigate to previous / next panel in the full PANELS order (wraps around). Verified: from Proof Graph, `[` → Trust Sphere, `]` → Proof Graph.
+  - `g` then a letter: jump to a group's first panel. Map: g c → Core (Overview), g r → Release (Release Report), g u → Runtime (Plugin Registry), g h → Case Study (HBK Workspace), g s → System (Artifacts). Implemented via a one-shot keydown listener after `g`. Verified: g r → Release Report.
+  - Updated ShortcutsOverlay: Navigation column now documents [ / ], g c, g r, g u, g h, g s.
+- STYLING:
+  - Boot stage-counter ring: replaced the plain "IVE · 01 / 09" text with a 44×44 SVG ring (gold stroke, drop-shadow glow, strokeDashoffset animated to match progress) + centered stage number + "/ 09" below. The ring fills as boot progresses.
+  - Sidebar group count badges: each group header (Core/Release/Runtime/Case Study/System) now shows a count badge in the group's accent color (e.g. CORE 4, RELEASE 5, RUNTIME 3, CASE STUDY 2, SYSTEM 6). Replaced the gradient divider line with the badge.
+- VERIFIED: Final full 20-panel sweep — ALL 20 panels render with 0 console errors. Boot ring renders ("/ 09" visible). Sidebar count badges render (CORE 4, RELEASE 5, RUNTIME 3 confirmed). Live notifications fire on proof/evidence/plugin interactions. Keyboard shortcuts work ([, ], g r). 0 lint errors.
+
+Stage Summary:
+- 20 panels, all 0 errors. 0 lint errors. Clean build.
+- Live event wiring: proof graph advance/reset, evidence runtime advance/reset, plugin state changes all push real-time notifications to the activity center. Bell badge updates live.
+- Keyboard shortcuts: [ / ] for prev/next panel, g+letter for group jumps. Documented in ShortcutsOverlay.
+- Boot stage-counter ring: gold SVG ring with progress fill + glow.
+- Sidebar group count badges: per-group panel counts in accent colors.
+- Activity center now fully live — user actions produce traceable events.
+
+Current project status: STABLE + FULLY INTERACTIVE. The workspace now has live event tracking (every proof/evidence/plugin action produces a notification), fast keyboard navigation, and polished visual feedback (boot ring, count badges, accent glow). The engineering operating system feel is complete.
+
+Unresolved issues / next-phase recommendations:
+1. [BLOCKER] Expose ive_result_adapter.py as an inspectable file (release gate).
+2. [BLOCKER] Expose verify_release.py as an inspectable release-gate script.
+3. [BLOCKER] Write the frozen contract to ive-output/results.json on disk for packaging.
+4. [HIGH] Run independent sha256sum -c verification on the final package.
+5. [HIGH] Resolve LICENSE decision with owner authorization.
+6. [MEDIUM] Add a "demo walkthrough" guided-tour mode that auto-advances panels with explanatory overlays (for the 3-5 minute demo video).
+7. [LOW] Add a mini-map / panel-Overview card on the Overview panel showing all 20 panels as a visual grid with current-state indicators.
+8. [LOW] Produce the 3-5 minute demonstration video.

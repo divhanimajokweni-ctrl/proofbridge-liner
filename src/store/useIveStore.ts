@@ -180,36 +180,94 @@ export const useIveStore = create<IveState>((set, get) => ({
   proofGraph: buildProofGraph(0, [false, false, false, false, false, false, false, false]),
   proofProgress: 0,
   advanceProof: () => {
-    const { proofProgress } = get();
+    const { proofProgress, pushNotification } = get();
     const next = Math.min(proofProgress + 1, 8);
+    const nodeLabels = [
+      "Input Provenance", "Geometry", "Specification", "Proof Obligations",
+      "Solver", "Evidence", "Ledger", "Engineering Release",
+    ];
     set({
       proofProgress: next,
       proofGraph: buildProofGraph(next, [
         true, true, true, false, false, false, false, false,
       ]),
     });
+    // Live event: notify the activity center of the stage transition.
+    const label = nodeLabels[next - 1] ?? `stage ${next}`;
+    const isRelease = next === 8;
+    pushNotification({
+      level: isRelease ? "error" : next >= 6 ? "success" : "info",
+      source: "Proof Graph",
+      title: isRelease ? "Engineering Release: BLOCKED" : `Proof stage advanced: ${label}`,
+      detail: isRelease
+        ? "Terminal node reached. Release remains BLOCKED — solver not linked, obligations NOT_EVALUATED."
+        : `Stage ${next}/8 (${label}) advanced. Status derived from runtime evidence.`,
+      panel: "proof",
+    });
   },
-  resetProof: () =>
+  resetProof: () => {
+    const { pushNotification } = get();
     set({
       proofProgress: 0,
       proofGraph: buildProofGraph(0, [false, false, false, false, false, false, false, false]),
-    }),
+    });
+    pushNotification({
+      level: "warn",
+      source: "Proof Graph",
+      title: "Proof graph reset",
+      detail: "All stages returned to PENDING. No evidence discarded — runtime state only.",
+      panel: "proof",
+    });
+  },
 
   /* ---- evidence runtime ---- */
   evidenceTimeline: EVIDENCE_TIMELINE,
   evidenceCursor: 0,
   advanceEvidence: () => {
-    const { evidenceCursor, evidenceTimeline } = get();
-    set({ evidenceCursor: Math.min(evidenceCursor + 1, evidenceTimeline.length) });
+    const { evidenceCursor, evidenceTimeline, pushNotification } = get();
+    const next = Math.min(evidenceCursor + 1, evidenceTimeline.length);
+    set({ evidenceCursor: next });
+    const ev = evidenceTimeline[next - 1];
+    if (ev) {
+      pushNotification({
+        level: ev.level,
+        source: "Evidence Runtime",
+        title: `${ev.stage}: ${ev.message.split("—")[0]?.trim() ?? ev.message}`,
+        detail: `${ev.timestamp} · ${ev.evidenced ? "EVIDENCED" : "NOT EVIDENCED — timeline reflects intended sequence"}`,
+        panel: "evidence",
+      });
+    }
   },
-  resetEvidence: () => set({ evidenceCursor: 0 }),
+  resetEvidence: () => {
+    const { pushNotification } = get();
+    set({ evidenceCursor: 0 });
+    pushNotification({
+      level: "warn",
+      source: "Evidence Runtime",
+      title: "Evidence timeline reset",
+      detail: "Cursor returned to start. Timeline events preserved — no evidence discarded.",
+      panel: "evidence",
+    });
+  },
 
   /* ---- plugin registry ---- */
   plugins: PLUGINS,
-  setPluginState: (id, state) =>
+  setPluginState: (id, state) => {
+    const { plugins, pushNotification } = get();
+    const plugin = plugins.find((p) => p.id === id);
     set((s) => ({
       plugins: s.plugins.map((p) => (p.id === id ? { ...p, state } : p)),
-    })),
+    }));
+    if (plugin) {
+      pushNotification({
+        level: state === "RUNNING" ? "success" : state === "NOT_INSTALLED" ? "error" : "info",
+        source: "Plugin Registry",
+        title: `${plugin.label}: ${state}`,
+        detail: `Lifecycle transition. Plugin is ${plugin.native ? "native" : "wrapper-layer"}. ${plugin.description.slice(0, 80)}`,
+        panel: "plugins",
+      });
+    }
+  },
 
   /* ---- AMD runtime ---- */
   hardwareProfile: CONTRACT.hardware_profile,

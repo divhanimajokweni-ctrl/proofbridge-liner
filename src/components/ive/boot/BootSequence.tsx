@@ -93,10 +93,34 @@ export function BootSequence() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col items-center gap-1.5"
+            className="flex flex-col items-center gap-2"
           >
-            <div className="ive-mono text-[10px] uppercase tracking-[0.32em] text-[var(--ive-gold)]/80">
-              IVE · {String(localStage + 1).padStart(2, "0")} / {String(stages.length).padStart(2, "0")}
+            {/* Stage-counter ring */}
+            <div className="relative flex items-center justify-center">
+              <svg width="44" height="44" viewBox="0 0 44 44" className="flex-none">
+                <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
+                <motion.circle
+                  cx="22"
+                  cy="22"
+                  r="19"
+                  fill="none"
+                  stroke="#C9A84C"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 19}
+                  initial={false}
+                  animate={{ strokeDashoffset: 2 * Math.PI * 19 * (1 - progress) }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  transform="rotate(-90 22 22)"
+                  style={{ filter: "drop-shadow(0 0 4px rgba(201,168,76,0.5))" }}
+                />
+              </svg>
+              <span className="ive-mono absolute text-[9px] font-bold text-[var(--ive-gold)]">
+                {String(localStage + 1).padStart(2, "0")}
+              </span>
+            </div>
+            <div className="ive-mono text-[9px] uppercase tracking-[0.32em] text-[var(--ive-gold)]/60">
+              / {String(stages.length).padStart(2, "0")}
             </div>
             <h1 className="font-sans text-lg font-bold tracking-tight text-foreground sm:text-xl">
               {current.label}
