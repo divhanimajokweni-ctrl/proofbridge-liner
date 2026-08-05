@@ -1,8 +1,8 @@
 {
   "metrics": {
-    "accuracy": 0.9919621422886848,
-    "speedup": null,
-    "samples": 10000,
+    "accuracy": 0.9997527689873418,
+    "speedup": 4.249,
+    "samples": 100000,
     "ledger_chain_valid": true,
     "used_genesis_physics": false
   },
@@ -59,10 +59,10 @@
     }
   },
   "git": {
-    "commit": "1c84a50e3f4893ff9aca0e1121441686876b4ee8",
+    "commit": "6ae853b3a7962c041e8e0777ff52f105fb9aee10",
     "branch": "main",
-    "is_dirty": false,
-    "pipeline_run_commit": "c71452f8785f60c1ccde6d37f9932d4abbdd682c"
+    "is_dirty": true,
+    "pipeline_run_commit": "6ae853b3a7962c041e8e0777ff52f105fb9aee10"
   },
   "ledger_valid": true
 }

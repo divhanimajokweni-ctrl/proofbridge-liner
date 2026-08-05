@@ -1,22 +1,22 @@
 {
-  "timestamp": "2026-08-03T19:49:04.699057+00:00",
+  "timestamp": "2026-08-05T03:03:43.675869+00:00",
   "platform": {
     "system": "Linux",
-    "release": "5.10.134-013.8.3.kangaroo.al8.x86_64",
+    "release": "6.8.0-79-generic",
     "machine": "x86_64",
-    "python_version": "3.12.13"
+    "python_version": "3.12.3"
   },
   "gpu": {
-    "available": false,
-    "count": 0,
-    "name": "N/A",
-    "rocm_version": "N/A",
-    "torch_version": "2.13.0+cpu"
+    "available": true,
+    "count": 1,
+    "name": "AMD Radeon Graphics",
+    "rocm_version": "6.2.41133-dd7f95766",
+    "torch_version": "2.5.1+rocm6.2"
   },
   "git": {
-    "commit": "c71452f8785f60c1ccde6d37f9932d4abbdd682c",
+    "commit": "6ae853b3a7962c041e8e0777ff52f105fb9aee10",
     "branch": "main",
-    "repo_root": "/home/z/my-project",
+    "repo_root": "/workspace/proofbridge-liner",
     "is_dirty": false
   }
 }

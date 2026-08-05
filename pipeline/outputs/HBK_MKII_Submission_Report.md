@@ -1,16 +1,15 @@
 # HBK MK-II Hydro-Gateway — Submission Report
 **Version:** 2.1 (Provenance-Tracked, Dual-Benchmark)
-**Date:** August 03, 2026
+**Date:** August 05, 2026
 **Competition:** Zoo Makeathon (Aug 5) | AMD Radeon Robotics Hackathon (Aug 6)
-**Git Commit:** `1c84a50e3f48` (main)
+**Git Commit:** `6ae853b3a796` (main [DIRTY])
 
-**Pipeline executed at:** `c71452f8785f` (report generated from a later commit containing the outputs)
 
 ---
 
 ## 1. Executive Summary
 Dual-tier compute (AMD Kria K26 edge inference + AMD MI300X training/simulation).
-Measured this run: **N/A (CPU-only)** ROCm speedup, **99.2%** validation accuracy
+Measured this run: **4.249x** ROCm speedup, **99.98%** validation accuracy
 on **synthetic** sensor data (see Section 4 for what "synthetic" means here).
 
 **Read before citing this report externally:** any field below marked
@@ -23,15 +22,15 @@ generation — it does not certify that unverified values are correct.
 ## 2. Performance Metrics (Measured This Run)
 | Metric | Value | Source |
 | :--- | :--- | :--- |
-| ROCm Speedup | N/A (CPU-only) | `benchmark_results` in `results.json` |
-| Validation Accuracy | 99.2% | `training.final_val_acc` in `results.json` |
-| Simulation Samples | 10,000 | `metrics.json` |
-| Training Time | 13.84s | `results.json` |
+| ROCm Speedup | 4.249x | `benchmark_results` in `results.json` |
+| Validation Accuracy | 99.98% | `training.final_val_acc` in `results.json` |
+| Simulation Samples | 100,000 | `metrics.json` |
+| Training Time | 45.65s | `results.json` |
 | Physics Engine | synthetic (numpy, no physics engine) | `simulation_meta` in `results.json` |
 
 ### Environment
-| GPU: CPU-only (no ROCm GPU) | ROCm: N/A | PyTorch: 2.13.0+cpu
-- OS: Linux 5.10.134-013.8.3.kangaroo.al8.x86_64
+| GPU: AMD Radeon Graphics (1x) | ROCm: 6.2.41133-dd7f95766 | PyTorch: 2.5.1+rocm6.2
+- OS: Linux 6.8.0-79-generic
 
 ---
 
@@ -46,11 +45,11 @@ with **identical** workflow, provenance, and ledger guarantees.
 | **Baseline** | CPU | Correctness + reproducibility | `python3 run_pipeline.py --mode full --no-gpu` |
 | **Accelerated** | AMD GPU (ROCm) | Performance gains on AMD hardware | `python3 run_pipeline.py --mode full` |
 
-### Current Run Results (CPU Baseline Only)
-| Metric | Value |
-| :--- | :--- |
-| CPU Benchmark Time | 0.497s |
-| AMD GPU Benchmark | ⏳ Pending — run on ROCm hardware for accelerated results |
+### Current Run Results
+| Metric | CPU (Baseline) | AMD GPU (Accelerated) |
+| :--- | :--- | :--- |
+| Benchmark Time | 1.027s | 0.242s |
+| Speedup | 1.0x (reference) | 4.249x |
 
 **What makes this compelling for judges:**
 1. Identical workflow (`run_pipeline.py`).
@@ -110,4 +109,4 @@ performance.
 - Metrics: `metrics.json`
 - Checksums: `checksums.txt` (SHA-256, 9 files verified)
 
-*Generated 2026-08-03T19:59:38.604270*
+*Generated 2026-08-05T03:05:38.009688*
