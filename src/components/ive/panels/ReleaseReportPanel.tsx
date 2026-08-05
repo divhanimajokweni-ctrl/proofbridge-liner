@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   OctagonAlert,
@@ -15,6 +16,10 @@ import {
   Cpu,
   Ban,
   AlertTriangle,
+  Download,
+  Copy,
+  Check,
+  Printer,
   type LucideIcon,
 } from "lucide-react";
 import { useIveStore } from "@/store/useIveStore";
@@ -28,6 +33,11 @@ import {
   PIPELINE_PRESERVATION_RULES,
   LICENSE_STATUS,
 } from "@/lib/ive/release";
+import {
+  generateReleaseReportMarkdown,
+  downloadTextFile,
+  copyToClipboard,
+} from "@/lib/ive/export";
 
 const SEVERITY_ACCENT: Record<Severity, string> = {
   BLOCKER: "var(--ive-blocked)",
@@ -171,11 +181,38 @@ function PipelineRunCard({ run, index }: { run: PipelineRun; index: number }) {
 export function ReleaseReportPanel() {
   // Pull run_id for the closing statement (display only).
   const contractRunId = useIveStore((s) => s.contract.run_id);
+  const [copied, setCopied] = useState(false);
 
   const totalFixes = REQUIRED_FIXES.length;
   const blockers = countBlockers(REQUIRED_FIXES);
   const blockingSubmission = countBlocksSubmission(REQUIRED_FIXES);
   const nonBlocking = totalFixes - blockingSubmission;
+
+  function handleExportMarkdown() {
+    const md = generateReleaseReportMarkdown({
+      disposition: DISPOSITION,
+      rationale: DISPOSITION_RATIONALE,
+      fixes: REQUIRED_FIXES,
+      runId: String(contractRunId),
+      generatedAt: new Date().toISOString(),
+    });
+    downloadTextFile(`ive-release-report-${Date.now()}.md`, md);
+  }
+
+  async function handleCopy() {
+    const md = generateReleaseReportMarkdown({
+      disposition: DISPOSITION,
+      rationale: DISPOSITION_RATIONALE,
+      fixes: REQUIRED_FIXES,
+      runId: String(contractRunId),
+      generatedAt: new Date().toISOString(),
+    });
+    const ok = await copyToClipboard(md);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
 
   return (
     <PanelFrame
@@ -183,6 +220,46 @@ export function ReleaseReportPanel() {
       tag="RR"
       accent="#ff4d5f"
       mission="Release-readiness report ending in exactly one disposition. Required-fixes table with severity and blocking."
+      actions={
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleCopy}
+            className="ive-mono inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+            title="Copy report as markdown"
+            aria-label="Copy release report as markdown"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3 w-3 text-[var(--ive-proven)]" />
+                <span className="text-[var(--ive-proven)]">Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3" />
+                <span className="hidden sm:inline">Copy</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleExportMarkdown}
+            className="ive-mono inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+            title="Download report as markdown file"
+            aria-label="Download release report as markdown"
+          >
+            <Download className="h-3 w-3" />
+            <span className="hidden sm:inline">.md</span>
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="ive-mono inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+            title="Print / save as PDF"
+            aria-label="Print release report"
+          >
+            <Printer className="h-3 w-3" />
+            <span className="hidden sm:inline">Print</span>
+          </button>
+        </div>
+      }
     >
       {/* ---- Disposition hero banner ---- */}
       <motion.div

@@ -262,3 +262,38 @@
 .ive-divider {
   background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.2), transparent);
 }
+
+/* ---- Print styles ---- */
+@media print {
+  /* Hide everything except the main panel content for a clean report. */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  header,
+  nav,
+  footer,
+  [aria-label="IVE panels"],
+  [role="dialog"],
+  [role="region"],
+  .fixed {
+    display: none !important;
+  }
+  /* Expand the panel content to fill the page. */
+  main {
+    overflow: visible !important;
+    position: static !important;
+  }
+  /* Ensure text is readable on white. */
+  * {
+    color: black !important;
+    border-color: #ccc !important;
+    background: white !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  /* Keep the gold accent for headings only. */
+  h1, h2, h3 {
+    color: #8a6d1a !important;
+  }
+}
