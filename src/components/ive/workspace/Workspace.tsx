@@ -44,11 +44,20 @@ export function Workspace() {
   const activePanel = useIveStore((s) => s.activePanel);
   const setActivePanel = useIveStore((s) => s.setActivePanel);
   const recentPanels = useIveStore((s) => s.recentPanels);
+  const settings = useIveStore((s) => s.settings);
+  const setMissionControlOpen = useIveStore((s) => s.setMissionControlOpen);
+  const setStatsHudOpen = useIveStore((s) => s.setStatsHudOpen);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const activeMeta = PANEL_MAP[activePanel];
+
+  // Honor default-open widget settings on mount.
+  useEffect(() => {
+    if (settings.defaultOpenMissionControl) setMissionControlOpen(true);
+    if (settings.defaultOpenStatsHud) setStatsHudOpen(true);
+  }, [settings.defaultOpenMissionControl, settings.defaultOpenStatsHud, setMissionControlOpen, setStatsHudOpen]);
 
   const handleKey = useCallback(
     (e: KeyboardEvent) => {

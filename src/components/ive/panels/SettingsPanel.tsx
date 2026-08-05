@@ -201,6 +201,9 @@ export function SettingsPanel() {
     return !ACCENT_SWATCHES.some((s) => s.hex === settings.accentOverride);
   }, [settings.accentOverride]);
 
+  /** The resolved hex value of the current accent (for live preview). */
+  const currentAccentHex = settings.accentOverride === "gold" ? "#C9A84C" : settings.accentOverride;
+
   const isSwatchActive = (swatch: (typeof ACCENT_SWATCHES)[number]) => {
     if (swatch.key === "gold") return settings.accentOverride === "gold";
     return settings.accentOverride === swatch.hex;
@@ -443,6 +446,37 @@ export function SettingsPanel() {
                     : settings.accentOverride}
                 </code>
               )}
+            </div>
+
+            {/* Live preview — shows the accent applied to sample UI elements */}
+            <div className="rounded-md border border-white/[0.06] bg-white/[0.01] p-3">
+              <div className="ive-mono mb-2 flex items-center gap-1.5 text-[8.5px] uppercase tracking-[0.14em] text-muted-foreground/60">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: currentAccentHex }} />
+                Live Preview
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="ive-mono rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em]"
+                  style={{ borderColor: `${currentAccentHex}40`, background: `${currentAccentHex}10`, color: currentAccentHex }}
+                >
+                  TAG
+                </span>
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: currentAccentHex, boxShadow: `0 0 6px ${currentAccentHex}80` }}
+                />
+                <div className="h-[2px] w-16 rounded-full" style={{ background: currentAccentHex }} />
+                <button
+                  type="button"
+                  className="ive-mono rounded-md border px-2 py-0.5 text-[9px] font-semibold"
+                  style={{ borderColor: `${currentAccentHex}50`, background: `${currentAccentHex}15`, color: currentAccentHex }}
+                >
+                  Sample
+                </button>
+                <span className="ive-mono text-[9px]" style={{ color: currentAccentHex }}>
+                  applied globally
+                </span>
+              </div>
             </div>
 
             <p className="ive-mono text-[9.5px] leading-relaxed text-muted-foreground/60">

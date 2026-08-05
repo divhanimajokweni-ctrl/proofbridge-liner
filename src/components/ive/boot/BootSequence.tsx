@@ -26,6 +26,7 @@ export function BootSequence() {
   const advanceBoot = useIveStore((s) => s.advanceBoot);
   const completeBoot = useIveStore((s) => s.completeBoot);
   const skipBoot = useIveStore((s) => s.skipBoot);
+  const showBootSoundWave = useIveStore((s) => s.settings.showBootSoundWave);
 
   const [localStage, setLocalStage] = useState(0);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -163,7 +164,9 @@ export function BootSequence() {
       {/* Ambient sound-wave visualization — a row of bars whose heights
           oscillate based on the boot stage progress, giving a "signal
           alive" feel. Respects the showBootSoundWave setting. */}
-      <BootSoundWave active={true} stage={localStage} total={stages.length} />
+      {showBootSoundWave && (
+        <BootSoundWave active={true} stage={localStage} total={stages.length} />
+      )}
 
       {/* Skip control */}
       <button

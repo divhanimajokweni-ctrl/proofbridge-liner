@@ -511,3 +511,52 @@ Unresolved issues / next-phase recommendations:
 5. [HIGH] Resolve LICENSE decision with owner authorization.
 6. [MEDIUM] Wire the settings to actually take effect (autoSkipBoot → skip boot on mount, animationIntensity → scale framer-motion durations, accentOverride → apply as CSS variable, defaultOpenMissionControl/StatsHud → open on mount).
 7. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + Mission Control + Settings ready for this).
+
+---
+Task ID: 16 (cron review round 7)
+Agent: Principal (orchestrator)
+Task: Wire all settings to take runtime effect (autoSkipBoot, accentOverride, defaultOpenMissionControl/StatsHud, showBootSoundWave, animationIntensity) + Settings panel live accent preview.
+
+Work Log:
+- Reviewed worklog.md (21 panels, Settings panel + boot sound-wave + sidebar dot complete). QA'd via agent-browser: 0 lint errors, 0 console errors, all tested panels render. Project stable.
+- Selected work focus: worklog recommendation #6 from round 6 — "Wire the settings to actually take effect". Previously settings were stored but did not affect runtime behavior.
+- WIRED autoSkipBoot (`IveRoot.tsx`): added a useEffect that calls `completeBoot()` on mount if `settings.autoSkipBoot` is true. Uses a `autoSkippedRef` guard to prevent double-skip. Verified: enabled autoSkipBoot in Settings → reload → workspace loaded directly (no boot sequence). The setting persisted across reloads via localStorage.
+- WIRED accentOverride (`IveRoot.tsx`): added a useEffect that sets `document.documentElement.style.setProperty('--ive-gold', hex)` based on `settings.accentOverride`. When "gold", sets `#C9A84C`; otherwise sets the custom hex. Verified: clicked Sage swatch in Settings → `--ive-gold` CSS variable immediately changed to `#8A9A5B` → entire UI accent (header, sidebar active items, panel underlines) changed to sage. Clicked Gold → reverted.
+- WIRED defaultOpenMissionControl + defaultOpenStatsHud (`Workspace.tsx`): added a mount useEffect that calls `setMissionControlOpen(true)` and/or `setStatsHudOpen(true)` if the corresponding settings are true. Dependencies are the setting values + setters (stable from Zustand).
+- WIRED showBootSoundWave (`BootSequence.tsx`): added `showBootSoundWave` selector from `settings`, conditionally renders `<BootSoundWave>` only when true. Previously always rendered.
+- WIRED animationIntensity (`IveRoot.tsx`): wrapped the entire app in `<MotionConfig>` with:
+  - `transition={{ duration: 0.3 * scale }}` where scale = 1 (full), 0.4 (reduced), 0 (none).
+  - `reducedMotion="always"` when intensity is "none" (disables all framer-motion animations).
+  This scales all framer-motion transition durations globally and can fully disable animations.
+- STYLING: Settings panel live accent preview (`SettingsPanel.tsx`).
+  - Added a "Live Preview" card in the Accent Color section showing the current accent applied to sample UI elements: a TAG badge, a status dot with glow, a divider bar, a Sample button, and "applied globally" text — all tinted with `currentAccentHex`.
+  - Added `currentAccentHex` derived value (resolves "gold" → #C9A84C or the custom hex).
+  - Updates immediately when the user clicks a swatch (no reload needed).
+- Removed an unnecessary `eslint-disable-next-line` directive (the effect deps are now fully specified).
+- VERIFIED:
+  - autoSkipBoot: enabled → reload → workspace loaded directly (no boot). Persisted across reloads.
+  - accentOverride: Sage swatch → `--ive-gold` = `#8A9A5B` immediately. Gold swatch → reverted.
+  - Settings panel renders fully: Boot & Animation (Auto-skip boot switch checked=true, Animation intensity), Accent Color (6 swatches, Gold selected, Live Preview), Widget Defaults, Keyboard Shortcuts, Data & Privacy sections.
+  - Final full 21-panel sweep: ALL 21 panels render with 0 console errors. 0 lint errors.
+
+Stage Summary:
+- 21 panels, all 0 errors. 0 lint errors. Clean build.
+- ALL settings now take runtime effect:
+  - autoSkipBoot → skips boot on mount (verified)
+  - accentOverride → applies as --ive-gold CSS variable globally (verified: Sage → #8A9A5B)
+  - defaultOpenMissionControl/StatsHud → opens widgets on workspace mount
+  - showBootSoundWave → conditionally renders boot sound-wave canvas
+  - animationIntensity → scales framer-motion durations via MotionConfig (full/reduced/none)
+- Settings panel live accent preview: shows the accent applied to sample elements, updates instantly.
+- All previous features preserved (21 panels, activity center, live events, keyboard nav, boot ring, count badges, GuidedTour, MiniMap, MissionControl, StatsHUD, boot sound-wave, sidebar dot).
+
+Current project status: STABLE + FULLY WIRED. All user preferences now take effect at runtime. The workspace is a complete, personalized engineering operating system.
+
+Unresolved issues / next-phase recommendations:
+1. [BLOCKER] Expose ive_result_adapter.py as an inspectable file (release gate).
+2. [BLOCKER] Expose verify_release.py as an inspectable release-gate script.
+3. [BLOCKER] Write the frozen contract to ive-output/results.json on disk for packaging.
+4. [HIGH] Run independent sha256sum -c verification on the final package.
+5. [HIGH] Resolve LICENSE decision with owner authorization.
+6. [LOW] Add a "first-run" detection that shows a welcome hint pointing to the Guided Tour (T) and Settings panels.
+7. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + Mission Control + Settings all ready).
