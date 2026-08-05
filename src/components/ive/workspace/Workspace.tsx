@@ -140,6 +140,25 @@ export function Workspace() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Context Glance — always-visible release disposition pill */}
+          <button
+            onClick={() => setActivePanel("release")}
+            className="hidden items-center gap-1.5 rounded-full border px-2 py-1 transition-colors hover:bg-white/[0.04] sm:inline-flex"
+            style={{
+              borderColor: "rgba(255,77,95,0.3)",
+              background: "rgba(255,77,95,0.08)",
+            }}
+            title="Release disposition — click for details"
+            aria-label="Release disposition: NO-GO"
+          >
+            <span
+              className="h-1.5 w-1.5 rounded-full ive-live-pulse"
+              style={{ background: "var(--ive-blocked)", boxShadow: "0 0 5px rgba(255,77,95,0.6)" }}
+            />
+            <span className="ive-mono text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--ive-blocked)" }}>
+              NO-GO
+            </span>
+          </button>
           <span className="hidden items-center gap-2 rounded-full border px-2.5 py-1 sm:inline-flex" style={{ borderColor: `${activeMeta.accent}40`, background: `${activeMeta.accent}10` }}>
             <span className="ive-mono text-[9px] font-semibold uppercase tracking-wider" style={{ color: activeMeta.accent }}>
               {activeMeta.tag}

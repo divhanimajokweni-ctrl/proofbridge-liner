@@ -106,6 +106,10 @@ const SettingsPanel = dynamic(
   () => import("../panels/SettingsPanel").then((m) => m.SettingsPanel),
   { ssr: false, loading },
 );
+const HelpFaqPanel = dynamic(
+  () => import("../panels/HelpFaqPanel").then((m) => m.HelpFaqPanel),
+  { ssr: false, loading },
+);
 
 const PANEL_COMPONENTS: Record<WorkspacePanelId, React.ComponentType> = {
   overview: OverviewPanel,
@@ -129,6 +133,7 @@ const PANEL_COMPONENTS: Record<WorkspacePanelId, React.ComponentType> = {
   identity: IdentityRegistryPanel,
   acceptance: AcceptanceChecklistPanel,
   settings: SettingsPanel,
+  help: HelpFaqPanel,
 };
 
 export function PanelRouter({ panel }: { panel: WorkspacePanelId }) {

@@ -180,7 +180,8 @@ export type WorkspacePanelId =
   | "integrity"
   | "identity"
   | "acceptance"
-  | "settings";
+  | "settings"
+  | "help";
 
 export type BootStageId =
   | "logo"

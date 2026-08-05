@@ -633,6 +633,7 @@ export const PANELS: PanelMeta[] = [
   { id: "watchdog", label: "Watchdog", tag: "WDG", accent: "#ff4d5f", mission: "Hardware watchdog + safety interlock monitor. Fails to non-actuating state.", group: "system" },
   { id: "lindiwe", label: "Lindiwe", tag: "LIN", accent: "#b23dff", mission: "Agent orchestrator — specification assistance and evidence review.", group: "system" },
   { id: "settings", label: "Settings", tag: "SET", accent: "#8b949e", mission: "User preferences — boot auto-skip, animation intensity, widget defaults, accent override.", group: "system" },
+  { id: "help", label: "Help & FAQ", tag: "FAQ", accent: "#3d9bff", mission: "Evaluator-oriented questions and answers — what IVE is, why release is BLOCKED, how to navigate.", group: "system" },
 ];
 
 export const PANEL_MAP: Record<WorkspacePanelId, PanelMeta> = PANELS.reduce(

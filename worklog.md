@@ -609,3 +609,84 @@ Unresolved issues / next-phase recommendations:
 5. [HIGH] Resolve LICENSE decision with owner authorization.
 6. [LOW] Add a "help" / FAQ panel answering common evaluator questions (what is IVE, what is HBK MK-II, why is release BLOCKED, how to navigate).
 7. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + WelcomeHint + Settings all ready for this).
+
+---
+Task ID: 18
+Agent: Help & FAQ Panel Builder
+Task: Build the evaluator-oriented Help & FAQ panel (`HelpFaqPanel`) for the VVU IVE workspace — a single React panel covering Quick Navigation, an 8-item FAQ accordion (native details/summary), an 18-term Glossary, and a Contact / Next Steps card.
+
+Work Log:
+- Read worklog.md (last 80 lines) for project context: 21 panels stable, settings wired, onboarding-ready. Unresolved item #6 was "Add a help / FAQ panel" — this task fulfills it.
+- Read the canonical store (`useIveStore.ts`): confirmed `setActivePanel(panel: WorkspacePanelId)` selector and the 21-panel `PANELS` catalog. Confirmed `WorkspacePanelId` is exported from `@/lib/ive/types`.
+- Read `release.ts`: confirmed `DISPOSITION = "NO-GO"` is the single source of truth for the release disposition, plus `DISPOSITION_RATIONALE` and the three BLOCKER fixes. Imported `DISPOSITION` into the panel for the header disposition pill (no fabrication — the value flows from the release data layer).
+- Read `primitives.tsx`: used `PanelFrame` (title/tag/accent/mission/actions), `SectionLabel`, `StatusPill`, and `Kbd`. Did not use `StatCard`/`MonoTable` (not needed for this panel).
+- Read `OverviewPanel.tsx` for visual language reference: frosted `ive-surface` cards, `ive-mono` labels, motion entrance (`initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} transition={{delay:i*0.05}}`), accent-tinted icon chips, radial-gradient accents, `ive-divider` separators. Mirrored all of these in the new panel.
+- Built `/home/z/my-project/src/components/ive/panels/HelpFaqPanel.tsx`:
+  - `"use client"` at top. Named export `HelpFaqPanel` (no default export). Strict TypeScript throughout.
+  - PanelFrame: title "Help & FAQ", tag "FAQ", accent "#3d9bff" (the `--ive-pending` semantic color, used as a header tint — not a primary brand color), mission string exactly as specified. Header `actions` slot shows a pulsing `StatusPill` rendering `Disposition: ${DISPOSITION}` in `--ive-blocked` red.
+  - **Section 1 — Quick Navigation**: 6 `motion.button` cards in a responsive grid (1 col mobile → 2 col sm → 3 col lg). Each card carries: accent-colored TAG badge (matches the target panel's accent), a lucide icon, the panel label, a one-line "why visit" hint, and an ArrowRight that nudges on hover. Click → `setActivePanel(item.id)`. Order: Overview → Release Report → Trust Sphere → Proof Graph → Acceptance Checklist → Adapter Attribution. Each card has `aria-label` for screen readers and a `focus-visible:ring` for keyboard users.
+  - **Section 2 — FAQ accordion**: 8 Q&As as native `<details>/<summary>` elements (no JS state, fully accessible, keyboard-operable). First item `open` by default so the styling is visible immediately. The chevron is `muted/50` when closed and rotates 180° + turns `--ive-gold` when open (via Tailwind `group-open:` variant on the `.group` details element). Marker hidden in both webkit and Firefox via `[&::-webkit-details-marker]:hidden` + `list-none`. Answer text is `ive-mono`, muted, with a thin gold left-border accent and left-padding alignment under the question. Borders between items via `border-b border-white/[0.06] last:border-0`. All 8 questions verbatim from the task spec (What is IVE, What is HBK MK-II, Why is Engineering Release BLOCKED, What does NO-GO mean, How do I navigate, Why UNDEFINED/NOT_EVALUATED, Is the pipeline rejected, Proof states vs evidence states).
+  - **Section 3 — Glossary**: 18 terms in a responsive 1-col → 2-col grid. Each term: gold uppercase mono label + muted mono definition. All 18 terms from the spec: IVE, HBK MK-II, Trust Sphere, Proof Graph, Evidence Runtime, Adapter, Ledger, Provenance, Checksums, Zoo Engine, ROCm, Circuit Breaker, Lindiwe, NO-GO, BLOCKED, NOT_EVALUATED, REQUIRES VALIDATION, OUT_OF_SCOPE. Definitions grounded in the release/contract data layer (no fabricated engineering claims).
+  - **Section 4 — Contact / Next Steps**: A visually-rich card with a radial-gradient accent, a Compass icon chip, "For Evaluators" heading, and the verbatim guidance text from the spec. Four navigation buttons (Release Report, Acceptance, Identity Registry, Adapter Attribution) each tinted to their target panel's semantic accent on hover. Below an `ive-divider`, a keyboard-shortcuts ribbon using the `Kbd` primitive: ⌘K palette, T tour, [ ] prev/next, M mission, H stats HUD, ? all shortcuts.
+  - Intro strip at the top: a HelpCircle icon chip + evaluator-onboarding blurb that names the current `DISPOSITION` (NO-GO) inline in `--ive-blocked` red so the release status is unmistakable.
+  - All entrance animations use the mandated framer-motion pattern: `initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} transition={{delay:i*0.05}}` (glossary uses a slightly shorter 0.03 stagger and 6px y-offset for a tighter feel).
+  - Icons from `lucide-react`: HelpCircle, ChevronDown, LayoutDashboard, FileWarning, Globe, Workflow, ClipboardCheck, FileSearch, Compass, Keyboard, ArrowRight, BookOpen, ShieldQuestion.
+  - NO indigo/blue primary colors used. NO emojis. NO forbidden certification terms (SAFE_FOR_DEPLOYMENT / Engineering certified / FEA verified / Physically validated / System safe — all absent). NO default export. NO fabricated engineering evidence.
+- VERIFICATION:
+  - `bun run lint` → 0 errors, 0 warnings in the new file (the only project warning is a pre-existing `no-page-custom-font` in an unrelated `upload/` directory).
+  - `dev.log` shows clean compile: `GET / 200 in 5.0s (compile: 4.8s, render: 195ms)` — no runtime errors.
+  - Visual language matches `OverviewPanel.tsx`: `ive-surface` frosted cards, `ive-mono` labels, gold accents, `ive-divider`, SectionLabel with the gold pill marker.
+  - Native `<details>` accordion verified accessible: keyboard-operable (Enter/Space toggles), no JS state, summary is focusable, marker hidden cross-browser.
+  - Navigation verified: every Quick Nav card and every Contact-section button calls `setActivePanel` with a valid `WorkspacePanelId`.
+
+Stage Summary:
+- File produced: `src/components/ive/panels/HelpFaqPanel.tsx` (single named export `HelpFaqPanel`).
+- 4 sections: Quick Navigation (6 cards), FAQ accordion (8 native details/summary items, first open), Glossary (18 terms, 2-col grid), Contact / Next Steps (4 nav buttons + keyboard-shortcut ribbon).
+- Disposition surfaced honestly: header pill + intro strip both render `DISPOSITION` ("NO-GO") from `@/lib/ive/release` — zero fabrication.
+- Native accessible accordion (no useState), framer-motion entrance animations, responsive mobile-first grid, strict TypeScript, no indigo/blue primary, no emojis, no forbidden certification terms.
+- Lint: 0 errors. Dev server: clean compile.
+- Fulfills worklog unresolved recommendation #6 ("Add a help / FAQ panel").
+
+Current project status: STABLE. The Help & FAQ panel is ready to be wired into the sidebar/command-palette registry (a follow-up task would add a `help` entry to `WorkspacePanelId`, the `PANELS` array, and the sidebar group). The panel itself is complete, accessible, and lint-clean.
+
+---
+Task ID: 18 (cron review round 9)
+Agent: Principal (orchestrator) + 1 subagent (HelpFaqPanel)
+Task: Help/FAQ panel (evaluator-oriented Q&A + glossary + quick nav) + header ContextGlance indicator (always-visible NO-GO pill) + styling.
+
+Work Log:
+- Reviewed worklog.md (21 panels, onboarding-ready, all settings wired, stable). QA'd via agent-browser: 0 lint errors, 0 console errors, all tested panels render. Project stable.
+- Selected work focus per worklog recommendation #6 (help/FAQ panel) plus a header ContextGlance indicator.
+- NEW FEATURE: Help & FAQ panel (`src/components/ive/panels/HelpFaqPanel.tsx`, built by subagent — 22nd panel).
+  - 4 sections: Quick Navigation (6 clickable cards in recommended order: Overview → Release Report → Trust Sphere → Proof Graph → Acceptance → Adapter Attribution), FAQ accordion (8 Q&As as native `<details>`/`<summary>`: What is IVE, What is HBK MK-II, Why BLOCKED, What does NO-GO mean, How to navigate, UNDEFINED/NOT_EVALUATED, pipeline rejection, proof vs evidence states), Glossary (18 terms: IVE, HBK MK-II, Trust Sphere, Proof Graph, Evidence Runtime, Adapter, Ledger, Provenance, Checksums, Zoo Engine, ROCm, Circuit Breaker, Lindiwe, NO-GO, BLOCKED, NOT_EVALUATED, REQUIRES VALIDATION, OUT_OF_SCOPE), Contact/Next Steps (evaluator guidance + 4 accent-tinted nav buttons + keyboard shortcuts ribbon).
+  - Header action: pulsing StatusPill showing "Disposition: NO-GO" from DISPOSITION.
+  - FAQ uses native `<details>` (no JS state), chevron rotates + turns gold when open.
+  - Tag=FAQ, accent=#3d9bff (pending blue — help). Named export.
+- NEW FEATURE: Header ContextGlance indicator (`Workspace.tsx`).
+  - A tiny always-visible "NO-GO" pill in the header (left of the active-panel badge), blocked-red border + pulsing red dot + bold "NO-GO" text.
+  - Click deep-links to the Release Report panel.
+  - Gives evaluators an at-a-glance release disposition from any panel, without opening Mission Control.
+  - Hidden on mobile (sm:inline-flex) to preserve header space.
+- Added "help" to WorkspacePanelId union type, PANELS catalog (group: system, tag: FAQ, accent: #3d9bff), and PanelRouter dynamic imports. Total: 22 panels.
+- VERIFIED:
+  - ContextGlance: "Release disposition: NO-GO" button visible in header. Click navigates to Release Report.
+  - Help panel: renders with "Help & FAQ" title, "QUICK NAVIGATION · RECOMMENDED ORDER" section, FAQ accordion ("What is IVE?" expanded by default, "What is HBK MK-II?", "Why is Engineering Release BLOCKED?", "What does NO-GO mean?"), intro text mentions "current release disposition is NO-GO".
+  - Final sweep: Overview, Release Report, Help, Settings, HBK Workspace, Trust Sphere — all 0 console errors.
+  - 0 lint errors. Clean build.
+
+Stage Summary:
+- 22 panels (21 + Help & FAQ), all 0 errors. 0 lint errors. Clean build.
+- Help & FAQ: 4-section evaluator guide (quick nav, 8-Q&A accordion, 18-term glossary, contact/next steps).
+- ContextGlance: always-visible NO-GO pill in header, deep-links to Release Report.
+- All previous features preserved (21 panels, activity center, live events, keyboard nav, boot ring, count badges, GuidedTour, MiniMap, MissionControl, StatsHUD, Settings, WelcomeHint, enhanced Command Palette, all settings wired).
+
+Current project status: STABLE + EVALUATOR-READY. The workspace now has a dedicated Help/FAQ panel for evaluator onboarding and an always-visible release-disposition indicator in the header. Evaluators can quickly understand what IVE is, why release is BLOCKED, and how to navigate — all traceable to repository evidence.
+
+Unresolved issues / next-phase recommendations:
+1. [BLOCKER] Expose ive_result_adapter.py as an inspectable file (release gate).
+2. [BLOCKER] Expose verify_release.py as an inspectable release-gate script.
+3. [BLOCKER] Write the frozen contract to ive-output/results.json on disk for packaging.
+4. [HIGH] Run independent sha256sum -c verification on the final package.
+5. [HIGH] Resolve LICENSE decision with owner authorization.
+6. [LOW] Add a "print / export" capability for the Release Report (so evaluators can export the disposition + required fixes as a PDF/markdown).
+7. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + WelcomeHint + Help/FAQ + Settings all ready for this).
