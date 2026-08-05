@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronRight, Command as CommandIcon, Keyboard } from "lucide-react";
+import { ChevronRight, Command as CommandIcon, Keyboard, Layers, ShieldCheck, Cpu, Droplets, Server } from "lucide-react";
 import { useIveStore, PANELS, PANEL_MAP, type PanelMeta } from "@/store/useIveStore";
 import { VVULogo } from "../VVULogo";
 import { StatusPill, Kbd } from "../primitives";
@@ -12,12 +12,29 @@ import { PanelRouter } from "./PanelRouter";
 
 const GROUP_LABELS: Record<PanelMeta["group"], string> = {
   core: "Core",
+  release: "Release",
   runtime: "Runtime",
   "case-study": "Case Study",
   system: "System",
 };
 
-const GROUP_ORDER: PanelMeta["group"][] = ["core", "runtime", "case-study", "system"];
+const GROUP_ICONS: Record<PanelMeta["group"], typeof Layers> = {
+  core: Layers,
+  release: ShieldCheck,
+  runtime: Cpu,
+  "case-study": Droplets,
+  system: Server,
+};
+
+const GROUP_ACCENTS: Record<PanelMeta["group"], string> = {
+  core: "#C9A84C",
+  release: "#ff4d5f",
+  runtime: "#CC7722",
+  "case-study": "#ff4d5f",
+  system: "#8b949e",
+};
+
+const GROUP_ORDER: PanelMeta["group"][] = ["core", "release", "runtime", "case-study", "system"];
 
 export function Workspace() {
   const activePanel = useIveStore((s) => s.activePanel);
@@ -121,8 +138,16 @@ export function Workspace() {
           <div className="flex flex-col gap-3">
             {GROUP_ORDER.map((group) => (
               <div key={group} className="flex flex-col gap-1">
-                <div className="ive-mono px-2 pb-0.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground/50">
-                  {GROUP_LABELS[group]}
+                <div className="flex items-center gap-1.5 px-2 pb-0.5">
+                  {(() => {
+                    const GIcon = GROUP_ICONS[group];
+                    const accent = GROUP_ACCENTS[group];
+                    return <GIcon className="h-3 w-3" style={{ color: `${accent}99` }} strokeWidth={1.8} />;
+                  })()}
+                  <span className="ive-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground/50">
+                    {GROUP_LABELS[group]}
+                  </span>
+                  <span className="ml-auto h-px flex-1 bg-gradient-to-r from-white/[0.06] to-transparent" />
                 </div>
                 {PANELS.filter((p) => p.group === group).map((p) => {
                   const isActive = activePanel === p.id;
@@ -143,12 +168,12 @@ export function Workspace() {
                       {isActive && (
                         <span
                           className="absolute inset-y-1 left-0 w-[2px] rounded-full"
-                          style={{ background: p.accent }}
+                          style={{ background: p.accent, boxShadow: `0 0 6px ${p.accent}80` }}
                           aria-hidden
                         />
                       )}
                       <span
-                        className="ive-mono flex h-6 w-6 flex-none items-center justify-center rounded border text-[8.5px] font-bold"
+                        className="ive-mono flex h-6 w-6 flex-none items-center justify-center rounded border text-[8.5px] font-bold transition-colors"
                         style={{
                           borderColor: isActive ? `${p.accent}50` : "rgba(255,255,255,0.06)",
                           background: isActive ? `${p.accent}12` : "transparent",

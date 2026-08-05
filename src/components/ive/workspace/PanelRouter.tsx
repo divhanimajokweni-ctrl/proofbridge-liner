@@ -82,6 +82,26 @@ const LindiwePanel = dynamic(
   () => import("../panels/LindiwePanel").then((m) => m.LindiwePanel),
   { ssr: false, loading },
 );
+const ReleaseReportPanel = dynamic(
+  () => import("../panels/ReleaseReportPanel").then((m) => m.ReleaseReportPanel),
+  { ssr: false, loading },
+);
+const AdapterAttributionPanel = dynamic(
+  () => import("../panels/AdapterAttributionPanel").then((m) => m.AdapterAttributionPanel),
+  { ssr: false, loading },
+);
+const IntegrityClosurePanel = dynamic(
+  () => import("../panels/IntegrityClosurePanel").then((m) => m.IntegrityClosurePanel),
+  { ssr: false, loading },
+);
+const IdentityRegistryPanel = dynamic(
+  () => import("../panels/IdentityRegistryPanel").then((m) => m.IdentityRegistryPanel),
+  { ssr: false, loading },
+);
+const AcceptanceChecklistPanel = dynamic(
+  () => import("../panels/AcceptanceChecklistPanel").then((m) => m.AcceptanceChecklistPanel),
+  { ssr: false, loading },
+);
 
 const PANEL_COMPONENTS: Record<WorkspacePanelId, React.ComponentType> = {
   overview: OverviewPanel,
@@ -99,6 +119,11 @@ const PANEL_COMPONENTS: Record<WorkspacePanelId, React.ComponentType> = {
   terminal: TerminalPanel,
   watchdog: WatchdogPanel,
   lindiwe: LindiwePanel,
+  release: ReleaseReportPanel,
+  adapter: AdapterAttributionPanel,
+  integrity: IntegrityClosurePanel,
+  identity: IdentityRegistryPanel,
+  acceptance: AcceptanceChecklistPanel,
 };
 
 export function PanelRouter({ panel }: { panel: WorkspacePanelId }) {

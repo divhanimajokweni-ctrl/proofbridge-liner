@@ -283,7 +283,7 @@ export interface PanelMeta {
   tag: string;
   accent: string;
   mission: string;
-  group: "core" | "runtime" | "case-study" | "system";
+  group: "core" | "runtime" | "case-study" | "system" | "release";
 }
 
 export const PANELS: PanelMeta[] = [
@@ -291,6 +291,11 @@ export const PANELS: PanelMeta[] = [
   { id: "trust", label: "Trust Sphere", tag: "TS", accent: "#b23dff", mission: "Fibonacci verification state space. Six dimensions + release. No aggregate percentage.", group: "core" },
   { id: "proof", label: "Proof Graph", tag: "PG", accent: "#3dffb0", mission: "Engineering DAG: provenance → geometry → spec → obligations → solver → evidence → ledger → release.", group: "core" },
   { id: "evidence", label: "Evidence Runtime", tag: "ER", accent: "#3d9bff", mission: "Deterministic evidence timeline. Never fabricates evidence.", group: "core" },
+  { id: "release", label: "Release Report", tag: "RR", accent: "#ff4d5f", mission: "Release-readiness report ending in exactly one disposition. Required-fixes table with severity and blocking.", group: "release" },
+  { id: "adapter", label: "Adapter Attribution", tag: "ADP", accent: "#3d9bff", mission: "Source attribution for every normalized contract field. No inference from filenames or branch names.", group: "release" },
+  { id: "integrity", label: "Integrity Closure", tag: "INT", accent: "#C9A84C", mission: "Checksum index spec, ledger-root boundary, covered-artifact registry.", group: "release" },
+  { id: "acceptance", label: "Acceptance", tag: "ACC", accent: "#3dffb0", mission: "Dashboard acceptance checklist — build, startup, contract-load, no-hardcoded, no-raw-reads, no-cert-wording.", group: "release" },
+  { id: "identity", label: "Identity Registry", tag: "IDR", accent: "#b23dff", mission: "Platform vs demo vs independent components vs historical. Legitimate references preserved, not deleted.", group: "release" },
   { id: "plugins", label: "Plugin Registry", tag: "PR", accent: "#C9A84C", mission: "Plugin lifecycle: NOT_INSTALLED → INSTALLED → DORMANT → ACTIVATED → RUNNING → IDLE.", group: "runtime" },
   { id: "amd", label: "AMD Runtime", tag: "AMD", accent: "#CC7722", mission: "ROCm / HIP / PyTorch GPU acceleration status. Local Radeon emulation context.", group: "runtime" },
   { id: "zoo", label: "Zoo Runtime", tag: "ZOO", accent: "#3dffb0", mission: "Native Zoo APIs vs project wrappers. Clearly labelled, never conflated.", group: "runtime" },

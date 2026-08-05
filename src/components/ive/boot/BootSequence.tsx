@@ -56,13 +56,24 @@ export function BootSequence() {
 
   return (
     <div className="ive-scanline relative flex h-full w-full flex-col items-center justify-center overflow-hidden">
+      {/* Particle field canvas — slow-drifting evidence motes */}
+      <BootParticleField />
+
       {/* Ambient grid + radial glow */}
       <div className="ive-grid-bg pointer-events-none absolute inset-0 opacity-40" />
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 45%, rgba(201,168,76,0.08), transparent 55%)",
+            "radial-gradient(circle at 50% 45%, rgba(201,168,76,0.10), transparent 55%)",
+        }}
+      />
+      {/* Vignette for depth */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,0.4) 100%)",
         }}
       />
 
@@ -497,6 +508,102 @@ function MiniSphere({ small = false }: { small?: boolean }) {
       className={small ? "h-[160px] w-[160px]" : "h-[220px] w-[220px]"}
       role="img"
       aria-label="Fibonacci trust sphere boot visualization"
+    />
+  );
+}
+
+/**
+ * BootParticleField
+ * -----------------
+ * A slow-drifting field of evidence motes rendered on a canvas behind the
+ * boot stages. Each mote drifts upward at a stochastically varied speed
+ * with a gentle horizontal sway, creating a "data rain" ambient effect
+ * without overwhelming the foreground stage visual. Zero re-renders — all
+ * animation state lives in refs driven by a single RAF loop.
+ */
+function BootParticleField() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const rafRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    interface Mote {
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      size: number;
+      alpha: number;
+      phase: number;
+      color: string;
+    }
+    const colors = ["#C9A84C", "#8A9A5B", "#CC7722", "#3dffb0", "#3d9bff"];
+    let motes: Mote[] = [];
+
+    const seed = () => {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      const count = Math.min(80, Math.floor((w * h) / 12000));
+      motes = Array.from({ length: count }, () => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.08,
+        vy: -(0.08 + Math.random() * 0.22),
+        size: 0.5 + Math.random() * 1.4,
+        alpha: 0.08 + Math.random() * 0.28,
+        phase: Math.random() * Math.PI * 2,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      }));
+    };
+    seed();
+
+    const render = (time: number) => {
+      rafRef.current = requestAnimationFrame(render);
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      if (cw === 0 || ch === 0) return;
+      const tw = Math.round(cw * dpr);
+      const th = Math.round(ch * dpr);
+      if (canvas.width !== tw || canvas.height !== th) {
+        canvas.width = tw;
+        canvas.height = th;
+        seed();
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cw, ch);
+
+      for (const m of motes) {
+        m.x += m.vx + Math.sin(time * 0.0006 + m.phase) * 0.12;
+        m.y += m.vy;
+        if (m.y < -10) {
+          m.y = ch + 10;
+          m.x = Math.random() * cw;
+        }
+        if (m.x < -10) m.x = cw + 10;
+        if (m.x > cw + 10) m.x = -10;
+        const flicker = 0.7 + Math.sin(time * 0.002 + m.phase) * 0.3;
+        ctx.globalAlpha = m.alpha * flicker;
+        ctx.fillStyle = m.color;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    };
+    rafRef.current = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      aria-hidden
     />
   );
 }

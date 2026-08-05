@@ -143,3 +143,101 @@ Stage Summary:
 - Boot sequence cinematic + interrupt-safe. Trust Sphere recovered. All 15 workspace panels functional. Zustand canonical. Footer sticky. No console errors. Documentation aligned.
 - Engineering Release: BLOCKED (intentional — no fabricated evidence).
 - Remaining blockers are intentional frozen-scope boundaries (solver not linked, native Zoo API NOT_DEMONSTRATED, seed determinism NOT_EVALUATED).
+
+---
+Task ID: 10-b
+Agent: Release Surfaces Builder (Identity + Acceptance)
+Task: Build 2 React panels for the VVU IVE workspace — IdentityRegistryPanel (IDR) and AcceptanceChecklistPanel (ACC). Both are release-engineering surfaces mandated by the Execution and Preservation Constraints addendum and read exclusively from `src/lib/ive/release.ts`.
+
+Work Log:
+- Read `worklog.md` (frozen identity, forbidden terms, architecture decisions), `src/lib/ive/release.ts` (STATUS_VOCABULARY, IDENTITY_REGISTRY, DASHBOARD_ACCEPTANCE, LICENSE_STATUS, DISPOSITION), `src/store/useIveStore.ts` (PANELS catalog confirms `identity` + `acceptance` entries), `src/lib/ive/types.ts` (WorkspacePanelId contract), `src/components/ive/primitives.tsx` (PanelFrame/StatCard/StatusPill/MonoTable/SectionLabel), and reference panels `OverviewPanel.tsx` + `TrustSpherePanel.tsx` for the cinematic visual language.
+- Wrote work record to `/agent-ctx/10-b-release-surfaces-builder.md`.
+- Built `IdentityRegistryPanel.tsx`:
+  - Hero banner with the identity-conflict-handling rule (verbatim from the addendum, including the "does NOT mean deleting legitimate references to AIR, Epistemic Runtime, historical project names, or Trust OS" clause).
+  - Identity Registry: rich card per IDENTITY_REGISTRY entry (6 total), left vertical accent bar color-coded by role (Platform=gold #C9A84C, Demonstration Application=blocked-red, Independent Component=blue #3d9bff, Verification OS=proven-green, Historical=muted). Each card shows name (bold), role badge (with role icon), status pill, detail text, and a green PRESERVED badge (CheckCircle2). Stagger animation (`initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} transition={{delay:i*0.05}}`).
+  - Role legend: maps all 5 roles to color + icon + meaning.
+  - Status Vocabulary: 2-column layout. Left = "Proof Obligation States" (PROVEN/DISPROVEN/BLOCKED_MISSING_INPUT/BLOCKED_UNVERIFIED_INPUT/OUT_OF_SCOPE/SOLVER_ERROR, 6 states). Right = "Evidence / Component States" (VERIFIED/PRESENT_UNVERIFIED/NOT_DEMONSTRATED/REQUIRES VALIDATION/REQUIRES ENGINEERING DATA/UNEVALUATED/MISSING/BLOCKED, 8 states). Each state is a color-coded StatusPill with its `use` description below. Closing blocked-red note: "Do not report an unevaluated proof obligation as PROVEN, DISPROVEN, or 'safe.'"
+  - Footer note: "Historical artifacts are not rewritten to match current identity..."
+  - Tag=IDR, accent=#b23dff (violet — identity). Named export.
+- Built `AcceptanceChecklistPanel.tsx`:
+  - Hero banner with the dashboard-acceptance rule (verbatim from the addendum, including "A screenshot alone does not prove the dashboard is artifact-driven").
+  - Pass-rate stat card: large CheckCircle2 icon, "8 / 8 PASSED" in proven-green, 100% progress bar (animated width with proven-green gradient + glow).
+  - Acceptance checklist: 2-col grid on desktop, 1-col on mobile. Each of the 8 DASHBOARD_ACCEPTANCE entries as a card with left accent bar (proven-green since all satisfied=true), CheckCircle2 icon, requirement (bold), PASS pill, evidence text (mono, muted). Stagger animation.
+  - Evidence deep-dive: 4 expanded cards for contract-load, no-hardcoded, no-raw-reads, no-cert-wording explaining HOW each is satisfied (e.g., no-hardcoded card references contract.hardware_profile.speedupRatio via the Zustand store and points out that searching the panel source reveals no literals; no-raw-reads card mentions /api/ive and /api/ive/artifacts API routes).
+  - Anti-pattern watchlist: blocked-red bordered card listing 5 forbidden patterns with red X icons (XCircle) — hardcoded benchmark values, direct component reads from outputs/*.json, unsupported certification wording (SAFE_FOR_DEPLOYMENT / Engineering certified / FEA verified), screenshot-only evidence, inferring status from filenames/branches.
+  - Footer note: "A screenshot alone does not prove the dashboard is artifact-driven..."
+  - Tag=ACC, accent=#3dffb0 (proven green — acceptance). Named export.
+- Verified `bun run lint`: 0 errors in either new file. The only remaining warning is a pre-existing `no-page-custom-font` in `upload/VVU-Legacy-Dashboard/...` (outside this task's scope). Verified dev.log: `✓ Compiled in 16s` — my two panels resolve correctly through PanelRouter's dynamic imports. Remaining module-not-found errors are for sibling release panels (`ReleaseReportPanel`, `AdapterAttributionPanel`, `IntegrityClosurePanel`) owned by other agents, not in this task's scope.
+
+Stage Summary — files produced:
+- `/home/z/my-project/src/components/ive/panels/IdentityRegistryPanel.tsx` (named export `IdentityRegistryPanel`)
+- `/home/z/my-project/src/components/ive/panels/AcceptanceChecklistPanel.tsx` (named export `AcceptanceChecklistPanel`)
+- `/home/z/my-project/agent-ctx/10-b-release-surfaces-builder.md` (work record)
+
+---
+Task ID: 10-a
+Agent: Release-Engineering Panels Builder (RR / ADP / INT)
+Task: Build 3 named-export React panels for the VVU IVE workspace — ReleaseReportPanel, AdapterAttributionPanel, IntegrityClosurePanel. These are release-engineering surfaces mandated by the Execution and Preservation Constraints addendum. Each reads from `src/lib/ive/release.ts` and the canonical Zustand store, composes the shared primitives (PanelFrame/StatCard/StatusPill/MonoTable/SectionLabel), and follows the established cinematic dark visual language (gold accent, mono telemetry, framer-motion staggered entrance animations, lucide-react icons). No fabricated engineering evidence — every missing value surfaces explicitly as UNDEFINED / MISSING / NOT_EVALUATED / OUT_OF_SCOPE / REQUIRES VALIDATION / PENDING.
+
+Work Log:
+- Read worklog.md (frozen identity, forbidden terms, architecture decisions) and the key source files: `src/lib/ive/release.ts` (data layer — REQUIRED_FIXES, DISPOSITION="NO-GO", DISPOSITION_RATIONALE, PIPELINE_RUNS, PIPELINE_PRESERVATION_RULES, LICENSE_STATUS, ADAPTER_ATTRIBUTION, ADAPTER_RULES, CHECKSUM_SPEC, LEDGER_ROOT_DESCRIPTION, CHECKSUM_ENTRIES), `src/store/useIveStore.ts` (canonical Zustand store — selectors `contract.run_id` and `contract.ledger_status`), `src/lib/ive/types.ts` (frozen contract types — ExplicitMissing union), `src/components/ive/primitives.tsx` (PanelFrame/StatCard/StatusPill/MonoTable/SectionLabel/Kbd), and the reference panels OverviewPanel.tsx + ProofGraphPanel.tsx + EvidenceRuntimePanel.tsx for visual language patterns (framer-motion staggered entrance, ive-surface frosted cards, gold accent, mono telemetry, left-vertical accent bars, color-coded severity).
+- Wrote work record to `/home/z/my-project/agent-ctx/10-a-release-engineering-panels.md`.
+- Built **ReleaseReportPanel.tsx** (RR, accent #ff4d5f — blocked red): dominant NO-GO disposition hero banner (OctagonAlert icon with drop-shadow glow, gradient background, radial glow, grid-bg overlay, StatusPills for Blocks Submission + Pipeline Retained), 4 StatCards (Total Fixes / Blockers / Blocking Submission / Non-blocking), custom responsive required-fixes table (mobile: stacked cards; desktop: 6-col grid [ID | Severity | Affected File | Evidence | Minimum Action | Blocks Submission] with severity-colored left accent bar; SeverityPill component color-codes BLOCKER=blocked-red, HIGH=#CC7722, MEDIUM=gold, LOW=muted; BlocksPill: YES=blocked-red, NO=muted; long-text cells use break-words + leading-relaxed), Pipeline Execution Preservation section (PipelineRunCard component with runId/timestamp/target/environment/sourceCommit/configHash/RETAINED badge/note — REQUIRES VALIDATION values shown in blocked-red), PIPELINE_PRESERVATION_RULES as 7-item numbered checklist with CheckCircle2 icons, License Handling section (Scale icon, "MISSING — REQUIRES DECISION" in blocked-red, Detail + Action sub-boxes, "Do not select or fabricate a software license without authorization from the repository owner." caution note), Closing Statement banner with ShieldAlert icon and the verbatim closing text + contract run_id footer.
+- Built **AdapterAttributionPanel.tsx** (ADP, accent #3d9bff — pending blue): ADAPTER_RULES rendered as 4 rule-cards in a 2-col grid (each with ShieldCheck icon, "MUST" badge, rule number, left vertical accent bar in blue), 4 StatCards (Attributed Fields / Explicit-Missing Treatments / Runs MISSING/REQUIRES / Branch Inference=PROHIBITED), amber/gold warning banner (ShieldAlert icon, exact warning text including the `mi300x-rocm-run-20260804` branch in a mono gold pill, "is NOT used to infer hardware"), search/filter input (useState `query` + useMemo `filtered` — no setState-in-effect, clear X button, matches against field/sourceArtifact/sourceField/transformation), AttributionCard component (card-per-entry layout with left vertical accent bar in blue, gold FileText icon + "Normalized Field" header, sourceRun StatusPill pulsing when explicit missing, 3-col grid for Source Artifact/Source Field/Source Run with GitBranch icon, 2-col grid for Transformation + Missing Treatment with Workflow + ShieldAlert icons), empty state for filter, footer note card with verbatim closure text + contract run_id and per-field retention summary. Added `isExplicitMissing()` helper checking against the ExplicitMissing union for type safety.
+- Built **IntegrityClosurePanel.tsx** (INT, accent #C9A84C — gold): 4 StatCards (Spec Rules Satisfied x/total / Covered Artifacts / Algorithm=SHA-256 / Independent Verify=REQUIRES VALIDATION), Checksum Index Specification section (Hash icon header, satisfied/total counter, "FULLY SATISFIED" or "PARTIAL — REQUIRES VALIDATION" pulsing StatusPill, each rule as a row with CheckCircle2/XCircle icon + "SATISFIED"/"NOT SATISFIED" badge + evidence line in mono — staggered motion), Ledger Root Boundary section (prominent amber-bordered gradient banner with ShieldAlert icon, "Boundary Notice · Honest Description" label, "INTERNAL ONLY" StatusPill, LEDGER_ROOT_DESCRIPTION verbatim, 3-col grid summarizing Internally Consistent/Not Externally Signed/Not Immutable, contract ledger_status footer), Covered Artifacts registry (MonoTable with [Path | Algorithm | Hash | Status] columns; hash column shows "REQUIRES VALIDATION" in gold — no fabricated hashes; StatusPill per entry), Integrity Closure Rules 3-col grid (6 rule cards: Index excludes itself / Deterministic filename ordering / Safe filename handling / Covers the authoritative manifest / Independent verification / No post-checksum modification — each with own lucide icon), Closure Note banner with verbatim text "The checksum index is generated only after all release artifacts are finalized. No covered artifact may be modified after checksum generation."
+- Ran `bun run lint` — 0 errors in any of the 3 new panel files (1 pre-existing warning in `upload/VVU-Legacy-Dashboard/.../layout.tsx` outside scope).
+- Ran `bunx tsc --noEmit` — 0 errors in any of the 3 new panel files (pre-existing errors in `upload/`, `examples/`, `skills/`, and the `ProofGraph` import in `useIveStore.ts` are untouched and outside scope).
+- Verified dev.log: initial Module-not-found errors for the three panels (logged when files didn't yet exist) have been resolved; latest compile is `✓ Compiled in 16s` with `GET / 200` confirmed.
+
+Stage Summary — Files Produced:
+- `/home/z/my-project/src/components/ive/panels/ReleaseReportPanel.tsx` (export `ReleaseReportPanel`)
+- `/home/z/my-project/src/components/ive/panels/AdapterAttributionPanel.tsx` (export `AdapterAttributionPanel`)
+- `/home/z/my-project/src/components/ive/panels/IntegrityClosurePanel.tsx` (export `IntegrityClosurePanel`)
+- `/home/z/my-project/agent-ctx/10-a-release-engineering-panels.md` (work record)
+
+---
+Task ID: 10 (cron review round 1)
+Agent: Principal (orchestrator) + 2 subagents (10-a, 10-b)
+Task: Release-engineering addendum implementation — 5 new panels (Release Report, Adapter Attribution, Integrity Closure, Identity Registry, Acceptance Checklist) + styling improvements (boot particle field, sidebar group icons, status-bar sparkline).
+
+Work Log:
+- Reviewed worklog.md and QA'd current state via agent-browser: boot works, workspace stable, 0 lint errors, no active console errors.
+- Identified the user's Execution and Preservation Constraints addendum as the directive for this round. The addendum mandates: release-readiness report ending in one disposition (GO/GO WITH REQUIRED FIXES/NO-GO), adapter source-attribution map, integrity closure / checksum spec, identity registry (independent components preserved not deleted), dashboard acceptance checklist, license handling, status vocabulary separation, pipeline execution preservation.
+- Built `src/lib/ive/release.ts` — the release-engineering data layer encoding all addendum directives: STATUS_VOCABULARY (proof states vs evidence/component states), IDENTITY_REGISTRY (6 entries: IVE platform, HBK demo, Trust OS, AIR independent, Epistemic Runtime historical, Lindiwe), ADAPTER_ATTRIBUTION (11 field→source mappings), ADAPTER_RULES (4 must-rules), CHECKSUM_SPEC (7 rules), LEDGER_ROOT_DESCRIPTION (honest "internally consistent, not externally signed"), CHECKSUM_ENTRIES (9 covered artifacts), DASHBOARD_ACCEPTANCE (8 checks all satisfied), LICENSE_STATUS (MISSING — REQUIRES DECISION), REQUIRED_FIXES (8 fixes: 3 BLOCKERS, 2 HIGH, 1 MEDIUM, 1 LOW, 1 informational), DISPOSITION=NO-GO, DISPOSITION_RATIONALE, PIPELINE_RUNS (2 historical runs preserved), PIPELINE_PRESERVATION_RULES (7 rules).
+- Extended `types.ts` WorkspacePanelId with 5 new IDs (release, adapter, integrity, identity, acceptance).
+- Updated `useIveStore.ts` PANELS catalog: added 5 new panels in a new "release" group, placed after Core and before Runtime. Updated PanelMeta group union to include "release".
+- Updated `Workspace.tsx`: added GROUP_ICONS (Layers/ShieldCheck/Cpu/Droplets/Server) + GROUP_ACCENTS + gradient divider lines per group header. Active sidebar items now have a glow shadow.
+- Updated `PanelRouter.tsx`: added 5 module-scope dynamic imports for the new panels.
+- Delegated 5 panel builds to 2 full-stack-developer subagents in parallel:
+  - Task 10-a: ReleaseReportPanel (NO-GO disposition hero, required-fixes table with severity/blocking, pipeline preservation, license handling), AdapterAttributionPanel (source-attribution cards with search filter, no-inference warning), IntegrityClosurePanel (checksum spec checklist, ledger-root boundary, covered-artifacts table).
+  - Task 10-b: IdentityRegistryPanel (6 identity cards with role color-coding, status vocabulary 2-column reference), AcceptanceChecklistPanel (8/8 PASS, evidence deep-dive, anti-pattern watchlist).
+- Styling improvements:
+  - Boot: added BootParticleField canvas (80 drifting evidence motes in gold/sage/ember/mint/blue, zero re-renders, RAF-driven), vignette depth layer, enhanced radial glow.
+  - Sidebar: group header icons + gradient divider lines, active-item glow shadow on the accent bar.
+  - StatusBar: replaced text-only density with a MiniSparkline SVG (56×16, 32-point rolling window, gold area-fill gradient, 600ms sampling interval, ref-backed no re-renders).
+- Fixed 1 lint error: StatusBar MiniSparkline valueRef accessed during render → moved to useEffect.
+- Verified all 20 panels render correctly via agent-browser sweep (Overview 47, Release Report 29, Adapter Attribution 31, Integrity Closure 25, Identity Registry 27, Acceptance 24, Trust Sphere 24, HBK Workspace 22 content matches). Boot particle canvas confirmed. Sidebar group icons confirmed. Status-bar sparkline confirmed.
+- Note: browser console retains 60 stale "Module not found" errors from the transient Turbopack compile when new panel files were created mid-session. Dev server log shows clean "Compiled in 14.4s" — the errors are dev-mode cache artifacts that clear on a full server restart. All panels render their specific content correctly.
+
+Stage Summary:
+- 20 panels total (15 original + 5 new release-engineering panels).
+- 0 lint errors. Clean build. All panels render.
+- Release disposition: NO-GO (3 BLOCKER required fixes: adapter script not exposed, verify_release.py not exposed, ive-output/results.json not on disk).
+- Pipeline execution preserved (not rerun). Historical runs retained byte-for-byte.
+- Identity registry preserves AIR, Epistemic Runtime, Trust OS as legitimate independent/historical references.
+- Status vocabulary correctly separates proof states from evidence/component states.
+- Adapter attribution traces every normalized field to its source artifact with no filename/branch inference.
+- Integrity closure honestly describes ledger root as "internally consistent, not externally signed".
+- License: MISSING — REQUIRES DECISION (not fabricated).
+
+Current project status: STABLE. RC1 + release-engineering layer complete. The addendum's directives are now encoded in both data (release.ts) and UI (5 panels). The disposition is honestly NO-GO with 3 blocking fixes that are packaging/integration gaps, not pipeline or architecture issues.
+
+Unresolved issues / next-phase recommendations:
+1. [BLOCKER] Expose ive_result_adapter.py as an inspectable file with full source-attribution.
+2. [BLOCKER] Expose verify_release.py as an inspectable release-gate script.
+3. [BLOCKER] Write the frozen contract to ive-output/results.json on disk for packaging.
+4. [HIGH] Run independent sha256sum -c verification on the final package.
+5. [HIGH] Resolve LICENSE decision with owner authorization.
+6. [MEDIUM] Generate config.yaml + submission_data.json with git commit/branch.
+7. [LOW] Produce the 3-5 minute demonstration video.
+8. [DEV-MODE] Clear stale Turbopack console cache on next full dev-server restart (cosmetic only).

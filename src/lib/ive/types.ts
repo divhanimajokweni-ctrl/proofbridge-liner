@@ -174,7 +174,12 @@ export type WorkspacePanelId =
   | "telemetry"
   | "terminal"
   | "watchdog"
-  | "lindiwe";
+  | "lindiwe"
+  | "release"
+  | "adapter"
+  | "integrity"
+  | "identity"
+  | "acceptance";
 
 export type BootStageId =
   | "logo"
