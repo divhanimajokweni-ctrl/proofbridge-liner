@@ -135,6 +135,55 @@ export interface IveState {
   setMissionControlOpen: (open: boolean) => void;
   statsHudOpen: boolean;
   setStatsHudOpen: (open: boolean) => void;
+
+  /* ---- user settings (persisted to localStorage) ---- */
+  settings: IVESettings;
+  updateSettings: (patch: Partial<IVESettings>) => void;
+}
+
+export interface IVESettings {
+  /** Skip the boot sequence automatically on subsequent visits. */
+  autoSkipBoot: boolean;
+  /** Animation intensity: "full" | "reduced" | "none". */
+  animationIntensity: "full" | "reduced" | "none";
+  /** Default-open widgets on workspace mount. */
+  defaultOpenMissionControl: boolean;
+  defaultOpenStatsHud: boolean;
+  /** Accent color override (hex) or "gold" for the default #C9A84C. */
+  accentOverride: string | "gold";
+  /** Show the boot sound-wave visualization. */
+  showBootSoundWave: boolean;
+}
+
+const SETTINGS_KEY = "ive-settings-v1";
+const DEFAULT_SETTINGS: IVESettings = {
+  autoSkipBoot: false,
+  animationIntensity: "full",
+  defaultOpenMissionControl: false,
+  defaultOpenStatsHud: false,
+  accentOverride: "gold",
+  showBootSoundWave: true,
+};
+
+function loadSettings(): IVESettings {
+  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return DEFAULT_SETTINGS;
+    const parsed = JSON.parse(raw);
+    return { ...DEFAULT_SETTINGS, ...parsed };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+function saveSettings(s: IVESettings) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore quota / privacy errors */
+  }
 }
 
 export interface ActivityNotification {
@@ -489,6 +538,15 @@ export const useIveStore = create<IveState>((set, get) => ({
   setMissionControlOpen: (open) => set({ missionControlOpen: open }),
   statsHudOpen: false,
   setStatsHudOpen: (open) => set({ statsHudOpen: open }),
+
+  /* ---- user settings (persisted to localStorage) ---- */
+  settings: loadSettings(),
+  updateSettings: (patch) =>
+    set((s) => {
+      const next = { ...s.settings, ...patch };
+      saveSettings(next);
+      return { settings: next };
+    }),
 }));
 
 /** Guided tour stops — each navigates to a panel and shows an explanation. */
@@ -574,6 +632,7 @@ export const PANELS: PanelMeta[] = [
   { id: "terminal", label: "Terminal", tag: "TTY", accent: "#3dffb0", mission: "Engineering command terminal — deterministic, read-only replay.", group: "system" },
   { id: "watchdog", label: "Watchdog", tag: "WDG", accent: "#ff4d5f", mission: "Hardware watchdog + safety interlock monitor. Fails to non-actuating state.", group: "system" },
   { id: "lindiwe", label: "Lindiwe", tag: "LIN", accent: "#b23dff", mission: "Agent orchestrator — specification assistance and evidence review.", group: "system" },
+  { id: "settings", label: "Settings", tag: "SET", accent: "#8b949e", mission: "User preferences — boot auto-skip, animation intensity, widget defaults, accent override.", group: "system" },
 ];
 
 export const PANEL_MAP: Record<WorkspacePanelId, PanelMeta> = PANELS.reduce(

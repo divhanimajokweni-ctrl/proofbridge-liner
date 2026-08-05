@@ -102,6 +102,10 @@ const AcceptanceChecklistPanel = dynamic(
   () => import("../panels/AcceptanceChecklistPanel").then((m) => m.AcceptanceChecklistPanel),
   { ssr: false, loading },
 );
+const SettingsPanel = dynamic(
+  () => import("../panels/SettingsPanel").then((m) => m.SettingsPanel),
+  { ssr: false, loading },
+);
 
 const PANEL_COMPONENTS: Record<WorkspacePanelId, React.ComponentType> = {
   overview: OverviewPanel,
@@ -124,6 +128,7 @@ const PANEL_COMPONENTS: Record<WorkspacePanelId, React.ComponentType> = {
   integrity: IntegrityClosurePanel,
   identity: IdentityRegistryPanel,
   acceptance: AcceptanceChecklistPanel,
+  settings: SettingsPanel,
 };
 
 export function PanelRouter({ panel }: { panel: WorkspacePanelId }) {

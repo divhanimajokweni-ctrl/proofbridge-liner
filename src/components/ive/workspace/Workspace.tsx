@@ -270,6 +270,13 @@ export function Workspace() {
                         {p.tag}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-xs font-medium">{p.label}</span>
+                      {isActive && (
+                        <span
+                          className="h-1.5 w-1.5 flex-none rounded-full ive-live-pulse"
+                          style={{ background: p.accent, boxShadow: `0 0 5px ${p.accent}` }}
+                          aria-hidden
+                        />
+                      )}
                       <ChevronRight
                         className={`h-3 w-3 flex-none transition-transform ${
                           isActive ? "text-[var(--ive-gold)]" : "text-muted-foreground/30 group-hover:translate-x-0.5"

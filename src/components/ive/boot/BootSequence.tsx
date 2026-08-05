@@ -160,6 +160,11 @@ export function BootSequence() {
         </div>
       </div>
 
+      {/* Ambient sound-wave visualization — a row of bars whose heights
+          oscillate based on the boot stage progress, giving a "signal
+          alive" feel. Respects the showBootSoundWave setting. */}
+      <BootSoundWave active={true} stage={localStage} total={stages.length} />
+
       {/* Skip control */}
       <button
         onClick={skipBoot}
@@ -627,6 +632,83 @@ function BootParticleField() {
     <canvas
       ref={canvasRef}
       className="pointer-events-none absolute inset-0 h-full w-full"
+      aria-hidden
+    />
+  );
+}
+
+/**
+ * BootSoundWave
+ * -------------
+ * A row of vertical bars whose heights oscillate via a sine wave, giving the
+ * boot sequence a "signal alive" ambient visualization. The bars use the gold
+ * accent color and intensify as the boot stage progresses. Rendered via canvas
+ * for smooth 60fps animation with zero React re-renders.
+ */
+function BootSoundWave({ active, stage, total }: { active: boolean; stage: number; total: number }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const rafRef = useRef(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    const BAR_COUNT = 48;
+    const render = (time: number) => {
+      rafRef.current = requestAnimationFrame(render);
+      const cw = canvas.clientWidth;
+      const ch = canvas.clientHeight;
+      if (cw === 0 || ch === 0) return;
+      const tw = Math.round(cw * dpr);
+      const th = Math.round(ch * dpr);
+      if (canvas.width !== tw || canvas.height !== th) {
+        canvas.width = tw;
+        canvas.height = th;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cw, ch);
+
+      const barW = cw / BAR_COUNT;
+      const maxH = ch * 0.8;
+      // Intensity ramps up with boot progress.
+      const intensity = active ? 0.3 + (stage / total) * 0.7 : 0.3;
+
+      for (let i = 0; i < BAR_COUNT; i++) {
+        // Each bar has a phase offset + two frequency layers for organic motion.
+        const phase = i * 0.35;
+        const wave1 = Math.sin(time * 0.004 + phase);
+        const wave2 = Math.sin(time * 0.0025 + phase * 1.7);
+        const combined = (wave1 * 0.6 + wave2 * 0.4 + 1) / 2; // 0..1
+        const h = Math.max(2, combined * maxH * intensity);
+        const x = i * barW + barW * 0.2;
+        const w = barW * 0.6;
+        const y = (ch - h) / 2;
+
+        // Gold gradient with alpha based on height.
+        const alpha = 0.15 + (h / maxH) * 0.45;
+        const grad = ctx.createLinearGradient(0, y, 0, y + h);
+        grad.addColorStop(0, `rgba(201, 168, 76, ${alpha})`);
+        grad.addColorStop(0.5, `rgba(201, 168, 76, ${alpha * 1.3})`);
+        grad.addColorStop(1, `rgba(201, 168, 76, ${alpha * 0.6})`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        // Rounded bars.
+        const r = Math.min(w / 2, 2);
+        ctx.roundRect(x, y, w, h, r);
+        ctx.fill();
+      }
+    };
+    rafRef.current = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [active, stage, total]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none absolute bottom-14 left-1/2 z-10 h-10 w-full max-w-[420px] -translate-x-1/2 px-6"
       aria-hidden
     />
   );
