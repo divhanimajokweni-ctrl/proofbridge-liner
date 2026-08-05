@@ -70,9 +70,15 @@ export function StatusBar() {
           {activeMeta.label}
         </span>
       </div>
-      <div className="ml-auto hidden items-center gap-2 lg:flex">
+      <div className="ml-auto hidden items-center gap-2 md:flex">
         <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px]">⌘K</kbd>
         <span className="text-muted-foreground/60">palette</span>
+        <span className="text-muted-foreground/30">·</span>
+        <kbd className="rounded border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px]">T</kbd>
+        <span className="hidden text-muted-foreground/60 xl:inline">tour</span>
+        <span className="hidden text-muted-foreground/30 xl:inline">·</span>
+        <kbd className="hidden rounded border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] xl:inline">M</kbd>
+        <span className="hidden text-muted-foreground/60 xl:inline">mission</span>
       </div>
     </footer>
   );

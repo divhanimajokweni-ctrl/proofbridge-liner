@@ -13,6 +13,7 @@ import { NotificationCenter, NotificationBell } from "./NotificationCenter";
 import { GuidedTour, TourTrigger } from "./GuidedTour";
 import { MissionControl, MissionControlTrigger } from "./MissionControl";
 import { StatsHUD, StatsHudTrigger } from "./StatsHUD";
+import { WelcomeHint } from "./WelcomeHint";
 
 const GROUP_LABELS: Record<PanelMeta["group"], string> = {
   core: "Core",
@@ -340,6 +341,7 @@ export function Workspace() {
       <GuidedTour />
       <MissionControl />
       <StatsHUD />
+      <WelcomeHint />
       {shortcutsOpen && <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} />}
 
       {/* Mobile nav backdrop */}

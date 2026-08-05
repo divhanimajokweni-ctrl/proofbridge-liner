@@ -560,3 +560,52 @@ Unresolved issues / next-phase recommendations:
 5. [HIGH] Resolve LICENSE decision with owner authorization.
 6. [LOW] Add a "first-run" detection that shows a welcome hint pointing to the Guided Tour (T) and Settings panels.
 7. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + Mission Control + Settings all ready).
+
+---
+Task ID: 17 (cron review round 8)
+Agent: Principal (orchestrator)
+Task: First-run welcome hint + Command Palette enhancement (recent commands + content search + footer hints) + status bar command-hint ribbon.
+
+Work Log:
+- Reviewed worklog.md (21 panels, all settings wired, stable). QA'd via agent-browser: 0 lint errors, 0 console errors, all tested panels render. Project stable.
+- NEW FEATURE: First-run WelcomeHint (`src/components/ive/workspace/WelcomeHint.tsx`).
+  - A dismissible banner that appears once on first visit (tracked via localStorage key `ive-welcome-dismissed-v1`). Positioned top-center below the header.
+  - Shows "Welcome to IVE" with Sparkles icon, a short description, and 3 actions: "Start tour" (with T kbd hint, starts GuidedTour + dismisses), "Settings" (navigates to Settings panel + dismisses), "Dismiss" (text link + X button).
+  - Auto-hides when the tour is active (derived `visible = show && !tourActive`, no effect needed).
+  - Spring entrance animation (y: -16 → 0, scale 0.96 → 1), gold accent top bar.
+  - Persists dismissal to localStorage so it never shows again.
+- ENHANCED: Command Palette (`src/components/ive/workspace/CommandPalette.tsx`).
+  - **Content search**: now matches against label, tag, mission, AND group (previously only label/tag/mission). E.g. typing "release" surfaces all 5 release-group panels.
+  - **Recent commands**: tracks the last 5 navigated panels in localStorage (key `ive-recent-commands-v1`). Shown in a "Recent" section when the query is empty, with a Clock icon on each recent item. Uses a lazy useState initializer (`useState(() => loadRecent())`) to avoid setState-in-effect.
+  - **Active badge**: the currently-active panel shows a gold "active" pill in the palette.
+  - **Footer hints**: "navigate" (CornerDownLeft icon) + "select" (↑↓ kbd) + panel count. Replaces the old simple "palette" hint.
+  - Updated placeholder: "Search panels, tags, or descriptions…"
+- STYLING: Status bar command-hint ribbon.
+  - Expanded the footer hint section: now shows ⌘K palette · T tour · M mission (on xl screens). On md screens shows ⌘K palette · T tour. Gives users a persistent reminder of the key shortcuts.
+- Fixed 2 lint errors during development:
+  - CommandPalette: replaced `useEffect(() => setRecent(loadRecent()))` with a lazy `useState(() => loadRecent())` initializer.
+  - WelcomeHint: replaced the auto-dismiss `useEffect` (which called `dismiss()` → `setShow`) with a derived `visible` value (`show && !tourActive`), eliminating the setState-in-effect pattern entirely.
+- VERIFIED:
+  - WelcomeHint: appears on first visit ("Welcome to IVE" + "Start tour" button with T hint). Dismiss button removes it. Auto-hides when tour starts.
+  - Command Palette: ⌘K opens it. RECENT section appears with recently visited panels. Footer shows "navigate" + "select" + "21 panels". Typing "release" filters to all 5 release-group panels (content search works).
+  - Status bar: shows ⌘K palette · T tour · M mission hints.
+  - Final panel sweep: Overview, Trust Sphere, Proof Graph, Release Report, Settings, HBK Workspace, Telemetry, Terminal, Watchdog, Lindiwe — all 0 console errors.
+  - 0 lint errors. Clean build.
+
+Stage Summary:
+- 21 panels, all 0 errors. 0 lint errors. Clean build.
+- WelcomeHint: first-run dismissible banner pointing to Guided Tour + Settings. Persists dismissal.
+- Command Palette: content search (label/tag/mission/group), recent-commands history (localStorage, 5 max), active badge, footer hints with navigate/select/panel-count.
+- Status bar: expanded command-hint ribbon (⌘K · T · M).
+- All previous features preserved (21 panels, activity center, live events, keyboard nav, boot ring, count badges, GuidedTour, MiniMap, MissionControl, StatsHUD, Settings panel, all settings wired).
+
+Current project status: STABLE + ONBOARDING-READY. The workspace now has first-run onboarding (WelcomeHint), enhanced command palette with history, and persistent shortcut hints. New users are guided to the tour and settings; returning users get fast recent-command access.
+
+Unresolved issues / next-phase recommendations:
+1. [BLOCKER] Expose ive_result_adapter.py as an inspectable file (release gate).
+2. [BLOCKER] Expose verify_release.py as an inspectable release-gate script.
+3. [BLOCKER] Write the frozen contract to ive-output/results.json on disk for packaging.
+4. [HIGH] Run independent sha256sum -c verification on the final package.
+5. [HIGH] Resolve LICENSE decision with owner authorization.
+6. [LOW] Add a "help" / FAQ panel answering common evaluator questions (what is IVE, what is HBK MK-II, why is release BLOCKED, how to navigate).
+7. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + WelcomeHint + Settings all ready for this).
