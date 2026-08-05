@@ -1,0 +1,21 @@
+# ── ServiceMonitor for VVU Dashboard ──
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vvu-dashboard
+  namespace: vvu-monitoring
+  labels:
+    app.kubernetes.io/name: vvu-dashboard
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vvu-dashboard
+  namespaceSelector:
+    matchNames:
+      - vvu-dashboard
+      - vvu-staging
+  endpoints:
+    - port: http
+      path: /api/stats
+      interval: 15s
+      scrapeTimeout: 10s
