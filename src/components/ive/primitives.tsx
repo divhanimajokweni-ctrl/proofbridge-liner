@@ -29,7 +29,16 @@ export function PanelFrame({
 }) {
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 items-start justify-between gap-3 border-b border-white/[0.06] px-4 py-3 sm:px-6">
+      <header className="relative flex shrink-0 items-start justify-between gap-3 border-b border-white/[0.06] px-4 py-3 sm:px-6">
+        {/* Accent underline — a thin gradient bar at the bottom of the header
+            tinted with the panel's accent color. Gives each panel a subtle
+            color identity without overwhelming the content. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
+          style={{
+            background: `linear-gradient(90deg, ${accent ?? "#C9A84C"}55, ${accent ?? "#C9A84C"}10 60%, transparent)`,
+          }}
+        />
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             {tag && (

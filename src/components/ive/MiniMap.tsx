@@ -113,15 +113,22 @@ export function MiniMap() {
                       key={p.id}
                       initial={{ opacity: 0, scale: 0.92 }}
                       animate={{ opacity: 1, scale: 1 }}
+                      whileHover={{ scale: 1.04, y: -2 }}
+                      whileTap={{ scale: 0.98 }}
                       transition={{ delay: i * 0.03, duration: 0.25 }}
                       onClick={() => setActivePanel(p.id)}
-                      className={`group relative flex flex-col gap-1 overflow-hidden rounded-md border p-2 text-left transition-all ${
+                      className={`group relative flex flex-col gap-1 overflow-hidden rounded-md border p-2 text-left transition-colors ${
                         isActive
                           ? "border-white/20 bg-white/[0.06]"
-                          : "border-white/[0.05] bg-white/[0.01] hover:border-white/12 hover:bg-white/[0.03]"
+                          : "border-white/[0.05] bg-white/[0.01] hover:border-white/15 hover:bg-white/[0.04]"
                       }`}
                       title={p.mission}
                     >
+                      {/* Hover accent wash — fills from left on hover */}
+                      <span
+                        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                        style={{ background: `linear-gradient(135deg, ${p.accent}0e, transparent 70%)` }}
+                      />
                       {isActive && (
                         <span
                           className="absolute inset-y-0 left-0 w-[2px]"

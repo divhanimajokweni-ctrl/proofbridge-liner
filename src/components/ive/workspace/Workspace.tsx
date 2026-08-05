@@ -11,6 +11,8 @@ import { CommandPalette } from "./CommandPalette";
 import { PanelRouter } from "./PanelRouter";
 import { NotificationCenter, NotificationBell } from "./NotificationCenter";
 import { GuidedTour, TourTrigger } from "./GuidedTour";
+import { MissionControl, MissionControlTrigger } from "./MissionControl";
+import { StatsHUD, StatsHudTrigger } from "./StatsHUD";
 
 const GROUP_LABELS: Record<PanelMeta["group"], string> = {
   core: "Core",
@@ -157,6 +159,8 @@ export function Workspace() {
           </button>
           <NotificationBell />
           <TourTrigger />
+          <MissionControlTrigger />
+          <StatsHudTrigger />
         </div>
       </header>
 
@@ -318,6 +322,8 @@ export function Workspace() {
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       <NotificationCenter />
       <GuidedTour />
+      <MissionControl />
+      <StatsHUD />
       {shortcutsOpen && <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} />}
 
       {/* Mobile nav backdrop */}
@@ -352,7 +358,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
           <div>
             <div className="ive-mono mb-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Global</div>
             <div className="flex flex-col gap-1.5">
-              {[["⌘K", "Command palette"], ["F8", "Activity center"], ["T", "Guided tour"], ["?", "This overlay"], ["Esc", "Skip boot / close"]].map(([k, l]) => (
+              {[["⌘K", "Command palette"], ["F8", "Activity center"], ["T", "Guided tour"], ["M", "Mission control"], ["H", "Stats HUD"], ["?", "This overlay"], ["Esc", "Skip boot / close"]].map(([k, l]) => (
                 <div key={k} className="flex items-center justify-between gap-3">
                   <span className="text-xs text-foreground/85">{l}</span>
                   <Kbd>{k}</Kbd>

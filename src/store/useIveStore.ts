@@ -129,6 +129,12 @@ export interface IveState {
   stopTour: () => void;
   advanceTour: () => void;
   setTourStep: (step: number) => void;
+
+  /* ---- mission control floating widget + stats HUD ---- */
+  missionControlOpen: boolean;
+  setMissionControlOpen: (open: boolean) => void;
+  statsHudOpen: boolean;
+  setStatsHudOpen: (open: boolean) => void;
 }
 
 export interface ActivityNotification {
@@ -477,6 +483,12 @@ export const useIveStore = create<IveState>((set, get) => ({
     const clamped = Math.max(0, Math.min(step, steps.length - 1));
     set({ tourStep: clamped, activePanel: steps[clamped].panel });
   },
+
+  /* ---- mission control floating widget + stats HUD ---- */
+  missionControlOpen: false,
+  setMissionControlOpen: (open) => set({ missionControlOpen: open }),
+  statsHudOpen: false,
+  setStatsHudOpen: (open) => set({ statsHudOpen: open }),
 }));
 
 /** Guided tour stops — each navigates to a panel and shows an explanation. */
