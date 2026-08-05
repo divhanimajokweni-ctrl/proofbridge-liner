@@ -1,6 +1,6 @@
 # HBK MK-II Hydro-Gateway — Submission Report
 **Version:** 2.1 (Provenance-Tracked, Dual-Benchmark)
-**Date:** August 04, 2026
+**Date:** August 05, 2026
 **Competition:** Zoo Makeathon (Aug 5) | AMD Radeon Robotics Hackathon (Aug 6)
 **Git Commit:** `6ae853b3a796` (main [DIRTY])
 
@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 Dual-tier compute (AMD Kria K26 edge inference + AMD MI300X training/simulation).
-Measured this run: **0.826x** ROCm speedup, **99.95%** validation accuracy
+Measured this run: **3.132x** ROCm speedup, **99.99%** validation accuracy
 on **synthetic** sensor data (see Section 4 for what "synthetic" means here).
 
 **Read before citing this report externally:** any field below marked
@@ -22,15 +22,15 @@ generation — it does not certify that unverified values are correct.
 ## 2. Performance Metrics (Measured This Run)
 | Metric | Value | Source |
 | :--- | :--- | :--- |
-| ROCm Speedup | 0.826x | `benchmark_results` in `results.json` |
-| Validation Accuracy | 99.95% | `training.final_val_acc` in `results.json` |
+| ROCm Speedup | 3.132x | `benchmark_results` in `results.json` |
+| Validation Accuracy | 99.99% | `training.final_val_acc` in `results.json` |
 | Simulation Samples | 100,000 | `metrics.json` |
-| Training Time | 184.12s | `results.json` |
+| Training Time | 44.66s | `results.json` |
 | Physics Engine | synthetic (numpy, no physics engine) | `simulation_meta` in `results.json` |
 
 ### Environment
-| GPU: AMD Instinct MI300X VF (1x) | ROCm: 7.0.51831 | PyTorch: 2.10.0+rocm7.0
-- OS: Linux 6.8.0-134-generic
+| GPU: AMD Radeon Graphics (1x) | ROCm: 6.2.41133-dd7f95766 | PyTorch: 2.5.1+rocm6.2
+- OS: Linux 6.8.0-79-generic
 
 ---
 
@@ -48,8 +48,8 @@ with **identical** workflow, provenance, and ledger guarantees.
 ### Current Run Results
 | Metric | CPU (Baseline) | AMD GPU (Accelerated) |
 | :--- | :--- | :--- |
-| Benchmark Time | 0.199s | 0.241s |
-| Speedup | 1.0x (reference) | 0.826x |
+| Benchmark Time | 1.058s | 0.338s |
+| Speedup | 1.0x (reference) | 3.132x |
 
 **What makes this compelling for judges:**
 1. Identical workflow (`run_pipeline.py`).
@@ -109,4 +109,4 @@ performance.
 - Metrics: `metrics.json`
 - Checksums: `checksums.txt` (SHA-256, 9 files verified)
 
-*Generated 2026-08-04T23:20:57.117866*
+*Generated 2026-08-05T00:59:11.139203*
