@@ -109,6 +109,29 @@ export interface IveState {
 
   /* ---- obligations ---- */
   obligations: ProofObligation[];
+
+  /* ---- notification / activity center ---- */
+  notifications: ActivityNotification[];
+  notifCenterOpen: boolean;
+  setNotifCenterOpen: (open: boolean) => void;
+  pushNotification: (n: Omit<ActivityNotification, "id" | "timestamp" | "read">) => void;
+  markAllRead: () => void;
+  clearNotifications: () => void;
+  unreadCount: () => number;
+
+  /* ---- recently visited panels (for header quick-switch) ---- */
+  recentPanels: WorkspacePanelId[];
+}
+
+export interface ActivityNotification {
+  id: string;
+  timestamp: string;
+  level: "info" | "warn" | "error" | "success";
+  source: string;
+  title: string;
+  detail: string;
+  panel?: WorkspacePanelId;
+  read: boolean;
 }
 
 const BOOT_STAGES = buildBootStages();
@@ -134,7 +157,11 @@ export const useIveStore = create<IveState>((set, get) => ({
 
   /* ---- workspace ---- */
   activePanel: "overview",
-  setActivePanel: (panel) => set({ activePanel: panel }),
+  setActivePanel: (panel) =>
+    set((s) => {
+      const recent = [panel, ...s.recentPanels.filter((p) => p !== panel)].slice(0, 6);
+      return { activePanel: panel, recentPanels: recent };
+    }),
 
   /* ---- frozen contract ---- */
   contract: CONTRACT,
@@ -274,6 +301,88 @@ export const useIveStore = create<IveState>((set, get) => ({
 
   /* ---- obligations ---- */
   obligations: CONTRACT.obligations,
+
+  /* ---- notification / activity center ---- */
+  notifications: [
+    {
+      id: "seed-01",
+      timestamp: new Date(Date.now() - 42000).toISOString(),
+      level: "error",
+      source: "Release Gate",
+      title: "Engineering Release: BLOCKED",
+      detail:
+        "Three BLOCKER required fixes prevent submission. Adapter script and verify_release.py not exposed; ive-output/results.json not on disk.",
+      panel: "release",
+      read: false,
+    },
+    {
+      id: "seed-02",
+      timestamp: new Date(Date.now() - 180000).toISOString(),
+      level: "warn",
+      source: "Trust Sphere",
+      title: "Determinism NOT_EVALUATED",
+      detail:
+        "Execution seeds (NumPy, PyTorch, DataLoader) pending verification. Dimension remains unevaluated.",
+      panel: "trust",
+      read: false,
+    },
+    {
+      id: "seed-03",
+      timestamp: new Date(Date.now() - 360000).toISOString(),
+      level: "success",
+      source: "AMD Runtime",
+      title: "Local Radeon emulation pass retained",
+      detail:
+        "Run ive-rocm-local-20260805 retained as candidate authoritative run. 4.249× speedup against CPU baseline.",
+      panel: "amd",
+      read: false,
+    },
+    {
+      id: "seed-04",
+      timestamp: new Date(Date.now() - 600000).toISOString(),
+      level: "info",
+      source: "Zoo Runtime",
+      title: "Native API execution NOT_DEMONSTRATED",
+      detail:
+        "Wrapper layer implemented at pipeline/compute_provider.py. Native Zoo Engine API calls not found in execution trace.",
+      panel: "zoo",
+      read: true,
+    },
+    {
+      id: "seed-05",
+      timestamp: new Date(Date.now() - 900000).toISOString(),
+      level: "info",
+      source: "Identity Registry",
+      title: "Historical run preserved",
+      detail:
+        "CPU baseline (ive-cpu-baseline-20260801) retained byte-for-byte. Not harmonized — terminology reflects time of execution.",
+      panel: "identity",
+      read: true,
+    },
+  ],
+  notifCenterOpen: false,
+  setNotifCenterOpen: (open) => set({ notifCenterOpen: open }),
+  pushNotification: (n) =>
+    set((s) => ({
+      notifications: [
+        {
+          ...n,
+          id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          timestamp: new Date().toISOString(),
+          read: false,
+        },
+        ...s.notifications,
+      ].slice(0, 50),
+    })),
+  markAllRead: () =>
+    set((s) => ({
+      notifications: s.notifications.map((n) => ({ ...n, read: true })),
+    })),
+  clearNotifications: () => set({ notifications: [] }),
+  unreadCount: () => get().notifications.filter((n) => !n.read).length,
+
+  /* ---- recently visited panels ---- */
+  recentPanels: ["overview" as WorkspacePanelId],
 }));
 
 /* Panel catalog (used by sidebar + command palette). */

@@ -241,3 +241,44 @@ Unresolved issues / next-phase recommendations:
 6. [MEDIUM] Generate config.yaml + submission_data.json with git commit/branch.
 7. [LOW] Produce the 3-5 minute demonstration video.
 8. [DEV-MODE] Clear stale Turbopack console cache on next full dev-server restart (cosmetic only).
+
+---
+Task ID: 11 (cron review round 2)
+Agent: Principal (orchestrator)
+Task: QA + dev-server cache fix + notification/activity center + header breadcrumb + recent-panel quick-switch + stage accent glow.
+
+Work Log:
+- Reviewed worklog.md (RC1 + release-engineering layer complete, 20 panels). QA'd via agent-browser: 0 lint errors, but 60 stale Turbopack console errors persisted from the previous round's mid-session file creation.
+- ROOT CAUSE: The dev server had been running since before the 5 release panels were created; Turbopack cached the "Module not found" state. The files existed and rendered correctly, but the dev-cache kept emitting stale errors.
+- FIX: Restarted the dev server (`nohup bun run dev >> dev.log 2>&1 &`) to force Turbopack to re-resolve all modules. After restart + fresh browser session: 0 console errors across ALL 20 panels (full sweep verified: Overview, Trust Sphere, Proof Graph, Evidence Runtime, Release Report, Adapter Attribution, Integrity Closure, Identity Registry, Acceptance, Plugin Registry, AMD Runtime, Zoo Runtime, HBK Workspace, CAD Viewer, Artifacts, Explorer, Telemetry, Terminal, Watchdog, Lindiwe — all 0 errors).
+- NEW FEATURE: Notification / Activity Center.
+  - Extended `useIveStore.ts` with: `ActivityNotification` interface (id, timestamp, level, source, title, detail, panel, read), `notifications` array (5 seeded events: Release BLOCKED, Determinism NOT_EVALUATED, Radeon retained, Zoo NOT_DEMONSTRATED, Historical preserved), `notifCenterOpen`, `setNotifCenterOpen`, `pushNotification`, `markAllRead`, `clearNotifications`, `unreadCount`. Also added `recentPanels` tracking (updated in `setActivePanel`).
+  - Built `NotificationCenter.tsx`: slide-in panel (right side, spring animation, 440px max), backdrop, header with bell + unread badge, actions bar (Mark all read / Clear / F8 hint), scrollable feed with per-notification cards (level-icon, source, title, detail, timeAgo, deep-link to source panel), footer. Includes `NotificationBell` header trigger with unread count badge + global F8 keyboard shortcut.
+  - Wired into `Workspace.tsx`: NotificationBell in header (next to keyboard-shortcuts button), NotificationCenter rendered alongside CommandPalette, F8 added to ShortcutsOverlay.
+- NEW FEATURE: Header Breadcrumb + Recent-Panel Quick-Switch.
+  - Added a secondary header bar below the main header: breadcrumb trail (IVE → [Group] → [Panel]) on the left, recent-panel quick-switch tabs on the right (shows up to 5 recently-visited panels excluding the current one, each with an accent-colored dot).
+  - The recentPanels array is populated by `setActivePanel` in the store (most-recent-first, deduped, capped at 6).
+- STYLING: Stage accent corner-glow.
+  - Added a `motion.div` behind the panel content in the stage that renders a radial-gradient glow in the active panel's accent color (top-right corner, 45% spread, 5% opacity). Animates in on panel change (0.6s fade). Gives each panel a subtle ambient color identity.
+  - Improved panel transition: y-offset increased to 8px for a more pronounced slide, z-index layering (glow z-0, panel z-10).
+- Verified: Notification bell shows "3 unread" badge → click opens Activity Center → "3 unread · 5 total" → Mark all read → badge updates to "0 unread". F8 toggles open/closed (verified via dialog role presence). Breadcrumb updates on navigation (IVE → Release → Release Report). Recent-tabs populate after navigation (Trust Sphere, Overview tabs appear). 0 console errors across all tested panels. 0 lint errors.
+
+Stage Summary:
+- Dev-server Turbopack cache issue RESOLVED (fresh restart → 0 console errors).
+- 20 panels, all rendering with 0 errors.
+- Notification/Activity Center: fully functional (F8 toggle, bell badge, mark-all-read, clear, deep-link navigation, 5 seeded events).
+- Header breadcrumb + recent-panel quick-switch: fully functional.
+- Stage accent corner-glow: renders per-panel accent color.
+- 0 lint errors, 0 console errors, clean build.
+
+Current project status: STABLE + ENHANCED. RC1 + release-engineering layer + activity center + navigation aids. The workspace now feels like a complete engineering operating system with real-time event tracking and fast cross-panel navigation.
+
+Unresolved issues / next-phase recommendations:
+1. [BLOCKER] Expose ive_result_adapter.py as an inspectable file (release gate).
+2. [BLOCKER] Expose verify_release.py as an inspectable release-gate script.
+3. [BLOCKER] Write the frozen contract to ive-output/results.json on disk for packaging.
+4. [HIGH] Run independent sha256sum -c verification on the final package.
+5. [HIGH] Resolve LICENSE decision with owner authorization.
+6. [MEDIUM] Wire real-time event sources (proof runtime, evidence runtime) to pushNotification so the activity center updates live as the user advances the proof graph or evidence timeline.
+7. [LOW] Add per-panel keyboard shortcuts (e.g. [ and ] for prev/next panel within a group).
+8. [LOW] Produce the 3-5 minute demonstration video.

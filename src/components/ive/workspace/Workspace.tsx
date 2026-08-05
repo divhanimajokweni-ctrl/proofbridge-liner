@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronRight, Command as CommandIcon, Keyboard, Layers, ShieldCheck, Cpu, Droplets, Server } from "lucide-react";
+import { ChevronRight, Command as CommandIcon, Keyboard, Layers, ShieldCheck, Cpu, Droplets, Server, X } from "lucide-react";
 import { useIveStore, PANELS, PANEL_MAP, type PanelMeta } from "@/store/useIveStore";
 import { VVULogo } from "../VVULogo";
 import { StatusPill, Kbd } from "../primitives";
 import { StatusBar } from "./StatusBar";
 import { CommandPalette } from "./CommandPalette";
 import { PanelRouter } from "./PanelRouter";
+import { NotificationCenter, NotificationBell } from "./NotificationCenter";
 
 const GROUP_LABELS: Record<PanelMeta["group"], string> = {
   core: "Core",
@@ -39,6 +40,7 @@ const GROUP_ORDER: PanelMeta["group"][] = ["core", "release", "runtime", "case-s
 export function Workspace() {
   const activePanel = useIveStore((s) => s.activePanel);
   const setActivePanel = useIveStore((s) => s.setActivePanel);
+  const recentPanels = useIveStore((s) => s.recentPanels);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -123,8 +125,50 @@ export function Workspace() {
           >
             <Keyboard className="h-3.5 w-3.5" />
           </button>
+          <NotificationBell />
         </div>
       </header>
+
+      {/* BREADCRUMB + RECENT-TABS BAR */}
+      <div className="relative z-20 flex shrink-0 items-center gap-3 border-b border-white/[0.06] px-4 py-1.5 ive-surface sm:px-6">
+        {/* Breadcrumb */}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="ive-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground/50">
+            IVE
+          </span>
+          <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/30" />
+          <span className="ive-mono text-[9px] uppercase tracking-[0.14em]" style={{ color: `${activeMeta.accent}cc` }}>
+            {GROUP_LABELS[activeMeta.group]}
+          </span>
+          <ChevronRight className="h-2.5 w-2.5 text-muted-foreground/30" />
+          <span className="ive-mono truncate text-[10px] font-medium text-foreground/90">
+            {activeMeta.label}
+          </span>
+        </div>
+        {/* Recent panels quick-switch */}
+        <div className="ml-auto flex items-center gap-1 overflow-x-auto">
+          <span className="ive-mono hidden shrink-0 text-[8px] uppercase tracking-wider text-muted-foreground/40 sm:inline">
+            Recent
+          </span>
+          {recentPanels.filter((id) => id !== activePanel).slice(0, 5).map((id) => {
+            const meta = PANEL_MAP[id];
+            return (
+              <button
+                key={id}
+                onClick={() => setActivePanel(id)}
+                className="ive-mono inline-flex shrink-0 items-center gap-1 rounded border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5 text-[9px] text-muted-foreground transition-all hover:border-white/15 hover:text-foreground"
+                title={meta.mission}
+              >
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: meta.accent }}
+                />
+                {meta.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* BODY: sidebar + stage */}
       <div className="relative flex min-h-0 flex-1">
@@ -203,15 +247,26 @@ export function Workspace() {
         </nav>
 
         {/* STAGE */}
-        <main className="relative min-w-0 flex-1 overflow-hidden">
+        <main className="relative min-h-0 flex-1 overflow-hidden">
+          {/* Accent corner-glow that follows the active panel's accent color */}
+          <motion.div
+            key={`glow-${activePanel}`}
+            className="pointer-events-none absolute inset-0 z-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6 }}
+            style={{
+              background: `radial-gradient(circle at 100% 0%, ${activeMeta.accent}0d, transparent 45%)`,
+            }}
+          />
           <AnimatePresence mode="wait">
             <motion.div
               key={activePanel}
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-              className="absolute inset-0"
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              className="absolute inset-0 z-10"
             >
               <PanelRouter panel={activePanel} />
             </motion.div>
@@ -222,6 +277,7 @@ export function Workspace() {
       <StatusBar />
 
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <NotificationCenter />
       {shortcutsOpen && <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} />}
 
       {/* Mobile nav backdrop */}
@@ -256,7 +312,7 @@ function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
           <div>
             <div className="ive-mono mb-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Global</div>
             <div className="flex flex-col gap-1.5">
-              {[["⌘K", "Command palette"], ["?", "This overlay"], ["Esc", "Skip boot / close"]].map(([k, l]) => (
+              {[["⌘K", "Command palette"], ["F8", "Activity center"], ["?", "This overlay"], ["Esc", "Skip boot / close"]].map(([k, l]) => (
                 <div key={k} className="flex items-center justify-between gap-3">
                   <span className="text-xs text-foreground/85">{l}</span>
                   <Kbd>{k}</Kbd>
