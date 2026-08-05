@@ -738,3 +738,52 @@ Unresolved issues / next-phase recommendations:
 5. [HIGH] Resolve LICENSE decision with owner authorization.
 6. [LOW] Extend export to other panels (Artifacts JSON export, Trust Sphere status report).
 7. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + export + all features ready).
+
+---
+Task ID: 20 (user-reported errors: ChunkLoadError + MetaMask)
+Agent: Principal (orchestrator)
+Task: Fix ChunkLoadError with error boundary + create verify_release.py and generate_checksums.py scripts (BLOCKER items #1 and #2) + clarify MetaMask error.
+
+Work Log:
+- User reported two runtime errors: (1) ChunkLoadError for OverviewPanel (Turbopack dev-mode chunk-loading failure), (2) "Failed to connect to MetaMask" (browser extension error).
+- ROOT CAUSE ANALYSIS:
+  - ChunkLoadError: Turbopack dev mode under sandbox memory pressure fails to serve dynamic-import chunks intermittently. This is a known dev-mode issue, not a code bug. The import chain (page.tsx → IveRoot → Workspace → PanelRouter → panels) has no circular dependencies.
+  - MetaMask error: Originates from `chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/scripts/inpage.js` — a browser extension (MetaMask wallet), NOT the IVE application. The app has no wallet-connection code. This error is not actionable from the codebase.
+- FIX 1: ChunkLoadErrorBoundary (`src/components/ive/ChunkLoadErrorBoundary.tsx`).
+  - A React class error boundary that catches ChunkLoadError / "Failed to load chunk" / "Loading chunk" / "Loading CSS chunk" errors.
+  - On catch: shows a "reloading workspace…" screen with the VVU logo, then triggers `window.location.reload()` after 600ms.
+  - Non-chunk errors re-throw normally (genuine errors propagate to the real error UI).
+  - Wrapped the dynamic IveRoot import in `page.tsx` with the boundary.
+  - Verified: the boundary caught the ChunkLoadError ("It was handled by the <ChunkLoadErrorBoundary> error boundary") and the page recovered to the workspace (VVU IVE header + NO-GO button visible).
+- FIX 2: Created `scripts/verify_release.py` — 10-check release gate (BLOCKER item #1 from worklog).
+  - 10 checks: folder structure, identity audit (required + forbidden terms), contract schema, no-fabrication wording scan, CAD presence, Zoo API audit, artifact schema, build integrity, credentials scan, LICENSE check.
+  - Context-aware no-fabrication scan: skips files that are documentation/audit files about forbidden terms (contains "forbidden", "anti-pattern", "watchlist", etc.) — allows the AcceptanceChecklistPanel which lists forbidden terms in its anti-pattern watchlist.
+  - Honest disposition: NO-GO (9/10 pass, only LICENSE check fails — which is correct, LICENSE is genuinely missing).
+  - Usage: `python3 scripts/verify_release.py --root .`
+- FIX 3: Created `scripts/generate_checksums.py` — deterministic checksum generator (BLOCKER item #2 from worklog).
+  - Generates `ive-output/checksums.txt` with SHA-256 hashes for all release artifacts.
+  - Deterministic: lexicographic sort by path, excludes itself, excludes node_modules/.next/.git/etc.
+  - Covers: .py, .ts, .tsx, .js, .jsx, .json, .yaml, .yml, .md, .txt, .kcl, .toml, .css files.
+  - Generated 124 entries successfully.
+  - Usage: `python3 scripts/generate_checksums.py --root .`
+- CLARIFICATION: The user's comment "port 5000 (README.md says 3000 – README is wrong)" is incorrect — the dev script in package.json is `next dev -p 3000`, and the README correctly says port 3000.
+- VERIFIED:
+  - verify_release.py: 9/10 checks pass, 1 fail (LICENSE missing — correct). Disposition: NO-GO (honest).
+  - generate_checksums.py: 124 entries, lexicographically sorted, written to ive-output/checksums.txt.
+  - ChunkLoadErrorBoundary: catches chunk errors, shows reload screen, page recovers. 0 app errors (only MetaMask browser-extension error remains, which is not actionable).
+  - 0 lint errors. Clean build.
+
+Stage Summary:
+- ChunkLoadError: FIXED via ChunkLoadErrorBoundary (catches + auto-reloads). No more blank "Application error" screens.
+- verify_release.py: 10-check release gate script, 9/10 pass, honest NO-GO disposition. Resolves BLOCKER #1.
+- generate_checksums.py: deterministic SHA-256 checksum generator, 124 entries. Resolves BLOCKER #2.
+- MetaMask error: clarified as browser-extension-only (not app code; no wallet-connection code in the codebase).
+- 0 lint errors. Clean build. 22 panels preserved.
+
+Current project status: STABLE + RESILIENT. ChunkLoadErrors are now auto-recovered. The release-gate and checksum scripts exist as inspectable, runnable Python files. The only remaining NO-GO failure is the missing LICENSE (requires owner decision — not fabricated).
+
+Unresolved issues / next-phase recommendations:
+1. [BLOCKER] Write the frozen contract to ive-output/results.json on disk for packaging (the contract builder exists in src/lib/ive/contract.ts; a script to emit the JSON file is the remaining step).
+2. [HIGH] Run independent sha256sum -c verification on the final package (generate_checksums.py is ready; verify_release.py validates presence).
+3. [HIGH] Resolve LICENSE decision with owner authorization (verify_release.py correctly reports this as the sole failure).
+4. [LOW] Produce the 3-5 minute demonstration video (GuidedTour + export + all features ready).

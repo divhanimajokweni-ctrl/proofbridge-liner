@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { ChunkLoadErrorBoundary } from "@/components/ive/ChunkLoadErrorBoundary";
 
 /**
  * IVE root route.
@@ -9,6 +10,10 @@ import dynamic from "next/dynamic";
  * engineering operating system: a boot sequence first, then the IVE
  * workspace. The shell is loaded dynamically (ssr:false) because the boot
  * animation and the canvas-based Trust Sphere are inherently client-side.
+ *
+ * A ChunkLoadErrorBoundary wraps the dynamic import so that Turbopack
+ * dev-mode chunk-loading failures (common under memory pressure) trigger
+ * an automatic reload instead of a blank "Application error" screen.
  */
 const IveRoot = dynamic(
   () => import("@/components/ive/IveRoot").then((m) => m.IveRoot),
@@ -42,5 +47,9 @@ const IveRoot = dynamic(
 );
 
 export default function Home() {
-  return <IveRoot />;
+  return (
+    <ChunkLoadErrorBoundary>
+      <IveRoot />
+    </ChunkLoadErrorBoundary>
+  );
 }
