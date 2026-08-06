@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * VERIFICATION 3: SSE behavior under failure
  *

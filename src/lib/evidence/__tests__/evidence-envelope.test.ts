@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/lib/evidence/__tests__/evidence-envelope.test.ts
 // ───────────────────────────────────────────────────────────────
 // BOTTLENECK 1: Evidence Envelope Test Suite

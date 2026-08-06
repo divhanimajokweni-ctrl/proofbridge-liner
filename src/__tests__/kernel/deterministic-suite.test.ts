@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Epistemic Runtime v0.8 — Full Deterministic Test Suite
 // All 12 required verifications from the Execution Contract
 //

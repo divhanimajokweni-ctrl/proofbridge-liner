@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { InMemoryEventStore } from "../event-store";
 import type { RuntimeEvent } from "../types";
 

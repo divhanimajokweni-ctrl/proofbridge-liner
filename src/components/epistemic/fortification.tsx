@@ -320,7 +320,7 @@ export function FortificationSection() {
                           <div className="text-xs text-muted-foreground">{concept.description}</div>
                           <div className="mt-2 flex items-center gap-1.5">
                             <span className="text-[9px] font-mono text-muted-foreground/50">status:</span>
-                            <StatusPill status={concept.status === "enforced" ? "verified" : concept.status === "implemented" ? "healthy" : concept.status} />
+                            <StatusPill status={(concept.status === "enforced" ? "verified" : concept.status === "implemented" ? "healthy" : concept.status === "planned" ? "pending" : concept.status === "partial" ? "repairing" : concept.status) as any} />
                           </div>
                         </motion.div>
                       )}

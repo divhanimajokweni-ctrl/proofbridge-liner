@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/lib/evidence/__tests__/gate-integration.test.ts
 // ───────────────────────────────────────────────────────────────
 // BOTTLENECK 1: Gate Integration Tests

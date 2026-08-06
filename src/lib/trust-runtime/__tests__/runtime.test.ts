@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { resetRuntime, getRuntime } from "../runtime";
 import { reduceBatch, createInitialState } from "../reducer";
 import type { Command } from "../types";

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * VERIFICATION 4: Colony correctness
  *

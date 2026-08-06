@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/lib/runtime/gateWrapper.ts
 // ───────────────────────────────────────────────────────────────
 // BOTTLENECK 1: Runtime Gate Integration

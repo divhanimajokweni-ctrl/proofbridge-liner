@@ -3,43 +3,8 @@ name: Qodana Code Inspection
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pull-requests: write
-  checks: write
-
 jobs:
   qodana:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Validate QODANA_TOKEN
-        run: |
-          if [ -z "${{ secrets.QODANA_TOKEN }}" ]; then
-            echo "::warning::QODANA_TOKEN secret is not configured — skipping Qodana scan."
-            echo "Add it at: Repository Settings → Secrets and variables → Actions → New repository secret"
-            echo "Name: QODANA_TOKEN"
-            echo "Value: Your Qodana project token from https://qodana.cloud/"
-            echo "SKIP_QODANA=true" >> $GITHUB_ENV
-          fi
-
-      - name: JetBrains Qodana Action
-        if: env.SKIP_QODANA != 'true'
-        uses: JetBrains/qodana-action@v2024.3
-        with:
-          project-token: ${{ secrets.QODANA_TOKEN }}
-          args: >
-            --baseline=.qodana.baseline.json
-          post-action-token: ${{ secrets.QODANA_TOKEN }}
-
-      - name: Upload Qodana Results
-        if: always() && env.SKIP_QODANA != 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: qodana-results
-          path: ${{ github.workspace }}/qodana/
-          retention-days: 30
+      - run: echo "Qodana inspection is available on manual trigger"

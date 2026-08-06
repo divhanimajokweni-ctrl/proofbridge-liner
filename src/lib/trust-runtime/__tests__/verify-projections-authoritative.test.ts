@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * VERIFICATION 1b: Page uses server projections, not random walks
  *

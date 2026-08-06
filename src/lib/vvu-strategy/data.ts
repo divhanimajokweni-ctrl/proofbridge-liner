@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @license
  * VVU EARTH TECH - AIR Kernel

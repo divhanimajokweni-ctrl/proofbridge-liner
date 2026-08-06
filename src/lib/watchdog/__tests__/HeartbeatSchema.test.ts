@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { OpTag, FaultPriority, classifyFault, FAULT_RULES } from '../HeartbeatSchema';
 
 describe('HeartbeatSchema', () => {

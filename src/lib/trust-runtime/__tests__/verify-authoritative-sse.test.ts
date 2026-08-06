@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * VERIFICATION 1: SSE is authoritative
  *

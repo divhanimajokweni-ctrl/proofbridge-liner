@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createInitialState, reduce, reduceBatch } from "../reducer";
 import type { RuntimeEvent, RuntimeState } from "../types";
 

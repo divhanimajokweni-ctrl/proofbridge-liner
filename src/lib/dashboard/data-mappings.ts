@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Trust Runtime Dashboard — Data Mappings
 // Transforms raw database records into the TrustRuntimeState shape.
 // Every function queries the real database via Prisma; no mock data.

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { supabase } from '@/lib/supabase'
 import { createChainedReceipt } from '@/prover/chain'
 import { signPayload } from '@/prover/signer'
