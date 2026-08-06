@@ -1,0 +1,11 @@
+packages:
+  - 'packages/*'
+  - 'apps/*'
+  - 'services/*'
+  - 'contracts'
+
+allowBuilds:
+  '@firebase/util': true
+  esbuild: false
+  protobufjs: true
+  sharp: true

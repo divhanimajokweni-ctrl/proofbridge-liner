@@ -1,0 +1,44 @@
+# VVU-VAL-001 · Recipient Registry
+# NO addresses in code. Each group is released at a different stage (stages.yaml).
+# Recipients marked personalized: true receive hand-tailored emails referencing
+# the published evidence by hash — never a templated blast.
+
+audiences:
+  technical_communities:
+    release_stage: 1
+    channels:
+      - { name: "GitHub Release", type: "github_release", target: "vvu/epistemic-runtime" }
+      - { name: "Engineering blog", type: "blog", target: "vvu.africa/blog" }
+      - { name: "Hacker News", type: "hackernews", target: "show", personalized: true }
+      - { name: "r/distributedsystems", type: "reddit", target: "r/distributedsystems" }
+      - { name: "VVU Discord", type: "discord", target: "vvu-discord" }
+
+  researchers:
+    release_stage: 1
+    recipients:
+      - { name: "To be confirmed — Wits", email: "to-be-confirmed", personalized: true }
+      - { name: "To be confirmed — UCT", email: "to-be-confirmed", personalized: true }
+
+  investors:
+    release_stage: 2
+    recipients:
+      - { name: "Montegray Capital", email: "to-be-confirmed", contact: "Michael Jordaan", personalized: true }
+      - { name: "Oppenheimer Generations", email: "to-be-confirmed", personalized: true }
+      - { name: "Ubuntu-Botho / ARC", email: "to-be-confirmed", contact: "Patrice Motsepe", personalized: true }
+      - { name: "E Squared Investments", email: "to-be-confirmed", contact: "Allan Gray", personalized: true }
+
+  municipalities:
+    release_stage: 2
+    recipients:
+      - { name: "Pilot municipality", email: "to-be-confirmed", personalized: true }
+
+  journalists:
+    release_stage: 3
+    recipients:
+      - { name: "Tech press (to be confirmed)", email: "to-be-confirmed", personalized: true }
+
+  general_social:
+    release_stage: 3
+    channels:
+      - { name: "LinkedIn", type: "linkedin", target: "company/vvu" }
+      - { name: "Twitter/X", type: "twitter", target: "@vvu_africa" }

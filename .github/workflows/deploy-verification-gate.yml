@@ -1,0 +1,10 @@
+name: Deploy Verification Gate
+
+on:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Verification gate is available on manual trigger"

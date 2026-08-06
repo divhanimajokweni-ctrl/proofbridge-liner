@@ -1,0 +1,10 @@
+name: Deploy ProofBridge Liner
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Vercel deployment is available on manual trigger. Connect repo to Vercel dashboard for auto-deploys."

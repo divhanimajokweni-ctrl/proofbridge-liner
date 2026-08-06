@@ -1,0 +1,41 @@
+{
+  "name": "vvu-immortal-keeper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VVU Colony — Immortal Knowledge Keeper with Eve. Durable, approval-gated agent that gathers knowledge from the web and verifies it through the VVU Colony.",
+  "scripts": {
+    "dev": "eve dev",
+    "dev:ui": "eve dev --no-ui",
+    "dev:remote": "eve dev https://your-app.vercel.app",
+    "build": "eve build",
+    "start": "eve start",
+    "start:port": "eve start --port 3000",
+    "info": "eve info",
+    "info:json": "eve info --json",
+    "link": "eve link",
+    "deploy": "eve deploy",
+    "immortalize": "eve dev --no-ui && curl -X POST http://127.0.0.1:2000/eve/v1/session -H 'content-type: application/json' -d '{\"message\":\"Immortalize $URL\"}'",
+    "eval": "eve eval",
+    "eval:list": "eve eval --list",
+    "eval:json": "eve eval --json",
+    "channels": "eve channels list",
+    "channels:add": "eve channels add",
+    "channels:web": "eve channels add web",
+    "channels:slack": "eve channels add slack",
+    "smoke-test": "eve dev https://your-app.vercel.app",
+    "ci": "eve build && eve eval --strict --junit ./test-results.xml",
+    "pipeline": "eve build && eve eval --strict && eve deploy"
+  },
+  "dependencies": {
+    "eve": "latest",
+    "ai": "^4.0.0",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

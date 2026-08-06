@@ -1,0 +1,10 @@
+name: Qodana Config Upload
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Qodana config upload is available on manual trigger"

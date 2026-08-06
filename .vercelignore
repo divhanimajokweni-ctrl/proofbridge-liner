@@ -1,0 +1,37 @@
+.next/
+node_modules/
+proofbridge-liner/
+deer-flow/
+.cache/
+.local/
+artifacts/
+attached_assets/
+e2e/
+scripts/
+supabase/
+public/vvv/
+vvv/
+public/vvv/*.html
+vvv/*.html
+
+.git/
+cache/
+.config/
+
+# VVU War Room secrets
+auth/
+
+# AI Gateway (auxiliary utility)
+ai-gateway/
+
+# Kilo/OpenCode local config (not needed for frontend)
+.kilo/
+
+# Next.js build trace exclusions
+scripts/customer-360/node_modules/
+
+# Legacy root-level API (superseded by App Router)
+api/verify.js
+
+# VVU Earth-Tech auxiliary services
+ant-stack/
