@@ -1,305 +1,145 @@
-Here's the **complete, submission‑ready README** that incorporates all the technical enhancements (DeepVariant analogy, chi‑square gating, VRES compliance) and aligns with the final release plan. It replaces the earlier placeholder description.
-
----
-
 # 🌉 ProofBridge Liner
 
-**An Integrated Verification Environment (IVE) to engineer systems that can prove themselves.**
+### An Integrated Verification Environment (IVE) to Engineer Systems That Can Prove Themselves
 
-*Built for the 2026 #ZooAPIMakeathon*
+🏆 **Zoo API Makeathon 2026 Submission** 🏆
 
 ---
 
 ## 🎬 Demo Video
 
-*(Link to your video)*
+*⏱️ 1-Minute Demo – Watch the IVE Boot Sequence → CAD Generation → AI Specification → Proof Evaluation → Trust Sphere → Blocked Release*
+
+
+https://github.com/user-attachments/assets/7b471e46-a9e6-4975-88d2-feab390c344b
+
+
 
 ---
 
-## 🛑 The Problem
+## 🔥 The Problem
 
-Modern engineering design and formal system verification live in isolated silos. Engineers build complex CAD models, but verifying that these physical geometries meet strict mathematical, safety, and physical specifications usually requires disconnected, manual workflows. There is a lack of cryptographically traceable, mathematically bounded proof directly tied to the living CAD model, which slows down critical hardware development and introduces untracked human error.
-
----
+Modern engineering is broken. Design and verification live in separate, disconnected worlds. Engineers spend weeks building complex CAD models, only to hand them off for months of manual, disconnected verification. There is a complete lack of cryptographically traceable, mathematically bounded proof directly tied to the living CAD model. This siloed workflow slows down hardware development and introduces untracked human error.
 
 ## 💡 Our Solution
 
 **ProofBridge Liner** is an Integrated Verification Environment (IVE). It bridges the gap between procedural geometry generation and formal verification.
 
+**The VVU Integrated Verification Environment (IVE) demonstrates a workflow that combines procedural CAD, AI-assisted specification generation, bounded formal verification, and cryptographically traceable engineering evidence.**
+
 We built a cinematic, persistent workspace that allows engineers to:
 
-1. **Generate** procedural CAD structures (using the Zoo Engine API).
-2. **Apply** AI‑assisted mathematical specifications (via Zookeeper).
-3. **Run** bounded formal verifications (using SMT solvers) against the geometry.
-4. **Output** cryptographically traceable evidence that the system meets its constraints.
+1. Generate procedural CAD structures in real-time.
+2. Apply AI-assisted mathematical specifications.
+3. Run bounded formal verifications against the geometry.
+4. Output cryptographically traceable evidence that the system meets its constraints.
 
-For this Makeathon, we built the **HBK MK‑II Hydro‑Gateway** as our demonstration case study to prove the pipeline works in real‑time.
+> 🌊 **The Case Study:** For this Makeathon, we built the **HBK MK-II Hydro-Gateway** as our reference application to prove the pipeline works on a real engineering workflow.
 
 ---
 
 ## 🛠️ How We Used Zoo APIs
 
-This project heavily leverages **Zoo's Engine API**.
+This project was built from scratch and heavily leverages Zoo's flagship APIs to power the core verification loop.
 
-Instead of relying on static file imports or heavy local rendering, ProofBridge Liner uses the Engine API to dynamically generate, edit, and visualize the procedural CAD geometry (the HBK MK‑II Hydro‑Gateway) directly in the cloud‑native browser environment. The Engine API allows our IVE to tightly couple the physical geometry parameters with our AI‑assisted specification and verification backend, creating a seamless loop between *“what it looks like”* and *“what we can mathematically prove about it.”*
-
-We also used the **Zookeeper WebSocket** to generate the KCL code for the hydro‑gateway from natural language prompts, and the **Modeling WebSocket** to export the resulting STEP geometry.
+| API | How We Used It |
+| --- | --- |
+| **Zoo Engine API** | We use the Engine API to dynamically generate, edit, and visualize procedural CAD geometry (HBK MK-II) via KCL directly in the cloud-native browser. Instead of relying on static files, the geometry is tightly coupled to our mathematical verification backend. |
+| **Zoo Agent API (Zookeeper)** | We utilize Zookeeper via WebSocket to power our **AI-assisted mathematical specification generation**. It translates natural language engineering intent (*"Design a hydro-gateway with a rectangular base and M12 mounting holes"*) into verifiable KCL constraints and geometry. |
+| **File Format API** | We leverage the Modeling WebSocket to seamlessly export the AI-generated KCL geometry as STEP files for secondary inspection and cryptographic archival. |
 
 ---
 
-## ⚙️ Setup and Installation
+## 🧠 Why It's Different (The Tech)
+
+### 1. Proof-Aware Engineering
+
+Most CAD tools show you what you built. IVE shows you what you've *proven* about what you built. If you change a parameter, the proof re-runs automatically, and the release decision recalculates.
+
+### 2. Chi-Square Gating & Bayesian Inference
+
+Inspired by modern inference pipelines (like DeepVariant), our HBK MK-II case study transforms raw physical signals into calibrated probabilistic inferences. We use **Chi-Square Gating** to reject statistically inconsistent sensor measurements (glitches, pump switching) before they can corrupt the Bayesian state estimate, preventing false leak localizations.
+
+### 3. Cryptographic Traceability
+
+Every proof produces a frozen contract (`results.json`), an append-only cryptographic ledger (`ledger.json`), full provenance (`provenance.json`), and a SHA-256 integrity manifest (`checksums.txt`). No black boxes.
+
+---
+
+## 🚀 Setup & Installation
 
 **Prerequisites:**
-- Node.js (v18+)
-- npm / pnpm / bun
-- SQLite (optional, for persistence)
+
+* Node.js v18+
+* `bun` (recommended), `npm`, or `pnpm`
+* A Zoo API Key
 
 **1. Clone the repository:**
+
 ```bash
 git clone https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
 cd proofbridge-liner
+
 ```
 
 **2. Install dependencies:**
+
 ```bash
-bun install   # or npm install
+bun install
+
 ```
 
 **3. Environment Setup:**
 Create a `.env` file in the root directory and add your Zoo API key:
-```
-ZOO_API_KEY=your_zoo_engine_api_key_here
-DATABASE_URL=file:./db/custom.db   # optional
+
+```bash
+echo "ZOO_API_KEY=your_zoo_engine_api_key_here" > .env
+
 ```
 
-**4. Run the Development Server:**
+**4. Run the IVE:**
+
 ```bash
 bun run dev
+
 ```
-The IVE will be live at [http://localhost:3000](http://localhost:3000).
+
+Open `http://localhost:3000` to initiate the boot sequence and load the IVE workspace.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🚧 Claim Boundaries (The Zero Fabrication Rule)
 
-The IVE follows a modern inference pipeline, analogous to high‑performance genomics pipelines (e.g., DeepVariant):
+We strictly adhere to the **Zero Fabrication Rule**. We never fake data, and a trust score must either be mathematically defined or not exist. Missing values are explicitly marked.
 
-| DeepVariant                          | HBK Mk‑II Hydro‑Gateway                |
-|--------------------------------------|----------------------------------------|
-| Raw sequencing signal                | Raw acoustic‑pressure waveform         |
-| Candidate variant generation         | Candidate hydraulic anomaly generation |
-| Structured tensor/image representation | Multi‑scale hydraulic feature tensor   |
-| Learned inference model              | Hydro‑Bayesian Kernel                  |
-| Calibrated posterior probabilities   | Leak‑location posterior distribution   |
-| Variant confidence score             | Leak confidence / search‑radius estimate|
+**This prototype demonstrates:**
 
-The HBK Mk‑II pipeline is:
+* ✅ AI-assisted specification generation (via Zoo Agent API)
+* ✅ Procedural CAD integration (via Zoo Engine API)
+* ✅ Proof obligation management & SMT-based verification
+* ✅ Evidence provenance & Audit trail generation
 
-```
-Sensor (pressure/flow/acoustic)
-   ↓
-Signal Conditioning (amplification, filtering, anti‑aliasing)
-   ↓
-Noise Removal (wavelet denoising, adaptive filtering)
-   ↓
-Feature Extraction (time‑domain, frequency‑domain, wavelet‑domain)
-   ↓
-Hydraulic State Representation (multi‑scale feature tensor)
-   ↓
-Hydro‑Bayesian Kernel (probabilistic inference engine)
-   ↓
-Posterior Leak Distribution (leak location ± uncertainty)
-   ↓
-Decision Layer (TRIP threshold: Brier Score < 0.02)
-```
+**This prototype does NOT demonstrate:**
 
-To prevent corrupted measurements from contaminating the state estimate, we implement **chi‑square innovation gating**:
-
-1. Compute innovation: `r = z - H·x̂`
-2. Compute innovation covariance: `S = H·P·Hᵀ + R`
-3. Compute Normalised Innovation Squared: `χ² = rᵀ·S⁻¹·r`
-4. If `χ² > χ²_threshold(DOF, α)`, the measurement is **rejected** before the Bayesian update.
-
-This ensures that pump switching, valve operations, sensor glitches, or communication errors do not cause false leak localisations.
+* ❌ Physical safety certification
+* ❌ Regulatory approval or code compliance
+* ❌ Manufacturing verification or field validation
 
 ---
 
-## 📁 Repository Layout
+## 🛑 Verification Status
 
-```
-proofbridge-liner/
-├── README.md
-├── LICENSE                      # AGPL-3.0-or-later
-├── COMMERCIAL-LICENSE.md        # ZAR pricing (7 tiers)
-├── CONTRIBUTING.md              # CLA reference
-├── pricing.json                 # Machine‑readable ZAR pricing
-├── src/
-│   ├── app/                     # Next.js 16 App Router
-│   │   ├── page.tsx             # IVE root route
-│   │   ├── layout.tsx
-│   │   ├── globals.css
-│   │   └── api/
-│   │       ├── ive/             # Frozen result contract endpoint
-│   │       └── ive/artifacts/   # Evidence‑package manifest endpoint
-│   ├── store/
-│   │   └── useIveStore.ts       # Canonical Zustand store (single source of truth)
-│   ├── lib/
-│   │   └── ive/
-│   │       ├── types.ts         # Frozen contract types
-│   │       ├── contract.ts      # buildFrozenContract (zero fabrication)
-│   │       ├── proofGraph.ts    # Engineering DAG builder
-│   │       ├── evidence.ts      # Evidence timeline + plugins + artifacts
-│   │       └── cad.ts           # HBK Mk‑II KCL registry + architecture
-│   └── components/
-│       └── ive/
-│           ├── IveRoot.tsx      # Boot → workspace orchestrator
-│           ├── VVULogo.tsx
-│           ├── primitives.tsx   # PanelFrame, StatCard, StatusPill, MonoTable
-│           ├── boot/
-│           │   └── BootSequence.tsx
-│           ├── workspace/
-│           │   ├── Workspace.tsx
-│           │   ├── StatusBar.tsx
-│           │   ├── CommandPalette.tsx
-│           │   └── PanelRouter.tsx
-│           ├── trust/
-│           │   └── TrustSphere.tsx
-│           └── panels/          # 15 engineering surfaces
-│               ├── OverviewPanel.tsx
-│               ├── TrustSpherePanel.tsx
-│               ├── ProofGraphPanel.tsx
-│               ├── EvidenceRuntimePanel.tsx
-│               ├── PluginRegistryPanel.tsx
-│               ├── AmdRuntimePanel.tsx
-│               ├── ZooRuntimePanel.tsx
-│               ├── HbkWorkspacePanel.tsx
-│               ├── CadViewerPanel.tsx
-│               ├── ArtifactsPanel.tsx
-│               ├── ExplorerPanel.tsx
-│               ├── TelemetryPanel.tsx
-│               ├── TerminalPanel.tsx
-│               ├── WatchdogPanel.tsx
-│               └── LindiwePanel.tsx
-├── docs/                        # Architecture, evidence model, release freeze
-├── cad/                         # HBK Mk‑II KCL geometry (case study)
-├── outputs/                     # Raw pipeline emission (source of truth)
-├── ive-output/                  # Normalised frontend ingestion point
-└── runs/                        # Historical validation vault (CPU, ROCm)
-```
+```text
+MATHEMATICAL OBLIGATIONS: PROVEN
+INPUT PROVENANCE: UNVERIFIED
+PHYSICAL VALIDATION: NOT PERFORMED
 
----
-
-## 🔐 Evidence Model
-
-IVE distinguishes between:
-
-- **Mathematical proof** — valid only under declared assumptions.
-- **Engineering evidence** — deterministic, reproducible packages.
-- **Physical validation** — explicitly `OUT_OF_SCOPE` for the current sprint.
-
-Every execution produces the following artifacts, forming a cryptographically verifiable evidence chain:
-
-```
-results.json          # Frozen result contract
-metrics.json          # Derived engineering metrics
-ledger.json           # Append‑only cryptographic ledger
-provenance.json       # Provenance chain
-checksums.txt         # SHA‑256 workspace integrity index
-submission_data.json  # Packaging manifest
-config.yaml           # Runtime configuration
-```
-
-Missing artifacts are explicitly marked `REQUIRES VALIDATION` — never fabricated.
-
----
-
-## 📊 Trust Sphere
-
-The Trust Sphere reports evidence status rather than arbitrary confidence scores. No unexplained aggregate percentage is allowed.
-
-| Dimension | Status | Detail |
-|-----------|--------|--------|
-| **Safety** | `OUT_OF_SCOPE` | FEA excluded from current sprint |
-| **Integrity** | `VERIFIED` | Workspace checksum index present |
-| **Determinism** | `NOT_EVALUATED` | Seeds pending verification |
-| **Auditability** | `LEDGER_PRESENT` | Append‑only, single run initialised |
-| **Recoverability** | `NOT_EVALUATED` | — |
-| **Availability** | `PRESENT` | Local Radeon emulation profile |
-| **Engineering Release** | `BLOCKED` | Missing physical validation |
-
----
-
-## 🎮 Running the IVE
-
-```bash
-bun run dev      # start the dev server on port 3000
-bun run lint     # check code quality
-```
-
-Open the application via the Preview Panel. The boot sequence plays once, then transitions into the IVE workspace. Press **Esc** to skip the boot, **⌘K** for the command palette.
-
----
-
-## 🧪 Verification Status
-
-This repository operates as a reproducible engineering workspace. Components that were not validated within the frozen submission scope are explicitly identified as `REQUIRES VALIDATION` rather than represented as operational.
-
-**Release decision:**
-```
 ENGINEERING RELEASE: BLOCKED
+
 ```
 
-This state is intentional. It indicates that the repository will not elevate an engineering release beyond the evidence presently available. Missing verification, unavailable integrations, or unevaluated engineering inputs are surfaced explicitly rather than concealed.
-
-Every engineering claim in this repository is intended to be traceable to repository evidence, historical execution artifacts, or clearly identified architectural documentation.
+**This is intentional.** ProofBridge Liner refuses to overclaim. Missing physical validation is explicitly surfaced, not hidden. The system successfully proves mathematical obligations but prevents a false "Safe for Deployment" claim, ensuring absolute intellectual honesty in the engineering pipeline.
 
 ---
 
-## 📜 License & Commercial Terms
-
-This project is **dual‑licensed**:
-
-| Track | License | Use Case |
-|-------|---------|----------|
-| **Open‑Source** | AGPL‑3.0‑or‑later | Community, non‑commercial, academic |
-| **Commercial** | VVU Commercial License (ZAR pricing) | Enterprise, municipal, government, proprietary integration |
-
-Full details:
-- `LICENSE` – AGPL‑3.0‑or‑later text
-- `COMMERCIAL-LICENSE.md` – Commercial terms, 7‑tier pricing in ZAR
-- `CONTRIBUTING.md` – Contributor License Agreement
-
----
-
-## 🇿🇦 Proudly South African
-
-- **B‑BBEE Level 1**
-- **Preferential Procurement Policy Framework Act compliant**
-- **All pricing in South African Rand (ZAR), incl. VAT**
-- **Data sovereignty**: all data remains within South African borders (government/municipal topologies)
-
----
-
-## 📬 Contact
-
-File	Purpose	Email
-README.md	General inquiries, questions about the project	divh@venturevisionubuntu.co.za
-COMMERCIAL-LICENSE.md	Licensing, commercial inquiries, support	divh@venturevisionubuntu.co.za
-LICENSE	Legal contact for AGPL compliance	divh@venturevisionubuntu.co.za
-CONTRIBUTING.md	Contributor License Agreement questions	divh@venturevisionubuntu.co.za
-pricing.json	Licensing contact field	divh@venturevisionubuntu.co.za
-The old addresses (hello@venturevisionubuntu.co.za and licensing@vvu.org) have been removed.
-
-Example snippet from the updated README (end of file):
-📬 Contact
-For general inquiries, licensing, support, or commercial questions:
-
-Email: divh@venturevisionubuntu.co.za
-
-Please specify your reason for contact in the subject line (e.g., “General Inquiry”, “Licensing”, “Support”, “Contributor Agreement”).
-
-
-
----
-
-**Engineer systems that can prove themselves.** 🚀
+*Made with ❤️ in South Africa 🇿🇦 for the Zoo API Makeathon 2026.*
