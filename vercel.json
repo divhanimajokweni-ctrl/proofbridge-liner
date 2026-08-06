@@ -1,11 +1,12 @@
 {
   "framework": "nextjs",
-  "installCommand": "npx bun install || npm install",
-  "buildCommand": "DATABASE_URL=file:./build-tmp.db NEXT_IGNORE_TS=1 npx prisma generate && DATABASE_URL=file:./build-tmp.db NEXT_IGNORE_TS=1 npx next build",
+  "installCommand": "npm install",
+  "buildCommand": "DATABASE_URL=file:./build-tmp.db npx prisma generate && DATABASE_URL=file:./build-tmp.db npx next build",
   "regions": ["iad1"],
   "env": {
     "COMPUTE_PROVIDER": "local",
     "NEXT_TELEMETRY_DISABLED": "1",
-    "NEXT_IGNORE_TS": "1"
+    "NEXT_IGNORE_TS": "1",
+    "DATABASE_URL": "file:./build-tmp.db"
   }
 }
