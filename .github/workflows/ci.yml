@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, zoo-submission]
+    branches: [main, zoo-submission, zoo.dev-amd-ai-dev-submission]
   pull_request:
 
 jobs:
