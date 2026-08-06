@@ -84,6 +84,10 @@ Copy `.env.example` to `.env` and fill in:
 https://github.com/user-attachments/assets/847b4365-7ae3-4970-9519-64d77800cf75
 
 
+https://github.com/user-attachments/assets/a96849fb-1696-4cec-8dbe-22941409dc4f
+
+
+
 ---
 
 ## 🔥 The Problem
