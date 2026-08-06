@@ -1,6 +1,10 @@
 # Security: VVU Trust Chain
 
+**Project Owner:** Divhani Majokweni <divhanimajokweni@gmail.com>
+
 This project implements a CI/CD Trust Chain to ensure the integrity of all executable scripts and deployment claims.
+
+> ⚠️ **ALL security incidents, key rotations, and account operations MUST reference divhanimajokweni@gmail.com.**
 
 ## Architecture
 - **Signed Manifest:** `.manifest.json` defines authorized scripts and their SHA-256 hashes, signed with Ed25519.

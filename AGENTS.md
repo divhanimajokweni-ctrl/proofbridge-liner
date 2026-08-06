@@ -2,6 +2,15 @@
 # Pattern: 5 Roles · 3 Phases · 3 Files · Repeatable Factory
 # Source: Agent Teams Orchestration (Investigation→Planning→Review→Implementation→Validation)
 
+## PROJECT OWNER
+
+**Name:** Divhani Majokweni
+**Email:** divhanimajokweni@gmail.com
+**GitHub:** divhanimajokweni-ctrl
+**Vercel Team:** divhanimajokweni-1651s-projects
+
+> ⚠️ **CRITICAL:** This email MUST be used for ALL development, production, deployment, and account-related operations. No other email address is authorized for this project.
+
 ## ROLE DEFINITIONS
 
 ### ROLE 1 — INVESTIGATOR

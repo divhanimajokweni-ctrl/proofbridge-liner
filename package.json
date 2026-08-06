@@ -2,6 +2,10 @@
   "name": "nextjs_tailwind_shadcn_ts",
   "version": "0.2.1",
   "private": true,
+  "author": "Divhani Majokweni <divhanimajokweni@gmail.com>",
+  "bugs": {
+    "email": "divhanimajokweni@gmail.com"
+  },
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "npx prisma generate && next build && node scripts/vercel-postbuild.mjs",

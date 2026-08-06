@@ -1,3 +1,13 @@
+# Deployment Log — ProofBridge Liner
+
+**Project Owner:** Divhani Majokweni <divhanimajokweni@gmail.com>
+**GitHub:** divhanimajokweni-ctrl | **Vercel Team:** divhanimajokweni-1651s-projects
+**Production Domain:** https://venturevisionubuntu.co.za
+
+> ⚠️ ALL deployment and account operations MUST use divhanimajokweni@gmail.com — no other email is authorized.
+
+---
+
 ## 2026-07-09T03:05:08Z
 - **Commit**: `374b05e`
 - **Message**: recover: restore AI/provider files from git history (3c85aab)
