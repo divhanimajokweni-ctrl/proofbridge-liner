@@ -264,6 +264,11 @@ The project is submitted as a Pull Request to the official AMD repository. The s
 Founder, Venture Vision Ubuntu
 *(solo submission)*
 
+
+
+https://github.com/user-attachments/assets/4397669c-f9dc-4844-b7e4-a3bee162d475
+
+
 ---
 
 ## 🏁 Closing Impact
