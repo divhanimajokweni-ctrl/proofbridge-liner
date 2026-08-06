@@ -1,8 +1,8 @@
 -- File: supabase/migrations/001_auth_rls.sql
 -- Description: Core schema schema with structural type guarantees and Gate B stubs.
 -- Gate A Structural Remediations: Enforce unambiguous UUID types across relational entities
-ALTER TABLE profiles ALTER COLUMN user_id SET DATA TYPE uuid;
-ALTER TABLE contributions ALTER COLUMN user_id SET DATA TYPE uuid;
+DO $$ BEGIN ALTER TABLE profiles ALTER COLUMN user_id SET DATA TYPE uuid; EXCEPTION WHEN undefined_table THEN RAISE NOTICE 'profiles table not found, skipping'; END $$;
+DO $$ BEGIN ALTER TABLE contributions ALTER COLUMN user_id SET DATA TYPE uuid; EXCEPTION WHEN undefined_table THEN RAISE NOTICE 'contributions table not found, skipping'; END $$;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contributions ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Profiles self-isolation read constraint" ON profiles

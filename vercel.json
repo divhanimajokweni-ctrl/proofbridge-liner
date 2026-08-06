@@ -1,8 +1,7 @@
 {
   "framework": "nextjs",
-  "outputDirectory": ".next",
   "installCommand": "bun install",
-  "buildCommand": "bun run build",
+  "buildCommand": "DATABASE_URL=file:./build-tmp.db bunx prisma generate && DATABASE_URL=file:./build-tmp.db bun run build",
   "regions": ["iad1"],
   "env": {
     "COMPUTE_PROVIDER": "local",
