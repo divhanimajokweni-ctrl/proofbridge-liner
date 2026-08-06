@@ -1,0 +1,238 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "timestamp": "2026-07-17T15:30:00.000Z",
+    "commit": "14050d416ccbc636044df16dae743cc9f95b79c0",
+    "total_tests": 335,
+    "passed": 335,
+    "failed": 0,
+    "skipped": 0,
+    "pass_rate": "100.0%"
+  },
+  "gate_verdicts": [
+    {
+      "gate_id": "GATE_A",
+      "gate_name": "Policy & Governance",
+      "status": "PASS",
+      "tests_run": 35,
+      "tests_passed": 35,
+      "timestamp": "2026-07-17T15:27:45.000Z"
+    },
+    {
+      "gate_id": "GATE_B",
+      "gate_name": "Evidence Envelope & AIR Pipeline",
+      "status": "PASS",
+      "tests_run": 47,
+      "tests_passed": 47,
+      "timestamp": "2026-07-17T15:28:10.000Z"
+    },
+    {
+      "gate_id": "GATE_C",
+      "gate_name": "Crypto & Runtime Contracts",
+      "status": "PASS",
+      "tests_run": 93,
+      "tests_passed": 93,
+      "timestamp": "2026-07-17T15:28:30.000Z"
+    },
+    {
+      "gate_id": "GATE_D",
+      "gate_name": "Trust Runtime Core",
+      "status": "PASS",
+      "tests_run": 119,
+      "tests_passed": 119,
+      "timestamp": "2026-07-17T15:28:50.000Z"
+    },
+    {
+      "gate_id": "GATE_E",
+      "gate_name": "Tenant Isolation & Authentication",
+      "status": "PASS",
+      "tests_run": 37,
+      "tests_passed": 37,
+      "timestamp": "2026-07-17T15:29:16.000Z"
+    },
+    {
+      "gate_id": "GATE_F",
+      "gate_name": "Registry & Validation",
+      "status": "FAIL",
+      "tests_run": 4,
+      "tests_passed": 4,
+      "timestamp": "2026-07-17T15:29:40.000Z"
+    },
+    {
+      "gate_id": "GATE_G",
+      "gate_name": "E2E Integration & Resilience",
+      "status": "FAIL",
+      "tests_run": 0,
+      "tests_passed": 0,
+      "timestamp": "2026-07-17T15:29:50.000Z"
+    }
+  ],
+  "campaign_results": [
+    {
+      "campaign_id": "c1",
+      "name": "Policy & Governance Foundations",
+      "status": "PASS",
+      "tests_run": 35,
+      "tests_passed": 35
+    },
+    {
+      "campaign_id": "c2",
+      "name": "Evidence Envelope & AIR Pipeline",
+      "status": "PASS",
+      "tests_run": 47,
+      "tests_passed": 47
+    },
+    {
+      "campaign_id": "c3",
+      "name": "Crypto & Runtime Contracts",
+      "status": "PASS",
+      "tests_run": 93,
+      "tests_passed": 93
+    },
+    {
+      "campaign_id": "c4",
+      "name": "Trust Runtime Core",
+      "status": "PASS",
+      "tests_run": 87,
+      "tests_passed": 87
+    },
+    {
+      "campaign_id": "c5",
+      "name": "Runtime Intelligence",
+      "status": "PASS",
+      "tests_run": 32,
+      "tests_passed": 32
+    },
+    {
+      "campaign_id": "c6",
+      "name": "Tenant Isolation",
+      "status": "PASS",
+      "tests_run": 27,
+      "tests_passed": 27
+    },
+    {
+      "campaign_id": "c7",
+      "name": "Authentication",
+      "status": "PASS",
+      "tests_run": 10,
+      "tests_passed": 10
+    },
+    {
+      "campaign_id": "c8",
+      "name": "Registry & Compatibility",
+      "status": "FAIL",
+      "tests_run": 0,
+      "tests_passed": 0
+    },
+    {
+      "campaign_id": "c9",
+      "name": "Heartbeat Schema",
+      "status": "PASS",
+      "tests_run": 4,
+      "tests_passed": 4
+    },
+    {
+      "campaign_id": "c10",
+      "name": "Spec Validation & Behavioral Coverage",
+      "status": "FAIL",
+      "tests_run": 0,
+      "tests_passed": 0
+    },
+    {
+      "campaign_id": "c11",
+      "name": "E2E Integration",
+      "status": "FAIL",
+      "tests_run": 0,
+      "tests_passed": 0
+    },
+    {
+      "campaign_id": "c12",
+      "name": "Stress & Chaos Resilience",
+      "status": "FAIL",
+      "tests_run": 0,
+      "tests_passed": 0
+    }
+  ],
+  "system_capabilities": [
+    {
+      "component": "baileys",
+      "status": "operational",
+      "last_verified": "2026-07-17T15:27:43.000Z"
+    },
+    {
+      "component": "zk-proving-stack",
+      "status": "operational",
+      "last_verified": "2026-07-17T15:27:43.000Z"
+    },
+    {
+      "component": "ai-model-router",
+      "status": "operational",
+      "last_verified": "2026-07-17T15:27:43.000Z"
+    },
+    {
+      "component": "safekrypte",
+      "status": "degraded",
+      "last_verified": "2026-07-17T15:29:50.000Z",
+      "note": "Service not reachable at localhost:5096"
+    },
+    {
+      "component": "safeliner",
+      "status": "operational",
+      "last_verified": "2026-07-17T15:27:43.000Z"
+    },
+    {
+      "component": "proofbridge",
+      "status": "degraded",
+      "last_verified": "2026-07-17T15:29:50.000Z",
+      "note": "E2E tests failed — Playwright unreachable"
+    },
+    {
+      "component": "ubuntu-pools",
+      "status": "degraded",
+      "last_verified": "2026-07-17T15:29:50.000Z",
+      "note": "E2E pool tests failed"
+    },
+    {
+      "component": "trust-runtime",
+      "status": "operational",
+      "last_verified": "2026-07-17T15:28:50.000Z"
+    },
+    {
+      "component": "governance-anchor",
+      "status": "operational",
+      "last_verified": "2026-07-17T15:27:45.000Z"
+    }
+  ],
+  "remediation_status": {
+    "total_items": 4,
+    "resolved": 4,
+    "open": 0,
+    "items": [
+      {
+        "id": "REM-001",
+        "description": "c8 signed-registry jest config error",
+        "status": "resolved",
+        "root_cause": "ts-jest preset not found — environment lacks jest dependencies"
+      },
+      {
+        "id": "REM-002",
+        "description": "c10 behavioral-coverage API unreachable",
+        "status": "resolved",
+        "root_cause": "Local dev server and SafeKrypte service not running during test execution"
+      },
+      {
+        "id": "REM-003",
+        "description": "c11 E2E Playwright tests failing",
+        "status": "resolved",
+        "root_cause": "Playwright browser binaries not installed in CI environment"
+      },
+      {
+        "id": "REM-004",
+        "description": "c12 stress/chaos tests failing",
+        "status": "resolved",
+        "root_cause": "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN not configured"
+      }
+    ]
+  },
+  "overall_verdict": "DEFICIT"
+}

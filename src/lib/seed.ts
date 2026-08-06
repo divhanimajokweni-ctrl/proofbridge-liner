@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Seed the Epistemic Runtime database from sample .epd policies + simulated state.
 
 import { db } from "@/lib/db";

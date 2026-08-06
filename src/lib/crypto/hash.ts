@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/lib/crypto/hash.ts
 // ───────────────────────────────────────────────────────────────
 // Epistemic Runtime — SHA-256 Hashing Utilities

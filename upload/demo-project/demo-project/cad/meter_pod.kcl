@@ -1,0 +1,75 @@
+// Meter pod
+// Flanged pressure and flow transmitter envelope with stem and display head.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import unitBox from "unit_box.kcl"
+import unitCylinder from "unit_cylinder.kcl"
+
+steelColor = "#9aa5ab"
+bodyColor = "#59666f"
+displayColor = "#2a6570"
+
+baseFlange = clone(unitCylinder)
+  |> scale(
+       x = 210mm / 1mm,
+       y = 210mm / 1mm,
+       z = 24mm / 1mm,
+       global = true,
+     )
+  |> translate(z = -270mm, global = true)
+  |> appearance(color = steelColor, metalness = 82, roughness = 30)
+flangeNeck = clone(unitCylinder)
+  |> scale(
+       x = 110mm / 1mm,
+       y = 110mm / 1mm,
+       z = 90mm / 1mm,
+       global = true,
+     )
+  |> translate(z = -215mm, global = true)
+  |> appearance(color = steelColor, metalness = 82, roughness = 30)
+stemBody = clone(unitCylinder)
+  |> scale(
+       x = 72mm / 1mm,
+       y = 72mm / 1mm,
+       z = 320mm / 1mm,
+       global = true,
+     )
+  |> translate(z = -10mm, global = true)
+  |> appearance(color = bodyColor, metalness = 72, roughness = 38)
+upperCollar = clone(unitCylinder)
+  |> scale(
+       x = 105mm / 1mm,
+       y = 105mm / 1mm,
+       z = 58mm / 1mm,
+       global = true,
+     )
+  |> translate(z = 170mm, global = true)
+  |> appearance(color = steelColor, metalness = 80, roughness = 32)
+
+displayHead = clone(unitBox)
+  |> scale(
+       x = 170mm / 1mm,
+       y = 145mm / 1mm,
+       z = 145mm / 1mm,
+       global = true,
+     )
+  |> translate(z = 280mm, global = true)
+  |> appearance(color = bodyColor, metalness = 60, roughness = 44)
+displayFace = clone(unitBox)
+  |> scale(
+       x = 112mm / 1mm,
+       y = 12mm / 1mm,
+       z = 72mm / 1mm,
+       global = true,
+     )
+  |> translate(y = -78mm, z = 290mm, global = true)
+  |> appearance(color = displayColor, metalness = 18, roughness = 28)
+
+export allBodies = flatten([
+  baseFlange,
+  flangeNeck,
+  stemBody,
+  upperCollar,
+  displayHead,
+  displayFace
+])

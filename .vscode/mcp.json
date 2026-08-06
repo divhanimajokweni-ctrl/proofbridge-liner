@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest", "--slim", "--headless"]
+    },
+    "daytona-mcp": {
+      "command": "C:\\Users\\s217665446\\AppData\\Local\\Programs\\daytona.exe",
+      "args": ["mcp", "start"],
+      "env": {
+        "APPDATA": "C:\\Users\\s217665446\\AppData\\Roaming",
+        "HOME": "C:\\Users\\s217665446"
+      }
+    }
+  }
+}

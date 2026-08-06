@@ -1,0 +1,75 @@
+modules = ["nodejs-22"]
+[agent]
+expertMode = true
+stack = "BEST_EFFORT_FALLBACK"
+
+[nix]
+channel = "stable-25_05"
+packages = ["plan9port"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+waitForPort = 3000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
+localPort = 3001
+externalPort = 4200
+
+[[ports]]
+localPort = 3099
+externalPort = 5173
+
+[[ports]]
+localPort = 3456
+externalPort = 3002
+
+[[ports]]
+localPort = 3999
+externalPort = 3001
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 18789
+externalPort = 3003
+
+[[ports]]
+localPort = 31999
+externalPort = 5000
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["node", "dashboard/server.js"]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-8504f30e-887d-4b7b-bc2e-62c84aa93e60"

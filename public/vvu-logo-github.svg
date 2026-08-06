@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8A9A5B"/>
+      <stop offset="100%" stop-color="#6B7A3E"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#CC7722"/>
+      <stop offset="100%" stop-color="#A85E15"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E2E3DB"/>
+      <stop offset="100%" stop-color="#C4C5BD"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark background -->
+  <rect width="256" height="256" rx="32" fill="#0a0a0f"/>
+
+  <!-- Three interlocking trust rings -->
+  <circle cx="100" cy="105" r="42" stroke="url(#g1)" stroke-width="14" fill="none"/>
+  <circle cx="156" cy="105" r="42" stroke="url(#g2)" stroke-width="14" fill="none"/>
+  <circle cx="128" cy="160" r="42" stroke="url(#g3)" stroke-width="14" fill="none"/>
+
+  <!-- Center convergence -->
+  <circle cx="128" cy="128" r="4" fill="#C9A84C" opacity="0.8"/>
+</svg>

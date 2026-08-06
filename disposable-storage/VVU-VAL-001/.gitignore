@@ -1,0 +1,71 @@
+# VVU Validation Suite — .gitignore
+#
+# Keeps the repository lightweight: source code, manifests, protocols,
+# and workflows are committed. Evidence bundles, recordings, logs, and
+# secrets are NEVER committed — they are published as Release assets
+# associated with the frozen Git tag for each validation run.
+
+# ── Evidence bundles and archives (published as Release assets, not committed) ──
+validation/VVU-VAL-001/evidence/bundles/
+validation/VVU-VAL-001/evidence/*.zip
+validation/VVU-VAL-001/evidence/*.tar.gz
+validation/VVU-VAL-001/evidence/*.tar.zst
+validation/VVU-VAL-001/evidence/SHA256SUMS
+validation/VVU-VAL-001/evidence/Recordings/
+validation/VVU-VAL-001/evidence/FactLog/
+validation/VVU-VAL-001/evidence/MMR/
+validation/VVU-VAL-001/evidence/FinalReport.pdf
+**/Hour-*.zip
+**/Hour-*.sha256
+
+# ── Recordings and streaming output ──
+*.mp4
+*.mkv
+*.webm
+*.mov
+validation/VVU-VAL-001/evidence/recordings/
+
+# ── Logs ──
+*.log
+validation/VVU-VAL-001/evidence/logs/
+validation/VVU-VAL-001/rehearsal/logs/
+
+# ── Kubernetes secrets and kubeconfig ──
+**/secret.yaml
+**/secrets.yaml
+**/.secrets/
+kubeconfig
+*.kubeconfig
+**/values-secrets.yaml
+
+# ── Temporary archives and build output ──
+*.tmp
+*.bak
+*.swp
+.DS_Store
+__pycache__/
+*.pyc
+node_modules/
+.next/
+dist/
+build/
+
+# ── Local environment ──
+.env
+.env.local
+.env.*.local
+
+# ── IDE ──
+.idea/
+.vscode/
+*.iml
+
+# ── OS ──
+Thumbs.db
+
+# ── But DO track these (override the above) ──
+!validation/VVU-VAL-001/protocol/VVU-VAL-001_Pre_Registration_Protocol.pdf
+!validation/VVU-VAL-001/evidence/bundle.sh
+!validation/VVU-VAL-001/evidence/validation-index.py
+!validation/VVU-VAL-001/evidence/archive.sh
+!validation/VVU-VAL-001/evidence/replay.sh

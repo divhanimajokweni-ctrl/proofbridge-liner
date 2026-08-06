@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ubuntu Pools — Collective Prosperity, Cryptographically Secured</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink: #0D0D0D;
+  --bone: #F5F0E8;
+  --warm-white: #FAFAF7;
+  --amber: #E8A020;
+  --amber-light: #F2B84B;
+  --amber-muted: #C4892A;
+  --sage: #3D5A47;
+  --sage-light: #4E7260;
+  --sage-muted: #2A3D31;
+  --rust: #C4422A;
+  --dust: #B8A898;
+  --grid: rgba(13,13,13,0.06);
+  --card-border: rgba(13,13,13,0.1);
+  --card-bg: rgba(255,255,255,0.7);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--warm-white);
+  color: var(--ink);
+  overflow-x: hidden;
+  cursor: default;
+}
+
+/* ── ANT TELEMETRY TICKER ─────────────────────────────── */
+.ant-ticker {
+  background: var(--ink);
+  color: var(--amber);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  padding: 6px 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 100;
+}
+.ant-ticker-inner {
+  display: flex;
+  gap: 48px;
+  white-space: nowrap;
+  animation: tickerScroll 30s linear infinite;
+}
+.ant-ticker-item { display: flex; align-items: center; gap: 8px; }
+.ant-ticker-item .up { color: #4CAF50; }
+.ant-ticker-item .down { color: #E57373; }
+.ant-ticker-item .label { color: var(--dust); }
+@keyframes tickerScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* ── NAV ─────────────────────────────────────────────── */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background: rgba(250,250,247,0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--card-border);
+  padding: 0 40px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  color: var(--ink);
+}
+.nav-logo-mark {
+  width: 32px; height: 32px;
+  background: var(--ink);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--amber);
+  font-size: 14px;
+  font-weight: 800;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 13.5px;
+  font-weight: 400;
+  color: var(--ink);
+  text-decoration: none;
+  opacity: 0.65;
+  transition: opacity 0.2s;
+  letter-spacing: 0.01em;
+}
+.nav-links a:hover { opacity: 1; }
+.nav-cta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--amber);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: background 0.2s, transform 0.15s;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary:hover { background: var(--sage); transform: translateY(-1px); }
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 400;
+  padding: 10px 16px;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: background 0.2s;
+  opacity: 0.65;
+}
+.btn-ghost:hover { background: rgba(13,13,13,0.06); opacity: 1; }
+
+/* ── HERO ─────────────────────────────────────────────── */
+.hero {
+  min-height: 88vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 0;
+  padding: 80px 40px 80px;
+  max-width: 1280px;
+  margin: 0 auto;
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -200px; right: -200px;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(232,160,32,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--sage);
+  background: rgba(61,90,71,0.08);
+  padding: 6px 12px;
+  border-radius: 20px;
+  margin-bottom: 28px;
+  text-transform: uppercase;
+}
+.hero-eyebrow .dot {
+  width: 6px; height: 6px;
+  background: var(--sage);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.hero-headline {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(42px, 5vw, 72px);
+  font-weight: 800;
+  line-height: 1.0;
+  letter-spacing: -0.03em;
+  margin-bottom: 24px;
+  color: var(--ink);
+}
+.hero-headline .accent { color: var(--amber); }
+.hero-headline .accent-sage { color: var(--sage); }
+
+.hero-sub {
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: rgba(13,13,13,0.65);
+  max-width: 480px;
+  margin-bottom: 40px;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 48px;
+}
+.btn-hero-primary {
+  background: var(--amber);
+  color: var(--ink);
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 16px 32px;
+  border-radius: 8px;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-hero-primary:hover { background: var(--amber-light); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,160,32,0.3); }
+.btn-hero-secondary {
+  background: transparent;
+  color: var(--ink);
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 16px 28px;
+  border-radius: 8px;
+  text-decoration: none;
+  border: 1.5px solid var(--card-border);
+  transition: all 0.2s;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-hero-secondary:hover { border-color: var(--ink); transform: translateY(-2px); }
+
+.hero-social-proof {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.hero-avatars {
+  display: flex;
+}
+.hero-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--warm-white);
+  margin-left: -8px;
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--ink);
+  color: var(--amber);
+}
+.hero-avatar:first-child { margin-left: 0; }
+.hero-social-text {
+  font-size: 13px;
+  color: rgba(13,13,13,0.55);
+}
+.hero-social-text strong { color: var(--ink); }
+
+/* ── HERO RIGHT — LIVE POOL CARD ─────────────────── */
+.hero-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-left: 60px;
+  animation: fadeSlideUp 0.8s ease 0.2s both;
+}
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pool-card {
+  background: var(--ink);
+  border-radius: 16px;
+  padding: 28px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+.pool-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(232,160,32,0.15) 0%, transparent 70%);
+}
+.pool-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.pool-card-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+}
+.pool-card-status {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--amber);
+  background: rgba(232,160,32,0.12);
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.pool-card-amount {
+  font-family: 'Syne', sans-serif;
+  font-size: 42px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+.pool-card-label {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 20px;
+  font-family: 'DM Mono', monospace;
+}
+.pool-progress {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.pool-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--amber) 0%, var(--amber-light) 100%);
+  border-radius: 4px;
+  width: 68%;
+  animation: progressFill 1.5s ease 0.5s both;
+}
+@keyframes progressFill {
+  from { width: 0; }
+  to { width: 68%; }
+}
+.pool-members {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.pool-member-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pool-member-initial {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+.pool-member-detail {
+  font-size: 11px;
+}
+.pool-member-name { color: rgba(255,255,255,0.8); }
+.pool-member-amount { color: var(--amber); font-family: 'DM Mono', monospace; }
+
+.pool-mini-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pool-mini-label {
+  font-size: 12px;
+  color: rgba(13,13,13,0.45);
+  margin-bottom: 4px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.03em;
+}
+.pool-mini-value {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.pool-mini-badge {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.badge-green { background: rgba(61,90,71,0.1); color: var(--sage); }
+.badge-amber { background: rgba(232,160,32,0.1); color: var(--amber-muted); }
+
+/* ── TRUST BAND ──────────────────────────────────── */
+.trust-band {
+  background: var(--bone);
+  border-top: 1px solid var(--card-border);
+  border-bottom: 1px solid var(--card-border);
+  padding: 20px 40px;
+}
+.trust-band-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(13,13,13,0.55);
+}
+.trust-item svg { flex-shrink: 0; }
+.trust-item strong { color: var(--ink); }
+
+/* ── STAT BAND ───────────────────────────────────── */
+.stat-band {
+  max-width: 1280px;
+  margin: 80px auto;
+  padding: 0 40px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--card-border);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.stat-item {
+  background: var(--warm-white);
+  padding: 36px 32px;
+  text-align: center;
+}
+.stat-number {
+  font-family: 'Syne', sans-serif;
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.stat-number .stat-accent { color: var(--amber); }
+.stat-label {
+  font-size: 13px;
+  color: rgba(13,13,13,0.45);
+  font-weight: 400;
+}
+
+/* ── HOW IT WORKS ────────────────────────────────── */
+.section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 80px 40px;
+}
+.section-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin-bottom: 16px;
+}
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(32px, 4vw, 52px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  margin-bottom: 20px;
+  color: var(--ink);
+}
+.section-sub {
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: rgba(13,13,13,0.6);
+  max-width: 560px;
+  margin-bottom: 60px;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.step-card {
+  background: white;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 32px;
+  position: relative;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.step-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(13,13,13,0.08);
+}
+.step-number {
+  font-family: 'Syne', sans-serif;
+  font-size: 48px;
+  font-weight: 800;
+  color: rgba(13,13,13,0.06);
+  letter-spacing: -0.05em;
+  position: absolute;
+  top: 20px; right: 24px;
+}
+.step-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
+  background: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+  font-size: 22px;
+}
+.step-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.step-desc {
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(13,13,13,0.55);
+}
+.step-tag {
+  display: inline-block;
+  margin-top: 16px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.tag-stitch { background: rgba(61,90,71,0.1); color: var(--sage); }
+.tag-ed25519 { background: rgba(232,160,32,0.1); color: var(--amber-muted); }
+.tag-ws { background: rgba(196,66,42,0.1); color: var(--rust); }
+
+/* ── UBUNTU SCORE ────────────────────────────────── */
+.score-section {
+  background: var(--ink);
+  padding: 80px 40px;
+}
+.score-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+.score-section .section-eyebrow { color: var(--amber); }
+.score-section .section-title { color: white; }
+.score-section .section-sub { color: rgba(255,255,255,0.5); }
+
+.score-dial-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+.score-dial {
+  width: 220px; height: 220px;
+  position: relative;
+}
+.score-dial svg { width: 100%; height: 100%; }
+.score-dial-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.score-dial-number {
+  font-family: 'Syne', sans-serif;
+  font-size: 52px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.score-dial-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.score-tiers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+.score-tier {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.score-tier.active { background: rgba(232,160,32,0.1); border-color: var(--amber); }
+.score-tier-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+.score-tier-range {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: rgba(255,255,255,0.4);
+}
+.score-tier.active .score-tier-range { color: var(--amber); }
+
+.score-features {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.score-feature {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.score-feature-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.score-feature-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 4px;
+}
+.score-feature-desc {
+  font-size: 13px;
+  color: rgba(255,255,255,0.45);
+  line-height: 1.6;
+}
+
+/* ── POOL TYPES ──────────────────────────────────── */
+.pool-types-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.pool-type-card {
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 28px;
+  background: white;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s;
+  cursor: pointer;
+}
+.pool-type-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--amber);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s;
+}
+.pool-type-card:hover { transform: translateY(-4px); box-shadow: 0 16px 48px rgba(13,13,13,0.08); }
+.pool-type-card:hover::after { transform: scaleX(1); }
+.pool-type-card.featured {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.pool-type-card.featured::after { background: var(--amber); transform: scaleX(1); }
+.pool-type-emoji { font-size: 32px; margin-bottom: 16px; display: block; }
+.pool-type-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+.pool-type-card.featured .pool-type-name { color: white; }
+.pool-type-desc {
+  font-size: 13px;
+  line-height: 1.65;
+  color: rgba(13,13,13,0.55);
+  margin-bottom: 20px;
+}
+.pool-type-card.featured .pool-type-desc { color: rgba(255,255,255,0.5); }
+.pool-type-meta {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: rgba(13,13,13,0.35);
+}
+.pool-type-card.featured .pool-type-meta { color: rgba(255,255,255,0.3); }
+.pool-type-amount {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--amber);
+}
+
+/* ── INTEGRATIONS ────────────────────────────────── */
+.integrations-section {
+  background: var(--bone);
+  padding: 80px 40px;
+}
+.integrations-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.integrations-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 48px;
+}
+.integration-card {
+  background: white;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  transition: all 0.2s;
+}
+.integration-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(13,13,13,0.06); }
+.integration-logo {
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  margin: 0 auto 12px;
+}
+.integration-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.integration-desc { font-size: 12px; color: rgba(13,13,13,0.45); line-height: 1.5; }
+.integration-status {
+  display: inline-block;
+  margin-top: 12px;
+  font-family: 'DM Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+.status-live { background: rgba(76,175,80,0.1); color: #2E7D32; }
+.status-beta { background: rgba(232,160,32,0.1); color: var(--amber-muted); }
+
+/* ── ONBOARDING FUNNEL ───────────────────────────── */
+.onboard-section {
+  padding: 80px 40px;
+  background: white;
+}
+.onboard-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.onboard-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-top: 48px;
+}
+.onboard-card {
+  border: 1.5px solid var(--card-border);
+  border-radius: 20px;
+  padding: 36px 28px;
+  position: relative;
+  transition: all 0.25s;
+  cursor: pointer;
+}
+.onboard-card:hover {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 4px rgba(232,160,32,0.06);
+}
+.onboard-card-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--amber-muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 20px;
+}
+.onboard-card-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.onboard-card-desc {
+  font-size: 14px;
+  line-height: 1.65;
+  color: rgba(13,13,13,0.55);
+  margin-bottom: 24px;
+}
+.onboard-card-action {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: gap 0.2s;
+}
+.onboard-card:hover .onboard-card-action { gap: 10px; }
+
+/* ── POPIA / COMPLIANCE ──────────────────────────── */
+.compliance-band {
+  background: var(--ink);
+  padding: 28px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+.compliance-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+}
+.compliance-item .dot-amber { width: 6px; height: 6px; background: var(--amber); border-radius: 50%; }
+.compliance-item .dot-green { width: 6px; height: 6px; background: #4CAF50; border-radius: 50%; }
+
+/* ── FOOTER ──────────────────────────────────────── */
+footer {
+  background: var(--ink);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding: 60px 40px 32px;
+}
+.footer-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 48px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 32px;
+}
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.footer-brand-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 800;
+  color: white;
+}
+.footer-tagline { font-size: 13px; color: rgba(255,255,255,0.4); line-height: 1.6; max-width: 280px; }
+.footer-col-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 16px;
+  letter-spacing: 0.01em;
+}
+.footer-col a {
+  display: block;
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  text-decoration: none;
+  margin-bottom: 10px;
+  transition: color 0.2s;
+}
+.footer-col a:hover { color: var(--amber); }
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer-copy { font-size: 12px; color: rgba(255,255,255,0.25); font-family: 'DM Mono', monospace; }
+.footer-legal { display: flex; gap: 24px; }
+.footer-legal a { font-size: 12px; color: rgba(255,255,255,0.25); text-decoration: none; font-family: 'DM Mono', monospace; }
+.footer-legal a:hover { color: rgba(255,255,255,0.5); }
+
+/* ── ANT TELEMETRY BANNER ────────────────────────── */
+.ant-banner {
+  background: rgba(61,90,71,0.05);
+  border: 1px solid rgba(61,90,71,0.15);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 40px;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 24px;
+}
+.ant-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ant-banner-icon { font-size: 20px; }
+.ant-banner-text { font-size: 13px; color: rgba(13,13,13,0.65); }
+.ant-banner-text strong { color: var(--sage); }
+.ant-banner-metrics {
+  display: flex;
+  gap: 24px;
+}
+.ant-metric {
+  text-align: center;
+}
+.ant-metric-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--sage);
+}
+.ant-metric-label { font-size: 10px; color: rgba(13,13,13,0.4); font-family: 'DM Mono', monospace; }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; padding: 48px 24px; min-height: auto; }
+  .hero-visual { padding-left: 0; }
+  .steps-grid, .pool-types-grid, .onboard-cards { grid-template-columns: 1fr; }
+  .stat-band { grid-template-columns: 1fr 1fr; }
+  .integrations-grid { grid-template-columns: 1fr 1fr; }
+  nav { padding: 0 24px; }
+  .nav-links { display: none; }
+  .score-inner { grid-template-columns: 1fr; gap: 40px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+}
+.contact-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);align-items:center;justify-content:center}
+.contact-modal{background:white;max-width:460px;width:90%;padding:32px;position:relative}
+.contact-modal h3{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:4px}
+.contact-modal p{font-size:13px;color:var(--dust);margin-bottom:20px}
+.contact-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--dust)}
+.contact-close:hover{color:var(--ink)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.08em;color:var(--dust);margin-bottom:4px}
+.form-group input,.form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--card-border);font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);background:var(--warm-white);outline:none}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--amber)}
+.form-group textarea{resize:vertical;min-height:80px}
+.btn-contact{width:100%;padding:12px;background:var(--amber);color:white;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:background 0.2s}
+.btn-contact:hover{background:var(--amber-muted)}
+.btn-contact:disabled{opacity:0.5;cursor:not-allowed}
+.contact-status{font-size:11px;margin-top:8px;display:none}
+.contact-status.ok{color:var(--sage);display:block}
+.contact-status.err{color:var(--rust);display:block}
+</style>
+</head>
+<body>
+
+<!-- ANT TELEMETRY TICKER -->
+<div class="ant-ticker">
+  <div class="ant-ticker-inner" id="ticker">
+    <div class="ant-ticker-item"><span class="label">NETWORK VELOCITY</span><span class="up">842</span></div>
+    <div class="ant-ticker-item"><span class="label">ACTIVE POOLS</span><span>8</span></div>
+    <div class="ant-ticker-item"><span class="label">VAULTED</span><span class="up">R 127,500</span></div>
+    <div class="ant-ticker-item"><span class="label">VERIFIED TXS</span><span>342</span></div>
+    <div class="ant-ticker-item"><span class="label">CYCLE 2 PAYOUT</span><span class="up">R 15,000</span></div>
+    <div class="ant-ticker-item"><span class="label">STITCH RAIL</span><span class="up">ONLINE</span></div>
+    <div class="ant-ticker-item"><span class="label">PROOFBRIDGE</span><span class="up">v2.1.0</span></div>
+    <div class="ant-ticker-item"><span class="label">AVG UBUNTU SCORE</span><span class="up">764</span></div>
+    <div class="ant-ticker-item"><span class="label">POPIA</span><span class="up">COMPLIANT</span></div>
+    <div class="ant-ticker-item"><span class="label">AMOY TESTNET</span><span class="up">LIVE</span></div>
+    <!-- duplicate for seamless loop -->
+    <div class="ant-ticker-item"><span class="label">NETWORK VELOCITY</span><span class="up">842</span></div>
+    <div class="ant-ticker-item"><span class="label">ACTIVE POOLS</span><span>8</span></div>
+    <div class="ant-ticker-item"><span class="label">VAULTED</span><span class="up">R 127,500</span></div>
+    <div class="ant-ticker-item"><span class="label">VERIFIED TXS</span><span>342</span></div>
+    <div class="ant-ticker-item"><span class="label">CYCLE 2 PAYOUT</span><span class="up">R 15,000</span></div>
+    <div class="ant-ticker-item"><span class="label">STITCH RAIL</span><span class="up">ONLINE</span></div>
+    <div class="ant-ticker-item"><span class="label">PROOFBRIDGE</span><span class="up">v2.1.0</span></div>
+    <div class="ant-ticker-item"><span class="label">AVG UBUNTU SCORE</span><span class="up">764</span></div>
+    <div class="ant-ticker-item"><span class="label">POPIA</span><span class="up">COMPLIANT</span></div>
+    <div class="ant-ticker-item"><span class="label">AMOY TESTNET</span><span class="up">LIVE</span></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">
+    <div class="nav-logo-mark">U</div>
+    Ubuntu Pools
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how-it-works">How it works</a></li>
+    <li><a href="#pool-types">Pool types</a></li>
+    <li><a href="#ubuntu-score">Ubuntu Score</a></li>
+    <li><a href="#integrations">Integrations</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="/auth" class="btn-ghost">Sign in</a>
+    <a href="/pools/onboarding" class="btn-primary">Start a pool →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section style="max-width:1280px;margin:0 auto;">
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">
+        <span class="dot"></span>
+        Collective savings · Amoy testnet live
+      </div>
+      <h1 class="hero-headline">
+        Saving together,<br>
+        <span class="accent">proven</span> on-chain.<br>
+        <span class="accent-sage">Ubuntu</span> made financial.
+      </h1>
+      <p class="hero-sub">
+        Ubuntu Pools is a ROSCA-powered community savings platform. Every contribution is cryptographically receipted via ProofBridge, every payout is verified by your pool — no trust required.
+      </p>
+      <div class="hero-actions">
+        <a href="/pools/onboarding" class="btn-hero-primary">
+          Start your pool →
+        </a>
+        <a href="#how-it-works" class="btn-hero-secondary">
+          See how it works
+        </a>
+      </div>
+      <div class="hero-social-proof">
+        <div class="hero-avatars">
+          <div class="hero-avatar">T</div>
+          <div class="hero-avatar" style="background:var(--sage);color:white;">L</div>
+          <div class="hero-avatar" style="background:var(--amber);color:var(--ink);">M</div>
+          <div class="hero-avatar" style="background:#444;color:white;">+</div>
+        </div>
+        <p class="hero-social-text"><strong>342 members</strong> saving collectively across 8 active pools</p>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="pool-card">
+        <div class="pool-card-header">
+          <div class="pool-card-name">Pilot Cohort — Cycle 2</div>
+          <div class="pool-card-status">● Active</div>
+        </div>
+        <div class="pool-card-amount">R 15,750</div>
+        <div class="pool-card-label">COLLECTIVE_SAVINGS // FACILITATOR_APPROVED</div>
+        <div class="pool-progress"><div class="pool-progress-fill"></div></div>
+        <div class="pool-members">
+          <div class="pool-member-item">
+            <div class="pool-member-initial">T</div>
+            <div class="pool-member-detail">
+              <div class="pool-member-name" style="font-size:12px;">Sawubona, Thabo</div>
+              <div class="pool-member-amount">R 500 / cycle</div>
+            </div>
+          </div>
+          <div class="pool-member-item">
+            <div class="pool-member-initial" style="background:rgba(232,160,32,0.2);color:var(--amber);">L</div>
+            <div class="pool-member-detail">
+              <div class="pool-member-name" style="font-size:12px;">Lerato K.</div>
+              <div class="pool-member-amount">R 500 / cycle</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pool-mini-card">
+        <div>
+          <div class="pool-mini-label">UPCOMING PAYOUT</div>
+          <div class="pool-mini-value">R 15,000</div>
+        </div>
+        <span class="pool-mini-badge badge-green">Facilitator approved</span>
+      </div>
+      <div class="pool-mini-card">
+        <div>
+          <div class="pool-mini-label">NETWORK VELOCITY</div>
+          <div class="pool-mini-value">842</div>
+        </div>
+        <span class="pool-mini-badge badge-amber">Ubuntu Prime</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANT TELEMETRY BANNER -->
+<div style="padding: 0 40px; max-width: 1280px; margin: 0 auto 40px;">
+  <div class="ant-banner">
+    <div class="ant-banner-left">
+      <div class="ant-banner-icon">📡</div>
+      <div class="ant-banner-text">
+        <strong>ANT Telemetry</strong> — real-time network health monitored across all pools. Anomaly pressure triggers kernel halt phrase automatically.
+      </div>
+    </div>
+    <div class="ant-banner-metrics">
+      <div class="ant-metric">
+        <div class="ant-metric-value">99.8%</div>
+        <div class="ant-metric-label">UPTIME</div>
+      </div>
+      <div class="ant-metric">
+        <div class="ant-metric-value">0</div>
+        <div class="ant-metric-label">ANOMALIES</div>
+      </div>
+      <div class="ant-metric">
+        <div class="ant-metric-value">R 0</div>
+        <div class="ant-metric-label">DISPUTED</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TRUST BAND -->
+<div class="trust-band">
+  <div class="trust-band-inner">
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1L2 4v4c0 3.3 2.5 6.4 6 7 3.5-.6 6-3.7 6-7V4L8 1z" stroke="#3D5A47" stroke-width="1.5" fill="none"/></svg>
+      <span><strong>ED25519</strong> cryptographic receipts on every transaction</span>
+    </div>
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="#3D5A47" stroke-width="1.5"/><path d="M5.5 8l2 2 3-3" stroke="#3D5A47" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span><strong>Stitch</strong> instant bank-grade payment rails</span>
+    </div>
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="#3D5A47" stroke-width="1.5" fill="none"/><path d="M5 8h6M8 5v6" stroke="#3D5A47" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span><strong>POPIA compliant</strong> data protection and retention</span>
+    </div>
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2L3 5.5v3C3 11.4 5.2 14 8 14.5 10.8 14 13 11.4 13 8.5v-3L8 2z" stroke="#3D5A47" stroke-width="1.5" fill="none"/></svg>
+      <span><strong>ProofBridge</strong> every pool auditable on-chain</span>
+    </div>
+    <div class="trust-item">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.5" stroke="#3D5A47" stroke-width="1.5" fill="none"/><path d="M3 13c0-2.8 2.2-5 5-5s5 2.2 5 5" stroke="#3D5A47" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+      <span><strong>Gate-1</strong> evaluates flow before every payout</span>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stat-band" style="margin-top:80px;">
+  <div class="stat-item">
+    <div class="stat-number">R<span class="stat-accent">127</span>K</div>
+    <div class="stat-label">Total vaulted</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number"><span class="stat-accent">8</span></div>
+    <div class="stat-label">Active pools</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number"><span class="stat-accent">342</span></div>
+    <div class="stat-label">Verified transactions</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-number"><span class="stat-accent">0</span></div>
+    <div class="stat-label">Disputed payouts</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<section class="section" id="how-it-works">
+  <div class="section-eyebrow">How it works</div>
+  <h2 class="section-title">Three steps to<br>collective wealth.</h2>
+  <p class="section-sub">Ubuntu Pools combines ancient African savings wisdom with modern cryptographic proof. Your stokvel, made verifiable.</p>
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-number">01</div>
+      <div class="step-icon">🏦</div>
+      <div class="step-title">Connect via Stitch</div>
+      <p class="step-desc">Link your South African bank account in under 60 seconds. Stitch handles instant EFT payments — no manual transfers, no delays.</p>
+      <span class="step-tag tag-stitch">Stitch / WEBHOOKS</span>
+    </div>
+    <div class="step-card">
+      <div class="step-number">02</div>
+      <div class="step-icon">🔐</div>
+      <div class="step-title">Receive cryptographic proof</div>
+      <p class="step-desc">Every contribution mints an ED25519-signed receipt via ProofBridge. Immutable proof that your money entered the pool — no intermediary required.</p>
+      <span class="step-tag tag-ed25519">ED25519 / ON-CHAIN</span>
+    </div>
+    <div class="step-card">
+      <div class="step-number">03</div>
+      <div class="step-icon">📡</div>
+      <div class="step-title">Pool broadcasts in real-time</div>
+      <p class="step-desc">Every pool event — contributions, votes, payouts — broadcasts live to all members via WebSocket. Nothing happens behind closed doors.</p>
+      <span class="step-tag tag-ws">WEBSOCKET / LIVE</span>
+    </div>
+  </div>
+</section>
+
+<!-- UBUNTU SCORE -->
+<section class="score-section" id="ubuntu-score">
+  <div class="score-inner">
+    <div>
+      <div class="section-eyebrow">Ubuntu Score</div>
+      <h2 class="section-title" style="color:white;">Your reputation,<br>earned on-chain.</h2>
+      <p class="section-sub">The Ubuntu Score measures your reliability as a pool member — contribution consistency, governance participation, and network velocity. Higher scores unlock better pools and lower platform fees.</p>
+      <div class="score-features">
+        <div class="score-feature">
+          <div class="score-feature-icon">⚡</div>
+          <div>
+            <div class="score-feature-title">Network Velocity</div>
+            <p class="score-feature-desc">On-time contributions amplify your score. Late payments reduce it. Consistent velocity qualifies you for Ubuntu Prime tier.</p>
+          </div>
+        </div>
+        <div class="score-feature">
+          <div class="score-feature-icon">🗳</div>
+          <div>
+            <div class="score-feature-title">Governance Participation</div>
+            <p class="score-feature-desc">Vote on pool disputes, approve payouts, ratify new members. Active governance earns score multipliers.</p>
+          </div>
+        </div>
+        <div class="score-feature">
+          <div class="score-feature-icon">🌱</div>
+          <div>
+            <div class="score-feature-title">Community Standing</div>
+            <p class="score-feature-desc">Invite verified members, sponsor pool cohorts, earn recognition. Ubuntu scores are non-transferable and non-purchasable.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="score-dial-wrap">
+      <div class="score-dial">
+        <svg viewBox="0 0 200 200">
+          <circle cx="100" cy="100" r="88" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="12"/>
+          <circle cx="100" cy="100" r="88" fill="none" stroke="url(#scoreGrad)" stroke-width="12"
+            stroke-dasharray="553" stroke-dashoffset="166" stroke-linecap="round"
+            transform="rotate(-90 100 100)"/>
+          <defs>
+            <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#E8A020"/>
+              <stop offset="100%" stop-color="#F2B84B"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="score-dial-center">
+          <div class="score-dial-number">842</div>
+          <div class="score-dial-label">Ubuntu Score</div>
+        </div>
+      </div>
+      <div class="score-tiers" style="width:260px;">
+        <div class="score-tier">
+          <div class="score-tier-name">Ubuntu Emerging</div>
+          <div class="score-tier-range">0 – 400</div>
+        </div>
+        <div class="score-tier">
+          <div class="score-tier-name">Ubuntu Active</div>
+          <div class="score-tier-range">401 – 650</div>
+        </div>
+        <div class="score-tier">
+          <div class="score-tier-name">Ubuntu Trusted</div>
+          <div class="score-tier-range">651 – 799</div>
+        </div>
+        <div class="score-tier active">
+          <div class="score-tier-name">Ubuntu Prime</div>
+          <div class="score-tier-range">800 – 1000</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- POOL TYPES -->
+<section class="section" id="pool-types">
+  <div class="section-eyebrow">Pool types</div>
+  <h2 class="section-title">Choose your<br>collective structure.</h2>
+  <p class="section-sub">From traditional stokvels to investment circles, every pool structure is governed by the same cryptographic rails.</p>
+  <div class="pool-types-grid">
+    <div class="pool-type-card">
+      <span class="pool-type-emoji">🫱🏿‍🫲🏽</span>
+      <div class="pool-type-name">Burial Society</div>
+      <p class="pool-type-desc">Community support pools with fixed monthly contributions and mutual aid disbursement. Governed by unanimous consent.</p>
+      <div class="pool-type-amount">R 500 / month</div>
+      <div class="pool-type-meta">MIN STAKE · GATE-1 EVALUATED</div>
+    </div>
+    <div class="pool-type-card featured">
+      <span class="pool-type-emoji">💰</span>
+      <div class="pool-type-name">Savings Stokvel</div>
+      <p class="pool-type-desc">Classic rotating payout model. Members contribute equally; one member receives the full pot each cycle, rotating until every member has been paid.</p>
+      <div class="pool-type-amount" style="color:var(--amber);">R 500 – R 5,000 / month</div>
+      <div class="pool-type-meta" style="color:rgba(255,255,255,0.3);">MOST POPULAR · PROOFBRIDGE RECEIPTED</div>
+    </div>
+    <div class="pool-type-card">
+      <span class="pool-type-emoji">📈</span>
+      <div class="pool-type-name">Investment Circle</div>
+      <p class="pool-type-desc">Pool members vote on collective investment decisions. Returns distributed proportionally. Requires Ubuntu Trusted score or above.</p>
+      <div class="pool-type-amount">R 1,000+ / month</div>
+      <div class="pool-type-meta">UBUNTU TRUSTED+ · FSCA ALIGNED</div>
+    </div>
+  </div>
+</section>
+
+<!-- INTEGRATIONS -->
+<section class="integrations-section" id="integrations">
+  <div class="integrations-inner">
+    <div class="section-eyebrow">Integrations</div>
+    <h2 class="section-title">Built on infrastructure<br>you can verify.</h2>
+    <p class="section-sub">Every component in the Ubuntu Pools stack is auditable, tested, and purpose-built — no black boxes.</p>
+    <div class="integrations-grid">
+      <div class="integration-card">
+        <div class="integration-logo" style="background:rgba(61,90,71,0.1);">🏦</div>
+        <div class="integration-name">Stitch</div>
+        <p class="integration-desc">Primary payment rail. Instant EFT with webhook reconciliation and signed receipts.</p>
+        <span class="integration-status status-live">Live</span>
+      </div>
+      <div class="integration-card">
+        <div class="integration-logo" style="background:rgba(232,160,32,0.1);">🔗</div>
+        <div class="integration-name">ProofBridge</div>
+        <p class="integration-desc">ED25519-signed on-chain receipts. Every contribution cryptographically proven on Polygon Amoy.</p>
+        <span class="integration-status status-live">Live</span>
+      </div>
+      <div class="integration-card">
+        <div class="integration-logo" style="background:rgba(13,13,13,0.06);">📡</div>
+        <div class="integration-name">ANT Telemetry</div>
+        <p class="integration-desc">Real-time network health monitoring. Anomaly pressure triggers kernel halt phrase automatically.</p>
+        <span class="integration-status status-live">Live</span>
+      </div>
+      <div class="integration-card">
+        <div class="integration-logo" style="background:rgba(61,90,71,0.1);">⚖️</div>
+        <div class="integration-name">Gate-1</div>
+        <p class="integration-desc">Flow evaluation layer. Reviews all payout requests before disbursement proceeds.</p>
+        <span class="integration-status status-live">Live</span>
+      </div>
+      <div class="integration-card">
+        <div class="integration-logo" style="background:rgba(196,66,42,0.1);">🔐</div>
+        <div class="integration-name">SafeKrypte</div>
+        <p class="integration-desc">HSM-backed key custody. Threshold escrow with 3-of-5 internal SSS for all pool signing operations.</p>
+        <span class="integration-status status-beta">Beta</span>
+      </div>
+      <div class="integration-card">
+        <div class="integration-logo" style="background:rgba(13,13,13,0.06);">📋</div>
+        <div class="integration-name">Governance Module</div>
+        <p class="integration-desc">On-chain dispute resolution. Votes, veto gates, and member ratification with full audit trail.</p>
+        <span class="integration-status status-live">Live</span>
+      </div>
+      <div class="integration-card">
+        <div class="integration-logo" style="background:rgba(232,160,32,0.1);">🛡</div>
+        <div class="integration-name">POPIA Layer</div>
+        <p class="integration-desc">Data minimisation, retention schedules, and right-to-erasure for all member PII.</p>
+        <span class="integration-status status-live">Live</span>
+      </div>
+      <div class="integration-card">
+        <div class="integration-logo" style="background:rgba(61,90,71,0.1);">📊</div>
+        <div class="integration-name">Ubuntu Score API</div>
+        <p class="integration-desc">Open scoring API. Third-party applications can request verified Ubuntu Score assertions for members.</p>
+        <span class="integration-status status-beta">Beta</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ONBOARDING FUNNEL -->
+<section class="onboard-section">
+  <div class="onboard-inner">
+    <div class="section-eyebrow">Get started</div>
+    <h2 class="section-title">Your pool starts here.</h2>
+    <div class="onboard-cards">
+      <div class="onboard-card">
+        <div class="onboard-card-num">01 / JOIN A POOL</div>
+        <div class="onboard-card-title">I want to join an existing pool</div>
+        <p class="onboard-card-desc">Browse active pools, verify a pool's ProofBridge record, and submit a membership request. Your Ubuntu Score is your application.</p>
+        <a href="/pools/onboarding" class="onboard-card-action">Browse pools →</a>
+      </div>
+      <div class="onboard-card">
+        <div class="onboard-card-num">02 / CREATE A POOL</div>
+        <div class="onboard-card-title">I want to start a new pool</div>
+        <p class="onboard-card-desc">Set your pool structure, contribution amount, and payout cycle. Invite members via WhatsApp or share your pool link. First contribution activates ProofBridge.</p>
+        <a href="/pools/onboarding" class="onboard-card-action">Create a pool →</a>
+      </div>
+      <div class="onboard-card">
+        <div class="onboard-card-num">03 / ENTERPRISE API</div>
+        <div class="onboard-card-title">I want to integrate Ubuntu Pools</div>
+        <p class="onboard-card-desc">B2B API access for financial institutions, co-operatives, and insurers. White-label pool infrastructure with full ProofBridge attestation.</p>
+        <a href="api/docs" class="onboard-card-action">API documentation →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT OVERLAY -->
+<div class="contact-overlay" id="contactOverlay">
+  <div class="contact-modal">
+    <button class="contact-close" id="contactClose">×</button>
+    <h3>Contact Ubuntu Pools</h3>
+    <p>Send us a message — we'll respond within 24 hours.</p>
+    <form id="contactForm">
+      <div class="form-group">
+        <label for="contactName">Name</label>
+        <input type="text" id="contactName" placeholder="Your name" required>
+      </div>
+      <div class="form-group">
+        <label for="contactEmail">Email</label>
+        <input type="email" id="contactEmail" placeholder="you@example.com" required>
+      </div>
+      <div class="form-group">
+        <label for="contactMsg">Message</label>
+        <textarea id="contactMsg" placeholder="How can we help?" required></textarea>
+      </div>
+      <button type="submit" class="btn-contact" id="contactSubmit">Send message</button>
+      <div class="contact-status" id="contactStatus"></div>
+    </form>
+  </div>
+</div>
+
+<!-- COMPLIANCE BAND -->
+<div class="compliance-band">
+  <div class="compliance-item"><span class="dot-green"></span>POPIA JS2 Compliant</div>
+  <div class="compliance-item"><span class="dot-amber"></span>Polygon Amoy Testnet</div>
+  <div class="compliance-item"><span class="dot-green"></span>ED25519 Verified</div>
+  <div class="compliance-item"><span class="dot-amber"></span>Stitch Payment Rail</div>
+  <div class="compliance-item"><span class="dot-green"></span>Gate-1 Flow Evaluation</div>
+  <div class="compliance-item"><span class="dot-amber"></span>ANT Telemetry Active</div>
+  <div class="compliance-item"><span class="dot-green"></span>R 0 Disputed Payouts</div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">
+          <div class="nav-logo-mark">U</div>
+          <span class="footer-brand-name">Ubuntu Pools</span>
+        </div>
+        <p class="footer-tagline">Collective prosperity, cryptographically secured. A Vaguely Vanity LLC product built on Ubuntu philosophy.</p>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Product</div>
+        <a href="#how-it-works">How it works</a>
+        <a href="#pool-types">Pool types</a>
+        <a href="#ubuntu-score">Ubuntu Score</a>
+        <a href="/pools/governance">Governance</a>
+        <a href="/proofbridge">ProofBridge</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Integrations</div>
+        <a href="/proofbridge">Stitch</a>
+        <a href="/gate-1">Gate-1</a>
+        <a href="#">SafeKrypte</a>
+        <a href="#">ANT Telemetry</a>
+        <a href="#">API Docs</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Legal</div>
+        <a href="/pools/compliance">POPIA Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="/pools/compliance">Data Retention</a>
+        <a href="#">FSCA Disclosure</a>
+        <a href="#" id="contactLink">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2026 Vaguely Vanity LLC · Gqeberha, Eastern Cape · ubuntu-pools.vercel.app</span>
+      <div class="footer-legal">
+        <a href="/pools/compliance">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="/pools/compliance">POPIA</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ── CONTACT FORM (Resend) ──────────────────────────────
+const contactOverlay = document.getElementById('contactOverlay');
+const contactLink = document.getElementById('contactLink');
+const contactClose = document.getElementById('contactClose');
+const contactForm = document.getElementById('contactForm');
+const contactSubmit = document.getElementById('contactSubmit');
+const contactStatus = document.getElementById('contactStatus');
+
+if(contactLink){
+  contactLink.addEventListener('click', function(e){
+    e.preventDefault();
+    contactOverlay.style.display = 'flex';
+    contactStatus.className = 'contact-status';
+    contactStatus.textContent = '';
+  });
+}
+if(contactClose){
+  contactClose.addEventListener('click', function(){ contactOverlay.style.display = 'none'; });
+}
+contactOverlay.addEventListener('click', function(e){
+  if(e.target === contactOverlay) contactOverlay.style.display = 'none';
+});
+
+if(contactForm){
+  contactForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    contactSubmit.disabled = true;
+    contactSubmit.textContent = 'Sending…';
+    contactStatus.className = 'contact-status';
+    contactStatus.textContent = '';
+    try{
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('contactName').value.trim(),
+          email: document.getElementById('contactEmail').value.trim(),
+          message: document.getElementById('contactMsg').value.trim(),
+        }),
+      });
+      const data = await res.json();
+      if(res.ok){
+        contactStatus.className = 'contact-status ok';
+        contactStatus.textContent = data.message || 'Message sent. We\'ll be in touch.';
+        contactForm.reset();
+      } else {
+        contactStatus.className = 'contact-status err';
+        contactStatus.textContent = data.error || 'Failed to send. Try emailing us directly.';
+      }
+    }catch(err){
+      contactStatus.className = 'contact-status err';
+      contactStatus.textContent = 'Network error. Please try again or email us directly.';
+    }finally{
+      contactSubmit.disabled = false;
+      contactSubmit.textContent = 'Send message';
+    }
+  });
+}
+
+// ── INTERSECTION OBSERVER ──────────────────────────────
+const observerOptions = { threshold: 0.3 };
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.animation = 'fadeSlideUp 0.6s ease both';
+    }
+  });
+}, observerOptions);
+document.querySelectorAll('.step-card, .pool-type-card, .integration-card, .onboard-card').forEach(el => observer.observe(el));
+
+// ── TICKER ─────────────────────────────────────────────
+function updateTicker() {
+  const velocity = document.querySelector('.ant-metric-value');
+  if (velocity) {
+    const base = 842;
+    const jitter = Math.floor(Math.random() * 20) - 10;
+    velocity.textContent = base + jitter;
+  }
+}
+setInterval(updateTicker, 3000);
+</script>
+</body>
+</html>

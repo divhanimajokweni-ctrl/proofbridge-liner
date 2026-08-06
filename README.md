@@ -1,199 +1,282 @@
-# VVU Validation Suite
+# 🌉 ProofBridge Liner
 
-> **A public, reproducible validation event — not another specification.**
-> Pre-registered protocol, published failure schedule, live Mission Control scoreboard, immutable hourly evidence bundles, and a dress-rehearsal requirement. The evidence leads the conversation.
+**An Integrated Verification Environment (IVE) — Engineering Systems That Prove Themselves**
 
-This directory is a Git-ready validation subsystem. It is structured as a production project, versioned independently from software releases. Evidence bundles are NEVER committed to the repository — they are published as GitHub Release assets associated with the frozen Git tag for each validation run.
+🏆 **AMD AI DevMaster Hackathon 2026 — Track 3: Physical AI** 🏆
 
-## Quick Start
+---
+
+## 📸 Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PROOFBRIDGE LINER — IVE                      │
+│                                                                 │
+│  Physical Design Intent                                         │
+│       ↓                                                         │
+│  Agent Planning ────── Zoo Agent API (Zookeeper)               │
+│       ↓                                                         │
+│  CAD Generation ────── Zoo Engine API                          │
+│       ↓                                                         │
+│  Formal Specification  (constraints for physical behaviour)     │
+│       ↓                                                         │
+│  Proof Evaluation ──── SMT-based verification                  │
+│       ↓                                                         │
+│  Trust Decision ────── release BLOCKED / APPROVED              │
+│       ↓                                                         │
+│  Cryptographic Evidence ── Zoo File Format API (STEP export)   │
+│       ↓                                                         │
+│  Evidence Ledger ────── SHA-256 checksummed audit trail        │
+└─────────────────────────────────────────────────────────────────┘
+
+Case Study: HBK MK-II Hydro-Gateway
+— proving the pipeline on a real physical engineering asset
+```
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-# List all targets
-make help
-
-# Run the private dress rehearsal (compressed 72h in ~2min)
-make rehearsal
-
-# Freeze the build (git tag + container digest pin)
-make freeze
-
-# Run the public 72-hour validation (real-time, requires frozen build)
-make validate
-
-# Generate a single hourly evidence bundle
-make evidence HOUR=12
-
-# Verify replay determinism
-make verify BUNDLE=VVU-VAL-001/evidence/bundles/Hour-12.zip
-
-# Publish the evidence package as a GitHub Release
-make release
+git clone https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
+cd proofbridge-liner
+bun install
+cp .env.example .env   # add your Zoo API key
+bunx prisma generate   # generate database client
+bun run dev
 ```
 
-If you have [Taskfile](https://taskfile.dev) installed, `task` works identically:
-```bash
-task rehearsal
-task freeze
-task validate
-```
+Open **http://localhost:3000** to launch the IVE.
 
-## Directory Structure
+### Prerequisites
 
-```
-validation/
-├── .gitignore                         ← excludes evidence, logs, recordings, secrets
-├── Makefile                           ← universal task runner (zero dependencies)
-├── Taskfile.yml                       ← modern task runner (optional)
-├── README.md                          ← this file
-└── VVU-VAL-001/
-    ├── protocol/
-    │   ├── VVU-VAL-001_Pre_Registration_Protocol.pdf   ← frozen protocol (16 pages, v1.1)
-    │   └── protocol.md                                  ← Markdown source
-    ├── chaos/
-    │   ├── schedule.yaml               ← 6-phase gate-mapped schedule (published before T=0)
-    │   ├── inject-network.sh           ← P3: packet loss / latency / dup
-    │   ├── inject-storage.sh           ← P4: disk fill / IO throttle
-    │   ├── inject-security.sh          ← P6: bad signatures / spoofed / bad ZK / contradictory
-    │   └── inject-partition.sh         ← P7: cluster partition + HLC merge
-    ├── rehearsal/
-    │   ├── run-rehearsal.sh            ← mandatory private dress rehearsal
-    │   ├── verify.sh                   ← full verification suite
-    │   └── freeze-build.sh             ← git tag + container digest pin
-    ├── kubernetes/
-    │   ├── namespace.yaml              ← 8 namespaces (provider-agnostic k3s)
-    │   ├── runtime.yaml                ← Epistemic Runtime + AIR Kernel + NATS + generator + injector
-    │   ├── monitoring.yaml             ← Prometheus + Grafana
-    │   ├── evidence.yaml               ← hourly evidence archiver CronJob
-    │   ├── streaming.yaml              ← headless streaming service (implementation-agnostic)
-    │   └── outreach.yaml               ← Layer 2 outreach engine (killable)
-    ├── evidence/
-    │   ├── bundle.sh                   ← hourly evidence-bundle archival
-    │   ├── validation-index.py         ← published 6-dimension formula
-    │   ├── archive.sh                  ← H72 package assembly + GitHub Release
-    │   └── replay.sh                   ← replay verification pipeline
-    ├── scoreboard/
-    │   ├── dashboard.json              ← scoreboard config schema
-    │   ├── metrics-schema.json         ← metrics JSON schema
-    │   └── overlay-config.json         ← stream overlay config
-    ├── outreach/
-    │   ├── milestones.yaml             ← milestone event registry
-    │   ├── recipients.yaml             ← recipient registry (no addresses in code)
-    │   ├── stages.yaml                 ← staged-release enforcement
-    │   └── templates/                  ← scaffold templates (no pre-written copy)
-    ├── github/
-    │   ├── validation.yml              ← Layer 1: hourly collect + archive + milestone
-    │   ├── rehearsal.yml               ← private rehearsal workflow
-    │   └── release.yml                 ← H72 evidence package + GitHub Release
-    └── docs/
-        ├── observer-guide.md           ← independent observer instructions
-        ├── operator-runbook.md         ← on-call operator constraints + log format
-        ├── threat-model.md             ← validated vs NOT validated
-        └── publication-checklist.md    ← every item to complete before T=0
-```
+| Dependency | Version | Notes |
+|------------|---------|-------|
+| **Bun** | 1.3+ | Package manager & runtime |
+| **Node.js** | 22+ | Required by Next.js |
+| **Zoo API Key** | — | Get one at [zoo.dev](https://zoo.dev) |
 
-## Validation Events vs Software Releases
+### Environment Variables
 
-Validation events are versioned **independently** from software releases:
+Copy `.env.example` to `.env` and fill in:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | SQLite path (dev) or PostgreSQL URL (prod) |
+| `ZOO_API_TOKEN` | Yes | Zoo Engine + Agent API token |
+| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Supabase service role key |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | No | Clerk auth key |
+
+---
+
+## 🎬 Demo Video
+
+⏱️ **1-Minute Demo** — Agent-driven engineering workflow for physical systems
+
+> The demo video is attached to this README via GitHub's file attachment feature. It demonstrates the complete IVE boot sequence, agent-driven specification generation, CAD rendering of the HBK MK-II Hydro-Gateway, proof evaluation, and trust decision flow.
+
+
+https://github.com/user-attachments/assets/829164a8-f820-47b0-a266-431747050f9a
+
+
+
+---
+
+## 🔥 The Problem
+
+Modern physical engineering is broken. Design and verification live in disconnected worlds. Engineers spend weeks building CAD models for physical assets (dams, robots, vehicles), only to hand them off for months of manual verification. There is no cryptographically traceable, mathematically bounded proof tied directly to the living CAD model — and no autonomous agent that continuously re-evaluates physical trust as designs evolve.
+
+In safety-critical physical systems — hydro-gateways, robotics, autonomous vehicles — this gap between design and proof is not just inefficient, it is dangerous. A changed parameter (hole spacing, material thickness, pressure rating) can invalidate a previously verified design, and without continuous re-verification, that invalidation goes undetected until catastrophic failure.
+
+The economic cost is equally severe: each verification cycle for a physical asset costs weeks of engineer time and thousands of dollars. For the HBK MK-II Hydro-Gateway alone, a single verification round consumes 2–3 weeks of specialist time. When designs iterate rapidly, this verification debt accumulates to months of delay and millions in cost.
+
+---
+
+## 💡 Our Solution
+
+ProofBridge Liner is an **Integrated Verification Environment (IVE)** that houses an autonomous engineering agent specifically for physical AI systems. This agent translates high-level design intent (e.g., "hydro-gateway with M12 mounting holes and pressure-rated seals") into formal verification artifacts and automatically reassesses engineering trust after every design change — **without human intervention**.
+
+The IVE demonstrates an agent-driven physical-AI workflow:
 
 ```
-Validation Events:     VAL-001, VAL-002, VAL-003, ...
-Software Releases:     v1.0.0, v1.1.0, v2.0.0, ...
+Physical Design Intent
+  ↓
+Agent Planning (Zoo Agent API)
+  ↓
+CAD Generation (Zoo Engine API)
+  ↓
+Formal Specification (constraints for physical behaviour)
+  ↓
+Proof Evaluation (SMT-based verification of physical properties)
+  ↓
+Trust Decision (release blocked/approved for physical deployment)
+  ↓
+Evidence Archive (Zoo File Format API → STEP export + SHA-256 manifest)
 ```
 
-This separation lets you compare multiple validation runs against different software versions without conflating the validation protocol with the product release history.
+**Case Study: HBK MK-II Hydro-Gateway** — proving the pipeline on a real physical engineering asset. The Hydro-Gateway is a pressure-rated fluid control assembly used in municipal water infrastructure. It requires precise mounting (M12 bolts), pressure certification (10 bar), and material traceability — making it an ideal demonstration of physical AI verification.
 
-## Evidence Bundles — NOT Committed
+---
 
-Evidence bundles, recordings, logs, and secrets are **never committed** to the repository. The `.gitignore` excludes them. Instead:
+## 🛠️ How We Used the Zoo APIs
 
-- The repository holds source code, manifests, protocols, and workflows.
-- Evidence bundles are published as **GitHub Release assets** (or immutable object storage) associated with the frozen Git tag for that validation run.
+| API | Use (implemented) |
+|-----|-------------------|
+| **Zoo Agent API** (Zookeeper) | Natural language → formal verification constraints for physical systems. The agent interprets physical design intent and generates verifiable specifications. |
+| **Zoo Engine API** | Procedural CAD generation and real-time visualisation of the HBK MK-II geometry — the digital twin of a physical asset. |
+| **Zoo File Format API** | Export generated geometry as STEP files for cryptographic archival and audit trail — essential for physical asset traceability. |
+
+### AMD & ROCm (roadmap)
+
+The environment is pre-configured to leverage **AMD Radeon GPUs via ROCm** for future acceleration of SMT solving and proof re-evaluation — particularly relevant for physical simulation and control. During development, all verification was performed on CPU; GPU optimisation is planned as a post-hackathon enhancement targeting the following acceleration opportunities:
+
+- **SMT solver parallelisation** — distribute proof obligations across GPU stream processors
+- **Bayesian inference acceleration** — GPU-accelerated chi-square gating for sensor fusion
+- **Monte Carlo physical simulation** — GPU-native sampling for stochastic verification of physical constraints
+
+---
+
+## 🧠 Why It's Different (Physical AI Focus)
+
+### 1. Autonomous Physical Specification Agent
+
+The Zookeeper agent translates natural language physical requirements ("Design a hydro-gateway with M12 holes and a 10-bar pressure rating") directly into verifiable constraints — no manual coding of physical specs. This removes the human bottleneck between physical intent and formal proof.
+
+The agent maintains a specification graph that maps each physical constraint to its source intent, enabling full traceability from natural language requirement to mathematical proof obligation.
+
+### 2. Continuous Proof-Aware Re-evaluation for Physical Assets
+
+Change a physical parameter (e.g., thickness, hole spacing, material) → the agent re-runs the proof automatically → release decision recalculates. The agent monitors the digital twin and re-verifies without human intervention, mimicking a continuous integration system for physical engineering.
+
+This is fundamentally different from traditional verification tools that treat proof as a one-time gate. In ProofBridge, proof is a living process that evolves with the design.
+
+### 3. Chi-Square Gating & Bayesian Inference for Sensor Fusion
+
+Inspired by modern inference pipelines, our HBK MK-II case study transforms raw sensor signals (pressure, flow, temperature) into calibrated probabilistic estimates — rejecting statistically inconsistent measurements before they corrupt the state estimate. This is directly relevant to Physical AI where real-world sensor data is noisy and must be filtered for reliable control.
+
+The inference pipeline:
+- **Prior**: Engineering specification bounds (design intent)
+- **Likelihood**: Sensor measurement model (with chi-square gating)
+- **Posterior**: Updated trust estimate (Bayesian update)
+- **Decision**: Release blocked/approved based on posterior confidence
+
+### 4. Cryptographic Traceability for Physical Assets
+
+Every proof produces:
+
+| Artifact | Purpose |
+|----------|---------|
+| `results.json` | Frozen contract — proof outcomes |
+| `ledger.json` | Append-only ledger — immutable event log |
+| `provenance.json` | Full provenance — source-to-proof chain |
+| `checksums.txt` | SHA-256 integrity manifest |
+
+This ensures that any modification to the physical design is cryptographically auditable — critical for safety-critical physical systems where regulatory compliance requires immutable evidence trails.
+
+---
+
+## 🚧 Claim Boundaries (Zero Fabrication Rule)
+
+This prototype demonstrates:
+
+- ✅ AI-assisted specification generation (Zoo Agent API) for physical systems
+- ✅ Procedural CAD integration (Zoo Engine API) — digital twin generation
+- ✅ Proof obligation management & SMT-based verification of physical constraints
+- ✅ Evidence provenance & audit trail generation
+- ✅ Bayesian trust estimation with chi-square sensor gating
+- ✅ Cryptographic evidence archival (SHA-256 manifest)
+
+This prototype does **NOT** demonstrate:
+
+- ❌ Physical safety certification (e.g., ISO, ASME)
+- ❌ Regulatory approval
+- ❌ Manufacturing verification
+- ❌ GPU-accelerated proof solving (roadmap item for AMD ROCm)
+
+---
+
+## 🛑 Verification Status
 
 ```
-Git Tag: VAL-001
-├── Source Code (in repo)
-├── Protocol PDF (in repo)
-├── Kubernetes Manifests (in repo)
-└── Release Assets (NOT in repo — published as Release assets)
-    ├── VVU-72H-VALIDATION.zip
-    ├── SHA256SUMS
-    ├── FinalReport.pdf
-    ├── ReplayDataset.tar.zst
-    └── 72-hour-recording.mp4
+MATHEMATICAL OBLIGATIONS: EVALUATED
+INPUT PROVENANCE:         UNVERIFIED
+PHYSICAL VALIDATION:      NOT PERFORMED
+
+ENGINEERING RELEASE:      BLOCKED
 ```
 
-## Image Pinning (Tag + Digest)
+This status is derived directly from the proof artifacts generated by the agent. Missing physical validation is explicitly surfaced — no false claims. This aligns with the **Zero Fabrication Rule**: we never fake a trust score.
 
-At freeze time, `freeze-build.sh` performs **both**:
+---
 
-1. **Tags** the container image: `vvu/epistemic-runtime:VAL-001`
-2. **Records the digest**: `sha256:abc123...`
-3. **Patches the k8s manifests** to pin by digest: `image: vvu/epistemic-runtime@sha256:abc123...`
-4. **Records both** in `frozen-build.json` for the release notes
+## 🏗️ Technical Architecture
 
-This is belt-and-braces: the tag is human-readable; the digest is cryptographically airtight and cannot be moved.
+### Stack
 
-## The 6-Phase Gate-Mapped Schedule
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 16 (App Router) + React 19 + Tailwind CSS 4 |
+| UI Components | shadcn/ui + Radix primitives + Framer Motion |
+| Database | Prisma ORM (SQLite dev / PostgreSQL prod) |
+| Auth | Clerk (graceful fallback when unconfigured) |
+| CAD Engine | Zoo Engine API |
+| AI Agent | Zoo Agent API (Zookeeper) |
+| File Export | Zoo File Format API (STEP) |
+| Evidence | SHA-256 checksummed JSON artifacts |
+| Runtime | Bun |
 
-| Phase | Hours | Gate | Injected |
-|-------|-------|------|----------|
-| P1 Nominal | 0–12 | Baseline | Normal traffic |
-| P2 Flood | 12–24 | Acceptance Capacity | 10× → 100× rate |
-| P3 Network Chaos | 24–36 | HLC Ordering | Packet loss / latency / dup |
-| P4 Storage Pressure | 36–48 | Append-Only Integrity | Disk fill / IO throttle |
-| P5 Node Failure | 48–60 | Recovery | Random pod kills |
-| P6 Security | 60–66 | HF-001/002/005 | Bad sigs / bad ZK / contradictory / spoofed |
-| P7 Partition + Recovery | 66–72 | LVL-17 (72h Blackout) | Disconnect → reconnect → HLC merge |
-
-## The Validation Index (Published Formula)
+### Project Structure
 
 ```
-Index = Σ ( weightᵢ × dimensionᵢ )    weights sum to 1.0; each dimension 0–100
+/proofbridge-liner
+├── /src
+│   ├── /app              # Next.js App Router (pages + API routes)
+│   │   ├── /api/ive      # IVE API endpoints
+│   │   └── page.tsx      # IVE root (dynamic boot sequence)
+│   ├── /components
+│   │   ├── /ive          # IVE shell, boot sequence, workspace
+│   │   ├── /hbk          # HBK MK-II Hydro-Gateway panels
+│   │   ├── /epistemic    # Fortification & resilience visualisation
+│   │   └── /vvu          # VVU workbench shell & landing
+│   ├── /lib              # Core libraries (db, trust-runtime, evidence)
+│   └── /engine           # Zoo Engine integration & signer
+├── /prisma               # Database schema
+├── /supabase             # Migrations & config
+├── /scripts              # Build, deploy, verification scripts
+├── README.md             # This file
+├── package.json          # Dependencies
+├── .env.example          # Environment template
+└── /docs                 # Additional documentation
 ```
 
-| Dimension | Weight | Measurement |
-|-----------|--------|-------------|
-| Replay Determinism | 0.20 | 100 if live == replay else 0 |
-| Evidence Integrity | 0.20 | 100 × verified / total bundles |
-| TEE Attestation | 0.15 | 100 × (1 − accepted_bad / spoofed) |
-| Policy Conformance | 0.15 | max(0, 100 − 4 × unhandled) |
-| Merge Correctness | 0.15 | 100 if 0 conflicts else scaled |
-| Availability | 0.15 | 100 × (1 − fail_closed_s / elapsed_s) |
+---
 
-PASS requires: zero Critical failures AND final index ≥ 90.0. See §7.1 (weight rationale) and §7.2 (threshold rationale) in the protocol PDF.
+## 📁 Submission Package
 
-## How to Run
+The project is submitted as a Pull Request to the official AMD repository. The source code lives in `/src`; the demo is hosted online (link above). No static demo assets are committed to the repo.
 
-### 1. Private dress rehearsal
-```bash
-make rehearsal                    # compressed (72h in ~2min)
-# or single phase for fast iteration:
-bash VVU-VAL-001/rehearsal/run-rehearsal.sh --phase-only P6
-```
-Repeat until clean pass. Then freeze.
+---
 
-### 2. Freeze the build
-```bash
-make freeze
-# → creates git tag VAL-001
-# → builds container image, records tag + digest
-# → patches k8s manifests to pin digest
-# → writes protocol/frozen-build.json
-```
+## 👥 Team
 
-### 3. Public run (after rehearsal passes + freeze)
-```bash
-make validate                     # true 72-hour real-time run
-```
+**Mihle Iviwe Majokweni**
+Founder, Venture Vision Ubuntu
+*(solo submission)*
 
-### 4. Publish evidence
-```bash
-make release                      # assembles + publishes GitHub Release
-```
 
-## See Also
 
-- **`VVU-VAL-001/protocol/VVU-VAL-001_Pre_Registration_Protocol.pdf`** — the frozen protocol (16 pages, v1.1 reviewer-revised)
-- **`VVU-VAL-001/docs/`** — observer guide, operator runbook, threat model, publication checklist
-- **`VVU-VAL-001/chaos/schedule.yaml`** — the gate-mapped failure schedule
-- **`VVU-VAL-001/evidence/validation-index.py`** — the published Validation Index formula
+https://github.com/user-attachments/assets/4397669c-f9dc-4844-b7e4-a3bee162d475
+
+
+---
+
+## 🏁 Closing Impact
+
+ProofBridge Liner demonstrates how autonomous AI agents can connect physical engineering intent, formal verification, and cryptographic evidence into a single, continuously verifiable workflow for physical AI systems.
+
+It is not a tool that simply draws CAD — it is a **trust-aware engineering partner for the physical world**.
+
+---
+
+*Made with ❤️ in South Africa 🇿🇦 for the AMD AI DevMaster Hackathon 2026 — Track 3: Physical AI*

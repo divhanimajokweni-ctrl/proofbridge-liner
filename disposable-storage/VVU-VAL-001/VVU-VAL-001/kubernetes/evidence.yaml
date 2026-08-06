@@ -1,0 +1,54 @@
+# VVU-VAL-001 · Evidence Namespace
+# Hourly evidence archiver CronJob + PVC for bundle storage.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: evidence-pvc, namespace: evidence }
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources: { requests: { storage: 100Gi } }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: evidence-collector, namespace: evidence }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: evidence-collector }
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "namespaces", "nodes", "events"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: evidence-collector }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: evidence-collector }
+subjects: [{ kind: ServiceAccount, name: evidence-collector, namespace: evidence }]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: evidence-archiver, namespace: evidence }
+spec:
+  schedule: "0 * * * *"  # hourly
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: evidence-collector
+          containers:
+            - name: archiver
+              image: bitnami/kubectl:1.28
+              command: ["/bin/bash", "/scripts/bundle.sh"]
+              env:
+                - { name: RUNTIME_NS, value: "vvu-runtime" }
+                - { name: EVIDENCE_NS, value: "evidence" }
+              volumeMounts:
+                - { name: scripts, mountPath: /scripts, readOnly: true }
+                - { name: evidence, mountPath: /bundles }
+          volumes:
+            - { name: scripts, configMap: { name: evidence-scripts, defaultMode: 0755 } }
+            - { name: evidence, persistentVolumeClaim: { claimName: evidence-pvc } }
