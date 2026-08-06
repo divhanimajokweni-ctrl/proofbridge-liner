@@ -7,8 +7,10 @@
 ---
 
 ## 🎬 Demo Video
-*(Drag and drop your `intro_202608060055.mp4` file right here in the GitHub editor to upload it!)*
-[Placeholder: Video URL will appear here]
+
+https://github.com/user-attachments/assets/b55fb7cd-980c-480f-ac95-09ae39469c76
+
+
 
 ---
 
