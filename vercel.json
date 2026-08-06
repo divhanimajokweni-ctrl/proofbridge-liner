@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "installCommand": "npm install",
-  "buildCommand": "DATABASE_URL=file:./build-tmp.db NEXT_IGNORE_TS=1 npx prisma generate && DATABASE_URL=file:./build-tmp.db NEXT_IGNORE_TS=1 npm run build",
+  "buildCommand": "npm run build",
   "regions": ["iad1"],
   "env": {
     "COMPUTE_PROVIDER": "local",
