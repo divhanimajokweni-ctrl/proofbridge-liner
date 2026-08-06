@@ -76,6 +76,11 @@ Copy `.env.example` to `.env` and fill in:
 
 > The demo video is attached to this README via GitHub's file attachment feature. It demonstrates the complete IVE boot sequence, agent-driven specification generation, CAD rendering of the HBK MK-II Hydro-Gateway, proof evaluation, and trust decision flow.
 
+
+https://github.com/user-attachments/assets/829164a8-f820-47b0-a266-431747050f9a
+
+
+
 ---
 
 ## 🔥 The Problem
