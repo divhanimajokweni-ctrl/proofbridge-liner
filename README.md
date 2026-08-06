@@ -1,7 +1,4 @@
 
-
-https://github.com/user-attachments/assets/7a2a47bc-bcdb-4b3d-8668-897684fccf39
-
 # 🌉 ProofBridge Liner
 
 **An Integrated Verification Environment (IVE) — Engineering Systems That Prove Themselves**
@@ -83,8 +80,6 @@ Copy `.env.example` to `.env` and fill in:
 
 https://github.com/user-attachments/assets/847b4365-7ae3-4970-9519-64d77800cf75
 
-
-https://github.com/user-attachments/assets/a96849fb-1696-4cec-8dbe-22941409dc4f
 
 
 
