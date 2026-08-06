@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
-    "build": "next build && node -e \"const fs=require('fs'),p='.next/server/middleware.js.nft.json';if(!fs.existsSync(p)){const mf='.next/server/middleware-manifest.json';let files=[];try{const m=JSON.parse(fs.readFileSync(mf,'utf8'));files=Object.values(m.middleware||{}).flatMap(v=>(v.files||[]).map(f=>f.startsWith('server/')?f.slice(7):f))}catch(e){}fs.writeFileSync(p,JSON.stringify({version:1,files:files}))}\"",
+    "build": "next build && node scripts/vercel-postbuild.mjs",
     "start": "NODE_ENV=production next start 2>&1 | tee server.log",
     "lint": "eslint .",
     "db:push": "prisma db push --accept-data-loss",
