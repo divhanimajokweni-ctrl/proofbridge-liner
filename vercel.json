@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
+  "installCommand": "npm install && npx prisma generate",
+  "buildCommand": "npx next build",
   "regions": ["iad1"],
   "env": {
     "COMPUTE_PROVIDER": "local",
