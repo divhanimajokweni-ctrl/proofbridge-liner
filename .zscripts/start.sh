@@ -56,6 +56,16 @@ ls -lah
 DEFAULT_PACKAGED_DB_PATH="/app/db/custom.db"
 DEFAULT_PACKAGED_DATABASE_URL="file:$DEFAULT_PACKAGED_DB_PATH"
 
+# Python 依赖在构建阶段安装进部署产物，不复用 Sandbox 的 /home/z/.venv。
+# Next.js 及其启动的子进程都会继承这组路径。
+if [ -d "/app/python-runtime/site-packages" ]; then
+    export PYTHONPATH="/app/python-runtime/site-packages:/app/next-service-dist${PYTHONPATH:+:$PYTHONPATH}"
+    export PATH="/app/python-runtime/site-packages/bin:$PATH"
+    export PYTHONDONTWRITEBYTECODE=1
+    export PYTHONUNBUFFERED=1
+    echo "🐍 已启用部署包内 Python runtime: $(python --version 2>&1)"
+fi
+
 # 启动 Next.js 服务器
 if [ -f "./next-service-dist/server.js" ]; then
     echo "🚀 启动 Next.js 服务器..."

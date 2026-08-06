@@ -1,0 +1,22 @@
+// HBK Mk-II crawler cylindrical drive wheel
+// Exact 100 mm radius and 50 mm axial width; tread, hub, axle, and material require engineering data.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+wheelRadius = 100mm
+wheelWidth = 50mm
+
+wheelProfile = sketch(on = XZ) {
+  outerCircle = circle(start = [var 100mm, var 0mm], center = [var 0mm, var 0mm])
+
+  coincident([outerCircle.center, ORIGIN])
+  horizontal([outerCircle.center, outerCircle.start])
+  radius(outerCircle) == wheelRadius
+}
+
+wheelRegion = region(segments = [wheelProfile.outerCircle])
+
+export driveWheel = extrude(wheelRegion, length = wheelWidth, symmetric = true)
+  |> appearance(color = "#17191b", metalness = 10, roughness = 82)
+
+hide(wheelProfile)
+driveWheel

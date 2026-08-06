@@ -1,0 +1,101 @@
+// Input output cabinet
+// Compact sealed I/O enclosure with door, indicator panel, glands, and mounting feet.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0, experimentalFeatures = allow)
+
+import unitBox from "unit_box.kcl"
+import unitCylinder from "unit_cylinder.kcl"
+
+cabinetWidth = 500mm
+cabinetDepth = 450mm
+cabinetHeight = 1100mm
+bodyColor = "#657078"
+doorColor = "#313b42"
+hardwareColor = "#b5bec4"
+
+cabinetBody = clone(unitBox)
+  |> scale(
+       x = cabinetWidth / 1mm,
+       y = cabinetDepth / 1mm,
+       z = cabinetHeight / 1mm,
+       global = true,
+     )
+  |> appearance(color = bodyColor, metalness = 62, roughness = 48)
+frontDoor = clone(unitBox)
+  |> scale(
+       x = 462mm / 1mm,
+       y = 16mm / 1mm,
+       z = 1010mm / 1mm,
+       global = true,
+     )
+  |> translate(y = -cabinetDepth / 2 - 9mm, global = true)
+  |> appearance(color = doorColor, metalness = 54, roughness = 46)
+indicatorPanel = clone(unitBox)
+  |> scale(
+       x = 260mm / 1mm,
+       y = 14mm / 1mm,
+       z = 90mm / 1mm,
+       global = true,
+     )
+  |> translate(y = -cabinetDepth / 2 - 24mm, z = 330mm, global = true)
+  |> appearance(color = "#213d46", metalness = 28, roughness = 34)
+handleBar = clone(unitBox)
+  |> scale(
+       x = 20mm / 1mm,
+       y = 38mm / 1mm,
+       z = 180mm / 1mm,
+       global = true,
+     )
+  |> translate(x = 185mm, y = -cabinetDepth / 2 - 34mm, global = true)
+  |> appearance(color = hardwareColor, metalness = 82, roughness = 28)
+
+cableGlandA = clone(unitCylinder)
+  |> scale(
+       x = 46mm / 1mm,
+       y = 46mm / 1mm,
+       z = 30mm / 1mm,
+       global = true,
+     )
+  |> rotate(axis = X, angle = 90deg, global = false)
+  |> translate(
+       x = -75mm,
+       y = -cabinetDepth / 2 - 24mm,
+       z = -440mm,
+       global = true,
+     )
+  |> appearance(color = hardwareColor, metalness = 74, roughness = 34)
+cableGlandB = clone(cableGlandA)
+  |> translate(x = 150mm, global = true)
+
+leftFoot = clone(unitBox)
+  |> scale(
+       x = 82mm / 1mm,
+       y = 82mm / 1mm,
+       z = 70mm / 1mm,
+       global = true,
+     )
+  |> translate(
+       x = -175mm,
+       y = -145mm,
+       z = -cabinetHeight / 2 - 35mm,
+       global = true,
+     )
+  |> appearance(color = hardwareColor, metalness = 76, roughness = 36)
+rightFoot = clone(leftFoot)
+  |> translate(x = 350mm, global = true)
+rearLeftFoot = clone(leftFoot)
+  |> translate(y = 290mm, global = true)
+rearRightFoot = clone(rightFoot)
+  |> translate(y = 290mm, global = true)
+
+export allBodies = flatten([
+  cabinetBody,
+  frontDoor,
+  indicatorPanel,
+  handleBar,
+  cableGlandA,
+  cableGlandB,
+  leftFoot,
+  rightFoot,
+  rearLeftFoot,
+  rearRightFoot
+])

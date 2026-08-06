@@ -1,71 +1,70 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import { ThemeProvider } from "@/components/theme-provider";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
 
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-};
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: "Venture Vision Ubuntu — Trusted Digital Infrastructure for South Africa",
-  description: "Building trusted digital infrastructure for South African communities through deterministic engineering, cryptographic provenance, and the Ubuntu philosophy.",
-  icons: { icon: "/vvu-logo.svg", apple: "/vvu-logo-github.png" },
+  title: "VVU IVE — Integrated Verification Environment",
+  description:
+    "Engineer systems that can prove themselves. The VVU Integrated Verification Environment (IVE) combines procedural CAD, AI-assisted specification, bounded formal verification, and cryptographically traceable evidence. HBK MK-II Hydro-Gateway is the demonstration case study.",
+  keywords: [
+    "VVU",
+    "Integrated Verification Environment",
+    "IVE",
+    "HBK MK-II",
+    "Hydro-Gateway",
+    "formal verification",
+    "Zoo Engine",
+    "ROCm",
+    "engineering evidence",
+  ],
+  authors: [{ name: "VVU IVE Team" }],
+  icons: {
+    icon: "/ive-favicon.svg",
+  },
   openGraph: {
-    title: "Venture Vision Ubuntu",
-    description: "Trusted Digital Infrastructure for South Africa",
-    siteName: "Venture Vision Ubuntu",
+    title: "VVU IVE — Integrated Verification Environment",
+    description:
+      "Engineer systems that can prove themselves. Bounded formal verification with cryptographically traceable evidence.",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VVU IVE — Integrated Verification Environment",
+    description:
+      "Engineer systems that can prove themselves.",
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export const viewport: Viewport = {
+  themeColor: "#0f0f18",
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <ClerkProvider
-      appearance={{
-        baseTheme: dark,
-        variables: {
-          colorPrimary: "#059669",
-          colorBackground: "#0a0a0f",
-          colorInputBackground: "#141420",
-          colorInputText: "#e2e3db",
-          colorText: "#e2e3db",
-          colorTextSecondary: "#7b7d8c",
-          colorNeutral: "#1a1a2e",
-        },
-        elements: {
-          formButtonPrimary: "bg-emerald-600 hover:bg-emerald-700 text-white",
-          card: "bg-[#0f0f18] border-white/10",
-          socialButtonsBlockButton: "border-white/10 bg-white/5 hover:bg-white/10 text-foreground",
-          formFieldLabel: "text-foreground",
-          formFieldInput: "bg-[#141420] border-white/10 text-foreground",
-          dividerLine: "bg-white/10",
-          dividerText: "text-muted-foreground",
-          footerActionLink: "text-emerald-400 hover:text-emerald-300",
-        },
-      }}
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      afterSignInUrl="/"
-      afterSignUpUrl="/"
-    >
-      <html lang="en" suppressHydrationWarning>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen`}>
-          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange={false}>
-            {children}
-            <Toaster />
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" suppressHydrationWarning className="dark">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+      >
+        {children}
+        <Toaster />
+      </body>
+    </html>
   );
 }

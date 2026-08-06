@@ -1,0 +1,82 @@
+// Edge control cabinet
+// Sealed onboard edge-control enclosure; operator controls belong to Tier 2.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0, experimentalFeatures = allow)
+
+import unitBox from "unit_box.kcl"
+import unitCylinder from "unit_cylinder.kcl"
+
+cabinetWidth = 650mm
+cabinetDepth = 600mm
+cabinetHeight = 1700mm
+cabinetColor = "#4d5a63"
+doorColor = "#28343d"
+hardwareColor = "#b6c0c7"
+
+cabinetBody = clone(unitBox)
+  |> scale(
+       x = cabinetWidth / 1mm,
+       y = cabinetDepth / 1mm,
+       z = cabinetHeight / 1mm,
+       global = true,
+     )
+  |> appearance(color = cabinetColor, metalness = 62, roughness = 48)
+frontDoor = clone(unitBox)
+  |> scale(
+       x = 610mm / 1mm,
+       y = 18mm / 1mm,
+       z = 1560mm / 1mm,
+       global = true,
+     )
+  |> translate(y = -cabinetDepth / 2 - 10mm, global = true)
+  |> appearance(color = doorColor, metalness = 55, roughness = 44)
+roofCap = clone(unitBox)
+  |> scale(
+       x = 690mm / 1mm,
+       y = 640mm / 1mm,
+       z = 34mm / 1mm,
+       global = true,
+     )
+  |> translate(z = cabinetHeight / 2 + 17mm, global = true)
+  |> appearance(color = hardwareColor, metalness = 78, roughness = 34)
+
+handleBar = clone(unitBox)
+  |> scale(
+       x = 24mm / 1mm,
+       y = 48mm / 1mm,
+       z = 230mm / 1mm,
+       global = true,
+     )
+  |> translate(x = 255mm, y = -cabinetDepth / 2 - 40mm, global = true)
+  |> appearance(color = hardwareColor, metalness = 84, roughness = 28)
+
+leftFoot = clone(unitBox)
+  |> scale(
+       x = 90mm / 1mm,
+       y = 90mm / 1mm,
+       z = 80mm / 1mm,
+       global = true,
+     )
+  |> translate(
+       x = -240mm,
+       y = -190mm,
+       z = -cabinetHeight / 2 - 40mm,
+       global = true,
+     )
+  |> appearance(color = hardwareColor, metalness = 76, roughness = 36)
+rightFoot = clone(leftFoot)
+  |> translate(x = 480mm, global = true)
+rearLeftFoot = clone(leftFoot)
+  |> translate(y = 380mm, global = true)
+rearRightFoot = clone(rightFoot)
+  |> translate(y = 380mm, global = true)
+
+export allBodies = flatten([
+  cabinetBody,
+  frontDoor,
+  roofCap,
+  handleBar,
+  leftFoot,
+  rightFoot,
+  rearLeftFoot,
+  rearRightFoot
+])

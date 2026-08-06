@@ -44,33 +44,7 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
-  ignores: [
-    "node_modules/**",
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-    "examples/**",
-    "skills",
-    "scripts/**",
-    "air/**",
-    "prover/**",
-    "test/**",
-    "tests/**",
-    "server/**",
-    "lib/HmacSecurityGuard.js",
-    "hardhat.config.js",
-    "packages/**",
-    "disposable-storage/**",
-    "open-source/**",
-    "commercial/**",
-    "shared/**",
-    "validation/**",
-    ".agents/**",
-    "src/gateway/**",
-    "src/lib/audit/**",
-    "src/lib/tenant/**",
-  ]
+  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
 }];
 
 export default eslintConfig;

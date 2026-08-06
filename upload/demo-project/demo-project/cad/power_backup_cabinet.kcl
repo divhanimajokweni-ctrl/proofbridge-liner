@@ -1,0 +1,107 @@
+// Power backup cabinet
+// Battery and power-management enclosure with vent banks, door, glands, and feet.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0, experimentalFeatures = allow)
+
+import unitBox from "unit_box.kcl"
+import unitCylinder from "unit_cylinder.kcl"
+
+cabinetWidth = 600mm
+cabinetDepth = 600mm
+cabinetHeight = 1450mm
+bodyColor = "#59636a"
+panelColor = "#303a42"
+ventColor = "#171d22"
+hardwareColor = "#adb6bc"
+
+cabinetBody = clone(unitBox)
+  |> scale(
+       x = cabinetWidth / 1mm,
+       y = cabinetDepth / 1mm,
+       z = cabinetHeight / 1mm,
+       global = true,
+     )
+  |> appearance(color = bodyColor, metalness = 62, roughness = 48)
+frontDoor = clone(unitBox)
+  |> scale(
+       x = 560mm / 1mm,
+       y = 18mm / 1mm,
+       z = 1320mm / 1mm,
+       global = true,
+     )
+  |> translate(y = -cabinetDepth / 2 - 10mm, global = true)
+  |> appearance(color = panelColor, metalness = 52, roughness = 46)
+
+upperVent = clone(unitBox)
+  |> scale(
+       x = 330mm / 1mm,
+       y = 14mm / 1mm,
+       z = 160mm / 1mm,
+       global = true,
+     )
+  |> translate(y = -cabinetDepth / 2 - 24mm, z = 410mm, global = true)
+  |> appearance(color = ventColor, metalness = 44, roughness = 58)
+lowerVent = clone(upperVent)
+  |> translate(z = -820mm, global = true)
+
+handleBar = clone(unitBox)
+  |> scale(
+       x = 22mm / 1mm,
+       y = 44mm / 1mm,
+       z = 210mm / 1mm,
+       global = true,
+     )
+  |> translate(x = 235mm, y = -cabinetDepth / 2 - 38mm, global = true)
+  |> appearance(color = hardwareColor, metalness = 82, roughness = 28)
+
+cableGlandA = clone(unitCylinder)
+  |> scale(
+       x = 54mm / 1mm,
+       y = 54mm / 1mm,
+       z = 34mm / 1mm,
+       global = true,
+     )
+  |> rotate(axis = X, angle = 90deg, global = false)
+  |> translate(
+       x = -90mm,
+       y = -cabinetDepth / 2 - 28mm,
+       z = -590mm,
+       global = true,
+     )
+  |> appearance(color = hardwareColor, metalness = 74, roughness = 34)
+cableGlandB = clone(cableGlandA)
+  |> translate(x = 180mm, global = true)
+
+leftFoot = clone(unitBox)
+  |> scale(
+       x = 88mm / 1mm,
+       y = 88mm / 1mm,
+       z = 80mm / 1mm,
+       global = true,
+     )
+  |> translate(
+       x = -215mm,
+       y = -190mm,
+       z = -cabinetHeight / 2 - 40mm,
+       global = true,
+     )
+  |> appearance(color = hardwareColor, metalness = 76, roughness = 36)
+rightFoot = clone(leftFoot)
+  |> translate(x = 430mm, global = true)
+rearLeftFoot = clone(leftFoot)
+  |> translate(y = 380mm, global = true)
+rearRightFoot = clone(rightFoot)
+  |> translate(y = 380mm, global = true)
+
+export allBodies = flatten([
+  cabinetBody,
+  frontDoor,
+  upperVent,
+  lowerVent,
+  handleBar,
+  cableGlandA,
+  cableGlandB,
+  leftFoot,
+  rightFoot,
+  rearLeftFoot,
+  rearRightFoot
+])
