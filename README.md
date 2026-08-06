@@ -45,3 +45,22 @@ Instead of relying on static file imports or heavy local rendering, ProofBridge 
 ```bash
 git clone [https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git](https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git)
 cd proofbridge-liner
+2. Install dependencies:
+
+Bash
+npm install
+3. Environment Setup:
+Create a .env file in the root directory and add your Zoo API keys and database configuration:
+
+Code snippet
+ZOO_API_KEY=your_zoo_engine_api_key_here
+DATABASE_URL=file:./db/custom.db
+4. Run the Development Server:
+
+Bash
+npm run dev
+The IVE will be live at http://localhost:3000.
+(Note: We use Next.js 16 with Turbopack for near-instant client navigation).
+
+📜 License
+[AGPL License] - See LICENSE file for details.
