@@ -7,7 +7,12 @@ deer-flow/
 artifacts/
 attached_assets/
 e2e/
-scripts/
+# scripts/ must NOT be blanket-ignored — vercel-postbuild.mjs is required for deployment
+scripts/chaos/
+scripts/craft/
+scripts/gcp/
+scripts/governance/
+scripts/customer-360/
 supabase/
 public/vvv/
 vvv/
@@ -27,8 +32,7 @@ ai-gateway/
 # Kilo/OpenCode local config (not needed for frontend)
 .kilo/
 
-# Next.js build trace exclusions
-scripts/customer-360/node_modules/
+# Next.js build trace exclusions (customer-360/ already excluded above)
 
 # Legacy root-level API (superseded by App Router)
 api/verify.js
