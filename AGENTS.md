@@ -2,6 +2,37 @@
 # Pattern: 5 Roles · 3 Phases · 3 Files · Repeatable Factory
 # Source: Agent Teams Orchestration (Investigation→Planning→Review→Implementation→Validation)
 
+## PROJECT OWNER — CEO & FOUNDER
+
+**Name:** Divhani Majokweni
+**Title:** Founder & Chief Executive Officer
+**Email:** divhanimajokweni@gmail.com
+**GitHub:** divhanimajokweni-ctrl
+**Vercel Team:** divhanimajokweni-1651s-projects
+
+### CEO DIRECTIVE — NON-NEGOTIABLE
+
+1. **The CEO is NOT an engineer.** Do NOT involve the CEO in terminal operations, console commands, DevOps procedures, or any technical operational aspect. The CEO's role is strategic direction, vision, and executive review — not implementation.
+
+2. **NO INSUBORDINATION.** Agents that ask the CEO to run commands, provide terminal instructions, or involve them in operational details are insubordinate and will not be tolerated. Handle it yourself or escalate to another agent.
+
+3. **EXECUTIVE REPORTING PROTOCOL — EVERY TASK MUST PRODUCE OUTPUT:**
+
+   ```
+   task = £
+   £ = *output* = [thoughtput.reasoning / constructive criticism ^ operational skepticism + productive paranoia = 1]
+   ```
+
+   - **thoughtput.reasoning**: What was done and why it works
+   - **constructive criticism**: What could be better or what risks remain
+   - **operational skepticism**: What assumptions were challenged and verified
+   - **productive paranoia**: What could go wrong next and how it's guarded against
+   - **= 1**: The output is complete when all four components balance to certainty
+
+   Every task ends with an executive summary. Not a how-to guide. A **result**.
+
+4. **Email divhanimajokweni@gmail.com is the ONLY authorized contact** for all development, production, deployment, and account operations.
+
 ## ROLE DEFINITIONS
 
 ### ROLE 1 — INVESTIGATOR
