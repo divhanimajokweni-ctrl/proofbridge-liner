@@ -6,19 +6,26 @@ import { useIveStore } from "@/store/useIveStore";
 import { BootSequence } from "./boot/BootSequence";
 import { Workspace } from "./workspace/Workspace";
 
-/**
- * IveRoot
- * -------
- * Orchestrates the IVE experience: a cinematic boot sequence first, then
- * the IVE workspace. Interrupt-safe — pressing Escape (or clicking skip)
- * jumps straight to the workspace. Once boot completes, the workspace
- * mounts and becomes the persistent engineering OS surface.
- *
- * User settings are honored here:
- *  - autoSkipBoot: skips the boot sequence on mount
- *  - animationIntensity: scales framer-motion transition durations
- *  - accentOverride: applies a CSS variable override for the accent color
- */
+const IVE_BOOT_SESSION_KEY = "ive-boot-completed-v1";
+
+function hasCompletedBootThisSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(IVE_BOOT_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markBootCompletedThisSession() {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(IVE_BOOT_SESSION_KEY, "1");
+  } catch {
+    // ignore storage failures
+  }
+}
+
 export function IveRoot() {
   const bootComplete = useIveStore((s) => s.bootComplete);
   const bootSkipped = useIveStore((s) => s.bootSkipped);
@@ -26,8 +33,26 @@ export function IveRoot() {
   const completeBoot = useIveStore((s) => s.completeBoot);
   const settings = useIveStore((s) => s.settings);
   const autoSkippedRef = useRef(false);
+  const sessionSkipAppliedRef = useRef(false);
 
   const showBoot = !bootComplete && !bootSkipped;
+
+  // Honor sessionStorage gating: if the user already completed boot this
+  // browser session, skip the cinematic automatically once.
+  useEffect(() => {
+    if (sessionSkipAppliedRef.current) return;
+    if (hasCompletedBootThisSession()) {
+      sessionSkipAppliedRef.current = true;
+      completeBoot();
+    }
+  }, [completeBoot]);
+
+  // Mark the session once boot completes naturally or is skipped.
+  useEffect(() => {
+    if ((bootComplete || bootSkipped) && !sessionSkipAppliedRef.current) {
+      markBootCompletedThisSession();
+    }
+  }, [bootComplete, bootSkipped]);
 
   // Honor autoSkipBoot: skip the boot sequence on mount if the user opted in.
   useEffect(() => {

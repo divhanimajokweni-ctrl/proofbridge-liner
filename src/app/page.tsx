@@ -3,18 +3,26 @@
 import dynamic from "next/dynamic";
 import { ChunkLoadErrorBoundary } from "@/components/ive/ChunkLoadErrorBoundary";
 
-/**
- * IVE root route.
- *
- * The VVU Integrated Verification Environment launches as a cinematic
- * engineering operating system: a boot sequence first, then the IVE
- * workspace. The shell is loaded dynamically (ssr:false) because the boot
- * animation and the canvas-based Trust Sphere are inherently client-side.
- *
- * A ChunkLoadErrorBoundary wraps the dynamic import so that Turbopack
- * dev-mode chunk-loading failures (common under memory pressure) trigger
- * an automatic reload instead of a blank "Application error" screen.
- */
+const IVE_BOOT_SESSION_KEY = "ive-boot-completed-v1";
+
+function hasCompletedBootThisSession(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(IVE_BOOT_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markBootCompletedThisSession() {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(IVE_BOOT_SESSION_KEY, "1");
+  } catch {
+    // ignore storage failures
+  }
+}
+
 const IveRoot = dynamic(
   () => import("@/components/ive/IveRoot").then((m) => m.IveRoot),
   {
