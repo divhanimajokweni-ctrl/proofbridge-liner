@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -16,9 +16,11 @@ node_modules
 # next.js
 /.next/
 /out/
+.next/
 
 # production
 /build
+dist/
 
 # misc
 .DS_Store
@@ -32,13 +34,16 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+!.env.local.example
 
 # vercel
-.vercel
-
+.vercel/
+vercel.json
 
 # typescript
 *.tsbuildinfo
+tsconfig.tsbuildinfo
 next-env.d.ts
 local-*
 .claude
@@ -50,5 +55,14 @@ test
 prompt
 
 server.log
+
 # Skills directory
 /skills/
+
+# Prisma
+/prisma/migrations/
+/build-tmp.db
+*.db
+*.sqlite
+*.sqlite3
+.vercel
