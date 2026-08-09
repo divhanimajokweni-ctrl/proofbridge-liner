@@ -1299,3 +1299,30 @@ Stage Summary:
 - Vercel project: prj_vjCCZQLgL4VymDQiWRv8oK0jbrBV
 - Vercel team: team_oSaLEdmc8m1I6oEuexLCfWpw
 - Build: Next.js 16.1.3, Turbopack, 1449 files, standalone output
+
+---
+Task ID: github-push
+Agent: Main Coordinator
+Task: Push updated docs to GitHub main with provided PAT
+
+Work Log:
+- Reset local to remote HEAD (7eb8b45) to align histories
+- Restored local docs changes on top of remote codebase
+- Merged remote README.md with our Contact section (preserved badges, architecture, security)
+- Updated AGENTS.md project owner:
+  - Title: Founder, CEO & Compliance Officer
+  - Email: divh@venturevisionubuntu.co.za (replaced divhanimajokweni@gmail.com)
+  - Added General Enquiries: hello@venturevisionubuntu.co.za
+- Updated .gitignore with Z AI dev artifacts exclusion
+- Added .env.example for environment variable documentation
+- Committed and pushed to GitHub main (bfc1608)
+- Triggered Vercel production redeploy from GitHub main (dpl_BKYyuDFgRVMfCx24yqJA72xh8mcr)
+- Cleaned PAT from git remote URL
+
+Stage Summary:
+- GitHub push: SUCCESSFUL (commit bfc1608)
+- Vercel redeploy from GitHub: INITIALIZING (dpl_BKYyuDFgRVMfCx24yqJA72xh8mcr)
+- Production domain: venturevisionubuntu.co.za (200 OK)
+- Contact details updated in both README.md and AGENTS.md
+- General: hello@venturevisionubuntu.co.za (Subject: ProofBridge Liner)
+- Founder/CEO/Compliance Officer: divh@venturevisionubuntu.co.za
