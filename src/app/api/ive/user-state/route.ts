@@ -14,13 +14,17 @@ async function getOwner() {
 
   const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || null;
 
-  const owner = await db.user.upsert({
-    where: { id: userId },
-    update: { email, name },
-    create: { id: userId, email, name },
-  });
+  const byClerkId = await db.user.findUnique({ where: { id: userId } });
+  if (byClerkId) {
+    return db.user.update({ where: { id: byClerkId.id }, data: { email, name } });
+  }
 
-  return owner;
+  const byEmail = await db.user.findUnique({ where: { email } });
+  if (byEmail) {
+    return byEmail;
+  }
+
+  return db.user.create({ data: { id: userId, email, name } });
 }
 
 /**
@@ -46,11 +50,14 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({
-      hasData: artifacts.length > 0,
-      artifactCount: artifacts.length,
-      artifacts,
-    }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      {
+        hasData: artifacts.length > 0,
+        artifactCount: artifacts.length,
+        artifacts,
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     console.error("IVE user-state GET failed", error);
     return new NextResponse("Unable to load workspace state", { status: 500 });
@@ -90,10 +97,7 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({
-      artifact,
-      hasData: true,
-    }, { status: 201 });
+    return NextResponse.json({ artifact, hasData: true }, { status: 201 });
   } catch (error) {
     console.error("IVE user-state POST failed", error);
     return new NextResponse("Unable to create workspace artifact", { status: 500 });
