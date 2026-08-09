@@ -1,7 +1,5 @@
-import dotenv from 'dotenv';
-
-dotenv.config();
-
+// Environment variables are loaded natively by Next.js (and by the runtime
+// for standalone scripts), so no explicit dotenv loading is required here.
 export const CONFIG = {
   agent_name: process.env.AGENT_NAME ?? 'Lindiwe',
   anthropic_key: process.env.ANTHROPIC_API_KEY ?? '',
