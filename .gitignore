@@ -66,3 +66,19 @@ server.log
 *.sqlite
 *.sqlite3
 .vercel
+
+# Z AI development artifacts
+.zscripts/
+tool-results/
+download/
+upload/
+agent-ctx/
+examples/
+tests/
+mini-services/
+db/
+
+# Environment & secrets
+.env
+.env.local
+.env.production

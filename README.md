@@ -339,4 +339,19 @@ This project is licensed under the **AGPL-3.0-or-later** — see the [LICENSE](L
 
 ---
 
+## 📬 Contact
+
+**General Enquiries**
+Email: [hello@venturevisionubuntu.co.za](mailto:hello@venturevisionubuntu.co.za)
+Subject: ProofBridge Liner
+
+**Founder, CEO & Compliance Officer**
+Divhani Majokweni
+Email: [divh@venturevisionubuntu.co.za](mailto:divh@venturevisionubuntu.co.za)
+
+**Venture Vision Ubuntu**
+[venturevisionubuntu.co.za](https://venturevisionubuntu.co.za)
+
+---
+
 *Made with ❤️ in South Africa 🇿🇦 for the AMD AI DevMaster Hackathon 2026 — Track 3: Physical AI*

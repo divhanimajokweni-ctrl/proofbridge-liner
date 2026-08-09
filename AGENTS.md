@@ -2,13 +2,18 @@
 # Pattern: 5 Roles · 3 Phases · 3 Files · Repeatable Factory
 # Source: Agent Teams Orchestration (Investigation→Planning→Review→Implementation→Validation)
 
-## PROJECT OWNER — CEO & FOUNDER
+## PROJECT OWNER — CEO, FOUNDER & COMPLIANCE OFFICER
 
 **Name:** Divhani Majokweni
-**Title:** Founder & Chief Executive Officer
-**Email:** divhanimajokweni@gmail.com
+**Title:** Founder, Chief Executive Officer & Compliance Officer
+**Email:** divh@venturevisionubuntu.co.za
 **GitHub:** divhanimajokweni-ctrl
 **Vercel Team:** divhanimajokweni-1651s-projects
+
+### General Enquiries
+
+**Email:** hello@venturevisionubuntu.co.za
+**Subject:** ProofBridge Liner
 
 ### CEO DIRECTIVE — NON-NEGOTIABLE
 
