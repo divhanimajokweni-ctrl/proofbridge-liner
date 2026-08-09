@@ -1,3 +1,4 @@
+
 # 🌉 ProofBridge Liner
 
 **An Integrated Verification Environment (IVE) — Engineering Systems That Prove Themselves**
@@ -77,7 +78,7 @@ Copy `.env.example` to `.env` and fill in:
 > The demo video is attached to this README via GitHub's file attachment feature. It demonstrates the complete IVE boot sequence, agent-driven specification generation, CAD rendering of the HBK MK-II Hydro-Gateway, proof evaluation, and trust decision flow.
 
 
-https://github.com/user-attachments/assets/829164a8-f820-47b0-a266-431747050f9a
+https://github.com/user-attachments/assets/847b4365-7ae3-4970-9519-64d77800cf75
 
 
 
