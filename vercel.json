@@ -1,12 +1,10 @@
 {
   "framework": "nextjs",
-  "installCommand": "npm install && npx prisma generate",
-  "buildCommand": "npx next build && node scripts/vercel-postbuild.mjs",
+  "buildCommand": "next build && node scripts/vercel-postbuild.mjs",
   "regions": ["iad1"],
   "env": {
     "COMPUTE_PROVIDER": "local",
     "NEXT_TELEMETRY_DISABLED": "1",
-    "NEXT_IGNORE_TS": "1",
-    "DATABASE_URL": "file:./build-tmp.db"
+    "NEXT_IGNORE_TS": "1"
   }
 }
