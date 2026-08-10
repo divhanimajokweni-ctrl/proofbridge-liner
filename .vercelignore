@@ -24,8 +24,8 @@ vvv/*.html
 cache/
 .config/
 
-# VVU War Room secrets
-auth/
+# VVU War Room secrets (root-level only, NOT src/components/auth/)
+/auth/
 
 # AI Gateway (auxiliary utility)
 ai-gateway/
