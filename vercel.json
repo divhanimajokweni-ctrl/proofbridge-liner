@@ -1,6 +1,7 @@
 {
   "framework": "nextjs",
-  "buildCommand": "next build && node scripts/vercel-postbuild.mjs",
+  "installCommand": "bun install",
+  "buildCommand": "bun run build",
   "regions": ["iad1"],
   "env": {
     "COMPUTE_PROVIDER": "local",
