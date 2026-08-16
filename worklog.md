@@ -1330,7 +1330,7 @@ Stage Summary:
 ---
 Task ID: 3
 Agent: main
-Task: Cache clean, activateGH_REDACTED=redacted_pat_11B67XIOQ0fbUB3jbicERO_qTKZEyIX0TErbJw1pyFhTza10JQBtQZSClL65NVVoEZCNI6OZCFETxW5HUY
+Task: Cache clean, activate live deployment keys
 
 Wait - that was wrong. Let me just write the worklog safely.
 
