@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "epistemic://runtime/v0.8/schemas/policy-rule",
+  "title": "PolicyRule",
+  "description": "A Policy — whether to accept. Deterministic evaluation via stack-based IR opcodes.",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique policy identifier"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable name"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Policy version — incremented on update"
+    },
+    "ir": {
+      "type": "array",
+      "items": {
+        "$ref": "epistemic://runtime/v0.8/schemas/policy-opcode"
+      },
+      "description": "Deterministic IR opcodes — no eval(), no scripting, no dynamic execution"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low",
+        "info"
+      ],
+      "description": "Severity level if this policy is violated"
+    },
+    "appliesTo": {
+      "type": "array",
+      "items": {
+        "$ref": "epistemic://runtime/v0.8/schemas/fact-types"
+      },
+      "description": "Fact types this policy applies to"
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Whether this policy is currently enforced"
+    },
+    "createdAt": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Creation timestamp from injected ClockProvider"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "version",
+    "ir",
+    "severity",
+    "appliesTo",
+    "active",
+    "createdAt"
+  ],
+  "additionalProperties": false
+}

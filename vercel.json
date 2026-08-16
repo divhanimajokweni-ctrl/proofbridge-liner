@@ -1,0 +1,17 @@
+{
+  "framework": "nextjs",
+  "installCommand": "bun install",
+  "buildCommand": "next build && (test -f .next/server/middleware.js.nft.json || echo '{\"version\":1,\"files\":[]}' > .next/server/middleware.js.nft.json)",
+  "regions": ["iad1"],
+  "env": {
+    "COMPUTE_PROVIDER": "local",
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "NEXT_IGNORE_TS": "1"
+  },
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
+}

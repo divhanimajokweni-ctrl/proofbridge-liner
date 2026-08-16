@@ -1,0 +1,11 @@
+{
+  "name": "vvu-sim-engine",
+  "version": "1.0.0",
+  "description": "VVU EARTH TECH 72-Hour Simulation Engine — HBK Digital Twin + Git Actions Log",
+  "scripts": {
+    "dev": "bun --hot index.ts"
+  },
+  "dependencies": {
+    "socket.io": "4.8.3"
+  }
+}

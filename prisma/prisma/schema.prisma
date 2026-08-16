@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String   // hashed password
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  claims    Claim[]
+}
+
+model Claim {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  claimType   String   @default("empirical")
+  state       String   @default("UNTESTED")
+  intendedAction String @default("deploy")
+  safetyCritical Boolean @default(true)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  evidence       Evidence[]
+  authorizations Authorization[]
+  circuitEvents  CircuitBreaker[]
+  nIndRecords    NIndComputation[]
+
+  @@index([state])
+  @@index([claimType])
+  @@index([userId])
+}
+
+model Evidence {
+  id          String   @id @default(cuid())
+  claimId     String
+  claim       Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  source      String
+  content     String
+  embedding   String
+  weight      Float    @default(1.0)
+  state       String   @default("OBSERVED")
+  collectedAt DateTime @default(now())
+
+  @@index([claimId])
+  @@index([source])
+}
+
+model Authorization {
+  id            String   @id @default(cuid())
+  claimId       String
+  claim         Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claimOk       Boolean
+  evidenceOk    Boolean
+  integrityOk   Boolean
+  safetyOk      Boolean
+  reviewOk      Boolean
+  authorized    Boolean
+  reason        String   @default("")
+  createdAt     DateTime @default(now())
+
+  @@index([claimId])
+  @@index([authorized])
+}
+
+model CircuitBreaker {
+  id            String   @id @default(cuid())
+  claimId       String
+  claim         Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  triggered     Boolean  @default(false)
+  reason        String   @default("")
+  trippedAt     DateTime @default(now())
+
+  @@index([claimId])
+  @@index([triggered])
+}
+
+model NIndComputation {
+  id            String   @id @default(cuid())
+  claimId       String
+  claim         Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  numEvidence   Int
+  numSources    Int
+  nInd          Float
+  gamma         Float
+  eigenvalues   String   @default("[]")
+  createdAt     DateTime @default(now())
+
+  @@index([claimId])
+}
+
+model HeatKernelStep {
+  id            String   @id @default(cuid())
+  claimId       String
+  step          Int
+  l2Norm        Float
+  highFreqEnergy Float
+  nodeValues    String   @default("[]")
+  createdAt     DateTime @default(now())
+
+  @@index([claimId])
+}

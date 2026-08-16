@@ -1,0 +1,19 @@
+skills/
+node_modules/
+.env.local
+.env*.local
+.next/
+.vercel
+.env*
+
+# Non-production / temporary files
+tool-results/
+agent-ctx/
+.zscripts/
+generate_searm_workspace.py
+dev.log
+upload/
+
+# Build artifacts
+*.db
+*.db-journal

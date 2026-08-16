@@ -1,0 +1,15 @@
+{
+  "extends": ["html-validate:recommended"],
+  "rules": {
+    "wcag/h32": "error",
+    "wcag/h36": "error",
+    "wcag/h37": "error",
+    "wcag/h44": "error",
+    "wcag/h71": "error",
+    "aria-required-attr": "error",
+    "aria-prohibited-attr": "error",
+    "no-redundant-role": "warn",
+    "heading-level": "warn",
+    "prefer-native-element": "warn"
+  }
+}
