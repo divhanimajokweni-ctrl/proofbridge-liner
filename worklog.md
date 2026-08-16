@@ -1427,7 +1427,7 @@ Work Log:
   - Size limits: query max 8KB, text max 20KB, up to 50 candidates
   - Upstream response validation with index bounds checking
   - 20-second timeout via AbortSignal.timeout()
-  - OPENROUTER_API_KEY read server-side only, never exposed to client
+  - ENV_KEY_REDACTED read server-side only, never exposed to client
 - Created /src/app/api/evidence/rerank/route.ts
   - POST /api/evidence/rerank authenticated via requireAuth()
   - Validates { query, candidates, topN? } with Zod
@@ -1441,7 +1441,7 @@ Work Log:
   - Security notice about server-only API key
   - JSON config export/copy with apiKeyPlaceholder
   - All common providers listed (OpenAI, Together, Ollama, OpenRouter Rerank)
-- Added OPENROUTER_API_KEY to .env.local (empty, needs to be set in Vercel/server env)
+- Added ENV_KEY_REDACTED to .env.local (empty, needs to be set in Vercel/server env)
 - Verified: zero lint errors in all new files
 - Verified: /api/evidence/rerank compiles and returns 405 for GET (POST-only)
 - Architecture preserved: reranking upstream of air/pipeline/4_govern.js; Layer 5 receives state matrix only
@@ -1450,7 +1450,7 @@ Stage Summary:
 - OpenRouter reranker fully implemented with strict validation
 - POST /api/evidence/rerank authenticated API route working
 - ModelProviderConfig UI with shadcn/ui + OpenRouter preset
-- OPENROUTER_API_KEY needs to be set in production Vercel env vars
+- ENV_KEY_REDACTED needs to be set in production Vercel env vars
 - Constitution preserved: evidence retrieval → reranker → Layer 5 deterministic judgment
 
 ---
@@ -1897,7 +1897,7 @@ COMPLETED:
 PENDING (requires credentials):
 ⚠️ Git push to origin (needs SSH key or PAT)
 ⚠️ GitHub PR creation
-⚠️ Vercel deployment (needs VERCEL_TOKEN)
+⚠️ Vercel deployment (needs DEPLOY_KEY_REDACTED)
 ⚠️ On-chain deployment to Arbitrum Sepolia (needs PRIVATE_KEY + RPC_URL)
 ⚠️ Vercel env vars configuration
 
