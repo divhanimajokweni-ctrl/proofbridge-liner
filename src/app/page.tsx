@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import CalculusVisuals from "@/components/vvu/calculus-visuals";
 
 /* ═══════════════════════════════════════════════════════════════
    VVU·IVE SEARM PLATFORM — VRES v1.2 SYSTEM UPROAR
@@ -27,6 +28,25 @@ const V = {
   txtDD: "#4a4e5c",       /* Disabled text */
 };
 
+/* ── LIGHT UI PALETTE ── */
+const V_LIGHT = {
+  gn:    "#10b981",       /* Emerald - verified/success */
+  gnD:   "rgba(16,185,129,0.06)",
+  am:    "#b8941f",       /* Darker gold for light bg */
+  amB:   "#c9a84c",       /* Gold */
+  bg:    "#f8f9fb",       /* Lightest shell */
+  bg2:   "#f0f1f4",       /* Sidebar surface */
+  bg3:   "#ffffff",       /* Card/panel surface */
+  line:  "#b8941f",       /* Gold lines */
+  lineD: "rgba(184,148,31,0.12)",
+  red:   "#e53e3e",       /* Coral red */
+  cyan:  "#0d9488",       /* Teal cyan */
+  purple:"#7c3aed",       /* Purple */
+  txt:   "#1a1a2e",       /* Primary text (dark) */
+  txtD:  "#6b7280",       /* Secondary text */
+  txtDD: "#9ca3af",       /* Disabled text */
+};
+
 /* ── VRES Status Labels ── */
 type VRes = "VERIFIED" | "OBSERVED" | "PENDING" | "UNTESTED" | "UNDEFINED";
 const vresBg: Record<VRes, string> = {
@@ -47,6 +67,7 @@ const VIEW_MODES = [
   { name: "Timeline",      state: "PENDING"   as VRes, icon: "time"   },
   { name: "HBK Workspace", state: "OBSERVED"  as VRes, icon: "grid"   },
   { name: "Disaster Rec",  state: "UNDEFINED" as VRes, icon: "alert"  },
+  { name: "Calculus",      state: "VERIFIED"  as VRes, icon: "calc"   },
 ];
 
 /* ── Geometry Cycle ── */
@@ -819,7 +840,7 @@ export default function VVUSEARM() {
 
   /* ── Dynamic palette based on mode ── */
   const palette = mode === "light" ? {
-    bg: "#f5f7fa", bg2: "#eaeef3", bg3: "#dfe3ea", txt: "#0d0e12", txtD: "#4a5568",
+    bg: V_LIGHT.bg, bg2: V_LIGHT.bg2, bg3: V_LIGHT.bg3, txt: V_LIGHT.txt, txtD: V_LIGHT.txtD,
   } : mode === "holo" ? {
     bg: "#000005", bg2: "#02020A", bg3: "#04041A", txt: "#00E5FF", txtD: "#0088AA",
   } : {
@@ -828,25 +849,25 @@ export default function VVUSEARM() {
 
   /* ── Full mode-aware color overrides ── */
   const M = mode === "light" ? {
-    bg:       "#f5f7fa",
-    bg2:      "#eaeef3",
-    bg3:      "#dfe3ea",
-    border:   "#c8cdd5",
-    borderD:  "#b0b7c1",
-    txt:      "#0d0e12",
-    txtD:     "#4a5568",
-    txtDD:    "#8895a5",
-    gn:       "#0d9668",    // darker emerald for light bg
-    gnD:      "rgba(13,150,104,0.08)",
-    am:       "#9a7b2e",    // darker gold for light bg
-    amB:      "#b8910a",
-    line:     "#9a7b2e",
-    lineD:    "rgba(154,123,46,0.12)",
-    red:      "#d43545",    // darker red for light bg
-    cyan:     "#0a9e7e",    // darker teal for light bg
-    purple:   "#7c3e99",    // darker purple for light bg
+    bg:       V_LIGHT.bg,
+    bg2:      V_LIGHT.bg2,
+    bg3:      V_LIGHT.bg3,
+    border:   "#d1d5db",
+    borderD:  "#e5e7eb",
+    txt:      V_LIGHT.txt,
+    txtD:     V_LIGHT.txtD,
+    txtDD:    V_LIGHT.txtDD,
+    gn:       V_LIGHT.gn,
+    gnD:      V_LIGHT.gnD,
+    am:       V_LIGHT.am,
+    amB:      V_LIGHT.amB,
+    line:     V_LIGHT.line,
+    lineD:    V_LIGHT.lineD,
+    red:      V_LIGHT.red,
+    cyan:     V_LIGHT.cyan,
+    purple:   V_LIGHT.purple,
     inputBg:  "#f0f3f7",
-    cardBg:   "#ffffff",
+    cardBg:   V_LIGHT.bg3,
     cardBdr:  "#d1d5db",
     shadow:   "rgba(0,0,0,0.06)",
   } : mode === "holo" ? {
@@ -1095,6 +1116,13 @@ export default function VVUSEARM() {
             fontFamily: "'Share Tech Mono', monospace", letterSpacing: 1, textTransform: "uppercase",
             fontWeight: showArchBlueprint ? 700 : 400, transition: "all .2s",
           }}>ARCH</button>
+          {/* Theme Toggle ☀/☾ */}
+          <button onClick={() => setMode(mode === "dark" ? "light" : mode === "light" ? "holo" : "dark")} title={`Current: ${mode.toUpperCase()} — Click to cycle`} style={{
+            padding: "4px 10px", fontSize: 14, border: `1px solid ${M.line}`,
+            background: mode === "dark" ? "rgba(255,215,0,0.08)" : mode === "light" ? "rgba(255,200,0,0.1)" : "rgba(0,229,255,0.08)",
+            color: M.amB, cursor: "pointer", borderRadius: 4,
+            transition: "all .2s", lineHeight: 1,
+          }}>{mode === "dark" ? "☾" : mode === "light" ? "☀" : "◈"}</button>
           <div style={{
             display: "flex", alignItems: "center", gap: 8,
             padding: "4px 10px", border: `1px solid ${V.lineD}`, borderRadius: 4,
@@ -1189,8 +1217,9 @@ export default function VVUSEARM() {
       </nav>
       )}
 
-      {/* ═══════ CENTER PEDESTAL — FIBONACCI ENGINE ═══════ */}
+      {/* ═══════ CENTER PEDESTAL — FIBONACCI ENGINE / CALCULUS ═══════ */}
       <main onClick={() => {
+        if (viewIdx === 5) return; // Don't open evidence modal in calculus mode
         const c = CLAIMS[Math.floor(Math.random() * CLAIMS.length)];
         const types = ['C','E','I','S','R'];
         setSelectedNode({
@@ -1202,14 +1231,24 @@ export default function VVUSEARM() {
         });
       }} style={{
         gridColumn: 2, gridRow: 2,
-        background: palette.bg,
+        background: viewIdx === 5 ? "#1a1a2e" : palette.bg,
         position: "relative", overflow: "hidden",
-        display: "flex", alignItems: "center", justifyContent: "center",
+        display: "flex", alignItems: viewIdx === 5 ? "stretch" : "center",
+        justifyContent: viewIdx === 5 ? "stretch" : "center",
         border: pipPin === "pedestal" ? `2px solid ${V.amB}` : "none",
         boxShadow: pipPin === "pedestal" ? `0 0 16px rgba(255,215,0,0.3)` : "none",
         zIndex: pipPin === "pedestal" ? 50 : "auto",
-        cursor: "pointer",
+        cursor: viewIdx === 5 ? "default" : "pointer",
       }}>
+        {/* ═══ CALCULUS VIEW ═══ */}
+        {viewIdx === 5 && (
+          <div style={{ position: "absolute", inset: 0, zIndex: 100 }}>
+            <CalculusVisuals />
+          </div>
+        )}
+
+        {/* ═══ STANDARD SEARM VIEW ═══ */}
+        {viewIdx !== 5 && (<>
         {/* Latent Canvas Grid */}
         <div style={{
           position: "absolute", inset: 0,
@@ -1320,6 +1359,7 @@ export default function VVUSEARM() {
           </div>
         )}
         <PiPBadge gridKey="pedestal" />
+        </>)}
       </main>
 
       {/* ═══════ VIEWING EXPERIENCE ═══════ */}
@@ -1339,9 +1379,9 @@ export default function VVUSEARM() {
               boxShadow: viewIdx === i ? "0 0 12px rgba(212,175,55,0.15)" : "none",
             }}>
               <div style={{ width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3 }}>
-                {["\u25CE", "\u25A0", "\u25F7", "\u25A3", "\u26A0"][i] && (
-                  <span style={{ fontSize: 14, color: [V.gn, V.cyan, V.purple, V.am, V.red][i] }}>
-                    {["\u25CE", "\u25A0", "\u25F7", "\u25A3", "\u26A0"][i]}
+                {["\u25CE", "\u25A0", "\u25F7", "\u25A3", "\u26A0", "\u222B"][i] && (
+                  <span style={{ fontSize: 14, color: [V.gn, V.cyan, V.purple, V.am, V.red, V.gn][i] }}>
+                    {["\u25CE", "\u25A0", "\u25F7", "\u25A3", "\u26A0", "\u222B"][i]}
                   </span>
                 )}
               </div>

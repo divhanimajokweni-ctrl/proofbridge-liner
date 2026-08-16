@@ -2152,3 +2152,32 @@ Stage Summary:
 - Grid works exactly as before, just with refined dark palette
 - All interactive sections functional
 - Zero console errors
+
+---
+Task ID: 3-4
+Agent: full-stack-developer
+Task: Build Light UI toggle + Calculus Visual Strategy Docs
+
+Work Log:
+- Added V_LIGHT palette constant matching the specified Light UI color scheme
+- Updated palette and M (mode-aware color overrides) to use V_LIGHT values when mode === "light"
+- Added ☀/☾/◈ theme toggle button in the header bar that cycles dark → light → holo
+- Added "Calculus" as the 6th VIEW_MODES entry with state "VERIFIED" and icon "calc"
+- Updated view mode icon rendering arrays (6 items now) with ∫ symbol for Calculus
+- Created /src/components/vvu/calculus-visuals.tsx with 4 interactive sections:
+  - TangentLineViz: f(x) = x²/4 with draggable point, tangent line, derivative display, slider
+  - RiemannSumViz: f(x) = sin(x)+1 from 0 to π, n slider 2-50, Left/Right/Midpoint toggle, real-time sum vs integral comparison
+  - EpsilonDeltaViz: f(x) = x², a=2, L=4, ε slider, automatic δ computation, ε-band and δ-band visualization, challenge-response display
+  - StepThroughProof: 4-step proof of d/dx(x²) = 2x with Prev/Next navigation, step indicator, highlighted transformations
+- Integrated CalculusVisuals into center pedestal: when viewIdx === 5 (Calculus), the Fibonacci engine is hidden and CalculusVisuals renders instead with navy/paper-white palette
+- Modified main onClick to skip evidence modal when in Calculus view
+- Build passes successfully, lint passes with zero errors
+
+Stage Summary:
+- Light UI palette (V_LIGHT) fully implemented and wired to mode toggle
+- Theme toggle button (☾/☀/◈) added to header bar
+- "Calculus" view mode added as 6th tab with ∫ icon
+- Calculus Visual Strategy Docs component created with all 4 interactive sections
+- All sections use SVG + CSS for visuals (no external dependencies)
+- Navy/paper-white palette applied to Calculus section
+- Zero lint errors, successful production build
