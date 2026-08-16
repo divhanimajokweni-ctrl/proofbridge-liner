@@ -1375,7 +1375,7 @@ Work Log:
 - Created `src/middleware.ts` for Clerk, then discovered conflict with existing `src/proxy.ts` (Next.js 16 uses proxy instead of middleware)
 - Removed conflicting `middleware.ts` - existing `proxy.ts` already has proper Clerk + NextAuth dual middleware
 - Updated `.env.local` with complete Clerk configuration including API URLs from user
-- Added TFC_AGENT_NAME and REDACTED_TFC_TOKEN from Vercel
+- Added TFC_AGENT_NAME and TFC_AGENT_REDACTED from Vercel
 - Verified dev server starts and returns 200 for homepage
 - Verified Clerk JS loads from `https://clerk.venturevisionubuntu.co.za`
 - Cleaned up all temporary Vercel files (.env.vercel*, .vercel directory)
