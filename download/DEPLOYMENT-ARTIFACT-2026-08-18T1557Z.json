@@ -1,0 +1,78 @@
+{
+  "schema": "vvu.deployment.artifact/v1",
+  "artifact_kind": "deployment",
+  "session_id": "web-861975a0-d9c5-4854-aac1-c7e915c19ccb",
+  "captured_at_utc": "2026-08-18T15:57:52Z",
+
+  "stage": {
+    "index": 3,
+    "name": "WEB DEPLOYMENT",
+    "status": "LIVE",
+    "lifecycle_position": "BUILD -> WEB DEPLOYMENT (here) -> CONTRACT DEPLOYMENT -> VERIFY -> REGISTER -> AMD/EIS/TEST -> ACTIVATION/GOVERNANCE -> CONTINUOUS GIT-SYNC"
+  },
+
+  "application": {
+    "name": "VVU sovereign platform",
+    "framework": "next.js 16",
+    "runtime": "bun standalone",
+    "build_id": "JTrqZ5EFko2KFojKSK8Z5",
+    "build_id_sha256": "6b9a3beacb86216e48acf4ea34d5150cbd4a27443b58d62f85fead57d8e981c5",
+    "standalone_server_sha256": "2abbab2e06d7d23a109f176dd292b7ebc6ca90eed6598c01f4ee2a3b57ac269f",
+    "build_completed_at_utc": "2026-08-18T15:57:52Z",
+    "preview_url_template": "https://preview-<bot-id>.space-z.ai/",
+    "custom_domain": {
+      "configured": false,
+      "intended": "venturevisionubuntu.co.za",
+      "deferred_to": "operator",
+      "next_step": "DNS A/AAAA + Caddy run --config Caddyfile"
+    }
+  },
+
+  "source_provenance": {
+    "git_commit": "ba3d083dc801ba948401a559ca5b5d32597de4c3",
+    "git_commit_short": "ba3d083",
+    "working_tree_status": "clean",
+    "repository_state": "HEAD == ba3d083, no uncommitted changes"
+  },
+
+  "sovereign_contract": {
+    "source_path": "contracts/VVUSovereignRegistry.sol",
+    "compiled_artifact_path": "artifacts/contracts/VVUSovereignRegistry.sol/VVUSovereignRegistry.json",
+    "compiled_artifact_sha256": "f0252bc22bb5b710367a9567e6199c938b4b1feb0cf5fba70bc1ef16d77aef8a",
+    "dormant_pattern": {
+      "present_in_source": true,
+      "present_in_compiled_artifact": true,
+      "evidence": [
+        "storage bool paused = true (line 52)",
+        "storage bytes32 activationCommitHash (line 53)",
+        "modifier whenNotPaused (line 79) applied to anchorSovereignTelemetry + issueSovereignSBT",
+        "function activate(bytes32 _gitCommitHash) external onlySovereign (line 174)",
+        "event ContractActivated(bytes32 indexed gitCommitHash, uint256 timestamp) (line 59)"
+      ],
+      "lifecycle_interpretation": "Deployment places the contract on-chain in a dormant state. Activation is a separate sovereign-authority transaction triggered later by the AMD/EIS pipeline after verified git-sync. The two stages are distinct."
+    },
+    "deployment_status": "PENDING_OPERATOR_TRANSACTION",
+    "deployment_targets": ["arbitrum-sepolia-421614", "polygon-amoy-80002"],
+    "deployment_script": "scripts/hardhat/deploy-all.ts",
+    "test_suite_status": "22/22 passing (799ms)"
+  },
+
+  "pipeline_readiness": {
+    "auto_deploy_watcher": "scripts/auto-deploy-watcher.ts -- PREPARED, requires GITHUB_TOKEN to launch",
+    "gpu_activation_workflow": ".github/workflows/gpu-pipeline-activation.yml -- PREPARED, requires self-hosted AMD MI300x runner",
+    "session_protocol": "VVU-SESSION-PROTOCOL.md -- PREPARED"
+  },
+
+  "operator_pending": [
+    "DNS A/AAAA records for venturevisionubuntu.co.za",
+    "caddy run --config Caddyfile (after DNS)",
+    "Rotate exposed Vercel token; store new + ARBITRUM_SEPOLIA_RPC + POLYGON_AMOY_RPC + VVU_SOVEREIGN_PRIVATE_KEY + GITHUB_TOKEN in GitHub Secrets",
+    "Register AMD MI300x self-hosted GitHub Actions runner",
+    "From Remix/MetaMask, deploy VVUSovereignRegistry dormant to Arbitrum Sepolia + Polygon Amoy; record addresses in artifacts/sovereign-{arbitrum-sepolia,polygon-amoy}.txt",
+    "bun run watch:dev-sync (launches the hands-free loop)"
+  ],
+
+  "session_souvenir": "VVU web platform successfully deployed and live on the preview environment.",
+
+  "operating_rule": "A VVU session closes with evidence of progress. A deployment session closes with a deployment artifact. A blocked session closes with a verified blocker and everything that was successfully completed before it."
+}

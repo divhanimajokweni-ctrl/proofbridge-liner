@@ -1,0 +1,143 @@
+# VVU-IVE Webhook Worker — Deployment
+# ----------------------------------------------------------------------------
+# Implements Section 14.4 of the VVU-IVE Reliability Contract v1.1.
+#
+# Topology (Sept 15 launch):
+#   - 12 active webhook consumers (1:1 with Kafka partitions)
+#   - 2 standby consumers (failover capacity)
+#   - HTTP_PROXY points to Envoy egress gateway for SSRF filtering
+#   - NO_PROXY keeps internal traffic direct (postgres, kafka, internal cluster)
+#
+# Critical invariant (the launch test):
+#   If the external webhook endpoint goes down, these pods MUST stay alive
+#   and keep consuming Kafka. CB + retry + DLQ handle the rest.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vvu-ive-webhook-worker
+  namespace: vvu-ive
+  labels:
+    app: vvu-ive-worker
+    pool: webhook-delivery
+spec:
+  # Sept 15 baseline: 12 active + 2 standby = 14 replicas
+  replicas: 14
+  selector:
+    matchLabels:
+      app: vvu-ive-worker
+      pool: webhook-delivery
+  template:
+    metadata:
+      labels:
+        app: vvu-ive-worker
+        pool: webhook-delivery
+    spec:
+      containers:
+      - name: worker
+        image: vvu-ive/worker:latest
+        command: ["bun", "run", "scripts/webhook-worker.ts"]
+        env:
+        - name: HTTP_PROXY
+          value: "http://envoy-egress:10001"
+        - name: HTTPS_PROXY
+          value: "http://envoy-egress:10001"
+        - name: NO_PROXY
+          value: "localhost,127.0.0.1,.cluster.local,.svc,postgres,kafka,envoy-egress"
+        - name: WEBHOOK_TRANSPORT
+          value: "kafka"
+        - name: KAFKA_BROKERS
+          value: "kafka:9092"
+        - name: KAFKA_CLIENT_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: vvu-ive-db
+              key: url
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        # Graceful shutdown — let in-flight Kafka messages complete
+        # before the kubelet kills the container. Important because we
+        # use MANUAL commit; a hard kill mid-handling = redelivery (fine,
+        # but at-least-once means duplicates that receivers must dedup).
+        terminationGracePeriodSeconds: 60
+
+---
+# Admin / Audit Worker — separate pool (2 pods, static)
+# Consumes from vvu-webhook-audit topic, writes redundant audit trail
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vvu-ive-admin-worker
+  namespace: vvu-ive
+  labels:
+    app: vvu-ive-worker
+    pool: admin-audit
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: vvu-ive-worker
+      pool: admin-audit
+  template:
+    metadata:
+      labels:
+        app: vvu-ive-worker
+        pool: admin-audit
+    spec:
+      containers:
+      - name: worker
+        image: vvu-ive/worker:latest
+        command: ["bun", "run", "scripts/admin-worker.ts"]
+        env:
+        - name: WEBHOOK_TRANSPORT
+          value: "kafka"
+        - name: KAFKA_BROKERS
+          value: "kafka:9092"
+        - name: KAFKA_CLIENT_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: vvu-ive-db
+              key: url
+        - name: NODE_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        terminationGracePeriodSeconds: 30
