@@ -1,0 +1,887 @@
+     1→"use client";
+     2→
+     3→import { useCallback, useEffect, useState } from "react";
+     4→import {
+     5→  ClaimType,
+     6→  EvidenceSource,
+     7→  VerificationState,
+     8→  AuthorizationResult,
+     9→  ParticipationRatioResult,
+    10→} from "@/lib/eis";
+    11→import { StateBadge } from "@/components/ive/state-badge";
+    12→import { StateLattice } from "@/components/ive/state-lattice";
+    13→import { AuthorizationPanel } from "@/components/ive/authorization-panel";
+    14→import { EvidenceMeshPanel } from "@/components/ive/evidence-mesh-panel";
+    15→import { ParticipationRatioPanel } from "@/components/ive/participation-ratio-panel";
+    16→import { HeatKernelPanel } from "@/components/ive/heat-kernel-panel";
+    17→import { CircuitBreakerPanel } from "@/components/ive/circuit-breaker-panel";
+    18→import { Button } from "@/components/ui/button";
+    19→import {
+    20→  Card,
+    21→  CardContent,
+    22→  CardHeader,
+    23→  CardTitle,
+    24→} from "@/components/ui/card";
+    25→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    26→import { useToast } from "@/hooks/use-toast";
+    27→import {
+    28→  Activity,
+    29→  Database,
+    30→  GitBranch,
+    31→  Layers,
+    32→  Plus,
+    33→  RefreshCw,
+    34→  ShieldCheck,
+    35→  Sparkles,
+    36→  Terminal,
+    37→} from "lucide-react";
+    38→
+    39→// ─── Types ──────────────────────────────────────────────────────────────────
+    40→
+    41→interface EvidenceItem {
+    42→  id: string;
+    43→  claimId: string;
+    44→  source: EvidenceSource;
+    45→  content: string;
+    46→  embedding: number[];
+    47→  weight: number;
+    48→  state: VerificationState;
+    49→  collectedAt: string;
+    50→}
+    51→
+    52→interface AuthorizationRecord extends AuthorizationResult {
+    53→  id: string;
+    54→  claimId: string;
+    55→  createdAt: string;
+    56→}
+    57→
+    58→interface CircuitBreakerRecord {
+    59→  id: string;
+    60→  claimId: string;
+    61→  triggered: boolean;
+    62→  reason: string;
+    63→  trippedAt: string;
+    64→}
+    65→
+    66→interface NIndRecord {
+    67→  id: string;
+    68→  claimId: string;
+    69→  numEvidence: number;
+    70→  numSources: number;
+    71→  nInd: number;
+    72→  gamma: number;
+    73→  eigenvalues: number[];
+    74→  createdAt: string;
+    75→}
+    76→
+    77→interface Claim {
+    78→  id: string;
+    79→  title: string;
+    80→  description: string;
+    81→  claimType: ClaimType;
+    82→  state: VerificationState;
+    83→  intendedAction: string;
+    84→  safetyCritical: boolean;
+    85→  createdAt: string;
+    86→  updatedAt: string;
+    87→  evidence: EvidenceItem[];
+    88→  authorizations: AuthorizationRecord[];
+    89→  circuitEvents: CircuitBreakerRecord[];
+    90→  nIndRecords: NIndRecord[];
+    91→}
+    92→
+    93→interface SystemState {
+    94→  claims: Claim[];
+    95→  summary: {
+    96→    totalClaims: number;
+    97→    authorizedClaims: number;
+    98→    breakerTripped: number;
+    99→    totalEvidence: number;
+   100→    stateCounts: Record<string, number>;
+   101→    evidenceBound: string;
+   102→    authorizationFormula: string;
+   103→    failClosed: boolean;
+   104→  };
+   105→}
+   106→
+   107→// ─── Component ──────────────────────────────────────────────────────────────
+   108→
+   109→/**
+   110→ * IveClaimsPipeline — the EIS demo (claims + evidence + verification +
+   111→ * authorization). Surfaces the full VVU stack against the existing
+   112→ * /api/state, /api/verify, /api/evidence, /api/authorize routes.
+   113→ *
+   114→ * This is the "case study" of the IVE workspace — the actual industrial
+   115→ * verification engine. Mounted in the AppShell under
+   116→ * IVE → CORE → Claims Pipeline.
+   117→ */
+   118→export function IveClaimsPipeline() {
+   119→  const { toast } = useToast();
+   120→  const [state, setState] = useState<SystemState | null>(null);
+   121→  const [selectedId, setSelectedId] = useState<string | null>(null);
+   122→  const [loading, setLoading] = useState(true);
+   123→  const [actionLoading, setActionLoading] = useState<string | null>(null);
+   124→  const [showCreate, setShowCreate] = useState(false);
+   125→
+   126→  const refresh = useCallback(async () => {
+   127→    try {
+   128→      const res = await fetch("/api/state", { cache: "no-store" });
+   129→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   130→      const data = (await res.json()) as SystemState;
+   131→      setState(data);
+   132→      if (!selectedId && data.claims.length > 0) {
+   133→        setSelectedId(data.claims[0].id);
+   134→      }
+   135→    } catch (e) {
+   136→      toast({
+   137→        title: "Failed to load state",
+   138→        description: e instanceof Error ? e.message : String(e),
+   139→        variant: "destructive",
+   140→      });
+   141→    } finally {
+   142→      setLoading(false);
+   143→    }
+   144→  }, [selectedId, toast]);
+   145→
+   146→  useEffect(() => {
+   147→    refresh();
+   148→  }, [refresh]);
+   149→
+   150→  const seed = async () => {
+   151→    setActionLoading("seed");
+   152→    try {
+   153→      const res = await fetch("/api/seed", { method: "POST" });
+   154→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   155→      const data = await res.json();
+   156→      toast({
+   157→        title: "Database seeded",
+   158→        description: `${data.count} demonstration claims created with full VVU stack.`,
+   159→      });
+   160→      setSelectedId(null);
+   161→      await refresh();
+   162→    } catch (e) {
+   163→      toast({
+   164→        title: "Seed failed",
+   165→        description: e instanceof Error ? e.message : String(e),
+   166→        variant: "destructive",
+   167→      });
+   168→    } finally {
+   169→      setActionLoading(null);
+   170→    }
+   171→  };
+   172→
+   173→  const ingestEvidence = async (claimId: string) => {
+   174→    setActionLoading(`ingest-${claimId}`);
+   175→    try {
+   176→      const res = await fetch("/api/evidence", {
+   177→        method: "POST",
+   178→        headers: { "Content-Type": "application/json" },
+   179→        body: JSON.stringify({ claimId, seed: Math.floor(Math.random() * 10000) }),
+   180→      });
+   181→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   182→      const data = await res.json();
+   183→      toast({
+   184→        title: "Evidence ingested",
+   185→        description: `${Array.isArray(data.evidence) ? data.evidence.length : 1} item(s) from Evidence Mesh.`,
+   186→      });
+   187→      await refresh();
+   188→    } catch (e) {
+   189→      toast({
+   190→        title: "Ingest failed",
+   191→        description: e instanceof Error ? e.message : String(e),
+   192→        variant: "destructive",
+   193→      });
+   194→    } finally {
+   195→      setActionLoading(null);
+   196→    }
+   197→  };
+   198→
+   199→  const verify = async (claimId: string) => {
+   200→    setActionLoading(`verify-${claimId}`);
+   201→    try {
+   202→      const res = await fetch("/api/verify", {
+   203→        method: "POST",
+   204→        headers: { "Content-Type": "application/json" },
+   205→        body: JSON.stringify({ claimId }),
+   206→      });
+   207→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   208→      const data = await res.json();
+   209→      toast({
+   210→        title: "Verification complete",
+   211→        description: `${data.trace.previousState} → ${data.trace.newState}`,
+   212→      });
+   213→      await refresh();
+   214→    } catch (e) {
+   215→      toast({
+   216→        title: "Verify failed",
+   217→        description: e instanceof Error ? e.message : String(e),
+   218→        variant: "destructive",
+   219→      });
+   220→    } finally {
+   221→      setActionLoading(null);
+   222→    }
+   223→  };
+   224→
+   225→  const recomputeNInd = async (claimId: string) => {
+   226→    setActionLoading(`nind-${claimId}`);
+   227→    try {
+   228→      const res = await fetch("/api/n-ind", {
+   229→        method: "POST",
+   230→        headers: { "Content-Type": "application/json" },
+   231→        body: JSON.stringify({ claimId }),
+   232→      });
+   233→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   234→      await refresh();
+   235→      toast({
+   236→        title: "N_ind recomputed",
+   237→        description: "Participation ratio updated from current evidence set.",
+   238→      });
+   239→    } catch (e) {
+   240→      toast({
+   241→        title: "N_ind failed",
+   242→        description: e instanceof Error ? e.message : String(e),
+   243→        variant: "destructive",
+   244→      });
+   245→    } finally {
+   246→      setActionLoading(null);
+   247→    }
+   248→  };
+   249→
+   250→  const authorize = async (
+   251→    claimId: string,
+   252→    safetyOverride: boolean,
+   253→    reviewSignedOff: boolean
+   254→  ) => {
+   255→    setActionLoading(`auth-${claimId}`);
+   256→    try {
+   257→      const res = await fetch("/api/authorize", {
+   258→        method: "POST",
+   259→        headers: { "Content-Type": "application/json" },
+   260→        body: JSON.stringify({ claimId, safetyOverride, reviewSignedOff }),
+   261→      });
+   262→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   263→      const data = await res.json();
+   264→      toast({
+   265→        title: data.authorized ? "Authorized ✓" : "Authorization blocked",
+   266→        description: data.authorized
+   267→          ? "A = C∧E∧I∧S∧R = true — action permitted."
+   268→          : "A = false — fail-closed. See reason for details.",
+   269→        variant: data.authorized ? "default" : "destructive",
+   270→      });
+   271→      await refresh();
+   272→    } catch (e) {
+   273→      toast({
+   274→        title: "Authorize failed",
+   275→        description: e instanceof Error ? e.message : String(e),
+   276→        variant: "destructive",
+   277→      });
+   278→    } finally {
+   279→      setActionLoading(null);
+   280→    }
+   281→  };
+   282→
+   283→  const createClaim = async (form: {
+   284→    title: string;
+   285→    description: string;
+   286→    claimType: ClaimType;
+   287→    intendedAction: string;
+   288→    safetyCritical: boolean;
+   289→  }) => {
+   290→    setActionLoading("create");
+   291→    try {
+   292→      const res = await fetch("/api/claims", {
+   293→        method: "POST",
+   294→        headers: { "Content-Type": "application/json" },
+   295→        body: JSON.stringify(form),
+   296→      });
+   297→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   298→      const data = await res.json();
+   299→      toast({
+   300→        title: "Claim created",
+   301→        description: `New ${form.claimType} claim: ${form.title}`,
+   302→      });
+   303→      setShowCreate(false);
+   304→      setSelectedId(data.claim.id);
+   305→      await refresh();
+   306→    } catch (e) {
+   307→      toast({
+   308→        title: "Create failed",
+   309→        description: e instanceof Error ? e.message : String(e),
+   310→        variant: "destructive",
+   311→      });
+   312→    } finally {
+   313→      setActionLoading(null);
+   314→    }
+   315→  };
+   316→
+   317→  const selected = state?.claims.find((c) => c.id === selectedId) ?? null;
+   318→  const latestAuth = selected?.authorizations[0] ?? null;
+   319→  const latestNInd = selected?.nIndRecords[0] ?? null;
+   320→  const nIndResult: ParticipationRatioResult | null = latestNInd
+   321→    ? {
+   322→        nInd: latestNInd.nInd,
+   323→        numEvidence: latestNInd.numEvidence,
+   324→        numSources: latestNInd.numSources,
+   325→        gamma: latestNInd.gamma,
+   326→        eigenvalues: latestNInd.eigenvalues,
+   327→      }
+   328→    : null;
+   329→
+   330→  return (
+   331→    <>
+   332→      {/* Action toolbar (replaces the old full-width header — AppShell provides branding & nav) */}
+   333→      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card/40 px-4 py-2">
+   334→        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] font-mono text-muted-foreground">
+   335→          <span className="flex items-center gap-1">
+   336→            <GitBranch className="h-3 w-3" />
+   337→            {state?.summary.evidenceBound ?? "Claim ≤ Evidence ≤ Verification ≤ Authorization ≤ Action"}
+   338→          </span>
+   339→          <span className="flex items-center gap-1">
+   340→            <ShieldCheck className="h-3 w-3" />
+   341→            {state?.summary.authorizationFormula ?? "A = C ∧ E ∧ I ∧ S ∧ R"}
+   342→          </span>
+   343→          <span className="flex items-center gap-1 text-emerald-400">
+   344→            <Activity className="h-3 w-3" />
+   345→            fail-closed
+   346→          </span>
+   347→        </div>
+   348→        <div className="flex items-center gap-2">
+   349→          <Button
+   350→            variant="outline"
+   351→            size="sm"
+   352→            onClick={seed}
+   353→            disabled={actionLoading === "seed"}
+   354→          >
+   355→            {actionLoading === "seed" ? (
+   356→              <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+   357→            ) : (
+   358→              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+   359→            )}
+   360→            Seed demo
+   361→          </Button>
+   362→          <Button
+   363→            variant="outline"
+   364→            size="sm"
+   365→            onClick={() => setShowCreate(true)}
+   366→          >
+   367→            <Plus className="mr-1.5 h-3.5 w-3.5" />
+   368→            New claim
+   369→          </Button>
+   370→          <Button variant="outline" size="sm" onClick={refresh}>
+   371→            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+   372→            Refresh
+   373→          </Button>
+   374→        </div>
+   375→      </div>
+   376→
+   377→      {/* ─── Summary strip ─── */}
+   378→      {state && (
+   379→        <div className="border-b bg-muted/20">
+   380→          <div className="mx-auto max-w-[1600px] px-4 py-3">
+   381→            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+   382→              <SummaryCard
+   383→                icon={<Database className="h-3.5 w-3.5" />}
+   384→                label="Claims"
+   385→                value={state.summary.totalClaims}
+   386→              />
+   387→              <SummaryCard
+   388→                icon={<ShieldCheck className="h-3.5 w-3.5" />}
+   389→                label="Authorized"
+   390→                value={state.summary.authorizedClaims}
+   391→                tone="emerald"
+   392→              />
+   393→              <SummaryCard
+   394→                icon={<Activity className="h-3.5 w-3.5" />}
+   395→                label="Breakers tripped"
+   396→                value={state.summary.breakerTripped}
+   397→                tone={state.summary.breakerTripped > 0 ? "red" : "emerald"}
+   398→              />
+   399→              <SummaryCard
+   400→                icon={<Terminal className="h-3.5 w-3.5" />}
+   401→                label="Evidence items"
+   402→                value={state.summary.totalEvidence}
+   403→              />
+   404→              <SummaryCard
+   405→                icon={<Layers className="h-3.5 w-3.5" />}
+   406→                label="Claim types"
+   407→                value={Object.keys(state.summary.stateCounts).length}
+   408→              />
+   409→              <SummaryCard
+   410→                icon={<GitBranch className="h-3.5 w-3.5" />}
+   411→                label="State values"
+   412→                value={Object.keys(state.summary.stateCounts).length}
+   413→              />
+   414→            </div>
+   415→          </div>
+   416→        </div>
+   417→      )}
+   418→
+   419→      {/* ─── Main ─── */}
+   420→      <div className="flex-1 mx-auto max-w-[1400px] w-full px-4 py-4">
+   421→        {loading ? (
+   422→          <div className="flex flex-col items-center justify-center py-24 gap-3">
+   423→            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+   424→            <p className="text-sm text-muted-foreground font-mono">
+   425→              Loading IVE state from EIS backend…
+   426→            </p>
+   427→          </div>
+   428→        ) : !state || state.claims.length === 0 ? (
+   429→          <EmptyState onSeed={seed} loading={actionLoading === "seed"} />
+   430→        ) : (
+   431→          <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+   432→            {/* Claim list */}
+   433→            <aside className="space-y-2">
+   434→              <div className="flex items-center justify-between px-1 mb-1">
+   435→                <h2 className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">
+   436→                  Claims ({state.claims.length})
+   437→                </h2>
+   438→              </div>
+   439→              <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1 space-y-1.5">
+   440→                {state.claims.map((c) => {
+   441→                  const auth = c.authorizations[0];
+   442→                  return (
+   443→                    <button
+   444→                      key={c.id}
+   445→                      onClick={() => setSelectedId(c.id)}
+   446→                      className={`w-full text-left rounded-md border p-2.5 transition-colors ${
+   447→                        selectedId === c.id
+   448→                          ? "border-foreground bg-accent"
+   449→                          : "border-border bg-card hover:bg-accent/50"
+   450→                      }`}
+   451→                    >
+   452→                      <div className="flex items-start justify-between gap-2 mb-1">
+   453→                        <span className="text-xs font-semibold leading-tight line-clamp-2 flex-1">
+   454→                          {c.title}
+   455→                        </span>
+   456→                        <StateBadge state={c.state} size="sm" />
+   457→                      </div>
+   458→                      <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
+   459→                        <span className="uppercase tracking-wider">{c.claimType}</span>
+   460→                        <span className="flex items-center gap-1.5">
+   461→                          <span>{c.evidence.length} ev</span>
+   462→                          {auth && (
+   463→                            <span
+   464→                              className={
+   465→                                auth.authorized
+   466→                                  ? "text-emerald-600 dark:text-emerald-400"
+   467→                                  : "text-red-600 dark:text-red-400"
+   468→                              }
+   469→                            >
+   470→                              A={auth.authorized ? "✓" : "✗"}
+   471→                            </span>
+   472→                          )}
+   473→                        </span>
+   474→                      </div>
+   475→                    </button>
+   476→                  );
+   477→                })}
+   478→              </div>
+   479→            </aside>
+   480→
+   481→            {/* Selected claim detail */}
+   482→            {selected && (
+   483→              <div className="space-y-4">
+   484→                {/* Claim header card */}
+   485→                <Card>
+   486→                  <CardHeader className="pb-3">
+   487→                    <div className="flex items-start justify-between gap-3">
+   488→                      <div className="flex-1 min-w-0">
+   489→                        <div className="flex items-center gap-2 mb-1">
+   490→                          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+   491→                            {selected.claimType}
+   492→                          </span>
+   493→                          {selected.safetyCritical && (
+   494→                            <span className="text-[10px] font-mono uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded">
+   495→                              safety-critical
+   496→                            </span>
+   497→                          )}
+   498→                        </div>
+   499→                        <CardTitle className="text-base leading-tight">
+   500→                          {selected.title}
+   501→                        </CardTitle>
+   502→                      </div>
+   503→                      <StateBadge state={selected.state} size="lg" />
+   504→                    </div>
+   505→                  </CardHeader>
+   506→                  <CardContent className="pt-0">
+   507→                    <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+   508→                      {selected.description}
+   509→                    </p>
+   510→                    <div className="flex flex-wrap items-center gap-2">
+   511→                      <Button
+   512→                        size="sm"
+   513→                        variant="outline"
+   514→                        onClick={() => ingestEvidence(selected.id)}
+   515→                        disabled={actionLoading?.startsWith("ingest-")}
+   516→                      >
+   517→                        <Database className="mr-1.5 h-3.5 w-3.5" />
+   518→                        Ingest evidence
+   519→                      </Button>
+   520→                      <Button
+   521→                        size="sm"
+   522→                        variant="outline"
+   523→                        onClick={() => verify(selected.id)}
+   524→                        disabled={actionLoading?.startsWith("verify-")}
+   525→                      >
+   526→                        <GitBranch className="mr-1.5 h-3.5 w-3.5" />
+   527→                        Verify (IVE)
+   528→                      </Button>
+   529→                      <Button
+   530→                        size="sm"
+   531→                        variant="outline"
+   532→                        onClick={() => recomputeNInd(selected.id)}
+   533→                        disabled={actionLoading?.startsWith("nind-")}
+   534→                      >
+   535→                        <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+   536→                        N_ind
+   537→                      </Button>
+   538→                      <Button
+   539→                        size="sm"
+   540→                        onClick={() => authorize(selected.id, false, false)}
+   541→                        disabled={actionLoading?.startsWith("auth-")}
+   542→                      >
+   543→                        <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+   544→                        Authorize
+   545→                      </Button>
+   546→                    </div>
+   547→                  </CardContent>
+   548→                </Card>
+   549→
+   550→                {/* Tabs for detailed panels */}
+   551→                <Tabs defaultValue="pipeline" className="w-full">
+   552→                  <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 h-auto">
+   553→                    <TabsTrigger value="pipeline" className="text-xs">
+   554→                      Pipeline
+   555→                    </TabsTrigger>
+   556→                    <TabsTrigger value="lattice" className="text-xs">
+   557→                      State Lattice
+   558→                    </TabsTrigger>
+   559→                    <TabsTrigger value="diffusion" className="text-xs">
+   560→                      Diffusion
+   561→                    </TabsTrigger>
+   562→                    <TabsTrigger value="raw" className="text-xs">
+   563→                      Raw State
+   564→                    </TabsTrigger>
+   565→                  </TabsList>
+   566→
+   567→                  <TabsContent value="pipeline" className="mt-4 space-y-4">
+   568→                    <div className="grid gap-4 md:grid-cols-2">
+   569→                      <EvidenceMeshPanel
+   570→                        evidence={selected.evidence}
+   571→                        onIngest={() => ingestEvidence(selected.id)}
+   572→                        loading={actionLoading?.startsWith("ingest-")}
+   573→                      />
+   574→                      <AuthorizationPanel
+   575→                        auth={latestAuth}
+   576→                        safetyCritical={selected.safetyCritical}
+   577→                        onAuthorize={(s, r) => authorize(selected.id, s, r)}
+   578→                        loading={actionLoading?.startsWith("auth-")}
+   579→                      />
+   580→                      <ParticipationRatioPanel
+   581→                        result={nIndResult}
+   582→                        threshold={selected.safetyCritical ? 2 : 1}
+   583→                        loading={actionLoading?.startsWith("nind-")}
+   584→                        onRecompute={() => recomputeNInd(selected.id)}
+   585→                      />
+   586→                      <CircuitBreakerPanel
+   587→                        events={selected.circuitEvents}
+   588→                        safetyCritical={selected.safetyCritical}
+   589→                      />
+   590→                    </div>
+   591→                  </TabsContent>
+   592→
+   593→                  <TabsContent value="lattice" className="mt-4">
+   594→                    <StateLattice currentState={selected.state} />
+   595→                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+   596→                      <Card className="p-4">
+   597→                        <h3 className="text-sm font-semibold tracking-tight mb-2">
+   598→                          Evidence Contribution
+   599→                        </h3>
+   600→                        <div className="space-y-1.5 max-h-72 overflow-y-auto">
+   601→                          {selected.evidence.length === 0 ? (
+   602→                            <p className="text-xs text-muted-foreground font-mono py-4 text-center">
+   603→                              No evidence yet. Click <em>Ingest evidence</em>.
+   604→                            </p>
+   605→                          ) : (
+   606→                            selected.evidence.map((e) => (
+   607→                              <div
+   608→                                key={e.id}
+   609→                                className="flex items-center justify-between rounded border bg-card p-2 text-xs"
+   610→                              >
+   611→                                <div className="flex items-center gap-2 min-w-0">
+   612→                                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+   613→                                    {e.source}
+   614→                                  </span>
+   615→                                  <span className="truncate text-muted-foreground">
+   616→                                    {e.content.slice(0, 50)}
+   617→                                    {e.content.length > 50 ? "…" : ""}
+   618→                                  </span>
+   619→                                </div>
+   620→                                <StateBadge state={e.state} size="sm" />
+   621→                              </div>
+   622→                            ))
+   623→                          )}
+   624→                        </div>
+   625→                      </Card>
+   626→                      <Card className="p-4">
+   627→                        <h3 className="text-sm font-semibold tracking-tight mb-2">
+   628→                          Authorization History
+   629→                        </h3>
+   630→                        <div className="space-y-1.5 max-h-72 overflow-y-auto">
+   631→                          {selected.authorizations.length === 0 ? (
+   632→                            <p className="text-xs text-muted-foreground font-mono py-4 text-center">
+   633→                              No authorization records yet.
+   634→                            </p>
+   635→                          ) : (
+   636→                            selected.authorizations.slice(0, 10).map((a) => (
+   637→                              <div
+   638→                                key={a.id}
+   639→                                className="rounded border bg-card p-2 text-xs"
+   640→                              >
+   641→                                <div className="flex items-center justify-between mb-1">
+   642→                                  <span
+   643→                                    className={`font-mono font-bold ${
+   644→                                      a.authorized
+   645→                                        ? "text-emerald-600 dark:text-emerald-400"
+   646→                                        : "text-red-600 dark:text-red-400"
+   647→                                    }`}
+   648→                                  >
+   649→                                    A = {a.authorized ? "TRUE" : "FALSE"}
+   650→                                  </span>
+   651→                                  <span className="text-[10px] text-muted-foreground font-mono">
+   652→                                    {new Date(a.createdAt).toLocaleTimeString()}
+   653→                                  </span>
+   654→                                </div>
+   655→                                <div className="flex items-center gap-1 font-mono text-[10px]">
+   656→                                  {[
+   657→                                    ["C", a.claimOk],
+   658→                                    ["E", a.evidenceOk],
+   659→                                    ["I", a.integrityOk],
+   660→                                    ["S", a.safetyOk],
+   661→                                    ["R", a.reviewOk],
+   662→                                  ].map(([sym, ok]) => (
+   663→                                    <span
+   664→                                      key={sym as string}
+   665→                                      className={
+   666→                                        ok
+   667→                                          ? "text-emerald-600 dark:text-emerald-400"
+   668→                                          : "text-red-600 dark:text-red-400"
+   669→                                      }
+   670→                                    >
+   671→                                      {sym}={ok ? "✓" : "✗"}
+   672→                                    </span>
+   673→                                  ))}
+   674→                                </div>
+   675→                              </div>
+   676→                            ))
+   677→                          )}
+   678→                        </div>
+   679→                      </Card>
+   680→                    </div>
+   681→                  </TabsContent>
+   682→
+   683→                  <TabsContent value="diffusion" className="mt-4">
+   684→                    <HeatKernelPanel claimId={selected.id} topology="evidence" />
+   685→                    <div className="mt-4">
+   686→                      <HeatKernelPanel topology="cycle" />
+   687→                    </div>
+   688→                  </TabsContent>
+   689→
+   690→                  <TabsContent value="raw" className="mt-4">
+   691→                    <Card className="p-4">
+   692→                      <h3 className="text-sm font-semibold tracking-tight mb-3">
+   693→                        Raw EIS state
+   694→                      </h3>
+   695→                      <pre className="text-[10px] font-mono leading-relaxed overflow-x-auto rounded border bg-muted/30 p-3 max-h-[600px] overflow-y-auto">
+   696→                        {JSON.stringify(selected, null, 2)}
+   697→                      </pre>
+   698→                    </Card>
+   699→                  </TabsContent>
+   700→                </Tabs>
+   701→              </div>
+   702→            )}
+   703→          </div>
+   704→        )}
+   705→      </div>
+   706→
+   707→      {/* ─── Create modal ─── */}
+   708→      {showCreate && (
+   709→        <CreateClaimModal
+   710→          onClose={() => setShowCreate(false)}
+   711→          onCreate={createClaim}
+   712→          loading={actionLoading === "create"}
+   713→        />
+   714→      )}
+   715→    </>
+   716→  );
+   717→}
+   718→
+   719→// ─── Sub-components ─────────────────────────────────────────────────────────
+   720→
+   721→function SummaryCard({
+   722→  icon,
+   723→  label,
+   724→  value,
+   725→  tone = "default",
+   726→}: {
+   727→  icon: React.ReactNode;
+   728→  label: string;
+   729→  value: number;
+   730→  tone?: "default" | "emerald" | "red";
+   731→}) {
+   732→  const toneClass =
+   733→    tone === "emerald"
+   734→      ? "text-emerald-600 dark:text-emerald-400"
+   735→      : tone === "red"
+   736→      ? "text-red-600 dark:text-red-400"
+   737→      : "text-foreground";
+   738→  return (
+   739→    <div className="rounded-md border bg-card p-2.5">
+   740→      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+   741→        {icon}
+   742→        {label}
+   743→      </div>
+   744→      <div className={`font-mono text-lg font-bold ${toneClass}`}>{value}</div>
+   745→    </div>
+   746→  );
+   747→}
+   748→
+   749→function EmptyState({ onSeed, loading }: { onSeed: () => void; loading: boolean }) {
+   750→  return (
+   751→    <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
+   752→      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+   753→        <Layers className="h-8 w-8 text-muted-foreground" />
+   754→      </div>
+   755→      <div>
+   756→        <h2 className="text-xl font-bold tracking-tight mb-1">
+   757→          No claims in the IVE yet
+   758→        </h2>
+   759→        <p className="text-sm text-muted-foreground max-w-md">
+   760→          Seed the database with three demonstration claims that exercise the
+   761→          full VVU stack — or create a new claim from scratch.
+   762→        </p>
+   763→      </div>
+   764→      <Button onClick={onSeed} disabled={loading}>
+   765→        {loading ? (
+   766→          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+   767→        ) : (
+   768→          <Sparkles className="mr-2 h-4 w-4" />
+   769→        )}
+   770→        Seed demonstration claims
+   771→      </Button>
+   772→    </div>
+   773→  );
+   774→}
+   775→
+   776→function CreateClaimModal({
+   777→  onClose,
+   778→  onCreate,
+   779→  loading,
+   780→}: {
+   781→  onClose: () => void;
+   782→  onCreate: (form: {
+   783→    title: string;
+   784→    description: string;
+   785→    claimType: ClaimType;
+   786→    intendedAction: string;
+   787→    safetyCritical: boolean;
+   788→  }) => void;
+   789→  loading: boolean;
+   790→}) {
+   791→  const [title, setTitle] = useState("");
+   792→  const [description, setDescription] = useState("");
+   793→  const [claimType, setClaimType] = useState<ClaimType>("empirical");
+   794→  const [intendedAction, setIntendedAction] = useState("deploy");
+   795→  const [safetyCritical, setSafetyCritical] = useState(true);
+   796→
+   797→  return (
+   798→    <div
+   799→      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+   800→      onClick={onClose}
+   801→    >
+   802→      <div
+   803→        className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg"
+   804→        onClick={(e) => e.stopPropagation()}
+   805→      >
+   806→        <h2 className="text-lg font-bold tracking-tight mb-4">New claim</h2>
+   807→        <div className="space-y-3">
+   808→          <div>
+   809→            <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+   810→              Title
+   811→            </label>
+   812→            <input
+   813→              type="text"
+   814→              value={title}
+   815→              onChange={(e) => setTitle(e.target.value)}
+   816→              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+   817→              placeholder="e.g. Model accuracy ≥ 95%"
+   818→            />
+   819→          </div>
+   820→          <div>
+   821→            <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+   822→              Description
+   823→            </label>
+   824→            <textarea
+   825→              value={description}
+   826→              onChange={(e) => setDescription(e.target.value)}
+   827→              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm min-h-[60px]"
+   828→              placeholder="Describe the proposition that needs verification…"
+   829→            />
+   830→          </div>
+   831→          <div className="grid grid-cols-2 gap-3">
+   832→            <div>
+   833→              <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+   834→                Claim type
+   835→              </label>
+   836→              <select
+   837→                value={claimType}
+   838→                onChange={(e) => setClaimType(e.target.value as ClaimType)}
+   839→                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+   840→              >
+   841→                <option value="mathematical">mathematical (cap: PROVEN)</option>
+   842→                <option value="semantic">semantic (cap: VERIFIED)</option>
+   843→                <option value="empirical">empirical (cap: SUPPORTED)</option>
+   844→                <option value="operational">operational (cap: OBSERVED)</option>
+   845→              </select>
+   846→            </div>
+   847→            <div>
+   848→              <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
+   849→                Intended action
+   850→              </label>
+   851→              <input
+   852→                type="text"
+   853→                value={intendedAction}
+   854→                onChange={(e) => setIntendedAction(e.target.value)}
+   855→                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+   856→              />
+   857→            </div>
+   858→          </div>
+   859→          <label className="flex items-center gap-2 text-sm cursor-pointer">
+   860→            <input
+   861→              type="checkbox"
+   862→              checked={safetyCritical}
+   863→              onChange={(e) => setSafetyCritical(e.target.checked)}
+   864→              className="rounded"
+   865→            />
+   866→            <span>Safety-critical (requires S + R conjuncts)</span>
+   867→          </label>
+   868→        </div>
+   869→        <div className="mt-5 flex justify-end gap-2">
+   870→          <Button variant="outline" size="sm" onClick={onClose}>
+   871→            Cancel
+   872→          </Button>
+   873→          <Button
+   874→            size="sm"
+   875→            onClick={() =>
+   876→              onCreate({ title, description, claimType, intendedAction, safetyCritical })
+   877→            }
+   878→            disabled={!title || loading}
+   879→          >
+   880→            {loading ? "Creating…" : "Create claim"}
+   881→          </Button>
+   882→        </div>
+   883→      </div>
+   884→    </div>
+   885→  );
+   886→}
+   887→

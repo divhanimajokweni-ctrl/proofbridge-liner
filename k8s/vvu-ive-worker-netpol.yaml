@@ -1,0 +1,80 @@
+# VVU-IVE Webhook Worker — Strict Network Isolation
+# ----------------------------------------------------------------------------
+# Implements Section 12 of the VVU-IVE Reliability Contract v1.1:
+#   "Default Deny with whitelist"
+#
+# Pods labelled app=vvu-ive-worker can ONLY talk to:
+#   - DNS (kube-system kube-dns, port 53 UDP/TCP)
+#   - Envoy Egress Gateway (port 10001) — for SSRF-filtered outbound HTTP
+#   - PostgreSQL (port 5432) — state persistence
+#   - Kafka (port 9092) — event stream
+#
+# All other egress (direct internet, cloud metadata 169.254.169.254, lateral
+# pod movement) is DROPPED. This is the containment boundary for Slim Shady
+# state/delivery attacks.
+#
+# Ingress: only same-namespace pods on port 3000 (health/metrics).
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vvu-ive-worker-strict-isolation
+  namespace: vvu-ive
+spec:
+  podSelector:
+    matchLabels:
+      app: vvu-ive-worker
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: vvu-ive
+    ports:
+    - protocol: TCP
+      port: 3000
+
+  egress:
+  # DNS — required for service discovery (envoy-egress, postgres, kafka)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+  # Envoy Egress Gateway — all outbound HTTP goes through here for SSRF filtering
+  - to:
+    - podSelector:
+        matchLabels:
+          app: envoy-egress
+    ports:
+    - protocol: TCP
+      port: 10001
+
+  # PostgreSQL — state persistence
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+
+  # Kafka — event stream (delivery + audit + DLQ topics)
+  - to:
+    - podSelector:
+        matchLabels:
+          app: kafka
+    ports:
+    - protocol: TCP
+      port: 9092
