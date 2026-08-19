@@ -15,11 +15,33 @@
  * The Webhook Delivery Subsystem is a registered plugin in the IVE Plugin
  * Registry. Clicking it opens `<WebhookPluginDetail>` which surfaces the
  * live subsystem state from the existing /api/v1/webhooks routes.
+ *
+ * ─── Interest Inception gate (Charter Article XII §12.4) ──────────────────
+ * The dashboard is GATED on the Interest Inception modal. First-time
+ * visitors see `<InterestInceptionModal>` with a blurred dashboard behind
+ * it. Returning visitors (with `vvu-interest-inception` in localStorage)
+ * see the dashboard directly. This is the immutable curiosity-first entry
+ * point — no user ever sees a 'project' or 'claim' or 'evidence' field
+ * before they've answered one question: "What are you interested in?"
+ *
+ * ─── Challenge Mode (auto-enabled) ──────────────────────────────────────────
+ * A "Challenge Mode" section is registered in the STUDI sidebar. It is
+ * auto-enabled for all users with a small explanatory badge:
+ *   "This system challenges assumptions to improve accuracy."
+ * Locked as the core UX principle for the Study Release.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { WorkspaceProvider, useWorkspace } from "@/lib/workspace";
 import { AppShell } from "@/components/vvu/app-shell";
+
+// Interest Inception + Challenge Mode (auto-enabled)
+import { InterestInceptionModal } from "@/components/studi/interest-inception-modal";
+import { ChallengeMode } from "@/components/studi/challenge-mode";
+import {
+  loadInterestInception,
+  type InterestInceptionState,
+} from "@/lib/studi/interest-inception-state";
 
 // STUDI views
 import { StudiOverview } from "@/components/studi/studi-overview";
@@ -48,7 +70,7 @@ import { useTheoremPoller } from "@/lib/theorem/use-theorem-poller";
 // Shared small views
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CircuitBoard, HelpCircle } from "lucide-react";
+import { CircuitBoard, HelpCircle, Sparkles } from "lucide-react";
 
 // ─── Section metadata ──────────────────────────────────────────────────────
 
@@ -66,6 +88,26 @@ const SECTION_META: Record<string, SectionMeta> = {
     title: "Overview",
     abbr: "OV",
     breadcrumb: ["STUDI", "Overview"],
+  },
+  "studi-interest-inception": {
+    title: "Interest Inception",
+    abbr: "II",
+    breadcrumb: ["STUDI", "Interest Inception"],
+    statusStrip: (
+      <span className="rounded-md border border-vvu-studi/40 bg-vvu-studi/5 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider" style={{ color: "var(--vvu-studi)" }}>
+        curiosity-first · locked
+      </span>
+    ),
+  },
+  "studi-challenge-mode": {
+    title: "Challenge Mode",
+    abbr: "CM",
+    breadcrumb: ["STUDI", "Challenge Mode"],
+    statusStrip: (
+      <span className="rounded-md border border-amber-500/40 bg-amber-500/5 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-amber-400">
+        auto-enabled · 4 triggers
+      </span>
+    ),
   },
   "studi-gate-roadmap": {
     title: "5-Gate Roadmap",
@@ -333,6 +375,10 @@ function DashboardInner() {
       switch (studiSection) {
         case "studi-overview":
           return <StudiOverview />;
+        case "studi-interest-inception":
+          return <InterestInceptionReview />;
+        case "studi-challenge-mode":
+          return <ChallengeMode />;
         case "studi-gate-roadmap":
           return <GateRoadmap />;
         case "studi-doc-cert":
@@ -488,9 +534,111 @@ function IveFaqView() {
   );
 }
 
-// ─── Page wrapper ──────────────────────────────────────────────────────────
+// ─── Interest Inception review (for returning visitors who want to revisit) ─
+
+function InterestInceptionReview() {
+  const [state, setState] = useState<InterestInceptionState | null>(null);
+
+  useEffect(() => {
+    setState(loadInterestInception());
+  }, []);
+
+  if (!state || !state.completed) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+          <Sparkles className="h-8 w-8 text-vvu-studi" />
+          <h2 className="text-lg font-bold tracking-tight">
+            You haven&rsquo;t answered yet
+          </h2>
+          <p className="text-xs text-muted-foreground max-w-md">
+            The Interest Inception modal is the immutable entry point for
+            every VVU user. It should appear automatically on first visit. If
+            you don&rsquo;t see it, refresh the page.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">Interest Inception</h1>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Your immutable curiosity-first entry point. Reset to start over
+          with a new interest.
+        </p>
+      </div>
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <div className="space-y-1">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              Your interest
+            </div>
+            <p className="text-sm font-medium italic">
+              &ldquo;{state.interest}&rdquo;
+            </p>
+          </div>
+          <div className="space-y-1">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              Category
+            </div>
+            <p className="text-sm font-medium">{state.interestCategory}</p>
+          </div>
+          <div className="space-y-1">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              Bridging prompt
+            </div>
+            <p className="text-sm leading-relaxed text-foreground/90">
+              {state.bridgingPrompt}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              Implicit Project ID
+            </div>
+            <p className="font-mono text-sm font-semibold text-vvu-studi">
+              {state.projectId}
+            </p>
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            Captured: {state.timestamp}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Page wrapper (Interest Inception gate) ────────────────────────────────
 
 export default function Home() {
+  // Hydration flag — server renders null until client evaluates localStorage.
+  const [hydrated, setHydrated] = useState(false);
+  const [inception, setInception] = useState<InterestInceptionState | null>(null);
+
+  useEffect(() => {
+    setHydrated(true);
+    setInception(loadInterestInception());
+  }, []);
+
+  if (!hydrated) {
+    return null;
+  }
+
+  // Gate: if interest inception is not completed, show the modal with the
+  // blurred dashboard behind it.
+  if (!inception?.completed) {
+    return (
+      <WorkspaceProvider>
+        <InterestInceptionModal onComplete={(state) => setInception(state)}>
+          <DashboardInner />
+        </InterestInceptionModal>
+      </WorkspaceProvider>
+    );
+  }
+
   return (
     <WorkspaceProvider>
       <DashboardInner />
