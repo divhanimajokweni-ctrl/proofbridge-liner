@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VVU · 8‑View Research Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; background:#0a0a0f; color:#e8e8f0; font-family:'Space Grotesk',sans-serif; overflow:hidden; display:flex; flex-direction:column; }
+    ::-webkit-scrollbar { width:2px; }
+    ::-webkit-scrollbar-track { background:rgba(255,255,255,0.01); }
+    ::-webkit-scrollbar-thumb { background:rgba(212,175,55,0.15); border-radius:2px; }
+
+    /* TOPBAR */
+    .topbar { display:flex; align-items:center; justify-content:space-between; padding:6px 16px; background:rgba(10,10,15,0.92); backdrop-filter:blur(16px); border-bottom:1px solid rgba(212,175,55,0.06); flex-shrink:0; z-index:100; gap:8px; flex-wrap:wrap; }
+    .topbar .logo-area { display:flex; align-items:center; gap:8px; cursor:pointer; }
+    .topbar .logo-area .logo-morph { width:28px; height:28px; flex-shrink:0; }
+    .topbar .logo-area .logo-morph svg { width:100%; height:100%; display:block; }
+    .topbar .logo-area .logo-text { font-weight:900; font-size:14px; letter-spacing:0.08em; color:#d4af37; }
+    .topbar .logo-area .logo-text span { color:rgba(255,255,255,0.1); font-weight:300; font-size:7px; }
+    .topbar .status-badge { font-size:7px; font-family:'JetBrains Mono',monospace; background:rgba(81,207,102,0.04); color:rgba(81,207,102,0.3); padding:2px 8px; border-radius:3px; border:1px solid rgba(81,207,102,0.04); letter-spacing:0.3px; }
+    .topbar .nav-tabs { display:flex; gap:2px; background:rgba(255,255,255,0.01); padding:2px; border-radius:6px; flex-wrap:wrap; }
+    .topbar .nav-tabs button { background:transparent; border:none; color:rgba(255,255,255,0.15); padding:4px 10px; border-radius:3px; font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:400; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; transition:all 0.4s ease; }
+    .topbar .nav-tabs button:hover { color:rgba(255,255,255,0.4); background:rgba(255,255,255,0.02); }
+    .topbar .nav-tabs button.active { color:#d4af37; background:rgba(212,175,55,0.06); }
+
+    /* MAIN LAYOUT – no scroll */
+    .main { flex:1; display:flex; overflow:hidden; position:relative; }
+
+    /* SIDEBAR – hidden by default, shown only for STUDI and IVE */
+    .sidebar-panel { width:160px; background:rgba(10,10,15,0.4); backdrop-filter:blur(4px); border-right:1px solid rgba(255,255,255,0.02); padding:6px 4px; overflow-y:auto; flex-shrink:0; display:none; flex-direction:column; gap:2px; }
+    .sidebar-panel.active { display:flex; }
+    .sidebar-panel .group-title { font-size:6px; font-weight:700; color:rgba(212,175,55,0.12); text-transform:uppercase; letter-spacing:0.1em; padding:2px 4px; margin-top:4px; }
+    .sidebar-panel .menu-item { font-size:6px; font-family:'JetBrains Mono',monospace; color:rgba(255,255,255,0.08); padding:2px 4px; border-radius:2px; cursor:pointer; transition:0.2s; }
+    .sidebar-panel .menu-item:hover { background:rgba(212,175,55,0.04); color:rgba(255,255,255,0.2); }
+    .sidebar-panel .menu-item .short { color:rgba(212,175,55,0.2); font-weight:600; margin-right:3px; }
+
+    /* CONTENT AREA */
+    .content { flex:1; overflow:hidden; display:flex; flex-direction:column; background:rgba(0,0,0,0.03); position:relative; }
+
+    /* VIEW PANELS – 2.8s morph */
+    .view-panel { display:none; flex:1; overflow:hidden; flex-direction:column; will-change:transform,opacity,filter; }
+    .view-panel.active { display:flex; animation: morphIn 2.8s cubic-bezier(0.23,1,0.32,1) forwards; }
+    @keyframes morphIn {
+      0% { filter: blur(12px) brightness(0.3); transform: scale(0.96) rotateX(2deg); opacity:0; }
+      40% { filter: blur(4px) brightness(1.1); transform: scale(1.005) rotateX(-0.5deg); opacity:0.9; }
+      100% { filter: blur(0px) brightness(1); transform: scale(1) rotateX(0deg); opacity:1; }
+    }
+
+    /* VIEW CONTAINER – fits to screen, no scroll */
+    .view-container { display:flex; flex:1; overflow:hidden; }
+    .view-main { flex:1; padding:8px 12px; overflow:hidden; display:flex; flex-direction:column; gap:6px; }
+    .view-title { font-size:8px; font-weight:400; color:rgba(212,175,55,0.06); letter-spacing:0.3em; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:3px; margin-bottom:4px; flex-shrink:0; }
+
+    /* ─── CONSOLE ─── */
+    .console-output { background:rgba(0,0,0,0.15); border-radius:3px; padding:8px; font-family:'JetBrains Mono',monospace; font-size:7px; color:rgba(255,255,255,0.15); flex:1; overflow-y:auto; border:1px solid rgba(255,255,255,0.01); }
+    .console-output .line { margin-bottom:2px; }
+    .console-output .line.success { color:rgba(81,207,102,0.2); }
+    .console-output .line.error { color:rgba(255,107,107,0.2); }
+    .console-output .line.info { color:rgba(116,192,252,0.2); }
+    .console-input-area { display:flex; gap:4px; margin-top:4px; flex-shrink:0; }
+    .console-input-area input { flex:1; background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.01); border-radius:3px; padding:3px 6px; color:rgba(255,255,255,0.08); font-family:'JetBrains Mono',monospace; font-size:7px; }
+    .console-input-area button { background:rgba(212,175,55,0.02); border:1px solid rgba(212,175,55,0.02); border-radius:3px; padding:3px 8px; color:rgba(212,175,55,0.08); font-family:'JetBrains Mono',monospace; font-size:7px; }
+
+    /* ─── STUDI ─── */
+    .review-banner { background:rgba(212,175,55,0.04); border:1px solid rgba(212,175,55,0.08); border-radius:3px; padding:4px 8px; display:flex; align-items:center; gap:5px; flex-shrink:0; flex-wrap:wrap; }
+    .review-banner .icon { font-size:10px; }
+    .review-banner .title { font-size:7px; font-weight:600; color:#d4af37; letter-spacing:0.08em; }
+    .review-banner .sub { font-size:6px; color:rgba(255,255,255,0.2); }
+    .review-banner .sub a { color:#d4af37; text-decoration:none; border-bottom:1px dotted rgba(212,175,55,0.2); }
+
+    .case-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; flex:1; min-height:0; }
+    .case-card { background:rgba(18,18,30,0.12); border-radius:3px; padding:8px; border:1px solid rgba(255,255,255,0.01); display:flex; flex-direction:column; overflow:hidden; }
+    .case-card .case-title { font-size:7px; font-weight:600; color:rgba(212,175,55,0.15); margin-bottom:1px; font-family:'JetBrains Mono',monospace; }
+    .case-tag.review { font-size:5px; text-transform:uppercase; letter-spacing:0.08em; padding:1px 5px; border-radius:8px; display:inline-block; margin-bottom:2px; color:rgba(212,175,55,0.2); background:rgba(212,175,55,0.04); border:1px solid rgba(212,175,55,0.06); align-self:flex-start; }
+    .case-card .case-desc { font-size:6px; color:rgba(255,255,255,0.05); line-height:1.3; flex:1; }
+    .case-card .case-meta { display:flex; gap:5px; margin-top:3px; font-size:5px; color:rgba(255,255,255,0.02); font-family:'JetBrains Mono',monospace; }
+    .case-card .case-status { font-size:5px; color:rgba(81,207,102,0.1); background:rgba(81,207,102,0.02); padding:1px 4px; border-radius:8px; }
+    .case-card .case-status.pending { color:rgba(252,196,25,0.1); }
+
+    .sources-section { background:rgba(18,18,30,0.08); border-radius:3px; padding:4px; border:1px solid rgba(255,255,255,0.01); flex-shrink:0; }
+    .sources-section .sources-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:2px; }
+    .sources-section .sources-header label { font-size:6px; color:rgba(255,255,255,0.03); text-transform:uppercase; letter-spacing:0.12em; }
+    .sources-section .sources-header .count { font-size:5px; color:rgba(255,255,255,0.02); }
+    .sources-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px,1fr)); gap:3px; max-height:50px; overflow-y:auto; }
+    .source-item { background:rgba(0,0,0,0.15); border-radius:2px; padding:3px 5px; border:1px solid rgba(255,255,255,0.01); display:flex; flex-direction:column; }
+    .source-item .sname { font-size:6px; color:rgba(255,255,255,0.06); }
+    .source-item .smeta { font-size:5px; color:rgba(255,255,255,0.02); font-family:'JetBrains Mono',monospace; display:flex; justify-content:space-between; }
+
+    /* ─── IVE ─── */
+    .ive-stats { display:grid; grid-template-columns:repeat(auto-fill, minmax(110px,1fr)); gap:5px; flex-shrink:0; }
+    .ive-stat { background:rgba(18,18,30,0.15); border:1px solid rgba(255,255,255,0.02); border-radius:3px; padding:5px 8px; display:flex; flex-direction:column; }
+    .ive-stat .label { font-size:6px; text-transform:uppercase; letter-spacing:0.08em; color:rgba(255,255,255,0.12); }
+    .ive-stat .value { font-size:13px; font-weight:700; color:#d4af37; font-family:'JetBrains Mono',monospace; }
+    .ive-stat .sub { font-size:6px; color:rgba(255,255,255,0.08); }
+
+    .trust-bar { background:rgba(18,18,30,0.15); border:1px solid rgba(255,255,255,0.02); border-radius:3px; padding:6px 8px; flex-shrink:0; }
+    .trust-bar .header { display:flex; justify-content:space-between; font-size:7px; color:rgba(255,255,255,0.08); }
+    .trust-bar .track { width:100%; height:2px; background:rgba(255,255,255,0.04); border-radius:2px; margin-top:3px; overflow:hidden; }
+    .trust-bar .fill { height:100%; background:#d4af37; transition:width 0.5s; }
+
+    /* ─── SOCIAL ─── */
+    .social-feed { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:4px; }
+    .social-post { background:rgba(18,18,30,0.12); border:1px solid rgba(255,255,255,0.01); border-radius:3px; padding:6px 8px; }
+    .social-post .post-header { display:flex; align-items:center; gap:5px; }
+    .social-post .avatar { font-size:10px; }
+    .social-post .post-user { font-size:7px; font-weight:600; color:rgba(255,255,255,0.6); }
+    .social-post .post-time { font-size:5px; color:rgba(255,255,255,0.15); margin-left:auto; }
+    .social-post .post-content { font-size:7px; color:rgba(255,255,255,0.25); margin-top:2px; }
+    .social-accounts { display:flex; gap:4px; flex-wrap:wrap; flex-shrink:0; }
+    .social-account { background:rgba(18,18,30,0.15); border:1px solid rgba(255,255,255,0.02); border-radius:3px; padding:3px 6px; font-size:6px; color:rgba(255,255,255,0.1); display:flex; align-items:center; gap:4px; }
+    .social-account .status { color:rgba(81,207,102,0.1); }
+    .social-account .status.off { color:rgba(255,107,107,0.1); }
+
+    /* ─── PLAY ─── */
+    .play-accounts { display:flex; gap:4px; flex-wrap:wrap; flex-shrink:0; }
+    .play-account { background:rgba(18,18,30,0.15); border:1px solid rgba(255,255,255,0.02); border-radius:3px; padding:3px 6px; font-size:6px; color:rgba(255,255,255,0.1); display:flex; align-items:center; gap:4px; }
+    .play-games { display:grid; grid-template-columns:repeat(auto-fill, minmax(70px,1fr)); gap:4px; flex:1; overflow-y:auto; }
+    .play-game { background:rgba(18,18,30,0.12); border:1px solid rgba(255,255,255,0.01); border-radius:3px; padding:4px; text-align:center; }
+    .play-game .cover { font-size:16px; }
+    .play-game .name { font-size:6px; color:rgba(255,255,255,0.12); }
+    .play-audio { display:flex; gap:4px; flex-shrink:0; align-items:center; }
+    .play-audio button { background:rgba(212,175,55,0.04); border:1px solid rgba(212,175,55,0.06); border-radius:3px; padding:2px 8px; color:rgba(212,175,55,0.15); font-size:6px; }
+
+    /* ─── FINANCE ─── */
+    .stokvel-card { background:rgba(18,18,30,0.15); border:1px solid rgba(212,175,55,0.06); border-radius:3px; padding:6px 8px; flex-shrink:0; }
+    .stokvel-card .header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:2px; margin-bottom:2px; }
+    .stokvel-card .header h3 { font-size:8px; font-weight:600; color:rgba(212,175,55,0.2); }
+    .stokvel-card .header .policy { font-size:5px; color:rgba(81,207,102,0.12); background:rgba(81,207,102,0.04); padding:1px 6px; border-radius:8px; }
+    .stokvel-card .balance { font-size:12px; font-weight:700; color:#d4af37; font-family:'JetBrains Mono',monospace; }
+    .stokvel-card .balance small { font-size:7px; font-weight:400; color:rgba(255,255,255,0.08); }
+    .stokvel-card .members { font-size:6px; color:rgba(255,255,255,0.08); font-family:'JetBrains Mono',monospace; }
+    .stokvel-card .contribute { display:flex; gap:3px; margin:3px 0; }
+    .stokvel-card .contribute input { flex:1; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.02); border-radius:2px; padding:3px 6px; color:rgba(255,255,255,0.12); font-size:7px; font-family:'JetBrains Mono',monospace; }
+    .stokvel-card .contribute button { background:rgba(212,175,55,0.04); border:1px solid rgba(212,175,55,0.06); border-radius:2px; padding:3px 8px; color:#d4af37; font-size:7px; }
+    .stokvel-card .contribute button:hover { background:rgba(212,175,55,0.10); }
+    .stokvel-card .log { font-size:5px; color:rgba(255,255,255,0.04); font-family:'JetBrains Mono',monospace; max-height:40px; overflow-y:auto; border-top:1px solid rgba(255,255,255,0.01); padding-top:2px; }
+    .stokvel-card .log .entry { display:flex; justify-content:space-between; padding:1px 0; border-bottom:1px solid rgba(255,255,255,0.003); }
+    .stokvel-card .log .entry .amount { color:rgba(81,207,102,0.1); }
+
+    .finance-tools { display:flex; gap:4px; flex-wrap:wrap; flex-shrink:0; }
+    .finance-tool { background:rgba(18,18,30,0.12); border:1px solid rgba(255,255,255,0.01); border-radius:3px; padding:4px 6px; flex:1; min-width:80px; display:flex; flex-direction:column; gap:2px; }
+    .finance-tool .label { font-size:5px; color:rgba(255,255,255,0.06); text-transform:uppercase; }
+    .finance-tool input, .finance-tool textarea { background:rgba(0,0,0,0.15); border:1px solid rgba(255,255,255,0.01); border-radius:2px; padding:2px 4px; color:rgba(255,255,255,0.08); font-size:6px; font-family:'JetBrains Mono',monospace; width:100%; }
+    .finance-tool button { background:rgba(212,175,55,0.04); border:1px solid rgba(212,175,55,0.06); border-radius:2px; padding:2px 6px; color:rgba(212,175,55,0.15); font-size:6px; }
+    .finance-tool textarea { resize:none; height:20px; }
+
+    /* ─── EIS ─── */
+    .eis-controls { display:grid; grid-template-columns:repeat(2,1fr); gap:4px; flex-shrink:0; }
+    .eis-slider { display:flex; flex-direction:column; gap:1px; }
+    .eis-slider .label { font-size:6px; color:rgba(255,255,255,0.08); display:flex; justify-content:space-between; }
+    .eis-slider input[type="range"] { width:100%; height:2px; accent-color:#d4af37; background:rgba(255,255,255,0.04); border-radius:2px; }
+    .eis-impedance { font-size:6px; font-family:'JetBrains Mono',monospace; color:rgba(255,255,255,0.08); flex-shrink:0; display:grid; grid-template-columns:1fr 1fr; gap:2px; }
+    .eis-impedance .val { color:#d4af37; }
+    .eis-stress { background:rgba(212,175,55,0.04); border:1px solid rgba(212,175,55,0.06); border-radius:3px; padding:3px 8px; color:#d4af37; font-size:7px; flex-shrink:0; cursor:pointer; text-align:center; }
+    .eis-stress:hover { background:rgba(212,175,55,0.08); }
+    .eis-stress.active { background:rgba(220,50,50,0.15); border-color:rgba(220,50,50,0.2); color:#ff6b6b; }
+
+    /* ─── ANALYTICS ─── */
+    .analytics-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; flex-shrink:0; }
+    .analytics-stat { background:rgba(18,18,30,0.12); border:1px solid rgba(255,255,255,0.01); border-radius:3px; padding:4px 6px; }
+    .analytics-stat .num { font-size:13px; font-weight:700; color:#d4af37; font-family:'JetBrains Mono',monospace; }
+    .analytics-stat .lbl { font-size:5px; color:rgba(255,255,255,0.06); text-transform:uppercase; letter-spacing:0.08em; }
+    .analytics-chart { flex:1; min-height:0; background:rgba(18,18,30,0.08); border:1px solid rgba(255,255,255,0.01); border-radius:3px; padding:4px; display:flex; align-items:flex-end; justify-content:space-around; gap:2px; }
+    .analytics-chart .bar { width:20px; background:#d4af37; border-radius:2px; transition:height 0.5s; min-height:2px; }
+    .analytics-events { flex-shrink:0; max-height:50px; overflow-y:auto; font-size:5px; font-family:'JetBrains Mono',monospace; color:rgba(255,255,255,0.04); border-top:1px solid rgba(255,255,255,0.01); padding-top:3px; }
+    .analytics-events .ev { display:flex; gap:6px; padding:1px 0; border-bottom:1px solid rgba(255,255,255,0.003); }
+
+    /* ─── GHOST ENGINE ─── */
+    .card-ghost { position:relative; overflow:hidden; }
+    .card-ghost::before { content:''; position:absolute; inset:0; background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,255,255,0.0005) 3px, rgba(255,255,255,0.0005) 4px); pointer-events:none; opacity:0.3; }
+    .ghost-scanner { position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg, transparent, rgba(212,175,55,0.01), transparent); animation: scanMove 4s ease-in-out infinite; pointer-events:none; }
+    @keyframes scanMove { 0% { transform:translateX(-100%) scaleX(0.5); } 50% { transform:translateX(100%) scaleX(1.5); } 100% { transform:translateX(-100%) scaleX(0.5); } }
+    .quantum-pixel { position:absolute; bottom:2px; right:2px; width:1px; height:1px; background:rgba(255,255,255,0.001); animation: quantumBlink 1.7s steps(2) infinite; pointer-events:none; }
+    @keyframes quantumBlink { 0%,100% { background:rgba(10,10,15,1); } 50% { background:rgba(255,255,255,0.001); } }
+    .ghost-hash { position:absolute; top:2px; right:4px; font-family:'JetBrains Mono',monospace; font-size:3px; color:rgba(212,175,55,0.006); letter-spacing:0.05em; pointer-events:none; white-space:nowrap; }
+
+    /* ─── SCREENSAVER ─── */
+    #screensaver { position:fixed; inset:0; z-index:9998; background:#020205; display:none; opacity:0; transition:opacity 2.8s cubic-bezier(0.23,1,0.32,1); cursor:none; }
+    #screensaver.active { display:block; opacity:1; }
+    #screensaver canvas { width:100%; height:100%; display:block; }
+    #screensaver .wake-hint { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:8px; color:rgba(212,175,55,0.04); letter-spacing:0.3em; text-transform:uppercase; pointer-events:none; animation:pulseHint 4s ease-in-out infinite; }
+    @keyframes pulseHint { 0%,100% { opacity:0.2; } 50% { opacity:0.8; } }
+
+    /* ─── LEGEND ─── */
+    .legend-float { position:fixed; bottom:16px; right:16px; z-index:9999; display:flex; flex-direction:column; align-items:flex-end; gap:4px; pointer-events:none; }
+    .legend-float * { pointer-events:auto; }
+    .legend-btn { background:rgba(10,10,15,0.85); backdrop-filter:blur(12px); border:1px solid rgba(212,175,55,0.06); border-radius:14px; padding:4px 12px; color:rgba(212,175,55,0.3); font-family:'JetBrains Mono',monospace; font-size:7px; text-transform:uppercase; letter-spacing:0.15em; cursor:pointer; transition:all 0.3s ease; box-shadow:0 4px 20px rgba(0,0,0,0.4); }
+    .legend-btn:hover { background:rgba(212,175,55,0.03); border-color:rgba(212,175,55,0.15); color:#d4af37; }
+    .legend-panel { width:260px; background:rgba(10,10,15,0.9); backdrop-filter:blur(20px); border:1px solid rgba(212,175,55,0.04); border-radius:6px; padding:6px; box-shadow:0 8px 30px rgba(0,0,0,0.5); display:none; flex-direction:column; gap:4px; transform-origin:bottom right; animation:fadeUp 0.3s ease; }
+    .legend-panel.open { display:flex; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(8px) scale(0.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+    .legend-header { display:flex; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.02); padding-bottom:2px; }
+    .legend-header .loc { font-size:6px; color:rgba(255,255,255,0.06); text-transform:uppercase; letter-spacing:0.1em; }
+    .legend-header .loc span { color:rgba(212,175,55,0.15); }
+    .legend-tabs { display:flex; gap:2px; flex-wrap:wrap; }
+    .legend-tabs button { background:transparent; border:none; color:rgba(255,255,255,0.06); padding:2px 6px; border-radius:3px; font-family:'JetBrains Mono',monospace; font-size:6px; text-transform:uppercase; cursor:pointer; transition:0.2s; }
+    .legend-tabs button.active { color:rgba(212,175,55,0.2); background:rgba(212,175,55,0.03); }
+    .legend-content { display:none; flex-direction:column; gap:3px; }
+    .legend-content.active { display:flex; }
+    .lg-row { display:flex; align-items:center; gap:5px; padding:2px 5px; background:rgba(0,0,0,0.15); border-radius:2px; border:1px solid rgba(255,255,255,0.01); }
+    .lg-row .icon { opacity:0.2; font-size:8px; width:12px; text-align:center; }
+    .lg-row .text { flex:1; font-size:6px; color:rgba(255,255,255,0.12); }
+    .lg-row button { background:rgba(212,175,55,0.03); border:1px solid rgba(212,175,55,0.05); border-radius:2px; padding:1px 5px; color:rgba(212,175,55,0.15); font-size:5px; }
+    .lindiwe-input { display:flex; gap:3px; }
+    .lindiwe-input input { flex:1; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.02); border-radius:2px; padding:2px 5px; color:rgba(255,255,255,0.1); font-size:6px; }
+    .lindiwe-input button { background:rgba(212,175,55,0.05); color:rgba(212,175,55,0.15); border:1px solid rgba(212,175,55,0.05); border-radius:2px; padding:0 6px; font-size:6px; font-weight:bold; }
+    .quick-chips { display:flex; gap:2px; flex-wrap:wrap; margin-top:2px; }
+    .quick-chips span { font-size:5px; padding:1px 5px; background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.03); border-radius:8px; color:rgba(255,255,255,0.08); cursor:pointer; }
+    .quick-chips span:hover { background:rgba(212,175,55,0.05); color:rgba(212,175,55,0.15); }
+
+    /* CREATIVE LAYER */
+    #particle-canvas { position:fixed; inset:0; pointer-events:none; z-index:0; }
+    .crt-overlay { position:fixed; inset:0; pointer-events:none; z-index:1; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px); opacity:0.2; mix-blend-mode:overlay; }
+    .sa-accent { position:fixed; bottom:0; left:0; right:0; height:2px; z-index:50; background:linear-gradient(90deg, #de3831 0%, #de3831 33%, #0c1c8c 33%, #0c1c8c 66%, #de3831 66%, #de3831 100%); opacity:0.08; pointer-events:none; }
+    .joburg-clock { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); z-index:50; font-size:7px; font-family:'JetBrains Mono',monospace; color:rgba(255,255,255,0.03); letter-spacing:0.2em; pointer-events:none; }
+
+    @media (max-width:700px) {
+      .sidebar-panel { display:none !important; }
+      .topbar .nav-tabs button { font-size:6px; padding:2px 6px; }
+      .topbar .logo-area .logo-morph { width:24px; height:24px; }
+      .legend-panel { width:220px; right:-4px; }
+      .case-grid { grid-template-columns:1fr; }
+      .sources-grid { grid-template-columns:1fr; }
+      .analytics-stats { grid-template-columns:repeat(2,1fr); }
+      .eis-controls { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CREATIVE LAYER -->
+  <canvas id="particle-canvas"></canvas>
+  <div class="crt-overlay"></div>
+  <div class="sa-accent"></div>
+  <div class="joburg-clock" id="joburgClock">JHB · 00:00:00</div>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="logo-area" id="logoTrigger">
+      <div class="logo-morph">
+        <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+          <defs><filter id="gGlow"><feGaussianBlur stdDeviation="2"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <rect width="400" height="400" fill="transparent"/>
+          <g stroke="#1f3a1f" stroke-width="0.3" opacity="0.06"><path d="M0 100H400 M0 200H400 M0 300H400 M100 0V400 M200 0V400 M300 0V400"/></g>
+          <g id="rings" filter="url(#gGlow)">
+            <circle cx="200" cy="150" r="45" fill="none" stroke="#d97706" stroke-width="4" opacity="0.15"/>
+            <circle cx="160" cy="225" r="45" fill="none" stroke="#16a34a" stroke-width="4" opacity="0.15"/>
+            <circle cx="240" cy="225" r="45" fill="none" stroke="#fde047" stroke-width="4" opacity="0.15"/>
+            <circle cx="200" cy="200" r="5" fill="#f5f5dc" opacity="0.08"/>
+          </g>
+        </svg>
+      </div>
+      <div class="logo-text">VVU<span style="font-size:8px;color:rgba(255,255,255,0.1);margin-left:4px;">· 8‑VIEW</span></div>
+    </div>
+    <div class="status-badge" id="statusBadge">2.8s</div>
+    <div class="nav-tabs" id="navTabs">
+      <button class="active" data-view="console">⌘</button>
+      <button data-view="studi">◈</button>
+      <button data-view="ive">⧫</button>
+      <button data-view="social">⎔</button>
+      <button data-view="play">▶</button>
+      <button data-view="finance">$</button>
+      <button data-view="eis">⚡</button>
+      <button data-view="analytics">▣</button>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- STUDI SIDEBAR -->
+    <div class="sidebar-panel" id="studiSidebar">
+      <div class="group-title">CORE</div>
+      <div class="menu-item"><span class="short">OV</span> Overview</div>
+      <div class="menu-item"><span class="short">5G</span> 5‑Gate Roadmap</div>
+      <div class="menu-item"><span class="short">DOC</span> Doc Certificate</div>
+      <div class="menu-item"><span class="short">GOV</span> Governing Docs</div>
+      <div class="group-title">RELEASE</div>
+      <div class="menu-item"><span class="short">CHT</span> Charter</div>
+      <div class="menu-item"><span class="short">CIPC</span> CIPC Filing</div>
+      <div class="menu-item"><span class="short">AUD</span> Audit Trail</div>
+      <div class="group-title">SYSTEM</div>
+      <div class="menu-item"><span class="short">TB</span> Trust Bound</div>
+      <div class="menu-item"><span class="short">FC</span> Fail‑Closed</div>
+      <div class="menu-item"><span class="short">EM</span> Evolution Matrix</div>
+      <div class="menu-item"><span class="short">VC</span> Valve Cockpit</div>
+    </div>
+
+    <!-- IVE SIDEBAR -->
+    <div class="sidebar-panel" id="iveSidebar">
+      <div class="group-title">OVERVIEW</div>
+      <div class="menu-item"><span class="short">OV</span> Overview</div>
+      <div class="menu-item"><span class="short">TS</span> Trust Sphere</div>
+      <div class="menu-item"><span class="short">CP</span> Claims Pipeline</div>
+      <div class="menu-item"><span class="short">ER</span> Evidence Runtime</div>
+      <div class="group-title">RELEASE</div>
+      <div class="menu-item"><span class="short">RR</span> Release Report</div>
+      <div class="menu-item"><span class="short">ADP</span> Adapter Attribution</div>
+      <div class="menu-item"><span class="short">INT</span> Integrity Closure</div>
+      <div class="menu-item"><span class="short">ACC</span> Acceptance</div>
+      <div class="group-title">RUNTIME</div>
+      <div class="menu-item"><span class="short">PR</span> Plugin Registry</div>
+      <div class="menu-item"><span class="short">AMD</span> AMD Runtime</div>
+      <div class="menu-item"><span class="short">ZOO</span> Zoo Runtime</div>
+      <div class="group-title">CASE STUDY</div>
+      <div class="menu-item"><span class="short">HBA</span> HBK Workspace</div>
+      <div class="menu-item"><span class="short">CAD</span> CAD Viewer</div>
+      <div class="group-title">SYSTEM</div>
+      <div class="menu-item"><span class="short">WH</span> Webhook Delivery</div>
+      <div class="menu-item"><span class="short">EM</span> Evolution Matrix</div>
+      <div class="menu-item"><span class="short">VC</span> Valve Cockpit</div>
+      <div class="group-title">HELP</div>
+      <div class="menu-item"><span class="short">FAQ</span> Help &amp; FAQ</div>
+    </div>
+
+    <div class="content">
+      <!-- CONSOLE -->
+      <div class="view-panel active" id="view-console">
+        <div class="view-container"><div class="view-main">
+          <div class="view-title">⏣ CONSOLE</div>
+          <div class="console-output" id="consoleOutput">
+            <div class="line success">⏣ 8‑view dashboard ready</div>
+            <div class="line info">→ M0 + HBK case studies loaded</div>
+            <div class="line info">→ Type 'help' for commands</div>
+          </div>
+          <div class="console-input-area">
+            <input id="consoleInput" placeholder="⏣">
+            <button id="consoleSendBtn">⏣</button>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- STUDI -->
+      <div class="view-panel" id="view-studi">
+        <div class="view-container"><div class="view-main" id="studiMain"><!-- injected --></div></div>
+      </div>
+
+      <!-- IVE -->
+      <div class="view-panel" id="view-ive">
+        <div class="view-container"><div class="view-main" id="iveMain"><!-- injected --></div></div>
+      </div>
+
+      <!-- SOCIAL -->
+      <div class="view-panel" id="view-social">
+        <div class="view-container"><div class="view-main">
+          <div class="view-title">⎔ SOCIAL</div>
+          <div class="social-accounts">
+            <div class="social-account"><span>🐦</span> Twitter <span class="status">●</span></div>
+            <div class="social-account"><span>💼</span> LinkedIn <span class="status">●</span></div>
+            <div class="social-account"><span>💬</span> Discord <span class="status off">○</span></div>
+          </div>
+          <div class="social-feed" id="socialFeed">
+            <div class="social-post"><div class="post-header"><span class="avatar">🧑‍💻</span><span class="post-user">Divhani</span><span class="post-time">now</span></div><div class="post-content">Analytics engine live – every action logged.</div></div>
+            <div class="social-post"><div class="post-header"><span class="avatar">🤖</span><span class="post-user">Lindiwe</span><span class="post-time">2m</span></div><div class="post-content">Case studies: M0 (VERIFIED), HBK (PENDING).</div></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- PLAY -->
+      <div class="view-panel" id="view-play">
+        <div class="view-container"><div class="view-main">
+          <div class="view-title">▶ PLAY</div>
+          <div class="play-accounts">
+            <div class="play-account">🎮 PlayStation <span style="color:rgba(81,207,102,0.1);">●</span></div>
+            <div class="play-account">🎮 Xbox <span style="color:rgba(81,207,102,0.1);">●</span></div>
+          </div>
+          <div class="play-games">
+            <div class="play-game"><div class="cover">🚀</div><div class="name">Cosmic Racer</div></div>
+            <div class="play-game"><div class="cover">🌀</div><div class="name">Black Hole Sim</div></div>
+          </div>
+          <div class="play-audio"><button id="audioPlay">▶ Play</button><button id="audioStop">■ Stop</button><span style="font-size:6px;color:rgba(255,255,255,0.04);" id="audioStatus">● stopped</span></div>
+        </div></div>
+      </div>
+
+      <!-- FINANCE -->
+      <div class="view-panel" id="view-finance">
+        <div class="view-container"><div class="view-main">
+          <div class="view-title">$ FINANCE</div>
+          <div class="stokvel-card card-ghost" id="stokvelCard">
+            <div class="header"><h3>VVU Research Fund</h3><span class="policy">🔓 open · no payouts</span></div>
+            <div class="balance" id="stokvelBalanceDisplay">R 0.00 <small>→ research</small></div>
+            <div class="members" id="stokvelMemberList">Members: <span id="memberCount">0</span></div>
+            <div class="contribute">
+              <input type="number" id="contributeAmount" placeholder="Amount (ZAR)" min="1" step="1">
+              <button id="contributeBtn">Contribute</button>
+              <button id="joinStokvelBtn">Join</button>
+            </div>
+            <div class="log" id="stokvelLog"><div style="color:rgba(255,255,255,0.02);">Recent contributions:</div></div>
+          </div>
+          <div class="finance-tools">
+            <div class="finance-tool"><span class="label">🔒 Encrypt</span><input id="encKey" placeholder="Key" style="font-size:5px;"><textarea id="encInput" placeholder="Text" style="height:16px;"></textarea><button id="encBtn">Encrypt</button><button id="decBtn">Decrypt</button></div>
+            <div class="finance-tool"><span class="label">📜 Proof Ledger</span><div id="proofLedger" style="font-size:5px;color:rgba(255,255,255,0.04);max-height:30px;overflow-y:auto;"></div></div>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- EIS -->
+      <div class="view-panel" id="view-eis">
+        <div class="view-container"><div class="view-main">
+          <div class="view-title">⚡ EIS</div>
+          <div class="eis-controls">
+            <div class="eis-slider"><span class="label">Frequency <span id="freqVal">100 Hz</span></span><input type="range" id="freqSlider" min="1" max="1000" value="100"></div>
+            <div class="eis-slider"><span class="label">Amplitude <span id="ampVal">0.75 V</span></span><input type="range" id="ampSlider" min="0" max="100" value="75"></div>
+            <div class="eis-slider"><span class="label">Phase <span id="phaseVal">0°</span></span><input type="range" id="phaseSlider" min="0" max="360" value="0"></div>
+            <div class="eis-slider"><span class="label">Temperature <span id="tempVal">25°C</span></span><input type="range" id="tempSlider" min="0" max="100" value="25"></div>
+          </div>
+          <div class="eis-impedance">
+            <div>R = <span class="val" id="calcR">47.2</span> Ω</div>
+            <div>X = <span class="val" id="calcX">23.8</span> Ω</div>
+            <div>|Z| = <span class="val" id="calcZ">52.8</span> Ω</div>
+            <div>θ = <span class="val" id="calcTheta">26.7</span>°</div>
+          </div>
+          <div class="eis-stress" id="stressBtn">⚡ START STRESS</div>
+          <div style="font-size:6px;color:rgba(255,255,255,0.04);">GPU: AMD / WebGL 2.0</div>
+        </div></div>
+      </div>
+
+      <!-- ANALYTICS -->
+      <div class="view-panel" id="view-analytics">
+        <div class="view-container"><div class="view-main">
+          <div class="view-title">▣ ANALYTICS</div>
+          <div class="analytics-stats">
+            <div class="analytics-stat"><div class="num" id="totalEvents">0</div><div class="lbl">Events</div></div>
+            <div class="analytics-stat"><div class="num" id="sessionTime">00:00</div><div class="lbl">Session</div></div>
+            <div class="analytics-stat"><div class="num" id="successRate">0%</div><div class="lbl">Success</div></div>
+            <div class="analytics-stat"><div class="num" id="viewCount">0</div><div class="lbl">Views</div></div>
+          </div>
+          <div class="analytics-chart" id="chart"></div>
+          <div class="analytics-events" id="analyticsEvents"></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREENSAVER -->
+  <div id="screensaver"><canvas id="ssCanvas"></canvas><div class="wake-hint">⏣ touch or key to wake</div></div>
+
+  <!-- LEGEND -->
+  <div class="legend-float" id="legendFloat">
+    <div class="legend-panel" id="legendPanel">
+      <div class="legend-header"><div class="loc">You are here: <span id="currentViewText">CONSOLE</span></div><div class="loc">⏣ Lindiwe</div></div>
+      <div class="legend-tabs" id="legendTabs">
+        <button class="active" data-ltab="lindiwe">🧠 Ask</button>
+        <button data-ltab="cases">📋 Cases</button>
+        <button data-ltab="funding">💰 Funding</button>
+      </div>
+      <div class="legend-content active" id="ltab-lindiwe">
+        <div class="lindiwe-input"><input type="text" id="lindiweInput" placeholder="e.g. show M0 details"><button id="lindiweAskBtn">Ask</button></div>
+        <div class="quick-chips"><span data-query="show M0 test results">M0 tests</span><span data-query="HBK funding status">HBK funding</span><span data-query="list evidence sources">Sources</span></div>
+        <div id="lindiweResponse" style="font-size:6px;color:rgba(212,175,55,0.08);min-height:12px;"></div>
+      </div>
+      <div class="legend-content" id="ltab-cases">
+        <div class="lg-row"><span class="icon">⧗</span><span class="text">M0 State Machine</span><button>View</button></div>
+        <div class="lg-row"><span class="icon">⨁</span><span class="text">HBK Hydro‑Gateway</span><button>View</button></div>
+      </div>
+      <div class="legend-content" id="ltab-funding">
+        <div class="lg-row"><span class="icon">🏛️</span><span class="text">TIA GCIP‑SA (R100k‑500k)</span><button>Apply</button></div>
+        <div class="lg-row"><span class="icon">🌊</span><span class="text">WRC Grant (R120k/yr)</span><button>Apply</button></div>
+        <div class="lg-row"><span class="icon">💎</span><span class="text">Angel RSA</span><button>Connect</button></div>
+      </div>
+    </div>
+    <button class="legend-btn" id="legendToggle">⏣ LEGEND</button>
+  </div>
+
+  <script>
+    // ─── 1. SCREENSAVER ───
+    (function ss() {
+      const overlay = document.getElementById('screensaver');
+      const canvas = document.getElementById('ssCanvas');
+      const ctx = canvas.getContext('2d');
+      let w,h, motes=[], active=false, timer;
+
+      function resize() { w=canvas.width=window.innerWidth; h=canvas.height=window.innerHeight; }
+      resize(); window.addEventListener('resize', resize);
+
+      class Mote {
+        constructor() { this.reset(); }
+        reset() {
+          const a = Math.random()*Math.PI*2, maxD = Math.max(w,h)*0.6;
+          this.radius = Math.random()*maxD + 40;
+          this.x = w/2 + Math.cos(a)*this.radius;
+          this.y = h/2 + Math.sin(a)*this.radius;
+          this.angle = a;
+          this.speed = Math.random()*1.2 + 0.3;
+          this.size = Math.random()*1.2 + 0.3;
+          this.color = Math.random()<0.2 ? 'rgba(0,124,89,0.2)' : Math.random()<0.35 ? 'rgba(224,60,49,0.15)' : 'rgba(212,175,55,0.2)';
+        }
+        update() { this.radius -= this.speed*0.35; this.angle += 0.004; this.x = w/2 + Math.cos(this.angle)*this.radius; this.y = h/2 + Math.sin(this.angle)*this.radius; if(this.radius < 15) this.reset(); }
+        draw() { ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); }
+      }
+
+      function initMotes() { motes = []; for(let i=0; i<200; i++) motes.push(new Mote()); }
+      function render() { if(!active) return; ctx.fillStyle='rgba(2,2,5,0.06)'; ctx.fillRect(0,0,w,h); ctx.fillStyle='#000'; ctx.shadowBlur=30; ctx.shadowColor='rgba(212,175,55,0.06)'; ctx.beginPath(); ctx.arc(w/2,h/2,15,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; motes.forEach(m=>{m.update(); m.draw();}); requestAnimationFrame(render); }
+      function start() { active=true; overlay.classList.add('active'); initMotes(); render(); }
+      function stop() { active=false; overlay.classList.remove('active'); }
+      function resetTimer() { clearTimeout(timer); if(overlay.classList.contains('active')) stop(); timer = setTimeout(start, 10000); }
+      document.addEventListener('mousemove', resetTimer); document.addEventListener('keydown', resetTimer); document.addEventListener('click', resetTimer); document.addEventListener('touchstart', resetTimer);
+      overlay.addEventListener('click', resetTimer); overlay.addEventListener('touchstart', resetTimer);
+      resetTimer();
+    })();
+
+    // ─── 2. PARTICLES ───
+    (function particles() {
+      const canvas = document.getElementById('particle-canvas');
+      const ctx = canvas.getContext('2d');
+      let w,h, particles=[], mouse={x:-100,y:-100}, trail=[];
+      function resize() { w=canvas.width=window.innerWidth; h=canvas.height=window.innerHeight; }
+      resize(); window.addEventListener('resize', resize);
+      for (let i=0; i<40; i++) {
+        particles.push({
+          x:Math.random()*w, y:Math.random()*h,
+          vx:(Math.random()-0.5)*0.12, vy:(Math.random()-0.5)*0.12,
+          size:0.5+Math.random()*1.0, alpha:0.1+Math.random()*0.2,
+          pulse:Math.random()*Math.PI*2
+        });
+      }
+      document.addEventListener('mousemove', e => { mouse.x=e.clientX; mouse.y=e.clientY; trail.push({x:mouse.x,y:mouse.y,life:40}); if(trail.length>25) trail.shift(); });
+      function draw() {
+        ctx.clearRect(0,0,w,h);
+        ctx.fillStyle='rgba(212,175,55,0.015)';
+        trail.forEach((p,i) => {
+          ctx.globalAlpha = (p.life/40)*0.2;
+          ctx.beginPath(); ctx.arc(p.x,p.y,1+(1-p.life/40)*2,0,Math.PI*2); ctx.fill(); p.life--;
+        }); trail = trail.filter(p=>p.life>0); ctx.globalAlpha=1;
+        particles.forEach(p => {
+          p.x += p.vx + (mouse.x-p.x)*0.0001; p.y += p.vy + (mouse.y-p.y)*0.0001;
+          p.pulse += 0.008; if(p.x<-10) p.x=w+10; if(p.x>w+10) p.x=-10; if(p.y<-10) p.y=h+10; if(p.y>h+10) p.y=-10;
+          ctx.fillStyle = `rgba(212,175,55,${p.alpha*(0.6+0.4*Math.sin(p.pulse))})`;
+          ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+        });
+        ctx.strokeStyle='rgba(212,175,55,0.004)'; ctx.lineWidth=0.5;
+        for(let i=0; i<particles.length; i++) for(let j=i+1; j<particles.length; j++) {
+          let dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+          if(dx*dx+dy*dy < 5000) { ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y); ctx.lineTo(particles[j].x,particles[j].y); ctx.stroke(); }
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+      function updateClock() {
+        const now = new Date(new Date().toLocaleString('en-US', {timeZone:'Africa/Johannesburg'}));
+        document.getElementById('joburgClock').textContent = `JHB · ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+      }
+      setInterval(updateClock, 1000); updateClock();
+    })();
+
+    // ─── 3. NAV + MORPH ───
+    const navTabs = document.querySelectorAll('#navTabs button');
+    const viewPanels = document.querySelectorAll('.view-panel');
+    const locTracker = document.getElementById('currentViewText');
+
+    function switchView(viewId) {
+      let current = null;
+      viewPanels.forEach(p => { if(p.classList.contains('active')) current = p; });
+      if(current) current.classList.remove('active');
+      navTabs.forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
+      const target = document.getElementById('view-' + viewId);
+      target.classList.add('active');
+      locTracker.textContent = viewId.toUpperCase();
+      // toggle sidebar
+      document.getElementById('studiSidebar').classList.toggle('active', viewId === 'studi');
+      document.getElementById('iveSidebar').classList.toggle('active', viewId === 'ive');
+      document.dispatchEvent(new Event('mousemove')); // reset screensaver
+    }
+    navTabs.forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+
+    // ─── 4. CONSOLE ───
+    const consoleOutput = document.getElementById('consoleOutput');
+    const consoleInput = document.getElementById('consoleInput');
+    const consoleSendBtn = document.getElementById('consoleSendBtn');
+    function consoleLog(text) { const line = document.createElement('div'); line.className = 'line'; line.textContent = text; consoleOutput.appendChild(line); consoleOutput.scrollTop = consoleOutput.scrollHeight; }
+    function handleCommand(cmd) {
+      const lower = cmd.toLowerCase().trim();
+      consoleLog(`⏣ ${cmd}`);
+      if(lower === 'help') consoleLog('status, cases, sources, clear, champagne, springbok, review');
+      else if(lower === 'status') consoleLog('⏣ 8‑view dashboard — M0 (VERIFIED), HBK (PENDING)');
+      else if(lower === 'cases') consoleLog('📋 2 case studies: M0 State Machine, HBK MK-II Hydro-Gateway');
+      else if(lower === 'sources') consoleLog('📂 7 evidence sources loaded');
+      else if(lower === 'clear') consoleOutput.innerHTML = '';
+      else if(lower === 'champagne') consoleLog('🥂 Clean architecture, open science, and zero bullshit.');
+      else if(lower === 'springbok') consoleLog('🇿🇦 Springbok energy: moving forward with integrity.');
+      else if(lower === 'review') consoleLog('📢 Pre‑inception drafts — academic input welcome: research@vvu.io');
+      else consoleLog(`⏣ Unknown: ${cmd}`);
+    }
+    consoleSendBtn.addEventListener('click', () => { const cmd = consoleInput.value.trim(); if(cmd) { handleCommand(cmd); consoleInput.value = ''; } });
+    consoleInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') { const cmd = consoleInput.value.trim(); if(cmd) { handleCommand(cmd); consoleInput.value = ''; } } });
+
+    // ─── 5. STUDI RENDER ───
+    const studiMain = document.getElementById('studiMain');
+    const caseData = {
+      m0: { title: 'M0 State Machine', tag: 'Epistemic Invariant', desc: 'Finite state machine enforcing module0Complete ⇔ VERIFIED. 14/14 tests pass. Accessibility 3/3.', status: 'VERIFIED', statusClass: '', sources: ['M0 Zustand Store · 14 tests', 'Verification Events · SHA-256', 'Playwright Accessibility · 3/3'] },
+      hbk: { title: 'HBK MK-II Hydro-Gateway', tag: 'Deterministic Evidence Runtime', desc: '99.98% accuracy on synthetic data. MMR + Ed25519 + Arbitrum Sepolia. Funding: ZAR 305,500.', status: 'PENDING', statusClass: 'pending', sources: ['Validation Report · 72-hr · 90.0 index', 'Bayesian Filter Logs · Chi-square', 'MMR Hash Chain · Arbitrum Sepolia', 'Funding Breakdown · TIA · WRC · Angel RSA'] }
+    };
+    const allSources = [...caseData.m0.sources.map(s => ({name:s, case:'M0'})), ...caseData.hbk.sources.map(s => ({name:s, case:'HBK'}))];
+
+    function renderStudi() {
+      studiMain.innerHTML = `
+        <div class="review-banner"><span class="icon">📢</span><div><span class="title">OPEN FOR ACADEMIC REVIEW – PRE‑INCEPTION DRAFTS</span><span class="sub"> <a href="mailto:research@vvu.io?subject=Academic Review: VVU Case Studies">📧 Send review notes</a></span></div></div>
+        <div class="case-grid">
+          ${Object.entries(caseData).map(([k,c]) => `
+            <div class="case-card card-ghost">
+              <div class="case-tag review">📝 Under Review – Feedback Welcome</div>
+              <div class="case-title">${c.title}</div>
+              <div class="case-desc">${c.desc}</div>
+              <div class="case-meta"><span class="case-status ${c.statusClass}">● ${c.status}</span><span>${c.sources.length} sources</span></div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="sources-section card-ghost">
+          <div class="sources-header"><label>⏣ Evidence Sources</label><span class="count">${allSources.length}</span></div>
+          <div class="sources-grid">${allSources.map(s => `<div class="source-item card-ghost"><div class="sname">${s.name}</div><div class="smeta"><span>${s.case}</span><span class="status">●</span></div></div>`).join('')}</div>
+        </div>
+        <div style="font-size:5px;color:rgba(255,255,255,0.04);text-align:center;border-top:1px solid rgba(255,255,255,0.01);padding-top:4px;">Pre‑inception drafts. Academic review welcomed. <a href="mailto:research@vvu.io" style="color:rgba(212,175,55,0.08);">research@vvu.io</a></div>
+      `;
+    }
+    renderStudi();
+
+    // ─── 6. IVE RENDER ───
+    function renderIve() {
+      const iveMain = document.getElementById('iveMain');
+      iveMain.innerHTML = `
+        <div class="view-title">⧫ IVE · EPISTEMIC CORE</div>
+        <div class="ive-stats">
+          <div class="ive-stat"><span class="label">Trust Sphere</span><span class="value">95%</span><span class="sub">verified</span></div>
+          <div class="ive-stat"><span class="label">Claims</span><span class="value">12</span><span class="sub">processed</span></div>
+          <div class="ive-stat"><span class="label">Evidence Runtime</span><span class="value">7</span><span class="sub">bundles</span></div>
+          <div class="ive-stat"><span class="label">Release Report</span><span class="value">✓</span><span class="sub">ready</span></div>
+        </div>
+        <div class="trust-bar"><div class="header"><span>Integrity Closure</span><span>98%</span></div><div class="track"><div class="fill" style="width:98%;"></div></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;flex-shrink:0;">
+          <div style="background:rgba(18,18,30,0.1);border-radius:3px;padding:4px;font-size:6px;color:rgba(255,255,255,0.06);">Adapter Attribution: 3/3 pass</div>
+          <div style="background:rgba(18,18,30,0.1);border-radius:3px;padding:4px;font-size:6px;color:rgba(255,255,255,0.06);">Acceptance: PENDING</div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:6px;color:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.02);border-radius:3px;">RUNTIME: Plugin Registry · AMD · Zoo — all idle</div>
+      `;
+    }
+    renderIve();
+
+    // ─── 7. STOKVEL ───
+    const STOKVEL_KEY = 'vvu_stokvel_final';
+    function defaultStokvel() { return { name:'VVU Research Fund', balance:0, members:['VVU Core Team','Academic Partners'], contributions:[{member:'VVU Core Team',amount:150,time:Date.now()-3600000},{member:'Academic Partners',amount:75,time:Date.now()-7200000}] }; }
+    function loadStokvel() { try { const raw = localStorage.getItem(STOKVEL_KEY); if(raw) { const d = JSON.parse(raw); if(!d.members) d.members=['VVU Core Team','Academic Partners']; if(!d.contributions) d.contributions=[]; if(d.balance===undefined) d.balance=0; return d; } } catch(e){} const def = defaultStokvel(); localStorage.setItem(STOKVEL_KEY, JSON.stringify(def)); return def; }
+    function saveStokvel(s) { localStorage.setItem(STOKVEL_KEY, JSON.stringify(s)); }
+    let stokvel = loadStokvel();
+
+    function updateStokvelUI() {
+      document.getElementById('stokvelBalanceDisplay').innerHTML = `R ${stokvel.balance.toFixed(2)} <small>→ research</small>`;
+      document.getElementById('memberCount').textContent = stokvel.members.length;
+      document.getElementById('stokvelMemberList').innerHTML = `Members: <span id="memberCount">${stokvel.members.length}</span> — ${stokvel.members.join(', ')}`;
+      const logEl = document.getElementById('stokvelLog');
+      logEl.innerHTML = '<div style="color:rgba(255,255,255,0.02);">Recent contributions:</div>';
+      const sorted = [...stokvel.contributions].sort((a,b)=>b.time-a.time).slice(0,6);
+      sorted.forEach(c => { const d = new Date(c.time); const entry = document.createElement('div'); entry.className = 'entry'; entry.innerHTML = `<span class="member">${c.member}</span><span class="amount">+ R ${c.amount.toFixed(2)}</span><span style="color:rgba(255,255,255,0.02);">${d.toLocaleTimeString()}</span>`; logEl.appendChild(entry); });
+    }
+    function contribute(amount, member='Guest') { if(isNaN(amount)||amount<=0) return false; if(!stokvel.members.includes(member)) stokvel.members.push(member); stokvel.balance += amount; stokvel.contributions.push({member,amount,time:Date.now()}); saveStokvel(stokvel); updateStokvelUI(); return true; }
+    function joinStokvel(member='Guest') { if(!stokvel.members.includes(member)) { stokvel.members.push(member); saveStokvel(stokvel); updateStokvelUI(); return true; } return false; }
+
+    document.getElementById('contributeBtn').addEventListener('click', ()=>{
+      const val = parseFloat(document.getElementById('contributeAmount').value);
+      if(isNaN(val)||val<=0) return alert('Enter valid amount.');
+      const name = prompt('Your name:','Guest')||'Guest';
+      if(contribute(val,name)) { document.getElementById('contributeAmount').value=''; consoleLog(`💰 ${name} contributed R ${val.toFixed(2)}`); }
+    });
+    document.getElementById('joinStokvelBtn').addEventListener('click', ()=>{
+      const name = prompt('Your name to join:','Guest')||'Guest';
+      if(joinStokvel(name)) consoleLog(`👋 ${name} joined the VVU Research Stokvel.`);
+    });
+    updateStokvelUI();
+
+    // ─── 8. EIS ───
+    const freqSlider = document.getElementById('freqSlider');
+    const ampSlider = document.getElementById('ampSlider');
+    const phaseSlider = document.getElementById('phaseSlider');
+    const tempSlider = document.getElementById('tempSlider');
+    function updateEIS() {
+      const f = parseFloat(freqSlider.value);
+      const a = parseFloat(ampSlider.value)/100;
+      const p = parseFloat(phaseSlider.value);
+      const t = parseFloat(tempSlider.value);
+      document.getElementById('freqVal').textContent = f+' Hz';
+      document.getElementById('ampVal').textContent = a.toFixed(2)+' V';
+      document.getElementById('phaseVal').textContent = p+'°';
+      document.getElementById('tempVal').textContent = t+'°C';
+      const R = 47.2 + (f/1000)*5.2;
+      const X = 23.8 + (f/1000)*8.1 + p*0.2;
+      const Z = Math.sqrt(R*R+X*X);
+      const theta = Math.atan2(X,R)*180/Math.PI;
+      document.getElementById('calcR').textContent = R.toFixed(1);
+      document.getElementById('calcX').textContent = X.toFixed(1);
+      document.getElementById('calcZ').textContent = Z.toFixed(1);
+      document.getElementById('calcTheta').textContent = theta.toFixed(1);
+    }
+    [freqSlider, ampSlider, phaseSlider, tempSlider].forEach(el => el.addEventListener('input', updateEIS));
+    updateEIS();
+
+    document.getElementById('stressBtn').addEventListener('click', function() {
+      this.classList.toggle('active');
+      this.textContent = this.classList.contains('active') ? '■ STOP STRESS' : '⚡ START STRESS';
+      consoleLog(`⏣ EIS stress ${this.classList.contains('active')?'started':'stopped'}`);
+    });
+
+    // ─── 9. AUDIO ───
+    let audioCtx, audioOsc, audioPlaying = false;
+    document.getElementById('audioPlay').addEventListener('click', ()=>{
+      if(audioPlaying) { if(audioOsc) audioOsc.stop(); audioPlaying=false; document.getElementById('audioStatus').textContent='● stopped'; return; }
+      if(!audioCtx) audioCtx = new AudioContext();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type='sine'; osc.frequency.value=440+Math.random()*100;
+      gain.gain.value=0.1;
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); audioOsc=osc; audioPlaying=true; document.getElementById('audioStatus').textContent='● playing';
+    });
+    document.getElementById('audioStop').addEventListener('click', ()=>{ if(audioOsc) audioOsc.stop(); audioPlaying=false; document.getElementById('audioStatus').textContent='● stopped'; });
+
+    // ─── 10. ANALYTICS (mock) ───
+    let events = [];
+    function addEvent(type) { events.push({type, time: Date.now() }); document.getElementById('totalEvents').textContent = events.length; document.getElementById('viewCount').textContent = new Set(events.map(e=>e.type)).size; const success = events.filter(e=>e.type!=='error').length; document.getElementById('successRate').textContent = events.length ? Math.round(success/events.length*100)+'%' : '0%'; updateChart(); updateEvents(); }
+    function updateChart() {
+      const chart = document.getElementById('chart');
+      const counts = events.reduce((acc,e)=>{acc[e.type]=(acc[e.type]||0)+1; return acc;}, {});
+      const keys = Object.keys(counts);
+      chart.innerHTML = keys.length ? keys.map(k => `<div class="bar" style="height:${Math.min(counts[k]*10, 100)}%;"></div>`).join('') : '<div style="font-size:6px;color:rgba(255,255,255,0.04);">No data</div>';
+    }
+    function updateEvents() {
+      const el = document.getElementById('analyticsEvents');
+      el.innerHTML = events.slice(-10).reverse().map(e => `<div class="ev"><span>${new Date(e.time).toLocaleTimeString()}</span><span>${e.type}</span></div>`).join('');
+    }
+    // seed events
+    ['view_switch','command','view_switch','social_post','command','view_switch'].forEach(t => addEvent(t));
+    // session timer
+    let start = Date.now();
+    setInterval(()=>{
+      const elapsed = Math.floor((Date.now()-start)/1000);
+      const mins = String(Math.floor(elapsed/60)).padStart(2,'0');
+      const secs = String(elapsed%60).padStart(2,'0');
+      document.getElementById('sessionTime').textContent = `${mins}:${secs}`;
+    }, 1000);
+
+    // ─── 11. LEGEND + LINDIWE ───
+    document.getElementById('legendToggle').addEventListener('click', ()=>document.getElementById('legendPanel').classList.toggle('open'));
+    document.querySelectorAll('#legendTabs button').forEach(btn => {
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('#legendTabs button').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.legend-content').forEach(c=>c.classList.remove('active'));
+        document.getElementById('ltab-'+btn.dataset.ltab).classList.add('active');
+      });
+    });
+    document.getElementById('lindiweAskBtn').addEventListener('click', ()=>{
+      const input = document.getElementById('lindiweInput');
+      const query = input.value.trim();
+      if(!query) return;
+      const resp = document.getElementById('lindiweResponse');
+      resp.textContent = '🧠 Lindiwe is researching...';
+      setTimeout(()=>{
+        const lower = query.toLowerCase();
+        let reply = '';
+        if(lower.includes('m0')) reply = '📊 M0: 14/14 tests pass. module0Complete ⇔ VERIFIED.';
+        else if(lower.includes('hbk')) reply = '💰 HBK MK-II: ZAR 305,500 required. TIA, WRC, Angel RSA.';
+        else if(lower.includes('source')||lower.includes('evidence')) reply = '📂 7 evidence sources: M0 store, verification events, HBK validation, Bayesian logs, MMR chain, funding.';
+        else if(lower.includes('stokvel')) reply = `💰 VVU Research Fund balance: R ${stokvel.balance.toFixed(2)}, members: ${stokvel.members.length}.`;
+        else reply = '🔍 I found: M0 (VERIFIED), HBK (PENDING). Ask about tests, funding, sources, stokvel, or review.';
+        resp.textContent = '🧠 '+reply;
+        consoleLog(`🧠 Lindiwe: ${reply}`);
+        addEvent('lindiwe_query');
+      }, 400);
+      input.value = '';
+    });
+    document.querySelectorAll('.quick-chips span[data-query]').forEach(chip => {
+      chip.addEventListener('click', ()=>{
+        document.getElementById('lindiweInput').value = chip.dataset.query;
+        document.getElementById('lindiweAskBtn').click();
+      });
+    });
+
+    // ─── 12. GHOST INJECT ───
+    function injectGhost() {
+      document.querySelectorAll('.card-ghost').forEach(el => {
+        if(!el.querySelector('.ghost-scanner')) { const s = document.createElement('div'); s.className = 'ghost-scanner'; el.appendChild(s); }
+        if(!el.querySelector('.quantum-pixel')) { const p = document.createElement('div'); p.className = 'quantum-pixel'; el.appendChild(p); }
+        if(!el.querySelector('.ghost-hash')) { const h = document.createElement('div'); h.className = 'ghost-hash'; h.textContent = Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0'); el.appendChild(h); }
+      });
+    }
+    injectGhost();
+    setInterval(()=>{ document.querySelectorAll('.ghost-hash').forEach(el=>{ el.textContent = Math.floor(Math.random()*0xFFFFFF).toString(16).padStart(6,'0'); }); }, 3000);
+
+    // ─── 13. INIT ───
+    consoleLog('⏣ 8‑view dashboard ready');
+    consoleLog('📋 M0 + HBK case studies loaded');
+    consoleLog('📧 Send feedback to research@vvu.io');
+    consoleLog('Type "help" for commands.');
+  </script>
+</body>
+</html>
