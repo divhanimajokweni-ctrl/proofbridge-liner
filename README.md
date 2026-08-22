@@ -1,357 +1,310 @@
-# 🌉 ProofBridge Liner
+# VVU — Venture Vision Ubuntu
 
-<!-- badges:start -->
-![Next.js](https://img.shields.io/badge/Next.js-16.1.3-black?logo=next.js)
-![React](https://img.shields.io/badge/React-19-61dafb?logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript)
-![Prisma](https://img.shields.io/badge/Prisma-6.19.2-2d3748?logo=prisma)
-![Clerk](https://img.shields.io/badge/Clerk-Auth-green?logo=clerk)
-![License](https://img.shields.io/badge/License-AGPL--3.0-orange)
-![Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?logo=vercel)
-<!-- badges:end -->
-
-**An Integrated Verification Environment (IVE) — Engineering Systems That Prove Themselves**
-
-🏆 **AMD AI DevMaster Hackathon 2026 — Track 3: Physical AI** 🏆
-
----
-
-## 📸 Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    PROOFBRIDGE LINER — IVE                      │
-│                                                                 │
-│  Physical Design Intent                                         │
-│       ↓                                                         │
-│  Agent Planning ────── Zoo Agent API (Zookeeper)               │
-│       ↓                                                         │
-│  CAD Generation ────── Zoo Engine API                          │
-│       ↓                                                         │
-│  Formal Specification  (constraints for physical behaviour)     │
-│       ↓                                                         │
-│  Proof Evaluation ──── SMT-based verification                  │
-│       ↓                                                         │
-│  Trust Decision ────── release BLOCKED / APPROVED              │
-│       ↓                                                         │
-│  Cryptographic Evidence ── Zoo File Format API (STEP export)   │
-│       ↓                                                         │
-│  Evidence Ledger ────── SHA-256 checksummed audit trail        │
-└─────────────────────────────────────────────────────────────────┘
-
-Case Study: HBK MK-II Hydro-Gateway
-— proving the pipeline on a real physical engineering asset
-```
+> **The Constitutional Invariant (machine-checkable):**
+>
+> *Governance can decide what VVU should do; governance cannot decide that an invalid proof is valid.*
+>
+> Concretely, no governance decision — shareholder vote, CEO directive, board resolution, tribunal order — may produce the state:
+>
+> ```
+> vote          = PASS
+> proof         = FAIL
+> authorization = EXECUTE
+> ```
+>
+> The system rejects that state regardless of who voted for it. This is **Article I §1.3 (Three Constitutional Immunities)** of the VVU Governance Charter v1.0 and is enforced at the machine level, not as a guideline.
 
 ---
 
-## 🚀 Quick Start
+## What VVU is
+
+VVU (Venture Vision Ubuntu) is a constitutionally governed, epistemically secure production system for verifying engineering truth and executing commercial operations. It is **not** an application in the conventional sense — it is an integration of governance, epistemic verification, execution, and immutable proof. The system separates five governance branches (which govern people and institutions) from the Epistemic Core (which governs claims and evidence), and enforces a two-gate execution rule: an action may execute only when both the epistemic gate (the claim is verified) and the constitutional gate (the action is authorized) have independently passed. Neither gate may impersonate the other.
+
+This repository contains the production release: the Next.js 16 web platform, the Solidity sovereign registry contract (deployed dormant and activated only after verified git-sync), the deployment tooling for dual-network testnet anchoring, the auto-deploy watcher that closes the hands-free loop, the GPU pipeline activation workflow, and the constitutional / architectural / deployment documentation that ties it all together.
+
+---
+
+## Governance Stack
+
+```
+                         VVU CONSTITUTION
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+          SOVEREIGN         GOVERNANCE       EPISTEMIC
+          AUTHORITY          BRANCHES           CORE
+              │                │                │
+       Shareholders      Council / CEO /      IVE / EIS /
+                         Board / Tribunal     ProofBridge
+              │                │                │
+              └────────────────┼────────────────┘
+                               │
+                         ACCESS CONTROL
+                               │
+                         SAFEGRID / RBAC
+                               │
+                       EXECUTION / LEDGER
+                               │
+                         IMMUTABLE PROOF
+```
+
+The five governance branches govern **people and institutions**. The Epistemic Core governs **claims and evidence** — it is not a sixth branch; it is a different category of institution. The Charter, in full, lives at [`VVU-GOVERNANCE-CHARTER.md`](./VVU-GOVERNANCE-CHARTER.md) (committed as the constitutional baseline). Every other artifact in this repository is downstream of that document.
+
+---
+
+## Repository map
+
+| Path | Role |
+| --- | --- |
+| `VVU-GOVERNANCE-CHARTER.md` | Constitutional baseline — the supreme rulebook |
+| `VVU-ARCHITECTURE.md` | Six-layer architecture (L0 math → L5 governance) |
+| `VVU-LAYER-MAP.md` | Evidence-discipline overlay — every concept tagged ✅ Deployed / ◇ Metaphor / 🔬 Research |
+| `VVU-SESSION-PROTOCOL.md` | Standing operating principle for every runner session |
+| `contracts/VVUSovereignRegistry.sol` | Sovereign registry — dormant-deploy pattern, dual-network anchoring |
+| `contracts/VVUIVELedger.sol` | IVE ledger contract |
+| `test/VVUSovereignRegistry.test.ts` | 22/22 passing sovereign registry test suite |
+| `scripts/hardhat/deploy-all.ts` | Dual-network dormant deployment (Arbitrum Sepolia + Polygon Amoy) |
+| `scripts/auto-deploy-watcher.ts` | Hands-free loop: file change → compile → test → build → GitHub `repository_dispatch` |
+| `scripts/hostafrica/setup-dns.py` | Idempotent DNS A-record setup for `venturevisionubuntu.co.za` |
+| `.github/workflows/gpu-pipeline-activation.yml` | GPU smoke → Hardhat → Playwright → benchmark → `activate()` → Vercel prod → DNS check |
+| `Caddyfile` | Production reverse proxy + automatic Let's Encrypt TLS |
+| `deploy.sh` | Operator deploy script |
+| `download/DEPLOYMENT-ARTIFACT-2026-08-18T1557Z.{md,json}` | Canonical deployment artifact (build provenance, source provenance, contract bytecode provenance) |
+| `download/SESSION-BLOCKER-2026-08-18T-DNS.md` | Verified blocker: DNS token retrieval path |
+| `worklog.md` | Shared multi-agent worklog (Task IDs 1–11) |
+
+---
+
+## Current deployment state
+
+| Layer | State |
+| --- | --- |
+| Next.js production build | **LIVE** on `0.0.0.0:3000` (pid detached via `setsid`) |
+| BUILD_ID | `JTrqZ5EFko2KFojKSK8Z5` (sha256 `6b9a3bea…`) |
+| Source commit at build | `ba3d083dc801ba948401a559ca5b5d32597de4c3` |
+| Current HEAD | `db308fed11577887e7a164de218b843706a151a7` (docs/scripts only — no source regression) |
+| Sovereign contract source | Prepared at `contracts/VVUSovereignRegistry.sol` |
+| Sovereign contract bytecode | Compiled artifact sha256 `f0252bc2…` — dormant pattern verified present in bytecode |
+| Dual-network deployment tooling | Prepared — `scripts/hardhat/deploy-all.ts` |
+| AMD activation workflow | Prepared — `.github/workflows/gpu-pipeline-activation.yml` |
+| Git-sync watcher | Prepared — `scripts/auto-deploy-watcher.ts` |
+| Custom domain | **Pending** — DNS A/AAAA for `venturevisionubuntu.co.za` → `47.57.232.232` |
+| Wallet contract deployment | **Pending** — operator transaction from Remix/MetaMask |
+| AMD MI300x self-hosted runner | **Pending** — operator infrastructure |
+| HostAfrica DNS API token | **Pending** — not retrievable from Vercel by the runner; see `download/SESSION-BLOCKER-2026-08-18T-DNS.md` |
+
+---
+
+## VVU lifecycle
+
+The lifecycle preserves the distinction between **getting infrastructure deployed** and **allowing verified changes to become authoritative**. Deployment and activation are distinct stages in the bytecode — the contract ships with `paused = true` and is activated only when the AMD/EIS pipeline calls `activate(bytes32 gitCommitHash)` after a verified git-sync.
+
+```
+SOURCE
+  │
+  ▼
+BUILD
+  │
+  ▼
+WEB DEPLOYMENT ───────────────► LIVE              ← we are here (preview + :3000)
+  │
+  ▼
+CONTRACT DEPLOYMENT ──────────► ON-CHAIN           ← pending operator transaction
+  │
+  ▼
+VERIFY DEPLOYMENT
+  │
+  ▼
+REGISTER ADDRESSES
+  │
+  ▼
+AMD / EIS / TEST PIPELINE                          ← pending self-hosted runner
+  │
+  ▼
+ACTIVATION / GOVERNANCE                            ← triggered by AMD pipeline
+  │
+  ▼
+CONTINUOUS GIT-SYNC                                 ← launched by `bun run watch:dev-sync`
+```
+
+---
+
+## Quick start (local)
 
 ```bash
-git clone https://github.com/divhanimajokweni-ctrl/proofbridge-liner.git
-cd proofbridge-liner
-npm install
-cp .env.example .env   # add your Zoo API key
-npm run dev
+# Install
+bun install
+
+# Database (Prisma + SQLite local)
+bun run db:push
+
+# Development server (with HMR, port 3000)
+bun run dev
+
+# Production build + standalone server
+bun run build
+PORT=3000 HOSTNAME=0.0.0.0 NODE_ENV=production \
+  setsid -f bun .next/standalone/server.js > server.log 2>&1 < /dev/null
+
+# Sovereign contract test suite
+bun run hardhat:test          # uses tsconfig.hardhat.json for ESM/CJS interop
+
+# Auto-deploy watcher (DRY_RUN for local validation)
+bun run watch:dev-sync:dry
 ```
 
-Open **http://localhost:3000** to launch the IVE.
-
-### Prerequisites
-
-| Dependency | Version | Notes |
-|------------|---------|-------|
-| **Node.js** | 22+ | Required by Next.js |
-| **npm** | 9+ | Package manager |
-| **Zoo API Key** | — | Get one at [zoo.dev](https://zoo.dev) |
-
-### Environment Variables
-
-Copy `.env.example` to `.env` and fill in:
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | Yes | SQLite path (dev) or PostgreSQL URL (prod) |
-| `ZOO_API_TOKEN` | Yes | Zoo Engine + Agent API token |
-| `NEXT_PUBLIC_SUPABASE_URL` | No | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | No | Supabase service role key |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | No | Clerk auth key |
+The dev server runs on `http://localhost:3000`. The production standalone server is what is currently running detached on this box — same build, same `BUILD_ID`, no HMR.
 
 ---
 
-## 🎬 Demo Video
+## Production deployment path (operator pending)
 
-⏱️ **1-Minute Demo** — Agent-driven engineering workflow for physical systems
+The web platform is already built and running locally. To bring `https://venturevisionubuntu.co.za/` live, the operator completes four steps in order:
 
-> The demo video is attached to this README via GitHub's file attachment feature. It demonstrates the complete IVE boot sequence, agent-driven specification generation, CAD rendering of the HBK MK-II Hydro-Gateway, proof evaluation, and trust decision flow.
+1. **DNS A record** — `venturevisionubuntu.co.za` → `47.57.232.232`
+   - Either via the HostAfrica web panel, OR
+   - Via `scripts/hostafrica/setup-dns.py` (requires `HOSTAFRICA_DNS_API_TOKEN`; see `download/SESSION-BLOCKER-2026-08-18T-DNS.md` for the three unblock options)
 
+2. **Caddy reverse proxy + TLS**
+   ```bash
+   caddy run --config Caddyfile
+   ```
+   The `Caddyfile` already targets `:3000` as upstream and provisions Let's Encrypt automatically once DNS resolves.
+
+3. **Process persistence** — wrap `bun .next/standalone/server.js` and `caddy run` in `systemd` units or `pm2` so they survive reboot.
+
+4. **Sovereign contract deployment** (separate stage, do not conflate with web deployment) — from Remix/MetaMask, deploy `VVUSovereignRegistry` dormant to Arbitrum Sepolia + Polygon Amoy. Record the deployed addresses in `artifacts/sovereign-arbitrum-sepolia.txt` and `artifacts/sovereign-polygon-amoy.txt`. The contract is now ON-CHAIN but not yet LIVE.
+
+5. **Activation pipeline** — once DNS is live and contracts are deployed, register the AMD MI300x self-hosted runner and launch `bun run watch:dev-sync`. From that point, every verified git-sync triggers the GPU pipeline, which calls `activate(bytes32 gitCommitHash)` on both networks and the contracts transition from dormant to live.
 
 ---
 
-## 🔥 The Problem
+## Constitutional articles → enforcement matrix (next artifact)
 
-Modern physical engineering is broken. Design and verification live in disconnected worlds. Engineers spend weeks building CAD models for physical assets (dams, robots, vehicles), only to hand them off for months of manual verification. There is no cryptographically traceable, mathematically bounded proof tied directly to the living CAD model — and no autonomous agent that continuously re-evaluates physical trust as designs evolve.
+The Charter is the constitutional layer above the technical architecture. The next engineering artifact is the **Charter-to-System Control Matrix** — a table mapping every article to:
 
-In safety-critical physical systems — hydro-gateways, robotics, autonomous vehicles — this gap between design and proof is not just inefficient, it is dangerous. A changed parameter (hole spacing, material thickness, pressure rating) can invalidate a previously verified design, and without continuous re-verification, that invalidation goes undetected until catastrophic failure.
+- its enforcement mechanism (contract modifier / M0 doctrine-lint / RBAC check / Tribunal ruling)
+- the responsible branch
+- the immutable constraint
+- the event/audit record
+- the failure mode
 
-The economic cost is equally severe: each verification cycle for a physical asset costs weeks of engineer time and thousands of dollars. For the HBK MK-II Hydro-Gateway alone, a single verification round consumes 2–3 weeks of specialist time. When designs iterate rapidly, this verification debt accumulates to months of delay and millions in cost.
+The matrix will live at `VVU-CHARTER-CONTROL-MATRIX.md` when authored. It is the bridge from the constitutional document to an actually enforceable VVU system. The smart contracts encode only the deterministic subset (identity, authority, permissions, quorum, timelocks, voting, proposal state, treasury constraints, contract ownership, activation state, evidence hashes, commit hashes, audit events, emergency controls). The deeper epistemic rules remain in ProofBridge, EIS, AIR, M0 doctrine-lint, cryptographic verification, and independent evidence.
+
+The chain can prove:
+
+> *"This authorized state transition occurred and corresponds to this evidence commitment."*
+
+It cannot, by itself, prove:
+
+> *"The underlying engineering proposition is scientifically true."*
+
+That distinction is explicit throughout VVU documentation and operations.
 
 ---
 
-## 💡 Our Solution
-
-ProofBridge Liner is an **Integrated Verification Environment (IVE)** that houses an autonomous engineering agent specifically for physical AI systems. This agent translates high-level design intent (e.g., "hydro-gateway with M12 mounting holes and pressure-rated seals") into formal verification artifacts and automatically reassesses engineering trust after every design change — **without human intervention**.
-
-The IVE demonstrates an agent-driven physical-AI workflow:
+## The constitutional execution rule
 
 ```
-Physical Design Intent
-  ↓
-Agent Planning (Zoo Agent API)
-  ↓
-CAD Generation (Zoo Engine API)
-  ↓
-Formal Specification (constraints for physical behaviour)
-  ↓
-Proof Evaluation (SMT-based verification of physical properties)
-  ↓
-Trust Decision (release blocked/approved for physical deployment)
-  ↓
-Evidence Archive (Zoo File Format API → STEP export + SHA-256 manifest)
+              CLAIM
+                │
+                ▼
+        ┌───────────────┐
+        │   EPISTEMIC   │
+        │   VERIFICATION│
+        └───────┬───────┘
+                │
+          ┌─────┴─────┐
+          │           │
+         FAIL        PASS
+          │           │
+          ▼           ▼
+        BLOCK      AUTHORITY
+                      │
+                      ▼
+                 GOVERNANCE
+                  DECISION
+                      │
+                ┌─────┴─────┐
+                │           │
+               DENY       AUTHORIZE
+                │           │
+                ▼           ▼
+              BLOCK       EXECUTE
+                            │
+                            ▼
+                      PROOF / RECEIPT
 ```
 
-**Case Study: HBK MK-II Hydro-Gateway** — proving the pipeline on a real physical engineering asset. The Hydro-Gateway is a pressure-rated fluid control assembly used in municipal water infrastructure. It requires precise mounting (M12 bolts), pressure certification (10 bar), and material traceability — making it an ideal demonstration of physical AI verification.
+Two independent, non-fungible gates:
+
+- **Gate 1 — Epistemic:** *"Is the claim adequately verified?"* — determined by IVE / ProofBridge
+- **Gate 2 — Constitutional:** *"Is the proposed action authorized?"* — determined by governance branches
+
+M0 doctrine-lint is the constitutional sentinel that detects category errors between truth, authority, policy, evidence, and execution. It rejects statements such as *"Shareholders approved it, therefore it is true"* (FAIL — category error) and *"IVE verified the claim, therefore management may execute it"* (INCOMPLETE — authorization still required).
 
 ---
 
-## 🛠️ How We Used the Zoo APIs
+## Session protocol
 
-| API | Use (implemented) |
-|-----|-------------------|
-| **Zoo Agent API** (Zookeeper) | Natural language → formal verification constraints for physical systems. The agent interprets physical design intent and generates verifiable specifications. |
-| **Zoo Engine API** | Procedural CAD generation and real-time visualisation of the HBK MK-II geometry — the digital twin of a physical asset. |
-| **Zoo File Format API** | Export generated geometry as STEP files for cryptographic archival and audit trail — essential for physical asset traceability. |
+Every VVU runner session closes with evidence of progress. A deployment session closes with a deployment artifact. A blocked session closes with a verified blocker and everything that was successfully completed before it. See [`VVU-SESSION-PROTOCOL.md`](./VVU-SESSION-PROTOCOL.md) §7.1 for the operating rule, and `worklog.md` (Task IDs 1–11) for the running record.
 
-### AMD & ROCm (roadmap)
-
-The environment is pre-configured to leverage **AMD Radeon GPUs via ROCm** for future acceleration of SMT solving and proof re-evaluation — particularly relevant for physical simulation and control. During development, all verification was performed on CPU; GPU optimisation is planned as a post-hackathon enhancement targeting the following acceleration opportunities:
-
-- **SMT solver parallelisation** — distribute proof obligations across GPU stream processors
-- **Bayesian inference acceleration** — GPU-accelerated chi-square gating for sensor fusion
-- **Monte Carlo physical simulation** — GPU-native sampling for stochastic verification of physical constraints
+The current session's resume point is `download/DEPLOYMENT-ARTIFACT-2026-08-18T1557Z.md` (deployment state) and `download/SESSION-BLOCKER-2026-08-18T-DNS.md` (DNS blocker). The next session opens these two files before doing anything else.
 
 ---
 
-## 🧠 Why It's Different (Physical AI Focus)
+## Current validation state
 
-### 1. Autonomous Physical Specification Agent
+The repository is validated by an executable runner (`scripts/vvu-validate.py`) that performs 19 checks across the full VVU stack and writes a machine-readable JSON artifact plus a human-readable MD report. The latest results live at:
 
-The Zookeeper agent translates natural language physical requirements ("Design a hydro-gateway with M12 holes and a 10-bar pressure rating") directly into verifiable constraints — no manual coding of physical specs. This removes the human bottleneck between physical intent and formal proof.
+- **JSON artifact:** `docs/validation/vvu-validation-<timestamp>.json`
+- **MD report:** [`docs/validation/VVU-VALIDATION-<timestamp>.md`](./docs/validation/)
 
-The agent maintains a specification graph that maps each physical constraint to its source intent, enabling full traceability from natural language requirement to mathematical proof obligation.
+### Green-Light Gate (latest run)
 
-### 2. Continuous Proof-Aware Re-evaluation for Physical Assets
+```text
+VVU VALIDATION GATE
 
-Change a physical parameter (e.g., thickness, hole spacing, material) → the agent re-runs the proof automatically → release decision recalculates. The agent monitors the digital twin and re-verifies without human intervention, mimicking a continuous integration system for physical engineering.
+Required checks:
+[PASS]   BUILD                                  PASS
+[PASS]   TYPECHECK                              PASS
+[PASS]   LINT                                   PASS
+[PASS]   UNIT TESTS — webhook + security        PASS
+[PASS]   CONTRACT TESTS (hardhat, 22 tests)     PASS
+[PASS]   CONTRACT COMPILE                       PASS
+[PASS]   E2E (playwright)                       PASS
+[PASS]   DEPLOYMENT (workflow YAML)             PASS
+[PASS]   LIVE APP — / /study /ive                PASS
+[BLOCK]  GPU / ROCm                             BLOCKED
+[PASS]   REPOSITORY INTEGRITY (fsck + clean)    PASS
+[PASS]   PROVENANCE (BUILD_ID + server PID)     PASS
+[PASS]   DOCUMENT CONSISTENCY                   PASS
+[PASS]   GOVERNANCE — charter amendments        PASS
+[PASS]   CONTRACT SYNTAX                        PASS
 
-This is fundamentally different from traditional verification tools that treat proof as a one-time gate. In ProofBridge, proof is a living process that evolves with the design.
-
-### 3. Chi-Square Gating & Bayesian Inference for Sensor Fusion
-
-Inspired by modern inference pipelines, our HBK MK-II case study transforms raw sensor signals (pressure, flow, temperature) into calibrated probabilistic estimates — rejecting statistically inconsistent measurements before they corrupt the state estimate. This is directly relevant to Physical AI where real-world sensor data is noisy and must be filtered for reliable control.
-
-The inference pipeline:
-- **Prior**: Engineering specification bounds (design intent)
-- **Likelihood**: Sensor measurement model (with chi-square gating)
-- **Posterior**: Updated trust estimate (Bayesian update)
-- **Decision**: Release blocked/approved based on posterior confidence
-
-### 4. Cryptographic Traceability for Physical Assets
-
-Every proof produces:
-
-| Artifact | Purpose |
-|----------|---------|
-| `results.json` | Frozen contract — proof outcomes |
-| `ledger.json` | Append-only ledger — immutable event log |
-| `provenance.json` | Full provenance — source-to-proof chain |
-| `checksums.txt` | SHA-256 integrity manifest |
-
-This ensures that any modification to the physical design is cryptographically auditable — critical for safety-critical physical systems where regulatory compliance requires immutable evidence trails.
-
----
-
-## 🚧 Claim Boundaries (Zero Fabrication Rule)
-
-This prototype demonstrates:
-
-- ✅ AI-assisted specification generation (Zoo Agent API) for physical systems
-- ✅ Procedural CAD integration (Zoo Engine API) — digital twin generation
-- ✅ Proof obligation management & SMT-based verification of physical constraints
-- ✅ Evidence provenance & audit trail generation
-- ✅ Bayesian trust estimation with chi-square sensor gating
-- ✅ Cryptographic evidence archival (SHA-256 manifest)
-
-This prototype does **NOT** demonstrate:
-
-- ❌ Physical safety certification (e.g., ISO, ASME)
-- ❌ Regulatory approval
-- ❌ Manufacturing verification
-- ❌ GPU-accelerated proof solving (roadmap item for AMD ROCm)
-
----
-
-## 🛑 Verification Status
-
-```
-MATHEMATICAL OBLIGATIONS: EVALUATED
-INPUT PROVENANCE:         UNVERIFIED
-PHYSICAL VALIDATION:      NOT PERFORMED
-
-ENGINEERING RELEASE:      BLOCKED
+RELEASE AUTHORIZATION: RED (GPU BLOCKED)
 ```
 
-This status is derived directly from the proof artifacts generated by the agent. Missing physical validation is explicitly surfaced — no false claims. This aligns with the **Zero Fabrication Rule**: we never fake a trust score.
+**Tally (post-consolidation):** 18 PASS / 0 FAIL / 1 BLOCKED.
+
+The single BLOCKED row is the AMD MI300x GPU step. The sandbox has no GPU tooling (`nvidia-smi` / `rocminfo` not present). The `gpu-pipeline-activation.yml` workflow is real — it requires a `self-hosted, linux, amd-gpu, mi300x` runner that is not yet registered. This is a hardware-provisioning blocker, not a code defect.
+
+### Governing rule
+
+> **VVU does not ship on confidence. VVU ships on verified state.**
+
+`PASS` = test actually executed and passed.
+`FAIL` = test actually executed and failed.
+`BLOCKED` = test could not execute; exact blocker recorded.
+
+"Prepared," "configured," "should work," and "ready" are not test results.
 
 ---
 
-## 🏗️ Technical Architecture
+## License & epistemic notice
 
-### Stack
-
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 16 (App Router) + React 19 + Tailwind CSS 4 |
-| UI Components | shadcn/ui + Radix primitives + Framer Motion |
-| Database | Prisma ORM (SQLite dev / PostgreSQL prod) |
-| Auth | Clerk (graceful fallback when unconfigured) |
-| CAD Engine | Zoo Engine API |
-| AI Agent | Zoo Agent API (Zookeeper) |
-| File Export | Zoo File Format API (STEP) |
-| Evidence | SHA-256 checksummed JSON artifacts |
-| Runtime | Node.js / npm |
-
-### Project Structure
-
-```
-/proofbridge-liner
-├── /src
-│   ├── /app              # Next.js App Router (pages + API routes)
-│   │   ├── /api/ive      # IVE API endpoints
-│   │   └── page.tsx      # IVE root (dynamic boot sequence)
-│   ├── /components
-│   │   ├── /ive          # IVE shell, boot sequence, workspace
-│   │   ├── /hbk          # HBK MK-II Hydro-Gateway panels
-│   │   ├── /epistemic    # Fortification & resilience visualisation
-│   │   └── /vvu          # VVU workbench shell & landing
-│   ├── /lib              # Core libraries (db, trust-runtime, evidence)
-│   └── /engine           # Zoo Engine integration & signer
-├── /prisma               # Database schema
-├── /supabase             # Migrations & config
-├── /scripts              # Build, deploy, verification scripts
-├── README.md             # This file
-├── package.json          # Dependencies
-├── .env.example          # Environment template
-└── /docs                 # Additional documentation
-```
+VVU operates under epistemic immunity: no user, regulator, or shareholder may compel the system to accept an invalid proof as valid. Use of the system constitutes acceptance of this invariant. The constitutional articles **Article I §1.3 (Three Constitutional Immunities)** and **Article VI (The Epistemic Core)** are eternally unamendable — no supermajority, resolution, or judicial reinterpretation may weaken or bypass these provisions.
 
 ---
 
-## 📁 Submission Package
-
-The project is submitted as a Pull Request to the official AMD repository. The source code lives in `/src`; the demo is hosted online (link above). No static demo assets are committed to the repo.
-
----
-
-## 👥 Team
-
-**Mihle Iviwe Majokweni**
-Founder, Venture Vision Ubuntu
-*(solo submission)*
-
-
-
----
-
-## 🏁 Closing Impact
-
-ProofBridge Liner demonstrates how autonomous AI agents can connect physical engineering intent, formal verification, and cryptographic evidence into a single, continuously verifiable workflow for physical AI systems.
-
-It is not a tool that simply draws CAD — it is a **trust-aware engineering partner for the physical world**.
-
----
-
-## 🔒 Security & Dependencies
-
-<!-- danger:start -->
-### ⚠️ Known Vulnerabilities
-
-As of **2026-08-09**, this repository has known dependency vulnerabilities. We are actively tracking and mitigating these issues.
-
-| Severity | Count | Status |
-|----------|-------|--------|
-| 🚨 Critical | 1 | Under review |
-| 🔴 High | 15+ | Fix in progress |
-| 🟡 Moderate | 7+ | Fix in progress |
-| 🔵 Low | 2+ | Accepted risk |
-
-**Current `npm audit` status:** 6 vulnerabilities remain after auto-fix.
-- 4 moderate: `js-yaml` (DoS via merge keys), `prismjs` (DOM clobbering), `next-intl` (open redirect), `uuid` (buffer bounds)
-- 2 high: `sharp` (libvips CVEs), `postcss` (XSS/path traversal)
-
-**Auto-fix available:** `npm audit fix` has already been applied, reducing the initial count from 25 to 6.
-
-**Remaining fixes require `npm audit fix --force`** because they involve breaking dependency updates:
-- `sharp@0.35.3` — breaking change in image processing API
-- `react-syntax-highlighter@16.1.1` — breaking change in syntax highlighting
-- `@mdxeditor/editor@4.2.0` — breaking change in MDX editor
-
-**Do not run `npm audit fix --force` in CI without validating:**
-1. Image optimization still works in `/app/api/[...path]/route.ts`
-2. Syntax highlighting components render correctly
-3. MDX editor functionality is preserved
-
-**Full audit report:** Run `npm audit` locally for the complete CVE list with links.
-<!-- danger:end -->
-
-### Security Policy
-
-- **No secrets in code:** All credentials are stored in Vercel environment variables or `.env.local` (gitignored)
-- **Dependency scanning:** GitHub Dependabot is enabled for this repository
-- **Vulnerability response:** Critical and high-severity CVEs are addressed within 72 hours
-- **Rotation:** Vercel tokens and API keys are rotated regularly
-
----
-
-## 📄 License
-
-This project is licensed under the **AGPL-3.0-or-later** — see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- [AMD AI DevMaster Hackathon 2026](https://github.com/amd) — Track 3: Physical AI
-- [Zoo.dev](https://zoo.dev) — Zoo Engine, Zoo Agent, and Zoo File Format APIs
-- [Clerk](https://clerk.com) — Authentication infrastructure
-- [Vercel](https://vercel.com) — Deployment platform
-- [Prisma](https://prisma.io) — Database ORM
-
----
-
-## 📬 Contact
-
-**General Enquiries**
-Email: [hello@venturevisionubuntu.co.za](mailto:hello@venturevisionubuntu.co.za)
-Subject: ProofBridge Liner
-
-**Founder, CEO & Compliance Officer**
-Divhani Majokweni
-Email: [divh@venturevisionubuntu.co.za](mailto:divh@venturevisionubuntu.co.za)
-
-**Venture Vision Ubuntu**
-[venturevisionubuntu.co.za](https://venturevisionubuntu.co.za)
-
----
-
-*Made with ❤️ in South Africa 🇿🇦 for the AMD AI DevMaster Hackathon 2026 — Track 3: Physical AI*
+*This README is the canonical entry point. The Charter is the supreme rulebook. The architecture and layer-map documents are the constitutional reference. The deployment artifact is the provenance record. The session protocol is the runner's invariant. Together they form the bridge from constitutional prose to enforceable system.*

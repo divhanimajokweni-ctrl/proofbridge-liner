@@ -41,44 +41,18 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* VVU brand tokens — used across both workspaces */
+  --color-vvu-gold: var(--vvu-gold);
+  --color-vvu-gold-soft: var(--vvu-gold-soft);
+  --color-vvu-studi: var(--vvu-studi);
+  --color-vvu-ive: var(--vvu-ive);
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
 
-.dark {
+  /* Default to dark dashboard aesthetic — matches deployed Vercel app */
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -102,7 +76,7 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
+  --sidebar: oklch(0.18 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -110,224 +84,84 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* VVU brand: gold for the interlocking-rings logo + workspace accents */
+  --vvu-gold: oklch(0.78 0.16 80.5);          /* deep gold */
+  --vvu-gold-soft: oklch(0.78 0.16 80.5 / 0.18);
+  --vvu-studi: oklch(0.65 0.18 250);          /* cool indigo for STUDI */
+  --vvu-ive: oklch(0.65 0.20 145);            /* warm green for IVE */
+}
+
+.dark {
+  /* Same as :root — the dashboard is dark by default */
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.18 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  --vvu-gold: oklch(0.78 0.16 80.5);
+  --vvu-gold-soft: oklch(0.78 0.16 80.5 / 0.18);
+  --vvu-studi: oklch(0.65 0.18 250);
+  --vvu-ive: oklch(0.65 0.20 145);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  /* Smooth theme transition — exclude form controls to avoid weird focus transitions */
-  html,
-  body,
-  header,
-  footer,
-  main,
-  section,
-  nav,
-  aside,
-  article,
-  div,
-  span,
-  p,
-  h1, h2, h3, h4, h5, h6,
-  ul, ol, li,
-  table, thead, tbody, tr, th, td {
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-  }
-  /* Native dark mode support */
-  html.dark {
+  html {
     color-scheme: dark;
   }
   body {
     @apply bg-background text-foreground;
-  }
-  /*
-   * Global focus-visible ring for keyboard accessibility.
-   * Uses emerald-500 (the VVU primary accent) with a 2px ring and 2px offset.
-   * Inputs that already define their own focus ring (e.g. shadcn Input/Textarea)
-   * keep their ring via outline-ring/50 above; this adds a visible outer ring
-   * so keyboard users always see where focus is.
-   */
-  :focus-visible {
-    outline: 2px solid oklch(0.696 0.17 162.48); /* emerald-500 */
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
-  /* Preserve native text-selection cursor on inputs that already manage focus */
-  input:focus-visible,
-  textarea:focus-visible,
-  select:focus-visible {
-    outline-offset: 1px;
+    font-feature-settings: "ss01", "cv11", "cv02";
   }
 }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
-}
-
-@keyframes border-glow {
-  0%, 100% { border-color: rgba(5, 150, 105, 0.15); }
-  50% { border-color: rgba(217, 119, 6, 0.2); }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.6s ease-out both;
-}
-
-.animate-pulse-soft {
-  animation: pulse-soft 3s ease-in-out infinite;
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-border-glow {
-  animation: border-glow 4s ease-in-out infinite;
-}
-
-@keyframes count-up {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-@keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-@keyframes gradient-border {
-  0%, 100% { border-color: rgba(5, 150, 105, 0.3); }
-  33% { border-color: rgba(217, 119, 6, 0.3); }
-  66% { border-color: rgba(168, 85, 247, 0.25); }
-}
-
-@keyframes pulse-once {
-  0% { opacity: 0.5; transform: scale(0.95); }
-  50% { opacity: 1; transform: scale(1.02); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes orbit {
-  from { transform: rotate(0deg) translateX(80px) rotate(0deg); }
-  to { transform: rotate(360deg) translateX(80px) rotate(-360deg); }
-}
-
-.animate-count-up {
-  animation: count-up 0.6s ease-out both;
-}
-
-.animate-shimmer {
-  animation: shimmer 2s ease-in-out infinite;
-}
-
-.animate-gradient-shift {
-  animation: gradient-shift 8s ease-in-out infinite;
-  background-size: 200% 200%;
-}
-
-.animate-gradient-border {
-  animation: gradient-border 6s ease-in-out infinite;
-}
-
-.animate-pulse-once {
-  animation: pulse-once 1.5s ease-out both;
-}
-
-.animate-orbit {
-  animation: orbit 12s linear infinite;
-}
-
-.shimmer-overlay {
-  position: relative;
-  overflow: hidden;
-}
-
-.shimmer-overlay::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.15),
-    transparent
-  );
-  transform: translateX(-100%);
-  animation: shimmer 3s ease-in-out infinite;
-}
-
-.dark .shimmer-overlay::after {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.06),
-    transparent
-  );
-}
-
-/* ─── Custom Scrollbar ──────────────────────────────────────────────── */
-
-/* Thin, styled scrollbar for sidebar & overflow containers */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: oklch(0.7 0 0 / 15%);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.5 0 0 / 25%);
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: oklch(0.6 0 0 / 15%);
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.5 0 0 / 25%);
-}
-
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: oklch(0.7 0 0 / 15%) transparent;
-}
-
-.dark * {
-  scrollbar-color: oklch(0.6 0 0 / 15%) transparent;
-}
-
-/* ─── Subtle entry animation for SVG graph nodes ────────────────────── */
-
-@keyframes node-appear {
-  0% { opacity: 0; transform: scale(0.6); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-.animate-node-appear {
-  animation: node-appear 0.5s ease-out both;
+/* Thin custom scrollbar — matches the deployed dashboard aesthetic */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.4 0 0) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: oklch(0.35 0 0);
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.5 0 0);
+  }
 }

@@ -1,0 +1,320 @@
+# =====================================================================
+# VVU Sovereign Activation + Production Deploy Pipeline
+# =====================================================================
+# Triggers (any of):
+#   - push to main                    (operator-initiated)
+#   - workflow_dispatch               (manual)
+#   - repository_dispatch             (auto-fired by scripts/auto-deploy-watcher.ts
+#                                      when dev server sync verifies locally)
+#
+# Full chain (no lifting a finger):
+#   dev server sync (file change)
+#     → local verify (hardhat compile + test + next build)
+#     → repository_dispatch (this workflow)
+#     → AMD MI300x GPU smoke
+#     → Hardhat + Playwright tests
+#     → GPU benchmark retrieval
+#     → activate() on Arbitrum Sepolia + Polygon Amoy (sovereign)
+#     → Vercel --prod deploy with LEDGER_ADDRESS bound
+#     → live on venturevisionubuntu.co.za
+#
+# Required GitHub secrets:
+#   SOVEREIGN_AUTHORITY             — federal multi-sig address (read-only)
+#   SOVEREIGN_PRIVATE_KEY           — hardware-isolated; for activate()
+#   DEPLOYER_PRIVATE_KEY            — funded deployer wallet
+#   LEDGER_RPC_URL_ARBITRUM         — Arbitrum Sepolia RPC
+#   LEDGER_RPC_URL_POLYGON          — Polygon Amoy RPC
+#   SOVEREIGN_ADDR_ARBITRUM         — deployed contract on arbitrum-sepolia
+#   SOVEREIGN_ADDR_POLYGON          — deployed contract on polygon-amoy
+#   SUPABASE_DB_URL                 — Postgres for telemetry
+#   VERCEL_TOKEN                    — for production deploy
+#   VERCEL_PROJECT_ID               — Vercel project name
+#   PRODUCTION_DOMAIN               — e.g. venturevisionubuntu.co.za
+#
+# Runner requirements (self-hosted, AMD GPU label):
+#   - AMD MI300x or Radeon RX 7900 XTX (or better)
+#   - ROCm 6.0+
+#   - Node 20, bun, hardhat, psql
+# =====================================================================
+name: VVU Sovereign Activation + Production Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  repository_dispatch:
+    types: [dev-sync-verified]
+
+concurrency:
+  group: vvu-sovereign-activation
+  cancel-in-progress: false
+
+jobs:
+  verify-and-activate-and-deploy:
+    runs-on: [self-hosted, linux, amd-gpu, mi300x]
+    timeout-minutes: 30
+    env:
+      TS_NODE_PROJECT: ./tsconfig.hardhat.json
+      TS_NODE_TRANSPILE_ONLY: "1"
+    steps:
+      # ── 0. Provenance ─────────────────────────────────────────────────
+      - name: Record dispatch provenance
+        if: ${{ github.event_name == 'repository_dispatch' }}
+        run: |
+          echo "Triggered by auto-deploy-watcher at ${{ github.event.client_payload.timestamp }}"
+          echo "Run ID: ${{ github.event.client_payload.runId }}"
+          echo "Changed paths:"
+          echo '${{ toJSON(github.event.client_payload.changedPaths) }}' | jq -r '.[]' 2>/dev/null || true
+
+      # ── 1. Checkout + toolchain ──────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Capture HEAD commit hash
+        id: head
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Python 3.11 (for ROCm benchmark scripts)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          bun install --frozen-lockfile
+          pip install --quiet torch --index-url https://download.pytorch.org/whl/rocm6.2
+
+      # ── 2. AMD MI300x GPU smoke test ────────────────────────────────
+      - name: AMD GPU smoke test
+        run: |
+          echo "rocm-smi:"
+          rocm-smi --showproductname 2>&1 | head -20 || true
+          echo "---"
+          python3 - <<'PY'
+          import torch
+          if not torch.cuda.is_available():
+              print("FATAL: CUDA/ROCm not available — pipeline cannot proceed")
+              raise SystemExit(1)
+          device_count = torch.cuda.device_count()
+          if device_count == 0:
+              print("FATAL: 0 GPU devices — pipeline cannot proceed")
+              raise SystemExit(1)
+          for i in range(device_count):
+              props = torch.cuda.get_device_properties(i)
+              print(f"  GPU[{i}]: {props.name} | {props.total_memory/1e9:.2f} GB")
+          a = torch.randn(2048, 2048, device='cuda')
+          b = torch.randn(2048, 2048, device='cuda')
+          c = a @ b
+          print(f"  GPU matmul OK — result shape {tuple(c.shape)}, max {c.max().item():.4f}")
+          PY
+
+      # ── 3. Build + run Hardhat test suite ────────────────────────────
+      - name: Hardhat compile
+        run: npx hardhat compile
+
+      - name: Run VVUSovereignRegistry test suite
+        run: npx hardhat test test/VVUSovereignRegistry.test.ts
+
+      # ── 4. Run Playwright E2E fail-closed test ──────────────────────
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run fail-closed E2E
+        run: npm run test:e2e
+
+      # ── 5. AMD MI300x benchmark retrieval ───────────────────────────
+      - name: GPU benchmark retrieval
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          python3 - <<'PY' || { echo "Benchmark failed — refusing to activate"; exit 1; }
+          import torch, time, json, os, urllib.request
+          device = 'cuda'
+          sizes = [1024, 4096, 8192]
+          results = []
+          for n in sizes:
+              a = torch.randn(n, n, device=device, dtype=torch.float16)
+              b = torch.randn(n, n, device=device, dtype=torch.float16)
+              torch.cuda.synchronize()
+              t0 = time.perf_counter()
+              for _ in range(5):
+                  c = a @ b
+              torch.cuda.synchronize()
+              dt = (time.perf_counter() - t0) / 5
+              tflops = (2 * n**3) / dt / 1e12
+              print(f"  matmul {n}x{n} fp16: {dt*1000:.2f}ms  ≈ {tflops:.2f} TFLOPS")
+              results.append({"size": n, "ms": dt*1000, "tflops": tflops})
+          print(json.dumps({"benchmarks": results}, indent=2))
+          PY
+
+      # ── 6. Activate contracts on both networks ─────────────────────
+      - name: Activate contracts on both networks
+        env:
+          SOVEREIGN_PRIVATE_KEY: ${{ secrets.SOVEREIGN_PRIVATE_KEY }}
+          SOVEREIGN_AUTHORITY: ${{ secrets.SOVEREIGN_AUTHORITY }}
+          LEDGER_RPC_URL_ARBITRUM: ${{ secrets.LEDGER_RPC_URL_ARBITRUM }}
+          LEDGER_RPC_URL_POLYGON: ${{ secrets.LEDGER_RPC_URL_POLYGON }}
+          GIT_COMMIT_SHA: ${{ steps.head.outputs.sha }}
+          SOVEREIGN_ADDR_ARBITRUM: ${{ secrets.SOVEREIGN_ADDR_ARBITRUM }}
+          SOVEREIGN_ADDR_POLYGON: ${{ secrets.SOVEREIGN_ADDR_POLYGON }}
+        run: |
+          COMMIT_HASH="0x${GIT_COMMIT_SHA}"
+          echo "Activating with commit hash: $COMMIT_HASH (short: ${{ steps.head.outputs.short }})"
+
+          echo "--- Activating on Arbitrum Sepolia ---"
+          node -e "
+          const { ethers } = require('ethers');
+          (async () => {
+            const provider = new ethers.JsonRpcProvider(process.env.LEDGER_RPC_URL_ARBITRUM);
+            const signer = new ethers.Wallet(process.env.SOVEREIGN_PRIVATE_KEY, provider);
+            const contract = new ethers.Contract(
+              process.env.SOVEREIGN_ADDR_ARBITRUM,
+              ['function activate(bytes32) external', 'function paused() view returns (bool)', 'function activationCommitHash() view returns (bytes32)'],
+              signer
+            );
+            const pausedBefore = await contract.paused();
+            console.log('  paused (before):', pausedBefore);
+            if (!pausedBefore) {
+              console.log('  ⚠ Already live — skipping (idempotent).');
+              return;
+            }
+            const tx = await contract.activate('${COMMIT_HASH}');
+            console.log('  tx hash:', tx.hash);
+            const receipt = await tx.wait();
+            console.log('  ✅ Mined in block', receipt.blockNumber);
+            const pausedAfter = await contract.paused();
+            const commitHash = await contract.activationCommitHash();
+            console.log('  paused (after):', pausedAfter);
+            console.log('  activationCommitHash:', commitHash);
+          })().catch(e => { console.error(e); process.exit(1); });
+          "
+
+          echo "--- Activating on Polygon Amoy ---"
+          node -e "
+          const { ethers } = require('ethers');
+          (async () => {
+            const provider = new ethers.JsonRpcProvider(process.env.LEDGER_RPC_URL_POLYGON);
+            const signer = new ethers.Wallet(process.env.SOVEREIGN_PRIVATE_KEY, provider);
+            const contract = new ethers.Contract(
+              process.env.SOVEREIGN_ADDR_POLYGON,
+              ['function activate(bytes32) external', 'function paused() view returns (bool)', 'function activationCommitHash() view returns (bytes32)'],
+              signer
+            );
+            const pausedBefore = await contract.paused();
+            console.log('  paused (before):', pausedBefore);
+            if (!pausedBefore) {
+              console.log('  ⚠ Already live — skipping (idempotent).');
+              return;
+            }
+            const tx = await contract.activate('${COMMIT_HASH}');
+            console.log('  tx hash:', tx.hash);
+            const receipt = await tx.wait();
+            console.log('  ✅ Mined in block', receipt.blockNumber);
+            const pausedAfter = await contract.paused();
+            const commitHash = await contract.activationCommitHash();
+            console.log('  paused (after):', pausedAfter);
+            console.log('  activationCommitHash:', commitHash);
+          })().catch(e => { console.error(e); process.exit(1); });
+          "
+
+      # ── 7. Vercel production deploy (the actual "go live") ─────────
+      # The contract activation flipped dormant → live. Now the Vercel
+      # production deploy pushes the latest UI + binds the contract
+      # address as an env var. After this step, the site is live on
+      # venturevisionubuntu.co.za (or whatever PRODUCTION_DOMAIN is).
+      - name: Vercel production deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+          LEDGER_ADDRESS_ARBITRUM: ${{ secrets.SOVEREIGN_ADDR_ARBITRUM }}
+          LEDGER_ADDRESS_POLYGON: ${{ secrets.SOVEREIGN_ADDR_POLYGON }}
+          LEDGER_RPC_URL: ${{ secrets.LEDGER_RPC_URL_ARBITRUM }}
+          LEDGER_PRIVATE_KEY: ${{ secrets.SOVEREIGN_PRIVATE_KEY }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          echo "--- Vercel production deploy ---"
+          echo "Target domain: $PRODUCTION_DOMAIN"
+
+          # Bind the contract addresses + RPC + operator key into the
+          # Vercel project's Production environment. These overwrite
+          # any prior values — the latest activation always wins.
+          vercel env rm Production LEDGER_ADDRESS       -y --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+          vercel env add  Production LEDGER_ADDRESS     <<<"$LEDGER_ADDRESS_ARBITRUM" --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+
+          vercel env rm Production LEDGER_ADDRESS_POLYGON -y --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+          vercel env add  Production LEDGER_ADDRESS_POLYGON <<<"$LEDGER_ADDRESS_POLYGON" --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+
+          vercel env rm Production LEDGER_RPC_URL        -y --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+          vercel env add  Production LEDGER_RPC_URL       <<<"$LEDGER_RPC_URL" --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+
+          vercel env rm Production LEDGER_PRIVATE_KEY     -y --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+          vercel env add  Production LEDGER_PRIVATE_KEY   <<<"$LEDGER_PRIVATE_KEY" --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+
+          if [[ -n "$ALERT_WEBHOOK_URL" ]]; then
+            vercel env rm  Production ALERT_WEBHOOK_URL  -y --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+            vercel env add  Production ALERT_WEBHOOK_URL <<<"$ALERT_WEBHOOK_URL" --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" 2>/dev/null || true
+          fi
+
+          # Trigger the Vercel production deploy.
+          vercel --prod --token "$VERCEL_TOKEN" -p "$VERCEL_PROJECT_ID" --yes
+
+          echo "✅ Vercel production deploy complete"
+          echo "   Live at: https://$PRODUCTION_DOMAIN"
+
+      # ── 8. DNS sanity check ─────────────────────────────────────────
+      - name: DNS sanity check
+        env:
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+        run: |
+          echo "--- Verifying $PRODUCTION_DOMAIN is reachable ---"
+          sleep 5
+          if curl -sf "https://$PRODUCTION_DOMAIN/api/theorem-state" | head -c 600; then
+            echo
+            echo "✅ Production endpoint responding"
+          else
+            echo "⚠ DNS or TLS not yet propagated — may take a few minutes."
+            echo "  Check: dig $PRODUCTION_DOMAIN +short"
+            echo "  Check: curl -vI https://$PRODUCTION_DOMAIN"
+            exit 1
+          fi
+
+      # ── 9. Notify + summarize ───────────────────────────────────────
+      - name: Summary
+        if: always()
+        env:
+          PRODUCTION_DOMAIN: ${{ secrets.PRODUCTION_DOMAIN }}
+        run: |
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          ## VVU Sovereign Activation + Production Deploy
+          
+          **Commit:** \`${{ steps.head.outputs.short }}\`
+          **Status:** ${{ job.status }}
+          **Production:** https://$PRODUCTION_DOMAIN
+          
+          Pipeline chain (no lifting a finger):
+          1. Dev server sync (file change)
+          2. Local verify (hardhat + tests + next build)
+          3. AMD MI300x GPU smoke
+          4. Hardhat + Playwright tests
+          5. GPU benchmark retrieval
+          6. activate() on Arbitrum Sepolia + Polygon Amoy
+          7. Vercel --prod deploy with LEDGER_ADDRESS bound
+          8. Live on https://$PRODUCTION_DOMAIN
+          
+          If **Status** is \`success\`, the contract is live on both testnets and the production frontend is live on $PRODUCTION_DOMAIN.
+          If **Status** is \`failure\`, contracts remain in their prior state and production was not redeployed. Investigate the failed step before re-running.
+          EOF

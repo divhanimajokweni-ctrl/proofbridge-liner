@@ -1,5 +1,63 @@
-skills/
+# ─── Dependencies ─────────────────────────────────────────────────────────
 node_modules/
-.env.local
-.env*.local
+.pnp
+.pnp.js
+
+# ─── Next.js ───────────────────────────────────────────────────────────────
 .next/
+out/
+.vercel/
+
+# ─── Build artifacts ──────────────────────────────────────────────────────
+artifacts/
+cache/
+typechain-types/
+dist/
+build/
+
+# ─── Hardhat ──────────────────────────────────────────────────────────────
+cache/hardhat/
+artifacts/contract-address.txt
+
+# ─── Production databases (never commit operator state) ───────────────────
+db/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
+
+# ─── Local env files (secrets — NEVER commit) ────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.preview
+
+# ─── Test / E2E artifacts ─────────────────────────────────────────────────
+test-results/
+playwright-report/
+playwright/.cache/
+trace.zip
+*.webm
+
+# ─── Dev server logs ─────────────────────────────────────────────────────
+dev.log
+server.log
+watchdog.log
+*.log
+
+# ─── TypeScript incremental build cache ──────────────────────────────────
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# ─── Editor / OS noise ───────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ─── Skill system internals (not for production deploy) ───────────────────
+skills/
+tool-results/
+upload/

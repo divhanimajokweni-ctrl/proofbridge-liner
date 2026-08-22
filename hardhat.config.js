@@ -1,60 +1,56 @@
-// Hardhat config — kept for reference but project uses Foundry exclusively.
-// This file must not crash when loaded during Next.js SSR/build.
-let hardhat;
-try {
-  hardhat = require("@nomicfoundation/hardhat-toolbox");
-} catch {
-  // Intentionally ignored. Foundry is the canonical build tool.
-}
-
-require("dotenv").config();
-
-module.exports = {
-    solidity: {
-        version: "0.8.20",
-        settings: {
-            optimizer: {
-                enabled: true,
-                runs: 200,
-            },
-        },
+import "@nomicfoundation/hardhat-toolbox";
+process.env.TS_NODE_PROJECT = "./tsconfig.hardhat.json";
+process.env.TS_NODE_TRANSPILE_ONLY = "1";
+const DEPLOYER_PK = process.env.DEPLOYER_PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000001";
+const ARB_API_KEY = process.env.ARBISCAN_API_KEY || "";
+const config = {
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      optimizer: { enabled: true, runs: 200 }
+    }
+  },
+  paths: {
+    sources: "./contracts",
+    artifacts: "./artifacts",
+    cache: "./cache/hardhat"
+  },
+  networks: {
+    hardhat: {},
+    "arbitrum-sepolia": {
+      url: "https://sepolia-rollup.arbitrum.io/rpc",
+      accounts: [DEPLOYER_PK],
+      chainId: 421614
     },
-    paths: {
-        sources: "./contracts",
-        tests: "./test",
-        cache: "./cache",
-        artifacts: "./artifacts",
+    arbitrum: {
+      url: "https://arb1.arbitrum.io/rpc",
+      accounts: [DEPLOYER_PK],
+      chainId: 42161
     },
-    networks: {
-        amoy: {
-            url: process.env.AMOY_RPC_URL || "https://rpc-amoy.polygon.technology",
-            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-            chainId: 80002,
-        },
-        sepolia: {
-            url: process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
-            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-            chainId: 11155111,
-        },
-        localhost: {
-            url: "http://127.0.0.1:8545",
-            chainId: 31337,
-        },
+    // Polygon Amoy testnet — anchored to Ethereum Sepolia. Used by the
+    // sovereign track for redundant anchoring (same contract deployed to
+    // both Arbitrum Sepolia + Polygon Amoy in deploy-all.ts).
+    "polygon-amoy": {
+      url: "https://rpc-amoy.polygon.technology",
+      accounts: [DEPLOYER_PK],
+      chainId: 80002
     },
-    etherscan: {
-        apiKey: {
-            amoy: process.env.ETHERSCAN_API_KEY || "",
-            sepolia: process.env.ETHERSCAN_API_KEY || "",
-        },
-        customChains: [
-            {
-                network: "amoy",
-                chainId: 80002,
-                urls: {
-                    apiURL: "https://api.etherscan.io/v2/api?chainid=80002",
-                    browserURL: "https://amoy.etherscan.io",
-                },
-            },
-        ],
-    },
+    polygon: {
+      url: "https://polygon-rpc.com",
+      accounts: [DEPLOYER_PK],
+      chainId: 137
+    }
+  },
+  etherscan: {
+    apiKey: {
+      arbitrumSepolia: ARB_API_KEY,
+      arbitrum: ARB_API_KEY,
+      polygonAmoy: process.env.POLYGONSCAN_API_KEY || "",
+      polygon: process.env.POLYGONSCAN_API_KEY || ""
+    }
+  }
+};
+var stdin_default = config;
+export {
+  stdin_default as default
 };
