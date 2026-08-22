@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVU → Springbok | Venture Vision Ubuntu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --gold: #d4af37;
+    --green-sa: #007a4d;
+    --green-light: #009b3a;
+    --dark: #0a0a0f;
+    --white: #f0f0f0;
+  }
+
+  body {
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Space Grotesk', sans-serif;
+    overflow: hidden;
+  }
+
+  .container {
+    position: relative;
+    width: 800px;
+    height: 600px;
+  }
+
+  canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .overlay-text {
+    position: absolute;
+    bottom: 60px;
+    left: 0; right: 0;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 1.5s ease, transform 1.5s ease;
+    pointer-events: none;
+  }
+
+  .overlay-text.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .overlay-text h1 {
+    font-size: 14px;
+    font-weight: 300;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .overlay-text p {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.4);
+  }
+
+  .replay-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(212,175,55,0.1);
+    border: 1px solid rgba(212,175,55,0.3);
+    color: var(--gold);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    padding: 8px 24px;
+    cursor: pointer;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.8s ease, background 0.3s ease;
+    text-transform: uppercase;
+  }
+
+  .replay-btn:hover { background: rgba(212,175,55,0.2); }
+  .replay-btn.visible { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <canvas id="c"></canvas>
+  <div class="overlay-text" id="overlay">
+    <h1>Venture Vision Ubuntu</h1>
+    <p>South Africa's National Animal — The Springbok</p>
+  </div>
+  <button class="replay-btn" id="replayBtn" onclick="replay()">Replay</button>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 800, H = 600;
+canvas.width = W * 2; canvas.height = H * 2;
+ctx.scale(2, 2);
+
+// ─── Color Palette ───
+const COL = {
+  bg: '#0a0a0f',
+  gold: '#d4af37',
+  goldDim: 'rgba(212,175,55,0.3)',
+  white: '#f0f0f0',
+  greenSA: '#007a4d',
+  greenLight: '#009b3a',
+  brown: '#c49a6c',
+  brownDark: '#8b6914',
+  tan: '#e8d5b7',
+};
+
+// ─── Particles ───
+class Particle {
+  constructor(x, y, color, size, vx, vy, life) {
+    this.x = x; this.y = y;
+    this.color = color;
+    this.size = size;
+    this.vx = vx; this.vy = vy;
+    this.life = life;
+    this.maxLife = life;
+    this.alive = true;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += 0.02; // gravity
+    this.life--;
+    if (this.life <= 0) this.alive = false;
+  }
+  draw(ctx) {
+    const alpha = this.life / this.maxLife;
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size * alpha, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+let particles = [];
+function emitParticles(x, y, count, color, spread) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * spread;
+    particles.push(new Particle(
+      x, y, color,
+      Math.random() * 3 + 1,
+      Math.cos(angle) * speed,
+      Math.sin(angle) * speed,
+      Math.floor(Math.random() * 60 + 30)
+    ));
+  }
+}
+
+// ─── Easing Functions ───
+function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
+function easeOutQuart(t) { return 1 - Math.pow(1-t, 4); }
+function easeOutBack(t) { const c1=1.70158; const c3=c1+1; return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); }
+
+// ─── VVU Logo Drawing ───
+function drawVVULogo(cx, cy, scale, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+
+  // Rounded square background
+  const s = 28;
+  ctx.fillStyle = '#2D2D2D';
+  ctx.strokeStyle = `rgba(255,255,255,${0.3 * alpha})`;
+  ctx.lineWidth = 0.6;
+  roundRect(ctx, -s, -s, s*2, s*2, 4);
+  ctx.fill(); ctx.stroke();
+
+  // V letterforms (the VVU logo paths)
+  ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+
+  // Top-left V arm
+  ctx.beginPath();
+  ctx.moveTo(-9.5, -12.9);
+  ctx.lineTo(-1.3, -1.05);
+  ctx.lineTo(-14.3, 15.91);
+  ctx.lineTo(-20.3, 15.91);
+  ctx.closePath();
+  ctx.fill();
+
+  // Diagonal stripe
+  ctx.beginPath();
+  ctx.moveTo(9.3, -12.9);
+  ctx.lineTo(-1.86, 15.91);
+  ctx.lineTo(-9.7, 15.91);
+  ctx.lineTo(1.86, -12.9);
+  ctx.closePath();
+  ctx.fill();
+
+  // Bottom-right V arm
+  ctx.beginPath();
+  ctx.moveTo(-0.47, 15.91);
+  ctx.lineTo(0.81, 14.06);
+  ctx.lineTo(1.11, 13.51);
+  ctx.lineTo(9.09, 15.91);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+// ─── Springbok Drawing ───
+function drawSpringbok(cx, cy, scale, alpha, headTilt) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+
+  const tilt = headTilt || 0;
+
+  // Body - elegant oval
+  ctx.fillStyle = COL.tan;
+  ctx.beginPath();
+  ctx.ellipse(0, 20, 70, 35, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Dark saddle/back
+  ctx.fillStyle = COL.brownDark;
+  ctx.beginPath();
+  ctx.ellipse(0, 10, 60, 20, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+
+  // Side stripe (characteristic springbok marking)
+  ctx.fillStyle = COL.brown;
+  ctx.beginPath();
+  ctx.ellipse(5, 18, 55, 5, 0.05, 0, Math.PI * 2);
+  ctx.fill();
+
+  // White belly
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(0, 35, 45, 15, 0, 0, Math.PI);
+  ctx.fill();
+
+  // Neck
+  ctx.save();
+  ctx.translate(-50, -10);
+  ctx.rotate(-0.4 + tilt);
+
+  // Neck shape
+  ctx.fillStyle = COL.tan;
+  ctx.beginPath();
+  ctx.ellipse(0, -25, 14, 35, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Dark neck stripe
+  ctx.fillStyle = COL.brownDark;
+  ctx.beginPath();
+  ctx.ellipse(3, -25, 8, 32, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Head
+  ctx.fillStyle = COL.tan;
+  ctx.beginPath();
+  ctx.ellipse(0, -58, 16, 20, 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Dark face markings
+  ctx.fillStyle = COL.brownDark;
+  ctx.beginPath();
+  ctx.ellipse(-5, -52, 10, 12, 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // White face patch
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(-12, -55, 5, 8, 0.1, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.ellipse(-8, -58, 2.5, 2, 0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Eye highlight
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(-7, -59, 0.8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Horns (LYRE-shaped, characteristic springbok!)
+  ctx.strokeStyle = '#2a1f0e';
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+
+  // Left horn
+  ctx.beginPath();
+  ctx.moveTo(-6, -74);
+  ctx.bezierCurveTo(-15, -100, -30, -115, -35, -108);
+  ctx.bezierCurveTo(-38, -103, -25, -98, -15, -85);
+  ctx.stroke();
+
+  // Right horn
+  ctx.beginPath();
+  ctx.moveTo(6, -74);
+  ctx.bezierCurveTo(15, -100, 30, -115, 35, -108);
+  ctx.bezierCurveTo(38, -103, 25, -98, 15, -85);
+  ctx.stroke();
+
+  // Horn ridges
+  ctx.strokeStyle = 'rgba(42,31,14,0.5)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 5; i++) {
+    const t = 0.2 + i * 0.15;
+    const lx = -6 + (-29) * t * t;
+    const ly = -74 + (-34) * t;
+    const rx = 6 + (29) * t * t;
+    const ry = -74 + (-34) * t;
+    ctx.beginPath(); ctx.moveTo(lx-2, ly); ctx.lineTo(lx+4, ly); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(rx+2, ry); ctx.lineTo(rx-4, ry); ctx.stroke();
+  }
+
+  // Ear
+  ctx.fillStyle = COL.tan;
+  ctx.beginPath();
+  ctx.ellipse(-14, -66, 5, 10, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#c4956a';
+  ctx.beginPath();
+  ctx.ellipse(-14, -66, 3, 7, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore(); // neck
+
+  // Legs
+  ctx.strokeStyle = COL.tan;
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+
+  // Front legs
+  ctx.beginPath(); ctx.moveTo(-40, 40); ctx.lineTo(-45, 95); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-32, 40); ctx.lineTo(-30, 95); ctx.stroke();
+
+  // Back legs
+  ctx.beginPath(); ctx.moveTo(40, 40); ctx.lineTo(42, 95); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(48, 38); ctx.lineTo(55, 95); ctx.stroke();
+
+  // Hooves
+  ctx.fillStyle = '#1a1a1a';
+  for (const hx of [-47, -32, 40, 57]) {
+    ctx.beginPath();
+    ctx.ellipse(hx, 96, 4, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Tail
+  ctx.fillStyle = COL.brownDark;
+  ctx.beginPath();
+  ctx.moveTo(68, 15);
+  ctx.quadraticCurveTo(85, 0, 80, -10);
+  ctx.quadraticCurveTo(78, -5, 75, 5);
+  ctx.quadraticCurveTo(70, 10, 65, 20);
+  ctx.closePath();
+  ctx.fill();
+
+  // White rump patch
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(60, 25, 15, 18, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ─── Ground / Environment ───
+function drawGround(y, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Gradient ground
+  const grad = ctx.createLinearGradient(0, y, 0, y + 80);
+  grad.addColorStop(0, 'rgba(0,122,77,0.15)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, y, W, 80);
+
+  // Ground line
+  ctx.strokeStyle = `rgba(212,175,55,${0.3 * alpha})`;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(100, y);
+  ctx.lineTo(700, y);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ─── Glow Ring ───
+function drawGlowRing(cx, cy, radius, alpha, color) {
+  ctx.save();
+  ctx.globalAlpha = alpha * 0.3;
+  ctx.strokeStyle = color || COL.gold;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ─── Stars ───
+const stars = Array.from({length: 80}, () => ({
+  x: Math.random() * W,
+  y: Math.random() * H * 0.6,
+  size: Math.random() * 1.5 + 0.3,
+  twinkle: Math.random() * Math.PI * 2,
+  speed: Math.random() * 0.02 + 0.005,
+}));
+
+function drawStars(alpha) {
+  ctx.save();
+  for (const s of stars) {
+    s.twinkle += s.speed;
+    const a = (Math.sin(s.twinkle) * 0.5 + 0.5) * alpha * 0.6;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ─── V-to-Horn Transition Path ───
+function drawVHornMorph(progress, cx, cy, scale, alpha) {
+  // The V shapes from the logo morph into the springbok's lyre horns
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+
+  const p = easeInOutCubic(progress);
+
+  // Two V-arms become two horns
+  for (let side = -1; side <= 1; side += 2) {
+    ctx.save();
+    ctx.scale(side, 1);
+
+    const startY = -12;
+    const endY = -100;
+    const y = startY + (endY - startY) * p;
+    const spread = 8 + 30 * p;
+    const curve = 0 + 15 * p;
+
+    ctx.strokeStyle = COL.gold;
+    ctx.lineWidth = 5 - 2 * p;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(spread * 0.5, y + curve * 0.5, spread, y + curve, spread * 0.9, y + curve * 0.6);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+// ─── South African Flag Colors Bar ───
+function drawSAFlagBar(y, progress, alpha) {
+  if (progress <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha * Math.min(progress * 3, 1);
+
+  const barW = 300 * Math.min(progress, 1);
+ const barH = 3;
+ const barX = (W - barW) / 2;
+
+  // SA flag colors: red, white, green, white, blue with gold Y
+  const colors = ['#FF0000', '#FFFFFF', '#007749', '#FFFFFF', '#002395'];
+  const segW = barW / 5;
+
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = colors[i];
+    ctx.fillRect(barX + i * segW, y, segW + 1, barH);
+  }
+
+  // Gold line on top
+  ctx.fillStyle = COL.gold;
+  ctx.fillRect(barX, y - 1, barW, 1);
+
+  ctx.restore();
+}
+
+// ─── Animation Timeline ───
+let startTime = null;
+let animPhase = 0;
+const TOTAL_FRAMES = 600; // ~10s at 60fps
+
+function getPhase(frame) {
+  // Phase 0: 0-60    Logo appear + glow
+  // Phase 1: 60-180  Logo breathes, particles
+  // Phase 2: 180-300 V breaks apart, morphs to horns
+  // Phase 3: 300-420 Springbok materializes
+  // Phase 4: 420-540 Springbok full + SA flag bar + head tilt
+  // Phase 5: 540-600 Text reveal
+  if (frame < 60)  return { phase: 0, t: frame / 60 };
+  if (frame < 180) return { phase: 1, t: (frame - 60) / 120 };
+  if (frame < 300) return { phase: 2, t: (frame - 180) / 120 };
+  if (frame < 420) return { phase: 3, t: (frame - 300) / 120 };
+  if (frame < 540) return { phase: 4, t: (frame - 420) / 120 };
+  return { phase: 5, t: (frame - 540) / 60 };
+}
+
+let frame = 0;
+let running = true;
+
+function render() {
+  if (!running) return;
+  frame++;
+  if (frame > TOTAL_FRAMES) {
+    frame = TOTAL_FRAMES;
+    document.getElementById('overlay').classList.add('visible');
+    document.getElementById('replayBtn').classList.add('visible');
+    // Still render for particles
+  }
+
+  const { phase, t } = getPhase(frame);
+
+  // Clear
+  ctx.fillStyle = COL.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Stars (always)
+  const starAlpha = phase < 2 ? 0.3 : Math.min((phase - 2) * 0.3 + 0.3, 0.7);
+  drawStars(starAlpha);
+
+  const cx = W / 2;
+  const cy = H / 2 - 20;
+
+  // === PHASE 0: Logo Appear ===
+  if (phase === 0) {
+    const a = easeOutQuart(t);
+    drawGlowRing(cx, cy, 80 * a, a * 0.5, COL.gold);
+    drawVVULogo(cx, cy, 1.5 * a, a);
+
+    // Initial particles
+    if (frame % 5 === 0 && t > 0.5) {
+      emitParticles(cx, cy, 2, COL.gold, 1.5);
+    }
+  }
+
+  // === PHASE 1: Logo Breathe ===
+  if (phase === 1) {
+    const breathe = Math.sin(t * Math.PI * 4) * 0.05 + 1;
+    const glow = Math.sin(t * Math.PI * 2) * 0.3 + 0.5;
+    drawGlowRing(cx, cy, 80 + Math.sin(t * Math.PI * 3) * 5, glow, COL.gold);
+    drawVVULogo(cx, cy, 1.5 * breathe, 1);
+
+    // Ambient particles
+    if (frame % 8 === 0) {
+      emitParticles(cx + (Math.random()-0.5)*60, cy + (Math.random()-0.5)*60, 1, COL.gold, 0.8);
+    }
+  }
+
+  // === PHASE 2: V breaks apart, morphs to horns ===
+  if (phase === 2) {
+    const logoFade = 1 - easeInOutCubic(t);
+    const hornGrow = easeOutQuart(t);
+
+    // Logo fading
+    if (logoFade > 0.01) {
+      drawGlowRing(cx, cy, 80, logoFade * 0.3, COL.gold);
+      drawVVULogo(cx, cy, 1.5 + t * 0.3, logoFade);
+    }
+
+    // V morphing into horns
+    if (hornGrow > 0.01) {
+      drawVHornMorph(hornGrow, cx, cy, 1.5, hornGrow);
+    }
+
+    // Explosion particles at peak
+    if (t > 0.3 && t < 0.5 && frame % 2 === 0) {
+      emitParticles(cx, cy, 4, COL.gold, 3);
+      emitParticles(cx, cy, 2, '#fff', 2);
+    }
+
+    // Ground begins to appear
+    if (t > 0.5) {
+      drawGround(440, (t - 0.5) * 2);
+    }
+  }
+
+  // === PHASE 3: Springbok Materializes ===
+  if (phase === 3) {
+    const bokAlpha = easeOutQuart(t);
+    const hornFade = 1 - easeInOutCubic(Math.min(t * 2, 1));
+    const groundAlpha = Math.min(t * 2, 1);
+
+    // Horns fade into the springbok
+    if (hornFade > 0.01) {
+      drawVHornMorph(1, cx, cy, 1.5, hornFade);
+    }
+
+    // Ground
+    drawGround(440, groundAlpha);
+
+    // Springbok appears
+    const bokScale = 0.8 + 0.2 * easeOutBack(t);
+    drawSpringbok(cx, cy + 20, bokScale, bokAlpha, -0.1 * t);
+
+    // SA colors particles
+    if (frame % 6 === 0) {
+      const colors = ['#FF0000', '#007749', '#002395', COL.gold, '#fff'];
+      emitParticles(
+        cx + (Math.random()-0.5) * 200,
+        cy + 40 + Math.random() * 80,
+        2,
+        colors[Math.floor(Math.random() * colors.length)],
+        1.5
+      );
+    }
+  }
+
+  // === PHASE 4: Springbok Full + SA Flag ===
+  if (phase === 4) {
+    drawGround(440, 1);
+
+    const headTilt = -0.1 + Math.sin(t * Math.PI) * 0.15;
+    const bokBreathe = 1 + Math.sin(t * Math.PI * 6) * 0.005;
+    drawSpringbok(cx, cy + 20, bokBreathe, 1, headTilt);
+
+    // SA Flag bar
+    drawSAFlagBar(500, t, 0.8);
+
+    // Subtle gold particles
+    if (frame % 15 === 0) {
+      emitParticles(cx + (Math.random()-0.5)*150, cy + Math.random()*100, 1, COL.gold, 0.5);
+    }
+  }
+
+  // === PHASE 5: Final Hold ===
+  if (phase === 5) {
+    drawGround(440, 1);
+    drawSpringbok(cx, cy + 20, 1, 1, 0.05);
+    drawSAFlagBar(500, 1, 0.8);
+
+    // Final gold shimmer
+    if (frame % 20 === 0) {
+      emitParticles(cx + (Math.random()-0.5)*200, cy + Math.random()*150, 1, COL.gold, 0.3);
+    }
+  }
+
+  // Update & draw particles
+  particles = particles.filter(p => p.alive);
+  for (const p of particles) {
+    p.update();
+    p.draw(ctx);
+  }
+
+  requestAnimationFrame(render);
+}
+
+function replay() {
+  frame = 0;
+  particles = [];
+  document.getElementById('overlay').classList.remove('visible');
+  document.getElementById('replayBtn').classList.remove('visible');
+  running = true;
+  render();
+}
+
+// Start
+render();
+</script>
+</body>
+</html>

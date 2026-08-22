@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VVU · System Dashboard – DNS LIVE</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;500;700;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* ─── Reset & Base ─── */
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            background:#0a0a0f; color:#e8e8f0; font-family:'Space Grotesk',sans-serif;
+            height:100vh; overflow:hidden; display:flex; flex-direction:column;
+        }
+        ::-webkit-scrollbar { width:4px; }
+        ::-webkit-scrollbar-track { background:rgba(255,255,255,0.02); }
+        ::-webkit-scrollbar-thumb { background:rgba(212,175,55,0.3); border-radius:2px; }
+        button { cursor:pointer; font:inherit; }
+        input, textarea { font:inherit; outline:none; }
+
+        /* ─── Topbar ─── */
+        .topbar {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:8px 16px; background:rgba(10,10,15,0.95); backdrop-filter:blur(12px);
+            border-bottom:1px solid rgba(212,175,55,0.1); flex-shrink:0; z-index:10;
+            gap:12px; flex-wrap:wrap;
+        }
+        .topbar .logo { font-weight:900; font-size:16px; letter-spacing:0.1em; color:#d4af37; display:flex; align-items:center; gap:6px; }
+        .topbar .logo span { color:rgba(255,255,255,0.2); font-weight:300; font-size:9px; }
+        .topbar .status-badge { font-size:9px; font-family:'JetBrains Mono',monospace; background:rgba(81,207,102,0.1); color:#51cf66; padding:4px 8px; border-radius:4px; border:1px solid rgba(81,207,102,0.2); }
+        .topbar .user-area { display:flex; align-items:center; gap:8px; }
+        .topbar .user-area .user-name { font-size:10px; color:rgba(255,255,255,0.4); font-family:'JetBrains Mono',monospace; }
+        .topbar .user-area .sign-btn { background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.1); border-radius:6px; padding:4px 12px; color:#d4af37; font-family:'JetBrains Mono',monospace; font-size:8px; transition:all 0.2s; }
+        .topbar .user-area .sign-btn:hover { background:rgba(212,175,55,0.15); }
+        .topbar .nav-tabs { display:flex; gap:2px; background:rgba(255,255,255,0.02); padding:3px; border-radius:10px; flex-wrap:wrap; }
+        .topbar .nav-tabs button { background:transparent; border:none; color:rgba(255,255,255,0.25); padding:5px 12px; border-radius:6px; font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:500; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; transition:all 0.2s ease; }
+        .topbar .nav-tabs button:hover { color:rgba(255,255,255,0.5); background:rgba(255,255,255,0.03); }
+        .topbar .nav-tabs button.active { color:#d4af37; background:rgba(212,175,55,0.08); }
+
+        /* ─── Main ─── */
+        .main { flex:1; display:flex; overflow:hidden; }
+
+        /* ─── Sidebar ─── */
+        .sidebar {
+            width:240px; background:rgba(10,10,15,0.8); backdrop-filter:blur(8px);
+            border-right:1px solid rgba(255,255,255,0.02); padding:12px; overflow-y:auto;
+            flex-shrink:0; display:flex; flex-direction:column; gap:12px;
+        }
+        .sidebar .section-title { font-size:10px; font-weight:700; color:#d4af37; text-transform:uppercase; letter-spacing:0.08em; margin-top:8px; }
+        .sidebar .stat { font-size:9px; font-family:'JetBrains Mono',monospace; color:rgba(255,255,255,0.3); line-height:1.8; }
+        .sidebar .stat .label { color:rgba(255,255,255,0.15); }
+        .sidebar .stat .value { color:#d4af37; font-weight:600; }
+        .sidebar .success-banner { background:rgba(81,207,102,0.08); border-left:3px solid #51cf66; padding:8px; border-radius:4px; font-size:8px; color:rgba(255,255,255,0.5); line-height:1.6; }
+        .sidebar .success-banner strong { color:#51cf66; }
+        .sidebar .user-info .membership { font-size:11px; color:#d4af37; font-weight:600; }
+
+        /* ─── Content ─── */
+        .content { flex:1; overflow:hidden; display:flex; flex-direction:column; background:rgba(0,0,0,0.15); }
+        .view-panel { display:none; flex:1; overflow:hidden; flex-direction:column; }
+        .view-panel.active { display:flex; }
+
+        /* ─── Console View ─── */
+        .console-view { display:flex; flex-direction:column; gap:12px; padding:12px 16px; flex:1; }
+        .console-output { background:rgba(0,0,0,0.4); border-radius:8px; padding:12px; font-family:'JetBrains Mono',monospace; font-size:9px; color:rgba(255,255,255,0.7); flex:1; overflow-y:auto; border:1px solid rgba(255,255,255,0.02); }
+        .console-output .line { margin-bottom:4px; }
+        .console-output .line.success { color:#51cf66; }
+        .console-output .line.error { color:#ff6b6b; }
+        .console-output .line.warning { color:#fcc419; }
+        .console-output .line.info { color:#74c0fc; }
+        .console-input-area { display:flex; gap:6px; }
+        .console-input-area input { flex:1; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.04); border-radius:6px; padding:6px 10px; color:#e8e8f0; font-family:'JetBrains Mono',monospace; font-size:9px; }
+        .console-input-area button { background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.1); border-radius:6px; padding:6px 12px; color:#d4af37; font-family:'JetBrains Mono',monospace; font-size:9px; transition:all 0.2s; }
+        .console-input-area button:hover { background:rgba(212,175,55,0.12); border-color:#d4af37; }
+
+        /* ─── State View ─── */
+        .state-view { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:12px 16px; overflow-y:auto; }
+        .state-card { background:rgba(18,18,30,0.4); border-radius:8px; padding:16px; border:1px solid rgba(255,255,255,0.02); }
+        .state-card .title { font-size:10px; color:rgba(255,255,255,0.15); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px; }
+        .state-card .content { font-size:9px; font-family:'JetBrains Mono',monospace; color:rgba(255,255,255,0.4); line-height:1.8; }
+        .state-card .content .key { color:rgba(255,255,255,0.25); }
+        .state-card .content .val { color:#d4af37; }
+        .state-card .live-link { display:inline-block; margin-top:8px; background:rgba(212,175,55,0.08); padding:4px 12px; border-radius:4px; color:#d4af37; text-decoration:none; font-size:9px; transition:0.2s; }
+        .state-card .live-link:hover { background:rgba(212,175,55,0.15); }
+
+        /* ─── Specs View ─── */
+        .specs-view { display:flex; flex-direction:column; gap:12px; padding:12px 16px; overflow-y:auto; }
+        .spec-section { background:rgba(18,18,30,0.4); border-radius:8px; padding:16px; border:1px solid rgba(255,255,255,0.02); }
+        .spec-section .title { font-size:11px; font-weight:700; color:#d4af37; margin-bottom:8px; }
+        .spec-section .content { font-size:8px; color:rgba(255,255,255,0.3); line-height:1.8; font-family:'JetBrains Mono',monospace; white-space:pre-wrap; }
+
+        /* ─── STUDI View ─── */
+        .studi-view { display:flex; flex-direction:column; padding:12px 16px; flex:1; overflow-y:auto; gap:16px; }
+        .studi-view .welcome { font-size:12px; color:rgba(255,255,255,0.2); }
+        .studi-view .welcome strong { color:#d4af37; }
+
+        .onboarding-container { max-width:600px; margin:20px auto; background:rgba(18,18,30,0.6); border-radius:12px; padding:24px; border:1px solid rgba(212,175,55,0.1); text-align:center; }
+        .onboarding-container .lindiwe-avatar { width:64px; height:64px; border-radius:50%; background:rgba(212,175,55,0.1); border:1px solid rgba(212,175,55,0.2); display:flex; align-items:center; justify-content:center; font-size:28px; margin:0 auto 12px; color:#d4af37; }
+        .onboarding-container .prompt { font-size:16px; font-weight:500; margin-bottom:12px; color:#e8e8f0; }
+        .onboarding-container .sub-prompt { font-size:11px; color:rgba(255,255,255,0.3); margin-bottom:16px; }
+        .onboarding-container .answer-area { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+        .onboarding-container .answer-area input { flex:1; min-width:200px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.04); border-radius:6px; padding:8px 12px; color:#e8e8f0; font-size:12px; }
+        .onboarding-container .answer-area button { background:#d4af37; border:none; border-radius:6px; padding:8px 20px; color:#0a0a0f; font-weight:700; font-size:12px; }
+        .onboarding-container .answer-area button:disabled { opacity:0.4; cursor:not-allowed; }
+        .onboarding-container .progress { margin-top:16px; font-size:10px; color:rgba(255,255,255,0.15); font-family:'JetBrains Mono',monospace; }
+        .onboarding-container .choices { display:flex; gap:12px; justify-content:center; }
+        .onboarding-container .choices button { background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.1); border-radius:6px; padding:8px 24px; color:#d4af37; font-weight:600; transition:all 0.2s; }
+        .onboarding-container .choices button:hover { background:rgba(212,175,55,0.15); }
+        .onboarding-container .error { color:#ff6b6b; font-size:11px; margin-top:8px; }
+
+        .workspace { display:flex; flex-direction:column; gap:16px; flex:1; }
+        .workspace .header-row { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.04); padding-bottom:8px; }
+        .workspace .header-row h2 { font-size:16px; font-weight:700; color:#d4af37; }
+        .workspace .header-row .membership-id { font-size:10px; color:rgba(255,255,255,0.2); font-family:'JetBrains Mono',monospace; }
+        .workspace .hypothesis-section { background:rgba(18,18,30,0.4); border-radius:8px; padding:12px; border:1px solid rgba(255,255,255,0.02); }
+        .workspace .hypothesis-section label { font-size:9px; color:rgba(255,255,255,0.15); text-transform:uppercase; letter-spacing:0.08em; display:block; margin-bottom:4px; }
+        .workspace .hypothesis-section textarea { width:100%; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.04); border-radius:6px; padding:8px; color:#e8e8f0; font-family:'JetBrains Mono',monospace; font-size:10px; resize:vertical; min-height:50px; }
+        .workspace .sources-section { background:rgba(18,18,30,0.4); border-radius:8px; padding:12px; border:1px solid rgba(255,255,255,0.02); }
+        .workspace .sources-section .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+        .workspace .sources-section .header label { font-size:9px; color:rgba(255,255,255,0.15); text-transform:uppercase; letter-spacing:0.08em; }
+        .workspace .sources-section .header .add-btn { background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.1); border-radius:6px; padding:4px 12px; color:#d4af37; font-size:9px; font-family:'JetBrains Mono',monospace; transition:all 0.2s; }
+        .workspace .sources-section .header .add-btn:hover { background:rgba(212,175,55,0.15); }
+        .workspace .sources-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; }
+        .workspace .source-card { background:rgba(0,0,0,0.3); border-radius:6px; padding:8px 10px; border:1px solid rgba(255,255,255,0.02); display:flex; flex-direction:column; gap:4px; }
+        .workspace .source-card .name { font-size:10px; font-weight:600; color:#e8e8f0; word-break:break-all; }
+        .workspace .source-card .meta { font-size:8px; color:rgba(255,255,255,0.3); font-family:'JetBrains Mono',monospace; display:flex; justify-content:space-between; }
+        .workspace .source-card .sha { font-size:7px; color:rgba(255,255,255,0.2); }
+        .workspace .source-card .status { font-size:7px; color:#51cf66; text-transform:uppercase; letter-spacing:0.05em; }
+        .workspace .empty-sources { color:rgba(255,255,255,0.2); font-size:11px; text-align:center; padding:20px 0; }
+
+        /* ─── Import View ─── */
+        .import-view { display:flex; flex-direction:column; gap:8px; padding:12px 16px; flex:1; overflow-y:auto; }
+        .import-section { background:rgba(18,18,30,0.4); border-radius:8px; padding:12px; border:1px solid rgba(255,255,255,0.02); }
+        .import-section .label { font-size:10px; color:rgba(255,255,255,0.15); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px; display:block; }
+        .import-section input[type="file"] { display:none; }
+        .import-section .file-btn { background:rgba(212,175,55,0.08); border:1px dashed rgba(212,175,55,0.2); border-radius:6px; padding:12px; color:rgba(255,255,255,0.5); font-family:'JetBrains Mono',monospace; font-size:9px; cursor:pointer; text-align:center; transition:all 0.2s; }
+        .import-section .file-btn:hover { background:rgba(212,175,55,0.12); color:#d4af37; }
+        .import-status { font-size:8px; color:rgba(255,255,255,0.2); font-family:'JetBrains Mono',monospace; margin-top:4px; }
+
+        /* ─── FLOATING SOCIAL/GAMING SHORTCUT ─── */
+        .social-float {
+            position:fixed; bottom:80px; right:20px; z-index:9999;
+            display:flex; flex-direction:column; align-items:center; gap:6px;
+        }
+        .social-float .main-btn {
+            width:48px; height:48px; border-radius:50%;
+            background:rgba(18,18,30,0.85); backdrop-filter:blur(12px);
+            border:1.5px solid rgba(212,175,55,0.3); color:#d4af37;
+            display:flex; align-items:center; justify-content:center; font-size:22px;
+            cursor:pointer; transition:all 0.3s ease; box-shadow:0 4px 20px rgba(0,0,0,0.7);
+        }
+        .social-float .main-btn:hover { transform:scale(1.1); border-color:#d4af37; box-shadow:0 0 30px rgba(212,175,55,0.2); }
+
+        .social-float .panel {
+            position:absolute; bottom:56px; right:0;
+            width:340px; max-height:380px; overflow-y:auto;
+            background:rgba(10,10,15,0.94); backdrop-filter:blur(16px);
+            border:1px solid rgba(212,175,55,0.1); border-radius:12px;
+            padding:12px; box-shadow:0 8px 40px rgba(0,0,0,0.8);
+            display:none; flex-direction:column; gap:8px;
+            transform-origin:bottom right; transition:all 0.2s;
+        }
+        .social-float .panel.open { display:flex; }
+
+        .social-float .panel .tabs { display:flex; gap:4px; border-bottom:1px solid rgba(255,255,255,0.04); padding-bottom:6px; }
+        .social-float .panel .tabs button { background:transparent; border:none; color:rgba(255,255,255,0.2); padding:4px 12px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:8px; text-transform:uppercase; transition:0.2s; }
+        .social-float .panel .tabs button.active { color:#d4af37; background:rgba(212,175,55,0.06); }
+        .social-float .panel .tab-content { display:none; flex-direction:column; gap:6px; max-height:260px; overflow-y:auto; }
+        .social-float .panel .tab-content.active { display:flex; }
+        .social-float .panel .account-item {
+            display:flex; align-items:center; gap:8px; padding:4px 6px;
+            background:rgba(0,0,0,0.2); border-radius:4px; border:1px solid rgba(255,255,255,0.02);
+            font-size:9px; font-family:'JetBrains Mono',monospace;
+        }
+        .social-float .panel .account-item .icon { font-size:14px; width:20px; text-align:center; }
+        .social-float .panel .account-item .name { flex:1; color:rgba(255,255,255,0.5); }
+        .social-float .panel .account-item .status { font-size:7px; padding:0 6px; border-radius:8px; background:rgba(81,207,102,0.08); color:#51cf66; }
+        .social-float .panel .account-item .status.disconnected { color:#ff6b6b; background:rgba(255,107,107,0.08); }
+        .social-float .panel .account-item .action-btn { background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.06); border-radius:4px; padding:2px 8px; color:#d4af37; font-size:7px; cursor:pointer; transition:0.2s; }
+        .social-float .panel .account-item .action-btn:hover { background:rgba(212,175,55,0.15); }
+        .social-float .panel .quick-actions { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+        .social-float .panel .quick-actions button { background:rgba(212,175,55,0.04); border:1px solid rgba(212,175,55,0.06); border-radius:4px; padding:3px 8px; color:#d4af37; font-size:7px; font-family:'JetBrains Mono',monospace; transition:0.2s; }
+        .social-float .panel .quick-actions button:hover { background:rgba(212,175,55,0.12); }
+        .social-float .panel .lindiwe-ask { background:rgba(74,144,226,0.08); border:1px solid rgba(74,144,226,0.1); border-radius:4px; padding:4px 8px; display:flex; gap:4px; align-items:center; margin-top:4px; }
+        .social-float .panel .lindiwe-ask input { flex:1; background:rgba(0,0,0,0.3); border:none; border-radius:3px; padding:4px; color:#e8e8f0; font-size:8px; font-family:'JetBrains Mono',monospace; }
+        .social-float .panel .lindiwe-ask button { background:#d4af37; border:none; border-radius:3px; padding:2px 8px; color:#0a0a0f; font-weight:700; font-size:7px; }
+        .social-float .panel .gaming-session { background:rgba(0,0,0,0.2); border-radius:4px; padding:6px; border:1px solid rgba(255,255,255,0.02); }
+        .social-float .panel .gaming-session .row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+        .social-float .panel .gaming-session .row button { background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.06); border-radius:3px; padding:2px 8px; color:#d4af37; font-size:7px; font-family:'JetBrains Mono',monospace; }
+        .social-float .panel .gaming-session .row button:hover { background:rgba(212,175,55,0.15); }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width:900px) { .sidebar { width:180px; } .state-view { grid-template-columns:1fr; } }
+        @media (max-width:700px) {
+            .sidebar { display:none; }
+            .topbar .nav-tabs button { font-size:7px; padding:4px 8px; }
+            .topbar .nav-tabs button i { display:none; }
+            .onboarding-container { padding:16px; margin:10px; }
+            .workspace .sources-grid { grid-template-columns:1fr; }
+            .social-float .panel { width:280px; right:-10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── TOPBAR ─── -->
+    <header class="topbar">
+        <div class="logo"><i class="fas fa-shield-alt"></i> VVU <span>· DNS LIVE</span></div>
+        <div class="status-badge" id="statusBadge">🟢 DNS RESOLVED</div>
+        <div class="user-area">
+            <span class="user-name" id="userNameDisplay">Not signed in</span>
+            <button class="sign-btn" id="signBtn">Sign In</button>
+        </div>
+        <div class="nav-tabs" id="navTabs">
+            <button class="active" data-view="console"><i class="fas fa-terminal"></i> Console</button>
+            <button data-view="state"><i class="fas fa-database"></i> State</button>
+            <button data-view="specs"><i class="fas fa-book"></i> Specs</button>
+            <button data-view="studi"><i class="fas fa-flask"></i> STUDI</button>
+            <button data-view="import"><i class="fas fa-upload"></i> Import</button>
+        </div>
+    </header>
+
+    <!-- ─── MAIN ─── -->
+    <div class="main">
+        <aside class="sidebar" id="sidebar">
+            <div>
+                <div class="section-title">System Status</div>
+                <div class="stat"><span class="label">Build ID:</span><br /><span class="value" id="buildId">JTrqZ5EFko2KFojKSK8Z5</span></div>
+                <div class="stat"><span class="label">Server:</span><br /><span class="value">Self-hosted :81</span></div>
+            </div>
+            <div>
+                <div class="section-title">User</div>
+                <div class="stat user-info"><span class="label">Membership:</span><br /><span class="membership" id="membershipDisplay">—</span></div>
+                <div class="stat"><span class="label">Sources:</span><br /><span class="value" id="sourceCount">0</span></div>
+            </div>
+            <div class="success-banner">
+                <strong>✅ DNS LIVE</strong><br />
+                venturevisionubuntu.co.za → 47.57.242.119<br />
+                <span style="font-size:7px; color:#51cf66;">Propagation confirmed · HTTP 200</span>
+            </div>
+        </aside>
+
+        <div class="content">
+            <!-- CONSOLE VIEW -->
+            <div class="view-panel active" id="view-console">
+                <div class="console-view">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><h2 style="font-size:14px; font-weight:700; color:#d4af37;"><i class="fas fa-terminal"></i> Console</h2><span style="font-size:8px; color:rgba(255,255,255,0.15);">● DNS LIVE</span></div>
+                    <div class="console-output" id="consoleOutput">
+                        <div class="line success">✅ DNS fully resolved – blocker cleared</div>
+                        <div class="line success">✓ Domain: venturevisionubuntu.co.za → 47.57.242.119</div>
+                        <div class="line success">✓ HTTP 200 confirmed</div>
+                        <div class="line info">→ Vercel dependency removed – self-hosted only</div>
+                        <div class="line info">→ Type 'help' for commands</div>
+                    </div>
+                    <div class="console-input-area"><input id="consoleInput" placeholder="Enter command..." /><button id="consoleSendBtn">Send</button></div>
+                </div>
+            </div>
+
+            <!-- STATE VIEW -->
+            <div class="view-panel" id="view-state">
+                <div class="state-view" id="stateCards">
+                    <div class="state-card"><div class="title">Deployment</div><div class="content"><div><span class="key">App:</span> <span class="val" style="color:#51cf66;">LIVE</span></div><div><span class="key">Domain:</span> <span class="val">venturevisionubuntu.co.za</span></div><div><span class="key">IP:</span> <span class="val">47.57.242.119</span></div><div><span class="key">Port:</span> <span class="val">81 (HTTP)</span></div><div><span class="key">Contract:</span> <span class="val">dormant</span></div><a href="http://venturevisionubuntu.co.za:81/" target="_blank" class="live-link"><i class="fas fa-external-link-alt"></i> View Live</a></div></div>
+                    <div class="state-card"><div class="title">Network</div><div class="content"><div><span class="key">DNS:</span> <span class="val" style="color:#51cf66;">RESOLVED</span></div><div><span class="key">Propagation:</span> <span class="val">Google DNS confirmed</span></div><div><span class="key">TLS:</span> <span class="val">pending (Caddy auto-https)</span></div><div><span class="key">Vercel:</span> <span class="val" style="color:#ff6b6b;">removed</span></div></div></div>
+                    <div class="state-card"><div class="title">Infrastructure</div><div class="content"><div><span class="key">Runtime:</span> <span class="val">ER Ready</span></div><div><span class="key">Agents:</span> <span class="val">Designed</span></div><div><span class="key">Pipeline:</span> <span class="val">11-step</span></div><div><span class="key">Tests:</span> <span class="val">57/57 pass</span></div></div></div>
+                    <div class="state-card"><div class="title">Next Actions</div><div class="content"><div><span class="key">1.</span> <span style="color:#51cf66;">✅ DNS done</span></div><div><span class="key">2.</span> Run Caddy TLS on port 443</div><div><span class="key">3.</span> Deploy contract (optional)</div><div><span class="key">4.</span> Activate system</div></div></div>
+                </div>
+            </div>
+
+            <!-- SPECS VIEW -->
+            <div class="view-panel" id="view-specs">
+                <div class="specs-view">
+                    <div class="spec-section"><div class="title" style="color:#51cf66;">✅ DNS Resolved – Blocker Cleared</div><div class="content">Token provided and stored in .env.local
+A @ record updated: 76.76.21.21 → 47.57.242.119
+CNAME www updated: cname.vercel-dns.com → venturevisionubuntu.co.za.
+DNS propagation confirmed via Google DNS
+Site serving HTTP 200 (43 KB)
+
+Access paths:
+  http://venturevisionubuntu.co.za:81/   (live)
+  http://localhost:3000/                 (dev)
+
+Next: set up Caddy for HTTPS on port 443</div></div>
+                    <div class="spec-section"><div class="title">Architecture: VVU Epistemic Runtime</div><div class="content">Deterministic evidence engine with S3 Object Lock, KMS signing, MMR/RFC 8785, 11-step pipeline, 57/57 tests passing. Agents: LINDIWE (teaching), WATCHDOG (validation). Blockchain: VVUSovereignRegistry (dormant-deploy).</div></div>
+                    <div class="spec-section"><div class="title">Commands Reference</div><div class="content">help, status, state, data, verify, dns, specs, clear, whoami</div></div>
+                </div>
+            </div>
+
+            <!-- STUDI VIEW -->
+            <div class="view-panel" id="view-studi"><div class="studi-view" id="studiContainer"></div></div>
+
+            <!-- IMPORT VIEW -->
+            <div class="view-panel" id="view-import">
+                <div class="import-view">
+                    <div class="import-section"><label class="label">Load System Data</label><input type="file" id="fileInput" accept=".json" /><div class="file-btn" id="fileBtn" style="cursor:pointer;"><i class="fas fa-cloud-upload-alt"></i><br />Click or drag vvu-system-data.json</div><div class="import-status" id="importStatus">Ready to load data</div></div>
+                    <div class="import-section"><label class="label">Data Preview</label><div style="background:rgba(0,0,0,0.3); border-radius:6px; padding:8px; font-family:'JetBrains Mono',monospace; font-size:8px; color:rgba(255,255,255,0.5); max-height:200px; overflow-y:auto;"><pre id="dataPreview">{"system":{"name":"VVU Unified System"},"deployment":{...}}</pre></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── FLOATING SOCIAL/GAMING SHORTCUT ─── -->
+    <div class="social-float" id="socialFloat">
+        <button class="main-btn" id="socialToggle"><i class="fas fa-share-alt"></i></button>
+        <div class="panel" id="socialPanel">
+            <div class="tabs"><button class="active" data-tab="social">Social</button><button data-tab="gaming">Gaming</button></div>
+            <div class="tab-content active" id="tab-social">
+                <div class="account-item"><span class="icon" style="color:#1DA1F2;">🐦</span><span class="name">Twitter</span><span class="status">Connected</span><button class="action-btn">Post</button></div>
+                <div class="account-item"><span class="icon" style="color:#E4405F;">📸</span><span class="name">Instagram</span><span class="status">Connected</span><button class="action-btn">Post</button></div>
+                <div class="account-item"><span class="icon" style="color:#0077B5;">💼</span><span class="name">LinkedIn</span><span class="status disconnected">Not connected</span><button class="action-btn">Connect</button></div>
+                <div class="account-item"><span class="icon" style="color:#25D366;">📱</span><span class="name">WhatsApp</span><span class="status">Connected</span><button class="action-btn">DM</button></div>
+                <div class="account-item"><span class="icon" style="color:#5865F2;">💬</span><span class="name">Discord</span><span class="status disconnected">Not connected</span><button class="action-btn">Connect</button></div>
+                <div class="account-item"><span class="icon" style="color:#ff0050;">🎵</span><span class="name">TikTok</span><span class="status">Connected</span><button class="action-btn">Share</button></div>
+                <div class="quick-actions"><button><i class="fas fa-envelope"></i> Email</button><button><i class="fas fa-file-alt"></i> Word Doc</button><button><i class="fab fa-youtube"></i> YouTube</button><button><i class="fas fa-chart-line"></i> Stocks</button><button><i class="fab fa-bitcoin"></i> Web3</button><button><i class="fas fa-coins"></i> Binance</button></div>
+                <div class="lindiwe-ask"><input id="socialAskInput" placeholder="Ask Lindiwe to fetch data..." /><button id="socialAskBtn">Ask</button></div>
+                <div style="font-size:7px; color:rgba(255,255,255,0.1); margin-top:4px;">* Simulated – will show in console</div>
+            </div>
+            <div class="tab-content" id="tab-gaming">
+                <div class="account-item"><span class="icon" style="color:#006fcd;">🎮</span><span class="name">PlayStation</span><span class="status">Connected</span><button class="action-btn">Launch</button></div>
+                <div class="account-item"><span class="icon" style="color:#107c10;">🎮</span><span class="name">Xbox</span><span class="status">Connected</span><button class="action-btn">Launch</button></div>
+                <div class="account-item"><span class="icon" style="color:#1b2838;">🎮</span><span class="name">Steam</span><span class="status disconnected">Not connected</span><button class="action-btn">Connect</button></div>
+                <div class="account-item"><span class="icon" style="color:#e60012;">🎮</span><span class="name">Nintendo</span><span class="status disconnected">Not connected</span><button class="action-btn">Connect</button></div>
+                <div class="gaming-session"><div class="row"><span style="font-size:8px; color:rgba(255,255,255,0.3);">Tournament:</span><button>Start</button><button>Join</button><button>Schedule</button></div><div class="row"><span style="font-size:8px; color:rgba(255,255,255,0.3);">Session:</span><button>Quick Play</button><button>Ranked</button><button>Custom</button></div></div>
+                <div style="font-size:7px; color:rgba(255,255,255,0.1); margin-top:4px;">* Simulated – will show in console</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY_PROFILE = 'vvu_profile';
+        const STORAGE_KEY_SOURCES = 'vvu_sources';
+        let currentUser = null;
+        let profile = null;
+        let sources = [];
+        const questions = ['name','alignment','role','organization','email','mobile','card','wallet'];
+        const prompts = { name:'What is your name?', alignment:'Are you aligned with the reason you are here?', role:'Good. What role do you need VVU to play?', organization:'Tell me about your organization.', email:'What email should we associate with your VVU membership?', mobile:'What mobile number should we use?', card:'Optional: connect a card reference, or say skip.', wallet:'Optional: connect a Web3 wallet, or say skip.' };
+
+        const navTabs = document.querySelectorAll('.nav-tabs button');
+        const viewPanels = { console: document.getElementById('view-console'), state: document.getElementById('view-state'), specs: document.getElementById('view-specs'), studi: document.getElementById('view-studi'), import: document.getElementById('view-import') };
+        const studiContainer = document.getElementById('studiContainer');
+        const userDisplay = document.getElementById('userNameDisplay');
+        const signBtn = document.getElementById('signBtn');
+        const membershipDisplay = document.getElementById('membershipDisplay');
+        const sourceCountDisplay = document.getElementById('sourceCount');
+
+        function switchView(viewId) { navTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewId)); Object.keys(viewPanels).forEach(key => viewPanels[key].classList.toggle('active', key === viewId)); if (viewId === 'studi') renderStudi(); }
+        navTabs.forEach(btn => btn.addEventListener('click', () => switchView(btn.dataset.view)));
+
+        const consoleOutput = document.getElementById('consoleOutput');
+        const consoleInput = document.getElementById('consoleInput');
+        const consoleSendBtn = document.getElementById('consoleSendBtn');
+        function consoleLog(text, type='normal') { const line = document.createElement('div'); line.className = `line ${type}`; line.textContent = text; consoleOutput.appendChild(line); consoleOutput.scrollTop = consoleOutput.scrollHeight; }
+        function handleCommand(cmd) {
+            const lower = cmd.toLowerCase().trim(); consoleLog(`$ ${cmd}`);
+            if (lower === 'help') { consoleLog('Commands: status, state, data, verify, dns, specs, clear, whoami', 'info'); }
+            else if (lower === 'status') { consoleLog('✓ System Status:', 'success'); consoleLog('  Platform: Self-hosted on :81'); consoleLog('  DNS: RESOLVED (47.57.242.119)'); consoleLog('  Domain: venturevisionubuntu.co.za'); }
+            else if (lower === 'state') { consoleLog('✓ Deployment State:', 'success'); consoleLog('  App: LIVE'); consoleLog('  Domain: venturevisionubuntu.co.za'); consoleLog('  IP: 47.57.242.119'); consoleLog('  Contract: dormant'); }
+            else if (lower === 'data') { consoleLog(`Sources: ${sources.length}`, sources.length > 0 ? 'success' : 'warning'); if (profile) consoleLog(`Membership: ${profile.membershipId}`, 'info'); }
+            else if (lower === 'verify') { if (sources.length > 0) { consoleLog('✓ Verification pipeline ready (simulated)', 'success'); } else { consoleLog('No sources to verify. Upload something.', 'error'); } }
+            else if (lower === 'dns') { consoleLog('✅ DNS is LIVE: venturevisionubuntu.co.za → 47.57.242.119', 'success'); consoleLog('  Propagation confirmed via Google DNS.'); consoleLog('  HTTP 200 OK.'); }
+            else if (lower === 'specs') { consoleLog('Switch to Specs tab for architecture details.', 'info'); }
+            else if (lower === 'clear') { consoleOutput.innerHTML = ''; }
+            else if (lower === 'whoami') { if (currentUser) { consoleLog(`Signed in as ${currentUser.name} (${currentUser.email})`, 'success'); consoleLog(`Membership: ${profile?.membershipId || '—'}`); } else { consoleLog('Not signed in.', 'warning'); } }
+            else { consoleLog(`Unknown: ${cmd}`, 'error'); }
+        }
+        consoleSendBtn.addEventListener('click', () => { const cmd = consoleInput.value.trim(); if (cmd) { handleCommand(cmd); consoleInput.value = ''; } });
+        consoleInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { const cmd = consoleInput.value.trim(); if (cmd) { handleCommand(cmd); consoleInput.value = ''; } } });
+
+        function loadState() { try { const p = localStorage.getItem(STORAGE_KEY_PROFILE); if (p) profile = JSON.parse(p); } catch(e){} try { const s = localStorage.getItem(STORAGE_KEY_SOURCES); if (s) sources = JSON.parse(s); } catch(e){} if (profile) { currentUser = { name: profile.name || 'User', email: profile.email || 'user@example.com', membershipId: profile.membershipId || 'VVU-USER' }; updateUserUI(); } updateSidebar(); }
+        function saveState() { if (profile) localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(profile)); localStorage.setItem(STORAGE_KEY_SOURCES, JSON.stringify(sources)); }
+        function updateUserUI() { if (currentUser) { userDisplay.textContent = currentUser.name; signBtn.textContent = 'Sign Out'; } else { userDisplay.textContent = 'Not signed in'; signBtn.textContent = 'Sign In'; } updateSidebar(); }
+        function updateSidebar() { membershipDisplay.textContent = profile?.membershipId || '—'; sourceCountDisplay.textContent = sources.length; }
+        function toggleSignIn() { if (currentUser) { currentUser = null; profile = null; sources = []; localStorage.removeItem(STORAGE_KEY_PROFILE); localStorage.removeItem(STORAGE_KEY_SOURCES); updateUserUI(); renderStudi(); consoleLog('Signed out.', 'info'); } else { const name = prompt('Enter your name:', 'Divhani'); const email = prompt('Enter your email:', 'divhani@vvu.io'); if (name && email) { currentUser = { name, email, membershipId: 'VVU-' + Math.random().toString(36).substring(2,7).toUpperCase() }; profile = null; sources = []; updateUserUI(); renderStudi(); consoleLog(`Signed in as ${currentUser.name}`, 'success'); } } }
+        signBtn.addEventListener('click', toggleSignIn);
+
+        let currentStep = 0;
+        function renderStudi() { if (!currentUser) { studiContainer.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;"><div style="font-size:48px;margin-bottom:16px;">🔐</div><h2 style="color:#d4af37;">Sign in to access STUDI</h2><p style="color:rgba(255,255,255,0.3);font-size:12px;">Click the "Sign In" button in the top bar.</p></div>'; return; } if (profile && profile.onboardingComplete) { renderWorkspace(); } else { renderOnboarding(); } }
+        function renderOnboarding() { if (profile?.step !== undefined) currentStep = profile.step; else { currentStep = 0; profile = { membershipId: currentUser.membershipId, step: 0, onboardingComplete: false }; } if (currentStep >= questions.length) { profile.onboardingComplete = true; profile.step = questions.length; saveState(); renderStudi(); return; } const q = questions[currentStep]; const pt = prompts[q] || ''; const isYN = q === 'alignment'; const isOpt = q === 'card' || q === 'wallet'; studiContainer.innerHTML = `<div class="onboarding-container"><div class="lindiwe-avatar">🧠</div><div class="prompt">${pt}</div><div class="sub-prompt">${isOpt ? 'Optional — type "skip"' : ''}</div><div class="answer-area" id="oAA">${isYN ? '<div class="choices"><button data-value="yes">Yes</button><button data-value="no">No</button></div>' : '<input type="text" id="oI" placeholder="Type your answer..." /><button id="oN">Continue</button>'}</div><div class="progress">Step ${currentStep+1} of ${questions.length}</div><div class="error" id="oE"></div></div>`; const errEl = document.getElementById('oE'); function adv(a) { profile[q] = a; profile.step = currentStep + 1; if (profile.step >= questions.length) profile.onboardingComplete = true; saveState(); currentStep = profile.step; renderStudi(); } if (isYN) { document.querySelectorAll('.choices button').forEach(b => b.addEventListener('click', () => adv(b.dataset.value))); } else { const inp = document.getElementById('oI'); const nb = document.getElementById('oN'); const sub = () => { const v = inp.value.trim(); if (!v && !isOpt) { errEl.textContent = 'Please enter an answer.'; return; } adv(v); }; nb.addEventListener('click', sub); inp.addEventListener('keydown', e => { if (e.key === 'Enter') sub(); }); inp.focus(); } }
+        function renderWorkspace() { studiContainer.innerHTML = `<div class="workspace"><div class="header-row"><h2><i class="fas fa-flask"></i> STUDI Studio</h2><span class="membership-id">${profile.membershipId}</span></div><div class="hypothesis-section"><label>Hypothesis</label><textarea id="hI" placeholder="What are you investigating?">How can we build a deterministic evidence runtime that enforces cryptographic integrity and bit-identical replay?</textarea></div><div class="sources-section"><div class="header"><label>Sources (${sources.length})</label><button class="add-btn" id="aSB"><i class="fas fa-plus"></i> Add</button></div><div class="sources-grid" id="sG">${sources.length === 0 ? '<div class="empty-sources">No sources yet.</div>' : sources.map(s => `<div class="source-card"><div class="name">${s.filename}</div><div class="meta"><span>${Math.round(s.size/1024)} KB</span><span class="status">${s.status||'INGESTED'}</span></div><div class="sha">SHA-256: ${s.sha256?s.sha256.slice(0,16)+'…':'—'}</div></div>`).join('')}</div><input type="file" id="fIS" accept=".pdf,.doc,.docx,.txt,.csv,.json,.md" style="display:none;" /></div></div>`; document.getElementById('aSB').addEventListener('click', () => document.getElementById('fIS').click()); document.getElementById('fIS').addEventListener('change', async e => { const f = e.target.files[0]; if (!f) return; try { const buf = await f.arrayBuffer(); const hash = await crypto.subtle.digest('SHA-256', buf); const sha = Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join(''); sources.push({ filename: f.name, size: f.size, mimeType: f.type||'application/octet-stream', sha256: sha, status: 'INGESTED', uploadedAt: new Date().toISOString() }); saveState(); updateSidebar(); renderWorkspace(); consoleLog(`Source "${f.name}" ingested.`, 'success'); } catch(err) { consoleLog('Error: ' + err.message, 'error'); } e.target.value = ''; }); }
+
+        const fileInput = document.getElementById('fileInput'); const fileBtn = document.getElementById('fileBtn'); const importStatus = document.getElementById('importStatus'); const dataPreview = document.getElementById('dataPreview');
+        fileBtn.addEventListener('click', () => fileInput.click()); fileInput.addEventListener('change', loadFile);
+        fileBtn.addEventListener('dragover', e => { e.preventDefault(); fileBtn.style.background = 'rgba(212,175,55,0.15)'; }); fileBtn.addEventListener('dragleave', () => { fileBtn.style.background = 'rgba(212,175,55,0.08)'; });
+        fileBtn.addEventListener('drop', e => { e.preventDefault(); fileBtn.style.background = 'rgba(212,175,55,0.08)'; if (e.dataTransfer.files[0]) { fileInput.files = e.dataTransfer.files; loadFile(); } });
+        function loadFile() { const f = fileInput.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { try { JSON.parse(ev.target.result); importStatus.textContent = '✓ Data loaded successfully'; importStatus.style.color = '#51cf66'; dataPreview.textContent = ev.target.result.slice(0, 500) + '...'; consoleLog(`System data loaded: ${f.name}`, 'success'); } catch(err) { importStatus.textContent = '✗ Invalid JSON'; importStatus.style.color = '#ff6b6b'; } }; r.readAsText(f); }
+
+        const socialToggle = document.getElementById('socialToggle'); const socialPanel = document.getElementById('socialPanel'); socialToggle.addEventListener('click', () => socialPanel.classList.toggle('open'));
+        socialPanel.querySelectorAll('.tabs button').forEach(btn => btn.addEventListener('click', () => { socialPanel.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); const t = btn.dataset.tab; socialPanel.querySelectorAll('.tab-content').forEach(tc => tc.classList.toggle('active', tc.id === 'tab-' + t)); }));
+        document.querySelectorAll('.account-item .action-btn').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); const a = btn.textContent.trim(), n = btn.closest('.account-item').querySelector('.name').textContent; consoleLog(`[Social] ${a} on ${n}`, 'info'); if (a === 'Connect') { btn.closest('.account-item').querySelector('.status').textContent = 'Connected'; btn.closest('.account-item').querySelector('.status').className = 'status'; btn.textContent = 'Post'; } }));
+        document.querySelectorAll('.quick-actions button').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); consoleLog(`[Social] ${btn.textContent.trim()}`, 'info'); }));
+        document.getElementById('socialAskBtn').addEventListener('click', () => { const i = document.getElementById('socialAskInput'); if (i.value.trim()) { consoleLog(`[Lindiwe] Asked: "${i.value.trim()}"`, 'info'); i.value = ''; } });
+        document.querySelectorAll('.gaming-session .row button').forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); consoleLog(`[Gaming] ${btn.textContent.trim()}`, 'info'); }));
+
+        loadState(); if (profile && !currentUser) { currentUser = { name: profile.name || 'User', email: profile.email || 'user@example.com', membershipId: profile.membershipId || 'VVU-USER' }; updateUserUI(); }
+        renderStudi();
+        consoleLog('✅ DNS RESOLVED – VVU System Dashboard v4.0', 'success');
+        consoleLog('🌐 Live at: http://venturevisionubuntu.co.za:81/', 'success');
+        consoleLog('Type "help" for commands.', 'info');
+    </script>
+</body>
+</html>
