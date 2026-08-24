@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<!-- VVU·SEARM — Claim Builder + Teaching Screensaver -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>VVU SEARM • Claim Builder + Teaching</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ============ DESIGN SYSTEM ============ */
+:root {
+  --bg: #04060d;
+  --panel: #0a0f1e;
+  --line: #13223c;
+  --cy: #00e5ff;
+  --gn: #2bff88;
+  --vi: #9a5bff;
+  --bl: #38c5ff;
+  --am: #ffb400;
+  --rd: #ff2a5f;
+  --tx: #dfe9ff;
+  --mut: #5f7396;
+  --mono: 'Share Tech Mono', monospace;
+  --disp: 'Orbitron', sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; background: var(--bg); }
+body { font-family: var(--mono); color: var(--tx); }
+
+/* ============ APP LAYOUT ============ */
+#app {
+  display: grid;
+  grid-template-columns: 260px 1fr 300px;
+  grid-template-rows: 48px 1fr 180px;
+  height: 100vh;
+  gap: 1px;
+  background: var(--line);
+  transition: opacity 1.2s ease;
+}
+
+/* ============ SCREENSAVER / TEACHING OVERLAY ============ */
+#screensaver {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--bg);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  cursor: none;
+  overflow: hidden;
+}
+#screensaver.active {
+  display: flex;
+  animation: fadeScreensaver 1.2s ease;
+}
+@keyframes fadeScreensaver {
+  0% { opacity: 0; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+#screensaver canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#screensaver .content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  pointer-events: none;
+  max-width: 700px;
+  padding: 20px;
+}
+#screensaver .brand {
+  font-family: var(--disp);
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--cy);
+  text-shadow: 0 0 60px rgba(0,229,255,0.3);
+  letter-spacing: 0.15em;
+  animation: pulseBrand 3s ease-in-out infinite;
+}
+#screensaver .brand b { color: var(--tx); }
+#screensaver .tagline {
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--mut);
+  letter-spacing: 0.3em;
+  margin-top: 8px;
+  animation: floatTag 4s ease-in-out infinite;
+}
+#screensaver .teach-box {
+  background: rgba(10,15,30,0.6);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 24px;
+  margin-top: 16px;
+  max-width: 600px;
+  animation: floatTag 5s ease-in-out infinite;
+}
+#screensaver .teach-box .title {
+  font-family: var(--disp);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--cy);
+  margin-bottom: 8px;
+}
+#screensaver .teach-box .step {
+  font-size: 11px;
+  color: var(--tx);
+  line-height: 1.8;
+  font-family: var(--mono);
+}
+#screensaver .teach-box .step .hl { color: var(--gn); }
+#screensaver .teach-box .step .cy { color: var(--cy); }
+#screensaver .emoji-row {
+  font-size: 40px;
+  margin-top: 16px;
+  letter-spacing: 16px;
+  animation: driftEmoji 8s ease-in-out infinite;
+}
+#screensaver .doodle-row {
+  font-size: 28px;
+  margin-top: 10px;
+  letter-spacing: 14px;
+  opacity: 0.5;
+  animation: driftEmoji 10s ease-in-out infinite reverse;
+}
+@keyframes pulseBrand {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.02); opacity: 0.9; }
+}
+@keyframes floatTag {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50% { transform: translateY(-4px); opacity: 1; }
+}
+@keyframes driftEmoji {
+  0%, 100% { transform: translateX(-8px) rotate(-1deg); }
+  50% { transform: translateX(8px) rotate(1deg); }
+}
+#screensaver .spotlight {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,229,255,0.06), transparent 70%);
+  pointer-events: none;
+  animation: spotlightMove 14s ease-in-out infinite;
+}
+#screensaver .spotlight:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
+#screensaver .spotlight:nth-child(2) { bottom: 15%; right: 10%; animation-delay: 5s; width: 400px; height: 400px; }
+#screensaver .spotlight:nth-child(3) { top: 40%; left: 50%; animation-delay: 9s; width: 200px; height: 200px; }
+@keyframes spotlightMove {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  25% { transform: translate(60px, -40px) scale(1.2); opacity: 0.8; }
+  50% { transform: translate(-30px, 50px) scale(0.8); opacity: 0.3; }
+  75% { transform: translate(40px, 30px) scale(1.1); opacity: 0.7; }
+}
+
+/* ============ HEADER ============ */
+#header {
+  grid-column: 1 / 4;
+  grid-row: 1;
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+#header .logo {
+  font-family: var(--disp);
+  font-size: 14px;
+  color: var(--cy);
+  letter-spacing: 0.12em;
+}
+#header .logo b { color: var(--tx); }
+#header .logo small {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--mut);
+  letter-spacing: 0.08em;
+  margin-left: 6px;
+}
+#header .spacer { flex: 1; }
+#header .status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 9px;
+  color: var(--mut);
+}
+#header .status .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gn);
+  animation: pulse 1.5s infinite;
+}
+#header .badge {
+  font-size: 8px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  background: rgba(0,229,255,0.08);
+  color: var(--cy);
+  border: 1px solid rgba(0,229,255,0.15);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#header .badge:hover { background: rgba(0,229,255,0.15); }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.8)} }
+
+/* ============ CLAIMS PANEL ============ */
+#claims {
+  grid-column: 1;
+  grid-row: 2 / 4;
+  background: var(--panel);
+  padding: 12px 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#claims .section-title {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--mut);
+  margin-top: 4px;
+}
+#claims .section-title:first-child { margin-top: 0; }
+.filter-group { display: flex; flex-wrap: wrap; gap: 3px; }
+.filter-tag {
+  font-size: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line);
+  color: var(--mut);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.filter-tag:hover { color: var(--tx); }
+.filter-tag.active { background: rgba(0,229,255,0.08); color: var(--cy); border-color: var(--cy); }
+
+.claim-item {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.claim-item:hover { background: rgba(255,255,255,0.04); }
+.claim-item.active { border-color: var(--cy); background: rgba(0,229,255,0.04); }
+.claim-item .title { font-size: 11px; font-weight: 500; }
+.claim-item .meta {
+  display: flex;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 8px;
+  color: var(--mut);
+  flex-wrap: wrap;
+}
+.claim-item .meta .state {
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 7px;
+  text-transform: uppercase;
+}
+.state-PROVEN { background: rgba(43,255,136,0.15); color: var(--gn); }
+.state-OBSERVED { background: rgba(255,180,0,0.15); color: var(--am); }
+.state-SUPPORTED { background: rgba(154,91,255,0.15); color: var(--vi); }
+.state-UNTESTED { background: rgba(95,115,150,0.15); color: var(--mut); }
+.state-BUILT { background: rgba(56,197,255,0.15); color: var(--bl); }
+
+.claim-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  padding: 4px 0;
+}
+.claim-stats .stat {
+  text-align: center;
+  background: rgba(255,255,255,0.02);
+  border-radius: 4px;
+  padding: 4px;
+}
+.claim-stats .stat .val {
+  font-family: var(--disp);
+  font-size: 14px;
+  color: var(--cy);
+}
+.claim-stats .stat .label { font-size: 7px; text-transform: uppercase; color: var(--mut); letter-spacing: 0.05em; }
+
+/* ===== CLAIM BUILDER BUTTON ===== */
+#builderBtn {
+  background: rgba(0,229,255,0.06);
+  border: 1px solid var(--cy);
+  border-radius: 4px;
+  color: var(--cy);
+  font-family: var(--mono);
+  font-size: 8px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  margin-top: 4px;
+}
+#builderBtn:hover { background: rgba(0,229,255,0.12); }
+
+/* ===== CENTER: MORPHING PEDESTAL ===== */
+#center {
+  grid-column: 2;
+  grid-row: 2;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+#pedestal-canvas { width: 100%; height: 100%; display: block; }
+#auth-overlay {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--disp);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--cy);
+  background: rgba(10,15,30,0.6);
+  backdrop-filter: blur(4px);
+  padding: 4px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,229,255,0.15);
+  pointer-events: none;
+  opacity: 0.6;
+}
+#auth-overlay span { color: var(--gn); }
+#shape-label {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--disp);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--mut);
+  background: rgba(10,15,30,0.7);
+  backdrop-filter: blur(6px);
+  padding: 4px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  pointer-events: none;
+}
+#shape-label .highlight { color: var(--cy); }
+
+/* ===== LATTICE ===== */
+#lattice {
+  grid-column: 3;
+  grid-row: 2;
+  background: var(--panel);
+  padding: 12px 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#lattice .section-title { font-size: 8px; text-transform: uppercase; letter-spacing: 0.15em; color: var(--mut); }
+.lattice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 3px;
+}
+.lattice-item {
+  font-size: 8px;
+  padding: 3px 4px;
+  border-radius: 3px;
+  text-align: center;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.lattice-item:hover { border-color: var(--mut); }
+.lattice-item.proven { color: var(--gn); border-color: rgba(43,255,136,0.2); }
+.lattice-item.verified { color: var(--bl); border-color: rgba(56,197,255,0.2); }
+.lattice-item.supported { color: var(--vi); border-color: rgba(154,91,255,0.2); }
+.lattice-item.observed { color: var(--am); border-color: rgba(255,180,0,0.2); }
+.lattice-item.inconclusive { color: var(--rd); border-color: rgba(255,42,95,0.2); }
+.lattice-item.built { color: var(--bl); border-color: rgba(56,197,255,0.3); }
+
+#lattice .status-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: var(--mut);
+  padding: 4px 0;
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
+#lattice .status-row .val { color: var(--tx); }
+
+/* ===== TERMINAL ===== */
+#terminal {
+  grid-column: 1 / 3;
+  grid-row: 3;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+#terminal .header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 8px;
+  color: var(--mut);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+#terminal .header .tag { color: var(--cy); }
+#tlog {
+  flex: 1;
+  padding: 6px 14px;
+  font-size: 9px;
+  line-height: 1.8;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+#tlog .ln { color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tlog .ln::before { content: "ive# "; color: var(--vi); }
+
+/* ===== CHAT ===== */
+#chat {
+  grid-column: 3;
+  grid-row: 3;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+#chat .header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 8px;
+  color: var(--mut);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+#clog {
+  flex: 1;
+  padding: 6px 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: flex-end;
+}
+.msg {
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--line);
+}
+.msg b { color: var(--cy); font-size: 7px; letter-spacing: 0.05em; }
+.msg.you b { color: var(--vi); }
+.cin {
+  display: flex;
+  gap: 4px;
+  padding: 4px 12px;
+  border-top: 1px solid var(--line);
+}
+.cin input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--tx);
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 4px 8px;
+  outline: none;
+}
+.cin input:focus { border-color: var(--cy); }
+.cin button {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--cy);
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+/* ===== CLAIM BUILDER MODAL ===== */
+#builderModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(4,6,13,0.85);
+  backdrop-filter: blur(12px);
+  align-items: center;
+  justify-content: center;
+}
+#builderModal.active { display: flex; }
+#builderModal .modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px 28px;
+  max-width: 480px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+#builderModal .modal h2 {
+  font-family: var(--disp);
+  font-size: 16px;
+  color: var(--cy);
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+#builderModal .modal .field {
+  margin-bottom: 10px;
+}
+#builderModal .modal .field label {
+  font-size: 9px;
+  color: var(--mut);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: block;
+  margin-bottom: 3px;
+}
+#builderModal .modal .field input,
+#builderModal .modal .field select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--tx);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 6px 8px;
+  outline: none;
+}
+#builderModal .modal .field input:focus,
+#builderModal .modal .field select:focus { border-color: var(--cy); }
+#builderModal .modal .comp-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+#builderModal .modal .comp-row .comp-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--mut);
+  cursor: pointer;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.02);
+  transition: all 0.2s;
+}
+#builderModal .modal .comp-row .comp-toggle.on {
+  border-color: var(--gn);
+  color: var(--gn);
+  background: rgba(43,255,136,0.08);
+}
+#builderModal .modal .comp-row .comp-toggle .indicator {
+  font-size: 12px;
+}
+#builderModal .modal .btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+#builderModal .modal .btn-row button {
+  flex: 1;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 9px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#builderModal .modal .btn-row .primary {
+  background: rgba(0,229,255,0.1);
+  border: 1px solid var(--cy);
+  color: var(--cy);
+}
+#builderModal .modal .btn-row .primary:hover { background: rgba(0,229,255,0.2); }
+#builderModal .modal .btn-row .secondary {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--mut);
+}
+#builderModal .modal .btn-row .secondary:hover { color: var(--tx); }
+
+@media (max-width: 1024px) {
+  #app { grid-template-columns: 200px 1fr 240px; }
+}
+@media (max-width: 768px) {
+  #app { grid-template-columns: 1fr; grid-template-rows: 44px 200px 1fr 160px 160px; }
+  #header { grid-column: 1; grid-row: 1; }
+  #claims { grid-column: 1; grid-row: 2; max-height: 200px; }
+  #center { grid-column: 1; grid-row: 3; min-height: 300px; }
+  #lattice { grid-column: 1; grid-row: 4; max-height: 160px; }
+  #terminal { grid-column: 1; grid-row: 5; }
+  #chat { grid-column: 1; grid-row: 6; border-left: none; border-top: 1px solid var(--line); }
+  #screensaver .brand { font-size: 32px; }
+  #screensaver .emoji-row { font-size: 28px; letter-spacing: 10px; }
+  #screensaver .teach-box { margin: 12px; padding: 12px 16px; }
+}
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,229,255,0.12); border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<!-- ===== SCREENSAVER / TEACHING OVERLAY ===== -->
+<div id="screensaver">
+  <canvas id="screensaver-canvas"></canvas>
+  <div class="spotlight"></div>
+  <div class="spotlight"></div>
+  <div class="spotlight"></div>
+  <div class="content">
+    <div class="brand"><b>VVU</b>·SEARM</div>
+    <div class="tagline">BUILD YOUR OWN CLAIMS</div>
+    <div class="teach-box">
+      <div class="title">📖 CLAIM KIT (CKIN) TUTORIAL</div>
+      <div class="step">
+        <span class="hl">1.</span> Define your <span class="cy">Claim</span> — what are you trying to verify?<br>
+        <span class="hl">2.</span> Set <span class="cy">C</span> (Evidence), <span class="cy">E</span> (Freshness), <span class="cy">I</span> (Integrity)<br>
+        <span class="hl">3.</span> Add <span class="cy">S</span> (Safety) &amp; <span class="cy">R</span> (Review) — all must be <span class="hl">TRUE</span> for <span class="cy">PROVEN</span><br>
+        <span class="hl">4.</span> <span class="cy">Click "Build Claim"</span> to create your own CKIN
+      </div>
+    </div>
+    <div class="emoji-row">🔮 ✨ 🐜 ⚡ 🧬 🎯 🌐</div>
+    <div class="doodle-row">◈ △ □ ⬡ ✦ ⟡ ⬟</div>
+  </div>
+</div>
+
+<!-- ===== CLAIM BUILDER MODAL ===== -->
+<div id="builderModal">
+  <div class="modal">
+    <h2>🧬 Build Your CKIN (Claim Kit)</h2>
+    <div class="field">
+      <label>Claim Title</label>
+      <input id="claimTitle" placeholder="e.g., My verification claim..." value="My Custom Claim">
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <input id="claimDesc" placeholder="What are you verifying?" value="This claim verifies my custom trust model.">
+    </div>
+    <div class="field">
+      <label>Type</label>
+      <select id="claimType">
+        <option value="empirical">Empirical</option>
+        <option value="mathematical">Mathematical</option>
+        <option value="operational">Operational</option>
+        <option value="safety">Safety</option>
+        <option value="custom" selected>Custom</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Components (C ∧ E ∧ I ∧ S ∧ R)</label>
+      <div class="comp-row">
+        <span class="comp-toggle on" data-comp="C"><span class="indicator">✓</span> C</span>
+        <span class="comp-toggle on" data-comp="E"><span class="indicator">✓</span> E</span>
+        <span class="comp-toggle on" data-comp="I"><span class="indicator">✓</span> I</span>
+        <span class="comp-toggle" data-comp="S"><span class="indicator">✗</span> S</span>
+        <span class="comp-toggle on" data-comp="R"><span class="indicator">✓</span> R</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Initial State</label>
+      <select id="claimState">
+        <option value="UNTESTED">UNTESTED</option>
+        <option value="OBSERVED">OBSERVED</option>
+        <option value="SUPPORTED">SUPPORTED</option>
+        <option value="PROVEN">PROVEN</option>
+        <option value="BUILT" selected>BUILT</option>
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="primary" onclick="buildClaim()">⚡ Build Claim</button>
+      <button class="secondary" onclick="closeBuilder()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+
+  <!-- HEADER -->
+  <header id="header">
+    <div class="logo"><b>VVU</b> SEARM <small>• claim builder</small></div>
+    <div class="spacer"></div>
+    <div class="status"><span class="dot"></span><span id="statusText">OPERATIONAL</span></div>
+    <span class="badge" id="epochBadge" onclick="openBuilder()">+ NEW CKIN</span>
+  </header>
+
+  <!-- CLAIMS -->
+  <aside id="claims">
+    <div class="section-title">Claims <span style="color:var(--cy);" id="claimCount">(4)</span></div>
+    <input type="text" placeholder="Search claims..." style="background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--tx);font-family:var(--mono);font-size:9px;padding:4px 8px;outline:none;width:100%;">
+    <div class="section-title">Type</div>
+    <div class="filter-group">
+      <span class="filter-tag active">all</span><span class="filter-tag">math</span>
+      <span class="filter-tag">soma</span><span class="filter-tag">empi</span>
+      <span class="filter-tag">oper</span>
+      <span class="filter-tag">custom</span>
+    </div>
+    <div class="section-title">State</div>
+    <div class="filter-group">
+      <span class="filter-tag active">PRO</span><span class="filter-tag">VER</span>
+      <span class="filter-tag">SUP</span><span class="filter-tag">OBS</span>
+      <span class="filter-tag">INC</span><span class="filter-tag">UNT</span>
+      <span class="filter-tag">BUI</span>
+    </div>
+    <div id="claimList">
+      <div class="claim-item active" data-state="PROVEN">
+        <div class="title">Test claim from UI</div>
+        <div class="meta"><span class="state state-UNTESTED">UNTESTED</span><span>empirical</span></div>
+      </div>
+      <div class="claim-item" data-state="OBSERVED">
+        <div class="title">Edge latency under 50ms p99</div>
+        <div class="meta"><span class="state state-OBSERVED">OBSERVED</span><span>operational</span></div>
+      </div>
+      <div class="claim-item" data-state="SUPPORTED">
+        <div class="title">Riemann Hypothesis is...</div>
+        <div class="meta"><span class="state state-SUPPORTED">SUPPORTED</span><span>mathematical</span></div>
+      </div>
+      <div class="claim-item" data-state="SUPPORTED">
+        <div class="title">GPT-5 model</div>
+        <div class="meta"><span class="state state-SUPPORTED">SUPPORTED</span><span>AI</span></div>
+      </div>
+    </div>
+    <div class="claim-stats">
+      <div class="stat"><div class="val">4</div><div class="label">Claims</div></div>
+      <div class="stat"><div class="val" style="color:var(--am);">1.3</div><div class="label">Avg N_ind</div></div>
+      <div class="stat"><div class="val" style="color:var(--gn);">75%</div><div class="label">Evidence Cov.</div></div>
+    </div>
+    <button id="builderBtn" onclick="openBuilder()">🧬 Build New CKIN</button>
+  </aside>
+
+  <!-- CENTER -->
+  <main id="center">
+    <canvas id="pedestal-canvas"></canvas>
+    <div id="auth-overlay">A = <span>C</span> ∧ <span>E</span> ∧ <span>I</span> ∧ <span>S</span> ∧ <span>R</span></div>
+    <div id="shape-label"><span class="highlight" id="shapeName">CUBE</span> · <span id="stateLabel">PROVEN</span></div>
+  </main>
+
+  <!-- LATTICE -->
+  <aside id="lattice">
+    <div class="section-title">Verification State Lattice</div>
+    <div class="lattice-grid">
+      <div class="lattice-item proven">PROVEN</div>
+      <div class="lattice-item verified">VERIFIED</div>
+      <div class="lattice-item supported">SUPPORTED</div>
+      <div class="lattice-item observed">OBSERVED</div>
+      <div class="lattice-item inconclusive">INCONCLUSIVE</div>
+      <div class="lattice-item built">BUILT</div>
+    </div>
+    <div class="status-row"><span>P0 Integrity</span><span class="val" id="p0Display">99.0%</span></div>
+    <div class="status-row"><span>N_ind / λ₂</span><span class="val" id="nIndDisplay">0.87 / 0.42</span></div>
+    <div class="status-row"><span>CKIN Count</span><span class="val" id="ckinCount">0 built</span></div>
+  </aside>
+
+  <!-- TERMINAL -->
+  <section id="terminal">
+    <div class="header"><span>TERMINAL</span><span class="tag">CKIN BUILDER</span><span style="color:var(--mut);font-size:7px;">BUILD YOUR OWN CLAIMS</span></div>
+    <div id="tlog"></div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="chat">
+    <div class="header"><span>CHAT</span><span style="color:var(--mut);">ANT AGENT</span></div>
+    <div id="clog"></div>
+    <div class="cin">
+      <input id="cin" placeholder="Ask about building claims..." autocomplete="off">
+      <button id="csend">➤</button>
+    </div>
+  </section>
+
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+// ============================================================
+// PART 1: THREE.JS MORPHING PEDESTAL (SIMPLIFIED)
+// ============================================================
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+
+const canvas = document.getElementById('pedestal-canvas');
+const container = document.getElementById('center');
+const screensaverCanvas = document.getElementById('screensaver-canvas');
+
+// ===== SCREENSAVER STATE =====
+let idleTimer = null;
+let isScreensaverActive = false;
+let screensaverAnimId = null;
+const IDLE_TIMEOUT = 15000;
+
+// ===== THREE.JS SETUP =====
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x04060d);
+scene.fog = new THREE.FogExp2(0x04060d, 0.035);
+
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+camera.position.set(4, 3, 5.5);
+camera.lookAt(0, 0.8, 0);
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+renderer.shadowMap.enabled = true;
+
+// Floor
+const reflector = new Reflector(new THREE.PlaneGeometry(20, 20), {
+  clipBias: 0.003,
+  textureWidth: container.clientWidth * window.devicePixelRatio,
+  textureHeight: container.clientHeight * window.devicePixelRatio,
+  color: 0x111111,
+});
+reflector.rotation.x = -Math.PI / 2;
+scene.add(reflector);
+
+const concrete = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 20),
+  new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.6, metalness: 0.2, transparent: true, opacity: 0.7 })
+);
+concrete.rotation.x = -Math.PI / 2;
+concrete.position.y = 0.01;
+scene.add(concrete);
+
+// Lights
+scene.add(new THREE.AmbientLight(0x202030, 0.4));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+keyLight.position.set(3, 6, 4);
+scene.add(keyLight);
+const pLight1 = new THREE.PointLight(0x00ffff, 2, 8);
+scene.add(pLight1);
+const pLight2 = new THREE.PointLight(0x4488ff, 1.2, 8);
+scene.add(pLight2);
+
+// Pedestal base
+const baseMat = new THREE.MeshStandardMaterial({ color: 0x080808, roughness: 0.7, metalness: 0.3 });
+const base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.15, 0.3, 6), baseMat);
+base.position.y = 0.15;
+scene.add(base);
+
+const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending });
+const ring = new THREE.Mesh(new THREE.RingGeometry(0.85, 0.95, 48), ringMat);
+ring.rotation.x = -Math.PI / 2;
+ring.position.y = 0.31;
+scene.add(ring);
+
+// Glass enclosure
+const glassGroup = new THREE.Group();
+glassGroup.position.y = 1.2;
+scene.add(glassGroup);
+
+const glassMat = new THREE.MeshPhysicalMaterial({
+  color: 0x88aacc,
+  roughness: 0.0,
+  metalness: 0.0,
+  transmission: 0.9,
+  thickness: 0.15,
+  ior: 1.3,
+  side: THREE.DoubleSide,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.0,
+  envMapIntensity: 0.8,
+});
+const glassBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.4, 1.4), glassMat);
+glassGroup.add(glassBox);
+
+const edgeMat = new THREE.LineBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
+const neonEdges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.4, 1.4, 1.4)), edgeMat);
+glassGroup.add(neonEdges);
+
+// ===== MORPHING HOLOGRAM =====
+const geometries = {
+  CUBE: new THREE.BoxGeometry(0.7, 0.7, 0.7),
+  TORUS: new THREE.TorusKnotGeometry(0.35, 0.12, 48, 8),
+  PRISM: new THREE.CylinderGeometry(0.5, 0.5, 0.8, 6),
+  SPHERE: new THREE.SphereGeometry(0.45, 24, 24),
+  STAR: new THREE.IcosahedronGeometry(0.5, 0),
+  BUILT: new THREE.OctahedronGeometry(0.5, 0),
+};
+
+const holoMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 },
+    uColor: { value: new THREE.Color(0x00ffff) },
+    uGlitch: { value: 0.0 },
+    uMorph: { value: 0.0 },
+  },
+  vertexShader: `
+    varying vec3 vNormal; varying vec3 vPosition; varying vec3 vWorldPosition;
+    void main() {
+      vPosition = position;
+      vNormal = normalize(normalMatrix * normal);
+      vec4 worldPos = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPos.xyz;
+      gl_Position = projectionMatrix * viewMatrix * worldPos;
+    }
+  `,
+  fragmentShader: `
+    uniform float uTime; uniform vec3 uColor; uniform float uGlitch; uniform float uMorph;
+    varying vec3 vNormal; varying vec3 vPosition; varying vec3 vWorldPosition;
+    float random(vec2 st) { return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123); }
+    void main() {
+      vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+      float fresnel = pow(1.0 - max(dot(viewDir, vNormal), 0.0), 2.5);
+      float scan = sin(vWorldPosition.y * 25.0 - uTime * 3.5) * 0.5 + 0.5;
+      scan = pow(scan, 2.0);
+      vec3 grid = abs(fract(vPosition * 5.0) - 0.5);
+      float gridLine = step(0.48, max(max(grid.x, grid.y), grid.z));
+      vec3 color = uColor * (fresnel * 2.0 + scan * 1.0 + gridLine * 0.3 + 0.3 * (1.0 + uMorph * 0.5));
+      float alpha = 0.85 * (fresnel * 1.0 + scan * 0.5 + gridLine * 0.15 + 0.4);
+      if (uGlitch > 0.0) {
+        float r = random(vec2(floor(uTime * 15.0), vPosition.x));
+        if (r > 0.92) { color = vec3(1.0, 0.0, 0.3); alpha = 1.0; }
+      }
+      gl_FragColor = vec4(color, alpha);
+    }
+  `,
+  transparent: true,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+
+const hologram = new THREE.Mesh(geometries.CUBE, holoMat);
+glassGroup.add(hologram);
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.8, 0);
+controls.enableDamping = true;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.8;
+controls.maxPolarAngle = Math.PI / 2.1;
+controls.minDistance = 2.5;
+controls.maxDistance = 8;
+
+// Post-processing
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(container.clientWidth, container.clientHeight),
+  0.7, 0.4, 0.15
+);
+composer.addPass(bloomPass);
+
+// ===== STATE =====
+const shapeMap = {
+  'PROVEN': { shape: 'CUBE', color: 0x00ff88, label: 'PROVEN' },
+  'VERIFIED': { shape: 'TORUS', color: 0x38c5ff, label: 'VERIFIED' },
+  'SUPPORTED': { shape: 'PRISM', color: 0x9a5bff, label: 'SUPPORTED' },
+  'OBSERVED': { shape: 'SPHERE', color: 0xffb400, label: 'OBSERVED' },
+  'INCONCLUSIVE': { shape: 'STAR', color: 0xff2a5f, label: 'INCONCLUSIVE' },
+  'UNTESTED': { shape: 'CUBE', color: 0x5f7396, label: 'UNTESTED' },
+  'BUILT': { shape: 'BUILT', color: 0x38c5ff, label: 'BUILT' },
+};
+
+let currentState = 'PROVEN';
+let currentShape = 'CUBE';
+let targetShape = 'CUBE';
+let morphProgress = 1;
+let ckinCount = 0;
+
+function setState(state) {
+  const entry = shapeMap[state] || shapeMap['PROVEN'];
+  currentState = state;
+  targetShape = entry.shape;
+  morphProgress = 0;
+  holoMat.uniforms.uColor.value.setHex(entry.color);
+  document.getElementById('shapeName').textContent = entry.shape;
+  document.getElementById('stateLabel').textContent = state;
+}
+
+function updateMorph() {
+  if (morphProgress < 1) {
+    morphProgress = Math.min(1, morphProgress + 0.025);
+    holoMat.uniforms.uMorph.value = morphProgress;
+    if (morphProgress >= 1 && targetShape !== currentShape) {
+      currentShape = targetShape;
+      const newGeo = geometries[currentShape];
+      if (newGeo) {
+        hologram.geometry.dispose();
+        hologram.geometry = newGeo;
+      }
+    }
+  }
+}
+
+// ===== SCREENSAVER (TEACHING) =====
+function drawScreensaver(time) {
+  const ctx = screensaverCanvas.getContext('2d');
+  const w = screensaverCanvas.width;
+  const h = screensaverCanvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Background
+  const gradient = ctx.createRadialGradient(
+    w/2 + Math.sin(time * 0.0003) * 100,
+    h/2 + Math.cos(time * 0.0004) * 80,
+    50,
+    w/2,
+    h/2,
+    Math.max(w, h) * 0.7
+  );
+  gradient.addColorStop(0, '#0a1a2a');
+  gradient.addColorStop(0.5, '#061018');
+  gradient.addColorStop(1, '#04060d');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, w, h);
+
+  // Warping circles
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2 + time * 0.0001;
+    const radius = 150 + Math.sin(time * 0.001 + i) * 60;
+    const x = w/2 + Math.cos(angle) * radius;
+    const y = h/2 + Math.sin(angle) * radius * 0.6;
+    const size = 20 + Math.sin(time * 0.002 + i * 2) * 10;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${180 + i * 15 + time * 0.005}, 80%, 60%, ${0.05 + Math.sin(time * 0.001 + i) * 0.03 + 0.03})`;
+    ctx.fill();
+  }
+
+  // Teaching text on canvas
+  ctx.save();
+  ctx.translate(w/2, h/2 - 20);
+  const scale = 1 + Math.sin(time * 0.0005) * 0.02;
+  ctx.scale(scale, scale);
+  ctx.font = '800 48px Orbitron, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,229,255,0.3)';
+  ctx.shadowBlur = 40;
+  ctx.fillStyle = '#00e5ff';
+  ctx.fillText('BUILD YOUR CKIN', 0, 0);
+  ctx.shadowBlur = 0;
+  ctx.font = '14px Share Tech Mono, monospace';
+  ctx.fillStyle = '#5f7396';
+  ctx.fillText('C ∧ E ∧ I ∧ S ∧ R = TRUST', 0, 44);
+  ctx.restore();
+
+  // Emoji + Doodle drift
+  const items = ['🔮', '✨', '🐜', '⚡', '🧬', '🎯', '🌐', '◈', '△', '□', '⬡', '✦', '⟡', '⬟'];
+  for (let i = 0; i < 20; i++) {
+    const ix = (i / 20) * Math.PI * 2 + time * 0.0002;
+    const rad = 160 + Math.sin(time * 0.0008 + i * 0.7) * 50;
+    const x = w/2 + Math.cos(ix + Math.sin(time * 0.0003) * 0.3) * rad;
+    const y = h/2 + 80 + Math.sin(ix * 0.7 + time * 0.0004) * rad * 0.5;
+    const size = 14 + Math.sin(time * 0.001 + i) * 4;
+    ctx.font = `${size}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = 0.3 + Math.sin(time * 0.001 + i * 0.5) * 0.15;
+    ctx.fillText(items[i % items.length], x, y);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===== SCREENSAVER CONTROL =====
+function startScreensaver() {
+  if (isScreensaverActive) return;
+  isScreensaverActive = true;
+  document.getElementById('screensaver').classList.add('active');
+  document.getElementById('app').style.opacity = '0.3';
+  
+  screensaverCanvas.width = window.innerWidth;
+  screensaverCanvas.height = window.innerHeight;
+  
+  function animateScreensaver(time) {
+    if (!isScreensaverActive) return;
+    drawScreensaver(time);
+    screensaverAnimId = requestAnimationFrame(animateScreensaver);
+  }
+  animateScreensaver(0);
+}
+
+function stopScreensaver() {
+  if (!isScreensaverActive) return;
+  isScreensaverActive = false;
+  document.getElementById('screensaver').classList.remove('active');
+  document.getElementById('app').style.opacity = '1';
+  if (screensaverAnimId) {
+    cancelAnimationFrame(screensaverAnimId);
+    screensaverAnimId = null;
+  }
+}
+
+function resetIdleTimer() {
+  if (isScreensaverActive) stopScreensaver();
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(startScreensaver, IDLE_TIMEOUT);
+}
+
+// ===== USER INTERACTION =====
+['mousemove', 'mousedown', 'click', 'keydown', 'touchstart', 'scroll'].forEach(event => {
+  document.addEventListener(event, resetIdleTimer);
+});
+
+// ===== ANIMATION =====
+let time = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  time += 0.01;
+  holoMat.uniforms.uTime.value = time;
+  updateMorph();
+  controls.update();
+  composer.render();
+}
+
+// ===== RESIZE =====
+function resize() {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+}
+window.addEventListener('resize', resize);
+
+// ===== DOM HELPERS =====
+const $ = id => document.getElementById(id);
+function log(t) {
+  const el = $('tlog');
+  const div = document.createElement('div');
+  div.className = 'ln';
+  div.textContent = t;
+  el.appendChild(div);
+  while (el.children.length > 12) el.removeChild(el.firstChild);
+}
+function chat(w, t) {
+  const el = $('clog');
+  const div = document.createElement('div');
+  div.className = 'msg' + (w === 'you' ? ' you' : '');
+  div.innerHTML = `<b>${w === 'you' ? 'YOU' : 'ANT'}</b> ${t}`;
+  el.appendChild(div);
+  while (el.children.length > 8) el.removeChild(el.firstChild);
+}
+
+// ===== CLAIM BUILDER =====
+window.openBuilder = function() {
+  $('builderModal').classList.add('active');
+};
+
+window.closeBuilder = function() {
+  $('builderModal').classList.remove('active');
+};
+
+window.buildClaim = function() {
+  const title = $('claimTitle').value || 'Custom Claim';
+  const desc = $('claimDesc').value || 'A custom claim built by the user.';
+  const type = $('claimType').value;
+  const state = $('claimState').value;
+  
+  // Get component states
+  const comps = {};
+  document.querySelectorAll('.comp-toggle').forEach(el => {
+    comps[el.dataset.comp] = el.classList.contains('on');
+  });
+  
+  const allTrue = comps.C && comps.E && comps.I && comps.S && comps.R;
+  const finalState = allTrue ? 'PROVEN' : state;
+  
+  // Add to claim list
+  const list = $('claimList');
+  const item = document.createElement('div');
+  item.className = 'claim-item';
+  item.dataset.state = finalState;
+  item.innerHTML = `
+    <div class="title">${title}</div>
+    <div class="meta">
+      <span class="state state-${finalState}">${finalState}</span>
+      <span>${type}</span>
+      <span>${comps.C?'C✓':''} ${comps.E?'E✓':''} ${comps.I?'I✓':''} ${comps.S?'S✓':''} ${comps.R?'R✓':''}</span>
+    </div>
+  `;
+  list.insertBefore(item, list.firstChild);
+  
+  // Update count
+  ckinCount++;
+  $('ckinCount').textContent = `${ckinCount} built`;
+  $('claimCount').textContent = `(${document.querySelectorAll('.claim-item').length})`;
+  
+  // Update pedestal
+  setState(finalState);
+  
+  log(`[CKIN] Built: "${title}" → ${finalState} (${type})`);
+  chat('ant', `🧬 Built new CKIN: "${title}" → ${finalState}. Components: ${comps.C?'C✓':''} ${comps.E?'E✓':''} ${comps.I?'I✓':''} ${comps.S?'S✓':''} ${comps.R?'R✓':''}`);
+  
+  closeBuilder();
+};
+
+// Component toggles
+document.querySelectorAll('.comp-toggle').forEach(el => {
+  el.addEventListener('click', () => {
+    el.classList.toggle('on');
+    const indicator = el.querySelector('.indicator');
+    if (el.classList.contains('on')) {
+      indicator.textContent = '✓';
+    } else {
+      indicator.textContent = '✗';
+    }
+  });
+});
+
+// ===== CHAT =====
+function ask() {
+  const input = $('cin');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  chat('you', q);
+  const s = q.toLowerCase();
+  let a = '';
+  if (s.includes('build') || s.includes('ckin') || s.includes('claim')) {
+    a = '🧬 Click "Build New CKIN" or "+ NEW CKIN" to create your own claim! Define C/E/I/S/R components and see the pedestal morph.';
+  } else if (s.includes('trust') || s.includes('health')) {
+    a = `P0: 99.0%, N_ind: 0.87, λ₂: 0.42. All within bounds. Your CKINs add to the trust lattice.`;
+  } else if (s.includes('component') || s.includes('c e i s r')) {
+    a = 'C = Evidence, E = Freshness, I = Integrity, S = Safety, R = Review. All must be TRUE for PROVEN.';
+  } else if (s.includes('screensaver')) {
+    a = 'After 15s idle, screensaver teaches you how to build CKINs. It\'s a learning tool!';
+  } else {
+    a = 'Try: build, ckin, trust, components, screensaver, or click "Build New CKIN" to start!';
+  }
+  setTimeout(() => chat('ant', a), 300);
+}
+$('csend').onclick = ask;
+$('cin').addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+
+// ===== CLAIM CLICKS =====
+document.querySelectorAll('.claim-item').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.claim-item').forEach(e => e.classList.remove('active'));
+    el.classList.add('active');
+    const state = el.dataset.state || 'PROVEN';
+    setState(state);
+    log(`[CLAIM] Selected: ${el.querySelector('.title').textContent} → ${state}`);
+    chat('ant', `Selected claim → ${state}.`);
+  });
+});
+
+// ===== LATTICE ITEMS =====
+document.querySelectorAll('.lattice-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const state = el.textContent.trim();
+    if (shapeMap[state]) {
+      setState(state);
+      log(`[LATTICE] State: ${state}`);
+      chat('ant', `State changed to: ${state}`);
+    }
+  });
+});
+
+// ===== FILTER TOGGLES =====
+document.querySelectorAll('.filter-tag').forEach(el => {
+  el.addEventListener('click', () => { el.classList.toggle('active'); });
+});
+
+// ===== INIT =====
+setState('PROVEN');
+animate();
+resize();
+resetIdleTimer();
+
+log('[OK] VVU-SEARM with CKIN Builder');
+log('[OK] Click "Build New CKIN" to create your own claim');
+log('[OK] Screensaver teaches claim building after 15s idle');
+chat('ant', '🧬 Welcome! Build your own CKINs. 15s idle → teaching screensaver.');
+
+console.log('🚀 VVU·SEARM with CKIN Builder ready.');
+console.log('🧬 Click "Build New CKIN" to create custom claims.');
+console.log('📖 Screensaver teaches claim building after 15s idle.');
+</script>
+</body>
+</html>

@@ -71,6 +71,7 @@ export function IveHeader({
             { id: "air", label: "AIR Runtime", icon: "Activity" },
             { id: "crypto", label: "Cryptographic & Governance", icon: "Lock" },
             { id: "sandbox", label: "Accretion Sandbox", icon: "Orbit" },
+            { id: "canvas", label: "Self-Service Canvas", icon: "LayoutGrid" },
           ].map((t) => {
             const active = activeTab === t.id;
             return (
