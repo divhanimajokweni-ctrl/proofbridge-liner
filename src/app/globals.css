@@ -236,3 +236,416 @@
 .ive-anim-pulse-emerald { animation: ive-pulse-emerald 2.4s ease-in-out infinite; }
 .ive-anim-float { animation: ive-float 4s ease-in-out infinite; }
 .ive-anim-grid { animation: ive-grid-pan 8s linear infinite; }
+
+/* ============================================================
+   Anton VVU · Accretion Disk Build-Layer styles
+   Wrapped in @layer components so Tailwind v4 includes them
+   (Tailwind v4 silently drops unlayered CSS that follows @imports).
+   ============================================================ */
+
+@layer components {
+:root {
+  --neon-cyan: #00e5ff;
+  --neon-magenta: #bd00ff;
+  --neon-green: #39ff14;
+  --neon-orange: #ffaa00;
+  --neon-red: #ff0055;
+  --neon-gold: #ffd700;
+}
+
+/* ---------- AntonGame (survival shooter) ---------- */
+.game-root {
+  position: relative;
+  width: 100%;
+  height: min(70vh, 640px);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center, #0a0512 0%, #050208 100%);
+  border: 1px solid oklch(0.4 0.02 60 / 35%);
+  box-shadow: 0 8px 32px -12px oklch(0 0 0 / 50%);
+  cursor: crosshair;
+}
+.game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.game-root .hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem;
+  pointer-events: none;
+  z-index: 2;
+}
+.hud-panel {
+  background: rgba(5, 3, 10, 0.65);
+  border: 1px solid oklch(0.4 0.02 60 / 35%);
+  backdrop-filter: blur(10px);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-family: var(--font-geist-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--neon-cyan);
+}
+.hud-left { text-align: left; }
+.hud-right { text-align: right; }
+.hud-panel .stat-line { color: #fff; margin-bottom: 0.25rem; }
+.hud-panel .stat-line span { color: var(--neon-cyan); }
+.health-bar-container {
+  width: 180px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid oklch(0.4 0.02 60 / 35%);
+}
+.health-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--neon-red), var(--neon-orange), var(--neon-green));
+  transition: width 0.15s ease-out;
+  box-shadow: 0 0 8px var(--neon-green);
+}
+.wave-text {
+  font-size: 0.95rem;
+  color: var(--neon-orange);
+  text-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
+}
+.score-text {
+  font-size: 0.85rem;
+  color: var(--neon-cyan);
+  margin-top: 0.15rem;
+}
+
+.abilities-panel {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  z-index: 2;
+}
+.ability-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+.ability-key {
+  font-family: var(--font-geist-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: oklch(0.7 0.012 60);
+}
+.ability-btn {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, oklch(0.22 0.018 60 / 0.8), oklch(0.13 0.012 60 / 0.9));
+  border: 1px solid oklch(0.4 0.02 60 / 50%);
+  color: #fff;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.1s, border-color 0.15s, box-shadow 0.15s;
+}
+.ability-btn:hover {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 16px -4px var(--neon-cyan);
+}
+.ability-btn:active { transform: scale(0.95); }
+.cd-overlay {
+  position: absolute;
+  inset: 0;
+  bottom: auto;
+  height: 0%;
+  background: rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+  transition: height 0.05s linear;
+}
+.ability-name {
+  font-family: var(--font-geist-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: oklch(0.7 0.012 60);
+}
+
+.center-message {
+  position: absolute;
+  top: 35%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.85);
+  opacity: 0;
+  transition: opacity 0.25s, transform 0.25s;
+  font-family: var(--font-geist-mono);
+  font-size: clamp(1.25rem, 3.5vw, 2.5rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--neon-green);
+  text-shadow: 0 0 16px var(--neon-green), 0 0 32px rgba(57, 255, 20, 0.5);
+  text-align: center;
+  pointer-events: none;
+  z-index: 2;
+  white-space: nowrap;
+}
+.center-message[data-visible="true"] {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.game-over {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(189, 0, 255, 0.15), rgba(0, 0, 0, 0.92));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  z-index: 3;
+  font-family: var(--font-geist-mono);
+  text-align: center;
+}
+.game-over h1 {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 900;
+  color: var(--neon-magenta);
+  text-shadow: 0 0 16px var(--neon-magenta);
+  letter-spacing: 0.05em;
+}
+.restart-btn {
+  margin-top: 0.5rem;
+  padding: 0.6rem 1.5rem;
+  background: linear-gradient(180deg, oklch(0.22 0.018 60 / 0.8), oklch(0.13 0.012 60 / 0.9));
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-family: var(--font-geist-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.restart-btn:hover {
+  background: rgba(0, 229, 255, 0.1);
+  box-shadow: 0 0 16px -4px var(--neon-cyan);
+}
+
+/* ---------- AntonVVU (node editor + arena) ---------- */
+.vvu-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+.vvu-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid oklch(0.4 0.02 60 / 35%);
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, oklch(0.22 0.018 60 / 0.55), oklch(0.13 0.012 60 / 0.65));
+  backdrop-filter: blur(14px);
+}
+.vvu-title {
+  font-family: var(--font-geist-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #fff;
+  margin: 0;
+}
+.vvu-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  font-family: var(--font-geist-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: oklch(0.7 0.012 60);
+}
+.vvu-stat-val {
+  color: var(--neon-orange);
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-left: 0.35rem;
+  text-shadow: 0 0 6px rgba(255, 170, 0, 0.4);
+}
+.vvu-core {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.vvu-segments {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+.vvu-seg {
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid oklch(0.4 0.02 60 / 35%);
+}
+.vvu-seg-active {
+  background: var(--neon-green);
+  box-shadow: 0 0 6px var(--neon-green);
+  border-color: var(--neon-green);
+}
+.vvu-seg-danger {
+  background: var(--neon-red);
+  box-shadow: 0 0 6px var(--neon-red);
+  border-color: var(--neon-red);
+}
+
+.vvu-main {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+@media (min-width: 768px) {
+  .vvu-main { grid-template-columns: 1fr 1.4fr; }
+}
+
+.vvu-pane {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid oklch(0.4 0.02 60 / 35%);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: oklch(0.13 0.012 60 / 0.55);
+  backdrop-filter: blur(14px);
+}
+.vvu-pane-title {
+  font-family: var(--font-geist-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--neon-cyan);
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid oklch(0.4 0.02 60 / 35%);
+  background: rgba(0, 0, 0, 0.35);
+}
+.vvu-canvas {
+  display: block;
+  width: 100%;
+  height: 360px;
+  touch-action: none;
+  cursor: crosshair;
+}
+@media (min-width: 768px) {
+  .vvu-canvas { height: 480px; }
+}
+.vvu-instructions {
+  font-family: var(--font-geist-mono);
+  font-size: 0.65rem;
+  line-height: 1.5;
+  color: oklch(0.7 0.012 60);
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid oklch(0.4 0.02 60 / 35%);
+  background: rgba(0, 0, 0, 0.35);
+}
+.vvu-instructions b {
+  color: var(--neon-cyan);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.vvu-green { color: var(--neon-green); font-weight: 700; }
+.vvu-orange { color: var(--neon-orange); font-weight: 700; }
+
+.vvu-gameover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: radial-gradient(ellipse at center, rgba(189, 0, 255, 0.15), rgba(0, 0, 0, 0.92));
+  font-family: var(--font-geist-mono);
+  text-align: center;
+  z-index: 2;
+}
+.vvu-gameover h3 {
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
+  font-weight: 900;
+  color: var(--neon-magenta);
+  text-shadow: 0 0 16px var(--neon-magenta);
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+.vvu-gameover p {
+  color: oklch(0.7 0.012 60);
+  font-size: 0.75rem;
+}
+.vvu-btn {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1.25rem;
+  background: linear-gradient(180deg, oklch(0.22 0.018 60 / 0.8), oklch(0.13 0.012 60 / 0.9));
+  border: 1px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  font-family: var(--font-geist-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.vvu-btn:hover {
+  background: rgba(0, 229, 255, 0.1);
+  box-shadow: 0 0 16px -4px var(--neon-cyan);
+}
+
+/* Tab switcher for the sandbox tab */
+.vvu-mode-switch {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+.vvu-mode-btn {
+  font-family: var(--font-geist-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0.4rem 0.85rem;
+  border-radius: 0.4rem;
+  background: oklch(0.22 0.018 60 / 0.5);
+  border: 1px solid oklch(0.4 0.02 60 / 50%);
+  color: oklch(0.7 0.012 60);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.vvu-mode-btn:hover { color: #fff; border-color: var(--neon-cyan); }
+.vvu-mode-btn[data-active="true"] {
+  color: var(--neon-cyan);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 12px -4px var(--neon-cyan);
+  background: rgba(0, 229, 255, 0.08);
+}
+}

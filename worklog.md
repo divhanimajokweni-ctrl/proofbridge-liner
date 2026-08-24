@@ -51,3 +51,28 @@ Stage Summary:
 - 6 fully-rendered tabs, 3 backend APIs, LLM facilitator verified end-to-end (returned cited structural review summary referencing NSC Reg. 7.3.2 + HBK Mk-II fatigue model).
 - All endpoints return 200. No browser errors. No runtime errors. Mobile + desktop responsive. Sticky footer verified.
 - Agent Browser self-verification: ✅ passed (title, navigation, LLM, API endpoints, AIR live stream, footer behavior all confirmed).
+
+---
+Task ID: 3
+Agent: Orchestrator (main)
+Task: Integrate Anton VVU + Anton Game as 7th "Accretion Sandbox" tab.
+
+Work Log:
+- Read uploaded file at /home/z/my-project/upload/Pasted Content_1787548413928.txt — it was an HTML demo variant, not the React code. Used the React/TypeScript code from the IM message directly.
+- Created two components:
+  · src/components/ive/anton-vvu.tsx — full AntonVVU with LogicTileSystem (spatial entity_enter triggers, wired action execution, max execution depth 4), node editor canvas (drag tile bodies, drag green-output → orange-input to wire), and live accretion-disk arena (wave-based ant spawning, pheromone_lure/trail_fire hazard payloads, player WASD + click-to-shoot).
+  · src/components/ive/anton-game.tsx — survival shooter variant (Anton the Ant pilot, black-hole singularity with gravitational pull on player/enemies/bullets/particles, 3 abilities on cooldowns: Time Dilate / Mag Pulse / Grav Fusion, Rick-and-Morty-style phrase quotes, EMP ring zones + fusion-core bomb detonations).
+- Built src/components/ive/tabs/sandbox-tab.tsx wrapping both with a mode switcher + intro card explaining how each IVE pillar (Agnostic Integration, Model-Driven V-Design, AIR Runtime, Real-Time Intervention) is demonstrated.
+- Added 7th tab "ACCRETION SANDBOX" to IveHeader and page.tsx.
+- Appended vvu-* + game-* + ability-* + hud-* CSS to globals.css.
+- Lint fix: refactored AntonGame's callback-ref pattern (which mutated cdRefs.current during render) into 3 dedicated useRef<HTMLSpanElement> objects passed directly as ref props — eliminated react-hooks/refs violation.
+- Critical CSS fix: Tailwind v4 silently drops unlayered CSS appended after `@import "tailwindcss"`. Wrapped all 410 lines of vvu/game CSS in `@layer components { ... }` so Tailwind includes them in the bundle. Before the fix, computed style showed canvas at 300×150 (default); after, both canvases render at proper responsive sizes (556×480 and 779×480 on desktop).
+- Updated layout.tsx metadata stays as IVE v2.0 (the sandbox is a tab within the dashboard, not a replacement route).
+
+Stage Summary:
+- Agent Browser self-verification:
+  · 7th "ACCRETION SANDBOX" tab appears in header navigation.
+  · Build-Layer mode: both canvases paint (23,749 + 23,438 sampled non-zero pixels). HUD shows "WAVE 1 / MATTER 100 / CORE".
+  · Classic Arena mode: game canvas is 1350×628, HUD live-updating — health bar dropped from 100% to 25.75% as enemies spawned and attacked Anton, proving the full game loop (waves → enemy seek → collision damage → health decay) is wired end-to-end.
+  · Mode switcher (Build-Layer ↔ Classic Arena) toggles cleanly.
+- Lint: clean. Dev server: 200s on all routes. No runtime errors.

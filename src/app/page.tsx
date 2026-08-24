@@ -10,6 +10,7 @@ import { FacilitatorTab } from "@/components/ive/tabs/facilitator-tab";
 import { IntegrationTab } from "@/components/ive/tabs/integration-tab";
 import { AirTab } from "@/components/ive/tabs/air-tab";
 import { CryptoTab } from "@/components/ive/tabs/crypto-tab";
+import { SandboxTab } from "@/components/ive/tabs/sandbox-tab";
 
 export default function Home() {
   const [tab, setTab] = useState<string>("overview");
@@ -31,6 +32,7 @@ export default function Home() {
           {tab === "integration" && <IntegrationTab />}
           {tab === "air" && <AirTab />}
           {tab === "crypto" && <CryptoTab />}
+          {tab === "sandbox" && <SandboxTab />}
         </main>
 
         <IveFooter />

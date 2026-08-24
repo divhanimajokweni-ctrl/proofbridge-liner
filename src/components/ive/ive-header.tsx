@@ -70,6 +70,7 @@ export function IveHeader({
             { id: "integration", label: "Agnostic Integration", icon: "Layers" },
             { id: "air", label: "AIR Runtime", icon: "Activity" },
             { id: "crypto", label: "Cryptographic & Governance", icon: "Lock" },
+            { id: "sandbox", label: "Accretion Sandbox", icon: "Orbit" },
           ].map((t) => {
             const active = activeTab === t.id;
             return (
