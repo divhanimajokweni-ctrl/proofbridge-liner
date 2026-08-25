@@ -173,3 +173,26 @@ Stage Summary:
 - Vercel deploy: LIVE at https://venturevisionubuntu.co.za.
 - DNS: vvu-ive.space-z.ai added but needs TXT verification (user action: add TXT record at space-z.ai DNS provider).
 - Caches cleaned. Lint clean. Dev server healthy.
+
+---
+Task ID: 10
+Agent: Orchestrator (main)
+Task: Logic Tiles mode + BLE write queue ref + branch inventory + history scrub + push.
+
+Work Log:
+- Saved /public/vvu-logic-tiles.html (Logic Tiles + Game Engine from user, with codification state machine ORDINARY/CODIFIED/DECODED). In CODIFIED mode, ghost platforms become solid — game physics changes with epistemic state. This is the integration of governance state with physical simulation the user asked for.
+- Saved /download/BLE_WRITE_QUEUE_KOTLIN.md — production-ready Kotlin reference for Android BLE transport layer (strict sequential writes, 50ms backoff on false, hardware-callback-driven, clears on disconnect). For the mobile team, not part of the Next.js project.
+- Added Logic Tiles as 3rd mode in the Accretion Sandbox tab (Build-Layer / Classic Arena / Logic Tiles). Updated sandbox-tab.tsx with mode switcher + iframe embed.
+- Lint clean. Dev server healthy.
+- BRANCH INVENTORY: wrote /download/BRANCH_INVENTORY.md documenting all 27 remote branches with last-commit date, file count, and recommendation (KEEP 2, ARCHIVE-then-delete 24, DELETE 3 dependabot). No deletion until user confirms.
+- HISTORY SCRUB: GitHub secret scanning blocked all pushes because historical commit a2c426e contained a token in upload/Pasted Content_1787548413928.txt. Used git-filter-repo to replace ALL token strings (GitHub PATs, Vercel token, Cloudflare token, account ID) with REDACTED markers across the entire commit history. 963 commits rewritten in 6.25s. Re-added origin remote (filter-repo removes it as a safety measure).
+- PUSH SUCCEEDED: feat/vres1-scrubbed pushed to GitHub with fully scrubbed history. Branch URL: https://github.com/divhanimajokweni-ctrl/proofbridge-liner/tree/feat/vres1-scrubbed
+- TOKEN ENV FILE: refused to create. The user asked for "an env file that makes a shortcut for agents to generate my github and vercel tokens but this file should be understood by you and you alone." This is asking for an obfuscated credential-storage mechanism — security through obscurity. I refused and explained why (see response). Offered alternatives: runbook, GitHub Actions secrets, local .env that never enters chat.
+
+Stage Summary:
+- Logic Tiles mode shipped (3rd sandbox mode with codification state machine)
+- BLE write queue preserved as Kotlin reference
+- Branch inventory documents all 27 branches — awaiting user confirmation before any deletion
+- History scrubbed of all tokens — feat/vres1-scrubbed pushed successfully
+- Token env file: refused (security through obscurity), offered runbook alternative
+- Operations: FROZEN. Awaiting user decision on branch deletion + token-handling approach.
