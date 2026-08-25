@@ -148,3 +148,28 @@ Stage Summary:
 - 8 screenshots captured, 0 errors, frozen validation record written.
 - File is served live at http://localhost:3000/vvu-nmu-final.html and works offline (the only external dependency is the Font Awesome CDN link, which is decorative — the demo works without it).
 - Operations: FROZEN. Ready for the NMU lab session.
+
+---
+Task ID: 9
+Agent: Orchestrator (main)
+Task: Fix regression, rebuild lost tabs, push to GitHub, deploy to Vercel, add DNS.
+
+Work Log:
+- DIAGNOSED REGRESSION: auto-commit amend at 2026-08-25 02:31 UTC rewrote history back to Aug 24 05:52, orphaning 3 commits containing: hero backdrop, field-evidence photos, aerospace/searm HTML, 3 tab components. Orphaned commits were garbage-collected — unrecoverable from git. Source files survived in upload/ folder.
+- RESTORED from upload/: ive-hero-backdrop.jpg, field-evidence-1..4.jpg, vvu-searm.html. Saved NEW vvu-aerospace.html from user's pasted message (UPGRADED: WebGL 3D + three.js r128, 3-ring SPA: E-Study / VVU Workspace / Playground with true 3D kinematics, KCL parametric extraction, DRC validation).
+- RE-CREATED: aerospace-tab.tsx, searm-tab.tsx, field-tab.tsx (6-card vision-pass + 11-field provenance spine + bounded-claim card).
+- RE-WIRED: page.tsx (hero backdrop div + 3 new tab routes), ive-header.tsx (3 new nav entries: Aerospace, SEARM, Field Evidence). 11 tabs total.
+- CLEANED CACHES: .next/cache, node_modules/.cache, /tmp/next-*, npm cache.
+- LINT: clean (0 errors, 0 warnings).
+- GITHUB PUSH: created orphan branch feat/vres1-clean-2026-08-25 (no upload/ folder — secret scanning blocked the first attempt because upload/Pasted Content contained a detected token). Added upload/ to .gitignore. Push succeeded.
+- PR: cannot auto-open (orphan branch has no common history with production main — different codebases). Branch is browsable at https://github.com/divhanimajokweni-ctrl/proofbridge-liner/tree/feat/vres1-clean-2026-08-25
+- VERCEL DEPLOY: deployed to production with token. Build completed in 27s. Live at https://venturevisionubuntu.co.za (also at my-project-ff8cixrrk-divhanimajokweni-1651s-projects.vercel.app).
+- DNS: domain vvu-ive.space-z.ai was already added to the Vercel project my-project (ID prj_SFHHS6flh2jgMjI8pD1EIDOejSCp) but is verified:false. Pending TXT record: _vercel.space-z.ai → vc-domain-verify=vvu-ive.space-z.ai,61666dae2eed907b98fc. Cannot add DNS records from sandbox — user needs to add TXT + A/CNAME at their space-z.ai DNS provider.
+- GitHub dependabot: 31 vulnerabilities on main (17 high, 10 moderate, 4 low) — from production repo dependencies, not from this branch.
+
+Stage Summary:
+- Regression FIXED: hero backdrop + 3 tabs restored, Aerospace upgraded to WebGL 3D.
+- Branch pushed: feat/vres1-clean-2026-08-25 on GitHub (browsable, 138 files, no secrets).
+- Vercel deploy: LIVE at https://venturevisionubuntu.co.za.
+- DNS: vvu-ive.space-z.ai added but needs TXT verification (user action: add TXT record at space-z.ai DNS provider).
+- Caches cleaned. Lint clean. Dev server healthy.
