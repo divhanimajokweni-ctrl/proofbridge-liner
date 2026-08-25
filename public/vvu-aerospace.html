@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVU AEROSPACE // CENTRAL ACCESS NODE</title>
+<!-- True 3D WebGL rendering engine -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  /* =====================================================================
+     AEROSPACE DESIGN SYSTEM & COLOR TOKENS
+     ===================================================================== */
+  :root {
+    --void:        #05070a;
+    --panel:       rgba(7, 9, 12, 0.84);
+    --bone:        #e8e0cc;
+    --titanium:    #8e979e;
+
+    --cyan:        #1d8aa3;
+    --air:         #6fc7e8;
+    --flame:       #f2c45f;
+    --danger:      #d45f49;
+    --green:       #2f7a4d;
+    --plum:        #6c3a6e;
+    --rule:        #3a4555;
+
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--void); color: var(--bone); font-family: var(--mono);
+    font-size: 12px; line-height: 1.5; overflow-x: hidden;
+    display: flex; flex-direction: column; min-height: 100vh;
+  }
+
+  .scanlines::after {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    background: repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 1px, transparent 1px, transparent 3px);
+    z-index: 60;
+  }
+
+  header { border-bottom: 1px solid var(--rule); padding: 16px; background: var(--panel); z-index: 10; position: relative; }
+  .ascii-art { color: var(--cyan); white-space: pre; font-size: 10px; line-height: 1.1; margin-bottom: 16px; }
+  .telemetry-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; font-size: 11px; border-top: 1px dashed var(--rule); padding-top: 12px; }
+  .tel-block .label { color: var(--titanium); text-transform: uppercase; font-size: 9px; letter-spacing: 0.1em; }
+  .tel-block .data { color: var(--bone); font-weight: bold; }
+
+  .ring-nav { display: flex; border-bottom: 1px solid var(--rule); background: #0a0e14; z-index: 10; position: relative; }
+  .nav-btn { flex: 1; background: transparent; border: none; border-right: 1px solid var(--rule); color: var(--titanium); font-family: var(--mono); padding: 12px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; transition: all 0.2s ease; }
+  .nav-btn:hover { background: rgba(111, 199, 232, 0.1); }
+  .nav-btn.active[data-target="ring-1"] { color: var(--void); background: var(--air); }
+  .nav-btn.active[data-target="ring-2"] { color: var(--void); background: var(--flame); }
+  .nav-btn.active[data-target="ring-3"] { color: var(--void); background: var(--danger); }
+
+  main { flex: 1; padding: 24px; position: relative; z-index: 10; }
+  .ring-view { display: none; animation: fadeInSlide 0.3s ease forwards; }
+  .ring-view.active { display: block; }
+  @keyframes fadeInSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .panel { border: 1px solid var(--rule); background: var(--panel); padding: 16px; margin-bottom: 16px; }
+  .panel-title { color: var(--titanium); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; border-bottom: 1px dashed var(--rule); padding-bottom: 8px; margin-bottom: 12px; }
+
+  .hl-cyan { color: var(--cyan); } .hl-flame { color: var(--flame); } .hl-danger { color: var(--danger); } .hl-air { color: var(--air); } .hl-plum { color: var(--plum); }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; padding: 12px; background: #080b10; border: 1px solid var(--rule); }
+  .controls button { font-family: var(--mono); font-size: 11px; font-weight: bold; color: var(--bone); background: transparent; border: 1px solid var(--titanium); padding: 6px 12px; cursor: pointer; text-transform: uppercase; transition: all 0.2s; }
+  .controls button:hover:not(:disabled) { background: rgba(255,255,255,0.1); }
+  .controls button:disabled { opacity: 0.3; cursor: not-allowed; }
+  .controls button[data-act="step"] { border-color: var(--air); color: var(--air); }
+  .diagram text { fill: var(--bone); font-family: var(--mono); font-size: 12px; }
+  .diagram .mutedt { fill: var(--titanium); }
+  .diagram line, .diagram path { stroke: var(--titanium); }
+  .off { opacity: 0; transition: opacity 0.4s ease, transform 0.4s ease; transform: translateX(-10px); }
+  .off.on { opacity: 1; transform: translateX(0); }
+
+  .drop-zone { border: 2px dashed var(--rule); padding: 24px; text-align: center; color: var(--titanium); background: #080b10; cursor: pointer; transition: all 0.2s; }
+  .drop-zone.dragover { border-color: var(--flame); background: rgba(242, 196, 95, 0.1); color: var(--flame); }
+
+  .terminal { background: #080b10; border: 1px solid var(--rule); padding: 12px; height: 200px; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 8px; }
+  .term-msg.ai { color: var(--titanium); border-left: 2px solid var(--rule); padding-left: 8px; }
+  .term-msg.user { color: var(--bone); border-left: 2px solid var(--flame); padding-left: 8px; margin-left: 16px; }
+
+  .drc-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 10px; text-align: left; display: none; }
+  .drc-table th, .drc-table td { border: 1px solid var(--rule); padding: 8px; }
+  .drc-table th { background: #0a0e14; color: var(--titanium); }
+  .drc-table tbody tr:nth-child(1) td:first-child { border-left: 3px solid #d45f49; }
+  .drc-table tbody tr:nth-child(2) td:first-child { border-left: 3px solid #1d8aa3; }
+  .drc-table tbody tr:nth-child(3) td:first-child { border-left: 3px solid #6c3a6e; }
+
+  #webgl-container { width: 100%; height: 450px; background: #0b0b10; border: 1px solid var(--rule); position: relative; }
+
+  .font-bold { font-weight: bold; }
+</style>
+</head>
+<body>
+  <div class="scanlines"></div>
+
+  <header>
+    <div class="ascii-art">
+   _____  ___   ____  ___   __________  _________   ____
+  / ___/ / _ | / __/ / _ | /_  __/ __/ / ___/ __ \ / __/
+ / /__  / __ | \ \  / __ |  / / / _/  / /__/ /_/ / _/
+ \___/ /_/ |_|___/ /_/ |_| /_/ /___/  \___/\____/___/
+=========================================================
+[ SYSTEM ALIGNMENT: NOMINAL ] [ UCO BRIDGE: ARMED ]
+    </div>
+    <div class="telemetry-grid">
+      <div class="tel-block">
+        <div class="label">Loc / Origin</div>
+        <div class="data" id="loc-data">GQEBERHA, ZA</div>
+      </div>
+      <div class="tel-block">
+        <div class="label">Local Time (SAST)</div>
+        <div class="data" id="clock-data">00:00:00</div>
+      </div>
+      <div class="tel-block">
+        <div class="label">UCO Payload Status</div>
+        <div class="data hl-cyan" id="uco-global-status">AWAITING CAPTURE</div>
+      </div>
+      <div class="tel-block">
+        <div class="label">Engine State</div>
+        <div class="data hl-flame">O(S+N)d OPTIMIZED</div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="ring-nav">
+    <button class="nav-btn active" data-target="ring-1">RING 1 // E-STUDY</button>
+    <button class="nav-btn" data-target="ring-2" id="nav-r2">RING 2 // VVU WORKSPACE</button>
+    <button class="nav-btn" data-target="ring-3" id="nav-r3">RING 3 // PLAYGROUND</button>
+  </nav>
+
+  <main>
+    <div id="ring-1" class="ring-view active">
+      <div class="panel" style="border-left: 3px solid var(--air);">
+        <div class="panel-title">Academic Integration Environment // Interactive Module</div>
+        <p><strong>SUBJECT: The Problem with Standard Residuals</strong></p>
+        <p style="color: var(--titanium); font-size: 11px; margin-top: 4px;">
+          > LINDIWE AUTO-PLAY OVERRIDE ENGAGED. Manual stepping required for optimal retention.
+        </p>
+        <div class="controls" id="sec1-controls">
+          <button type="button" data-act="play">▶ Auto</button>
+          <button type="button" data-act="pause" disabled>⏸ Pause</button>
+          <button type="button" data-act="step" class="hl-air">⏭ Manual Step</button>
+          <button type="button" data-act="reset">↺ Reset</button>
+          <span id="step-status" style="margin-left: auto; color: var(--titanium); padding-top: 4px;">Awaiting Input...</span>
+        </div>
+        <div style="overflow-x: auto; background: #020305; border: 1px solid var(--rule); padding: 16px; margin-bottom: 16px;">
+          <svg class="diagram" viewBox="0 0 800 400" width="100%" height="400">
+            <text x="20" y="30">Layers — increasing depth</text>
+            <text x="450" y="30" class="mutedt">Hidden-state magnitude (||h|| ≈ l+1)</text>
+            <g class="off" id="s1-trunk">
+              <rect x="220" y="50" width="30" height="320" rx="10" fill="#1b2330" stroke="#3a4555" stroke-width="2"></rect>
+              <text x="235" y="390" text-anchor="middle" font-weight="bold" fill="#1d8aa3">Residual Trunk (h)</text>
+              <text x="235" y="40" text-anchor="middle" font-size="10">fixed weight × 1</text>
+            </g>
+            <g id="s1-layers-container"></g>
+            <g id="s1-chart-container"></g>
+          </svg>
+        </div>
+        <button id="push-uco-btn" style="width: 100%; padding: 12px 16px; background: transparent; color: var(--air); border: 1px dashed var(--air); cursor: pointer; font-family: var(--mono); font-weight: bold; transition: all 0.2s;">
+          [ VERIFY COMPREHENSION & PUSH TO WORKSPACE UCO ]
+        </button>
+      </div>
+    </div>
+
+    <div id="ring-2" class="ring-view">
+      <div class="panel" style="border-left: 3px solid var(--flame);">
+        <div class="panel-title">VVU Interface // Schematic Ingestion & AI Terminal</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div id="upload-zone" class="drop-zone">
+              <div id="drop-text">
+                <p style="font-size: 14px; font-weight: bold; color: var(--flame);">[ DRAG & DROP SCHEMATIC HERE ]</p>
+                <p style="font-size: 10px; margin-top: 8px;">Trigger 36 KCL Parametric Extraction</p>
+              </div>
+              <div id="ingest-progress" style="display: none;">
+                <p class="hl-cyan">> INGESTING KCL PARAMETERS...</p>
+                <div style="width: 100%; background: var(--rule); height: 4px; margin-top: 8px;">
+                  <div id="progress-bar" style="width: 0%; height: 100%; background: var(--flame); transition: width 0.1s;"></div>
+                </div>
+              </div>
+            </div>
+            <div class="terminal" id="chat-window">
+              <div class="term-msg ai"><span class="hl-cyan">Lindiwe:</span> SYSTEM NOMINAL. Awaiting UCO Payload or Schematic Ingestion.</div>
+            </div>
+            <form id="chat-form" style="display: flex; gap: 8px;">
+              <input type="text" id="chat-input" disabled placeholder="Awaiting ingestion..." style="flex: 1; background: var(--void); border: 1px solid var(--rule); color: var(--bone); padding: 8px; font-family: var(--mono); font-size: 11px; outline: none;">
+              <button type="submit" id="chat-submit" disabled style="background: transparent; border: 1px solid var(--rule); color: var(--titanium); padding: 0 16px; font-family: var(--mono); cursor: pointer;">SEND</button>
+            </form>
+            <button id="proceed-3d-btn" style="display: none; padding: 12px; background: transparent; border: 1px solid var(--air); color: var(--air); font-weight: bold; font-family: var(--mono); cursor: pointer; text-transform: uppercase;">
+              PROCEED TO 3D KINEMATICS ⏭
+            </button>
+          </div>
+          <div>
+            <div class="panel-title">DRC Validation Results // 11-Body Assembly</div>
+            <p id="drc-standby" style="color: var(--titanium); padding: 20px 0; text-align: center;">[ STANDBY ]<br>Awaiting schematic to generate bounding box matrix.</p>
+            <table class="drc-table" id="drc-table">
+              <thead>
+                <tr><th>ID</th><th>COMPONENT</th><th>ANCHOR (X,Y,Z)</th><th>SIZE (W,D,H)</th><th>STATUS</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td>BASE PLATE</td><td>(0, 0, 0)</td><td>90 × 70 × 6</td><td style="color: var(--green);">PASS</td></tr>
+                <tr><td>2</td><td>BATTERY PACK</td><td>(0, 6, 0)</td><td>48 × 40 × 22</td><td style="color: var(--green);">PASS</td></tr>
+                <tr><td>3</td><td>PYROGEL XTE</td><td>(0, 28, 0)</td><td>58 × 50 × 10</td><td style="color: var(--green);">PASS</td></tr>
+                <tr><td>4</td><td>ASI-04 SENSOR</td><td>(24, 22, 14)</td><td>12 × 12 × 8</td><td style="color: var(--green);">PASS</td></tr>
+              </tbody>
+            </table>
+            <div id="drc-summary" style="display: none; margin-top: 12px; font-size: 11px;">
+              <p class="hl-flame">EMI/RFI Exclusion Zone: <span style="color:var(--bone);">ACHIEVED</span></p>
+              <p class="hl-flame">Assembly Status: <span style="color:var(--bone);">100% Collision Free</span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="ring-3" class="ring-view">
+      <div class="panel" style="border-left: 3px solid var(--danger);">
+        <div class="panel-title">Sandbox // True WebGL 3D Kinematics</div>
+        <p class="hl-plum">WARNING: RAW MECHANICS. LIVE HARDWARE TELEMETRY.</p><br>
+        <div style="display: grid; grid-template-columns: 1fr 280px; gap: 24px;">
+          <div id="webgl-container">
+            <div style="position: absolute; top: 10px; left: 10px; font-size: 9px; color: var(--titanium); z-index: 2;">
+              [ LIVE 3D TENSOR RENDER ]<br>
+              <span class="hl-air" id="cam-readout">YAW 0.80 // PITCH 0.85</span>
+            </div>
+            <div style="position: absolute; bottom: 10px; right: 10px; font-size: 9px; color: var(--titanium); z-index: 2; text-align: right;">
+              <span class="hl-flame" id="fps-readout">60 FPS</span><br>
+              AABB MATRIX
+            </div>
+          </div>
+          <div style="border: 1px solid var(--rule); padding: 16px; background: rgba(0,0,0,0.4); z-index: 10;">
+            <div style="border: 1px solid rgba(242, 196, 95, 0.3); background: rgba(242, 196, 95, 0.05); padding: 12px; margin-bottom: 16px;">
+              <label style="display: flex; justify-content: space-between; font-size: 10px;">
+                <span class="hl-flame">Explode (Δ)</span> <span id="val-explode" class="hl-cyan">0%</span>
+              </label>
+              <input type="range" id="sl-explode" min="0" max="1" step="0.01" value="0" style="width: 100%; margin-top: 8px;">
+              <p style="font-size: 9px; color: var(--titanium); margin-top: 6px;">Translates along local parametric axes.</p>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label style="display: flex; justify-content: space-between; font-size: 10px;">
+                <span>Orbit Yaw (φ)</span> <span id="val-yaw">0.80</span>
+              </label>
+              <input type="range" id="sl-yaw" min="-6.28" max="6.28" step="0.01" value="0.80" style="width: 100%; margin-top: 8px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label style="display: flex; justify-content: space-between; font-size: 10px;">
+                <span>Orbit Pitch (θ)</span> <span id="val-pitch">0.85</span>
+              </label>
+              <input type="range" id="sl-pitch" min="0.25" max="2.6" step="0.01" value="0.85" style="width: 100%; margin-top: 8px;">
+            </div>
+            <div>
+              <label style="display: flex; justify-content: space-between; font-size: 10px;">
+                <span>Camera Zoom</span> <span id="val-zoom">150</span>
+              </label>
+              <input type="range" id="sl-zoom" min="60" max="320" value="150" style="width: 100%; margin-top: 8px;">
+            </div>
+            <div style="border-top: 1px dashed var(--rule); margin-top: 16px; padding-top: 12px; font-size: 9px; color: var(--titanium);">
+              <p class="hl-air">> 4 BODIES LOADED</p>
+              <p>Base Plate (Ti-6Al-4V)</p>
+              <p>Battery Pack (LFP-21700)</p>
+              <p>Aerogel Thermal Jacket</p>
+              <p>ASI-04 Sensor Module</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const options = { timeZone: 'Africa/Johannesburg', hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      document.getElementById('clock-data').textContent = now.toLocaleTimeString('en-US', options);
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const ringViews = document.querySelectorAll('.ring-view');
+    navButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        navButtons.forEach(b => b.classList.remove('active'));
+        ringViews.forEach(v => v.classList.remove('active'));
+        btn.classList.add('active');
+        const targetId = btn.getAttribute('data-target');
+        document.getElementById(targetId).classList.add('active');
+        if (targetId === 'ring-3' && typeof renderer !== 'undefined') {
+          const container = document.getElementById('webgl-container');
+          renderer.setSize(container.clientWidth, container.clientHeight);
+          camera.aspect = container.clientWidth / container.clientHeight;
+          camera.updateProjectionMatrix();
+        }
+      });
+    });
+
+    const layerContainer = document.getElementById('s1-layers-container');
+    const chartContainer = document.getElementById('s1-chart-container');
+    for(let i=1; i<=8; i++) {
+      const y = 50 + ((i-1) * 40);
+      const isAttn = i % 2 !== 0;
+      const color = isAttn ? 'rgba(29, 138, 163, 0.2)' : 'rgba(47, 122, 77, 0.2)';
+      const stroke = isAttn ? '#1d8aa3' : '#2f7a4d';
+      const label = isAttn ? 'Attention' : 'MLP';
+      layerContainer.innerHTML += `
+        <g class="off s1-layer" data-layer="${i}">
+          <rect x="20" y="${y}" width="120" height="30" rx="4" fill="${color}" stroke="${stroke}"></rect>
+          <text x="30" y="${y + 14}" font-size="11">Layer ${i}</text>
+          <text x="30" y="${y + 26}" font-size="9" class="mutedt">${label}</text>
+          <line x1="140" y1="${y + 15}" x2="220" y2="${y + 15}"></line>
+          <polygon points="215,${y+10} 220,${y+15} 215,${y+20}" fill="#8e979e" />
+          <text x="180" y="${y + 10}" font-size="9" class="mutedt">× 1</text>
+        </g>
+      `;
+      const barH = i * 15 + 10;
+      const barY = 300 - barH;
+      const barX = 450 + ((i-1) * 35);
+      chartContainer.innerHTML += `
+        <g class="off s1-bar" data-layer="${i}">
+          <rect x="${barX}" y="${barY}" width="20" height="${barH}" fill="rgba(212, 95, 73, 0.3)" stroke="#d45f49"></rect>
+          <text x="${barX + 10}" y="315" text-anchor="middle" font-size="10">${i}</text>
+        </g>
+      `;
+    }
+    chartContainer.innerHTML += `<line x1="440" y1="300" x2="750" y2="300" stroke="#3a4555"></line>`;
+
+    let currentStep = 0; const totalSteps = 9;
+    let playing = false; let playTimer;
+    const btnPlay = document.querySelector('[data-act="play"]');
+    const btnPause = document.querySelector('[data-act="pause"]');
+    const btnStep = document.querySelector('[data-act="step"]');
+    const btnReset = document.querySelector('[data-act="reset"]');
+    const stepStatus = document.getElementById('step-status');
+
+    function updateControls() {
+      btnPlay.disabled = playing || currentStep >= totalSteps;
+      btnPause.disabled = !playing;
+      btnStep.disabled = playing || currentStep >= totalSteps;
+      stepStatus.textContent = `Progress: ${currentStep} / ${totalSteps}`;
+      if(currentStep >= totalSteps) stepStatus.textContent = "Module Complete. Ready for Workspace Transfer.";
+    }
+    function triggerStep(stepIdx) {
+      if (stepIdx === 0) document.getElementById('s1-trunk').classList.add('on');
+      if (stepIdx > 0 && stepIdx <= 8) {
+        document.querySelector(`.s1-layer[data-layer="${stepIdx}"]`).classList.add('on');
+        document.querySelector(`.s1-bar[data-layer="${stepIdx}"]`).classList.add('on');
+      }
+    }
+    function doStep() { if (currentStep < totalSteps) { triggerStep(currentStep); currentStep++; updateControls(); } else { pauseAnim(); } }
+    function playAnim() { if(currentStep >= totalSteps) return; playing = true; updateControls(); playTimer = setInterval(doStep, 600); }
+    function pauseAnim() { playing = false; clearInterval(playTimer); updateControls(); }
+    function resetAnim() { pauseAnim(); currentStep = 0; document.getElementById('s1-trunk').classList.remove('on'); document.querySelectorAll('.s1-layer, .s1-bar').forEach(el => el.classList.remove('on')); updateControls(); }
+    btnPlay.addEventListener('click', playAnim);
+    btnPause.addEventListener('click', pauseAnim);
+    btnStep.addEventListener('click', doStep);
+    btnReset.addEventListener('click', resetAnim);
+
+    let ingested = false;
+    document.getElementById('push-uco-btn').addEventListener('click', (e) => {
+      if(currentStep < totalSteps) { alert("Please complete the interactive module first."); return; }
+      e.target.style.background = 'var(--flame)'; e.target.style.borderColor = 'var(--flame)'; e.target.style.color = '#000';
+      e.target.textContent = '[ INITIATING TRANSFER... ]';
+      setTimeout(() => {
+        document.getElementById('uco-global-status').textContent = "UCO_DATA_INJECTED";
+        document.getElementById('uco-global-status').style.color = "var(--flame)";
+        document.getElementById('nav-r2').click();
+        e.target.style.background = 'transparent'; e.target.style.borderColor = 'var(--air)'; e.target.style.color = 'var(--air)';
+        e.target.textContent = '[ VERIFY COMPREHENSION & PUSH TO WORKSPACE UCO ]';
+        appendChat("ai", "UCO Context received. PreNorm dilution analysis loaded. Awaiting schematic drop.");
+      }, 400);
+    });
+
+    const dropZone = document.getElementById('upload-zone');
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, prevDef, false));
+    function prevDef(e) { e.preventDefault(); e.stopPropagation(); }
+    ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('dragover'), false));
+    ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('dragover'), false));
+    dropZone.addEventListener('drop', (e) => {
+      document.getElementById('drop-text').style.display = 'none';
+      document.getElementById('ingest-progress').style.display = 'block';
+      appendChat("ai", "INGESTION DETECTED. Parsing KCL spatial parameters...");
+      let progress = 0;
+      const bar = document.getElementById('progress-bar');
+      const timer = setInterval(() => {
+        progress += 5; bar.style.width = `${progress}%`;
+        if (progress >= 100) {
+          clearInterval(timer); ingested = true;
+          document.getElementById('drc-standby').style.display = 'none';
+          document.getElementById('drc-table').style.display = 'table';
+          document.getElementById('drc-summary').style.display = 'block';
+          document.getElementById('chat-input').disabled = false;
+          document.getElementById('chat-submit').disabled = false;
+          document.getElementById('chat-submit').style.borderColor = "var(--flame)";
+          document.getElementById('chat-submit').style.color = "var(--flame)";
+          document.getElementById('proceed-3d-btn').style.display = 'block';
+          appendChat("ai", "DRC VALIDATION COMPLETE. Block AttnRes engine armed. Ready for queries.");
+        }
+      }, 100);
+    });
+    document.getElementById('proceed-3d-btn').addEventListener('click', () => { document.getElementById('nav-r3').click(); });
+
+    const chatWindow = document.getElementById('chat-window');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    function appendChat(role, text) {
+      const div = document.createElement('div');
+      div.className = `term-msg ${role}`;
+      div.innerHTML = `<span class="${role === 'ai' ? 'hl-cyan' : 'hl-flame'} font-bold">${role === 'ai' ? 'Lindiwe:' : 'User:'}</span> ${text}`;
+      chatWindow.appendChild(div);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = chatInput.value.trim();
+      if (!val) return;
+      appendChat("user", val);
+      chatInput.value = "";
+      setTimeout(() => {
+        const lower = val.toLowerCase();
+        if (lower.includes("battery")) appendChat("ai", "BATTERY PACK (LFP-21700) anchored at (0,6,0). DRC passed with 10mm air-gap.");
+        else if (lower.includes("sensor")) appendChat("ai", "ASI-04 SENSOR anchored at (24,22,14). RFI 5mm exclusion verified.");
+        else appendChat("ai", "Analysis complete. 11-body assembly is collision-free via AABB intersection.");
+      }, 600);
+    });
+
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 1200);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const dirLight1 = new THREE.DirectionalLight(0xbfd7ff, 1.6);
+    dirLight1.position.set(90, 120, 80); scene.add(dirLight1);
+    const dirLight2 = new THREE.DirectionalLight(0x3b82f6, 0.5);
+    dirLight2.position.set(-90, 30, 60); scene.add(dirLight2);
+    const dirLight3 = new THREE.DirectionalLight(0x7dd8ff, 1.1);
+    dirLight3.position.set(10, 60, -110); scene.add(dirLight3);
+
+    const gridHelper = new THREE.GridHelper(260, 26, 0x1e293b, 0x14161c);
+    gridHelper.position.y = -1; scene.add(gridHelper);
+
+    const bodies = [
+      { id: "base-plate", anchor: { x: 0, y: 0, z: 0 }, size: { w: 90, d: 70, h: 6 }, explodeAxis: { x: 0, y: -1, z: 0 }, hero: false },
+      { id: "battery-pack", anchor: { x: 0, y: 6, z: 0 }, size: { w: 48, d: 40, h: 22 }, explodeAxis: { x: 0, y: 1, z: 0 }, hero: true },
+      { id: "aero-jacket", anchor: { x: 0, y: 28, z: 0 }, size: { w: 58, d: 50, h: 10 }, explodeAxis: { x: 1, y: 0.35, z: 0 }, hero: true },
+      { id: "asi-sensor", anchor: { x: 24, y: 22, z: 14 }, size: { w: 12, d: 12, h: 8 }, explodeAxis: { x: 0, y: 0.5, z: 1 }, hero: true }
+    ];
+
+    const meshes = [];
+    const trajectories = [];
+
+    bodies.forEach(b => {
+      const group = new THREE.Group();
+      const isHero = b.hero;
+      const colorHex = isHero ? 0x4fc3f7 : 0x8a93a6;
+      const accentHex = isHero ? 0x7dd8ff : 0xc2c9d6;
+      const emissiveHex = isHero ? 0x0b3a4f : 0x101318;
+      const mat = new THREE.MeshStandardMaterial({ color: colorHex, metalness: isHero ? 0.55 : 0.8, roughness: isHero ? 0.35 : 0.55, emissive: emissiveHex, emissiveIntensity: 0.2 });
+      const geom = new THREE.BoxGeometry(b.size.w, b.size.h, b.size.d);
+      const mesh = new THREE.Mesh(geom, mat);
+      group.add(mesh);
+      const edgesGeom = new THREE.EdgesGeometry(geom);
+      const edgesMat = new THREE.LineBasicMaterial({ color: accentHex, transparent: true, opacity: 0.35 });
+      const edges = new THREE.LineSegments(edgesGeom, edgesMat);
+      edges.scale.set(1.001, 1.001, 1.001);
+      group.add(edges);
+      const sphereGeom = new THREE.SphereGeometry(2, 12, 12);
+      const sphereMat = new THREE.MeshBasicMaterial({ color: accentHex, transparent: true, opacity: 0.5 });
+      const sphere = new THREE.Mesh(sphereGeom, sphereMat);
+      sphere.position.set(b.anchor.x, b.anchor.y, b.anchor.z);
+      scene.add(sphere);
+      group.userData = { anchor: b.anchor, axis: b.explodeAxis, maxDim: Math.max(b.size.w, b.size.h, b.size.d), mat: mat };
+      scene.add(group);
+      meshes.push(group);
+      const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0)]);
+      const lineMat = new THREE.LineDashedMaterial({ color: accentHex, dashSize: group.userData.maxDim * 0.18, gapSize: group.userData.maxDim * 0.12, transparent: true, opacity: 0.65 });
+      const line = new THREE.Line(lineGeom, lineMat);
+      scene.add(line);
+      trajectories.push({ line, anchor: b.anchor, mat: lineMat });
+    });
+
+    const slExplode = document.getElementById('sl-explode');
+    const slYaw = document.getElementById('sl-yaw');
+    const slPitch = document.getElementById('sl-pitch');
+    const slZoom = document.getElementById('sl-zoom');
+    const valExplode = document.getElementById('val-explode');
+    const valYaw = document.getElementById('val-yaw');
+    const valPitch = document.getElementById('val-pitch');
+    const valZoom = document.getElementById('val-zoom');
+    const camReadout = document.getElementById('cam-readout');
+    const fpsReadout = document.getElementById('fps-readout');
+
+    let frames = 0;
+    let lastT = performance.now();
+    const TARGET = { x: 0, y: 16, z: 0 };
+
+    function animate() {
+      requestAnimationFrame(animate);
+      frames++;
+      const now = performance.now();
+      if (now - lastT >= 500) {
+        fpsReadout.textContent = `${Math.round((frames * 1000) / (now - lastT))} FPS`;
+        frames = 0; lastT = now;
+      }
+      const exp = parseFloat(slExplode.value);
+      const yawRad = parseFloat(slYaw.value);
+      const pitchRad = parseFloat(slPitch.value);
+      const radius = parseFloat(slZoom.value);
+      valExplode.textContent = `${Math.round(exp * 100)}%`;
+      valYaw.textContent = yawRad.toFixed(2);
+      valPitch.textContent = pitchRad.toFixed(2);
+      valZoom.textContent = radius;
+      camReadout.textContent = `YAW ${yawRad.toFixed(2)} // PITCH ${pitchRad.toFixed(2)}`;
+      meshes.forEach((meshGroup, idx) => {
+        const ud = meshGroup.userData;
+        const travel = (ud.maxDim * 1.15 + 14) * exp;
+        const px = ud.anchor.x + (ud.axis.x * travel);
+        const py = ud.anchor.y + (ud.axis.y * travel);
+        const pz = ud.anchor.z + (ud.axis.z * travel);
+        meshGroup.position.set(px, py, pz);
+        ud.mat.emissiveIntensity = exp > 0 ? 0.6 : 0.2;
+        const t = trajectories[idx];
+        const positions = new Float32Array([px, py, pz, t.anchor.x, t.anchor.y, t.anchor.z]);
+        t.line.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        t.line.geometry.computeLineDistances();
+        t.line.visible = exp > 0.02;
+      });
+      const sp = Math.sin(pitchRad);
+      camera.position.set(TARGET.x + radius * sp * Math.sin(yawRad), TARGET.y + radius * Math.cos(pitchRad), TARGET.z + radius * sp * Math.cos(yawRad));
+      camera.lookAt(TARGET.x, TARGET.y, TARGET.z);
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
