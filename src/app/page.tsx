@@ -12,6 +12,9 @@ import { AirTab } from "@/components/ive/tabs/air-tab";
 import { CryptoTab } from "@/components/ive/tabs/crypto-tab";
 import { SandboxTab } from "@/components/ive/tabs/sandbox-tab";
 import { CanvasTab } from "@/components/ive/tabs/canvas-tab";
+import { AerospaceTab } from "@/components/ive/tabs/aerospace-tab";
+import { SearmTab } from "@/components/ive/tabs/searm-tab";
+import { FieldTab } from "@/components/ive/tabs/field-tab";
 
 export default function Home() {
   const [tab, setTab] = useState<string>("overview");
@@ -22,6 +25,19 @@ export default function Home() {
       <div className="pointer-events-none fixed inset-0 z-0 opacity-50">
         <ParticleField density={45} />
       </div>
+
+      {/* Hero backdrop image (user-supplied field-edited photo) */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(180deg, rgba(13,10,18,0.78) 0%, rgba(13,10,18,0.86) 50%, rgba(13,10,18,0.94) 100%), url(/ive-hero-backdrop.jpg)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+        }}
+        aria-hidden
+      />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         <IveHeader activeTab={tab} onTab={setTab} />
@@ -35,6 +51,9 @@ export default function Home() {
           {tab === "crypto" && <CryptoTab />}
           {tab === "sandbox" && <SandboxTab />}
           {tab === "canvas" && <CanvasTab />}
+          {tab === "aerospace" && <AerospaceTab />}
+          {tab === "searm" && <SearmTab />}
+          {tab === "field" && <FieldTab />}
         </main>
 
         <IveFooter />

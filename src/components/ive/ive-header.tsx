@@ -72,6 +72,9 @@ export function IveHeader({
             { id: "crypto", label: "Cryptographic & Governance", icon: "Lock" },
             { id: "sandbox", label: "Accretion Sandbox", icon: "Orbit" },
             { id: "canvas", label: "Self-Service Canvas", icon: "LayoutGrid" },
+            { id: "aerospace", label: "Aerospace", icon: "Plane" },
+            { id: "searm", label: "SEARM", icon: "ShieldAlert" },
+            { id: "field", label: "Field Evidence", icon: "Camera" },
           ].map((t) => {
             const active = activeTab === t.id;
             return (
