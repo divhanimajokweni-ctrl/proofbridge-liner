@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>VVU · Intergalactic Stickman Space Shooter</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; user-select: none; }
+    body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; height: 100vh; width: 100vw; }
+
+    #canvas { display: block; width: 100vw; height: 100vh; background: #020105; }
+
+    #hud-overlay {
+      position: absolute; top: 20px; left: 20px; right: 20px;
+      display: flex; justify-content: space-between; align-items: center;
+      pointer-events: none; z-index: 10;
+    }
+    .hud-title {
+      color: #e0d5f0; font-size: 14px; font-weight: bold; letter-spacing: 2px;
+      text-shadow: 0 0 10px rgba(189, 0, 255, 0.5);
+    }
+    .hud-stats { display: flex; gap: 20px; pointer-events: auto; }
+    .badge {
+      background: rgba(10, 5, 18, 0.65); border: 1px solid #35cdd7;
+      padding: 6px 16px; border-radius: 4px; color: #35cdd7; font-size: 12px;
+      font-weight: bold; backdrop-filter: blur(8px); cursor: pointer;
+    }
+    .badge:hover { background: #35cdd7; color: #0a0512; }
+    #badge-state { border-color: #bd00ff; color: #bd00ff; }
+
+    #terminal-panel {
+      position: absolute; bottom: 20px; left: 20px; width: 320px;
+      background: rgba(10, 5, 18, 0.85); border: 1px solid #bd00ff;
+      border-radius: 6px; padding: 12px; color: #e0d5f0; font-size: 11px;
+      backdrop-filter: blur(10px); z-index: 10; display: none;
+    }
+    .term-header { color: #35cdd7; font-weight: bold; margin-bottom: 8px; border-bottom: 1px dashed #35cdd7; padding-bottom: 4px; display: flex; justify-content: space-between; }
+  </style>
+</head>
+<body>
+  <div id="hud-overlay">
+    <div class="hud-title">VVU // BLACK HOLE ACCRETION DISK</div>
+    <div class="hud-stats">
+      <div class="badge" id="hud-matter">MATTER: 100</div>
+      <div class="badge" id="badge-state">STATE: ORDINARY</div>
+      <div class="badge" id="btn-term">NODE LAB</div>
+    </div>
+  </div>
+
+  <div id="terminal-panel">
+    <div class="term-header">
+      <span>SYSTEM VERIFICATION NODE</span>
+      <span id="close-term" style="cursor:pointer; color:#ff4d00;">[X]</span>
+    </div>
+    <div style="line-height: 1.6;">
+      > Gravitational Lensing: ACTIVE<br>
+      > State Physics Mode: <span id="term-state" style="color:#bd00ff;">ORDINARY</span><br>
+      > Target Verification: Plonky2 ZK-Proof<br>
+      > Click/Tap anywhere to Jetpack thrust.<br>
+      > Press [SPACE] or Auto-Turret for Plasma fire.
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let W, H;
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      W = canvas.width; H = canvas.height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const MODES = { ORDINARY: 0, CODIFIED: 1, DECODED: 2 };
+    const MODE_NAMES = ['ORDINARY', 'CODIFIED', 'DECODED'];
+    let currentMode = MODES.ORDINARY;
+
+    const stickman = {
+      x: W * 0.3, y: H * 0.5, vx: 0, vy: 0,
+      angle: 0, radius: 15, fuel: 100, hp: 100
+    };
+
+    let pointer = { x: W / 2, y: H / 2, isDown: false };
+    let bullets = [];
+    let enemies = [];
+    let matterParticles = [];
+    let matterScore = 100;
+
+    const platforms = [
+      { x: W * 0.25, y: H * 0.7, w: 220, h: 14, requiredMode: MODES.ORDINARY, color: '#ffffff' },
+      { x: W * 0.50, y: H * 0.5, w: 200, h: 14, requiredMode: MODES.CODIFIED, color: '#00e5ff' },
+      { x: W * 0.75, y: H * 0.3, w: 220, h: 14, requiredMode: MODES.DECODED, color: '#bd00ff' },
+    ];
+
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#hud-overlay') || e.target.closest('#terminal-panel')) return;
+      pointer.isDown = true;
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+      shootPlasma();
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      pointer.x = e.clientX;
+      pointer.y = e.clientY;
+    });
+
+    window.addEventListener('pointerup', () => { pointer.isDown = false; });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') shootPlasma();
+    });
+
+    function shootPlasma() {
+      const dx = pointer.x - stickman.x;
+      const dy = pointer.y - stickman.y;
+      const len = Math.hypot(dx, dy) || 1;
+      bullets.push({
+        x: stickman.x, y: stickman.y,
+        vx: (dx / len) * 700 + stickman.vx * 0.2,
+        vy: (dy / len) * 700 + stickman.vy * 0.2,
+        life: 1.5
+      });
+    }
+
+    document.getElementById('badge-state').addEventListener('click', () => {
+      currentMode = (currentMode + 1) % 3;
+      const name = MODE_NAMES[currentMode];
+      document.getElementById('badge-state').textContent = `STATE: ${name}`;
+      document.getElementById('term-state').textContent = name;
+      document.getElementById('badge-state').style.borderColor = currentMode === MODES.CODIFIED ? '#00e5ff' : currentMode === MODES.DECODED ? '#bd00ff' : '#fff';
+      document.getElementById('badge-state').style.color = document.getElementById('badge-state').style.borderColor;
+    });
+
+    const termPanel = document.getElementById('terminal-panel');
+    document.getElementById('btn-term').addEventListener('click', () => {
+      termPanel.style.display = termPanel.style.display === 'block' ? 'none' : 'block';
+    });
+    document.getElementById('close-term').addEventListener('click', () => {
+      termPanel.style.display = 'none';
+    });
+
+    let lastTime = performance.now();
+
+    function update(dt) {
+      const dx = pointer.x - stickman.x;
+      const dy = pointer.y - stickman.y;
+      const dist = Math.hypot(dx, dy);
+      stickman.angle = Math.atan2(dy, dx);
+
+      if (pointer.isDown && dist > 20) {
+        const thrust = 450 * dt;
+        stickman.vx += Math.cos(stickman.angle) * thrust;
+        stickman.vy += Math.sin(stickman.angle) * thrust;
+
+        for (let i = 0; i < 2; i++) {
+          matterParticles.push({
+            x: stickman.x - Math.cos(stickman.angle) * 15,
+            y: stickman.y - Math.sin(stickman.angle) * 15,
+            vx: -Math.cos(stickman.angle) * 150 + (Math.random() - 0.5) * 50,
+            vy: -Math.sin(stickman.angle) * 150 + (Math.random() - 0.5) * 50,
+            life: 0.3, color: '#00e5ff'
+          });
+        }
+      }
+
+      const bhX = W * 0.5, bhY = H * 0.5;
+      const bhDx = bhX - stickman.x, bhDy = bhY - stickman.y;
+      const bhDist = Math.hypot(bhDx, bhDy);
+      if (bhDist > 80) {
+        const gravity = 15000 / (bhDist);
+        stickman.vx += (bhDx / bhDist) * gravity * dt;
+        stickman.vy += (bhDy / bhDist) * gravity * dt;
+      }
+
+      stickman.vx *= 0.985;
+      stickman.vy *= 0.985;
+
+      stickman.x += stickman.vx * dt;
+      stickman.y += stickman.vy * dt;
+
+      for (let p of platforms) {
+        if (p.requiredMode === currentMode) {
+          if (stickman.x > p.x && stickman.x < p.x + p.w &&
+              stickman.y + 20 >= p.y && stickman.y - 20 <= p.y + p.h) {
+            stickman.vy = -stickman.vy * 0.4;
+            stickman.y = p.y - 20;
+          }
+        }
+      }
+
+      if (enemies.length < 5 && Math.random() < 0.02) {
+        const angle = Math.random() * Math.PI * 2;
+        const spawnDist = Math.max(W, H) * 0.6;
+        enemies.push({
+          x: bhX + Math.cos(angle) * spawnDist,
+          y: bhY + Math.sin(angle) * spawnDist,
+          speed: 80 + Math.random() * 60,
+          hp: 20
+        });
+      }
+
+      for (let e of enemies) {
+        const edx = stickman.x - e.x, edy = stickman.y - e.y;
+        const edist = Math.hypot(edx, edy) || 1;
+        e.x += (edx / edist) * e.speed * dt;
+        e.y += (edy / edist) * e.speed * dt;
+      }
+
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.life -= dt;
+
+        for (let j = enemies.length - 1; j >= 0; j--) {
+          const e = enemies[j];
+          if (Math.hypot(b.x - e.x, b.y - e.y) < 20) {
+            e.hp -= 15;
+            b.life = 0;
+            if (e.hp <= 0) {
+              matterScore += 20;
+              document.getElementById('hud-matter').textContent = `MATTER: ${matterScore}`;
+              enemies.splice(j, 1);
+            }
+            break;
+          }
+        }
+
+        if (b.life <= 0) bullets.splice(i, 1);
+      }
+
+      for (let i = matterParticles.length - 1; i >= 0; i--) {
+        const p = matterParticles[i];
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.life -= dt;
+        if (p.life <= 0) matterParticles.splice(i, 1);
+      }
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, W, H);
+
+      ctx.fillStyle = '#020106'; ctx.fillRect(0, 0, W, H);
+
+      const bhX = W * 0.5, bhY = H * 0.5;
+
+      const grad = ctx.createRadialGradient(bhX, bhY, 40, bhX, bhY, 180);
+      grad.addColorStop(0, '#000000');
+      grad.addColorStop(0.3, '#ffaa00');
+      grad.addColorStop(0.6, '#bd00ff');
+      grad.addColorStop(1, 'transparent');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(bhX, bhY, 180, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = '#000000';
+      ctx.beginPath(); ctx.arc(bhX, bhY, 65, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ffbb44'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(bhX, bhY, 67, 0, Math.PI * 2); ctx.stroke();
+
+      for (let p of platforms) {
+        if (currentMode === p.requiredMode) {
+          ctx.fillStyle = p.color;
+          ctx.shadowBlur = 15; ctx.shadowColor = p.color;
+          ctx.fillRect(p.x, p.y, p.w, p.h);
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(p.x, p.y, p.w, p.h);
+          ctx.setLineDash([]);
+        }
+      }
+
+      for (let p of matterParticles) {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 3, 3);
+      }
+
+      for (let b of bullets) {
+        ctx.fillStyle = '#00e5ff';
+        ctx.shadowBlur = 8; ctx.shadowColor = '#00e5ff';
+        ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      for (let e of enemies) {
+        ctx.fillStyle = '#ff2a00';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#ff2a00';
+        ctx.beginPath(); ctx.arc(e.x, e.y, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.save();
+      ctx.translate(stickman.x, stickman.y);
+      ctx.rotate(stickman.angle);
+
+      ctx.strokeStyle = '#35cdd7'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+
+      ctx.beginPath(); ctx.arc(0, -12, 7, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#ff0055'; ctx.fillRect(2, -14, 4, 4);
+
+      ctx.beginPath(); ctx.moveTo(0, -5); ctx.lineTo(0, 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(12, 2); ctx.stroke();
+
+      const legKick = Math.sin(performance.now() * 0.01) * 5;
+      ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-8 + legKick, 22); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(8 - legKick, 22); ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function loop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      update(dt);
+      render();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

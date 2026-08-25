@@ -15,6 +15,7 @@ import { CanvasTab } from "@/components/ive/tabs/canvas-tab";
 import { AerospaceTab } from "@/components/ive/tabs/aerospace-tab";
 import { SearmTab } from "@/components/ive/tabs/searm-tab";
 import { FieldTab } from "@/components/ive/tabs/field-tab";
+import { DevSdkTab } from "@/components/ive/tabs/dev-sdk-tab";
 
 export default function Home() {
   const [tab, setTab] = useState<string>("overview");
@@ -54,6 +55,7 @@ export default function Home() {
           {tab === "aerospace" && <AerospaceTab />}
           {tab === "searm" && <SearmTab />}
           {tab === "field" && <FieldTab />}
+          {tab === "devsdk" && <DevSdkTab />}
         </main>
 
         <IveFooter />

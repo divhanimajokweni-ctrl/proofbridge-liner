@@ -75,6 +75,7 @@ export function IveHeader({
             { id: "aerospace", label: "Aerospace", icon: "Plane" },
             { id: "searm", label: "SEARM", icon: "ShieldAlert" },
             { id: "field", label: "Field Evidence", icon: "Camera" },
+            { id: "devsdk", label: "Dev SDK", icon: "Package" },
           ].map((t) => {
             const active = activeTab === t.id;
             return (

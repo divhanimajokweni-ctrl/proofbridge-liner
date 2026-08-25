@@ -13,7 +13,7 @@ import { Boxes, Bot, Activity, Cpu, Network, Zap } from "lucide-react";
 import AntonVVU from "../anton-vvu";
 import AntonGame from "../anton-game";
 
-type Mode = "build" | "arena" | "logic";
+type Mode = "build" | "arena" | "logic" | "stickman" | "marketplace";
 
 /**
  * Accretion Sandbox tab — interactive demonstration of IVE concepts.
@@ -134,6 +134,26 @@ export function SandboxTab() {
         >
           <span className="mr-1.5">🧩</span> Logic Tiles · Codification State Machine
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "stickman"}
+          data-active={mode === "stickman"}
+          className="vvu-mode-btn"
+          onClick={() => setMode("stickman")}
+        >
+          <span className="mr-1.5">🚀</span> Stickman Shooter · Black Hole
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "marketplace"}
+          data-active={mode === "marketplace"}
+          className="vvu-mode-btn"
+          onClick={() => setMode("marketplace")}
+        >
+          <span className="mr-1.5">🛒</span> Marketplace · Live Mod Store
+        </button>
         <Badge
           variant="outline"
           className="ml-auto self-center border-[oklch(0.82_0.16_75/40%)] ive-text-gold"
@@ -151,6 +171,28 @@ export function SandboxTab() {
           <iframe
             src="/vvu-logic-tiles.html"
             title="VVU Logic Tiles + Game Engine"
+            className="h-[700px] w-full"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin"
+          />
+        </div>
+      )}
+      {mode === "stickman" && (
+        <div className="overflow-hidden rounded-lg border border-border/60 ive-glass">
+          <iframe
+            src="/vvu-stickman-shooter.html"
+            title="VVU Intergalactic Stickman Space Shooter"
+            className="h-[700px] w-full"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin"
+          />
+        </div>
+      )}
+      {mode === "marketplace" && (
+        <div className="overflow-hidden rounded-lg border border-border/60 ive-glass">
+          <iframe
+            src="/vvu-stickman-marketplace.html"
+            title="VVU Intergalactic Stickman + Mod Marketplace"
             className="h-[700px] w-full"
             loading="lazy"
             sandbox="allow-scripts allow-same-origin"
