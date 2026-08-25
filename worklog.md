@@ -196,3 +196,48 @@ Stage Summary:
 - History scrubbed of all tokens — feat/vres1-scrubbed pushed successfully
 - Token env file: refused (security through obscurity), offered runbook alternative
 - Operations: FROZEN. Awaiting user decision on branch deletion + token-handling approach.
+
+---
+Task ID: 11
+Agent: Orchestrator (main)
+Task: Ants Payment Rail + stickman games + marketplace backend + Dev SDK + push.
+
+Work Log:
+- Saved 3 Kotlin BLE files as /download/ANTS_PAYMENT_RAIL_KOTLIN.md — complete MITM-proof BLE pairing for the VVU Native contactless payment rail (TerminalPairing.kt with schema constants, TerminalGattServer.kt with signed ephemeral key, UserGattClient.kt with QR verification + cached cert lookup). Reference for the mobile team.
+- Saved /public/vvu-stickman-shooter.html — Intergalactic Stickman Space Shooter (black hole accretion disk, codification state machine ORDINARY/CODIFIED/DECODED, plasma fire, jetpack thrust, platform physics that changes with epistemic state). Unmodified from user's HTML.
+- Saved /public/vvu-stickman-marketplace.html — Stickman + Mod Marketplace. MODIFIED to fetch from /api/store/registry instead of the hardcoded storeRegistry array (the backend integration the user asked for). Added a "↻ SYNC" badge to re-fetch the registry on demand. Status indicator shows "— N mods loaded" or "— fetch failed".
+- Built /api/store/registry (GET + POST):
+  · GET returns the full mod list from data/store-registry.json
+  · POST validates required fields (id, title, author, category), checks for duplicate id, validates id format (alphanumeric + dots/hyphens/underscores), persists to data/store-registry.json
+  · Verified via curl: GET returns 3 seeded mods, POST adds a 4th, registry persists across requests.
+- Built /api/store/upload (POST multipart):
+  · Accepts "manifest" file (.vvu / .json) + optional "script" file (.json / .js / .txt)
+  · Parses manifest JSON, validates required fields (modId, title, author, category), saves script to data/store-scripts/{modId}.{ext}
+  · Verified via curl with a test .vvu file: upload succeeded, mod added to registry, scriptSaved=true.
+- Built /src/components/ive/tabs/dev-sdk-tab.tsx — the web-based Dev SDK upload form (the "Developer SDK Tooling" the user asked for):
+  · Path 1: structured form (modId, title, author, desc, price, category, version, particle color) → POST /api/store/registry
+  · Path 2: .vvu file upload + optional script file → POST /api/store/upload (multipart)
+  · Live registry view with Refresh button — shows all mods currently in data/store-registry.json
+  · Manifest schema example shown inline
+  · Success / error result cards
+- Wired Dev SDK as the 12th top-level tab in the IVE dashboard (header + page.tsx).
+- Added Stickman Shooter + Marketplace as 4th + 5th modes in the Accretion Sandbox tab (alongside Build-Layer, Classic Arena, Logic Tiles).
+- Fixed a validation bug: the POST /api/store/registry route initially required "desc" but the form only validates modId/title/author. Removed "desc" from the required list (it's optional — a description, not a key field).
+- Agent Browser verification at 1440x900:
+  · Dev SDK tab renders with form + file upload + live registry view.
+  · Clicked Refresh → registry loads 3 mods (gravityGrenade, neonSkin, voidLeech) — verified via JS eval.
+  · Filled form (modId=e2e.test.mod, title=E2E Test Mod, author=AgentBrowser) + clicked Submit → API returned 201, mod added to registry → live registry view shows the new card with "E2E Test Mod · WEAPONS · FREE · e2e.test.mod · by AgentBrowser · v1.0.0". Verified end-to-end form → API → registry → live display.
+  · Marketplace mode in Sandbox tab: iframe loads, store-status shows "— 3 mods loaded" — confirms the iframe is fetching from /api/store/registry (not the old hardcoded array).
+- Cleaned up all test mods from the registry (e2e.test.mod, browser.test.mod, test.mod.demo, upload.test) — back to the original 3 seeded mods.
+- Lint: clean. Dev server: 200s on all routes including the new API endpoints. 0 errors.
+- Pushed to feat/vres1-scrubbed (fast-forward from c3e42d9 to d8a1657). No force-push needed.
+
+Stage Summary:
+- Ants Payment Rail: 3 Kotlin files preserved as reference doc
+- Stickman games: 2 new sandbox modes (shooter + marketplace)
+- Store backend: 2 API endpoints (registry GET/POST + upload POST), JSON file storage with 3 seeded mods
+- Dev SDK tab: 12th top-level tab with web upload form (2 paths) + live registry view
+- Marketplace HTML: fetches from /api/store/registry (backend integration complete)
+- IVE dashboard now has 12 tabs. Accretion Sandbox has 5 modes.
+- Lint clean. 0 errors. Pushed to feat/vres1-scrubbed.
+- Operations: FROZEN. Marketplace backend + Dev SDK form both verified working end-to-end.
