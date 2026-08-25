@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VVU · Logic Tiles + Game Engine</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0512; overflow: hidden; font-family: 'Courier New', monospace; display: flex; flex-direction: column; height: 100vh; }
+    #toolbar {
+      background: #140d24; border-bottom: 2px solid #bd00ff; padding: 8px 16px;
+      display: flex; gap: 20px; align-items: center; flex-shrink: 0;
+    }
+    #toolbar button {
+      background: transparent; border: 1px solid #35cdd7; color: #35cdd7;
+      padding: 4px 12px; border-radius: 4px; cursor: pointer; font-family: inherit;
+    }
+    #toolbar button:hover { background: #35cdd7; color: #0a0512; }
+    #toolbar .mode-badge {
+      color: #bd00ff; font-weight: bold; margin-left: auto;
+    }
+    #container {
+      display: flex; flex: 1; overflow: hidden;
+    }
+    .pane {
+      flex: 1; position: relative; overflow: hidden;
+    }
+    #editor-pane {
+      border-right: 2px solid #bd00ff;
+      background-image: radial-gradient(rgba(189,0,255,0.05) 1px, transparent 0);
+      background-size: 20px 20px;
+    }
+    #game-pane {
+      background: #05020a;
+    }
+    canvas {
+      display: block; width: 100%; height: 100%;
+    }
+    #toolbox {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(20,13,36,0.9); border: 1px solid #35cdd7;
+      padding: 10px; border-radius: 8px; z-index: 10;
+      pointer-events: auto;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .tool-item {
+      padding: 4px 10px; background: #1f103a; border: 1px solid #555;
+      border-radius: 4px; cursor: grab; color: #e0d5f0; font-size: 12px;
+      text-align: center;
+    }
+    .tool-item:hover { border-color: #35cdd7; }
+    #properties {
+      position: absolute; bottom: 10px; right: 10px;
+      background: rgba(20,13,36,0.9); border: 1px solid #bd00ff;
+      padding: 12px; border-radius: 8px; z-index: 10;
+      width: 240px; color: #e0d5f0; font-size: 12px;
+      pointer-events: auto;
+      display: none;
+    }
+    #properties label { display: block; margin: 4px 0; }
+    #properties input, #properties select {
+      width: 100%; background: #0a0512; border: 1px solid #555; color: #fff;
+      padding: 2px 4px; border-radius: 3px;
+    }
+    #properties .prop-title { font-weight: bold; color: #35cdd7; margin-bottom: 6px; }
+    #game-overlay {
+      position: absolute; bottom: 10px; left: 10px;
+      color: rgba(255,255,255,0.3); font-size: 12px;
+      pointer-events: none;
+    }
+    #state-badge {
+      position: absolute; top: 10px; right: 10px;
+      color: #35cdd7; border: 1px solid #35cdd7; padding: 4px 12px;
+      border-radius: 20px; font-weight: bold; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <span style="color:#35cdd7;">🧩 LOGIC TILES</span>
+    <button id="btn-clear">Clear All</button>
+    <button id="btn-export">Export JSON</button>
+    <button id="btn-import">Import JSON</button>
+    <span class="mode-badge" id="mode-badge">ORDINARY</span>
+    <button id="btn-cycle-mode">Cycle Mode</button>
+  </div>
+  <div id="container">
+    <div id="editor-pane" class="pane">
+      <canvas id="editorCanvas"></canvas>
+      <div id="toolbox">
+        <div class="tool-item" data-type="trigger" data-label="Enemy Enter">🔵 Enemy Enter</div>
+        <div class="tool-item" data-type="action" data-label="Spawn Hazard">🟣 Spawn Hazard</div>
+        <div class="tool-item" data-type="action" data-label="Reroute">🟣 Reroute</div>
+        <div class="tool-item" data-type="action" data-label="Open Portal">🟣 Open Portal</div>
+      </div>
+      <div id="properties">
+        <div class="prop-title">Properties</div>
+        <div id="prop-content"></div>
+      </div>
+    </div>
+    <div id="game-pane" class="pane">
+      <canvas id="gameCanvas"></canvas>
+      <div id="game-overlay">WASD move · Enemies chase · Place tiles to control them</div>
+      <div id="state-badge">ORDINARY</div>
+    </div>
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1. SETUP CANVASES
+    // ─────────────────────────────────────────────────────────────────────────
+    const editorCanvas = document.getElementById('editorCanvas');
+    const edCtx = editorCanvas.getContext('2d');
+    const gameCanvas = document.getElementById('gameCanvas');
+    const gameCtx = gameCanvas.getContext('2d');
+
+    let W_ed, H_ed, W_game, H_game;
+
+    function resizeEditor() {
+      const rect = document.getElementById('editor-pane').getBoundingClientRect();
+      editorCanvas.width = rect.width * 2;
+      editorCanvas.height = rect.height * 2;
+      editorCanvas.style.width = rect.width + 'px';
+      editorCanvas.style.height = rect.height + 'px';
+      W_ed = editorCanvas.width;
+      H_ed = editorCanvas.height;
+      edCtx.scale(2, 2);
+    }
+
+    function resizeGame() {
+      const rect = document.getElementById('game-pane').getBoundingClientRect();
+      gameCanvas.width = rect.width * 2;
+      gameCanvas.height = rect.height * 2;
+      gameCanvas.style.width = rect.width + 'px';
+      gameCanvas.style.height = rect.height + 'px';
+      W_game = gameCanvas.width;
+      H_game = gameCanvas.height;
+      gameCtx.scale(2, 2);
+    }
+
+    window.addEventListener('resize', () => { resizeEditor(); resizeGame(); });
+    resizeEditor(); resizeGame();
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 2. GAME STATE
+    // ─────────────────────────────────────────────────────────────────────────
+    const MODES = { ORDINARY: 0, CODIFIED: 1, DECODED: 2 };
+    const MODE_NAMES = ['ORDINARY', 'CODIFIED', 'DECODED'];
+    let currentMode = MODES.ORDINARY;
+
+    // CODIFIED-mode hidden platforms (become solid only in CODIFIED state)
+    const hiddenPlatforms = [
+      { x: 200, y: 420, w: 120, h: 16 },
+      { x: 480, y: 360, w: 120, h: 16 },
+      { x: 640, y: 280, w: 120, h: 16 }
+    ];
+
+    const player = { x: 400, y: 300, w: 30, h: 50, vx: 0, vy: 0, onGround: false, speed: 200 };
+    let enemies = [];
+    let hazards = [];
+    let matter = 100;
+    const keys = {};
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 3. LOGIC TILE SYSTEM
+    // ─────────────────────────────────────────────────────────────────────────
+    const editor = {
+      tiles: [],
+      wires: [],
+      nextId: 1,
+      selectedId: null,
+      dragTile: null,
+      dragOffsetX: 0, dragOffsetY: 0,
+      wireStart: null,
+      mouseX: 0, mouseY: 0
+    };
+
+    const runtimeTiles = new Map();
+
+    function createTile(type, label, x, y) {
+      const id = editor.nextId++;
+      const tile = {
+        id, type, label,
+        x, y, w: 140, h: 60,
+        trigger: null,
+        action: null,
+        selected: false
+      };
+      if (type === 'trigger') {
+        tile.trigger = {
+          type: 'enemy_enter',
+          zone: { x: 0, y: 0, radius: 60 },
+          filter: { enemyType: '', minCount: 1 }
+        };
+        tile.action = null;
+      } else if (type === 'action') {
+        tile.action = {
+          type: 'spawn_hazard',
+          target: '',
+          params: { hazard: 'fire_trail', duration: 3 }
+        };
+        tile.trigger = null;
+      }
+      return tile;
+    }
+
+    function addTile(tile) {
+      editor.tiles.push(tile);
+      runtimeTiles.set(tile.id, {
+        ...tile,
+        lastTriggered: 0,
+        triggerCount: 0,
+        activeIntensity: 0
+      });
+    }
+
+    function removeTile(id) {
+      editor.tiles = editor.tiles.filter(t => t.id !== id);
+      editor.wires = editor.wires.filter(w => w.fromId !== id && w.toId !== id);
+      runtimeTiles.delete(id);
+      if (editor.selectedId === id) editor.selectedId = null;
+    }
+
+    function getTile(id) { return editor.tiles.find(t => t.id === id); }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 4. GAME SIMULATION UPDATE
+    // ─────────────────────────────────────────────────────────────────────────
+    function updateGame(dt) {
+      let mx = 0, my = 0;
+      if (keys['w'] || keys['ArrowUp']) my = -1;
+      if (keys['s'] || keys['ArrowDown']) my = 1;
+      if (keys['a'] || keys['ArrowLeft']) mx = -1;
+      if (keys['d'] || keys['ArrowRight']) mx = 1;
+      if (mx && my) { mx *= 0.707; my *= 0.707; }
+      player.vx = mx * player.speed;
+      player.vy += 500 * dt;
+      player.x += player.vx * dt;
+      player.y += player.vy * dt;
+      // Ground
+      if (player.y + player.h/2 > 540) { player.y = 540 - player.h/2; player.vy = 0; player.onGround = true; }
+      else player.onGround = false;
+      // Jump
+      if ((keys['w'] || keys['ArrowUp'] || keys[' ']) && player.onGround) { player.vy = -300; player.onGround = false; }
+
+      // CODIFIED-mode hidden platforms become solid
+      if (currentMode === MODES.CODIFIED) {
+        for (const p of hiddenPlatforms) {
+          if (player.x + 15 > p.x && player.x - 15 < p.x + p.w &&
+              player.y + 25 > p.y && player.y + 25 < p.y + p.h + 10 && player.vy >= 0) {
+            player.y = p.y - 25;
+            player.vy = 0;
+            player.onGround = true;
+          }
+        }
+      }
+
+      // Bounds
+      const w = W_game/2;
+      player.x = Math.max(20, Math.min(w - 20, player.x));
+      player.y = Math.max(20, Math.min(560 - 20, player.y));
+
+      // Spawn enemies periodically
+      if (enemies.length < 8 && Math.random() < 0.02) {
+        const side = Math.floor(Math.random() * 4);
+        let x, y;
+        if (side === 0) { x = -30; y = Math.random() * 600; }
+        else if (side === 1) { x = 800 + 30; y = Math.random() * 600; }
+        else if (side === 2) { x = Math.random() * 800; y = -30; }
+        else { x = Math.random() * 800; y = 600 + 30; }
+        enemies.push({
+          x, y, radius: 12, speed: 80 + Math.random() * 40,
+          hp: 20, maxHp: 20, type: 'worker',
+          color: '#ff2a00'
+        });
+      }
+
+      // Update enemies
+      for (let e of enemies) {
+        let targetX = player.x, targetY = player.y;
+        if (window._rerouteTarget) {
+          targetX = window._rerouteTarget.x;
+          targetY = window._rerouteTarget.y;
+        }
+        const dx = targetX - e.x;
+        const dy = targetY - e.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1) {
+          e.x += (dx / dist) * e.speed * dt;
+          e.y += (dy / dist) * e.speed * dt;
+        }
+      }
+
+      // Evaluate Logic Tiles
+      const now = performance.now();
+      for (const [id, rt] of runtimeTiles) {
+        if (!rt.trigger) continue;
+        if (now - rt.lastTriggered < (rt.cooldown || 0) * 1000) continue;
+        if (rt.trigger.type === 'enemy_enter') {
+          const zone = rt.trigger.zone;
+          const cx = rt.x + rt.w/2;
+          const cy = rt.y + rt.h/2;
+          const radius = zone.radius;
+          let count = 0;
+          for (let e of enemies) {
+            if (Math.hypot(e.x - cx, e.y - cy) < radius) count++;
+          }
+          if (count >= (rt.trigger.filter.minCount || 1)) {
+            const wire = editor.wires.find(w => w.fromId === id);
+            if (wire) {
+              const actionTile = getTile(wire.toId);
+              if (actionTile && actionTile.action) {
+                executeAction(actionTile, { x: cx, y: cy });
+                rt.lastTriggered = now;
+                rt.triggerCount++;
+                rt.activeIntensity = 1.0;
+              }
+            }
+          }
+        }
+      }
+
+      // Update hazards
+      for (let i = hazards.length - 1; i >= 0; i--) {
+        const h = hazards[i];
+        h.life -= dt;
+        if (h.life <= 0) { hazards.splice(i, 1); continue; }
+        for (let e of enemies) {
+          if (Math.hypot(e.x - h.x, e.y - h.y) < h.radius) {
+            e.hp -= 20 * dt;
+            if (e.hp <= 0) {
+              const idx = enemies.indexOf(e);
+              if (idx > -1) enemies.splice(idx, 1);
+              matter += 10;
+            }
+          }
+        }
+      }
+
+      enemies = enemies.filter(e => e.hp > 0);
+
+      for (const [id, rt] of runtimeTiles) {
+        if (rt.activeIntensity > 0) {
+          rt.activeIntensity -= dt * 3;
+          if (rt.activeIntensity < 0) rt.activeIntensity = 0;
+        }
+      }
+    }
+
+    function executeAction(actionTile, position) {
+      const action = actionTile.action;
+      if (!action) return;
+      const params = action.params || {};
+      switch (action.type) {
+        case 'spawn_hazard': {
+          const hazard = {
+            x: position.x,
+            y: position.y,
+            radius: 40,
+            life: params.duration || 3,
+            type: params.hazard || 'fire_trail',
+            color: '#ffaa00'
+          };
+          hazards.push(hazard);
+          break;
+        }
+        case 'reroute_pathfinding': {
+          window._rerouteTarget = { x: actionTile.x + actionTile.w/2, y: actionTile.y + actionTile.h/2 };
+          break;
+        }
+        case 'open_portal': {
+          break;
+        }
+        default: break;
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 6. RENDER GAME
+    // ─────────────────────────────────────────────────────────────────────────
+    function renderGame() {
+      const ctx = gameCtx;
+      const w = W_game/2, h = H_game/2;
+      ctx.clearRect(0, 0, w, h);
+
+      // Background — warm "ordinary" light vs cool "codified" light
+      ctx.fillStyle = currentMode === MODES.CODIFIED ? '#e8f0f5' : '#fffdf0';
+      ctx.fillRect(0, 0, w, h);
+
+      // Ground
+      ctx.fillStyle = '#d7aa8b';
+      ctx.fillRect(0, 540, w, 20);
+      ctx.fillStyle = '#8f7280';
+      ctx.fillRect(0, 560, w, h-560);
+
+      // CODIFIED-mode hidden platforms (visible + solid)
+      if (currentMode === MODES.CODIFIED) {
+        for (const p of hiddenPlatforms) {
+          ctx.fillStyle = '#7c9cff';
+          ctx.fillRect(p.x, p.y, p.w, p.h);
+          ctx.strokeStyle = '#3a4f7d';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(p.x, p.y, p.w, p.h);
+          ctx.fillStyle = 'rgba(0,0,0,0.4)';
+          ctx.font = '9px monospace';
+          ctx.fillText('SOLID IN CODIFIED', p.x + 4, p.y + 12);
+        }
+      } else {
+        // Ghost platforms — visible but ghostly, non-solid
+        for (const p of hiddenPlatforms) {
+          ctx.fillStyle = 'rgba(124,156,255,0.12)';
+          ctx.fillRect(p.x, p.y, p.w, p.h);
+          ctx.strokeStyle = 'rgba(124,156,255,0.3)';
+          ctx.setLineDash([4, 4]);
+          ctx.lineWidth = 1;
+          ctx.strokeRect(p.x, p.y, p.w, p.h);
+          ctx.setLineDash([]);
+        }
+      }
+
+      // Draw Logic Tiles on game canvas as overlays
+      for (const tile of editor.tiles) {
+        const rt = runtimeTiles.get(tile.id);
+        if (!rt) continue;
+        const intensity = rt.activeIntensity || 0;
+        if (tile.trigger) {
+          const cx = tile.x + tile.w/2;
+          const cy = tile.y + tile.h/2;
+          const radius = tile.trigger.zone.radius;
+          ctx.strokeStyle = `rgba(0,229,255,${0.2 + intensity*0.3})`;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, 0, Math.PI*2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.strokeStyle = tile.trigger ? '#00e5ff' : '#bd00ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(tile.x, tile.y, tile.w, tile.h);
+        ctx.fillStyle = 'rgba(20,13,36,0.6)';
+        ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px monospace';
+        ctx.fillText(tile.label, tile.x+10, tile.y+20);
+      }
+
+      // Hazards
+      for (let h of hazards) {
+        ctx.fillStyle = h.color + '88';
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, h.radius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px monospace';
+        ctx.fillText('🔥', h.x-8, h.y+4);
+      }
+
+      // Enemies
+      for (let e of enemies) {
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
+        ctx.fill();
+        if (e.hp < e.maxHp) {
+          const pct = e.hp / e.maxHp;
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(e.x-12, e.y-20, 24, 4);
+          ctx.fillStyle = '#ff0055';
+          ctx.fillRect(e.x-12, e.y-20, 24*pct, 4);
+        }
+      }
+
+      // Player
+      ctx.fillStyle = '#edf0d4';
+      ctx.strokeStyle = '#122a91';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(player.x, player.y, 15, 25, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(player.x, player.y-30, 12, 12, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#122a91';
+      ctx.beginPath();
+      ctx.arc(player.x-5, player.y-33, 3, 0, Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(player.x+5, player.y-33, 3, 0, Math.PI*2);
+      ctx.fill();
+
+      document.getElementById('state-badge').textContent = MODE_NAMES[currentMode];
+      document.getElementById('mode-badge').textContent = MODE_NAMES[currentMode];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 7. EDITOR RENDER
+    // ─────────────────────────────────────────────────────────────────────────
+    function renderEditor() {
+      const ctx = edCtx;
+      const w = W_ed/2, h = H_ed/2;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.strokeStyle = 'rgba(189,0,255,0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      for (let wire of editor.wires) {
+        const from = getTile(wire.fromId);
+        const to = getTile(wire.toId);
+        if (!from || !to) continue;
+        const start = { x: from.x + from.w, y: from.y + from.h/2 };
+        const end = { x: to.x, y: to.y + to.h/2 };
+        const intensity = runtimeTiles.get(from.id)?.activeIntensity || 0;
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.bezierCurveTo(start.x + 60, start.y, end.x - 60, end.y, end.x, end.y);
+        ctx.strokeStyle = intensity > 0.1 ? `rgba(200,255,255,${intensity})` : 'rgba(57,255,20,0.4)';
+        ctx.lineWidth = intensity > 0.1 ? 3 : 2;
+        ctx.shadowBlur = intensity * 10;
+        ctx.shadowColor = '#00e5ff';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      for (let tile of editor.tiles) {
+        const rt = runtimeTiles.get(tile.id);
+        const intensity = rt?.activeIntensity || 0;
+        const isTrigger = !!tile.trigger;
+        ctx.fillStyle = '#1f103a';
+        ctx.shadowBlur = 6 + intensity * 12;
+        ctx.shadowColor = isTrigger ? '#00e5ff' : '#bd00ff';
+        ctx.fillRect(tile.x, tile.y, tile.w, tile.h);
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = tile.selected ? '#fff' : (isTrigger ? '#00e5ff' : '#bd00ff');
+        ctx.lineWidth = 2;
+        ctx.strokeRect(tile.x, tile.y, tile.w, tile.h);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(tile.label, tile.x+10, tile.y+20);
+        ctx.fillStyle = '#aaa';
+        ctx.font = '10px monospace';
+        if (isTrigger) {
+          ctx.fillText(`zone: ${tile.trigger.zone.radius}`, tile.x+10, tile.y+40);
+        } else {
+          ctx.fillText(`action: ${tile.action.type}`, tile.x+10, tile.y+40);
+        }
+        // Input port
+        ctx.beginPath();
+        ctx.arc(tile.x, tile.y + tile.h/2, 6, 0, Math.PI*2);
+        ctx.fillStyle = '#ffaa00';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Output port
+        ctx.beginPath();
+        ctx.arc(tile.x + tile.w, tile.y + tile.h/2, 6, 0, Math.PI*2);
+        ctx.fillStyle = '#39ff14';
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      if (editor.wireStart) {
+        const from = getTile(editor.wireStart.tileId);
+        if (from) {
+          const start = { x: from.x + from.w, y: from.y + from.h/2 };
+          ctx.beginPath();
+          ctx.moveTo(start.x, start.y);
+          ctx.bezierCurveTo(start.x + 60, start.y, editor.mouseX - 60, editor.mouseY, editor.mouseX, editor.mouseY);
+          ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+          ctx.setLineDash([4, 4]);
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 8. EDITOR INTERACTION
+    // ─────────────────────────────────────────────────────────────────────────
+    document.querySelectorAll('.tool-item').forEach(el => {
+      el.addEventListener('mousedown', (e) => {
+        const type = el.dataset.type;
+        const label = el.dataset.label;
+        const x = editor.mouseX - 70;
+        const y = editor.mouseY - 30;
+        const tile = createTile(type, label, x, y);
+        addTile(tile);
+        renderEditor();
+        renderGame();
+        e.preventDefault();
+      });
+    });
+
+    editorCanvas.addEventListener('mousedown', (e) => {
+      const rect = editorCanvas.getBoundingClientRect();
+      const scaleX = editorCanvas.width / rect.width;
+      const scaleY = editorCanvas.height / rect.height;
+      const mx = (e.clientX - rect.left) * scaleX / 2;
+      const my = (e.clientY - rect.top) * scaleY / 2;
+      editor.mouseX = mx; editor.mouseY = my;
+
+      for (let tile of editor.tiles) {
+        const outX = tile.x + tile.w, outY = tile.y + tile.h/2;
+        if (Math.hypot(mx - outX, my - outY) < 10) {
+          editor.wireStart = { tileId: tile.id };
+          return;
+        }
+        const inX = tile.x, inY = tile.y + tile.h/2;
+        if (Math.hypot(mx - inX, my - inY) < 10) {
+          if (editor.wireStart) {
+            const fromId = editor.wireStart.tileId;
+            if (fromId !== tile.id) {
+              const exists = editor.wires.some(w => w.fromId === fromId && w.toId === tile.id);
+              if (!exists) {
+                editor.wires.push({ fromId, toId: tile.id });
+              }
+            }
+            editor.wireStart = null;
+            renderEditor();
+          }
+          return;
+        }
+      }
+
+      let found = false;
+      for (let tile of editor.tiles) {
+        if (mx >= tile.x && mx <= tile.x + tile.w && my >= tile.y && my <= tile.y + tile.h) {
+          editor.selectedId = tile.id;
+          tile.selected = true;
+          showProperties(tile);
+          editor.dragTile = tile;
+          editor.dragOffsetX = mx - tile.x;
+          editor.dragOffsetY = my - tile.y;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        editor.selectedId = null;
+        document.getElementById('properties').style.display = 'none';
+        editor.tiles.forEach(t => t.selected = false);
+      }
+      renderEditor();
+    });
+
+    editorCanvas.addEventListener('mousemove', (e) => {
+      const rect = editorCanvas.getBoundingClientRect();
+      const scaleX = editorCanvas.width / rect.width;
+      const scaleY = editorCanvas.height / rect.height;
+      const mx = (e.clientX - rect.left) * scaleX / 2;
+      const my = (e.clientY - rect.top) * scaleY / 2;
+      editor.mouseX = mx; editor.mouseY = my;
+
+      if (editor.dragTile) {
+        editor.dragTile.x = mx - editor.dragOffsetX;
+        editor.dragTile.y = my - editor.dragOffsetY;
+        renderEditor();
+      }
+      if (editor.wireStart) {
+        renderEditor();
+      }
+    });
+
+    window.addEventListener('mouseup', () => {
+      editor.dragTile = null;
+      editor.wireStart = null;
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 9. PROPERTIES PANEL
+    // ─────────────────────────────────────────────────────────────────────────
+    function showProperties(tile) {
+      const panel = document.getElementById('properties');
+      panel.style.display = 'block';
+      const content = document.getElementById('prop-content');
+      let html = `<label>ID: ${tile.id}</label>`;
+      if (tile.trigger) {
+        html += `<label>Trigger Type: ${tile.trigger.type}</label>`;
+        html += `<label>Zone Radius: <input type="number" value="${tile.trigger.zone.radius}" id="prop-radius" step="5"></label>`;
+        html += `<label>Min Count: <input type="number" value="${tile.trigger.filter.minCount}" id="prop-mincount" step="1"></label>`;
+      }
+      if (tile.action) {
+        html += `<label>Action Type: ${tile.action.type}</label>`;
+        html += `<label>Hazard: <select id="prop-hazard">
+          <option value="fire_trail" ${tile.action.params.hazard === 'fire_trail' ? 'selected' : ''}>Fire Trail</option>
+          <option value="acid_pool" ${tile.action.params.hazard === 'acid_pool' ? 'selected' : ''}>Acid Pool</option>
+        </select></label>`;
+        html += `<label>Duration (s): <input type="number" value="${tile.action.params.duration}" id="prop-duration" step="0.5"></label>`;
+      }
+      html += `<button id="prop-delete" style="margin-top:8px;background:#b93245;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">Delete Tile</button>`;
+      content.innerHTML = html;
+
+      const radius = document.getElementById('prop-radius');
+      if (radius) radius.addEventListener('change', () => { tile.trigger.zone.radius = parseFloat(radius.value) || 60; renderEditor(); });
+      const mincount = document.getElementById('prop-mincount');
+      if (mincount) mincount.addEventListener('change', () => { tile.trigger.filter.minCount = parseInt(mincount.value) || 1; });
+      const hazard = document.getElementById('prop-hazard');
+      if (hazard) hazard.addEventListener('change', () => { tile.action.params.hazard = hazard.value; });
+      const duration = document.getElementById('prop-duration');
+      if (duration) duration.addEventListener('change', () => { tile.action.params.duration = parseFloat(duration.value) || 3; });
+      document.getElementById('prop-delete')?.addEventListener('click', () => {
+        if (tile.id) removeTile(tile.id);
+        panel.style.display = 'none';
+        renderEditor();
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 10. TOOLBAR BUTTONS
+    // ─────────────────────────────────────────────────────────────────────────
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      editor.tiles = [];
+      editor.wires = [];
+      runtimeTiles.clear();
+      editor.nextId = 1;
+      renderEditor();
+    });
+
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const data = {
+        tiles: editor.tiles.map(t => ({ ...t, selected: undefined })),
+        wires: editor.wires
+      };
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'logic_tiles.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btn-import').addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.onchange = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            editor.tiles = [];
+            editor.wires = [];
+            runtimeTiles.clear();
+            editor.nextId = 1;
+            data.tiles.forEach(t => {
+              const tile = { ...t, selected: false };
+              addTile(tile);
+              editor.nextId = Math.max(editor.nextId, tile.id + 1);
+            });
+            data.wires.forEach(w => editor.wires.push(w));
+            renderEditor();
+          } catch (err) { alert('Invalid JSON'); }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    });
+
+    document.getElementById('btn-cycle-mode').addEventListener('click', () => {
+      currentMode = (currentMode + 1) % 3;
+      document.getElementById('mode-badge').textContent = MODE_NAMES[currentMode];
+      renderGame();
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 11. KEYBOARD INPUT
+    // ─────────────────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      keys[e.key] = true;
+      if (e.key === 'r' || e.key === 'R') {
+        enemies = [];
+        hazards = [];
+        player.x = 400; player.y = 300;
+        matter = 100;
+        window._rerouteTarget = null;
+      }
+    });
+    document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 12. MAIN LOOP
+    // ─────────────────────────────────────────────────────────────────────────
+    let lastTime = 0;
+    function loop(time) {
+      const dt = Math.min((time - lastTime) / 1000, 0.05);
+      lastTime = time;
+      updateGame(dt);
+      renderGame();
+      renderEditor();
+      requestAnimationFrame(loop);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 13. START — default tiles + wires
+    // ─────────────────────────────────────────────────────────────────────────
+    const defaultTiles = [
+      createTile('trigger', 'Enemy Enter', 50, 100),
+      createTile('action', 'Spawn Hazard', 300, 100),
+      createTile('action', 'Reroute', 300, 250)
+    ];
+    defaultTiles.forEach(t => addTile(t));
+    editor.wires.push({ fromId: defaultTiles[0].id, toId: defaultTiles[1].id });
+    editor.wires.push({ fromId: defaultTiles[0].id, toId: defaultTiles[2].id });
+
+    resizeEditor(); resizeGame();
+    requestAnimationFrame(loop);
+
+    console.log('🐜 VVU Logic Tiles + Game Engine integrated.');
+    console.log('Drag tools from toolbox to place. Connect output (green) to input (orange).');
+    console.log('Cycle Mode (top-right) toggles ORDINARY → CODIFIED → DECODED.');
+    console.log('In CODIFIED mode, ghost platforms become solid — player can stand on them.');
+  </script>
+</body>
+</html>

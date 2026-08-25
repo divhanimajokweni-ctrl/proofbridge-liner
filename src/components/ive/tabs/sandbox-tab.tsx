@@ -13,12 +13,12 @@ import { Boxes, Bot, Activity, Cpu, Network, Zap } from "lucide-react";
 import AntonVVU from "../anton-vvu";
 import AntonGame from "../anton-game";
 
-type Mode = "build" | "arena";
+type Mode = "build" | "arena" | "logic";
 
 /**
  * Accretion Sandbox tab — interactive demonstration of IVE concepts.
  *
- * Two interchangeable modes:
+ * Three interchangeable modes:
  *  - Build-Layer (AntonVVU): node editor + live accretion-disk arena.
  *    Demonstrates agnostic integration (spatial triggers as CAD/GIS layers),
  *    model-driven V-design (each wire = requirement ↔ verification pair),
@@ -26,6 +26,11 @@ type Mode = "build" | "arena";
  *  - Classic Arena (AntonGame): survival shooter variant. Pilot Anton the
  *    Ant against escalating waves around a black-hole singularity, using
  *    Time Dilate / Mag Pulse / Grav Fusion abilities.
+ *  - Logic Tiles: visual node editor + live game engine with codification
+ *    state machine (ORDINARY / CODIFIED / DECODED). In CODIFIED mode, ghost
+ *    platforms become solid — the game physics changes based on the
+ *    epistemic state. Demonstrates the integration of governance state
+ *    with physical simulation.
  */
 export function SandboxTab() {
   const [mode, setMode] = useState<Mode>("build");
@@ -119,6 +124,16 @@ export function SandboxTab() {
         >
           <span className="mr-1.5">⟁</span> Classic Arena · Survival Shooter
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mode === "logic"}
+          data-active={mode === "logic"}
+          className="vvu-mode-btn"
+          onClick={() => setMode("logic")}
+        >
+          <span className="mr-1.5">🧩</span> Logic Tiles · Codification State Machine
+        </button>
         <Badge
           variant="outline"
           className="ml-auto self-center border-[oklch(0.82_0.16_75/40%)] ive-text-gold"
@@ -129,7 +144,19 @@ export function SandboxTab() {
       </div>
 
       {/* Mode content */}
-      {mode === "build" ? <AntonVVU /> : <AntonGame />}
+      {mode === "build" && <AntonVVU />}
+      {mode === "arena" && <AntonGame />}
+      {mode === "logic" && (
+        <div className="overflow-hidden rounded-lg border border-border/60 ive-glass">
+          <iframe
+            src="/vvu-logic-tiles.html"
+            title="VVU Logic Tiles + Game Engine"
+            className="h-[700px] w-full"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin"
+          />
+        </div>
+      )}
 
       {/* Controls hint */}
       <Card className="ive-glass">
