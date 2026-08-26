@@ -241,3 +241,50 @@ Stage Summary:
 - IVE dashboard now has 12 tabs. Accretion Sandbox has 5 modes.
 - Lint clean. 0 errors. Pushed to feat/vres1-scrubbed.
 - Operations: FROZEN. Marketplace backend + Dev SDK form both verified working end-to-end.
+
+---
+Task ID: 12
+Agent: Orchestrator (main)
+Task: Align with Portrait/Landscape architectural spec — NO deletions, only additions.
+
+Work Log:
+- Read the user's architectural ideal specification carefully. Key constraint: "you are not to delete anything or remove components from the page you are to just align with the philosophy of user specific and execution layer and the other specifics we lacked but you are not to delete remove."
+- Created /src/lib/ive/architecture.ts — the data layer for all new architectural components: PRICING_TIERS (6 ZAR tiers: Student R0, Starter R4500, Professional R15000, Enterprise R45000, Government R25000, Municipal R12000), UBUNTU_POOLS (Stokvel R500-R5000 + Direct VVU Funding), INTEGRATIONS (Discord/Outlook/Gmail/Teams/GitHub + Wits/ECSA/SAICA/CIPC/IEEE), ZKP_ATTESTATION_SOURCES, ROLE_TIERS (7 roles with visibleTabs lists), STUDIO_WORKSHEETS (6 worksheets), STUDIO_RIBBON (6 stages: Construct/Design/Generate/Mint/Validate/Export), MASTER_GRAPH_NODES, HOWZIT_MESSAGE.
+- Built /src/components/ive/howzit-modal.tsx — onboarding modal that appears on first load. Asks "Building or Validating?" with two cards. [Enter Studio] button enabled after selection. Dismissable via "Just Browsing".
+- Built /src/components/ive/zkp-modal.tsx — ZKP verification modal (the "Upgrade Gate"). 7 attestation sources (Wits, ECSA, SAICA, CIPC, GitHub, Microsoft, IEEE). 3-step flow: select → attesting (progress bar) → verified (role detected + ZAR tier applied + ANTPAY payment button). Zero-knowledge: "We don't store your ID, only a cryptographic proof."
+- Built /src/components/ive/portrait-view.tsx — the "Home Base" Portrait view. Master Graph SVG (User node connected to Organization, Projects, ANTPAY Wallet, Ubuntu Pools, Discord). User Metrics, Goals, Calendar, API Keys, Receipts, Project Planning widgets. Maturity + AIR + Wallet indicators. Integrations row showing connection status. [Enter Studio] + [Upgrade] buttons.
+- Built 4 new tab components:
+  · antpay-tab.tsx — ANTPAY Financials & Billing. ZAR pricing table (6 tiers). Wallet flow graph (Compute Credits, Subscriptions, BLE receipts, Stitch EFT).
+  · pools-tab.tsx — Ubuntu Pools & Stokvel. Community Graph SVG showing pooled contributors. ProofBridge receipts for every contribution. Direct VVU Funding tiers.
+  · integrations-tab.tsx — Integrations & Organizations. Connection graph with live status. Organization groups (Discord servers, Teams, Outlook orgs).
+  · studio-tab.tsx — Studio Worksheets (6 worksheets). Top ribbon (Construct/Design/Generate/Mint/Validate/Export). Per-worksheet SVG graph. E2E pipeline: CAD → ProofBridge → EIS AIR → 3D → Export. Right dock (Facilitator Agent + Document Agent). Toggle Graph button.
+- Rewrote /src/app/page.tsx — dual-environment controller:
+  · environment state: "portrait" | "landscape" (default: portrait)
+  · howzitOpen state: true on first load
+  · zkpOpen state: triggers ZKP modal
+  · role state: "guest" by default, changes on ZKP verification
+  · Portrait view: shows PortraitView component
+  · Landscape view: shows IveHeader + all 16 tabs (12 original + 4 new)
+  · Role gating: visibleTabs from ROLE_TIERS[role].visibleTabs — locked tabs show "requires higher role tier" + Upgrade button
+  · Fixed naming collision: imported Home as HomeIcon (lucide-react Home vs function Home)
+- Updated /src/components/ive/ive-header.tsx — added 4 new tab entries: Studio Worksheets, ANTPAY Billing, Ubuntu Pools, Integrations. Total: 16 tabs (12 original preserved + 4 new).
+- Agent Browser verification at 1440x900:
+  · Howzit modal renders on load with "Building/Validating" selection + "Enter Studio" button. ✅
+  · Clicked Building → Enter Studio enabled → clicked → Landscape view + Studio Worksheets tab. ✅
+  · Portrait/Landscape toggle: clicked Portrait → Portrait view renders with Master Graph SVG, Howzit message, ANTPAY Wallet (R0 for guest), Ubuntu Pools, Integrations row. ✅
+  · ZKP modal: clicked Upgrade → modal renders with 7 attestation sources (Wits, ECSA, SAICA, CIPC, GitHub, Microsoft, IEEE) + Generate ZKP button. ✅
+  · Role gating: ANTPAY tab shows "🔒 THIS MODULE REQUIRES A HIGHER ROLE TIER" + "UPGRADE TO UNLOCK" for guest role. ✅
+  · All 16 tabs visible in Landscape header (verified via JS eval). ✅
+  · No existing tabs removed — all 12 original tabs still present. ✅
+  · 0 console errors (after fixing Home naming collision). ✅
+- Pushed to feat/vres1-scrubbed (d8a1657 → c948cfc).
+
+Stage Summary:
+- 10 new files created (architecture data layer, Howzit modal, ZKP modal, Portrait view, 4 new tabs, header update, page rewrite).
+- 0 existing components deleted or removed — all 12 original tabs preserved.
+- 16 total tabs in Landscape view (12 original + 4 new: Studio Worksheets, ANTPAY Billing, Ubuntu Pools, Integrations).
+- Portrait/Landscape dual-environment toggle operational.
+- Howzit onboarding modal with Building/Validating selection.
+- ZKP role-gating with 7 attestation sources + auto ZAR tier detection.
+- Role-gated tab visibility (guest sees 3 tabs, student sees 5, creator sees 14, enterprise sees 16).
+- Lint clean. Dev server healthy. Pushed to GitHub.
