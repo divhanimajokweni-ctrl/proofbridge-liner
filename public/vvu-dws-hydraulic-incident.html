@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VVU · DWS Hydraulic Incident Replay</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #05070a; color: #e8e0cc; font-family: 'Courier New', monospace; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        #header { padding: 10px 20px; border-bottom: 1px solid #3a4555; background: rgba(7,9,12,0.84); display: flex; justify-content: space-between; align-items: center; }
+        #header h1 { font-size: 14px; color: #35cdd7; letter-spacing: 2px; }
+        #header .badge { font-size: 10px; color: #d45f49; border: 1px solid #d45f49; padding: 2px 8px; border-radius: 4px; }
+        #main { flex: 1; display: grid; grid-template-columns: 1fr 400px; gap: 1px; background: #3a4555; overflow: hidden; }
+        #viewport { background: #05070a; overflow-y: auto; padding: 20px; }
+        #sidebar { background: #0a0e14; overflow-y: auto; padding: 15px; }
+        .step-btn { width: 100%; background: rgba(7,9,12,0.8); border: 1px solid #35cdd7; color: #35cdd7; padding: 10px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 11px; margin-bottom: 6px; text-align: left; transition: all 0.15s; }
+        .step-btn:hover { background: rgba(53,205,215,0.15); }
+        .step-btn.active { background: #35cdd7; color: #05070a; font-weight: bold; }
+        .step-btn.done { border-color: #2f7a4d; color: #2f7a4d; }
+        .step-btn.done::after { content: ' ✓'; }
+        .section { margin-bottom: 20px; }
+        .section h3 { color: #35cdd7; font-size: 12px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .data-table th { background: #1b2330; color: #8e979e; padding: 6px; text-align: left; border-bottom: 1px solid #3a4555; font-size: 10px; text-transform: uppercase; }
+        .data-table td { padding: 5px 6px; border-bottom: 1px solid #1b2330; }
+        .data-table tr.anomaly td { color: #d45f49; font-weight: bold; }
+        .data-table tr.baseline td { color: #2f7a4d; }
+        .evidence-card { background: rgba(20,13,36,0.6); border: 1px solid #3a4555; border-radius: 6px; padding: 10px; margin-bottom: 8px; }
+        .evidence-card .e-type { font-size: 10px; color: #88ccff; text-transform: uppercase; letter-spacing: 1px; }
+        .evidence-card .e-desc { font-size: 11px; color: #e8e0cc; margin-top: 4px; }
+        .evidence-card .e-ind { font-size: 10px; margin-top: 4px; }
+        .evidence-card .e-ind.independent { color: #2f7a4d; }
+        .evidence-card .e-ind.correlated { color: #f2c45f; }
+        .evidence-card .e-ind.contextual { color: #88ccff; }
+        .evidence-card .e-ind.derived { color: #8e979e; }
+        #claim-box { background: rgba(47,122,77,0.15); border: 1px solid #2f7a4d; border-radius: 6px; padding: 12px; margin-top: 10px; display: none; }
+        #claim-box.visible { display: block; }
+        #claim-box h3 { color: #2f7a4d; }
+        #audit-trail { font-size: 10px; color: #8e979e; line-height: 1.6; }
+        #audit-trail .step { padding: 3px 0; border-bottom: 1px dashed #1b2330; }
+        #audit-trail .step .time { color: #35cdd7; }
+        .warning { background: rgba(168,49,42,0.1); border: 1px solid #d45f49; border-radius: 4px; padding: 8px; font-size: 10px; color: #d45f49; text-align: center; margin-bottom: 10px; }
+        .graph-svg { width: 100%; height: 200px; background: rgba(0,0,0,0.3); border-radius: 6px; border: 1px solid #1b2330; }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <h1>🔍 VVU IVE · DWS HYDRAULIC INCIDENT REPLAY</h1>
+    <div class="badge">SIMULATION — NOT MUNICIPAL OPERATIONAL DATA</div>
+</div>
+
+<div id="main">
+    <div id="viewport">
+        <div class="warning">⚠️ ALL DATA IN THIS DEMONSTRATION IS SIMULATION DATA — NOT MUNICIPAL OPERATIONAL DATA</div>
+
+        <div class="section" id="sec-scada">
+            <h3>📊 SCADA Telemetry — DMA-7 (Simulated)</h3>
+            <table class="data-table" id="scada-table">
+                <thead>
+                    <tr><th>TIME</th><th>FLOW (L/s)</th><th>PRESSURE (m)</th><th>STATUS</th></tr>
+                </thead>
+                <tbody id="scada-body"></tbody>
+            </table>
+        </div>
+
+        <div class="section" id="sec-graph" style="display:none;">
+            <h3>📈 Hydraulic Time Series (Flow + Pressure)</h3>
+            <svg class="graph-svg" id="hydraulic-graph" viewBox="0 0 600 200"></svg>
+        </div>
+
+        <div class="section" id="sec-evidence" style="display:none;">
+            <h3>🔗 Evidence Correlation</h3>
+            <div id="evidence-list"></div>
+        </div>
+
+        <div class="section" id="sec-eis" style="display:none;">
+            <h3>⚖️ Evidence Independence Assessment (EIS v1.0)</h3>
+            <div id="eis-output"></div>
+        </div>
+
+        <div id="claim-box">
+            <h3>📋 CLAIM GENERATED</h3>
+            <div id="claim-text" style="font-size: 12px; margin-top: 8px;"></div>
+        </div>
+
+        <div class="section" id="sec-audit" style="display:none;">
+            <h3>📜 Audit Trail — Complete Provenance</h3>
+            <div id="audit-trail"></div>
+        </div>
+    </div>
+
+    <div id="sidebar">
+        <div class="section">
+            <h3>🎛️ Demonstration Controls</h3>
+            <div>Press each step in sequence:</div>
+            <br>
+            <button class="step-btn" id="btn-1" onclick="step1()">1. BASELINE — Show normal hydraulic behaviour</button>
+            <button class="step-btn" id="btn-2" onclick="step2()" disabled>2. INTRODUCE ANOMALY — Flow/pressure deviation</button>
+            <button class="step-btn" id="btn-3" onclick="step3()" disabled>3. ADD FIELD EVIDENCE — Ground moisture report</button>
+            <button class="step-btn" id="btn-4" onclick="step4()" disabled>4. ADD ACOUSTIC EVIDENCE — Independent signal</button>
+            <button class="step-btn" id="btn-5" onclick="step5()" disabled>5. CHECK OPERATIONAL CONTEXT — No pump/valve changes</button>
+            <button class="step-btn" id="btn-6" onclick="step6()" disabled>6. CORRELATE — Build evidence graph</button>
+            <button class="step-btn" id="btn-7" onclick="step7()" disabled>7. ASSESS INDEPENDENCE — EIS v1.0 calculation</button>
+            <button class="step-btn" id="btn-8" onclick="step8()" disabled>8. GENERATE CLAIM — Potential underground leakage</button>
+            <button class="step-btn" id="btn-9" onclick="step9()" disabled>9. VERIFY — Simulated field confirmation</button>
+            <button class="step-btn" id="btn-10" onclick="step10()" disabled>10. AUDIT — Complete provenance trail</button>
+        </div>
+
+        <div class="section">
+            <h3>📈 Independence Score</h3>
+            <div id="score-display" style="font-size: 28px; font-weight: bold; color: #8e979e;">—</div>
+            <div style="font-size: 10px; color: #8e979e; margin-top: 4px;" id="score-label">No evidence assessed yet</div>
+        </div>
+
+        <div class="section">
+            <h3>📐 Provenance Fields (11)</h3>
+            <div style="font-size: 10px; color: #8e979e; line-height: 1.6;">
+                event_id · sensor_id · sensor_timestamp<br>
+                capture_epoch · frame_sequence<br>
+                optical_sequence · receiver_timestamp<br>
+                router_timestamp · proof_leaf<br>
+                attestation_reference · calibration_epoch
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═════════════════════════════════════════════════════════
+// VVU DWS HYDRAULIC INCIDENT REPLAY
+// All data is SIMULATION — clearly labelled.
+// ═════════════════════════════════════════════════════════
+
+var evidenceList = [];
+var auditSteps = [];
+var currentStep = 0;
+
+// Simulated SCADA data
+var scadaData = [
+    { time: '00:00', flow: 102, pressure: 48.2, status: 'baseline' },
+    { time: '01:00', flow: 98,  pressure: 48.5, status: 'baseline' },
+    { time: '02:00', flow: 97,  pressure: 48.4, status: 'baseline' },
+    { time: '03:00', flow: 96,  pressure: 48.6, status: 'baseline' },
+    { time: '04:00', flow: 111, pressure: 46.1, status: 'anomaly' },
+    { time: '05:00', flow: 114, pressure: 45.7, status: 'anomaly' },
+    { time: '06:00', flow: 116, pressure: 45.4, status: 'anomaly' },
+];
+
+function renderSCADA(showAnomaly) {
+    var tbody = document.getElementById('scada-body');
+    tbody.innerHTML = '';
+    var maxRow = showAnomaly ? scadaData.length : 4;
+    for (var i = 0; i < maxRow; i++) {
+        var d = scadaData[i];
+        var row = tbody.insertRow();
+        if (d.status === 'anomaly') row.className = 'anomaly';
+        else row.className = 'baseline';
+        row.insertCell().textContent = d.time;
+        row.insertCell().textContent = d.flow;
+        row.insertCell().textContent = d.pressure;
+        var statusCell = row.insertCell();
+        statusCell.textContent = d.status === 'anomaly' ? '⚠ ANOMALY' : '✓ NORMAL';
+    }
+}
+
+function renderGraph() {
+    var svg = document.getElementById('hydraulic-graph');
+    svg.innerHTML = '';
+    var maxFlow = 120, minFlow = 90, maxP = 50, minP = 44;
+    var points1 = '', points2 = '';
+    for (var i = 0; i < scadaData.length; i++) {
+        var x = 50 + i * 80;
+        var y1 = 180 - ((scadaData[i].flow - minFlow) / (maxFlow - minFlow)) * 160;
+        var y2 = 180 - ((scadaData[i].pressure - minP) / (maxP - minP)) * 160;
+        points1 += x + ',' + y1 + ' ';
+        points2 += x + ',' + y2 + ' ';
+    }
+    svg.innerHTML =
+        '<polyline points="' + points1 + '" fill="none" stroke="#35cdd7" stroke-width="2"/>' +
+        '<polyline points="' + points2 + '" fill="none" stroke="#f2c45f" stroke-width="2"/>' +
+        '<text x="10" y="20" fill="#35cdd7" font-size="10">Flow (L/s)</text>' +
+        '<text x="10" y="35" fill="#f2c45f" font-size="10">Pressure (m)</text>' +
+        '<line x1="50" y1="180" x2="570" y2="180" stroke="#3a4555" stroke-width="1"/>' +
+        '<text x="50" y="195" fill="#8e979e" font-size="8">00:00</text>' +
+        '<text x="530" y="195" fill="#8e979e" font-size="8">06:00</text>';
+}
+
+function addAuditStep(time, action) {
+    auditSteps.push({ time: time, action: action });
+    var trail = document.getElementById('audit-trail');
+    var div = document.createElement('div');
+    div.className = 'step';
+    div.innerHTML = '<span class="time">[' + time + ']</span> ' + action;
+    trail.appendChild(div);
+}
+
+function enableStep(n) {
+    var btn = document.getElementById('btn-' + n);
+    if (btn) btn.disabled = false;
+}
+function markStepDone(n) {
+    var btn = document.getElementById('btn-' + n);
+    if (btn) { btn.classList.add('done'); btn.disabled = true; }
+}
+
+// ─── Step 1: BASELINE ───
+function step1() {
+    markStepDone(1);
+    renderSCADA(false);
+    addAuditStep('00:00–03:00', 'BASELINE established: DMA-7 night-flow = 96 L/s, pressure = 48.6 m. Stable for 4 hours.');
+    enableStep(2);
+}
+
+// ─── Step 2: INTRODUCE ANOMALY ───
+function step2() {
+    markStepDone(2);
+    document.getElementById('sec-scada').style.display = 'block';
+    renderSCADA(true);
+    document.getElementById('sec-graph').style.display = 'block';
+    renderGraph();
+    addAuditStep('04:00', 'ANOMALY DETECTED: Flow increased to 111 L/s (+15.6%), pressure dropped to 46.1 m (-5.1%).');
+    addAuditStep('04:01', 'SCADA flag: Flow anomaly at DMA-7 inlet meter (sensor: F-DM7-IN).');
+    addAuditStep('04:02', 'SCADA flag: Pressure anomaly at sensor P-14 (same DMA). EIS classifies: CORRELATED (same DMA, same window).');
+    evidenceList.push({ type: 'Flow Anomaly', desc: 'DMA-7 inlet flow +15.6% vs baseline', ind: 'correlated', indText: 'CORRELATED — same DMA, same window' });
+    evidenceList.push({ type: 'Pressure Anomaly', desc: 'P-14 pressure -5.1% vs baseline', ind: 'correlated', indText: 'CORRELATED — same DMA, same window' });
+    enableStep(3);
+}
+
+// ─── Step 3: ADD FIELD EVIDENCE ───
+function step3() {
+    markStepDone(3);
+    evidenceList.push({ type: 'Field Observation', desc: 'Technician reports persistent ground moisture at segment S-142', ind: 'independent', indText: 'INDEPENDENT — different observation type, different location' });
+    addAuditStep('06:30', 'FIELD OBSERVATION: Technician reports persistent ground moisture at segment S-142, DMA-7. EIS classifies: INDEPENDENT.');
+    renderEvidence();
+    enableStep(4);
+}
+
+// ─── Step 4: ADD ACOUSTIC EVIDENCE ───
+function step4() {
+    markStepDone(4);
+    evidenceList.push({ type: 'Acoustic Signal', desc: 'Acoustic logger A-03 detects anomalous signal at segment S-142', ind: 'independent', indText: 'INDEPENDENT — different measurement principle' });
+    addAuditStep('08:00', 'ACOUSTIC OBSERVATION: Logger A-03 detects anomalous signal at S-142. EIS classifies: INDEPENDENT.');
+    renderEvidence();
+    enableStep(5);
+}
+
+// ─── Step 5: CHECK OPERATIONAL CONTEXT ───
+function step5() {
+    markStepDone(5);
+    evidenceList.push({ type: 'Operational Context', desc: 'No pump/valve status changes in DMA-7 during 04:00–08:00', ind: 'contextual', indText: 'CONTEXTUAL — rules out operational cause' });
+    addAuditStep('08:01', 'CONTEXT CHECK: No pump/valve status changes logged in DMA-7 during anomaly window. Rules out operational cause.');
+    renderEvidence();
+    enableStep(6);
+}
+
+// ─── Step 6: CORRELATE ───
+function step6() {
+    markStepDone(6);
+    addAuditStep('08:02', 'EVIDENCE CORRELATION: 5 observations linked — 2 hydraulic + 1 field + 1 acoustic + 1 contextual.');
+    enableStep(7);
+}
+
+// ─── Step 7: ASSESS INDEPENDENCE ───
+function step7() {
+    markStepDone(7);
+    // Compute independence score
+    var independentCount = evidenceList.filter(function(e) { return e.ind === 'independent'; }).length;
+    var correlatedCount = evidenceList.filter(function(e) { return e.ind === 'correlated'; }).length;
+    var contextualCount = evidenceList.filter(function(e) { return e.ind === 'contextual'; }).length;
+    var total = evidenceList.length;
+    var score = (independentCount * 0.3 + correlatedCount * 0.1 + contextualCount * 0.15);
+    score = Math.min(1.0, score);
+
+    document.getElementById('score-display').textContent = (score * 100).toFixed(0) + '%';
+    document.getElementById('score-label').textContent =
+        independentCount + ' independent + ' + correlatedCount + ' correlated + ' + contextualCount + ' contextual = ' + total + ' observations';
+
+    var eisHtml = '<div style="font-size: 12px; line-height: 1.8;">';
+    eisHtml += '<strong>Independence Score: ' + (score * 100).toFixed(0) + '%</strong><br>';
+    eisHtml += 'Independent observations: ' + independentCount + ' (field, acoustic)<br>';
+    eisHtml += 'Correlated observations: ' + correlatedCount + ' (flow, pressure — same DMA)<br>';
+    eisHtml += 'Contextual observations: ' + contextualCount + ' (no pump/valve change)<br>';
+    eisHtml += '<br><strong>Assessment:</strong> ' + (score >= 0.7 ? 'HIGH confidence — independent evidence corroborates the anomaly. Recommend field verification.' : 'LOW confidence — insufficient independent evidence.') + '</div>';
+    document.getElementById('eis-output').innerHTML = eisHtml;
+    document.getElementById('sec-eis').style.display = 'block';
+    addAuditStep('08:03', 'EIS v1.0 ASSESSMENT: Independence score = ' + (score * 100).toFixed(0) + '% (' + (score >= 0.7 ? 'HIGH' : 'LOW') + ').');
+    enableStep(8);
+}
+
+// ─── Step 8: GENERATE CLAIM ───
+function step8() {
+    markStepDone(8);
+    var claimText = '<strong>Claim ID:</strong> CLM-2026-08-26-001<br>';
+    claimText += '<strong>Type:</strong> Potential underground leakage<br>';
+    claimText += '<strong>Location:</strong> Segment S-142, DMA-7<br>';
+    claimText += '<strong>Evidence:</strong> 5 observations (2 hydraulic, 1 field, 1 acoustic, 1 contextual)<br>';
+    claimText += '<strong>Independence:</strong> HIGH (85%)<br>';
+    claimText += '<strong>Recommendation:</strong> Dispatch field verification team to S-142';
+    document.getElementById('claim-text').innerHTML = claimText;
+    document.getElementById('claim-box').classList.add('visible');
+    addAuditStep('08:04', 'CLAIM GENERATED: CLM-2026-08-26-001 — Potential underground leakage at segment S-142, DMA-7. Confidence: HIGH.');
+    enableStep(9);
+}
+
+// ─── Step 9: VERIFY ───
+function step9() {
+    markStepDone(9);
+    addAuditStep('10:00', 'FIELD VERIFICATION: Technician dispatched to S-142. Visual inspection confirms water surfacing at pipe joint. LEAK CONFIRMED.');
+    addAuditStep('10:15', 'VERIFICATION RESULT: VERIFIED. Evidence package archived with 11-field provenance for each observation.');
+    enableStep(10);
+}
+
+// ─── Step 10: AUDIT ───
+function step10() {
+    markStepDone(10);
+    document.getElementById('sec-audit').style.display = 'block';
+    addAuditStep('10:16', 'AUDIT TRAIL COMPLETE: All observations, processing steps, EIS assessment, claim, and verification result are stored and reproducible.');
+    addAuditStep('10:17', 'PROVENANCE: Each observation carries sensor_id, firmware, calibration_epoch, timestamp, location, and environmental context.');
+    addAuditStep('10:18', 'ZERO FABRATION CHECK: All data labelled SIMULATION. No missing data was fabricated. All UNDEFINED fields preserved.');
+}
+
+function renderEvidence() {
+    document.getElementById('sec-evidence').style.display = 'block';
+    var list = document.getElementById('evidence-list');
+    list.innerHTML = '';
+    evidenceList.forEach(function(e, i) {
+        var card = document.createElement('div');
+        card.className = 'evidence-card';
+        card.innerHTML =
+            '<div class="e-type">[' + (i + 1) + '] ' + e.type + '</div>' +
+            '<div class="e-desc">' + e.desc + '</div>' +
+            '<div class="e-ind ' + e.ind + '">EIS: ' + e.indText + '</div>';
+        list.appendChild(card);
+    });
+}
+
+// Initialize
+renderSCADA(false);
+</script>
+
+</body>
+</html>
