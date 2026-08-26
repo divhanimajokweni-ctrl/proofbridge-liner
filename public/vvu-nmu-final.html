@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VVU·IVE — NMU Demo Kit</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; overflow:hidden; background:#050505; color:#e8e8f0; font-family:'JetBrains Mono',monospace; }
+  body { display:flex; flex-direction:column; }
+  ::-webkit-scrollbar { width:2px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:rgba(212,175,55,0.3); }
+
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:6px 16px; background:rgba(0,0,0,0.4); border-bottom:1px solid rgba(212,175,55,0.1); flex-shrink:0; z-index:100; gap:8px; flex-wrap:wrap; }
+  .topbar .logo-text { font-weight:900; font-size:14px; letter-spacing:0.08em; color:#d4af37; }
+  .topbar .status-badge { font-size:8px; background:rgba(81,207,102,0.1); color:#4ade80; padding:2px 8px; border-radius:4px; }
+  .topbar .nav-tabs { display:flex; gap:2px; background:rgba(255,255,255,0.02); padding:2px; border-radius:6px; flex-wrap:wrap; }
+  .topbar .nav-tabs button { background:transparent; border:none; color:rgba(255,255,255,0.3); padding:4px 10px; border-radius:4px; font-size:9px; cursor:pointer; }
+  .topbar .nav-tabs button.active { color:#d4af37; background:rgba(212,175,55,0.1); }
+
+  .main { flex:1; display:flex; overflow:hidden; }
+  .content { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+  .view-panel { display:none; flex:1; overflow-y:auto; }
+  .view-panel.active { display:block; }
+
+  .card { background:rgba(255,255,255,0.02); border:1px solid rgba(212,175,55,0.1); border-radius:8px; padding:12px; margin:10px; }
+  .card h3 { color:#d4af37; font-size:12px; margin-bottom:8px; }
+  .card p { color:rgba(255,255,255,0.6); font-size:10px; line-height:1.5; }
+
+  .btn { background:rgba(212,175,55,0.05); border:1px solid rgba(212,175,55,0.2); color:#d4af37; padding:6px 12px; border-radius:6px; font-size:10px; cursor:pointer; margin:4px; }
+  .btn:hover { background:rgba(212,175,55,0.1); }
+  .btn.success { background:rgba(81,207,102,0.1); border-color:rgba(81,207,102,0.3); color:#4ade80; }
+  .btn.warn { background:rgba(251,191,36,0.1); border-color:rgba(251,191,36,0.3); color:#fbbf24; }
+  .btn.danger { background:rgba(255,107,107,0.1); border-color:rgba(255,107,107,0.3); color:#ff6b6b; }
+
+  .platform-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:8px; }
+  .platform { background:rgba(255,255,255,0.03); border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px; text-align:center; }
+  .platform .icon { font-size:24px; margin-bottom:4px; }
+  .platform .name { font-size:9px; color:rgba(255,255,255,0.7); }
+  .platform .status { font-size:8px; color:#4ade80; }
+
+  .holo-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+  .holo-card { background:rgba(20,20,35,0.5); border:1px solid rgba(124,156,255,0.3); border-radius:10px; overflow:hidden; }
+  .holo-title { font-size:10px; color:#7c9cff; text-transform:uppercase; letter-spacing:.1em; padding:10px 12px 0; }
+  canvas { display:block; width:100%; }
+
+  #screensaver { position:fixed; inset:0; z-index:9998; background:#020205; display:none; opacity:0; transition:opacity 2.8s; cursor:none; }
+  #screensaver.active { display:block; opacity:1; }
+  #screensaver canvas { width:100%; height:100%; display:block; }
+
+  body.light { background:#f5f5f5; color:#222; }
+  body.light .topbar { background:rgba(255,255,255,0.9); border-bottom:1px solid #ddd; }
+  body.light .card { background:#fff; border-color:#ddd; }
+  body.light .card p { color:#555; }
+
+  .sim-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .sim-card { background:rgba(255,255,255,0.03); border:1px solid rgba(212,175,55,0.2); border-radius:8px; padding:10px; text-align:center; }
+  .sim-card .icon { font-size:24px; }
+  .sim-card .title { font-size:9px; margin:4px 0; }
+  .sim-card .desc { font-size:8px; color:rgba(255,255,255,0.5); }
+
+  .theorem-box { background:rgba(0,0,0,0.3); border-radius:8px; padding:12px; font-size:12px; color:#d4af37; margin-top:10px; }
+  .theorem-box .formula { font-family:'JetBrains Mono',monospace; }
+  .theorem-box .conjunct { margin:4px 0; }
+
+  @media (max-width:700px) {
+    .platform-grid { grid-template-columns:repeat(2,1fr); }
+    .sim-grid { grid-template-columns:1fr; }
+    .holo-grid { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo-text">VVU·IVE <span style="font-size:8px;color:#4ade80;">[NMU DEMO]</span></div>
+  <div class="status-badge" id="statusBadge">READY</div>
+  <div style="display:flex; gap:6px; align-items:center;">
+    <button onclick="toggleTheme()" style="background:transparent;border:none;color:#d4af37;font-size:20px;cursor:pointer;">🌙</button>
+    <button class="btn" onclick="connectWallet()">Connect Wallet</button>
+  </div>
+  <div class="nav-tabs" id="navTabs">
+    <button class="active" data-view="sim">🎮 Simulator</button>
+    <button data-view="gov">📜 Governance</button>
+    <button data-view="theorem">🧮 Theorem</button>
+    <button data-view="l0">🔗 L0 Hash</button>
+    <button data-view="console">⌘ Console</button>
+    <button data-view="gaming">🎮 Gaming</button>
+    <button data-view="studi">◈</button>
+    <button data-view="ive">⧫</button>
+    <button data-view="social">⎔</button>
+    <button data-view="play">▶</button>
+    <button data-view="finance">$</button>
+    <button data-view="eis">⚡</button>
+    <button data-view="analytics">▣</button>
+    <button data-view="seal">🔏</button>
+    <button data-view="hologram">✦</button>
+  </div>
+</header>
+
+<div class="main">
+  <div class="content">
+
+    <!-- SIMULATOR VIEW -->
+    <div class="view-panel active" id="view-sim">
+      <div class="card">
+        <h3>🎮 INTERACTIVE SIMULATION CONSOLE</h3>
+        <div class="sim-grid">
+          <div class="sim-card">
+            <div class="icon">✅</div>
+            <div class="title">Nominal Flow</div>
+            <div class="desc">All conjuncts true</div>
+            <button class="btn success" onclick="scenario1()">Run</button>
+          </div>
+          <div class="sim-card">
+            <div class="icon">🚨</div>
+            <div class="title">M0 Linter Violation</div>
+            <div class="desc">Integrity fails</div>
+            <button class="btn warn" onclick="scenario2()">Run</button>
+          </div>
+          <div class="sim-card">
+            <div class="icon">🔥</div>
+            <div class="title">Thermal Crash</div>
+            <div class="desc">Soundness fails</div>
+            <button class="btn danger" onclick="scenario3()">Run</button>
+          </div>
+        </div>
+        <div id="simOutput" style="margin-top:12px; background:rgba(0,0,0,0.3); border-radius:8px; padding:12px; font-size:10px; color:rgba(255,255,255,0.8);"></div>
+      </div>
+    </div>
+
+    <!-- GOVERNANCE THESIS VIEW -->
+    <div class="view-panel" id="view-gov">
+      <div class="card">
+        <h3>📜 ALGORITHMIC TRUST & DECENTRALISED CIVIC GOVERNANCE</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:10px;">
+          <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:10px;">
+            <div style="font-size:12px; color:#ff6b6b; margin-bottom:6px;">ADMINISTRATIVE HOPE</div>
+            <div style="font-size:9px; color:rgba(255,255,255,0.6);">
+              <strong>Mechanism:</strong> Paper promises<br>
+              <strong>Vulnerability:</strong> Corruption<br>
+              <strong>Failure Mode:</strong> Fail-open<br>
+              <strong>Auditing:</strong> Retroactive
+            </div>
+          </div>
+          <div style="background:rgba(255,255,255,0.03); border-radius:8px; padding:10px;">
+            <div style="font-size:12px; color:#4ade80; margin-bottom:6px;">MATHEMATICAL REALITY</div>
+            <div style="font-size:9px; color:rgba(255,255,255,0.6);">
+              <strong>Mechanism:</strong> Immutable crypto evidence<br>
+              <strong>Vulnerability:</strong> POPIA-compliant<br>
+              <strong>Failure Mode:</strong> Fail-closed<br>
+              <strong>Auditing:</strong> Real-time, deterministic
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px; color:rgba(255,255,255,0.6); line-height:1.6;">
+          <strong>Zero Fabrication Rule:</strong> Missing data is never guessed. It is flagged as UNDEFINED.<br>
+          <strong>ProofBridge Pipeline:</strong> Physical Substrate → Hardware Attestation → Execution Policy → Evidence Chain → Settlement Decision.<br>
+          <strong>Epistemic DAG:</strong> History never rewrites. Every fact is cryptographically linked.
+        </div>
+      </div>
+    </div>
+
+    <!-- THEOREM VIEW -->
+    <div class="view-panel" id="view-theorem">
+      <div class="card">
+        <h3>🧮 FIVE-CONJUNCT VERIFICATION THEOREM</h3>
+        <div class="theorem-box">
+          <div class="formula">RELEASE_ELIGIBLE = C ∧ E ∧ I ∧ S ∧ R</div>
+          <div class="conjunct">✅ C — Consistency: Claims match evidence</div>
+          <div class="conjunct">✅ E — Evidence: Sufficient data exists</div>
+          <div class="conjunct">✅ I — Integrity: No fabricated fields</div>
+          <div class="conjunct">✅ S — Soundness: System operates within bounds</div>
+          <div class="conjunct">✅ R — Recency: Data is current</div>
+          <div style="margin-top:10px; font-size:10px; color:rgba(255,255,255,0.5);">All five MUST be TRUE for release eligibility.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- L0 HASH VIEW -->
+    <div class="view-panel" id="view-l0">
+      <div class="card">
+        <h3>🔗 L0 PROVENANCE HASH STORY</h3>
+        <div style="font-size:10px; color:rgba(255,255,255,0.6); line-height:1.6;">
+          <strong>Initial Guess:</strong> 0x9cbe...<br>
+          <strong>Actual Verified Hash:</strong> <span style="color:#4ade80;">0xfc6b51ba8bafa7032c07836b04d0edd97d1c5a0de6e12698b5c16016e6587054</span><br><br>
+          We caught a mismatch and corrected it. No fabrication. The system enforces truth.
+        </div>
+      </div>
+    </div>
+
+    <!-- CONSOLE VIEW -->
+    <div class="view-panel" id="view-console">
+      <div class="card">
+        <h3>⌘ CONSOLE</h3>
+        <div id="consoleOutput" style="background:rgba(0,0,0,0.3); border-radius:8px; padding:10px; font-size:10px; height:300px; overflow-y:auto;">
+          <div style="color:#4ade80;">⏣ Demo Console Ready</div>
+          <div style="color:rgba(255,255,255,0.6);">→ Type 'help'</div>
+        </div>
+        <div style="display:flex; gap:4px; margin-top:8px;">
+          <input id="consoleInput" placeholder="Type command...">
+          <button class="btn" onclick="runConsole()">Run</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAMING HUB -->
+    <div class="view-panel" id="view-gaming">
+      <div class="card">
+        <h3>🎮 GAMING HUB</h3>
+        <div class="platform-grid">
+          <div class="platform"><div class="icon">📺</div><div class="name">Twitch</div><div class="status">● Online</div></div>
+          <div class="platform"><div class="icon">🎮</div><div class="name">Xbox</div><div class="status">● Connected</div></div>
+          <div class="platform"><div class="icon">🎯</div><div class="name">PSN</div><div class="status">● Connected</div></div>
+          <div class="platform"><div class="icon">🛡️</div><div class="name">Ubisoft</div><div class="status">● Connected</div></div>
+          <div class="platform"><div class="icon">🏎️</div><div class="name">Gameloft</div><div class="status">● Connected</div></div>
+        </div>
+        <div style="margin-top:12px; font-size:9px; color:rgba(255,255,255,0.5);">
+          <strong>Active Tournaments:</strong> 5 • Prize Pool: $1.125M
+        </div>
+      </div>
+    </div>
+
+    <!-- Other views (STUDI, IVE, Social, Play, Finance, EIS, Analytics, Seal, Hologram) -->
+    <div class="view-panel" id="view-studi"><div class="card"><h3>◈ STUDI</h3><p>Governance dashboard placeholders.</p></div></div>
+    <div class="view-panel" id="view-ive"><div class="card"><h3>⧫ IVE</h3><p>Verification metrics placeholders.</p></div></div>
+    <div class="view-panel" id="view-social"><div class="card"><h3>⎔ SOCIAL</h3><p>Feed placeholder.</p></div></div>
+    <div class="view-panel" id="view-play"><div class="card"><h3>▶ PLAY</h3><p>Games placeholder.</p></div></div>
+    <div class="view-panel" id="view-finance"><div class="card"><h3>$ FINANCE</h3><p>Pool placeholder.</p></div></div>
+    <div class="view-panel" id="view-eis"><div class="card"><h3>⚡ EIS</h3><p>EIS calculator placeholder.</p></div></div>
+    <div class="view-panel" id="view-analytics"><div class="card"><h3>▣ ANALYTICS</h3><p>Metrics placeholder.</p></div></div>
+    <div class="view-panel" id="view-seal"><div class="card"><h3>🔏 SEAL</h3><p>Decision seal placeholder.</p></div></div>
+    <div class="view-panel" id="view-hologram"><div class="card"><h3>✦ HOLOGRAM</h3><p>3D canvas placeholder.</p></div></div>
+
+  </div>
+</div>
+
+<!-- Screensaver -->
+<div id="screensaver"><canvas id="ssCanvas"></canvas></div>
+
+<script>
+/* ========== THEME ========== */
+function toggleTheme(){ document.body.classList.toggle('light'); const t=document.querySelector('button[onclick="toggleTheme()"]'); t.textContent=document.body.classList.contains('light')?'☀️':'🌙'; }
+
+/* ========== NAV ========== */
+const tabs=document.querySelectorAll('#navTabs button');
+const panels=document.querySelectorAll('.view-panel');
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  panels.forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById('view-'+t.dataset.view).classList.add('active');
+}));
+
+/* ========== SIMULATOR ========== */
+function scenario1(){
+  const out=document.getElementById('simOutput');
+  out.innerHTML='<div style="color:#4ade80;">▶ Scenario 1: Nominal Flow</div><div>Telemetry: 3.2K, 4.4ps — Optimal</div><div>Conjuncts: C✅ E✅ I✅ S✅ R✅</div><div>Result: <strong style="color:#4ade80;">PASS — RELEASE_ELIGIBLE = TRUE</strong></div>';
+}
+function scenario2(){
+  const out=document.getElementById('simOutput');
+  out.innerHTML='<div style="color:#fbbf24;">▶ Scenario 2: M0 Violation</div><div>Injected claim: "100% secure"</div><div>m0-doctrine-lint: VIOLATION</div><div>Conjuncts: C✅ E✅ I❌ S✅ R✅</div><div>Result: <strong style="color:#fbbf24;">FAIL — TRIPPED TO SAFETY STANDBY</strong></div>';
+}
+function scenario3(){
+  const out=document.getElementById('simOutput');
+  out.innerHTML='<div style="color:#ff6b6b;">▶ Scenario 3: Thermal Crash</div><div>1,000 TPS → Temp 4.35K</div><div>Soundness fail → Interlock triggered</div><div>Conjuncts: C✅ E✅ I✅ S❌ R✅</div><div>Result: <strong style="color:#ff6b6b;">FAIL — CIRCUIT BREAKER OPEN</strong></div>';
+}
+
+/* ========== CONSOLE ========== */
+function runConsole(){
+  const cmd=document.getElementById('consoleInput').value.trim(); if(!cmd)return;
+  const out=document.getElementById('consoleOutput');
+  out.innerHTML+=`<div>⏣ ${cmd}</div>`;
+  if(cmd==='help') out.innerHTML+='<div style="color:#fbbf24;">Commands: status, sim, clear</div>';
+  else if(cmd==='status') out.innerHTML+='<div style="color:#4ade80;">ALL SYSTEMS GO</div>';
+  else if(cmd==='sim') out.innerHTML+='<div>Open Simulator tab</div>';
+  else if(cmd==='clear') out.innerHTML='';
+  else out.innerHTML+=`<div style="color:rgba(255,255,255,0.5);">Unknown: ${cmd}</div>`;
+  document.getElementById('consoleInput').value='';
+}
+
+/* ========== SCREENSAVER (Blackhole) ========== */
+(function ss(){
+  const overlay=document.getElementById('screensaver'),canvas=document.getElementById('ssCanvas'),ctx=canvas.getContext('2d');
+  let w,h,motes=[],active=false,timer;
+  function rs(){w=canvas.width=innerWidth;h=canvas.height=innerHeight;} rs(); addEventListener('resize',rs);
+  class Mote{constructor(){this.reset();}reset(){const a=Math.random()*Math.PI*2,maxD=Math.max(w,h)*.6;this.radius=Math.random()*maxD+40;this.x=w/2+Math.cos(a)*this.radius;this.y=h/2+Math.sin(a)*this.radius;this.angle=a;this.speed=Math.random()*1.2+.3;this.size=Math.random()*1.2+.3;this.color=Math.random()<.2?'rgba(0,124,89,0.2)':Math.random()<.35?'rgba(224,60,49,0.15)':'rgba(212,175,55,0.2)';}update(){this.radius-=this.speed*.35;this.angle+=.004;this.x=w/2+Math.cos(this.angle)*this.radius;this.y=h/2+Math.sin(this.angle)*this.radius;if(this.radius<15)this.reset();}draw(){ctx.fillStyle=this.color;ctx.beginPath();ctx.arc(this.x,this.y,this.size,0,Math.PI*2);ctx.fill();}}
+  function init(){motes=[];for(let i=0;i<200;i++)motes.push(new Mote());}
+  function render(){if(!active)return;ctx.fillStyle='rgba(2,2,5,0.06)';ctx.fillRect(0,0,w,h);ctx.fillStyle='#000';ctx.shadowBlur=30;ctx.shadowColor='rgba(212,175,55,0.06)';ctx.beginPath();ctx.arc(w/2,h/2,15,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;motes.forEach(m=>{m.update();m.draw();});requestAnimationFrame(render);}
+  function start(){active=true;overlay.classList.add('active');init();render();}function stop(){active=false;overlay.classList.remove('active');}
+  function resetTimer(){clearTimeout(timer);if(overlay.classList.contains('active'))stop();timer=setTimeout(start,8000);}
+  ['mousemove','keydown','click','touchstart'].forEach(e=>document.addEventListener(e,resetTimer));overlay.addEventListener('click',resetTimer);resetTimer();
+})();
+
+/* ========== WALLET ========== */
+function connectWallet(){ alert('MetaMask not required — simulation mode.'); }
+</script>
+</body>
+</html>

@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VVU Engineering Stack — Physical-to-Cryptographic Information Pathway</title>
+<style>
+/* =====================================================================
+   VVU ENGINEERING STACK — systems-engineering paper figure
+   Aesthetic: technical textbook / laboratory interface, static figure.
+   Light technical-gray ground, dark navy header, restrained accents.
+   No logos, no decorative imagery, no sci-fi ornamentation.
+   ===================================================================== */
+
+:root {
+  /* ground + ink */
+  --ground:        #f6f7f9;   /* very light technical gray */
+  --ground-2:      #eef0f3;   /* subtle panel fill */
+  --ground-3:      #e6e9ee;   /* deeper panel fill (domains) */
+  --ink:           #1a1d23;   /* primary body ink */
+  --ink-soft:      #3a3f47;   /* secondary labels */
+  --ink-mute:      #6a7178;   /* tertiary / metadata */
+  --ink-faint:     #9aa1a8;   /* hairlines, ghost text */
+  --rule:          #c8ccd2;   /* primary hairline */
+  --rule-soft:     #dde0e5;   /* secondary hairline */
+
+  /* dark technical header */
+  --hdr-bg:        #1b2330;   /* navy charcoal */
+  --hdr-bg-2:      #232c3b;
+  --hdr-ink:       #e8ecf2;
+  --hdr-ink-mute:  #aab4c2;
+  --hdr-rule:      #3a4555;
+
+  /* accents — restrained, semantic */
+  --blue:          #2b5d8a;   /* information transport */
+  --cyan:          #1d8aa3;   /* zero-copy path, optical */
+  --green:         #2f7a4d;   /* verified / admissible */
+  --amber:         #b5761a;   /* calibration / attention */
+  --red:           #a8312a;   /* enforcement / failure */
+  --plum:          #6c3a6e;   /* governance / cryptographic */
+
+  /* domain tints (pale) */
+  --dom-physical:  #f1f4f8;
+  --dom-rt:        #eef3f4;
+  --dom-router:    #f0eee8;
+  --dom-bio:       #f1eede;
+  --dom-proof:     #eceef4;
+  --dom-ive:       #f3edf1;
+  --dom-enforce:   #f4ecec;
+
+  /* typography */
+  --serif: 'Times New Roman', 'Times', Georgia, serif;
+  --sans:  'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+  --mono:  'JetBrains Mono', 'SF Mono', 'Consolas', 'Menlo', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* =====================================================================
+   16:9 canvas wrapper — fixed aspect, scrolls if viewport too small
+   ===================================================================== */
+.canvas {
+  width: 100%;
+  max-width: 1920px;
+  margin: 0 auto;
+  aspect-ratio: 16 / 9;
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .canvas { aspect-ratio: auto; min-height: 1200px; }
+}
+
+/* =====================================================================
+   HEADER — dark technical, chapter-style numbering
+   ===================================================================== */
+.header {
+  background: var(--hdr-bg);
+  color: var(--hdr-ink);
+  padding: 14px 28px 12px;
+  border-bottom: 1px solid var(--hdr-rule);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.header .title-block .eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--hdr-ink-mute);
+  margin-bottom: 4px;
+}
+
+.header .title-block h1 {
+  font-family: var(--serif);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--hdr-ink);
+  line-height: 1.1;
+}
+
+.header .title-block .subtitle {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--hdr-ink-mute);
+  margin-top: 3px;
+  font-weight: 400;
+}
+
+.header .title-block .pathway {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--hdr-ink-mute);
+  margin-top: 6px;
+  letter-spacing: 0.04em;
+}
+
+.header .title-block .pathway .arrow { color: var(--cyan); padding: 0 4px; }
+.header .title-block .pathway .stage { color: var(--hdr-ink); }
+
+.header .meta {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--hdr-ink-mute);
+  line-height: 1.6;
+}
+
+.header .meta .k { color: var(--hdr-ink-mute); }
+.header .meta .v { color: var(--hdr-ink); }
+
+/* =====================================================================
+   FIGURE BODY — primary 7-stage pathway, left → right
+   ===================================================================== */
+.figure {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+  padding: 14px 18px 8px;
+  position: relative;
+  background:
+    linear-gradient(to right, transparent 0, transparent calc(100% / 7 - 0px), var(--rule-soft) calc(100% / 7), transparent calc(100% / 7 + 1px)) repeat-x;
+  background-size: calc(100% / 7) 100%;
+}
+
+.stage {
+  padding: 0 8px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* stage number banner */
+.stage-num {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 3px;
+  margin-bottom: 4px;
+}
+
+.stage-num .n {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.stage h2 {
+  font-family: var(--serif);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: 0.005em;
+  line-height: 1.15;
+  margin-bottom: 2px;
+}
+
+.stage .stage-sub {
+  font-family: var(--sans);
+  font-size: 10px;
+  color: var(--ink-mute);
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+
+/* domain tint per stage */
+.stage.s1 .stage-inner { background: var(--dom-physical); }
+.stage.s2 .stage-inner { background: var(--dom-rt); }
+.stage.s3 .stage-inner { background: var(--dom-router); }
+.stage.s4 .stage-inner { background: var(--dom-bio); }
+.stage.s5 .stage-inner { background: var(--dom-proof); }
+.stage.s6 .stage-inner { background: var(--dom-ive); }
+.stage.s7 .stage-inner { background: var(--dom-enforce); }
+
+.stage-inner {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 8px 9px 9px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  min-height: 0;
+}
+
+/* ---- shared sub-components ---- */
+
+.blk {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 5px 7px;
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+  position: relative;
+}
+
+.blk .blk-label {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 2px;
+}
+
+.blk .blk-name {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.blk .blk-desc {
+  font-family: var(--sans);
+  font-size: 9.5px;
+  color: var(--ink-mute);
+  margin-top: 1px;
+}
+
+.blk code {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink);
+  background: var(--ground-2);
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+/* chain arrows between blks */
+.chain {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.chain .row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.chain .row .arr {
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 0;
+}
+
+/* metrics card */
+.metrics {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--ground-2);
+  padding: 6px 8px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.metrics .mtitle {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  border-bottom: 1px solid var(--rule-soft);
+  padding-bottom: 2px;
+  margin-bottom: 3px;
+}
+
+.metrics .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.metrics .k { color: var(--ink-mute); }
+.metrics .v { color: var(--ink); }
+.metrics .v.target { color: var(--blue); }
+.metrics .v.measured { color: var(--green); }
+.metrics .v.warn { color: var(--amber); }
+
+/* failure-mode + mitigation pair */
+.failmit {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.fm-card {
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 9px;
+  line-height: 1.3;
+  font-family: var(--sans);
+}
+
+.fm-card .fmt {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+
+.fm-fail {
+  background: #f7e9e8;
+  border: 1px solid #d8a5a1;
+  color: var(--red);
+}
+.fm-fail .fmt { color: var(--red); }
+
+.fm-mit {
+  background: #e9f1ea;
+  border: 1px solid #a8c8ad;
+  color: var(--green);
+}
+.fm-mit .fmt { color: var(--green); }
+
+/* tag pills */
+.tag {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
+  background: #fff;
+  color: var(--ink-soft);
+}
+
+.tag.blue { color: var(--blue); border-color: var(--blue); }
+.tag.cyan { color: var(--cyan); border-color: var(--cyan); }
+.tag.green { color: var(--green); border-color: var(--green); }
+.tag.amber { color: var(--amber); border-color: var(--amber); }
+.tag.red { color: var(--red); border-color: var(--red); }
+.tag.plum { color: var(--plum); border-color: var(--plum); }
+
+/* =====================================================================
+   SECTION 1 — physical / photonic chain (event pixel → clock recovery)
+   ===================================================================== */
+
+.sensor-matrix {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1px;
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-soft);
+  padding: 1px;
+  border-radius: 2px;
+  width: 88px;
+  margin: 0 auto;
+}
+.sensor-matrix .px {
+  background: var(--ground-2);
+  aspect-ratio: 1 / 1;
+}
+.sensor-matrix .px.on { background: var(--cyan); }
+.sensor-matrix .px.act { background: var(--amber); }
+
+.aer-stream {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  margin: 4px 0 2px;
+}
+.aer-stream .ev {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--cyan);
+  opacity: 0.4;
+}
+.aer-stream .ev.hi { opacity: 1; background: var(--amber); }
+
+.photonic-chain {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.photonic-chain .pcell {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 5px;
+  align-items: center;
+  font-size: 9.5px;
+}
+.photonic-chain .pcell .pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--cyan);
+  background: #fff;
+  justify-self: center;
+}
+.photonic-chain .pcell .pip.filled { background: var(--cyan); }
+.photonic-chain .pcell .pip.amber { border-color: var(--amber); background: var(--amber); }
+.photonic-chain .pcell .pip.green { border-color: var(--green); background: var(--green); }
+.photonic-chain .pcell .lbl {
+  font-family: var(--sans);
+  color: var(--ink);
+}
+.photonic-chain .pcell .lbl code { font-family: var(--mono); font-size: 9px; }
+
+/* optical link mini-schematic */
+.optical-link {
+  display: grid;
+  grid-template-columns: 1fr 28px 1fr;
+  align-items: center;
+  gap: 2px;
+  background: var(--ground-2);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 5px 6px;
+}
+.optical-link .tx, .optical-link .rx {
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--ink-soft);
+}
+.optical-link .tx .d, .optical-link .rx .d {
+  font-size: 8px; color: var(--ink-mute); margin-top: 1px;
+}
+.optical-link .fiber {
+  height: 14px;
+  position: relative;
+  background:
+    repeating-linear-gradient(90deg, transparent 0, transparent 3px, var(--cyan) 3px, var(--cyan) 4px);
+  opacity: 0.55;
+  border-radius: 2px;
+}
+.optical-link .fiber::after {
+  content: '1550 nm';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  color: var(--cyan);
+  letter-spacing: 0.05em;
+}
+
+/* =====================================================================
+   SECTION 2 — VVU OS layered stack
+   ===================================================================== */
+
+.os-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-height: 0;
+}
+
+.os-layer {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 4px 7px;
+  background: #fff;
+  position: relative;
+  font-size: 10px;
+}
+
+.os-layer.top { background: #fafbfd; }
+.os-layer.rt  { background: var(--dom-rt); }
+
+.os-layer .ol-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 2px;
+}
+.os-layer .ol-head .ol-name {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  font-weight: 600;
+}
+.os-layer .ol-head .ol-tag {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ink-mute);
+}
+.os-layer .ol-items {
+  font-family: var(--sans);
+  font-size: 9.5px;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+.os-layer .ol-items code {
+  font-family: var(--mono);
+  font-size: 9px;
+  background: var(--ground-2);
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+/* zero-copy overlay indicator */
+.zc-overlay {
+  position: absolute;
+  left: -3px;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  background: var(--cyan);
+  border-radius: 2px;
+}
+.os-layer.has-zc { padding-left: 10px; }
+
+/* =====================================================================
+   SECTION 3 — substrate router
+   ===================================================================== */
+
+.router-in {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ground-2);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 9.5px;
+}
+.router-in .ev-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--cyan);
+}
+.router-in .ev-dot.amber { background: var(--amber); }
+
+.classifier {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 4px 6px;
+  background: #fff;
+  font-size: 9.5px;
+}
+.classifier .ctitle {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 2px;
+}
+.classifier .crow {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  font-family: var(--sans);
+  color: var(--ink-soft);
+  padding: 1px 0;
+}
+.classifier .crow .ck { color: var(--ink-mute); font-size: 9px; }
+
+.fsm {
+  border: 1px dashed var(--rule);
+  border-radius: 3px;
+  padding: 3px 6px;
+  background: var(--ground-2);
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--ink-mute);
+  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.branches {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 3px;
+}
+
+.branch {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 4px 5px;
+  background: #fff;
+  font-size: 9px;
+  text-align: center;
+}
+.branch .blbl {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.branch .bname {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 1px 0;
+}
+.branch .bsub {
+  font-family: var(--sans);
+  font-size: 8.5px;
+  color: var(--ink-mute);
+}
+.branch.silicon { border-color: var(--blue); }
+.branch.bio    { border-color: var(--amber); }
+.branch.photon { border-color: var(--cyan); }
+
+.verdict {
+  border: 1px solid var(--green);
+  background: #ecf3ed;
+  border-radius: 3px;
+  padding: 4px 6px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--green);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.abs-iface {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ink-mute);
+  text-align: center;
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 3px;
+  letter-spacing: 0.04em;
+}
+
+/* =====================================================================
+   SECTION 4 — light studio / bio-interface
+   ===================================================================== */
+
+.dmd-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 1px;
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-soft);
+  padding: 1px;
+  border-radius: 2px;
+  width: 100px;
+  margin: 0 auto;
+}
+.dmd-grid .cell {
+  aspect-ratio: 1 / 1;
+  background: var(--ground-2);
+}
+.dmd-grid .cell.on { background: var(--amber); }
+
+.bio-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bio-chain .brow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  color: var(--ink-soft);
+}
+.bio-chain .brow .bnum {
+  width: 14px;
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ink-mute);
+}
+
+.calib-loop {
+  border: 1px dashed var(--amber);
+  border-radius: 3px;
+  padding: 4px 6px;
+  background: #fbf5e8;
+  font-family: var(--sans);
+  font-size: 9px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+}
+.calib-loop .ct {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 2px;
+}
+
+/* =====================================================================
+   SECTION 5 — ProofBridge (cryptographic evidence fabric)
+   ===================================================================== */
+
+.proof-chain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+}
+
+.proof-step {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--plum);
+  border-radius: 2px;
+  padding: 3px 7px;
+  font-size: 9.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.proof-step .ps-name {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  font-weight: 600;
+}
+.proof-step .ps-tag {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ink-mute);
+}
+
+.hsm-block {
+  border: 1px solid var(--ink-soft);
+  border-radius: 3px;
+  background: #2a2f37;
+  color: #e8ecf2;
+  padding: 5px 7px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+.hsm-block .ht {
+  font-size: 8px;
+  color: #aab4c2;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.crypto-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 2px;
+}
+.crypto-blocks .cb {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  border: 1px solid var(--rule);
+  background: var(--ground-2);
+  color: var(--ink-soft);
+  padding: 2px 5px;
+  border-radius: 2px;
+}
+
+.path-pair {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.path-card {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 5px 7px;
+  font-size: 9px;
+  line-height: 1.4;
+  background: #fff;
+}
+.path-card.fast {
+  border-left: 3px solid var(--cyan);
+  background: #ecf4f5;
+}
+.path-card.settle {
+  border-left: 3px solid var(--blue);
+  background: #ecf0f6;
+}
+.path-card .pt {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 1px;
+}
+.path-card.fast .pt { color: var(--cyan); }
+.path-card.settle .pt { color: var(--blue); }
+.path-card .pp { color: var(--ink-soft); font-size: 9px; }
+
+.ledger-note {
+  border: 1px dashed var(--ink-soft);
+  background: var(--ground-2);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--ink-soft);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+.ledger-note .ne { color: var(--green); font-weight: 600; }
+.ledger-note .nx { color: var(--red); font-weight: 600; }
+
+/* =====================================================================
+   SECTION 6 — IVE / governance boundary
+   ===================================================================== */
+
+.ive-graph {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.ive-in {
+  border: 1px solid var(--plum);
+  border-radius: 3px;
+  padding: 4px 6px;
+  background: #f3edf1;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--plum);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  font-weight: 600;
+}
+
+.invariants {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+}
+.inv-cell {
+  border: 1px solid var(--rule);
+  background: #fff;
+  border-radius: 2px;
+  padding: 3px 2px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--ink-soft);
+}
+.inv-cell.ok { color: var(--green); border-color: var(--green); }
+.inv-cell.eh { color: var(--ink-mute); border-style: dashed; }
+
+.constitution {
+  border: 1px solid var(--ink-soft);
+  background: var(--hdr-bg);
+  color: var(--hdr-ink);
+  border-radius: 3px;
+  padding: 6px 8px;
+  font-family: var(--serif);
+  font-size: 10.5px;
+  font-style: italic;
+  text-align: center;
+  line-height: 1.3;
+}
+.constitution::before {
+  content: 'CONSTITUTIONAL PRINCIPLE';
+  display: block;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 7.5px;
+  letter-spacing: 0.18em;
+  color: var(--hdr-ink-mute);
+  margin-bottom: 3px;
+}
+
+.release-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.release-card {
+  border-radius: 3px;
+  padding: 5px 7px;
+  font-size: 9px;
+  line-height: 1.35;
+}
+.release-card .rt {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.release-card.eligible {
+  background: #ecf3ed;
+  border: 1px solid var(--green);
+  color: var(--green);
+}
+.release-card.eligible .rt { color: var(--green); }
+.release-card.blocked {
+  background: #f7e9e8;
+  border: 1px solid var(--red);
+  color: var(--red);
+}
+.release-card.blocked .rt { color: var(--red); }
+.release-card .rp {
+  font-family: var(--sans);
+  color: var(--ink-soft);
+  font-size: 9px;
+}
+
+/* =====================================================================
+   SECTION 7 — enforcement
+   ===================================================================== */
+
+.enf-paths {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+}
+
+.enf-path {
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  padding: 5px 7px;
+  font-size: 9.5px;
+  line-height: 1.4;
+  background: #fff;
+}
+.enf-path .ept {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.enf-path.local {
+  border-left: 4px solid var(--red);
+  background: #f7e9e8;
+}
+.enf-path.local .ept { color: var(--red); }
+.enf-path.gov {
+  border-left: 4px solid var(--blue);
+  background: #ecf0f6;
+}
+.enf-path.gov .ept { color: var(--blue); }
+.enf-path .esteps {
+  color: var(--ink-soft);
+  font-size: 9px;
+}
+.enf-path .esteps code {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  background: var(--ground-2);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.enf-note {
+  border: 1px dashed var(--ink-mute);
+  border-radius: 3px;
+  padding: 4px 6px;
+  background: var(--ground-2);
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ink-soft);
+  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.enf-badges {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* =====================================================================
+   THICK STAGE PROGRESSION ARROWS (between stages)
+   ===================================================================== */
+
+.stage-arrow {
+  position: absolute;
+  top: 50%;
+  right: -7px;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ground);
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-soft);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+.stage-arrow::before {
+  content: '▶';
+  font-size: 8px;
+  margin-left: 1px;
+}
+.stage:last-child .stage-arrow { display: none; }
+
+/* =====================================================================
+   PROVENANCE SPINE — thin dashed line beneath primary pipeline
+   ===================================================================== */
+
+.provenance {
+  margin: 6px 18px 0;
+  padding: 8px 12px 10px;
+  border: 1px dashed var(--ink-soft);
+  background: var(--ground-2);
+  border-radius: 4px;
+  position: relative;
+}
+
+.provenance .ptitle {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.provenance .ptitle .pn {
+  color: var(--ink);
+  font-weight: 600;
+}
+.provenance .ptitle .pterm {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--green);
+  letter-spacing: 0.08em;
+}
+
+.prov-fields {
+  display: grid;
+  grid-template-columns: repeat(11, 1fr);
+  gap: 4px;
+}
+.prov-fields .pf {
+  border: 1px solid var(--rule);
+  background: #fff;
+  border-radius: 2px;
+  padding: 3px 4px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--ink-soft);
+}
+.prov-fields .pf .pfk {
+  display: block;
+  font-size: 7.5px;
+  color: var(--ink-mute);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+
+.prov-line {
+  margin-top: 6px;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, var(--ink-soft) 0, var(--ink-soft) 6px, transparent 6px, transparent 10px);
+  position: relative;
+}
+.prov-line::after {
+  content: '→  VERIFIABLE SYSTEM STATE';
+  position: absolute;
+  right: 0;
+  top: -16px;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--green);
+  letter-spacing: 0.08em;
+  background: var(--ground-2);
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+/* =====================================================================
+   BOTTOM STRIP — failure isolation + attestation
+   ===================================================================== */
+
+.bottom {
+  margin: 8px 18px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.bottom .btitle {
+  background: var(--hdr-bg);
+  color: var(--hdr-ink);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--hdr-rule);
+}
+
+.bottom .bgrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+}
+
+.bcell {
+  padding: 6px 8px;
+  border-right: 1px solid var(--rule-soft);
+  font-size: 9px;
+  line-height: 1.4;
+  position: relative;
+}
+.bcell:last-child { border-right: none; }
+
+.bcell .bc-domain {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.bcell .bc-fail {
+  font-family: var(--sans);
+  color: var(--ink-soft);
+  font-size: 9px;
+}
+.bcell .bc-mark {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  opacity: 0.4;
+}
+.bcell.warn .bc-mark { background: var(--amber); opacity: 0.7; }
+.bcell.ok   .bc-mark { background: var(--green); opacity: 0.4; }
+
+/* =====================================================================
+   RIGHT INSET — timing budget + engineering invariants
+   ===================================================================== */
+
+.insets {
+  margin: 0 18px 12px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px;
+}
+
+.timing-inset, .inv-inset {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: #fff;
+  padding: 8px 10px;
+}
+
+.inset-title {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.timing-formula {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink);
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+}
+.timing-formula .lhs { color: var(--ink-soft); font-weight: 600; }
+.timing-formula .op { color: var(--ink-mute); padding: 0 2px; }
+.timing-formula .term { color: var(--ink); }
+.timing-formula .sum { color: var(--blue); }
+
+.timing-bar {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 1px;
+  margin-top: 7px;
+  height: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.timing-bar .seg {
+  font-family: var(--mono);
+  font-size: 7px;
+  color: #fff;
+  text-align: center;
+  line-height: 12px;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timing-bar .s1  { background: #2b5d8a; }
+.timing-bar .s2  { background: #2b5d8a; opacity: 0.85; }
+.timing-bar .s3  { background: #1d8aa3; }
+.timing-bar .s4  { background: #1d8aa3; opacity: 0.85; }
+.timing-bar .s5  { background: #6c3a6e; }
+.timing-bar .s6  { background: #6c3a6e; opacity: 0.85; }
+.timing-bar .s7  { background: #2f7a4d; }
+.timing-bar .s8  { background: #2f7a4d; opacity: 0.85; }
+.timing-bar .s9  { background: #b5761a; }
+.timing-bar .s10 { background: #a8312a; }
+
+.timing-legend {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ink-mute);
+  letter-spacing: 0.06em;
+}
+
+.timing-legend .lg .swatch {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 1px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+/* invariants list */
+.inv-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  font-family: var(--sans);
+  font-size: 9.5px;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+.inv-list .iv {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 5px;
+  align-items: start;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--rule-soft);
+}
+.inv-list .iv:last-child { border-bottom: none; }
+.inv-list .iv .num {
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--ink-mute);
+  letter-spacing: 0.04em;
+}
+.inv-list .iv .txt { color: var(--ink); }
+
+/* legend bar (color semantics) */
+.legend {
+  margin: 0 18px 10px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--rule-soft);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-family: var(--mono);
+  font-size: 8.5px;
+  color: var(--ink-mute);
+  letter-spacing: 0.05em;
+}
+.legend .lg .swatch {
+  display: inline-block;
+  width: 14px; height: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.legend .lg.solid .swatch { background: var(--ink-soft); }
+.legend .lg.thin  .swatch { background: var(--ink-soft); height: 1px; }
+.legend .lg.dash  .swatch {
+  background: repeating-linear-gradient(90deg, var(--ink-soft) 0, var(--ink-soft) 4px, transparent 4px, transparent 7px);
+  height: 2px;
+}
+.legend .lg.red   .swatch { background: var(--red); }
+.legend .lg.blue  .swatch { background: var(--blue); }
+.legend .lg.cyan  .swatch { background: var(--cyan); }
+.legend .lg.green .swatch { background: var(--green); }
+.legend .lg.amber .swatch { background: var(--amber); }
+
+/* footer caption */
+.caption {
+  margin: 0 18px 12px;
+  font-family: var(--serif);
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--ink-mute);
+  text-align: center;
+  line-height: 1.4;
+  padding-top: 4px;
+  border-top: 1px solid var(--rule-soft);
+}
+
+/* small responsive */
+@media (max-width: 1200px) {
+  .figure { grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .stage { padding: 0 4px; }
+  .stage h2 { font-size: 12px; }
+  .prov-fields { grid-template-columns: repeat(6, 1fr); }
+  .insets { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .figure { grid-template-columns: 1fr 1fr; }
+  .stage-arrow { display: none; }
+  .bottom .bgrid { grid-template-columns: 1fr 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="canvas">
+
+  <!-- =================== HEADER =================== -->
+  <header class="header">
+    <div class="title-block">
+      <div class="eyebrow">FIG. 1 · SYSTEMS-ENGINEERING ARCHITECTURE OVERVIEW</div>
+      <h1>VVU Engineering Stack</h1>
+      <div class="subtitle">Physical-to-Cryptographic Information Pathway</div>
+      <div class="pathway">
+        <span class="stage">EVENT CAPTURE</span><span class="arrow">→</span>
+        <span class="stage">PHOTONIC TRANSPORT</span><span class="arrow">→</span>
+        <span class="stage">SUBSTRATE ROUTING</span><span class="arrow">→</span>
+        <span class="stage">VERIFICATION</span><span class="arrow">→</span>
+        <span class="stage">ENFORCEMENT</span>
+      </div>
+    </div>
+    <div class="meta">
+      <div><span class="k">DOMAIN</span> · <span class="v">vvu-watchdog</span></div>
+      <div><span class="k">SPEC</span> · <span class="v">v1.0</span> &nbsp; <span class="k">FIG</span> · <span class="v">1/1</span></div>
+      <div><span class="k">READING ORDER</span> · <span class="v">left → right</span></div>
+      <div><span class="k">PROVENANCE SPINE</span> · <span class="v">dashed, lower register</span></div>
+    </div>
+  </header>
+
+  <!-- =================== PRIMARY PIPELINE =================== -->
+  <div class="figure" role="figure" aria-label="VVU engineering stack information pathway">
+
+    <!-- ============ STAGE 1 ============ -->
+    <section class="stage s1">
+      <div class="stage-num"><span class="n">01</span> · PHYSICAL + PHOTONIC TRANSPORT</div>
+      <h2>Physical / Photonic Layer</h2>
+      <div class="stage-sub">Event capture → optical transport → clock recovery</div>
+      <div class="stage-inner">
+
+        <div class="blk">
+          <div class="blk-label">EVENT SENSOR</div>
+          <div class="sensor-matrix" aria-hidden="true">
+            <!-- 8x6 grid, sparse activations -->
+            <div class="px"></div><div class="px"></div><div class="px on"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px"></div>
+            <div class="px"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px act"></div><div class="px"></div><div class="px"></div><div class="px"></div>
+            <div class="px"></div><div class="px on"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px act"></div><div class="px"></div>
+            <div class="px"></div><div class="px"></div><div class="px"></div><div class="px on"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px"></div>
+            <div class="px"></div><div class="px"></div><div class="px act"></div><div class="px"></div><div class="px"></div><div class="px on"></div><div class="px"></div><div class="px"></div>
+            <div class="px"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px"></div><div class="px on"></div>
+          </div>
+          <div class="aer-stream" aria-hidden="true">
+            <div class="ev hi"></div><div class="ev"></div><div class="ev"></div><div class="ev hi"></div><div class="ev"></div><div class="ev"></div><div class="ev hi"></div><div class="ev"></div><div class="ev"></div><div class="ev"></div>
+          </div>
+          <div class="blk-name" style="text-align:center;">65 nm CMOS Event Pixel</div>
+          <div class="blk-desc" style="text-align:center;">Address-Event Representation (AER)</div>
+        </div>
+
+        <div class="photonic-chain">
+          <div class="pcell"><div class="pip filled"></div><div class="lbl">FPGA / <code>SerDes</code> front end</div></div>
+          <div class="pcell"><div class="pip amber"></div><div class="lbl">PPM / PWM optical burst</div></div>
+        </div>
+
+        <div class="optical-link">
+          <div class="tx">VCSEL<div class="d">tx</div></div>
+          <div class="fiber" aria-hidden="true"></div>
+          <div class="rx">InGaAs SPAD<div class="d">rx</div></div>
+        </div>
+
+        <div class="photonic-chain">
+          <div class="pcell"><div class="pip green"></div><div class="lbl">PLL / clock synchronization</div></div>
+          <div class="pcell"><div class="pip filled"></div><div class="lbl">Clock recovery / demod</div></div>
+        </div>
+
+        <div class="metrics">
+          <div class="mtitle">Target Metrics</div>
+          <div class="row"><span class="k">latency</span><span class="v target">&lt; 1 µs</span></div>
+          <div class="row"><span class="k">energy</span><span class="v target">&lt; 1 pJ / bit</span></div>
+          <div class="row"><span class="k">throughput</span><span class="v target">&gt; 10 Gbps</span></div>
+          <div class="row"><span class="k">timing jitter</span><span class="v warn">measured & budgeted</span></div>
+        </div>
+
+        <div class="failmit">
+          <div class="fm-card fm-fail">
+            <div class="fmt">Critical Failure</div>
+            Timing jitter / clock-domain uncertainty
+          </div>
+          <div class="fm-card fm-mit">
+            <div class="fmt">Mitigation</div>
+            PLL + deterministic timestamping + hardware clock budget
+          </div>
+        </div>
+
+        <div class="tag cyan">SPARSE ASYNCHRONOUS</div>
+      </div>
+      <div class="stage-arrow" aria-hidden="true"></div>
+    </section>
+
+    <!-- ============ STAGE 2 ============ -->
+    <section class="stage s2">
+      <div class="stage-num"><span class="n">02</span> · VVU OS / DETERMINISTIC EVENT FABRIC</div>
+      <h2>Real-Time Event Fabric</h2>
+      <div class="stage-sub">Hardware / software boundary — zero-copy DMA path</div>
+      <div class="stage-inner">
+
+        <div class="os-stack">
+          <div class="os-layer top">
+            <div class="ol-head"><span class="ol-name">Application / API</span><span class="ol-tag">user</span></div>
+            <div class="ol-items">gRPC · Protobuf · Telemetry · Remote Attestation</div>
+          </div>
+          <div class="os-layer">
+            <div class="ol-head"><span class="ol-name">WASM / Model Runtime</span><span class="ol-tag">user</span></div>
+            <div class="ol-items">Dynamic routing rules · Verification workers · SAE invariant evaluators</div>
+          </div>
+          <div class="os-layer rt has-zc">
+            <span class="zc-overlay" aria-hidden="true"></span>
+            <div class="ol-head"><span class="ol-name">Zero-Copy Event Fabric</span><span class="ol-tag cyan">DMA</span></div>
+            <div class="ol-items">DMA ring buffers · pinned memory · lock-free queues · shared-memory IPC</div>
+          </div>
+          <div class="os-layer has-zc">
+            <span class="zc-overlay" aria-hidden="true"></span>
+            <div class="ol-head"><span class="ol-name">RT Kernel / Drivers</span><span class="ol-tag">kernel</span></div>
+            <div class="ol-items">
+              Linux RT-PREEMPT · <code>/dev/vvu_photonic</code> · <code>/dev/vvu_proofbridge</code><br>
+              IRQ affinity · CPU isolation (<code>isolcpus</code>)
+            </div>
+          </div>
+          <div class="os-layer has-zc">
+            <span class="zc-overlay" aria-hidden="true"></span>
+            <div class="ol-head"><span class="ol-name">Real-Time Hardware</span><span class="ol-tag">hw</span></div>
+            <div class="ol-items">FPGA DMA · ARM Cortex-R / RT cores · HSM / crypto accelerator</div>
+          </div>
+        </div>
+
+        <div class="metrics">
+          <div class="mtitle">Runtime Targets</div>
+          <div class="row"><span class="k">kernel IRQ latency</span><span class="v target">&lt; 500 ns</span></div>
+          <div class="row"><span class="k">user-space copies</span><span class="v target">0 (DMA path)</span></div>
+          <div class="row"><span class="k">RT cores</span><span class="v">dedicated</span></div>
+          <div class="row"><span class="k">polling</span><span class="v">lock-free</span></div>
+          <div class="row"><span class="k">DMA buffers</span><span class="v">NUMA-local</span></div>
+        </div>
+
+        <div class="tag cyan">ZERO-COPY PATH · io_uring + DMA</div>
+      </div>
+      <div class="stage-arrow" aria-hidden="true"></div>
+    </section>
+
+    <!-- ============ STAGE 3 ============ -->
+    <section class="stage s3">
+      <div class="stage-num"><span class="n">03</span> · SUBSTRATE-AGNOSTIC ROUTER</div>
+      <h2>Substrate Router</h2>
+      <div class="stage-sub">Deterministic routing — one event, three substrates</div>
+      <div class="stage-inner">
+
+        <div class="router-in">
+          <span class="ev-dot amber"></span>
+          <span><strong>EVENT</strong> &nbsp;·&nbsp; <code>event_id</code> &nbsp;·&nbsp; <code>klass?</code></span>
+        </div>
+
+        <div class="classifier">
+          <div class="ctitle">Event Classifier</div>
+          <div class="crow"><span class="ck">vibration</span><span>tag</span></div>
+          <div class="crow"><span class="ck">temperature spike</span><span>tag</span></div>
+          <div class="crow"><span class="ck">light change</span><span>tag</span></div>
+          <div class="crow"><span class="ck">other sparse event</span><span>tag</span></div>
+        </div>
+
+        <div class="fsm">Routing State Machine</div>
+
+        <div class="branches">
+          <div class="branch silicon">
+            <div class="blbl">Node A</div>
+            <div class="bname">Silicon</div>
+            <div class="bsub">CPU / GPU / Edge AI</div>
+          </div>
+          <div class="branch bio">
+            <div class="blbl">Node B</div>
+            <div class="bname">Biological</div>
+            <div class="bsub">Light Studio / Neural IF</div>
+          </div>
+          <div class="branch photon">
+            <div class="blbl">Node C</div>
+            <div class="bname">Photonic</div>
+            <div class="bsub">Optical Compute</div>
+          </div>
+        </div>
+
+        <div class="verdict">↳ Verified Decision</div>
+
+        <div class="abs-iface">Digital Interface Layer · SPI / I²C / gRPC / Protobuf</div>
+
+        <div class="metrics">
+          <div class="mtitle">Router Targets</div>
+          <div class="row"><span class="k">classification</span><span class="v target">&gt; 95 %</span></div>
+          <div class="row"><span class="k">routing</span><span class="v target">&lt; 100 µs</span></div>
+          <div class="row"><span class="k">decision energy</span><span class="v target">&lt; 10 µJ</span></div>
+        </div>
+
+        <div class="tag">SUBSTRATE-AGNOSTIC</div>
+      </div>
+      <div class="stage-arrow" aria-hidden="true"></div>
+    </section>
+
+    <!-- ============ STAGE 4 ============ -->
+    <section class="stage s4">
+      <div class="stage-num"><span class="n">04</span> · LIGHT STUDIO / BIO-INTERFACE</div>
+      <h2>Light Studio / Bio-Interface</h2>
+      <div class="stage-sub">Patterned light → neural substrate → feedback</div>
+      <div class="stage-inner">
+
+        <div class="blk">
+          <div class="blk-label">DMD / LED ARRAY</div>
+          <div class="dmd-grid" aria-hidden="true">
+            <div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div>
+            <div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+            <div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div>
+            <div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div>
+            <div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div><div class="cell"></div><div class="cell"></div><div class="cell on"></div>
+          </div>
+          <div class="blk-desc" style="text-align:center; margin-top:3px;">&lt; 100 µm spatial · &lt; 1 ms temporal</div>
+        </div>
+
+        <div class="bio-chain">
+          <div class="brow"><span class="bnum">1</span><span>Patterned light</span></div>
+          <div class="brow"><span class="bnum">2</span><span>Neural / organoid substrate</span></div>
+          <div class="brow"><span class="bnum">3</span><span>Calcium imaging (GCaMP) / MEA</span></div>
+          <div class="brow"><span class="bnum">4</span><span>Spike detection</span></div>
+          <div class="brow"><span class="bnum">5</span><span>Pattern analysis</span></div>
+          <div class="brow"><span class="bnum">6</span><span>Feedback → DMD</span></div>
+        </div>
+
+        <div class="metrics">
+          <div class="mtitle">Recording Targets</div>
+          <div class="row"><span class="k">spatial</span><span class="v target">&lt; 100 µm</span></div>
+          <div class="row"><span class="k">temporal</span><span class="v target">&lt; 1 ms</span></div>
+          <div class="row"><span class="k">MEA rate</span><span class="v target">&gt; 1 kHz</span></div>
+        </div>
+
+        <div class="calib-loop">
+          <div class="ct">Calibration Loop</div>
+          known stimulus → measurement → parameter adjust → repeat
+        </div>
+
+        <div class="failmit">
+          <div class="fm-card fm-fail">
+            <div class="fmt">Failure</div>
+            Biological drift
+          </div>
+          <div class="fm-card fm-mit">
+            <div class="fmt">Mitigation</div>
+            Closed-loop calibration
+          </div>
+        </div>
+
+        <div class="tag amber">SCHEMATIC BIO</div>
+      </div>
+      <div class="stage-arrow" aria-hidden="true"></div>
+    </section>
+
+    <!-- ============ STAGE 5 ============ -->
+    <section class="stage s5">
+      <div class="stage-num"><span class="n">05</span> · PROOFBRIDGE / EVIDENCE FABRIC</div>
+      <h2>ProofBridge</h2>
+      <div class="stage-sub">Raw event → cryptographic evidence</div>
+      <div class="stage-inner">
+
+        <div class="proof-chain">
+          <div class="proof-step"><span class="ps-name">RAW EVENT</span><span class="ps-tag">input</span></div>
+          <div class="proof-step"><span class="ps-name">HASH</span><span class="ps-tag">SHA-256 / SHA-3</span></div>
+          <div class="proof-step"><span class="ps-name">MMR LEAF</span><span class="ps-tag">Merkle Mountain Range</span></div>
+          <div class="proof-step"><span class="ps-name">ATTESTATION</span><span class="ps-tag">BLS threshold</span></div>
+          <div class="proof-step"><span class="ps-name">AGGREGATION</span><span class="ps-tag">+ ZK (optional)</span></div>
+          <div class="proof-step"><span class="ps-name">VERIFIABLE EVIDENCE</span><span class="ps-tag">output</span></div>
+        </div>
+
+        <div class="hsm-block">
+          <div class="ht">HSM / Crypto Accelerator</div>
+          hardware-bound key material
+        </div>
+
+        <div class="crypto-blocks">
+          <span class="cb">SHA-256</span>
+          <span class="cb">SHA-3</span>
+          <span class="cb">MMR</span>
+          <span class="cb">BLS sig</span>
+          <span class="cb">threshold agg</span>
+          <span class="cb">ZK (opt)</span>
+        </div>
+
+        <div class="path-pair">
+          <div class="path-card fast">
+            <div class="pt">Fast Edge Path</div>
+            <div class="pp">event → hash → MMR → attestation → decision</div>
+          </div>
+          <div class="path-card settle">
+            <div class="pt">Settlement Path</div>
+            <div class="pp">MMR root → aggregate proof / signature → L2 / external</div>
+          </div>
+        </div>
+
+        <div class="ledger-note">
+          LEDGER = <span class="ne">EVIDENCE SETTLEMENT</span> &nbsp; not &nbsp; LEDGER = <span class="nx">SENSOR EXECUTION</span>
+        </div>
+
+        <div class="metrics">
+          <div class="mtitle">ProofBridge Targets</div>
+          <div class="row"><span class="k">proof gen</span><span class="v target">&lt; 5 ms</span></div>
+          <div class="row"><span class="k">verify</span><span class="v target">&lt; 10 ms</span></div>
+          <div class="row"><span class="k">evidence retained</span><span class="v">indep. of settlement</span></div>
+        </div>
+
+        <div class="tag plum">EVIDENCE FABRIC</div>
+      </div>
+      <div class="stage-arrow" aria-hidden="true"></div>
+    </section>
+
+    <!-- ============ STAGE 6 ============ -->
+    <section class="stage s6">
+      <div class="stage-num"><span class="n">06</span> · IVE / INVARIANT ENGINE</div>
+      <h2>IVE / Governance Boundary</h2>
+      <div class="stage-sub">Evidence in; governance evaluates; never modifies</div>
+      <div class="stage-inner">
+
+        <div class="ive-graph">
+          <div class="ive-in">ProofBridge evidence →</div>
+          <div class="ive-in">→ IVE Proof Graph</div>
+        </div>
+
+        <div class="invariants" aria-label="Governance invariants GOV-001..010">
+          <div class="inv-cell ok">GOV-001</div>
+          <div class="inv-cell ok">GOV-002</div>
+          <div class="inv-cell ok">GOV-003</div>
+          <div class="inv-cell eh">GOV-004</div>
+          <div class="inv-cell eh">GOV-005</div>
+          <div class="inv-cell eh">GOV-006</div>
+          <div class="inv-cell eh">GOV-007</div>
+          <div class="inv-cell eh">GOV-008</div>
+          <div class="inv-cell eh">GOV-009</div>
+          <div class="inv-cell eh">GOV-010</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:8px;color:var(--ink-mute);text-align:center;letter-spacing:0.06em;margin-top:-2px;">
+          …descriptions not defined in source spec are intentionally omitted.
+        </div>
+
+        <div class="constitution">
+          Governance may authorize action; governance cannot make invalid evidence valid.
+        </div>
+
+        <div class="release-paths">
+          <div class="release-card eligible">
+            <div class="rt">Release Eligible</div>
+            <div class="rp">valid evidence + satisfied invariants + authority</div>
+          </div>
+          <div class="release-card blocked">
+            <div class="rt">Release Blocked</div>
+            <div class="rp">failed / missing evidence → no authorization</div>
+          </div>
+        </div>
+
+        <div class="tag plum">INVARIANT ENGINE</div>
+      </div>
+      <div class="stage-arrow" aria-hidden="true"></div>
+    </section>
+
+    <!-- ============ STAGE 7 ============ -->
+    <section class="stage s7">
+      <div class="stage-num"><span class="n">07</span> · ENFORCEMENT</div>
+      <h2>Circuit Breaker / Enforcement</h2>
+      <div class="stage-sub">Local deterministic + cryptographic settlement</div>
+      <div class="stage-inner">
+
+        <div class="enf-paths">
+          <div class="enf-path local">
+            <div class="ept">Local Safety Path · fastest</div>
+            <div class="esteps">
+              sensor / thermal / SAE violation<br>
+              → local controller (FPGA / MCU)<br>
+              → <strong>immediate safe state</strong>
+            </div>
+          </div>
+          <div class="enf-path gov">
+            <div class="ept">Governance / Settlement Path</div>
+            <div class="esteps">
+              evidence → EIP-712 signed payload<br>
+              → <code>CircuitBreaker.sol</code><br>
+              → L2 settlement / governance record
+            </div>
+          </div>
+        </div>
+
+        <div class="enf-badges">
+          <span class="tag">Arbitrum Sepolia</span>
+          <span class="tag">Polygon Amoy</span>
+        </div>
+
+        <div class="enf-note">
+          L2 tx ≠ deterministic ms-scale physical safety response
+        </div>
+
+        <div class="failmit">
+          <div class="fm-card fm-fail">
+            <div class="fmt">Local</div>
+            deterministic enforcement
+          </div>
+          <div class="fm-card fm-mit">
+            <div class="fmt">Settlement</div>
+            cryptographic governance
+          </div>
+        </div>
+
+        <div class="tag red">ENFORCEMENT</div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- =================== PROVENANCE SPINE =================== -->
+  <div class="provenance">
+    <div class="ptitle">
+      <span><span class="pn">DETERMINISTIC EVENT PROVENANCE</span> · thin dashed · continuous spine</span>
+      <span class="pterm">→ VERIFIABLE SYSTEM STATE</span>
+    </div>
+    <div class="prov-fields">
+      <div class="pf"><span class="pfk">field</span>event_id</div>
+      <div class="pf"><span class="pfk">field</span>sensor_id</div>
+      <div class="pf"><span class="pfk">field</span>sensor_timestamp</div>
+      <div class="pf"><span class="pfk">field</span>capture_epoch</div>
+      <div class="pf"><span class="pfk">field</span>frame_sequence</div>
+      <div class="pf"><span class="pfk">field</span>optical_sequence</div>
+      <div class="pf"><span class="pfk">field</span>receiver_timestamp</div>
+      <div class="pf"><span class="pfk">field</span>router_timestamp</div>
+      <div class="pf"><span class="pfk">field</span>proof_leaf</div>
+      <div class="pf"><span class="pfk">field</span>attestation_reference</div>
+      <div class="pf"><span class="pfk">field</span>calibration_epoch</div>
+    </div>
+    <div class="prov-line" aria-hidden="true"></div>
+  </div>
+
+  <!-- =================== BOTTOM STRIP — FAILURE ISOLATION =================== -->
+  <div class="bottom">
+    <div class="btitle">Failure Isolation + Attestation — a failure in one layer does not redefine the validity of evidence in another</div>
+    <div class="bgrid">
+      <div class="bcell warn">
+        <span class="bc-mark" aria-hidden="true"></span>
+        <div class="bc-domain">Physical</div>
+        <div class="bc-fail">sensor degradation</div>
+      </div>
+      <div class="bcell warn">
+        <span class="bc-mark" aria-hidden="true"></span>
+        <div class="bc-domain">RT Hardware</div>
+        <div class="bc-fail">node enters safe state</div>
+      </div>
+      <div class="bcell warn">
+        <span class="bc-mark" aria-hidden="true"></span>
+        <div class="bc-domain">VVU OS</div>
+        <div class="bc-fail">node isolated</div>
+      </div>
+      <div class="bcell">
+        <span class="bc-mark" aria-hidden="true"></span>
+        <div class="bc-domain">ProofBridge</div>
+        <div class="bc-fail">evidence unavailable</div>
+      </div>
+      <div class="bcell">
+        <span class="bc-mark" aria-hidden="true"></span>
+        <div class="bc-domain">IVE</div>
+        <div class="bc-fail">release blocked</div>
+      </div>
+      <div class="bcell warn">
+        <span class="bc-mark" aria-hidden="true"></span>
+        <div class="bc-domain">Governance</div>
+        <div class="bc-fail">authorization denied</div>
+      </div>
+      <div class="bcell">
+        <span class="bc-mark" aria-hidden="true"></span>
+        <div class="bc-domain">Settlement</div>
+        <div class="bc-fail">evidence publication delayed</div>
+      </div>
+    </div>
+    <div class="bgrid" style="border-top:1px solid var(--rule-soft);">
+      <div class="bcell ok" style="grid-column: span 7;">
+        <span class="bc-mark" aria-hidden="true" style="background:var(--green);opacity:0.6;"></span>
+        <div class="bc-domain" style="color:var(--green);">Application / Telemetry</div>
+        <div class="bc-fail">service degraded — but evidence already retained upstream remains independently verifiable</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== INSETS — TIMING BUDGET + ENGINEERING INVARIANTS =================== -->
+  <div class="insets">
+
+    <div class="timing-inset">
+      <div class="inset-title">End-to-End Timing Budget</div>
+      <div class="timing-formula">
+        <span class="lhs">T_total =</span>
+        <span class="term">T_sensor</span><span class="op">+</span>
+        <span class="term">T_frontend</span><span class="op">+</span>
+        <span class="term">T_serialization</span><span class="op">+</span>
+        <span class="term">T_optical</span><span class="op">+</span>
+        <span class="term">T_detection</span><span class="op">+</span>
+        <span class="term">T_deserialization</span><br>
+        <span class="op">+</span>
+        <span class="term">T_DMA</span><span class="op">+</span>
+        <span class="term">T_router</span><span class="op">+</span>
+        <span class="term">T_verification</span><span class="op">+</span>
+        <span class="term">T_enforcement</span>
+      </div>
+      <div class="timing-bar" aria-hidden="true">
+        <div class="seg s1" title="T_sensor">sensor</div>
+        <div class="seg s2" title="T_frontend">frontend</div>
+        <div class="seg s3" title="T_serialization">ser</div>
+        <div class="seg s4" title="T_optical">optical</div>
+        <div class="seg s5" title="T_detection">det</div>
+        <div class="seg s6" title="T_deserialization">deser</div>
+        <div class="seg s7" title="T_DMA">DMA</div>
+        <div class="seg s8" title="T_router">router</div>
+        <div class="seg s9" title="T_verification">verify</div>
+        <div class="seg s10" title="T_enforcement">enforce</div>
+      </div>
+      <div class="timing-legend">
+        <span class="lg"><span class="swatch" style="background:var(--blue);"></span>physical / optical</span>
+        <span class="lg"><span class="swatch" style="background:var(--cyan);"></span>serialization</span>
+        <span class="lg"><span class="swatch" style="background:var(--plum);"></span>detection / fabric</span>
+        <span class="lg"><span class="swatch" style="background:var(--green);"></span>DMA / router</span>
+        <span class="lg"><span class="swatch" style="background:var(--amber);"></span>verification</span>
+        <span class="lg"><span class="swatch" style="background:var(--red);"></span>enforcement</span>
+      </div>
+      <div style="margin-top:6px; font-family:var(--sans); font-size:9.5px; color:var(--ink-soft); line-height:1.4;">
+        Individual numerical values are <span class="tag blue" style="font-size:8px;">TARGET</span> where they are design targets and
+        <span class="tag green" style="font-size:8px;">MEASURED</span> only where supplied as experimental data.
+        Unmeasured terms are not fabricated.
+      </div>
+    </div>
+
+    <div class="inv-inset">
+      <div class="inset-title">Engineering Invariants</div>
+      <div class="inv-list">
+        <div class="iv"><span class="num">1</span><span class="txt">Timing is measured at boundaries.</span></div>
+        <div class="iv"><span class="num">2</span><span class="txt">Evidence is generated before settlement.</span></div>
+        <div class="iv"><span class="num">3</span><span class="txt">Real-time control does not depend on blockchain latency.</span></div>
+        <div class="iv"><span class="num">4</span><span class="txt">Zero-copy applies only to explicitly defined memory paths.</span></div>
+        <div class="iv"><span class="num">5</span><span class="txt">Hardware and host state are independently attestable.</span></div>
+        <div class="iv"><span class="num">6</span><span class="txt">Biological nodes are abstracted behind deterministic interfaces.</span></div>
+        <div class="iv"><span class="num">7</span><span class="txt">Governance evaluates evidence; it does not manufacture validity.</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- =================== LEGEND =================== -->
+  <div class="legend">
+    <span class="lg solid"><span class="swatch"></span>thick solid = primary event/data progression</span>
+    <span class="lg thin"><span class="swatch"></span>thin solid = local processing</span>
+    <span class="lg dash"><span class="swatch"></span>dashed = provenance / telemetry / governance</span>
+    <span class="lg red"><span class="swatch"></span>red = enforcement / failure</span>
+    <span class="lg blue"><span class="swatch"></span>blue = information transport</span>
+    <span class="lg cyan"><span class="swatch"></span>cyan = zero-copy / optical</span>
+    <span class="lg green"><span class="swatch"></span>green = verified / admissible</span>
+    <span class="lg amber"><span class="swatch"></span>amber = calibration / attention</span>
+  </div>
+
+  <!-- =================== CAPTION =================== -->
+  <div class="caption">
+    Fig. 1 · VVU Engineering Stack — physical events are captured, transported, routed, verified, evaluated against invariants, and enforced through a layered deterministic information pathway. A secondary dashed provenance spine continuously records the evidence required to reconstruct and verify each event. Targets are design targets; measured values are labelled as such; nothing is fabricated.
+  </div>
+
+</div>
+
+</body>
+</html>
