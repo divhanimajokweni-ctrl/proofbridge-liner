@@ -1,0 +1,60 @@
+{
+  "auditId": "AUDIT-SIMULATION-001",
+  "generatedAt": "2026-08-26T08:30:00.000Z",
+  "systemVersion": "VVU-IVE-EIS-v1.0",
+  "dataClassification": "SIMULATION_DATA",
+  "evidenceGraph": {
+    "claimId": "CLAIM-NMBM-001",
+    "verdict": "VERIFIED_CANDIDATE",
+    "confidenceScore": 0.9,
+    "appliedConfiguration": {
+      "flowDeviationThreshold": 0.10,
+      "pressureDropThreshold": 0.05,
+      "correlationTimeWindowMs": 3600000
+    },
+    "nodes": [
+      {
+        "observation": {
+          "id": "OBS-02",
+          "source": "SCADA_FLOW_01",
+          "type": "FLOW",
+          "timestamp": "2026-08-26T04:00:00Z",
+          "value": 111,
+          "baseline": 100,
+          "qualityFlag": "VALID"
+        },
+        "classification": "PRIMARY_ANOMALY",
+        "groupId": "EVT-001",
+        "reasoning": "Flow increased by >10% over baseline (100 L/s). Actual: 111 L/s."
+      },
+      {
+        "observation": {
+          "id": "OBS-03",
+          "source": "SCADA_PRESS_04",
+          "type": "PRESSURE",
+          "timestamp": "2026-08-26T04:05:00Z",
+          "value": 46.1,
+          "baseline": 48.5,
+          "qualityFlag": "VALID"
+        },
+        "classification": "CORRELATED_HYDRAULIC",
+        "groupId": "EVT-001",
+        "reasoning": "Pressure drop correlates temporally with primary flow anomaly (5 min gap)."
+      },
+      {
+        "observation": {
+          "id": "OBS-04",
+          "source": "FIELD_ACST_09",
+          "type": "ACOUSTIC",
+          "timestamp": "2026-08-26T06:30:00Z",
+          "value": "ABNORMAL_FREQ",
+          "qualityFlag": "VALID"
+        },
+        "classification": "INDEPENDENT_CORROBORATION",
+        "groupId": "EVT-001",
+        "reasoning": "Independent physical field report confirms anomaly. Type: ACOUSTIC."
+      }
+    ]
+  },
+  "cryptographicHash": "a7f9e2b1c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1"
+}

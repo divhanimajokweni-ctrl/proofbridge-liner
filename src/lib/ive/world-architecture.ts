@@ -233,6 +233,15 @@ export const ROOMS: RoomDef[] = [
         statusNote: "Construction photos + vision pass. Reusable.",
       },
       {
+        id: "evidence-analysis",
+        name: "EIS v1.0 Evidence Analysis",
+        icon: "🔍",
+        sourceTab: "evidence-analysis",
+        fullscreen: true,
+        status: "exists",
+        statusNote: "EIS v1.0 engine with DMA calibration panel, evidence provenance chain, verdict banner, and SHA-256 audit receipt export. Prevents evidence inflation by scoring independence, not count.",
+      },
+      {
         id: "nmbm-data",
         name: "NMBM Data Sandbox",
         icon: "🏘️",

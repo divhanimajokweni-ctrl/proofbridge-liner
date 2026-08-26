@@ -34,6 +34,7 @@ import { AntpayTab } from "./tabs/antpay-tab";
 import { PoolsTab } from "./tabs/pools-tab";
 import { IntegrationsTab } from "./tabs/integrations-tab";
 import { StudioTab } from "./tabs/studio-tab";
+import { EvidenceAnalysisWorkspace } from "../evidence/evidence-analysis-workspace";
 
 /**
  * World container — the spatial runtime for VRES v1.0.
@@ -358,6 +359,8 @@ function ActivityViewport({ activity }: { activity: ActivityDef }) {
       return <IntegrationsTab />;
     case "studio":
       return <StudioTab />;
+    case "evidence-analysis":
+      return <EvidenceAnalysisWorkspace />;
     case "overview":
       return <OverviewTab onJump={() => {}} />;
     default:
