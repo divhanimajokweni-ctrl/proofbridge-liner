@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VVU · 3D Drone Simulator</title>
+    <title>VVU · 3D Drone Simulator + Wind System</title>
     <style>
         body { margin: 0; overflow: hidden; font-family: 'Courier New', monospace; }
         #ui {
@@ -31,12 +31,66 @@
             background: rgba(10, 5, 18, 0.75); backdrop-filter: blur(8px);
             z-index: 10; letter-spacing: 1px;
         }
+        #wind-control {
+            position: absolute; bottom: 20px; right: 20px;
+            background: rgba(10, 5, 18, 0.8); padding: 15px; border-radius: 8px;
+            color: #e0d5f0; font-size: 12px; pointer-events: auto;
+            border: 1px solid #88ccff; min-width: 220px; z-index: 10;
+            backdrop-filter: blur(8px); line-height: 1.5;
+        }
+        #wind-control h3 { margin: 0 0 8px; color: #88ccff; font-size: 13px; }
+        #wind-control label { display: flex; justify-content: space-between; align-items: center; }
+        #wind-control input[type=range] {
+            width: 100%; accent-color: #88ccff; background: transparent; cursor: pointer; margin-top: 6px;
+        }
+        #wind-control .range-labels { display: flex; justify-content: space-between; font-size: 10px; color: #5a5a70; margin-top: 2px; }
+        #wind-control .wind-info { margin-top: 8px; font-size: 11px; color: #8e979e; }
+        #wind-control .wind-info span { color: #88ccff; }
+        #wind-control button {
+            background: rgba(136, 204, 255, 0.1); border: 1px solid #88ccff; color: #88ccff;
+            padding: 4px 8px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 10px;
+            margin-top: 6px; transition: all 0.15s;
+        }
+        #wind-control button:hover { background: rgba(136, 204, 255, 0.2); }
+        #wind-control button.active { background: #88ccff; color: #05070a; }
+        #osd {
+            position: absolute; bottom: 20px; left: 10px; color: #e0d5f0;
+            background: rgba(10, 5, 18, 0.75); padding: 12px; border-radius: 8px;
+            border: 1px solid #35cdd7; pointer-events: none; line-height: 1.6;
+            font-size: 11px; backdrop-filter: blur(8px); z-index: 10;
+        }
+        #osd h3 { margin: 0 0 6px; color: #35cdd7; font-size: 12px; }
+        #osd .val { color: #f2c45f; font-weight: bold; }
+        #osd .wind-val { color: #88ccff; font-weight: bold; }
+        #flight-recorder-panel {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(10, 5, 18, 0.8); padding: 8px 16px; border-radius: 8px;
+            color: #e0d5f0; font-size: 11px; pointer-events: auto; z-index: 10;
+            border: 1px solid #f2c45f; display: flex; gap: 12px; align-items: center;
+            backdrop-filter: blur(8px);
+        }
+        #flight-recorder-panel span { color: #f2c45f; font-weight: bold; }
+        #flight-recorder-panel button {
+            background: rgba(242, 196, 95, 0.1); border: 1px solid #f2c45f; color: #f2c45f;
+            padding: 3px 8px; border-radius: 4px; cursor: pointer; font-family: inherit; font-size: 10px;
+        }
+        #flight-recorder-panel button:hover { background: rgba(242, 196, 95, 0.2); }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
     <div id="hud-badge">VVU BUILD ROOM · 3D MECHANICS</div>
+
+    <!-- Flight Recorder Panel -->
+    <div id="flight-recorder-panel">
+        <span>REC</span>
+        <span id="rec-status">IDLE</span>
+        <span id="rec-samples">0 samples</span>
+        <button id="btn-rec-start">Start Recording</button>
+        <button id="btn-rec-stop">Stop</button>
+        <button id="btn-rec-export">Export CSV</button>
+    </div>
 
     <div id="ui">
         <h3>🚁 Drone Telemetry</h3>
@@ -51,16 +105,51 @@
         R : Reset</div>
     </div>
 
+    <!-- OSD — extended telemetry -->
+    <div id="osd">
+        <h3>📡 OSD</h3>
+        <div>Wind: <span id="val-wind" class="wind-val">0.0</span> m/s <span id="val-wind-dir">Calm</span></div>
+        <div>Pitch: <span id="val-pitch" class="val">0°</span></div>
+        <div>Roll: <span id="val-roll" class="val">0°</span></div>
+        <div>V/Speed: <span id="val-vspeed" class="val">0.0</span> m/s</div>
+        <div>Gust: <span id="val-gust" class="wind-val">OFF</span></div>
+        <div>Turb: <span id="val-turb" class="wind-val">OFF</span></div>
+    </div>
+
+    <!-- Wind Control Panel -->
+    <div id="wind-control">
+        <h3>🌬️ Wind System</h3>
+        <label>
+            <span style="color:#88ccff;">Wind Strength</span>
+            <span id="wind-slider-value" style="font-weight:bold; color:#00ffcc;">0.5</span>
+        </label>
+        <input type="range" id="wind-slider" min="0" max="2.0" step="0.05" value="0.5">
+        <div class="range-labels"><span>Calm</span><span>Gale</span></div>
+        <div class="wind-info">
+            Direction: <span id="wind-direction">N/A</span><br>
+            Heading: <span id="wind-heading">N</span>
+        </div>
+        <div style="margin-top: 8px; display:flex; gap:4px; flex-wrap:wrap;">
+            <button id="btn-gust" style="flex:1;">💨 Gusts</button>
+            <button id="btn-turb" style="flex:1;">🌀 Turbulence</button>
+        </div>
+        <button id="btn-wind-random" style="width:100%;">🎲 Random Direction</button>
+    </div>
+
     <div id="crash-overlay">💥 DRONE CRASH — RESETTING…</div>
 
     <script>
-        // ═════════════════════════════════════════════════════════
-        // VVU 3D DRONE SIMULATOR
-        // Physics: rigid body 6DoF, F=ma, thrust vector rotation,
-        //          gravity, drag, delta-time integration.
-        // Camera: smooth lerp tracking behind drone.
+        // ═════════════════════════════════════════════════════════════
+        // VVU 3D DRONE SIMULATOR + WIND SYSTEM
+        // Physics:  rigid body 6DoF, F=ma, thrust vector rotation,
+        //           gravity, drag, wind force, delta-time integration.
+        // Wind:     particle system visualization, 3D arrow indicator,
+        //           slider control, random gusts, turbulence noise,
+        //           random direction.
+        // Recorder: flight trajectory logger with CSV export.
+        // Camera:   smooth lerp tracking behind drone.
         // Collision: pillar bounding-box + ground reset.
-        // ═════════════════════════════════════════════════════════
+        // ═════════════════════════════════════════════════════════════
 
         // --- 1. SETUP THREE.JS SCENE ---
         const scene = new THREE.Scene();
@@ -93,7 +182,7 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Obstacles (Colored Pillars) — stored for collision detection
+        // Obstacles (Colored Pillars)
         const pillars = [];
         for (let i = 0; i < 15; i++) {
             const h = 10 + Math.random() * 20;
@@ -109,37 +198,32 @@
 
         // --- 4. THE DRONE MODEL ---
         const droneGroup = new THREE.Group();
-
-        // Drone Center Body
         const bodyGeo = new THREE.BoxGeometry(2, 0.3, 2);
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.castShadow = true;
         droneGroup.add(body);
 
-        // Indicator Light (Front of drone)
         const noseGeo = new THREE.BoxGeometry(0.5, 0.3, 0.5);
         const noseMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc });
         const nose = new THREE.Mesh(noseGeo, noseMat);
         nose.position.set(0, 0, -1);
         droneGroup.add(nose);
 
-        // 4 propeller arms
         const armPositions = [[-1, 0, -1], [1, 0, -1], [-1, 0, 1], [1, 0, 1]];
         const propellers = [];
         armPositions.forEach(function(pos) {
-            const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.5, 6);
-            const armMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-            const arm = new THREE.Mesh(armGeo, armMat);
+            var armGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.5, 6);
+            var armMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            var arm = new THREE.Mesh(armGeo, armMat);
             arm.position.set(pos[0] * 0.7, 0, pos[2] * 0.7);
             arm.rotation.z = Math.PI / 2;
             arm.lookAt(new THREE.Vector3(pos[0] * 1.4, 0, pos[2] * 1.4));
             droneGroup.add(arm);
 
-            // Propeller disc
-            const propGeo = new THREE.CircleGeometry(0.8, 12);
-            const propMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
-            const prop = new THREE.Mesh(propGeo, propMat);
+            var propGeo = new THREE.CircleGeometry(0.8, 12);
+            var propMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+            var prop = new THREE.Mesh(propGeo, propMat);
             prop.position.set(pos[0] * 1.4, 0.15, pos[2] * 1.4);
             prop.rotation.x = -Math.PI / 2;
             droneGroup.add(prop);
@@ -149,40 +233,273 @@
         droneGroup.position.set(0, 2, 0);
         scene.add(droneGroup);
 
-        // --- 5. FLIGHT PHYSICS & VARIABLES ---
-        const physics = {
+        // --- 5. WIND PARTICLE SYSTEM ---
+        const particleCount = 200;
+        const particleGeometry = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(particleCount * 3);
+        const particleSpeeds = new Float32Array(particleCount);
+        const particleLifetimes = new Float32Array(particleCount);
+
+        for (let i = 0; i < particleCount; i++) {
+            particlePositions[i * 3] = (Math.random() - 0.5) * 60;
+            particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 30 + 5;
+            particlePositions[i * 3 + 2] = (Math.random() - 0.5) * 60;
+            particleSpeeds[i] = 0.5 + Math.random() * 1.5;
+            particleLifetimes[i] = Math.random() * 10;
+        }
+
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+
+        var particleMaterial = new THREE.PointsMaterial({
+            color: 0x88ccff,
+            size: 0.3,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+        });
+
+        var windParticles = new THREE.Points(particleGeometry, particleMaterial);
+        scene.add(windParticles);
+
+        // --- 6. WIND DIRECTION ARROW (3D) ---
+        var arrowHelper = new THREE.ArrowHelper(
+            new THREE.Vector3(1, 0, 0),
+            new THREE.Vector3(0, 20, 0),
+            3, 0x88ccff, 0.8, 0.4
+        );
+        arrowHelper.visible = false;
+        scene.add(arrowHelper);
+
+        // --- 7. FLIGHT PHYSICS & WIND STATE ---
+        var physics = {
             pos: new THREE.Vector3(0, 2, 0),
             vel: new THREE.Vector3(0, 0, 0),
-            rot: new THREE.Vector3(0, 0, 0), // Pitch (X), Yaw (Y), Roll (Z)
-            throttle: 0,                    // 0 to 100
+            rot: new THREE.Vector3(0, 0, 0),
+            throttle: 0,
             gravity: 9.81,
             mass: 1.5,
-            drag: 0.15
+            drag: 0.15,
+            // Wind state
+            windStrength: 0.5,
+            windDirection: new THREE.Vector3(1, 0, 0), // base direction
+            wind: new THREE.Vector3(0.5, 0, 0),       // current wind vector (includes gusts + turbulence)
+            gustActive: false,
+            turbulenceActive: false,
         };
 
-        // --- 6. INPUT HANDLING ---
-        const keys = {};
+        // Wind gust state
+        var gustTimer = 0;
+        var gustInterval = 5.0; // seconds between gust checks
+        var gustMagnitude = 0;
+        var gustDuration = 0;
+        var gustElapsed = 0;
+
+        // Turbulence state
+        var turbTime = 0;
+
+        // --- 8. FLIGHT RECORDER ---
+        var flightRecorder = {
+            recording: false,
+            samples: [],
+            startTime: 0,
+            start: function() {
+                this.recording = true;
+                this.samples = [];
+                this.startTime = performance.now();
+                document.getElementById('rec-status').textContent = 'RECORDING';
+                document.getElementById('rec-status').style.color = '#d45f49';
+            },
+            stop: function() {
+                this.recording = false;
+                document.getElementById('rec-status').textContent = 'STOPPED';
+                document.getElementById('rec-status').style.color = '#f2c45f';
+                document.getElementById('rec-samples').textContent = this.samples.length + ' samples';
+            },
+            log: function(dt) {
+                if (!this.recording) return;
+                var t = (performance.now() - this.startTime) / 1000;
+                this.samples.push({
+                    t: t.toFixed(3),
+                    x: physics.pos.x.toFixed(3),
+                    y: physics.pos.y.toFixed(3),
+                    z: physics.pos.z.toFixed(3),
+                    vx: physics.vel.x.toFixed(3),
+                    vy: physics.vel.y.toFixed(3),
+                    vz: physics.vel.z.toFixed(3),
+                    pitch: (physics.rot.x * 180 / Math.PI).toFixed(2),
+                    yaw: (physics.rot.y * 180 / Math.PI).toFixed(2),
+                    roll: (physics.rot.z * 180 / Math.PI).toFixed(2),
+                    throttle: physics.throttle.toFixed(1),
+                    windX: physics.wind.x.toFixed(3),
+                    windY: physics.wind.y.toFixed(3),
+                    windZ: physics.wind.z.toFixed(3),
+                    windStrength: physics.wind.length().toFixed(3),
+                });
+                document.getElementById('rec-samples').textContent = this.samples.length + ' samples';
+            },
+            exportCSV: function() {
+                if (this.samples.length === 0) { alert('No flight data recorded.'); return; }
+                var headers = ['t', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'pitch', 'yaw', 'roll', 'throttle', 'windX', 'windY', 'windZ', 'windStrength'];
+                var csv = headers.join(',') + '\n';
+                this.samples.forEach(function(s) {
+                    csv += [s.t, s.x, s.y, s.z, s.vx, s.vy, s.vz, s.pitch, s.yaw, s.roll, s.throttle, s.windX, s.windY, s.windZ, s.windStrength].join(',') + '\n';
+                });
+                var blob = new Blob([csv], { type: 'text/csv' });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'flight-recorder-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.csv';
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+        };
+
+        // --- 9. INPUT HANDLING ---
+        var keys = {};
         window.addEventListener('keydown', function(e) { keys[e.key.toLowerCase()] = true; });
         window.addEventListener('keyup', function(e) { keys[e.key.toLowerCase()] = false; });
 
-        // --- 7. PHYSICS UPDATE ---
+        // --- 10. WIND UI CONTROL ---
+        var windSlider = document.getElementById('wind-slider');
+        var windSliderValue = document.getElementById('wind-slider-value');
+        var windDirectionDisplay = document.getElementById('wind-direction');
+        var windHeadingDisplay = document.getElementById('wind-heading');
+
+        windSlider.addEventListener('input', function() {
+            var val = parseFloat(windSlider.value);
+            physics.windStrength = val;
+            windSliderValue.textContent = val.toFixed(1);
+        });
+
+        // Gust toggle
+        var btnGust = document.getElementById('btn-gust');
+        btnGust.addEventListener('click', function() {
+            physics.gustActive = !physics.gustActive;
+            btnGust.classList.toggle('active', physics.gustActive);
+            document.getElementById('val-gust').textContent = physics.gustActive ? 'ON' : 'OFF';
+        });
+
+        // Turbulence toggle
+        var btnTurb = document.getElementById('btn-turb');
+        btnTurb.addEventListener('click', function() {
+            physics.turbulenceActive = !physics.turbulenceActive;
+            btnTurb.classList.toggle('active', physics.turbulenceActive);
+            document.getElementById('val-turb').textContent = physics.turbulenceActive ? 'ON' : 'OFF';
+        });
+
+        // Random direction button
+        document.getElementById('btn-wind-random').addEventListener('click', function() {
+            var angle = Math.random() * Math.PI * 2;
+            physics.windDirection.set(Math.cos(angle), 0, Math.sin(angle));
+        });
+
+        // Flight recorder buttons
+        document.getElementById('btn-rec-start').addEventListener('click', function() { flightRecorder.start(); });
+        document.getElementById('btn-rec-stop').addEventListener('click', function() { flightRecorder.stop(); });
+        document.getElementById('btn-rec-export').addEventListener('click', function() { flightRecorder.exportCSV(); });
+
+        // --- 11. WIND COMPUTATION (gusts + turbulence) ---
+        function computeWind(dt) {
+            // Base wind = direction × strength
+            var baseWind = physics.windDirection.clone().multiplyScalar(physics.windStrength);
+
+            // Gust: random spike every gustInterval seconds, lasting gustDuration
+            if (physics.gustActive) {
+                gustTimer += dt;
+                if (gustElapsed > 0) {
+                    // Currently in a gust — ramp down
+                    gustElapsed -= dt;
+                    var gustFactor = Math.max(0, gustElapsed / gustDuration);
+                    var gustForce = gustMagnitude * gustFactor;
+                    baseWind.add(physics.windDirection.clone().multiplyScalar(gustForce));
+                } else if (gustTimer >= gustInterval) {
+                    // Trigger new gust
+                    gustTimer = 0;
+                    gustMagnitude = 0.5 + Math.random() * 1.5; // 0.5–2.0 extra force
+                    gustDuration = 0.5 + Math.random() * 1.5;  // 0.5–2.0s duration
+                    gustElapsed = gustDuration;
+                    gustInterval = 4 + Math.random() * 6;       // 4–10s until next gust
+                }
+            }
+
+            // Turbulence: high-frequency noise perpendicular to wind direction
+            if (physics.turbulenceActive) {
+                turbTime += dt;
+                var turbStrength = physics.windStrength * 0.3;
+                // Perpendicular vectors to wind direction
+                var perp1 = new THREE.Vector3(-physics.windDirection.z, 0, physics.windDirection.x);
+                var perp2 = new THREE.Vector3(0, 1, 0);
+                var noise1 = Math.sin(turbTime * 12) * turbStrength;
+                var noise2 = Math.sin(turbTime * 17 + 1.3) * turbStrength * 0.5;
+                baseWind.add(perp1.multiplyScalar(noise1));
+                baseWind.add(perp2.multiplyScalar(noise2));
+            }
+
+            physics.wind.copy(baseWind);
+        }
+
+        // --- 12. WIND PARTICLE UPDATE ---
+        function updateWindParticles(dt) {
+            var positions = windParticles.geometry.attributes.position.array;
+            var windStrength = physics.wind.length();
+            var windDir = physics.wind.length() > 0.01 ? physics.wind.clone().normalize() : new THREE.Vector3(0, 0, 0);
+            var speedMultiplier = windStrength > 0.1 ? windStrength * 1.5 : 0.2;
+
+            for (var i = 0; i < particleCount; i++) {
+                positions[i * 3] += windDir.x * dt * speedMultiplier * particleSpeeds[i];
+                positions[i * 3 + 1] += windDir.y * dt * speedMultiplier * particleSpeeds[i] * 0.3;
+                positions[i * 3 + 2] += windDir.z * dt * speedMultiplier * particleSpeeds[i];
+
+                var dist = Math.sqrt(
+                    positions[i * 3] * positions[i * 3] +
+                    positions[i * 3 + 1] * positions[i * 3 + 1] +
+                    positions[i * 3 + 2] * positions[i * 3 + 2]
+                );
+
+                if (dist > 40 || positions[i * 3 + 1] < 0 || positions[i * 3 + 1] > 40) {
+                    var angle = Math.random() * Math.PI * 2;
+                    var radius = 5 + Math.random() * 15;
+                    positions[i * 3] = physics.pos.x + Math.cos(angle) * radius;
+                    positions[i * 3 + 1] = physics.pos.y + 2 + Math.random() * 20;
+                    positions[i * 3 + 2] = physics.pos.z + Math.sin(angle) * radius;
+                    particleSpeeds[i] = 0.5 + Math.random() * 1.5;
+                }
+            }
+            windParticles.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // --- 13. WIND ARROW UPDATE ---
+        function updateWindArrow() {
+            if (physics.wind.length() > 0.05) {
+                var windDir = physics.wind.clone().normalize();
+                arrowHelper.setDirection(windDir);
+                arrowHelper.setLength(2 + physics.wind.length() * 2, 0.8, 0.4);
+                arrowHelper.position.set(physics.pos.x, physics.pos.y + 8, physics.pos.z);
+                arrowHelper.visible = true;
+            } else {
+                arrowHelper.visible = false;
+            }
+        }
+
+        // --- 14. PHYSICS UPDATE (with wind force) ---
         function updatePhysics(dt) {
-            if (dt > 0.1) dt = 0.1; // Cap large lag spikes
+            if (dt > 0.1) dt = 0.1;
 
             // Throttle (W/S)
             if (keys['w']) physics.throttle = Math.min(100, physics.throttle + 40 * dt);
             if (keys['s']) physics.throttle = Math.max(0, physics.throttle - 40 * dt);
 
-            // Yaw Rotation (A/D)
+            // Yaw (A/D)
             if (keys['a']) physics.rot.y += 2.0 * dt;
             if (keys['d']) physics.rot.y -= 2.0 * dt;
 
-            // Pitch Control (ArrowUp/ArrowDown)
+            // Pitch (ArrowUp/Down)
             if (keys['arrowup']) physics.rot.x = THREE.MathUtils.lerp(physics.rot.x, -0.4, 5 * dt);
             else if (keys['arrowdown']) physics.rot.x = THREE.MathUtils.lerp(physics.rot.x, 0.4, 5 * dt);
             else physics.rot.x = THREE.MathUtils.lerp(physics.rot.x, 0, 5 * dt);
 
-            // Roll Control (ArrowLeft/ArrowRight)
+            // Roll (ArrowLeft/Right)
             if (keys['arrowleft']) physics.rot.z = THREE.MathUtils.lerp(physics.rot.z, -0.4, 5 * dt);
             else if (keys['arrowright']) physics.rot.z = THREE.MathUtils.lerp(physics.rot.z, 0.4, 5 * dt);
             else physics.rot.z = THREE.MathUtils.lerp(physics.rot.z, 0, 5 * dt);
@@ -190,31 +507,35 @@
             // Reset
             if (keys['r']) triggerCrashReset(true);
 
-            // Calculate Forces — F = ma
-            // Thrust vector rotated by drone orientation (quaternion-like via axis-angle)
-            const maxThrustForce = 25;
-            const totalThrust = (physics.throttle / 100) * maxThrustForce;
+            // Compute wind (gusts + turbulence modify base wind)
+            computeWind(dt);
 
-            const thrustVector = new THREE.Vector3(0, 1, 0);
+            // Thrust vector (rotated by orientation)
+            var maxThrustForce = 25;
+            var totalThrust = (physics.throttle / 100) * maxThrustForce;
+            var thrustVector = new THREE.Vector3(0, 1, 0);
             thrustVector.applyAxisAngle(new THREE.Vector3(1, 0, 0), physics.rot.x);
             thrustVector.applyAxisAngle(new THREE.Vector3(0, 0, 1), physics.rot.z);
             thrustVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), physics.rot.y);
             thrustVector.multiplyScalar(totalThrust);
 
-            // Gravity: constant downward force
-            const gravityVector = new THREE.Vector3(0, -physics.gravity * physics.mass, 0);
+            // Gravity
+            var gravityVector = new THREE.Vector3(0, -physics.gravity * physics.mass, 0);
 
-            // Drag: opposes velocity (prevents infinite acceleration)
-            const dragVector = physics.vel.clone().multiplyScalar(-physics.drag);
+            // Drag
+            var dragVector = physics.vel.clone().multiplyScalar(-physics.drag);
+
+            // Wind force (pushes the drone — acts on mass like any external force)
+            var windForce = physics.wind.clone().multiplyScalar(physics.mass * 0.5);
 
             // Net Force → Acceleration → Velocity → Position
-            const netForce = new THREE.Vector3().addVectors(thrustVector, gravityVector).add(dragVector);
-            const acceleration = netForce.divideScalar(physics.mass);
+            var netForce = new THREE.Vector3().addVectors(thrustVector, gravityVector).add(dragVector).add(windForce);
+            var acceleration = netForce.divideScalar(physics.mass);
 
             physics.vel.addScaledVector(acceleration, dt);
             physics.pos.addScaledVector(physics.vel, dt);
 
-            // Ground collision safeguard
+            // Ground collision
             if (physics.pos.y < 0.15) {
                 physics.pos.y = 0.15;
                 physics.vel.set(0, 0, 0);
@@ -227,39 +548,37 @@
             droneGroup.rotateX(physics.rot.x);
             droneGroup.rotateZ(physics.rot.z);
 
-            // Spin propellers based on throttle
-            const propSpeed = physics.throttle * 0.15;
+            // Spin propellers
+            var propSpeed = physics.throttle * 0.15;
             propellers.forEach(function(p, i) {
                 p.rotation.z += propSpeed * (i % 2 === 0 ? 1 : -1);
             });
+
+            // Log to flight recorder
+            flightRecorder.log(dt);
         }
 
-        // --- 8. SMOOTH CAMERA TRACKING ---
+        // --- 15. SMOOTH CAMERA TRACKING ---
         function updateCamera() {
-            const relativeOffset = new THREE.Vector3(0, 3.5, 8);
+            var relativeOffset = new THREE.Vector3(0, 3.5, 8);
             relativeOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), physics.rot.y);
-
-            const targetCamPos = physics.pos.clone().add(relativeOffset);
+            var targetCamPos = physics.pos.clone().add(relativeOffset);
             camera.position.lerp(targetCamPos, 0.08);
-
-            // Look slightly ahead of the drone
-            const lookTarget = physics.pos.clone().add(
+            var lookTarget = physics.pos.clone().add(
                 new THREE.Vector3(0, 0.5, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), physics.rot.y)
             );
             camera.lookAt(lookTarget);
         }
 
-        // --- 9. COLLISION DETECTION ---
+        // --- 16. COLLISION DETECTION ---
         function checkCollisions() {
-            const droneRadius = 1.2;
-
-            for (let i = 0; i < pillars.length; i++) {
-                const pillar = pillars[i];
-                const dx = physics.pos.x - pillar.position.x;
-                const dz = physics.pos.z - pillar.position.z;
-                const distanceXZ = Math.sqrt(dx * dx + dz * dz);
-                const pillarHeight = pillar.geometry.parameters.height;
-
+            var droneRadius = 1.2;
+            for (var i = 0; i < pillars.length; i++) {
+                var pillar = pillars[i];
+                var dx = physics.pos.x - pillar.position.x;
+                var dz = physics.pos.z - pillar.position.z;
+                var distanceXZ = Math.sqrt(dx * dx + dz * dz);
+                var pillarHeight = pillar.geometry.parameters.height;
                 if (distanceXZ < (droneRadius + 2) && physics.pos.y < pillarHeight) {
                     triggerCrashReset(false);
                     break;
@@ -269,7 +588,7 @@
 
         function triggerCrashReset(silent) {
             if (!silent) {
-                const overlay = document.getElementById('crash-overlay');
+                var overlay = document.getElementById('crash-overlay');
                 overlay.classList.add('active');
                 setTimeout(function() { overlay.classList.remove('active'); }, 1500);
             }
@@ -279,21 +598,47 @@
             physics.throttle = 0;
         }
 
-        // --- 10. UI UPDATE ---
+        // --- 17. UI UPDATE (extended with wind + OSD) ---
         function updateUI() {
+            // Telemetry
             document.getElementById('val-throttle').textContent = Math.round(physics.throttle);
             document.getElementById('val-alt').textContent = (physics.pos.y - 0.15).toFixed(1);
             document.getElementById('val-speed').textContent = physics.vel.length().toFixed(1);
+
+            // OSD
+            document.getElementById('val-pitch').textContent = (physics.rot.x * 180 / Math.PI).toFixed(0) + '°';
+            document.getElementById('val-roll').textContent = (physics.rot.z * 180 / Math.PI).toFixed(0) + '°';
+            document.getElementById('val-vspeed').textContent = physics.vel.y.toFixed(1);
+            document.getElementById('val-wind').textContent = physics.wind.length().toFixed(1);
+
+            // Wind direction (compass)
+            if (physics.wind.length() > 0.05) {
+                var heading = Math.atan2(physics.wind.x, physics.wind.z) * 180 / Math.PI;
+                var compassHeading = ((heading + 360) % 360).toFixed(0);
+                windDirectionDisplay.textContent = compassHeading + '°';
+                document.getElementById('val-wind-dir').textContent = compassHeading + '°';
+
+                // Cardinal direction
+                var cardinals = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+                var cardinalIdx = Math.round(((heading + 360) % 360) / 45) % 8;
+                windHeadingDisplay.textContent = cardinals[cardinalIdx];
+            } else {
+                windDirectionDisplay.textContent = 'Calm';
+                document.getElementById('val-wind-dir').textContent = 'Calm';
+                windHeadingDisplay.textContent = '—';
+            }
         }
 
-        // --- 11. MAIN SIMULATION LOOP ---
-        const clock = new THREE.Clock();
+        // --- 18. MAIN SIMULATION LOOP ---
+        var clock = new THREE.Clock();
 
         function animate() {
             requestAnimationFrame(animate);
-            const dt = clock.getDelta();
+            var dt = clock.getDelta();
 
             updatePhysics(dt);
+            updateWindParticles(dt);
+            updateWindArrow();
             checkCollisions();
             updateCamera();
             updateUI();
@@ -308,6 +653,10 @@
         });
 
         animate();
+
+        console.log('🚁 VVU Drone Simulator + Wind System loaded.');
+        console.log('Wind: slider controls strength, buttons toggle gusts/turbulence, random direction button.');
+        console.log('Flight Recorder: Start/Stop/Export CSV for post-flight trajectory analysis.');
     </script>
 </body>
 </html>
