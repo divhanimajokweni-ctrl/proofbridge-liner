@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VVU · 3D Drone Simulator</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Courier New', monospace; }
+        #ui {
+            position: absolute; top: 10px; left: 10px; color: #e0d5f0;
+            background: rgba(10, 5, 18, 0.75); padding: 15px; border-radius: 8px;
+            border: 1px solid #35cdd7; pointer-events: none; line-height: 1.6;
+            font-size: 12px; backdrop-filter: blur(8px); z-index: 10;
+        }
+        #ui h3 { margin-top: 0; color: #35cdd7; font-size: 14px; letter-spacing: 1px; }
+        #ui .val { color: #f2c45f; font-weight: bold; }
+        #ui .ctrl { color: #8e979e; font-size: 10px; margin-top: 8px; }
+        #crash-overlay {
+            position: absolute; inset: 0; display: none;
+            background: rgba(168, 49, 42, 0.3); z-index: 20;
+            align-items: center; justify-content: center;
+            font-size: 24px; color: #d45f49; font-weight: bold;
+            text-shadow: 0 0 20px rgba(212, 95, 73, 0.8);
+        }
+        #crash-overlay.active { display: flex; animation: crashFlash 0.4s ease; }
+        @keyframes crashFlash { 0% { opacity: 0; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+        #hud-badge {
+            position: absolute; top: 10px; right: 10px;
+            color: #35cdd7; border: 1px solid #35cdd7; padding: 4px 12px;
+            border-radius: 4px; font-size: 11px; font-weight: bold;
+            background: rgba(10, 5, 18, 0.75); backdrop-filter: blur(8px);
+            z-index: 10; letter-spacing: 1px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="hud-badge">VVU BUILD ROOM · 3D MECHANICS</div>
+
+    <div id="ui">
+        <h3>🚁 Drone Telemetry</h3>
+        <div>Throttle: <span id="val-throttle" class="val">0</span>%</div>
+        <div>Altitude: <span id="val-alt" class="val">0</span>m</div>
+        <div>Speed: <span id="val-speed" class="val">0</span> m/s</div>
+        <div class="ctrl"><strong>Controls:</strong><br>
+        W / S : Throttle Up / Down<br>
+        A / D : Yaw Left / Right<br>
+        ↑ / ↓ : Pitch Forward / Back<br>
+        ← / → : Roll Left / Right<br>
+        R : Reset</div>
+    </div>
+
+    <div id="crash-overlay">💥 DRONE CRASH — RESETTING…</div>
+
+    <script>
+        // ═════════════════════════════════════════════════════════
+        // VVU 3D DRONE SIMULATOR
+        // Physics: rigid body 6DoF, F=ma, thrust vector rotation,
+        //          gravity, drag, delta-time integration.
+        // Camera: smooth lerp tracking behind drone.
+        // Collision: pillar bounding-box + ground reset.
+        // ═════════════════════════════════════════════════════════
+
+        // --- 1. SETUP THREE.JS SCENE ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.FogExp2(0x87ceeb, 0.012);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // --- 2. LIGHTING ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(100, 300, 100);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // --- 3. ENVIRONMENT (GROUND & OBSTACLES) ---
+        const gridHelper = new THREE.GridHelper(500, 100, 0x444444, 0x888888);
+        gridHelper.position.y = 0;
+        scene.add(gridHelper);
+
+        const groundGeo = new THREE.PlaneGeometry(1000, 1000);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x557a46 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Obstacles (Colored Pillars) — stored for collision detection
+        const pillars = [];
+        for (let i = 0; i < 15; i++) {
+            const h = 10 + Math.random() * 20;
+            const pillarGeo = new THREE.BoxGeometry(4, h, 4);
+            const pillarMat = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff });
+            const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+            pillar.position.set((Math.random() - 0.5) * 150, h / 2, (Math.random() - 0.5) * 150);
+            pillar.castShadow = true;
+            pillar.receiveShadow = true;
+            scene.add(pillar);
+            pillars.push(pillar);
+        }
+
+        // --- 4. THE DRONE MODEL ---
+        const droneGroup = new THREE.Group();
+
+        // Drone Center Body
+        const bodyGeo = new THREE.BoxGeometry(2, 0.3, 2);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.castShadow = true;
+        droneGroup.add(body);
+
+        // Indicator Light (Front of drone)
+        const noseGeo = new THREE.BoxGeometry(0.5, 0.3, 0.5);
+        const noseMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc });
+        const nose = new THREE.Mesh(noseGeo, noseMat);
+        nose.position.set(0, 0, -1);
+        droneGroup.add(nose);
+
+        // 4 propeller arms
+        const armPositions = [[-1, 0, -1], [1, 0, -1], [-1, 0, 1], [1, 0, 1]];
+        const propellers = [];
+        armPositions.forEach(function(pos) {
+            const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.5, 6);
+            const armMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const arm = new THREE.Mesh(armGeo, armMat);
+            arm.position.set(pos[0] * 0.7, 0, pos[2] * 0.7);
+            arm.rotation.z = Math.PI / 2;
+            arm.lookAt(new THREE.Vector3(pos[0] * 1.4, 0, pos[2] * 1.4));
+            droneGroup.add(arm);
+
+            // Propeller disc
+            const propGeo = new THREE.CircleGeometry(0.8, 12);
+            const propMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+            const prop = new THREE.Mesh(propGeo, propMat);
+            prop.position.set(pos[0] * 1.4, 0.15, pos[2] * 1.4);
+            prop.rotation.x = -Math.PI / 2;
+            droneGroup.add(prop);
+            propellers.push(prop);
+        });
+
+        droneGroup.position.set(0, 2, 0);
+        scene.add(droneGroup);
+
+        // --- 5. FLIGHT PHYSICS & VARIABLES ---
+        const physics = {
+            pos: new THREE.Vector3(0, 2, 0),
+            vel: new THREE.Vector3(0, 0, 0),
+            rot: new THREE.Vector3(0, 0, 0), // Pitch (X), Yaw (Y), Roll (Z)
+            throttle: 0,                    // 0 to 100
+            gravity: 9.81,
+            mass: 1.5,
+            drag: 0.15
+        };
+
+        // --- 6. INPUT HANDLING ---
+        const keys = {};
+        window.addEventListener('keydown', function(e) { keys[e.key.toLowerCase()] = true; });
+        window.addEventListener('keyup', function(e) { keys[e.key.toLowerCase()] = false; });
+
+        // --- 7. PHYSICS UPDATE ---
+        function updatePhysics(dt) {
+            if (dt > 0.1) dt = 0.1; // Cap large lag spikes
+
+            // Throttle (W/S)
+            if (keys['w']) physics.throttle = Math.min(100, physics.throttle + 40 * dt);
+            if (keys['s']) physics.throttle = Math.max(0, physics.throttle - 40 * dt);
+
+            // Yaw Rotation (A/D)
+            if (keys['a']) physics.rot.y += 2.0 * dt;
+            if (keys['d']) physics.rot.y -= 2.0 * dt;
+
+            // Pitch Control (ArrowUp/ArrowDown)
+            if (keys['arrowup']) physics.rot.x = THREE.MathUtils.lerp(physics.rot.x, -0.4, 5 * dt);
+            else if (keys['arrowdown']) physics.rot.x = THREE.MathUtils.lerp(physics.rot.x, 0.4, 5 * dt);
+            else physics.rot.x = THREE.MathUtils.lerp(physics.rot.x, 0, 5 * dt);
+
+            // Roll Control (ArrowLeft/ArrowRight)
+            if (keys['arrowleft']) physics.rot.z = THREE.MathUtils.lerp(physics.rot.z, -0.4, 5 * dt);
+            else if (keys['arrowright']) physics.rot.z = THREE.MathUtils.lerp(physics.rot.z, 0.4, 5 * dt);
+            else physics.rot.z = THREE.MathUtils.lerp(physics.rot.z, 0, 5 * dt);
+
+            // Reset
+            if (keys['r']) triggerCrashReset(true);
+
+            // Calculate Forces — F = ma
+            // Thrust vector rotated by drone orientation (quaternion-like via axis-angle)
+            const maxThrustForce = 25;
+            const totalThrust = (physics.throttle / 100) * maxThrustForce;
+
+            const thrustVector = new THREE.Vector3(0, 1, 0);
+            thrustVector.applyAxisAngle(new THREE.Vector3(1, 0, 0), physics.rot.x);
+            thrustVector.applyAxisAngle(new THREE.Vector3(0, 0, 1), physics.rot.z);
+            thrustVector.applyAxisAngle(new THREE.Vector3(0, 1, 0), physics.rot.y);
+            thrustVector.multiplyScalar(totalThrust);
+
+            // Gravity: constant downward force
+            const gravityVector = new THREE.Vector3(0, -physics.gravity * physics.mass, 0);
+
+            // Drag: opposes velocity (prevents infinite acceleration)
+            const dragVector = physics.vel.clone().multiplyScalar(-physics.drag);
+
+            // Net Force → Acceleration → Velocity → Position
+            const netForce = new THREE.Vector3().addVectors(thrustVector, gravityVector).add(dragVector);
+            const acceleration = netForce.divideScalar(physics.mass);
+
+            physics.vel.addScaledVector(acceleration, dt);
+            physics.pos.addScaledVector(physics.vel, dt);
+
+            // Ground collision safeguard
+            if (physics.pos.y < 0.15) {
+                physics.pos.y = 0.15;
+                physics.vel.set(0, 0, 0);
+            }
+
+            // Apply to drone mesh
+            droneGroup.position.copy(physics.pos);
+            droneGroup.rotation.set(0, 0, 0);
+            droneGroup.rotateY(physics.rot.y);
+            droneGroup.rotateX(physics.rot.x);
+            droneGroup.rotateZ(physics.rot.z);
+
+            // Spin propellers based on throttle
+            const propSpeed = physics.throttle * 0.15;
+            propellers.forEach(function(p, i) {
+                p.rotation.z += propSpeed * (i % 2 === 0 ? 1 : -1);
+            });
+        }
+
+        // --- 8. SMOOTH CAMERA TRACKING ---
+        function updateCamera() {
+            const relativeOffset = new THREE.Vector3(0, 3.5, 8);
+            relativeOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), physics.rot.y);
+
+            const targetCamPos = physics.pos.clone().add(relativeOffset);
+            camera.position.lerp(targetCamPos, 0.08);
+
+            // Look slightly ahead of the drone
+            const lookTarget = physics.pos.clone().add(
+                new THREE.Vector3(0, 0.5, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), physics.rot.y)
+            );
+            camera.lookAt(lookTarget);
+        }
+
+        // --- 9. COLLISION DETECTION ---
+        function checkCollisions() {
+            const droneRadius = 1.2;
+
+            for (let i = 0; i < pillars.length; i++) {
+                const pillar = pillars[i];
+                const dx = physics.pos.x - pillar.position.x;
+                const dz = physics.pos.z - pillar.position.z;
+                const distanceXZ = Math.sqrt(dx * dx + dz * dz);
+                const pillarHeight = pillar.geometry.parameters.height;
+
+                if (distanceXZ < (droneRadius + 2) && physics.pos.y < pillarHeight) {
+                    triggerCrashReset(false);
+                    break;
+                }
+            }
+        }
+
+        function triggerCrashReset(silent) {
+            if (!silent) {
+                const overlay = document.getElementById('crash-overlay');
+                overlay.classList.add('active');
+                setTimeout(function() { overlay.classList.remove('active'); }, 1500);
+            }
+            physics.pos.set(0, 2, 0);
+            physics.vel.set(0, 0, 0);
+            physics.rot.set(0, 0, 0);
+            physics.throttle = 0;
+        }
+
+        // --- 10. UI UPDATE ---
+        function updateUI() {
+            document.getElementById('val-throttle').textContent = Math.round(physics.throttle);
+            document.getElementById('val-alt').textContent = (physics.pos.y - 0.15).toFixed(1);
+            document.getElementById('val-speed').textContent = physics.vel.length().toFixed(1);
+        }
+
+        // --- 11. MAIN SIMULATION LOOP ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = clock.getDelta();
+
+            updatePhysics(dt);
+            checkCollisions();
+            updateCamera();
+            updateUI();
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', function() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

@@ -332,6 +332,18 @@ function ActivityViewport({ activity }: { activity: ActivityDef }) {
       return <CanvasTab />;
     case "aerospace":
       return <AerospaceTab />;
+    case "drone":
+      return (
+        <div className="overflow-hidden rounded-lg border border-border/60">
+          <iframe
+            src="/vvu-drone-simulator.html"
+            title="VVU 3D Drone Simulator"
+            className="h-[760px] w-full"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin"
+          />
+        </div>
+      );
     case "searm":
       return <SearmTab />;
     case "field":

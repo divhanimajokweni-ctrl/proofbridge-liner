@@ -79,6 +79,15 @@ export const ROOMS: RoomDef[] = [
         status: "partial",
         statusNote: "4-body three.js scene exists inside vvu-aerospace.html iframe (explode/yaw/pitch/zoom). Needs React three.js component.",
       },
+      {
+        id: "drone-simulator",
+        name: "Drone Simulator",
+        icon: "🚁",
+        sourceTab: "drone",
+        fullscreen: true,
+        status: "exists",
+        statusNote: "3D drone simulator with rigid body 6DoF physics, thrust vector rotation, gravity, drag, PID-style controls, smooth camera tracking, pillar collision detection + crash reset. Served from /public/vvu-drone-simulator.html.",
+      },
     ],
   },
   {
