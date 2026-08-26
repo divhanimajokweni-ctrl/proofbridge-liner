@@ -76,6 +76,10 @@ export function IveHeader({
             { id: "searm", label: "SEARM", icon: "ShieldAlert" },
             { id: "field", label: "Field Evidence", icon: "Camera" },
             { id: "devsdk", label: "Dev SDK", icon: "Package" },
+            { id: "studio", label: "Studio Worksheets", icon: "Network" },
+            { id: "antpay", label: "ANTPAY Billing", icon: "Wallet" },
+            { id: "pools", label: "Ubuntu Pools", icon: "Handshake" },
+            { id: "integrations", label: "Integrations", icon: "Users" },
           ].map((t) => {
             const active = activeTab === t.id;
             return (
