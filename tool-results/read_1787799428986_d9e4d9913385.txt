@@ -1,0 +1,1409 @@
+     1→'use client';
+     2→
+     3→import { useCallback, useEffect, useMemo, useState } from 'react';
+     4→import {
+     5→  Activity,
+     6→  AlertTriangle,
+     7→  CheckCircle2,
+     8→  Clock,
+     9→  Crosshair,
+    10→  Download,
+    11→  Fingerprint,
+    12→  Gauge,
+    13→  Layers,
+    14→  Layers3,
+    15→  Pause,
+    16→  Play,
+    17→  RotateCcw,
+    18→  Settings2,
+    19→  ShieldCheck,
+    20→  SkipForward,
+    21→  Terminal,
+    22→  Zap,
+    23→} from 'lucide-react';
+    24→import {
+    25→  Card,
+    26→  CardContent,
+    27→  CardHeader,
+    28→  CardTitle,
+    29→} from '@/components/ui/card';
+    30→import { Button } from '@/components/ui/button';
+    31→import { Badge } from '@/components/ui/badge';
+    32→import { Slider } from '@/components/ui/slider';
+    33→import { Switch } from '@/components/ui/switch';
+    34→import { Label } from '@/components/ui/label';
+    35→import { Separator } from '@/components/ui/separator';
+    36→import {
+    37→  Tooltip,
+    38→  TooltipContent,
+    39→  TooltipProvider,
+    40→  TooltipTrigger,
+    41→} from '@/components/ui/tooltip';
+    42→import { ScrollArea } from '@/components/ui/scroll-area';
+    43→import {
+    44→  type DMACalibration,
+    45→  type EISVerdict,
+    46→  type PipelinePass,
+    47→  type CorrelatedObservation,
+    48→  DEFAULT_CALIBRATION,
+    49→} from '@/lib/evidence/EISv1Engine';
+    50→import {
+    51→  REPLAY_STEPS,
+    52→  SCADA_TABLE,
+    53→  DMA_ID,
+    54→  SEGMENT_ID,
+    55→  SCENARIO_DATE,
+    56→  type ReplayStep,
+    57→} from '@/lib/evidence/hydraulicScenario';
+    58→import HBKPanel from '@/components/evidence/hbk-panel';
+    59→
+    60→// ─── API contract ────────────────────────────────────────────────────────
+    61→
+    62→interface ComputeResponse {
+    63→  verdict: Omit<EISVerdict, 'observations'>;
+    64→  pipeline: PipelinePass[];
+    65→  observations: CorrelatedObservation[];
+    66→  auditHash: string;
+    67→  auditShortHash: string;
+    68→  generatedAtUtc: string;
+    69→  classification: string;
+    70→  calibration: DMACalibration;
+    71→  dmaId: string;
+    72→}
+    73→
+    74→type View = 'eis' | 'hbk';
+    75→
+    76→// ─── Page ────────────────────────────────────────────────────────────────
+    77→
+    78→export default function Home() {
+    79→  const [view, setView] = useState<View>('eis');
+    80→  const [calibration, setCalibration] = useState<DMACalibration>(DEFAULT_CALIBRATION);
+    81→  const [stepIdx, setStepIdx] = useState(0); // start at BASELINE (index 0)
+    82→  const [playing, setPlaying] = useState(false);
+    83→  const [pumpSim, setPumpSim] = useState(false); // false-positive toggle
+    84→  const [resp, setResp] = useState<ComputeResponse | null>(null);
+    85→  const [loading, setLoading] = useState(false);
+    86→  const [error, setError] = useState<string | null>(null);
+    87→
+    88→  const currentStep: ReplayStep = REPLAY_STEPS[stepIdx] ?? REPLAY_STEPS[1];
+    89→
+    90→  // Compute EIS via API whenever calibration, replay step, or pump sim changes.
+    91→  const compute = useCallback(async () => {
+    92→    setLoading(true);
+    93→    setError(null);
+    94→    try {
+    95→      const res = await fetch('/api/evidence/compute', {
+    96→        method: 'POST',
+    97→        headers: { 'Content-Type': 'application/json' },
+    98→        body: JSON.stringify({
+    99→          calibration,
+   100→          includeAnomaly: currentStep.includeAnomaly,
+   101→          includeField: currentStep.includeField,
+   102→          includeAcoustic: currentStep.includeAcoustic,
+   103→          includeContext: currentStep.includeContext,
+   104→          pumpStateChanged: pumpSim,
+   105→        }),
+   106→      });
+   107→      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+   108→      const data = (await res.json()) as ComputeResponse;
+   109→      setResp(data);
+   110→    } catch (e) {
+   111→      setError(e instanceof Error ? e.message : 'Compute failed');
+   112→    } finally {
+   113→      setLoading(false);
+   114→    }
+   115→  }, [calibration, currentStep, pumpSim]);
+   116→
+   117→  useEffect(() => {
+   118→    void compute();
+   119→  }, [compute]);
+   120→
+   121→  // Auto-play the 10-step replay
+   122→  useEffect(() => {
+   123→    if (!playing) return;
+   124→    const id = setInterval(() => {
+   125→      setStepIdx((prev) => {
+   126→        if (prev >= REPLAY_STEPS.length - 1) {
+   127→          setPlaying(false);
+   128→          return prev;
+   129→        }
+   130→        return prev + 1;
+   131→      });
+   132→    }, 1800);
+   133→    return () => clearInterval(id);
+   134→  }, [playing]);
+   135→
+   136→  const step = (delta: number) => {
+   137→    setStepIdx((prev) =>
+   138→      Math.max(0, Math.min(REPLAY_STEPS.length - 1, prev + delta)),
+   139→    );
+   140→  };
+   141→
+   142→  const reset = () => {
+   143→    setPlaying(false);
+   144→    setStepIdx(0);
+   145→    setPumpSim(false);
+   146→    setCalibration(DEFAULT_CALIBRATION);
+   147→  };
+   148→
+   149→  const exportAudit = async () => {
+   150→    const res = await fetch('/api/evidence/audit', {
+   151→      method: 'POST',
+   152→      headers: { 'Content-Type': 'application/json' },
+   153→      body: JSON.stringify({
+   154→        calibration,
+   155→        includeAnomaly: currentStep.includeAnomaly,
+   156→        includeField: currentStep.includeField,
+   157→        includeAcoustic: currentStep.includeAcoustic,
+   158→        includeContext: currentStep.includeContext,
+   159→        pumpStateChanged: pumpSim,
+   160→      }),
+   161→    });
+   162→    const blob = await res.blob();
+   163→    const url = URL.createObjectURL(blob);
+   164→    const a = document.createElement('a');
+   165→    a.href = url;
+   166→    a.download = `leak_candidate_audit_${DMA_ID}.json`;
+   167→    document.body.appendChild(a);
+   168→    a.click();
+   169→    a.remove();
+   170→    URL.revokeObjectURL(url);
+   171→  };
+   172→
+   173→  return (
+   174→    <div className="kernel-theme min-h-screen flex flex-col k-grid-bg">
+   175→      <HeaderBar
+   176→        view={view}
+   177→        onViewChange={setView}
+   178→        stepIdx={stepIdx}
+   179→        totalSteps={REPLAY_STEPS.length}
+   180→        auditShortHash={resp?.auditShortHash ?? '——————'}
+   181→        loading={loading}
+   182→      />
+   183→
+   184→      <main className="flex-1 px-3 sm:px-6 pb-8 max-w-[1600px] w-full mx-auto">
+   185→        {view === 'hbk' ? (
+   186→          <HBKPanel />
+   187→        ) : (
+   188→          <>
+   189→            {/* Replay timeline */}
+   190→            <ReplayTimeline
+   191→              steps={REPLAY_STEPS}
+   192→              currentIdx={stepIdx}
+   193→              onSelect={(i) => setStepIdx(i)}
+   194→            />
+   195→
+   196→            {/* Control bar */}
+   197→            <ControlBar
+   198→              playing={playing}
+   199→              onPlay={() => setPlaying(true)}
+   200→              onPause={() => setPlaying(false)}
+   201→              onStepFwd={() => step(1)}
+   202→              onStepBack={() => step(-1)}
+   203→              onReset={reset}
+   204→              pumpSim={pumpSim}
+   205→              onPumpSimChange={setPumpSim}
+   206→              onExport={exportAudit}
+   207→              currentStep={currentStep}
+   208→            />
+   209→
+   210→            {error && (
+   211→              <div className="k-card k-glow-red mt-4 text-sm">
+   212→                <span className="k-danger">[ERROR]</span>{' '}
+   213→                <span className="k-fg">{error}</span>
+   214→              </div>
+   215→            )}
+   216→
+   217→            {/* Main grid: 2 columns on lg, 1 col on mobile */}
+   218→            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4">
+   219→              {/* Left column: pipeline + calibration */}
+   220→              <div className="lg:col-span-4 flex flex-col gap-4">
+   221→                <PipelinePanel pipeline={resp?.pipeline ?? []} />
+   222→                <CalibrationPanel
+   223→                  calibration={calibration}
+   224→                  onChange={setCalibration}
+   225→                />
+   226→              </div>
+   227→
+   228→              {/* Middle column: trust gauge + evidence chain */}
+   229→              <div className="lg:col-span-4 flex flex-col gap-4">
+   230→                <TrustGaugePanel verdict={resp?.verdict ?? null} loading={loading} />
+   231→                <EvidenceChainPanel
+   232→                  observations={resp?.observations ?? []}
+   233→                  pumpSim={pumpSim}
+   234→                />
+   235→              </div>
+   236→
+   237→              {/* Right column: SCADA telemetry + audit */}
+   238→              <div className="lg:col-span-4 flex flex-col gap-4">
+   239→                <ScadaPanel stepIdx={stepIdx} />
+   240→                <AuditPanel
+   241→                  resp={resp}
+   242→                  onExport={exportAudit}
+   243→                />
+   244→              </div>
+   245→            </div>
+   246→
+   247→            {/* Provenance + classification section */}
+   248→            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+   249→              <ProvenancePanel
+   250→                observations={resp?.observations ?? []}
+   251→                auditHash={resp?.auditHash ?? '——————'}
+   252→                generatedAt={resp?.generatedAtUtc ?? '——————'}
+   253→              />
+   254→              <ClassificationPanel />
+   255→            </div>
+   256→          </>
+   257→        )}
+   258→      </main>
+   259→
+   260→      <FooterBar
+   261→        auditShortHash={resp?.auditShortHash ?? '——————'}
+   262→        generatedAt={resp?.generatedAtUtc ?? '——————'}
+   263→      />
+   264→    </div>
+   265→  );
+   266→}
+   267→
+   268→// ─── Header ───────────────────────────────────────────────────────────────
+   269→
+   270→function HeaderBar({
+   271→  view,
+   272→  onViewChange,
+   273→  stepIdx,
+   274→  totalSteps,
+   275→  auditShortHash,
+   276→  loading,
+   277→}: {
+   278→  view: View;
+   279→  onViewChange: (v: View) => void;
+   280→  stepIdx: number;
+   281→  totalSteps: number;
+   282→  auditShortHash: string;
+   283→  loading: boolean;
+   284→}) {
+   285→  return (
+   286→    <header className="border-b border-[var(--k-line)] bg-gradient-to-r from-[rgba(0,212,255,0.08)] via-transparent to-transparent">
+   287→      <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-4">
+   288→        <div className="flex items-center justify-between flex-wrap gap-3">
+   289→          <div className="flex items-center gap-3">
+   290→            <div className="w-10 h-10 rounded-md border border-[var(--k-cyan-bright)] flex items-center justify-center k-glow-cyan">
+   291→              <Terminal className="w-5 h-5 text-[var(--k-cyan-bright)]" />
+   292→            </div>
+   293→            <div>
+   294→              <h1 className="text-[var(--k-cyan-bright)] font-bold tracking-[0.18em] text-sm sm:text-base uppercase">
+   295→                VVU AIR KERNEL
+   296→              </h1>
+   297→              <p className="text-[var(--k-dim)] text-xs mt-0.5">
+   298→                HYDRAULIC VALIDATION UTILITY · {view === 'hbk' ? 'HBK LOCALIZATION' : 'EIS v1.0'} · {DMA_ID}
+   299→              </p>
+   300→            </div>
+   301→          </div>
+   302→
+   303→          <div className="flex items-center gap-3 text-xs flex-wrap">
+   304→            {/* View toggle: EIS Workspace ↔ HBK Localization */}
+   305→            <div className="flex items-center gap-0 p-0.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
+   306→              <button
+   307→                type="button"
+   308→                onClick={() => onViewChange('eis')}
+   309→                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-[11px] font-bold tracking-wider transition-all ${
+   310→                  view === 'eis'
+   311→                    ? 'bg-[var(--k-cyan-bright)] text-black'
+   312→                    : 'text-[var(--k-dim)] hover:text-[var(--k-fg)]'
+   313→                }`}
+   314→              >
+   315→                <ShieldCheck className="w-3.5 h-3.5" />
+   316→                EIS WORKSPACE
+   317→              </button>
+   318→              <button
+   319→                type="button"
+   320→                onClick={() => onViewChange('hbk')}
+   321→                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-[11px] font-bold tracking-wider transition-all ${
+   322→                  view === 'hbk'
+   323→                    ? 'bg-[var(--k-cyan-bright)] text-black'
+   324→                    : 'text-[var(--k-dim)] hover:text-[var(--k-fg)]'
+   325→                }`}
+   326→              >
+   327→                <Crosshair className="w-3.5 h-3.5" />
+   328→                HBK LOCALIZATION
+   329→              </button>
+   330→            </div>
+   331→            {view === 'eis' && (
+   332→              <>
+   333→                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
+   334→                  <Clock className="w-3.5 h-3.5 text-[var(--k-dim)]" />
+   335→                  <span className="text-[var(--k-dim)]">SCENARIO:</span>
+   336→                  <span className="text-[var(--k-fg-bright)]">{SCENARIO_DATE}</span>
+   337→                </div>
+   338→                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
+   339→                  <span className="text-[var(--k-dim)]">STEP</span>
+   340→                  <span className="text-[var(--k-cyan-bright)] font-bold">
+   341→                    {String(stepIdx + 1).padStart(2, '0')}/{String(totalSteps).padStart(2, '0')}
+   342→                  </span>
+   343→                </div>
+   344→              </>
+   345→            )}
+   346→            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
+   347→              <Fingerprint className="w-3.5 h-3.5 text-[var(--k-green-bright)]" />
+   348→              <span className="text-[var(--k-dim)]">RECEIPT</span>
+   349→              <span className="text-[var(--k-green-bright)] font-mono">
+   350→                0x{auditShortHash}
+   351→              </span>
+   352→              {loading && (
+   353→                <span className="k-cursor text-[var(--k-cyan-bright)] ml-1"></span>
+   354→              )}
+   355→            </div>
+   356→          </div>
+   357→        </div>
+   358→      </div>
+   359→    </header>
+   360→  );
+   361→}
+   362→
+   363→// ─── Replay timeline ──────────────────────────────────────────────────────
+   364→
+   365→function ReplayTimeline({
+   366→  steps,
+   367→  currentIdx,
+   368→  onSelect,
+   369→}: {
+   370→  steps: ReplayStep[];
+   371→  currentIdx: number;
+   372→  onSelect: (i: number) => void;
+   373→}) {
+   374→  return (
+   375→    <Card className="k-card border-[var(--k-line)] bg-[var(--k-panel)]">
+   376→      <CardHeader className="pb-2">
+   377→        <CardTitle className="k-card-title">
+   378→          <Layers className="w-4 h-4" />
+   379→          Hydraulic Incident Replay · 10-Step Sequence
+   380→        </CardTitle>
+   381→      </CardHeader>
+   382→      <CardContent>
+   383→        <div className="flex gap-1 overflow-x-auto pb-2">
+   384→          {steps.map((s, arrayIdx) => {
+   385→            const active = arrayIdx === currentIdx;
+   386→            const passed = arrayIdx < currentIdx;
+   387→            return (
+   388→              <button
+   389→                key={s.id}
+   390→                onClick={() => onSelect(arrayIdx)}
+   391→                className={`group flex-shrink-0 flex flex-col items-center gap-1 px-2 py-2 rounded-md border transition-all min-w-[64px] ${
+   392→                  active
+   393→                    ? 'border-[var(--k-cyan-bright)] k-glow-cyan bg-[rgba(0,212,255,0.06)]'
+   394→                    : passed
+   395→                      ? 'border-[var(--k-green-bright)]/40 bg-[rgba(0,255,136,0.04)] hover:border-[var(--k-green-bright)]'
+   396→                      : 'border-[var(--k-line)] bg-[var(--k-bg-elevated)] hover:border-[var(--k-cyan)]'
+   397→                }`}
+   398→                title={s.title}
+   399→              >
+   400→                <span
+   401→                  className={`text-[10px] font-bold ${
+   402→                    active
+   403→                      ? 'text-[var(--k-cyan-bright)]'
+   404→                      : passed
+   405→                        ? 'text-[var(--k-green-bright)]'
+   406→                        : 'text-[var(--k-dim)]'
+   407→                  }`}
+   408→                >
+   409→                  {String(s.id).padStart(2, '0')}
+   410→                </span>
+   411→                <span
+   412→                  className={`text-[9px] uppercase tracking-wider text-center ${
+   413→                    active
+   414→                      ? 'text-[var(--k-fg-bright)]'
+   415→                      : passed
+   416→                        ? 'text-[var(--k-green)]'
+   417→                        : 'text-[var(--k-dim)]'
+   418→                  }`}
+   419→                >
+   420→                  {s.key}
+   421→                </span>
+   422→              </button>
+   423→            );
+   424→          })}
+   425→        </div>
+   426→      </CardContent>
+   427→    </Card>
+   428→  );
+   429→}
+   430→
+   431→// ─── Control bar ─────────────────────────────────────────────────────────
+   432→
+   433→function ControlBar({
+   434→  playing,
+   435→  onPlay,
+   436→  onPause,
+   437→  onStepFwd,
+   438→  onStepBack,
+   439→  onReset,
+   440→  pumpSim,
+   441→  onPumpSimChange,
+   442→  onExport,
+   443→  currentStep,
+   444→}: {
+   445→  playing: boolean;
+   446→  onPlay: () => void;
+   447→  onPause: () => void;
+   448→  onStepFwd: () => void;
+   449→  onStepBack: () => void;
+   450→  onReset: () => void;
+   451→  pumpSim: boolean;
+   452→  onPumpSimChange: (v: boolean) => void;
+   453→  onExport: () => void;
+   454→  currentStep: ReplayStep;
+   455→}) {
+   456→  return (
+   457→    <div className="k-card mt-4">
+   458→      <div className="flex flex-wrap items-center gap-3">
+   459→        <div className="flex items-center gap-1">
+   460→          <Button
+   461→            size="sm"
+   462→            variant="outline"
+   463→            onClick={onStepBack}
+   464→            disabled={playing}
+   465→            className="border-[var(--k-line)] bg-[var(--k-bg-elevated)] text-[var(--k-fg)] hover:bg-[var(--k-panel-2)] hover:text-[var(--k-cyan-bright)]"
+   466→          >
+   467→            <SkipForward className="w-3.5 h-3.5 rotate-180" /> Back
+   468→          </Button>
+   469→          {playing ? (
+   470→            <Button
+   471→              size="sm"
+   472→              onClick={onPause}
+   473→              className="bg-[var(--k-amber-bright)] text-black hover:bg-[var(--k-amber)]"
+   474→            >
+   475→              <Pause className="w-3.5 h-3.5" /> Pause
+   476→            </Button>
+   477→          ) : (
+   478→            <Button
+   479→              size="sm"
+   480→              onClick={onPlay}
+   481→              className="bg-[var(--k-green-bright)] text-black hover:bg-[var(--k-green)]"
+   482→            >
+   483→              <Play className="w-3.5 h-3.5" /> Play
+   484→            </Button>
+   485→          )}
+   486→          <Button
+   487→            size="sm"
+   488→            variant="outline"
+   489→            onClick={onStepFwd}
+   490→            disabled={playing}
+   491→            className="border-[var(--k-line)] bg-[var(--k-bg-elevated)] text-[var(--k-fg)] hover:bg-[var(--k-panel-2)] hover:text-[var(--k-cyan-bright)]"
+   492→          >
+   493→            Next <SkipForward className="w-3.5 h-3.5" />
+   494→          </Button>
+   495→          <Button
+   496→            size="sm"
+   497→            variant="outline"
+   498→            onClick={onReset}
+   499→            className="border-[var(--k-line)] bg-[var(--k-bg-elevated)] text-[var(--k-fg)] hover:bg-[var(--k-panel-2)] hover:text-[var(--k-red-bright)]"
+   500→          >
+   501→            <RotateCcw className="w-3.5 h-3.5" /> Reset
+   502→          </Button>
+   503→        </div>
+   504→
+   505→        <Separator orientation="vertical" className="h-6 bg-[var(--k-line)]" />
+   506→
+   507→        <div className="flex items-center gap-2">
+   508→          <TooltipProvider>
+   509→            <Tooltip>
+   510→              <TooltipTrigger asChild>
+   511→                <div className="flex items-center gap-2">
+   512→                  <Switch
+   513→                    checked={pumpSim}
+   514→                    onCheckedChange={onPumpSimChange}
+   515→                  />
+   516→                  <Label className="text-xs cursor-pointer text-[var(--k-fg)]">
+   517→                    <Zap className="w-3 h-3 inline mr-1 text-[var(--k-amber-bright)]" />
+   518→                    Inject pump event
+   519→                  </Label>
+   520→                </div>
+   521→              </TooltipTrigger>
+   522→              <TooltipContent className="bg-[var(--k-panel)] border-[var(--k-line)] text-[var(--k-fg)]">
+   523→                <p className="text-xs">
+   524→                  Toggles a pump-status change in the operating context.
+   525→                  <br />
+   526→                  EIS rule: PRIMARY + pump_context → REJECTED_FALSE_POSITIVE.
+   527→                </p>
+   528→              </TooltipContent>
+   529→            </Tooltip>
+   530→          </TooltipProvider>
+   531→        </div>
+   532→
+   533→        <Separator orientation="vertical" className="h-6 bg-[var(--k-line)]" />
+   534→
+   535→        <div className="flex-1 min-w-[200px]">
+   536→          <div className="text-[10px] uppercase tracking-wider text-[var(--k-dim)] mb-1">
+   537→            Current step
+   538→          </div>
+   539→          <div className="text-xs text-[var(--k-fg-bright)] truncate">
+   540→            <span className="k-cyan">[{currentStep.key}]</span>{' '}
+   541→            {currentStep.title.replace(/^\d+\.\s*/, '')}
+   542→          </div>
+   543→        </div>
+   544→
+   545→        <Button
+   546→          size="sm"
+   547→          onClick={onExport}
+   548→          className="bg-[var(--k-cyan-bright)] text-black hover:bg-[var(--k-cyan)]"
+   549→        >
+   550→          <Download className="w-3.5 h-3.5" /> Export audit receipt
+   551→        </Button>
+   552→      </div>
+   553→      <div className="mt-3 pt-3 border-t border-[var(--k-line)]">
+   554→        <div className="text-xs text-[var(--k-fg)]">
+   555→          <span className="k-dim">{'// '}</span>
+   556→          {currentStep.description}
+   557→        </div>
+   558→        <div className="text-[10px] mt-1 text-[var(--k-green-bright)]">
+   559→          ▸ {currentStep.annotation}
+   560→        </div>
+   561→      </div>
+   562→    </div>
+   563→  );
+   564→}
+   565→
+   566→// ─── Pipeline panel ──────────────────────────────────────────────────────
+   567→
+   568→function PipelinePanel({ pipeline }: { pipeline: PipelinePass[] }) {
+   569→  return (
+   570→    <Card className="k-card border-[var(--k-line)] bg-[var(--k-panel)]">
+   571→      <CardHeader className="pb-2">
+   572→        <CardTitle className="k-card-title">
+   573→          <Activity className="w-4 h-4" />
+   574→          5-Pass Validation Pipeline
+   575→        </CardTitle>
+   576→      </CardHeader>
+   577→      <CardContent className="space-y-2">
+   578→        {pipeline.map((p) => {
+   579→          const badge =
+   580→            p.status === 'pass' ? (
+   581→              <Badge className="k-badge k-badge-pass">
+   582→                <CheckCircle2 className="w-2.5 h-2.5" /> PASS
+   583→              </Badge>
+   584→            ) : p.status === 'process' ? (
+   585→              <Badge className="k-badge k-badge-process">
+   586→                <Activity className="w-2.5 h-2.5" /> RUNNING
+   587→              </Badge>
+   588→            ) : p.status === 'fail' ? (
+   589→              <Badge className="k-badge k-badge-danger">
+   590→                <AlertTriangle className="w-2.5 h-2.5" /> FAIL
+   591→              </Badge>
+   592→            ) : (
+   593→              <Badge className="k-badge k-badge-dim">PENDING</Badge>
+   594→            );
+   595→          return (
+   596→            <div
+   597→              key={p.id}
+   598→              className={`flex items-start gap-3 p-2 rounded-md border transition-all ${
+   599→                p.status === 'pass'
+   600→                  ? 'border-[var(--k-green-bright)]/30 bg-[rgba(0,255,136,0.04)]'
+   601→                  : p.status === 'process'
+   602→                    ? 'border-[var(--k-cyan-bright)]/40 bg-[rgba(0,212,255,0.05)]'
+   603→                    : p.status === 'fail'
+   604→                      ? 'border-[var(--k-red-bright)]/40 bg-[rgba(255,77,77,0.05)]'
+   605→                      : 'border-[var(--k-line)] bg-[var(--k-bg-elevated)]'
+   606→              }`}
+   607→            >
+   608→              <div className="text-xs font-bold w-6 text-center text-[var(--k-dim)]">
+   609→                {p.id}
+   610→              </div>
+   611→              <div className="flex-1 min-w-0">
+   612→                <div className="flex items-center justify-between gap-2">
+   613→                  <span className="text-xs font-semibold text-[var(--k-fg-bright)]">
+   614→                    {p.name}
+   615→                  </span>
+   616→                  {badge}
+   617→                </div>
+   618→                <div className="text-[10px] text-[var(--k-dim)] mt-1 leading-snug">
+   619→                  {p.description}
+   620→                </div>
+   621→              </div>
+   622→            </div>
+   623→          );
+   624→        })}
+   625→      </CardContent>
+   626→    </Card>
+   627→  );
+   628→}
+   629→
+   630→// ─── Calibration panel ───────────────────────────────────────────────────
+   631→
+   632→function CalibrationPanel({
+   633→  calibration,
+   634→  onChange,
+   635→}: {
+   636→  calibration: DMACalibration;
+   637→  onChange: (c: DMACalibration) => void;
+   638→}) {
+   639→  const update = (patch: Partial<DMACalibration>) =>
+   640→    onChange({ ...calibration, ...patch });
+   641→
+   642→  return (
+   643→    <Card className="k-card border-[var(--k-line)] bg-[var(--k-panel)]">
+   644→      <CardHeader className="pb-2">
+   645→        <CardTitle className="k-card-title">
+   646→          <Settings2 className="w-4 h-4" />
+   647→          DMA Calibration (live)
+   648→        </CardTitle>
+   649→      </CardHeader>
+   650→      <CardContent className="space-y-4">
+   651→        <CalibSlider
+   652→          label="Flow Deviation Threshold"
+   653→          value={calibration.flowDeviationThresholdPct}
+   654→          min={1}
+   655→          max={50}
+   656→          step={1}
+   657→          unit="%"
+   658→          hint="Minimum flow deviation to flag anomaly (default 10%)"
+   659→          onChange={(v) => update({ flowDeviationThresholdPct: v })}
+   660→        />
+   661→        <CalibSlider
+   662→          label="Pressure Drop Threshold"
+   663→          value={calibration.pressureDropThresholdPct}
+   664→          min={1}
+   665→          max={30}
+   666→          step={1}
+   667→          unit="%"
+   668→          hint="Minimum pressure drop to correlate (default 5%)"
+   669→          onChange={(v) => update({ pressureDropThresholdPct: v })}
+   670→        />
+   671→        <CalibSlider
+   672→          label="Correlation Time Window"
+   673→          value={calibration.correlationTimeWindowMin}
+   674→          min={1}
+   675→          max={1440}
+   676→          step={5}
+   677→          unit="min"
+   678→          hint="Max time gap for correlation (default 60 min)"
+   679→          onChange={(v) => update({ correlationTimeWindowMin: v })}
+   680→        />
+   681→        <div className="flex items-center justify-between pt-2 border-t border-[var(--k-line)]">
+   682→          <Label className="text-xs text-[var(--k-fg)]">
+   683→            Reject on pump context match
+   684→          </Label>
+   685→          <Switch
+   686→            checked={calibration.rejectOnPumpContextMatch}
+   687→            onCheckedChange={(v) => update({ rejectOnPumpContextMatch: v })}
+   688→          />
+   689→        </div>
+   690→        <div className="text-[10px] text-[var(--k-dim)] pt-1">
+   691→          EIS rule: if PRIMARY + pump_context → REJECTED_FALSE_POSITIVE.
+   692→          Parameters serialized into audit receipt for reproducibility.
+   693→        </div>
+   694→      </CardContent>
+   695→    </Card>
+   696→  );
+   697→}
+   698→
+   699→function CalibSlider({
+   700→  label,
+   701→  value,
+   702→  min,
+   703→  max,
+   704→  step,
+   705→  unit,
+   706→  hint,
+   707→  onChange,
+   708→}: {
+   709→  label: string;
+   710→  value: number;
+   711→  min: number;
+   712→  max: number;
+   713→  step: number;
+   714→  unit: string;
+   715→  hint: string;
+   716→  onChange: (v: number) => void;
+   717→}) {
+   718→  return (
+   719→    <div>
+   720→      <div className="flex items-center justify-between mb-1.5">
+   721→        <Label className="text-xs text-[var(--k-fg)]">{label}</Label>
+   722→        <span className="text-xs font-mono k-cyan font-bold">
+   723→          {value}
+   724→          <span className="text-[var(--k-dim)] ml-0.5">{unit}</span>
+   725→        </span>
+   726→      </div>
+   727→      <Slider
+   728→        value={[value]}
+   729→        min={min}
+   730→        max={max}
+   731→        step={step}
+   732→        onValueChange={(v) => onChange(v[0] ?? value)}
+   733→        className="[&_[role=slider]]:bg-[var(--k-cyan-bright)] [&_[role=slider]]:border-[var(--k-cyan-bright)] [&_.bg-primary]:bg-[var(--k-cyan-bright)]"
+   734→      />
+   735→      <div className="text-[10px] text-[var(--k-dim)] mt-1">{hint}</div>
+   736→    </div>
+   737→  );
+   738→}
+   739→
+   740→// ─── Trust gauge ─────────────────────────────────────────────────────────
+   741→
+   742→function TrustGaugePanel({
+   743→  verdict,
+   744→  loading,
+   745→}: {
+   746→  verdict: Omit<EISVerdict, 'observations'> | null;
+   747→  loading: boolean;
+   748→}) {
+   749→  const score = verdict?.score ?? 0;
+   750→  const threshold = verdict?.threshold ?? 0.8;
+   751→  const pct = Math.round(score * 100);
+   752→  const thresholdPct = Math.round(threshold * 100);
+   753→
+   754→  const verdictLabel = verdict?.verdict ?? 'INSUFFICIENT_EVIDENCE';
+   755→  const verdictClass =
+   756→    verdictLabel === 'VERIFIED_CANDIDATE'
+   757→      ? 'k-pass'
+   758→      : verdictLabel === 'REJECTED_FALSE_POSITIVE'
+   759→        ? 'k-danger'
+   760→        : 'k-warn';
+   761→  const verdictIcon =
+   762→    verdictLabel === 'VERIFIED_CANDIDATE' ? (
+   763→      <ShieldCheck className="w-4 h-4" />
+   764→    ) : verdictLabel === 'REJECTED_FALSE_POSITIVE' ? (
+   765→      <AlertTriangle className="w-4 h-4" />
+   766→    ) : (
+   767→      <Gauge className="w-4 h-4" />
+   768→    );
+   769→
+   770→  return (
+   771→    <Card
+   772→      className={`k-card border-[var(--k-line)] bg-[var(--k-panel)] ${
+   773→        verdictLabel === 'VERIFIED_CANDIDATE'
+   774→          ? 'k-glow-green'
+   775→          : verdictLabel === 'REJECTED_FALSE_POSITIVE'
+   776→            ? 'k-glow-red'
+   777→            : ''
+   778→      }`}
+   779→    >
+   780→      <CardHeader className="pb-2">
+   781→        <CardTitle className="k-card-title">
+   782→          <Gauge className="w-4 h-4" />
+   783→          EIS v1.0 Trust Score
+   784→        </CardTitle>
+   785→      </CardHeader>
+   786→      <CardContent>
+   787→        <div className="k-trust-bar">
+   788→          <div
+   789→            className="k-trust-bar-fill"
+   790→            style={{ width: `${pct}%` }}
+   791→          />
+   792→          <div
+   793→            className="k-trust-bar-threshold"
+   794→            style={{ left: `${thresholdPct}%` }}
+   795→            title={`Threshold ${thresholdPct}%`}
+   796→          />
+   797→          <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[var(--k-fg-bright)]">
+   798→            {loading ? (
+   799→              <span className="k-cursor text-[var(--k-cyan-bright)]"></span>
+   800→            ) : (
+   801→              score.toFixed(2)
+   802→            )}
+   803→          </div>
+   804→        </div>
+   805→        <div className="flex justify-between text-[10px] text-[var(--k-dim)] mt-1">
+   806→          <span>0.00</span>
+   807→          <span className="text-[var(--k-amber-bright)]">
+   808→            ▲ threshold {threshold.toFixed(2)}
+   809→          </span>
+   810→          <span>1.00</span>
+   811→        </div>
+   812→
+   813→        <div className="mt-4 flex items-center justify-center gap-2">
+   814→          <span className={verdictClass}>{verdictIcon}</span>
+   815→          <span className={`text-sm font-bold tracking-wider ${verdictClass}`}>
+   816→            {verdictLabel}
+   817→          </span>
+   818→        </div>
+   819→
+   820→        {/* Weight breakdown */}
+   821→        <div className="mt-4 pt-3 border-t border-[var(--k-line)] space-y-1.5">
+   822→          <WeightRow
+   823→            label="PRIMARY (flow)"
+   824→            weight={0.3}
+   825→            active={!!verdict?.hasPrimary}
+   826→          />
+   827→          <WeightRow
+   828→            label="CORRELATED (pressure)"
+   829→            weight={0.2}
+   830→            active={!!verdict?.hasCorrelated}
+   831→          />
+   832→          <WeightRow
+   833→            label="INDEPENDENT (field+acoustic)"
+   834→            weight={0.5}
+   835→            active={!!verdict?.hasIndependent}
+   836→            cap
+   837→          />
+   838→          <WeightRow
+   839→            label="CONTEXTUAL (pump/valve)"
+   840→            weight={0}
+   841→            active={!!verdict?.hasContextual}
+   842→            neutral
+   843→          />
+   844→        </div>
+   845→
+   846→        {verdict?.rejectedReason && (
+   847→          <div className="mt-3 pt-3 border-t border-[var(--k-line)]">
+   848→            <div className="text-[10px] uppercase tracking-wider text-[var(--k-dim)] mb-1">
+   849→              {verdict.verdict === 'VERIFIED_CANDIDATE'
+   850→                ? 'Result'
+   851→                : 'Rejection reason'}
+   852→            </div>
+   853→            <div className={`text-xs ${verdictClass}`}>
+   854→              {verdict.rejectedReason}
+   855→            </div>
+   856→          </div>
+   857→        )}
+   858→      </CardContent>
+   859→    </Card>
+   860→  );
+   861→}
+   862→
+   863→function WeightRow({
+   864→  label,
+   865→  weight,
+   866→  active,
+   867→  cap,
+   868→  neutral,
+   869→}: {
+   870→  label: string;
+   871→  weight: number;
+   872→  active: boolean;
+   873→  cap?: boolean;
+   874→  neutral?: boolean;
+   875→}) {
+   876→  return (
+   877→    <div className="flex items-center justify-between text-xs">
+   878→      <div className="flex items-center gap-2">
+   879→        <span
+   880→          className={`w-1.5 h-1.5 rounded-full ${
+   881→            active
+   882→              ? neutral
+   883→                ? 'bg-[var(--k-amber-bright)]'
+   884→                : 'bg-[var(--k-green-bright)]'
+   885→              : 'bg-[var(--k-dim)]'
+   886→          }`}
+   887→        />
+   888→        <span className={active ? 'text-[var(--k-fg-bright)]' : 'text-[var(--k-dim)]'}>
+   889→          {label}
+   890→        </span>
+   891→      </div>
+   892→      <span
+   893→        className={`font-mono font-bold ${
+   894→          active
+   895→            ? neutral
+   896→              ? 'text-[var(--k-amber-bright)]'
+   897→              : 'text-[var(--k-green-bright)]'
+   898→            : 'text-[var(--k-dim)]'
+   899→        }`}
+   900→      >
+   901→        {active ? `+${weight.toFixed(2)}${cap ? ' (cap)' : ''}` : '0.00'}
+   902→      </span>
+   903→    </div>
+   904→  );
+   905→}
+   906→
+   907→// ─── Evidence chain panel ────────────────────────────────────────────────
+   908→
+   909→function EvidenceChainPanel({
+   910→  observations,
+   911→  pumpSim,
+   912→}: {
+   913→  observations: CorrelatedObservation[];
+   914→  pumpSim: boolean;
+   915→}) {
+   916→  return (
+   917→    <Card className="k-card border-[var(--k-line)] bg-[var(--k-panel)]">
+   918→      <CardHeader className="pb-2">
+   919→        <CardTitle className="k-card-title">
+   920→          <ShieldCheck className="w-4 h-4" />
+   921→          Corroborating Evidence
+   922→        </CardTitle>
+   923→      </CardHeader>
+   924→      <CardContent>
+   925→        <ScrollArea className="max-h-[420px] pr-2">
+   926→          <div className="space-y-2">
+   927→            {observations.length === 0 && (
+   928→              <div className="text-xs text-[var(--k-dim)] italic">
+   929→                No observations loaded — step the replay to introduce evidence.
+   930→              </div>
+   931→            )}
+   932→            {observations.map((o, i) => (
+   933→              <EvidenceItem key={`${o.observation.provenance.sensorId}-${i}`} o={o} />
+   934→            ))}
+   935→            {pumpSim && (
+   936→              <div className="text-xs k-danger border border-[var(--k-red-bright)]/30 bg-[rgba(255,77,77,0.05)] rounded-md p-2">
+   937→                <AlertTriangle className="w-3 h-3 inline mr-1" />
+   938→                Pump status change detected — false-positive rule fired.
+   939→              </div>
+   940→            )}
+   941→          </div>
+   942→        </ScrollArea>
+   943→      </CardContent>
+   944→    </Card>
+   945→  );
+   946→}
+   947→
+   948→function EvidenceItem({ o }: { o: CorrelatedObservation }) {
+   949→  const cls = o.evidenceClass;
+   950→  const badgeClass =
+   951→    cls === 'PRIMARY'
+   952→      ? 'k-badge-process'
+   953→      : cls === 'CORRELATED'
+   954→        ? 'k-badge-warn'
+   955→        : cls === 'INDEPENDENT'
+   956→          ? 'k-badge-pass'
+   957→          : cls === 'CONTEXTUAL'
+   958→            ? 'k-badge-dim'
+   959→            : 'k-badge-dim';
+   960→  return (
+   961→    <div className="border border-[var(--k-line)] bg-[var(--k-bg-elevated)] rounded-md p-2 hover:border-[var(--k-cyan)]/50 transition-colors">
+   962→      <div className="flex items-center justify-between gap-2">
+   963→        <span className="text-xs font-bold text-[var(--k-fg-bright)]">
+   964→          {o.observation.provenance.measurementType}
+   965→        </span>
+   966→        <Badge className={`k-badge ${badgeClass}`}>{cls}</Badge>
+   967→      </div>
+   968→      <div className="text-[10px] text-[var(--k-dim)] mt-1 font-mono">
+   969→        {o.observation.provenance.sensorId}
+   970→      </div>
+   971→      <div className="text-[11px] text-[var(--k-fg)] mt-1">
+   972→        <span className="k-dim">value:</span>{' '}
+   973→        <span className="text-[var(--k-cyan-bright)] font-mono">
+   974→          {o.observation.value === null
+   975→            ? 'UNDEFINED'
+   976→            : `${o.observation.value} ${o.observation.unit}`}
+   977→        </span>
+   978→        {o.observation.baseline !== null &&
+   979→          o.observation.baseline !== undefined && (
+   980→            <>
+   981→              {' '}
+   982→              <span className="k-dim">| baseline:</span>{' '}
+   983→              <span className="text-[var(--k-dim)] font-mono">
+   984→                {o.observation.baseline} {o.observation.unit}
+   985→              </span>
+   986→            </>
+   987→          )}
+   988→      </div>
+   989→      {o.anomaly.isAnomalous && (
+   990→        <div className="text-[10px] k-warn mt-1">▸ {o.anomaly.signature}</div>
+   991→      )}
+   992→      <div className="text-[10px] text-[var(--k-dim)] mt-1 italic leading-snug">
+   993→        {o.rationale}
+   994→      </div>
+   995→      <div className="text-[10px] text-[var(--k-dim)] mt-1 font-mono">
+   996→        attn: {o.observation.provenance.attestationHash}
+   997→      </div>
+   998→    </div>
+   999→  );
+  1000→}
+  1001→
+  1002→// ─── SCADA panel ─────────────────────────────────────────────────────────
+  1003→
+  1004→function ScadaPanel({ stepIdx }: { stepIdx: number }) {
+  1005→  // Show all SCADA rows; highlight rows up to current replay step.
+  1006→  // stepIdx is 0-based array index (0 = BASELINE, 1 = ANOMALY, etc.)
+  1007→  // stepIdx 0 (BASELINE) shows rows 0-3 (00:00-03:00)
+  1008→  // stepIdx 1+ (ANOMALY) shows rows 0-6 (incl. 04:00-06:00 anomaly)
+  1009→  // stepIdx 3+ shows the full table including IMPOSSIBLE/MISSING
+  1010→  const visibleRows = stepIdx >= 1 ? SCADA_TABLE : SCADA_TABLE.slice(0, 4);
+  1011→  const showQualityCases = stepIdx >= 3;
+  1012→
+  1013→  return (
+  1014→    <Card className="k-card border-[var(--k-line)] bg-[var(--k-panel)]">
+  1015→      <CardHeader className="pb-2">
+  1016→        <CardTitle className="k-card-title">
+  1017→          <Activity className="w-4 h-4" />
+  1018→          SCADA Telemetry ({DMA_ID})
+  1019→        </CardTitle>
+  1020→      </CardHeader>
+  1021→      <CardContent>
+  1022→        <div className="overflow-x-auto">
+  1023→          <table className="w-full text-xs">
+  1024→            <thead>
+  1025→              <tr className="text-left text-[var(--k-dim)] border-b border-[var(--k-line)]">
+  1026→                <th className="py-1.5 pr-3 font-normal uppercase tracking-wider text-[10px]">Time</th>
+  1027→                <th className="py-1.5 pr-3 font-normal uppercase tracking-wider text-[10px]">Flow (L/s)</th>
+  1028→                <th className="py-1.5 pr-3 font-normal uppercase tracking-wider text-[10px]">Pressure (m)</th>
+  1029→                <th className="py-1.5 font-normal uppercase tracking-wider text-[10px]">Status</th>
+  1030→              </tr>
+  1031→            </thead>
+  1032→            <tbody>
+  1033→              {visibleRows.map((row) => {
+  1034→                let statusClass = 'k-pass';
+  1035→                let statusLabel = row.status;
+  1036→                if (row.status === 'ANOMALY') {
+  1037→                  statusClass = 'k-warn';
+  1038→                } else if (row.status === 'IMPOSSIBLE') {
+  1039→                  statusClass = 'k-danger';
+  1040→                } else if (row.status === 'MISSING') {
+  1041→                  statusClass = 'k-dim';
+  1042→                }
+  1043→                return (
+  1044→                  <tr
+  1045→                    key={row.timeUtc}
+  1046→                    className="border-b border-[var(--k-line)]/50 hover:bg-[var(--k-bg-elevated)]"
+  1047→                  >
+  1048→                    <td className="py-1.5 pr-3 font-mono text-[var(--k-fg-bright)]">
+  1049→                      {row.timeUtc}
+  1050→                    </td>
+  1051→                    <td className="py-1.5 pr-3 font-mono">
+  1052→                      {row.flow === null ? (
+  1053→                        <span className="k-dim italic">UNDEFINED</span>
+  1054→                      ) : row.flow < 0 ? (
+  1055→                        <span className={statusClass}>{row.flow.toFixed(1)}</span>
+  1056→                      ) : (
+  1057→                        <span className="text-[var(--k-fg)]">
+  1058→                          {row.flow.toFixed(1)}
+  1059→                        </span>
+  1060→                      )}
+  1061→                    </td>
+  1062→                    <td className="py-1.5 pr-3 font-mono text-[var(--k-fg)]">
+  1063→                      {row.pressure.toFixed(1)}
+  1064→                    </td>
+  1065→                    <td className={`py-1.5 font-bold ${statusClass}`}>
+  1066→                      {statusLabel}
+  1067→                    </td>
+  1068→                  </tr>
+  1069→                );
+  1070→              })}
+  1071→            </tbody>
+  1072→          </table>
+  1073→        </div>
+  1074→
+  1075→        {showQualityCases && (
+  1076→          <div className="mt-3 pt-3 border-t border-[var(--k-line)]">
+  1077→            <div className="text-[10px] uppercase tracking-wider k-dim mb-1.5">
+  1078→              Zero Fabrication Rule
+  1079→            </div>
+  1080→            <div className="text-[11px] text-[var(--k-fg)] leading-snug">
+  1081→              <span className="k-danger">07:00 → IMPOSSIBLE_PHYSICS</span>{' '}
+  1082→              (-999 L/s) rejected by quality gate.
+  1083→              <br />
+  1084→              <span className="k-dim">08:00 → MISSING</span>{' '}
+  1085→              preserved as UNDEFINED, never guessed.
+  1086→            </div>
+  1087→          </div>
+  1088→        )}
+  1089→      </CardContent>
+  1090→    </Card>
+  1091→  );
+  1092→}
+  1093→
+  1094→// ─── Audit panel ─────────────────────────────────────────────────────────
+  1095→
+  1096→function AuditPanel({
+  1097→  resp,
+  1098→  onExport,
+  1099→}: {
+  1100→  resp: ComputeResponse | null;
+  1101→  onExport: () => void;
+  1102→}) {
+  1103→  return (
+  1104→    <Card className="k-card border-[var(--k-line)] bg-[var(--k-panel)]">
+  1105→      <CardHeader className="pb-2">
+  1106→        <CardTitle className="k-card-title">
+  1107→          <Fingerprint className="w-4 h-4" />
+  1108→          Audit Receipt (SHA-256)
+  1109→        </CardTitle>
+  1110→      </CardHeader>
+  1111→      <CardContent>
+  1112→        <div className="space-y-2 text-xs">
+  1113→          <AuditRow
+  1114→            label="DMA"
+  1115→            value={resp?.dmaId ?? DMA_ID}
+  1116→          />
+  1117→          <AuditRow
+  1118→            label="Generated (UTC)"
+  1119→            value={resp?.generatedAtUtc ?? '——————'}
+  1120→          />
+  1121→          <AuditRow
+  1122→            label="Verdict"
+  1123→            value={resp?.verdict.verdict ?? '——————'}
+  1124→            highlight={
+  1125→              resp?.verdict.verdict === 'VERIFIED_CANDIDATE'
+  1126→                ? 'pass'
+  1127→                : resp?.verdict.verdict === 'REJECTED_FALSE_POSITIVE'
+  1128→                  ? 'fail'
+  1129→                  : 'warn'
+  1130→            }
+  1131→          />
+  1132→          <AuditRow
+  1133→            label="Score"
+  1134→            value={(resp?.verdict.score ?? 0).toFixed(2)}
+  1135→            highlight="cyan"
+  1136→          />
+  1137→          <AuditRow
+  1138→            label="Threshold"
+  1139→            value={(resp?.verdict.threshold ?? 0.8).toFixed(2)}
+  1140→          />
+  1141→          <AuditRow
+  1142→            label="Observations"
+  1143→            value={String(resp?.observations.length ?? 0)}
+  1144→          />
+  1145→          <div className="pt-2 border-t border-[var(--k-line)]">
+  1146→            <div className="text-[10px] uppercase tracking-wider k-dim mb-1">
+  1147→              Receipt hash
+  1148→            </div>
+  1149→            <div className="font-mono text-[11px] text-[var(--k-green-bright)] break-all k-glow-green p-2 rounded-md border border-[var(--k-green-bright)]/20 bg-[rgba(0,255,136,0.03)]">
+  1150→              0x{resp?.auditHash ?? '——————————————————————————————————————————————————'}
+  1151→            </div>
+  1152→          </div>
+  1153→          <Button
+  1154→            size="sm"
+  1155→            onClick={onExport}
+  1156→            className="w-full mt-2 bg-[var(--k-cyan-bright)] text-black hover:bg-[var(--k-cyan)]"
+  1157→          >
+  1158→            <Download className="w-3.5 h-3.5 mr-1" /> Download JSON receipt
+  1159→          </Button>
+  1160→        </div>
+  1161→      </CardContent>
+  1162→    </Card>
+  1163→  );
+  1164→}
+  1165→
+  1166→function AuditRow({
+  1167→  label,
+  1168→  value,
+  1169→  highlight,
+  1170→}: {
+  1171→  label: string;
+  1172→  value: string;
+  1173→  highlight?: 'pass' | 'fail' | 'warn' | 'cyan';
+  1174→}) {
+  1175→  const color =
+  1176→    highlight === 'pass'
+  1177→      ? 'k-pass'
+  1178→      : highlight === 'fail'
+  1179→        ? 'k-danger'
+  1180→        : highlight === 'warn'
+  1181→          ? 'k-warn'
+  1182→          : highlight === 'cyan'
+  1183→            ? 'k-cyan'
+  1184→            : 'text-[var(--k-fg-bright)]';
+  1185→  return (
+  1186→    <div className="flex items-center justify-between gap-2">
+  1187→      <span className="k-dim">{label}</span>
+  1188→      <span className={`font-mono ${color}`}>{value}</span>
+  1189→    </div>
+  1190→  );
+  1191→}
+  1192→
+  1193→// ─── Provenance panel ────────────────────────────────────────────────────
+  1194→
+  1195→function ProvenancePanel({
+  1196→  observations,
+  1197→  auditHash,
+  1198→  generatedAt,
+  1199→}: {
+  1200→  observations: CorrelatedObservation[];
+  1201→  auditHash: string;
+  1202→  generatedAt: string;
+  1203→}) {
+  1204→  return (
+  1205→    <Card className="k-card border-[var(--k-line)] bg-[var(--k-panel)]">
+  1206→      <CardHeader className="pb-2">
+  1207→        <CardTitle className="k-card-title">
+  1208→          <Layers className="w-4 h-4" />
+  1209→          Provenance Chain · 11-Field Spine
+  1210→        </CardTitle>
+  1211→      </CardHeader>
+  1212→      <CardContent>
+  1213→        <ScrollArea className="max-h-[320px] pr-2">
+  1214→          <div className="space-y-3">
+  1215→            {observations.length === 0 && (
+  1216→              <div className="text-xs text-[var(--k-dim)] italic">
+  1217→                No provenance records — step the replay to introduce observations.
+  1218→              </div>
+  1219→            )}
+  1220→            {observations.map((o, i) => {
+  1221→              const p = o.observation.provenance;
+  1222→              return (
+  1223→                <div
+  1224→                  key={`${p.sensorId}-${i}`}
+  1225→                  className="border-l-2 border-[var(--k-green-bright)]/50 pl-3"
+  1226→                >
+  1227→                  <div className="flex items-center gap-2">
+  1228→                    <span className="text-xs font-bold text-[var(--k-fg-bright)]">
+  1229→                      {p.sensorId}
+  1230→                    </span>
+  1231→                    <Badge className="k-badge k-badge-dim">{p.measurementType}</Badge>
+  1232→                  </div>
+  1233→                  <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] mt-1.5 font-mono">
+  1234→                    <ProvenanceField k="01 sensorId" v={p.sensorId} />
+  1235→                    <ProvenanceField k="02 firmware" v={p.firmwareVersion} />
+  1236→                    <ProvenanceField k="03 calEpoch" v={p.calibrationEpoch} />
+  1237→                    <ProvenanceField k="04 tsUtc" v={p.timestampUtc} />
+  1238→                    <ProvenanceField k="05 location" v={p.location} />
+  1239→                    <ProvenanceField k="06 dmaId" v={p.dmaId} />
+  1240→                    <ProvenanceField
+  1241→                      k="07 temp"
+  1242→                      v={`${p.environmentalContext.temperatureC ?? 'null'} °C`}
+  1243→                    />
+  1244→                    <ProvenanceField
+  1245→                      k="08 rain"
+  1246→                      v={`${p.environmentalContext.rainfallMm ?? 'null'} mm`}
+  1247→                    />
+  1248→                    <ProvenanceField
+  1249→                      k="09 ground"
+  1250→                      v={p.environmentalContext.groundCondition ?? 'null'}
+  1251→                    />
+  1252→                    <ProvenanceField k="10 pipeline" v={p.processingPipeline} />
+  1253→                    <ProvenanceField k="11 quality" v={p.qualityFlag} />
+  1254→                  </div>
+  1255→                  <div className="text-[10px] k-dim font-mono mt-1">
+  1256→                    attn: <span className="text-[var(--k-green-bright)]">{p.attestationHash}</span>
+  1257→                  </div>
+  1258→                </div>
+  1259→              );
+  1260→            })}
+  1261→          </div>
+  1262→        </ScrollArea>
+  1263→        <div className="mt-3 pt-3 border-t border-[var(--k-line)] text-[10px] k-dim">
+  1264→          Receipt {auditHash.slice(0, 24)}… · generated {generatedAt}
+  1265→        </div>
+  1266→      </CardContent>
+  1267→    </Card>
+  1268→  );
+  1269→}
+  1270→
+  1271→function ProvenanceField({ k, v }: { k: string; v: string }) {
+  1272→  return (
+  1273→    <div className="flex gap-2">
+  1274→      <span className="k-dim shrink-0">{k}</span>
+  1275→      <span className="text-[var(--k-fg)] truncate">{v}</span>
+  1276→    </div>
+  1277→  );
+  1278→}
+  1279→
+  1280→// ─── Classification panel ────────────────────────────────────────────────
+  1281→
+  1282→function ClassificationPanel() {
+  1283→  return (
+  1284→    <Card className="k-card border-[var(--k-line)] bg-[var(--k-panel)]">
+  1285→      <CardHeader className="pb-2">
+  1286→        <CardTitle className="k-card-title">
+  1287→          <AlertTriangle className="w-4 h-4" />
+  1288→          Data Classification & Honest Position
+  1289→        </CardTitle>
+  1290→      </CardHeader>
+  1291→      <CardContent className="space-y-3 text-xs">
+  1292→        <div className="border border-[var(--k-amber-bright)]/30 bg-[rgba(255,184,0,0.05)] rounded-md p-2.5">
+  1293→          <div className="font-bold k-warn uppercase tracking-wider text-[10px] mb-1">
+  1294→            Classification
+  1295→          </div>
+  1296→          <div className="text-[11px] text-[var(--k-fg)] leading-snug">
+  1297→            SIMULATION — NOT MUNICIPAL OPERATIONAL DATA.
+  1298→            <br />
+  1299→            All observations in this demonstration are VVU-generated synthetic
+  1300→            hydraulic time series for the {DMA_ID} demo. No real DWS / NMBM data
+  1301→            has been provided or processed.
+  1302→          </div>
+  1303→        </div>
+  1304→
+  1305→        <div className="border border-[var(--k-line)] bg-[var(--k-bg-elevated)] rounded-md p-2.5">
+  1306→          <div className="font-bold k-cyan uppercase tracking-wider text-[10px] mb-1.5">
+  1307→            Evidence States (EIS v1.0)
+  1308→          </div>
+  1309→          <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+  1310→            <StateRow color="pass" label="VALID" desc="Within physical range" />
+  1311→            <StateRow color="dim" label="MISSING" desc="≥17 min gap → UNDEFINED" />
+  1312→            <StateRow color="danger" label="ANOMALOUS" desc="Impossible physics" />
+  1313→            <StateRow color="warn" label="CORRELATED" desc="Same DMA + type + window" />
+  1314→            <StateRow color="pass" label="INDEPENDENT" desc="Different principle" />
+  1315→            <StateRow color="dim" label="INSUFFICIENT" desc="Below threshold" />
+  1316→          </div>
+  1317→        </div>
+  1318→
+  1319→        <div className="border border-[var(--k-line)] bg-[var(--k-bg-elevated)] rounded-md p-2.5">
+  1320→          <div className="font-bold k-cyan uppercase tracking-wider text-[10px] mb-1.5">
+  1321→            What this demo is — and is not
+  1322→          </div>
+  1323→          <ul className="space-y-1 text-[11px] text-[var(--k-fg)]">
+  1324→            <li>
+  1325→              <span className="k-pass">✓</span> Evidence-verification layer for sparse observations
+  1326→            </li>
+  1327→            <li>
+  1328→              <span className="k-pass">✓</span> Independence scoring (prevents evidence inflation)
+  1329→            </li>
+  1330→            <li>
+  1331→              <span className="k-pass">✓</span> 11-field provenance + SHA-256 audit trail
+  1332→            </li>
+  1333→            <li>
+  1334→              <span className="k-danger">✗</span> NOT a SCADA replacement
+  1335→            </li>
+  1336→            <li>
+  1337→              <span className="k-danger">✗</span> NOT an autonomous leak detector
+  1338→            </li>
+  1339→            <li>
+  1340→              <span className="k-danger">✗</span> NOT validated against municipal operational data
+  1341→            </li>
+  1342→          </ul>
+  1343→        </div>
+  1344→
+  1345→        <div className="text-[10px] k-dim italic border-t border-[var(--k-line)] pt-2">
+  1346→          Reference: 01a executive brief · 02c EIS v1.0 spec · 04a validation brief ·{' '}
+  1347→          10 72-hour protocol. DMA = {DMA_ID} · Segment = {SEGMENT_ID}.
+  1348→        </div>
+  1349→      </CardContent>
+  1350→    </Card>
+  1351→  );
+  1352→}
+  1353→
+  1354→function StateRow({
+  1355→  color,
+  1356→  label,
+  1357→  desc,
+  1358→}: {
+  1359→  color: 'pass' | 'warn' | 'danger' | 'dim';
+  1360→  label: string;
+  1361→  desc: string;
+  1362→}) {
+  1363→  const cls =
+  1364→    color === 'pass'
+  1365→      ? 'k-pass'
+  1366→      : color === 'warn'
+  1367→        ? 'k-warn'
+  1368→        : color === 'danger'
+  1369→          ? 'k-danger'
+  1370→          : 'k-dim';
+  1371→  return (
+  1372→    <div className="flex flex-col gap-0.5">
+  1373→      <span className={`font-bold ${cls}`}>{label}</span>
+  1374→      <span className="text-[10px] k-dim">{desc}</span>
+  1375→    </div>
+  1376→  );
+  1377→}
+  1378→
+  1379→// ─── Footer (sticky) ─────────────────────────────────────────────────────
+  1380→
+  1381→function FooterBar({
+  1382→  auditShortHash,
+  1383→  generatedAt,
+  1384→}: {
+  1385→  auditShortHash: string;
+  1386→  generatedAt: string;
+  1387→}) {
+  1388→  return (
+  1389→    <footer className="mt-auto border-t border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
+  1390→      <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-2 text-[10px]">
+  1391→        <div className="flex items-center gap-3 flex-wrap">
+  1392→          <span className="k-warn font-bold uppercase tracking-wider">
+  1393→            [SIMULATION — NOT MUNICIPAL OPERATIONAL DATA]
+  1394→          </span>
+  1395→          <span className="k-dim">|</span>
+  1396→          <span className="k-dim">Zero Fabrication Rule active</span>
+  1397→          <span className="k-dim">|</span>
+  1398→          <span className="k-dim">
+  1399→            Audit: <span className="text-[var(--k-green-bright)] font-mono">0x{auditShortHash}</span>
+  1400→          </span>
+  1401→        </div>
+  1402→        <div className="k-dim">
+  1403→          VVU AIR KERNEL · EIS v1.0 · {generatedAt.slice(0, 19)}Z · DMA {DMA_ID}
+  1404→        </div>
+  1405→      </div>
+  1406→    </footer>
+  1407→  );
+  1408→}
+  1409→

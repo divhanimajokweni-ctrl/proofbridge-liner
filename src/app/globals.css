@@ -315,3 +315,39 @@
   outline-offset: 4px;
 }
 
+/* Slider track + range in kernel-theme → cyan fill */
+.kernel-theme [data-slot="slider-track"] {
+  background: var(--k-bg-elevated) !important;
+  border: 1px solid var(--k-line) !important;
+}
+.kernel-theme [data-slot="slider-range"] {
+  background: linear-gradient(90deg, var(--k-cyan-bright), var(--k-green-bright)) !important;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
+}
+
+/* Switch in kernel-theme → cyan when checked */
+.kernel-theme [data-slot="switch"][data-state="checked"] {
+  background-color: var(--k-cyan-bright) !important;
+  border-color: var(--k-cyan-bright) !important;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.35);
+}
+.kernel-theme [data-slot="switch-thumb"] {
+  background-color: var(--k-bg-elevated) !important;
+}
+.kernel-theme [data-slot="switch"][data-state="checked"] [data-slot="switch-thumb"] {
+  background-color: var(--k-bg) !important;
+}
+
+/* Progress bar in kernel-theme → cyan→green gradient */
+.kernel-theme [data-slot="progress-indicator"] {
+  background: linear-gradient(90deg, var(--k-cyan-bright), var(--k-green-bright)) !important;
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+}
+
+/* Tooltip content in kernel-theme */
+.kernel-theme [data-slot="tooltip-content"] {
+  background: var(--k-panel-2) !important;
+  border: 1px solid var(--k-line-strong) !important;
+  color: var(--k-fg-bright) !important;
+}
+
