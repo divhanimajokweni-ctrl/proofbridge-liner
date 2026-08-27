@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVU HBK — Advanced Bayesian Leak Detection Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.24.0.min.js"></script>
+<style>
+/* ─── Kernel terminal theme ─────────────────────────────────────────── */
+:root {
+  --bg: #060a10;
+  --panel: #111b27;
+  --panel-2: #16232f;
+  --bg-elevated: #0d141d;
+  --line: #1e3140;
+  --line-strong: #2a4458;
+  --cyan: #00d4ff;
+  --cyan-bright: #00d4ff;
+  --green: #00ff88;
+  --green-bright: #00ff88;
+  --amber: #ffb800;
+  --amber-bright: #ffb800;
+  --red: #ff4d4d;
+  --red-bright: #ff4d4d;
+  --fg: #cbd5d9;
+  --fg-bright: #e0e6ed;
+  --dim: #5b7280;
+  --mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--mono);
+  background: var(--bg);
+  color: var(--fg);
+  min-height: 100vh;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.container { max-width: 1600px; margin: 0 auto; padding: 16px; }
+
+/* ─── Header ────────────────────────────────────────────────────────── */
+.header {
+  border-bottom: 2px solid var(--cyan);
+  padding: 20px 24px;
+  background: linear-gradient(90deg, rgba(0,212,255,0.08) 0%, transparent 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-title { display: flex; align-items: center; gap: 12px; }
+.header-logo {
+  width: 44px; height: 44px;
+  border: 2px solid var(--cyan);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 16px rgba(0,212,255,0.3);
+}
+.header-logo svg { width: 24px; height: 24px; fill: var(--cyan); }
+.header h1 {
+  color: var(--cyan);
+  font-size: 1.4em;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.header .subtitle { color: var(--dim); font-size: 0.75em; margin-top: 2px; letter-spacing: 0.1em; }
+.header-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.meta-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 4px;
+  border: 1px solid var(--line); background: var(--bg-elevated);
+  font-size: 0.7em; letter-spacing: 0.08em;
+}
+.meta-chip .label { color: var(--dim); }
+.meta-chip .value { color: var(--fg-bright); font-weight: 700; }
+.meta-chip.cyan .value { color: var(--cyan); }
+.meta-chip.green .value { color: var(--green); }
+.meta-chip.amber .value { color: var(--amber); }
+
+/* ─── Sticky footer ─────────────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--line);
+  background: var(--bg-elevated);
+  padding: 12px 24px;
+  text-align: center;
+  font-size: 0.7em;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  margin-top: 24px;
+}
+.footer .warn { color: var(--amber); font-weight: 700; }
+
+/* ─── Simulation control panel ──────────────────────────────────────── */
+.sim-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+  position: relative;
+}
+.sim-panel::before {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--cyan), transparent);
+}
+.sim-title {
+  color: var(--cyan);
+  font-size: 0.8em;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sim-title::before {
+  content: ""; display: inline-block;
+  width: 6px; height: 6px;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  border-radius: 1px;
+}
+.sim-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.sim-control { display: flex; flex-direction: column; gap: 6px; }
+.sim-control label {
+  font-size: 0.7em;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  display: flex; justify-content: space-between;
+}
+.sim-control label .val { color: var(--cyan); font-weight: 700; }
+.sim-control input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  outline: none;
+}
+.sim-control input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px;
+  background: var(--cyan);
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0,212,255,0.5);
+}
+.sim-control input[type="range"]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  background: var(--cyan);
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(0,212,255,0.5);
+}
+.sim-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--cyan); color: var(--bg); }
+.btn-primary:hover { background: var(--green); box-shadow: 0 0 12px rgba(0,255,136,0.4); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-secondary { background: var(--bg-elevated); color: var(--fg); border: 1px solid var(--line); }
+.btn-secondary:hover { border-color: var(--cyan); color: var(--cyan); }
+.btn-danger { background: var(--red); color: white; }
+.btn-danger:hover { opacity: 0.85; }
+
+/* ─── Live status bar ───────────────────────────────────────────────── */
+.status-bar {
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px 14px;
+  font-size: 0.7em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.status-bar .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--dim);
+}
+.status-bar .dot.running { background: var(--amber); animation: pulse 1s infinite; }
+.status-bar .dot.done { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.status-bar .dot.error { background: var(--red); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.status-bar .text { color: var(--fg); }
+.status-bar .progress-wrap {
+  flex: 1; min-width: 200px;
+  height: 6px; background: var(--bg);
+  border-radius: 3px; overflow: hidden;
+}
+.status-bar .progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--cyan), var(--green));
+  transition: width 0.3s;
+  box-shadow: 0 0 8px rgba(0,255,136,0.4);
+}
+
+/* ─── Stats grid ─────────────────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: "";
+  position: absolute; top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--cyan);
+}
+.stat-card.green::before { background: var(--green); }
+.stat-card.amber::before { background: var(--amber); }
+.stat-card.red::before { background: var(--red); }
+.stat-card .stat-label {
+  font-size: 0.65em;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+.stat-card .stat-value {
+  font-size: 1.8em;
+  font-weight: 700;
+  color: var(--fg-bright);
+  line-height: 1;
+}
+.stat-card .stat-value .unit { font-size: 0.5em; color: var(--dim); font-weight: 400; }
+.stat-card.green .stat-value { color: var(--green); }
+.stat-card.amber .stat-value { color: var(--amber); }
+.stat-card.red .stat-value { color: var(--red); }
+.stat-card.cyan .stat-value { color: var(--cyan); }
+.stat-card .stat-trend { font-size: 0.65em; margin-top: 4px; color: var(--dim); }
+
+/* ─── Plot grid ──────────────────────────────────────────────────────── */
+.plots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+.plot-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+  overflow: hidden;
+}
+.plot-card .plot-title {
+  color: var(--cyan);
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.plot-card .plot { width: 100%; height: 280px; }
+.plot-card.full { grid-column: 1 / -1; }
+.plot-card.wide { grid-column: span 2; }
+@media (max-width: 1100px) {
+  .plots-grid { grid-template-columns: repeat(2, 1fr); }
+  .plot-card.wide { grid-column: span 2; }
+}
+@media (max-width: 700px) {
+  .plots-grid { grid-template-columns: 1fr; }
+  .plot-card.wide { grid-column: span 1; }
+}
+
+/* ─── Network topology panel ─────────────────────────────────────────── */
+.topology-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.topology-panel .plot-title { color: var(--cyan); font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 12px; }
+.topology-panel .plot { width: 100%; height: 320px; }
+
+/* ─── Results table ──────────────────────────────────────────────────── */
+.results-table-wrap {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 16px;
+  margin: 16px 0;
+  overflow-x: auto;
+}
+.results-table-wrap .plot-title { color: var(--cyan); font-size: 0.7em; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 0.72em; }
+th { color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 400; text-align: left; padding: 8px; border-bottom: 1px solid var(--cyan); }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line); color: var(--fg); }
+tr:hover td { background: var(--bg-elevated); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.9em; font-weight: 700; }
+.badge.pass { color: var(--green); border: 1px solid var(--green); background: rgba(0,255,136,0.08); }
+.badge.fail { color: var(--red); border: 1px solid var(--red); background: rgba(255,77,77,0.08); }
+.badge.warn { color: var(--amber); border: 1px solid var(--amber); background: rgba(255,184,0,0.08); }
+</style>
+</head>
+<body>
+
+<!-- ─── Header ─────────────────────────────────────────────────────────── -->
+<div class="header">
+  <div class="header-title">
+    <div class="header-logo">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <h1>VVU HBK · Advanced Bayesian Leak Detection</h1>
+      <div class="subtitle">Hydro-Bayesian Kernel · Parallel Iterations · Bootstrapped CI · ROC · Adaptive Baselines · Early Warning</div>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="meta-chip"><span class="label">NETWORK:</span><span class="value">9 nodes · 10 pipes · 5 sensors</span></div>
+    <div class="meta-chip green"><span class="label">STATUS:</span><span class="value" id="hdr-status">READY</span></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ─── Simulation control panel ─────────────────────────────────────── -->
+  <div class="sim-panel">
+    <div class="sim-title">Simulation Control · Run Bayesian Leak Detection In-Browser</div>
+    <div class="sim-grid">
+      <div class="sim-control">
+        <label>Iterations <span class="val" id="lbl-iters">20</span></label>
+        <input type="range" id="ctrl-iters" min="4" max="60" value="20" step="2">
+      </div>
+      <div class="sim-control">
+        <label>Leak Rate <span class="val" id="lbl-rate">0.12</span></label>
+        <input type="range" id="ctrl-rate" min="0.05" max="0.30" value="0.12" step="0.01">
+      </div>
+      <div class="sim-control">
+        <label>Detection Threshold <span class="val" id="lbl-thresh">0.50</span></label>
+        <input type="range" id="ctrl-thresh" min="0.20" max="0.90" value="0.50" step="0.05">
+      </div>
+      <div class="sim-control">
+        <label>Leak Fraction <span class="val" id="lbl-frac">60%</span></label>
+        <input type="range" id="ctrl-frac" min="20" max="100" value="60" step="10">
+      </div>
+      <div class="sim-control">
+        <label>Baseline Cycles <span class="val" id="lbl-base">20</span></label>
+        <input type="range" id="ctrl-base" min="10" max="40" value="20" step="5">
+      </div>
+      <div class="sim-control">
+        <label>Detection Cycles <span class="val" id="lbl-det">50</span></label>
+        <input type="range" id="ctrl-det" min="30" max="100" value="50" step="10">
+      </div>
+    </div>
+    <div class="sim-buttons">
+      <button class="btn btn-primary" id="btn-run">▶ RUN SIMULATION</button>
+      <button class="btn btn-secondary" id="btn-export">⬇ Export JSON</button>
+      <button class="btn btn-secondary" id="btn-reset">↻ Reset</button>
+    </div>
+    <div class="status-bar">
+      <div class="dot" id="status-dot"></div>
+      <span class="text" id="status-text">Idle — adjust parameters and click RUN SIMULATION</span>
+      <div class="progress-wrap"><div class="progress-fill" id="progress-fill"></div></div>
+      <span class="text" id="progress-text" style="min-width: 60px; text-align: right;">0 / 0</span>
+    </div>
+  </div>
+
+  <!-- ─── Stats grid ───────────────────────────────────────────────────── -->
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card green">
+      <div class="stat-label">Leak Detection Rate</div>
+      <div class="stat-value" id="stat-detect">—<span class="unit"></span></div>
+      <div class="stat-trend" id="stat-detect-trend">awaiting run</div>
+    </div>
+    <div class="stat-card cyan">
+      <div class="stat-label">Detection Time</div>
+      <div class="stat-value" id="stat-time">—<span class="unit"> cycles</span></div>
+      <div class="stat-trend" id="stat-time-trend">± — cycles</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">False-Alarm Rate</div>
+      <div class="stat-value" id="stat-fp">—<span class="unit">%</span></div>
+      <div class="stat-trend" id="stat-fp-trend">controls: —</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Early Warning Rate</div>
+      <div class="stat-value" id="stat-ew">—<span class="unit">%</span></div>
+      <div class="stat-trend" id="stat-ew-trend">— cycles early</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">ROC AUC</div>
+      <div class="stat-value" id="stat-auc">—</div>
+      <div class="stat-trend" id="stat-auc-trend">optimal threshold: —</div>
+    </div>
+    <div class="stat-card cyan">
+      <div class="stat-label">F1 Score</div>
+      <div class="stat-value" id="stat-f1">—</div>
+      <div class="stat-trend" id="stat-f1-trend">precision — · recall —</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Reliability Score</div>
+      <div class="stat-value" id="stat-rel">—<span class="unit">%</span></div>
+      <div class="stat-trend" id="stat-rel-trend">detection · convergence · false-pos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">95% CI (cycles)</div>
+      <div class="stat-value" id="stat-ci" style="font-size:1.1em;">[—, —]</div>
+      <div class="stat-trend" id="stat-ci-trend">1000 bootstrap samples</div>
+    </div>
+  </div>
+
+  <!-- ─── Network topology ─────────────────────────────────────────────── -->
+  <div class="topology-panel">
+    <div class="plot-title">Network Topology · 9 Nodes · 10 Pipes · 5 Pressure Sensors · Leak Pipe: PIP3</div>
+    <div class="plot" id="plot-topology"></div>
+  </div>
+
+  <!-- ─── Plots grid ───────────────────────────────────────────────────── -->
+  <div class="plots-grid">
+    <div class="plot-card"><div class="plot-title">Detection Time Distribution</div><div class="plot" id="plot-detect-time"></div></div>
+    <div class="plot-card"><div class="plot-title">Max Posterior Distribution</div><div class="plot" id="plot-posterior"></div></div>
+    <div class="plot-card"><div class="plot-title">False Positives (baseline phase)</div><div class="plot" id="plot-fp"></div></div>
+    <div class="plot-card"><div class="plot-title">Convergence Time Distribution</div><div class="plot" id="plot-conv"></div></div>
+    <div class="plot-card"><div class="plot-title">Early Warning Performance</div><div class="plot" id="plot-ew"></div></div>
+    <div class="plot-card"><div class="plot-title">Posterior Trajectories (first 10)</div><div class="plot" id="plot-traj"></div></div>
+    <div class="plot-card"><div class="plot-title">ROC Curve</div><div class="plot" id="plot-roc"></div></div>
+    <div class="plot-card"><div class="plot-title">Precision-Recall Curve</div><div class="plot" id="plot-pr"></div></div>
+    <div class="plot-card"><div class="plot-title">Reliability Gauge</div><div class="plot" id="plot-gauge"></div></div>
+  </div>
+
+  <!-- ─── Results table ────────────────────────────────────────────────── -->
+  <div class="results-table-wrap">
+    <div class="plot-title">Iteration Results · Per-Run Detail</div>
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Leak</th><th>Detected</th><th>Detection Time</th>
+          <th>Convergence</th><th>False Pos</th><th>Max Posterior</th>
+          <th>Early Warn</th><th>EW Time</th><th>Baseline Updates</th>
+        </tr>
+      </thead>
+      <tbody id="results-tbody">
+        <tr><td colspan="10" style="text-align:center; color:var(--dim); padding:20px;">No data — run the simulation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ─── Footer ─────────────────────────────────────────────────────────── -->
+<div class="footer">
+  <span class="warn">[SIMULATION DATA — NOT MUNICIPAL OPERATIONAL DATA]</span>
+  &nbsp;|&nbsp; VVU HBK · Advanced Bayesian Leak Detection · Zero Fabrication Rule · 11-Field Provenance · {NMBM-DMA-07}
+</div>
+
+<script>
+// ============================================================================
+// WATER NETWORK MODEL
+// ============================================================================
+const NETWORK = {
+  nodes: {
+    N1:{elevation:10, x:1, y:5}, N2:{elevation:12, x:2, y:4}, N3:{elevation:8, x:3, y:5},
+    N4:{elevation:15, x:4, y:6}, N5:{elevation:11, x:4, y:4}, N6:{elevation:9, x:5, y:3},
+    N7:{elevation:13, x:6, y:4}, N8:{elevation:10, x:7, y:5}, N9:{elevation:14, x:8, y:6},
+  },
+  pipes: {
+    PIP1:{from:'N1', to:'N2', length:100, diameter:0.3},  PIP2:{from:'N2', to:'N3', length:80, diameter:0.25},
+    PIP3:{from:'N3', to:'N4', length:120, diameter:0.2},   PIP4:{from:'N4', to:'N5', length:90, diameter:0.3},
+    PIP5:{from:'N5', to:'N6', length:70, diameter:0.25},  PIP6:{from:'N6', to:'N7', length:110, diameter:0.2},
+    PIP7:{from:'N7', to:'N8', length:95, diameter:0.3},    PIP8:{from:'N8', to:'N9', length:85, diameter:0.25},
+    PIP9:{from:'N1', to:'N3', length:130, diameter:0.2},   PIP10:{from:'N2', to:'N5', length:100, diameter:0.3},
+  },
+  sensors: {
+    S1:{node:'N1'}, S2:{node:'N3'}, S3:{node:'N5'}, S4:{node:'N7'}, S5:{node:'N9'},
+  },
+};
+
+// Build adjacency for Dijkstra
+function buildGraph(nodes, pipes) {
+  const adj = {};
+  for (const nid in nodes) adj[nid] = [];
+  for (const pid in pipes) {
+    const p = pipes[pid];
+    adj[p.from].push({to:p.to, w:p.length});
+    adj[p.to].push({to:p.from, w:p.length});
+  }
+  return adj;
+}
+
+function dijkstra(adj, src) {
+  const dist = {}; const visited = {};
+  for (const n in adj) dist[n] = Infinity;
+  dist[src] = 0;
+  const pq = [[0, src]];
+  while (pq.length > 0) {
+    pq.sort((a,b) => a[0]-b[0]);
+    const [d, u] = pq.shift();
+    if (visited[u]) continue;
+    visited[u] = true;
+    for (const edge of adj[u]) {
+      const nd = d + edge.w;
+      if (nd < dist[edge.to]) { dist[edge.to] = nd; pq.push([nd, edge.to]); }
+    }
+  }
+  return dist;
+}
+
+function computeSensitivityMatrix(nodes, pipes, sensors) {
+  const adj = buildGraph(nodes, pipes);
+  const DECAY_SCALE = 150;
+  const sensitivity = {};
+  for (const sid in sensors) {
+    const srcNode = sensors[sid].node;
+    const dist = dijkstra(adj, srcNode);
+    sensitivity[sid] = {};
+    for (const pid in pipes) {
+      const p = pipes[pid];
+      const d = Math.min(dist[p.from] ?? 1000, dist[p.to] ?? 1000);
+      sensitivity[sid][pid] = Math.exp(-d / DECAY_SCALE);
+    }
+  }
+  return sensitivity;
+}
+
+function simulatePressures(sensitivity, sensors, leakPipe, leakRate, noiseStd, rng) {
+  const pressures = {};
+  for (const sid in sensors) {
+    let p = 50 + gaussian(0, noiseStd * 20, rng);
+    if (leakPipe && leakRate > 0) {
+      const s = sensitivity[sid][leakPipe] || 0;
+      let drop = leakRate * 100 * s;
+      drop += gaussian(0, noiseStd * 5, rng);
+      p -= Math.max(0, drop);
+    }
+    p += gaussian(0, noiseStd * 10, rng);
+    pressures[sid] = Math.max(0, p);
+  }
+  return pressures;
+}
+
+// ============================================================================
+// RNG + GAUSSIAN
+// ============================================================================
+function mulberry32(seed) {
+  return function() {
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function gaussian(mean, sigma, rng) {
+  const u = 1 - rng();
+  const v = rng();
+  return mean + sigma * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+// ============================================================================
+// BAYESIAN INFERENCE ENGINE (log-sum-exp stabilized)
+// ============================================================================
+class BayesianEngine {
+  constructor(sensitivity, pipes, detectionThreshold, convergenceThreshold, lookbackWindow) {
+    this.sensitivity = sensitivity;
+    this.pipes = pipes;
+    this.detectionThreshold = detectionThreshold;
+    this.convergenceThreshold = convergenceThreshold;
+    this.lookbackWindow = lookbackWindow;
+    this.reset();
+  }
+  reset() {
+    const n = Object.keys(this.pipes).length;
+    this.prior = {}; this.posterior = {};
+    for (const pid in this.pipes) { this.prior[pid] = 1/n; this.posterior[pid] = 1/n; }
+    this.history = [];
+    this.baselineEstimates = {};
+    this.adaptiveUpdates = 0;
+  }
+  logLikelihood(pipeId, pressures, baseline) {
+    const observedDrops = [];
+    for (const sid in pressures) {
+      observedDrops.push(Math.max(0, (baseline[sid] ?? 50) - pressures[sid]));
+    }
+    const leakMagHat = Math.max(...observedDrops);
+    let logL = 0;
+    for (const sid in pressures) {
+      const s = this.sensitivity[sid][pipeId] || 0;
+      const obsDrop = (baseline[sid] ?? 50) - pressures[sid];
+      const predDrop = s * leakMagHat;
+      const residual = obsDrop - predDrop;
+      const sigma = 1.5 + (1 - s) * 2;
+      logL += -0.5 * (residual / sigma) ** 2;
+    }
+    return logL;
+  }
+  adaptiveBaseline(pressures) {
+    const baseline = {};
+    for (const sid in pressures) {
+      if (!this.baselineEstimates[sid]) this.baselineEstimates[sid] = [];
+      this.baselineEstimates[sid].push(pressures[sid]);
+      if (this.baselineEstimates[sid].length > 50) this.baselineEstimates[sid].shift();
+      const vals = this.baselineEstimates[sid].slice(-10);
+      if (vals.length >= 10) {
+        const mean = vals.reduce((a,b)=>a+b,0) / vals.length;
+        const std = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0) / vals.length);
+        const filtered = vals.filter(v => Math.abs(v - mean) < 2 * std);
+        baseline[sid] = filtered.length > 0 ? filtered.reduce((a,b)=>a+b,0)/filtered.length : mean;
+      } else {
+        baseline[sid] = pressures[sid];
+      }
+    }
+    return baseline;
+  }
+  checkConvergence() {
+    if (this.history.length < this.lookbackWindow) return false;
+    const pipeIds = Object.keys(this.pipes);
+    const recent = this.history.slice(-this.lookbackWindow).map(p => pipeIds.map(id => p[id] || 0));
+    if (recent.length < 2) return false;
+    let maxRelChange = 0;
+    for (let i = 1; i < recent.length; i++) {
+      for (let j = 0; j < pipeIds.length; j++) {
+        const change = Math.abs(recent[i][j] - recent[i-1][j]);
+        const rel = change / (recent[i][j] + 1e-10);
+        if (rel > maxRelChange) maxRelChange = rel;
+      }
+    }
+    return maxRelChange < this.convergenceThreshold;
+  }
+  earlyWarning() {
+    if (this.history.length < 3) return false;
+    const maxRecent = this.history.slice(-3).map(p => Math.max(...Object.values(p)));
+    const increasing = maxRecent.every((v,i) => i === 0 || v >= maxRecent[i-1]);
+    if (!increasing || this.history.length < 5) return false;
+    const vals = this.history.slice(-5).map(p => Math.max(...Object.values(p)));
+    const x = [0,1,2,3,4];
+    const n = 5;
+    const xm = x.reduce((a,b)=>a+b,0)/n;
+    const ym = vals.reduce((a,b)=>a+b,0)/n;
+    let num=0, den=0, num2=0;
+    for (let i=0;i<n;i++){ num+=(x[i]-xm)*(vals[i]-ym); den+=(x[i]-xm)**2; }
+    const slope = den === 0 ? 0 : num/den;
+    // Quadratic fit coefficient (acceleration)
+    let sx=0,sx2=0,sx3=0,sx4=0,sy=0,sxy=0,sx2y=0;
+    for (let i=0;i<n;i++){ const xi=x[i], yi=vals[i]; sx+=xi;sx2+=xi*xi;sx3+=xi*xi*xi;sx4+=xi*xi*xi*xi; sy+=yi; sxy+=xi*yi; sx2y+=xi*xi*yi; }
+    const D = n*sx2*sx4 - sx*sx*sx4 + 2*sx*sx2*sx3 - sx2*sx2*sx2 - n*sx3*sx3;
+    if (Math.abs(D) < 1e-10) return slope > 0;
+    const a = (n*sx2*sx2y - n*sx3*sxy - sx*sx4*sy + sx*sx3*sx2y + sx2*sx2*sxy - sx2*sx3*sy) / D;
+    return a > 0;  // positive curvature = accelerating
+  }
+  update(pressures) {
+    const baseline = this.adaptiveBaseline(pressures);
+    this.adaptiveUpdates++;
+    const logPost = {};
+    let maxLog = -Infinity;
+    const PRIOR_FLOOR = 1e-12;
+    for (const pid in this.posterior) {
+      const logPrior = Math.log(Math.max(this.posterior[pid], PRIOR_FLOOR));
+      const logL = this.logLikelihood(pid, pressures, baseline);
+      const lp = logPrior + logL;
+      logPost[pid] = lp;
+      if (lp > maxLog) maxLog = lp;
+    }
+    let total = 0;
+    const expVals = {};
+    for (const pid in logPost) {
+      expVals[pid] = Math.exp(logPost[pid] - maxLog);
+      total += expVals[pid];
+    }
+    if (total > 0) {
+      for (const pid in expVals) this.posterior[pid] = expVals[pid] / total;
+    }
+    this.history.push({...this.posterior});
+    return this.posterior;
+  }
+}
+
+// ============================================================================
+// SINGLE ITERATION RUNNER
+// ============================================================================
+function runSingleIteration(args) {
+  const {iterationId, leakPipe, leakRate, baselineCycles, detectionCycles, detectionThreshold, convergenceThreshold, lookbackWindow, seed} = args;
+  const rng = mulberry32(seed);
+  const sensitivity = computeSensitivityMatrix(NETWORK.nodes, NETWORK.pipes, NETWORK.sensors);
+  const engine = new BayesianEngine(sensitivity, NETWORK.pipes, detectionThreshold, convergenceThreshold, lookbackWindow);
+  const trajectory = [];
+  const convergenceTraj = [];
+  let falsePositives = 0, detected = false, detectionTime = null;
+  let convergenceTime = null, earlyWarningTriggered = false, earlyWarningTime = null;
+  let maxPosterior = 0;
+  const totalCycles = baselineCycles + detectionCycles;
+  for (let cycle = 0; cycle < totalCycles; cycle++) {
+    const isLeak = cycle >= baselineCycles && leakRate > 0;
+    const pressures = simulatePressures(sensitivity, NETWORK.sensors, isLeak ? leakPipe : null, isLeak ? leakRate : 0, 0.02, rng);
+    engine.update(pressures);
+    const leakPost = engine.posterior[leakPipe] || 0;
+    trajectory.push(leakPost);
+    convergenceTraj.push(engine.checkConvergence());
+    if (!isLeak && leakPost > detectionThreshold * 0.8) falsePositives++;
+    if (isLeak && !detected && leakPost > detectionThreshold) {
+      detected = true;
+      detectionTime = cycle - baselineCycles;
+      if (engine.checkConvergence()) convergenceTime = cycle - baselineCycles;
+    }
+    if (isLeak && !earlyWarningTriggered && engine.earlyWarning()) {
+      earlyWarningTriggered = true;
+      earlyWarningTime = cycle - baselineCycles;
+    }
+    if (leakPost > maxPosterior) maxPosterior = leakPost;
+  }
+  return {
+    iterationId, leakRate, thresholdExceeded: detected,
+    detectionTime, convergenceTime, falsePositiveCount: falsePositives,
+    maxPosterior, earlyWarningTriggered, earlyWarningTime,
+    adaptiveBaselineUpdates: engine.adaptiveUpdates,
+    posteriorTrajectory: trajectory, convergenceTrajectory: convergenceTraj,
+  };
+}
+
+// ============================================================================
+// STATISTICS + ROC
+// ============================================================================
+function computeStats(results, detectionThreshold) {
+  const leakIters = results.filter(r => r.leakRate > 0);
+  const controlIters = results.filter(r => r.leakRate === 0);
+  const detectedLeaks = leakIters.filter(r => r.thresholdExceeded);
+  const falseAlarms = controlIters.filter(r => r.thresholdExceeded);
+  const detectionTimes = detectedLeaks.map(r => r.detectionTime).filter(t => t !== null);
+  const convergenceTimes = detectedLeaks.filter(r => r.convergenceTime !== null).map(r => r.convergenceTime);
+  const falsePositives = results.map(r => r.falsePositiveCount);
+  const maxPost = results.map(r => r.maxPosterior);
+  const earlyWarnings = results.filter(r => r.earlyWarningTriggered);
+  const ewTimes = earlyWarnings.map(r => r.earlyWarningTime).filter(t => t !== null);
+
+  // Bootstrap CI
+  let ciLower = 0, ciUpper = 0;
+  if (detectionTimes.length > 0) {
+    const means = [];
+    for (let b = 0; b < 1000; b++) {
+      const sample = [];
+      for (let i = 0; i < detectionTimes.length; i++) {
+        sample.push(detectionTimes[Math.floor(Math.random() * detectionTimes.length)]);
+      }
+      means.push(sample.reduce((a,b)=>a+b,0) / sample.length);
+    }
+    means.sort((a,b)=>a-b);
+    ciLower = means[Math.floor(means.length * 0.025)];
+    ciUpper = means[Math.floor(means.length * 0.975)];
+  }
+
+  // ROC analysis
+  const labels = results.map(r => r.leakRate > 0 ? 1 : 0);
+  const scores = maxPost;
+  const roc = computeROC(labels, scores, detectionThreshold);
+
+  const detectionRate = leakIters.length > 0 ? detectedLeaks.length / leakIters.length : 0;
+  const controlFalseAlarmRate = controlIters.length > 0 ? falseAlarms.length / controlIters.length : 0;
+  const convergenceRate = detectedLeaks.length > 0 ? detectedLeaks.filter(r => r.convergenceTime !== null).length / detectedLeaks.length : 0;
+  const fpRate = falsePositives.length > 0 ? (falsePositives.reduce((a,b)=>a+b,0) / falsePositives.length) / 50 : 0;
+  const reliability = detectionRate * 0.4 + convergenceRate * 0.3 + (1 - Math.min(fpRate, 1)) * 0.3;
+
+  return {
+    numIterations: results.length,
+    leakIterations: leakIters.length,
+    controlIterations: controlIters.length,
+    detectedLeaks: detectedLeaks.length,
+    falseAlarms: falseAlarms.length,
+    detectionRate,
+    controlFalseAlarmRate,
+    detectionTimesMean: detectionTimes.length > 0 ? detectionTimes.reduce((a,b)=>a+b,0)/detectionTimes.length : 0,
+    detectionTimesStd: detectionTimes.length > 0 ? Math.sqrt(detectionTimes.reduce((a,b)=>a+(b-detectionTimes.reduce((x,y)=>x+y,0)/detectionTimes.length)**2,0)/detectionTimes.length) : 0,
+    detectionTimesMedian: detectionTimes.length > 0 ? [...detectionTimes].sort((a,b)=>a-b)[Math.floor(detectionTimes.length/2)] : 0,
+    ciLower, ciUpper,
+    convergenceRate,
+    convergenceTimesMean: convergenceTimes.length > 0 ? convergenceTimes.reduce((a,b)=>a+b,0)/convergenceTimes.length : 0,
+    fpRate,
+    maxPosteriorMean: maxPost.length > 0 ? maxPost.reduce((a,b)=>a+b,0)/maxPost.length : 0,
+    maxPosteriorStd: maxPost.length > 0 ? Math.sqrt(maxPost.reduce((a,b)=>a+(b-maxPost.reduce((x,y)=>x+y,0)/maxPost.length)**2,0)/maxPost.length) : 0,
+    earlyWarningRate: results.length > 0 ? earlyWarnings.length / results.length : 0,
+    meanEarlyWarningCycles: ewTimes.length > 0 ? ewTimes.reduce((a,b)=>a+b,0)/ewTimes.length : 0,
+    reliabilityScore: reliability,
+    adaptiveBaselineUpdatesMean: results.length > 0 ? results.reduce((a,r)=>a+r.adaptiveBaselineUpdates,0)/results.length : 0,
+    roc,
+    detectionTimes, convergenceTimes, falsePositives, maxPost, ewTimes,
+    trajectorySample: results.slice(0, 10),
+  };
+}
+
+function computeROC(labels, scores, threshold) {
+  if (labels.length < 2 || new Set(labels).size < 2) {
+    return {fpr:[0,1], tpr:[0,1], thresholds:[0.5], auc:0.5, optimalThreshold:0.5,
+            precisionAtThreshold:0, recallAtThreshold:0, f1:0, precision:[1,1], recall:[0,1]};
+  }
+  const sorted = labels.map((l,i) => ({l, s: scores[i]})).sort((a,b) => b.s - a.s);
+  const nPos = labels.filter(l => l === 1).length;
+  const nNeg = labels.length - nPos;
+  const fpr = [0], tpr = [0], thresholds = [1.1];
+  let tp = 0, fp = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].l === 1) tp++; else fp++;
+    fpr.push(nNeg > 0 ? fp / nNeg : 0);
+    tpr.push(nPos > 0 ? tp / nPos : 0);
+    thresholds.push(sorted[i].s);
+  }
+  fpr.push(1); tpr.push(1); thresholds.push(-0.1);
+  // AUC via trapezoid
+  let auc = 0;
+  for (let i = 1; i < fpr.length; i++) {
+    auc += (fpr[i] - fpr[i-1]) * (tpr[i] + tpr[i-1]) / 2;
+  }
+  // Optimal threshold (Youden's J)
+  let optIdx = 0, optJ = -1;
+  for (let i = 0; i < fpr.length; i++) {
+    const j = tpr[i] - fpr[i];
+    if (j > optJ) { optJ = j; optIdx = i; }
+  }
+  const optimalThreshold = thresholds[optIdx] ?? 0.5;
+  // Precision-recall
+  const precision = [1], recall = [0];
+  tp = 0; fp = 0;
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].l === 1) tp++; else fp++;
+    precision.push(tp / (tp + fp));
+    recall.push(tp / nPos);
+  }
+  precision.push(0); recall.push(1);
+  // At threshold
+  let precAt = 0, recAt = 0;
+  let idx = 0;
+  for (let i = 0; i < thresholds.length; i++) {
+    if (Math.abs(thresholds[i] - threshold) < Math.abs(thresholds[idx] - threshold)) idx = i;
+  }
+  precAt = precision[idx] ?? 0;
+  recAt = recall[idx] ?? 0;
+  const f1 = (precAt + recAt) > 0 ? 2 * precAt * recAt / (precAt + recAt) : 0;
+  return {fpr, tpr, thresholds, auc, optimalThreshold, precisionAtThreshold: precAt, recallAtThreshold: recAt, f1, precision, recall};
+}
+
+// ============================================================================
+// PLOTLY THEME
+// ============================================================================
+const PLOT_THEME = {
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor: 'rgba(0,0,0,0)',
+  font: { color: '#cbd5d9', family: 'ui-monospace, monospace', size: 10 },
+  margin: { l: 40, r: 20, t: 10, b: 35 },
+  xaxis: { gridcolor: '#1e3140', zerolinecolor: '#2a4458', tickfont: { size: 9 } },
+  yaxis: { gridcolor: '#1e3140', zerolinecolor: '#2a4458', tickfont: { size: 9 } },
+};
+
+// ============================================================================
+// RENDER PLOTS
+// ============================================================================
+function renderTopology() {
+  const traces = [];
+  // Pipes
+  for (const pid in NETWORK.pipes) {
+    const p = NETWORK.pipes[pid];
+    const fromN = NETWORK.nodes[p.from];
+    const toN = NETWORK.nodes[p.to];
+    const isLeak = pid === 'PIP3';
+    traces.push({
+      x: [fromN.x, toN.x], y: [fromN.y, toN.y],
+      mode: 'lines', type: 'scatter',
+      line: { color: isLeak ? '#ff4d4d' : '#2a4458', width: isLeak ? 5 : 3 },
+      name: pid, hovertext: `${pid} (L=${p.length}m, D=${p.diameter}m)${isLeak ? ' — LEAK' : ''}`,
+      showlegend: false,
+    });
+  }
+  // Nodes
+  const nodeX = [], nodeY = [], nodeText = [];
+  for (const nid in NETWORK.nodes) {
+    nodeX.push(NETWORK.nodes[nid].x);
+    nodeY.push(NETWORK.nodes[nid].y);
+    nodeText.push(`${nid} (elev=${NETWORK.nodes[nid].elevation}m)`);
+  }
+  traces.push({
+    x: nodeX, y: nodeY, mode: 'markers+text', type: 'scatter',
+    marker: { size: 14, color: '#00d4ff', line: { color: '#060a10', width: 2 } },
+    text: Object.keys(NETWORK.nodes), textposition: 'top center',
+    textfont: { size: 9, color: '#e0e6ed' }, name: 'Nodes', hovertext: nodeText,
+  });
+  // Sensors
+  const sX = [], sY = [], sText = [];
+  for (const sid in NETWORK.sensors) {
+    const n = NETWORK.nodes[NETWORK.sensors[sid].node];
+    sX.push(n.x); sY.push(n.y - 0.3);
+    sText.push(`${sid}@${NETWORK.sensors[sid].node}`);
+  }
+  traces.push({
+    x: sX, y: sY, mode: 'markers+text', type: 'scatter',
+    marker: { size: 16, color: '#00ff88', symbol: 'diamond', line: { color: '#060a10', width: 2 } },
+    text: sText, textposition: 'bottom center',
+    textfont: { size: 8, color: '#00ff88' }, name: 'Sensors',
+  });
+  Plotly.newPlot('plot-topology', traces, {
+    ...PLOT_THEME,
+    xaxis: { ...PLOT_THEME.xaxis, showgrid: false, zeroline: false, showticklabels: false },
+    yaxis: { ...PLOT_THEME.yaxis, showgrid: false, zeroline: false, showticklabels: false, scaleanchor: 'x' },
+    margin: { l: 10, r: 10, t: 10, b: 10 },
+    showlegend: false,
+    height: 320,
+  });
+}
+
+function renderEmpty(plots) {
+  for (const id of plots) {
+    Plotly.newPlot(id, [{
+      x: [0], y: [0], type: 'scatter', mode: 'text',
+      text: ['Awaiting simulation run'], textfont: { color: '#5b7280', size: 12 },
+    }], {
+      ...PLOT_THEME,
+      xaxis: { showgrid: false, zeroline: false, showticklabels: false },
+      yaxis: { showgrid: false, zeroline: false, showticklabels: false },
+      annotations: [],
+    });
+  }
+}
+
+function renderPlots(results, stats, detectionThreshold) {
+  // Detection time histogram
+  const dt = stats.detectionTimes;
+  Plotly.newPlot('plot-detect-time', [{
+    x: dt.length > 0 ? dt : [0],
+    type: 'histogram', nbinsx: 15,
+    marker: { color: 'rgba(0,212,255,0.7)', line: { color: '#00d4ff', width: 1 } },
+  }], {
+    ...PLOT_THEME,
+    xaxis: { ...PLOT_THEME.xaxis, title: 'Cycles to Detection' },
+    yaxis: { ...PLOT_THEME.yaxis, title: 'Frequency' },
+    shapes: dt.length > 0 ? [{ type: 'line', x0: stats.detectionTimesMean, x1: stats.detectionTimesMean, y0: 0, y1: 1, yref: 'paper', line: { color: '#00ff88', dash: 'dash', width: 2 } }] : [],
+    annotations: dt.length > 0 ? [{ x: stats.detectionTimesMean, y: 1, yref: 'paper', text: `Mean ${stats.detectionTimesMean.toFixed(1)}`, font: { color: '#00ff88', size: 9 }, showarrow: false, yanchor: 'bottom' }] : [],
+  });
+
+  // Max posterior histogram
+  Plotly.newPlot('plot-posterior', [{
+    x: stats.maxPost,
+    type: 'histogram', nbinsx: 20,
+    marker: { color: 'rgba(0,255,136,0.7)', line: { color: '#00ff88', width: 1 } },
+  }], {
+    ...PLOT_THEME,
+    xaxis: { ...PLOT_THEME.xaxis, title: 'Max Posterior' },
+    yaxis: { ...PLOT_THEME.yaxis, title: 'Frequency' },
+    shapes: [{ type: 'line', x0: detectionThreshold, x1: detectionThreshold, y0: 0, y1: 1, yref: 'paper', line: { color: '#ffb800', dash: 'dash', width: 2 } }],
+  });
+
+  // False positives
+  Plotly.newPlot('plot-fp', [{
+    x: stats.falsePositives,
+    type: 'histogram', nbinsx: 15,
+    marker: { color: 'rgba(255,184,0,0.7)', line: { color: '#ffb800', width: 1 } },
+  }], {
+    ...PLOT_THEME,
+    xaxis: { ...PLOT_THEME.xaxis, title: 'False Positives (baseline)' },
+    yaxis: { ...PLOT_THEME.yaxis, title: 'Frequency' },
+  });
+
+  // Convergence
+  Plotly.newPlot('plot-conv', [{
+    x: stats.convergenceTimes.length > 0 ? stats.convergenceTimes : [0],
+    type: 'histogram', nbinsx: 12,
+    marker: { color: 'rgba(155,89,182,0.7)', line: { color: '#9b59b6', width: 1 } },
+  }], {
+    ...PLOT_THEME,
+    xaxis: { ...PLOT_THEME.xaxis, title: 'Cycles to Convergence' },
+    yaxis: { ...PLOT_THEME.yaxis, title: 'Frequency' },
+  });
+
+  // Early warning
+  const ewIters = results.filter(r => r.earlyWarningTriggered);
+  Plotly.newPlot('plot-ew', [{
+    x: ewIters.map(r => r.iterationId),
+    y: ewIters.map(r => r.earlyWarningTime),
+    mode: 'markers+lines', type: 'scatter',
+    marker: { color: '#00d4ff', size: 10, line: { color: '#060a10', width: 1 } },
+    line: { color: 'rgba(0,212,255,0.4)' },
+  }], {
+    ...PLOT_THEME,
+    xaxis: { ...PLOT_THEME.xaxis, title: 'Iteration' },
+    yaxis: { ...PLOT_THEME.yaxis, title: 'Early Warning (cycles)' },
+  });
+
+  // Trajectories (first 10)
+  const colors = ['#00d4ff','#00ff88','#ffb800','#ff4d4d','#9b59b6','#1abc9c','#e67e22','#34495e','#27ae60','#2980b9'];
+  const trajTraces = stats.trajectorySample.map((r, i) => ({
+    x: r.posteriorTrajectory.map((_, j) => j),
+    y: r.posteriorTrajectory,
+    mode: 'lines', type: 'scatter',
+    line: { color: colors[i % colors.length], width: 1.5 },
+    name: `Iter ${r.iterationId}`,
+    opacity: 0.8,
+  }));
+  // Threshold line
+  trajTraces.push({
+    x: [0, (stats.trajectorySample[0]?.posteriorTrajectory.length) || 70],
+    y: [detectionThreshold, detectionThreshold],
+    mode: 'lines', type: 'scatter',
+    line: { color: '#ffb800', dash: 'dash', width: 2 },
+    name: `Threshold (${detectionThreshold})`,
+  });
+  Plotly.newPlot('plot-traj', trajTraces, {
+    ...PLOT_THEME,
+    xaxis: { ...PLOT_THEME.xaxis, title: 'Cycle' },
+    yaxis: { ...PLOT_THEME.yaxis, title: 'Posterior', range: [0, 1] },
+    legend: { orientation: 'h', y: 1.15, font: { size: 8 } },
+    showlegend: true,
+  });
+
+  // ROC
+  Plotly.newPlot('plot-roc', [
+    { x: stats.roc.fpr, y: stats.roc.tpr, mode: 'lines+markers', type: 'scatter',
+      line: { color: '#00ff88', width: 2 }, marker: { size: 5, color: '#00ff88' },
+      name: `AUC=${stats.roc.auc.toFixed(3)}` },
+    { x: [0,1], y: [0,1], mode: 'lines', type: 'scatter',
+      line: { color: 'rgba(120,120,120,0.4)', dash: 'dash' }, name: 'Random' },
+  ], {
+    ...PLOT_THEME,
+    xaxis: { ...PLOT_THEME.xaxis, title: 'False Positive Rate' },
+    yaxis: { ...PLOT_THEME.yaxis, title: 'True Positive Rate' },
+    legend: { x: 0.5, y: 0.1, font: { size: 9 } },
+  });
+
+  // Precision-Recall
+  Plotly.newPlot('plot-pr', [{
+    x: stats.roc.recall, y: stats.roc.precision,
+    mode: 'lines+markers', type: 'scatter',
+    line: { color: '#00d4ff', width: 2 }, marker: { size: 5, color: '#00d4ff' },
+    name: 'PR',
+  }], {
+    ...PLOT_THEME,
+    xaxis: { ...PLOT_THEME.xaxis, title: 'Recall' },
+    yaxis: { ...PLOT_THEME.yaxis, title: 'Precision', range: [0, 1.05] },
+  });
+
+  // Reliability gauge
+  Plotly.newPlot('plot-gauge', [{
+    type: 'indicator', mode: 'gauge+number+delta',
+    value: stats.reliabilityScore * 100,
+    number: { suffix: '%', font: { color: '#00ff88', size: 28 } },
+    delta: { reference: 70, increasing: { color: '#00ff88' }, decreasing: { color: '#ff4d4d' } },
+    gauge: {
+      axis: { range: [0, 100], tickcolor: '#5b7280' },
+      bar: { color: '#00d4ff' },
+      bgcolor: 'rgba(13,20,29,0.5)',
+      borderwidth: 1, bordercolor: '#1e3140',
+      steps: [
+        { range: [0, 40], color: 'rgba(255,77,77,0.2)' },
+        { range: [40, 70], color: 'rgba(255,184,0,0.2)' },
+        { range: [70, 100], color: 'rgba(0,255,136,0.2)' },
+      ],
+      threshold: { line: { color: '#00ff88', width: 3 }, thickness: 0.75, value: 70 },
+    },
+  }], {
+    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+    margin: { l: 20, r: 20, t: 10, b: 10 },
+    font: { color: '#cbd5d9', family: 'ui-monospace, monospace' },
+  });
+}
+
+function updateStatsCards(stats) {
+  const setVal = (id, val, unit='') => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = val + (unit ? `<span class="unit">${unit}</span>` : '');
+  };
+  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setVal('stat-detect', `${(stats.detectionRate*100).toFixed(0)}`, '%');
+  setText('stat-detect-trend', `${stats.detectedLeaks}/${stats.leakIterations} leaks detected`);
+  setVal('stat-time', stats.detectionTimesMean.toFixed(1), ' cycles');
+  setText('stat-time-trend', `± ${stats.detectionTimesStd.toFixed(1)} cycles · median ${stats.detectionTimesMedian}`);
+  setVal('stat-fp', `${(stats.controlFalseAlarmRate*100).toFixed(0)}`, '%');
+  setText('stat-fp-trend', `${stats.falseAlarms}/${stats.controlIterations} controls alarmed`);
+  setVal('stat-ew', `${(stats.earlyWarningRate*100).toFixed(0)}`, '%');
+  setText('stat-ew-trend', `${stats.meanEarlyWarningCycles.toFixed(1)} cycles early`);
+  setVal('stat-auc', stats.roc.auc.toFixed(3));
+  setText('stat-auc-trend', `optimal threshold: ${stats.roc.optimalThreshold.toFixed(3)}`);
+  setVal('stat-f1', stats.roc.f1.toFixed(3));
+  setText('stat-f1-trend', `precision ${stats.roc.precisionAtThreshold.toFixed(3)} · recall ${stats.roc.recallAtThreshold.toFixed(3)}`);
+  setVal('stat-rel', `${(stats.reliabilityScore*100).toFixed(0)}`, '%');
+  setText('stat-rel-trend', `${(stats.detectionRate*100).toFixed(0)}% det · ${(stats.convergenceRate*100).toFixed(0)}% conv · ${(stats.fpRate*100).toFixed(1)}% fp`);
+  const ciEl = document.getElementById('stat-ci');
+  if (ciEl) ciEl.textContent = `[${stats.ciLower.toFixed(1)}, ${stats.ciUpper.toFixed(1)}]`;
+  setText('stat-ci-trend', `${stats.leakIterations} leak + ${stats.controlIterations} control iterations`);
+}
+
+function renderTable(results) {
+  const tbody = document.getElementById('results-tbody');
+  tbody.innerHTML = '';
+  for (const r of results) {
+    const tr = document.createElement('tr');
+    const leakBadge = r.leakRate > 0 ? '<span class="badge warn">LEAK</span>' : '<span class="badge" style="color:var(--dim);border:1px solid var(--dim);">CTRL</span>';
+    const detBadge = r.thresholdExceeded ? '<span class="badge pass">DETECTED</span>' : '<span class="badge fail">MISSED</span>';
+    tr.innerHTML = `
+      <td>${r.iterationId}</td>
+      <td>${leakBadge}</td>
+      <td>${detBadge}</td>
+      <td>${r.detectionTime !== null ? r.detectionTime : '—'}</td>
+      <td>${r.convergenceTime !== null ? r.convergenceTime : '—'}</td>
+      <td>${r.falsePositiveCount}</td>
+      <td>${r.maxPosterior.toFixed(4)}</td>
+      <td>${r.earlyWarningTriggered ? '<span class="badge pass">YES</span>' : '<span class="badge fail">NO</span>'}</td>
+      <td>${r.earlyWarningTime !== null ? r.earlyWarningTime : '—'}</td>
+      <td>${r.adaptiveBaselineUpdates}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+// ============================================================================
+// MAIN RUNNER (async with progress updates)
+// ============================================================================
+let lastResults = null;
+let lastStats = null;
+let lastConfig = null;
+let running = false;
+
+async function runSimulation() {
+  if (running) return;
+  running = true;
+  const numIters = parseInt(document.getElementById('ctrl-iters').value);
+  const leakRate = parseFloat(document.getElementById('ctrl-rate').value);
+  const detectionThreshold = parseFloat(document.getElementById('ctrl-thresh').value);
+  const leakFraction = parseInt(document.getElementById('ctrl-frac').value) / 100;
+  const baselineCycles = parseInt(document.getElementById('ctrl-base').value);
+  const detectionCycles = parseInt(document.getElementById('ctrl-det').value);
+  const convergenceThreshold = 0.05;
+  const lookbackWindow = 10;
+
+  lastConfig = { numIters, leakRate, detectionThreshold, leakFraction, baselineCycles, detectionCycles };
+
+  // Determine leak iterations (round-robin)
+  const nLeak = Math.floor(numIters * leakFraction);
+  const leakSet = new Set();
+  if (nLeak > 0) {
+    const step = Math.max(1, Math.floor(numIters / nLeak));
+    for (let i = 0; i < numIters && leakSet.size < nLeak; i += step) leakSet.add(i);
+  }
+  while (leakSet.size < nLeak) {
+    for (let i = 0; i < numIters; i++) {
+      if (!leakSet.has(i)) { leakSet.add(i); break; }
+    }
+  }
+
+  const baseSeed = (Date.now() & 0xffffffff) >>> 0;
+  const results = [];
+  const startMs = Date.now();
+
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('hdr-status').textContent = 'RUNNING';
+  document.getElementById('status-dot').className = 'dot running';
+  document.getElementById('status-text').textContent = `Running ${numIters} iterations (${nLeak} leak + ${numIters - nLeak} control)...`;
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-text').textContent = `0 / ${numIters}`;
+
+  for (let i = 0; i < numIters; i++) {
+    const iterLeakRate = leakSet.has(i) ? leakRate : 0;
+    const args = {
+      iterationId: i, leakPipe: 'PIP3', leakRate: iterLeakRate,
+      baselineCycles, detectionCycles, detectionThreshold,
+      convergenceThreshold, lookbackWindow, seed: baseSeed + i * 12345,
+    };
+    const r = runSingleIteration(args);
+    results.push(r);
+
+    // Update progress
+    const pct = ((i + 1) / numIters) * 100;
+    document.getElementById('progress-fill').style.width = `${pct}%`;
+    document.getElementById('progress-text').textContent = `${i + 1} / ${numIters}`;
+    // Yield to UI thread every iteration
+    if (i % 2 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+  }
+
+  const elapsed = ((Date.now() - startMs) / 1000).toFixed(2);
+  const stats = computeStats(results, detectionThreshold);
+  lastResults = results;
+  lastStats = stats;
+
+  // Render
+  renderPlots(results, stats, detectionThreshold);
+  updateStatsCards(stats);
+  renderTable(results);
+
+  document.getElementById('btn-run').disabled = false;
+  document.getElementById('hdr-status').textContent = 'COMPLETE';
+  document.getElementById('status-dot').className = 'dot done';
+  document.getElementById('status-text').textContent = `Completed ${numIters} iterations in ${elapsed}s — detection ${(stats.detectionRate*100).toFixed(0)}% · ROC AUC ${stats.roc.auc.toFixed(3)} · reliability ${(stats.reliabilityScore*100).toFixed(0)}%`;
+  running = false;
+}
+
+function exportJSON() {
+  if (!lastResults || !lastStats) { alert('Run the simulation first.'); return; }
+  const payload = {
+    timestamp: new Date().toISOString(),
+    configuration: lastConfig,
+    aggregate_statistics: {
+      num_iterations: lastStats.numIterations,
+      leak_iterations: lastStats.leakIterations,
+      control_iterations: lastStats.controlIterations,
+      detection_rate: lastStats.detectionRate,
+      control_false_alarm_rate: lastStats.controlFalseAlarmRate,
+      detection_times_mean: lastStats.detectionTimesMean,
+      detection_times_std: lastStats.detectionTimesStd,
+      detection_times_median: lastStats.detectionTimesMedian,
+      ci_lower: lastStats.ciLower,
+      ci_upper: lastStats.ciUpper,
+      convergence_rate: lastStats.convergenceRate,
+      false_positive_rate: lastStats.fpRate,
+      max_posterior_mean: lastStats.maxPosteriorMean,
+      max_posterior_std: lastStats.maxPosteriorStd,
+      early_warning_rate: lastStats.earlyWarningRate,
+      mean_early_warning_cycles: lastStats.meanEarlyWarningCycles,
+      reliability_score: lastStats.reliabilityScore,
+      adaptive_baseline_updates_mean: lastStats.adaptiveBaselineUpdatesMean,
+      roc_auc: lastStats.roc.auc,
+      f1_score: lastStats.roc.f1,
+      optimal_threshold: lastStats.roc.optimalThreshold,
+      precision_at_threshold: lastStats.roc.precisionAtThreshold,
+      recall_at_threshold: lastStats.roc.recallAtThreshold,
+    },
+    roc_data: { fpr: lastStats.roc.fpr, tpr: lastStats.roc.tpr, auc: lastStats.roc.auc, optimal_threshold: lastStats.roc.optimalThreshold, precision: lastStats.roc.precision, recall: lastStats.roc.recall },
+    iteration_results: lastResults.map(r => ({
+      iteration_id: r.iterationId,
+      leak_rate: r.leakRate,
+      threshold_exceeded: r.thresholdExceeded,
+      detection_time: r.detectionTime,
+      convergence_time: r.convergenceTime,
+      false_positive_count: r.falsePositiveCount,
+      max_posterior: r.maxPosterior,
+      early_warning_triggered: r.earlyWarningTriggered,
+      early_warning_time: r.earlyWarningTime,
+      adaptive_baseline_updates: r.adaptiveBaselineUpdates,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bayesian_leak_detection_${Date.now()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function resetView() {
+  lastResults = null; lastStats = null;
+  renderEmpty(['plot-detect-time','plot-posterior','plot-fp','plot-conv','plot-ew','plot-traj','plot-roc','plot-pr','plot-gauge']);
+  // Reset stats
+  const ids = ['stat-detect','stat-time','stat-fp','stat-ew','stat-auc','stat-f1','stat-rel','stat-ci'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = '—'; });
+  document.getElementById('results-tbody').innerHTML = '<tr><td colspan="10" style="text-align:center; color:var(--dim); padding:20px;">No data — run the simulation</td></tr>';
+  document.getElementById('hdr-status').textContent = 'READY';
+  document.getElementById('status-dot').className = 'dot';
+  document.getElementById('status-text').textContent = 'Idle — adjust parameters and click RUN SIMULATION';
+  document.getElementById('progress-fill').style.width = '0%';
+  document.getElementById('progress-text').textContent = '0 / 0';
+}
+
+// ============================================================================
+// INIT
+// ============================================================================
+function init() {
+  // Wire sliders
+  const wire = (sliderId, labelId, fmt) => {
+    const s = document.getElementById(sliderId);
+    const l = document.getElementById(labelId);
+    s.addEventListener('input', () => { l.textContent = fmt(s.value); });
+    l.textContent = fmt(s.value);
+  };
+  wire('ctrl-iters','lbl-iters', v => v);
+  wire('ctrl-rate','lbl-rate', v => parseFloat(v).toFixed(2));
+  wire('ctrl-thresh','lbl-thresh', v => parseFloat(v).toFixed(2));
+  wire('ctrl-frac','lbl-frac', v => v + '%');
+  wire('ctrl-base','lbl-base', v => v);
+  wire('ctrl-det','lbl-det', v => v);
+
+  document.getElementById('btn-run').addEventListener('click', runSimulation);
+  document.getElementById('btn-export').addEventListener('click', exportJSON);
+  document.getElementById('btn-reset').addEventListener('click', resetView);
+
+  // Initial renders
+  renderTopology();
+  renderEmpty(['plot-detect-time','plot-posterior','plot-fp','plot-conv','plot-ew','plot-traj','plot-roc','plot-pr','plot-gauge']);
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
