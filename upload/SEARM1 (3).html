@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VVU AIR KERNEL — Evidence Analysis Workspace</title>
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #131c2e;
+            --bg-tertiary: #1a2740;
+            --border: #2a3d5c;
+            --accent: #00d4ff;
+            --success: #00ff88;
+            --warning: #ffb800;
+            --danger: #ff4d4d;
+            --text-primary: #e0e6ed;
+            --text-secondary: #8892a6;
+            --font-mono: 'Courier New', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            border-bottom: 2px solid var(--accent);
+            padding: 20px 0;
+            margin-bottom: 30px;
+            background: linear-gradient(90deg, rgba(0,212,255,0.1) 0%, transparent 100%);
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            margin-top: 8px;
+            font-size: 0.9em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .card-title {
+            color: var(--accent);
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .pass-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 8px 0;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+
+        .status-pass {
+            background: rgba(0,255,136,0.2);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status-process {
+            background: rgba(0,212,255,0.2);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .data-table th, .data-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85em;
+        }
+
+        .data-table th {
+            color: var(--text-secondary);
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .mono {
+            font-family: var(--font-mono);
+        }
+
+        .highlight {
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        .success-text {
+            color: var(--success);
+        }
+
+        .warning-text {
+            color: var(--warning);
+        }
+
+        .danger-text {
+            color: var(--danger);
+        }
+
+        .evidence-chain {
+            border-left: 3px solid var(--success);
+            padding-left: 15px;
+            margin: 10px 0;
+        }
+
+        .evidence-item {
+            background: rgba(0,255,136,0.05);
+            border: 1px solid rgba(0,255,136,0.2);
+            border-radius: 4px;
+            padding: 8px;
+            margin: 8px 0;
+            font-size: 0.8em;
+        }
+
+        .attestation {
+            color: var(--text-secondary);
+            font-size: 0.75em;
+            margin-top: 4px;
+        }
+
+        .footer {
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            color: var(--text-secondary);
+            font-size: 0.8em;
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--success));
+            transition: width 0.5s ease;
+        }
+
+        .progress-bar-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>VVU AIR KERNEL — HYDRAULIC VALIDATION UTILITY</h1>
+        <p>Evidence Independence Scoring (EIS v1.0) | DMA: NMBM-DMA-07 | Date: 2026-08-26</p>
+    </div>
+
+    <div class="grid">
+        <!-- 5-Pass Pipeline -->
+        <div class="card">
+            <div class="card-title">5-Pass Validation Pipeline</div>
+            <div id="pass-list"></div>
+        </div>
+
+        <!-- EIS v1.0 Scoring -->
+        <div class="card">
+            <div class="card-title">EIS v1.0 Trust Score</div>
+            <div class="progress-bar">
+                <div id="trust-bar" class="progress-bar-fill" style="width: 0%"></div>
+                <div id="trust-label" class="progress-bar-label">0.00</div>
+            </div>
+            <div id="verdict" style="text-align: center; margin-top: 15px; font-size: 1.2em;"></div>
+        </div>
+
+        <!-- SCADA Data -->
+        <div class="card">
+            <div class="card-title">SCADA Telemetry (DMA-7)</div>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Time (UTC)</th>
+                        <th>Flow (L/s)</th>
+                        <th>Pressure (m)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="scada-data"></tbody>
+            </table>
+        </div>
+
+        <!-- Evidence Chain -->
+        <div class="card">
+            <div class="card-title">Corroborating Evidence</div>
+            <div id="evidence-chain"></div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>[SIMULATION DATA — NOT MUNICIPAL OPERATIONAL DATA] | Zero Fabrication Rule | Audit Trail: <span class="mono">0x1a7c39e2b0e...</span></p>
+    </div>
+
+    <script>
+        // MOCK DATA (replicates your exact evidence_log.json)
+        const mockData = {
+            "dma_id": "NMBM-DMA-07",
+            "baseline": 97.0,
+            "passes": [
+                { "name": "Pass 1: Collect & Normalize", "status": "pass" },
+                { "name": "Pass 2: Physical Boundary Checks", "status": "pass" },
+                { "name": "Pass 3: MNF Baseline (Median)", "status": "pass" },
+                { "name": "Pass 4: EIS v1.0 Independence", "status": "process" },
+                { "name": "Pass 5: Evidence Log Export", "status": "pass" }
+            ],
+            "scada": [
+                { "time": "00:00", "flow": 102.0, "pressure": 48.2, "status": "VALID" },
+                { "time": "01:00", "flow": 98.0, "pressure": 48.5, "status": "VALID" },
+                { "time": "02:00", "flow": 97.0, "pressure": 48.4, "status": "VALID" },
+                { "time": "03:00", "flow": 96.0, "pressure": 48.6, "status": "VALID" },
+                { "time": "04:00", "flow": 111.0, "pressure": 46.1, "status": "ANOMALY" },
+                { "time": "05:00", "flow": 114.0, "pressure": 45.7, "status": "ANOMALY" },
+                { "time": "06:00", "flow": 116.0, "pressure": 45.4, "status": "ANOMALY" },
+                { "time": "07:00", "flow": -999.0, "pressure": 45.2, "status": "IMPOSSIBLE" },
+                { "time": "08:00", "flow": null, "pressure": 45.1, "status": "MISSING" }
+            ],
+            "evidence": [
+                {
+                    "type": "HUMAN_VISUAL",
+                    "id": "OBS-FLD-20260826-001",
+                    "segment": "NMBM-SEG-S-142",
+                    "attestation": "0x7e8a9f02b",
+                    "weight": 0.5
+                },
+                {
+                    "type": "ACOUSTIC",
+                    "id": "OBS-ACO-20260826-002",
+                    "segment": "NMBM-SEG-S-142",
+                    "attestation": "0x3c9f22e8d",
+                    "weight": 0.4
+                }
+            ]
+        };
+
+        // Render Pass Pipeline
+        function renderPasses() {
+            const passList = document.getElementById('pass-list');
+            mockData.passes.forEach(pass => {
+                const div = document.createElement('div');
+                div.className = 'pass-status';
+                div.innerHTML = `
+                    <span>${pass.name}</span>
+                    <span class="status-badge ${
+                        pass.status === 'pass' ? 'status-pass' : 'status-process'
+                    }">${pass.status === 'pass' ? '✓ PASS' : '⚡ RUNNING'}</span>
+                `;
+                passList.appendChild(div);
+            });
+        }
+
+        // Render SCADA Data
+        function renderSCADA() {
+            const tbody = document.getElementById('scada-data');
+            mockData.scada.forEach(row => {
+                const tr = document.createElement('tr');
+                let statusClass = '';
+                if (row.status === 'ANOMALY') statusClass = 'warning-text';
+                else if (row.status === 'IMPOSSIBLE') statusClass = 'danger-text';
+                else if (row.status === 'MISSING') statusClass = 'text-secondary';
+                else statusClass = 'success-text';
+
+                tr.innerHTML = `
+                    <td>${row.time}</td>
+                    <td>${row.flow !== null ? row.flow.toFixed(1) : 'UNDEFINED'}</td>
+                    <td>${row.pressure.toFixed(1)}</td>
+                    <td class="${statusClass}">${row.status}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Calculate & Render EIS Score
+        function calculateEIS() {
+            const primaryScore = 0.3;  // Flow anomaly detected
+            const pressureScore = 0.2; // Pressure drop detected
+            const fieldScore = Math.min(mockData.evidence.length * 0.25, 0.5); // Independent evidence
+            
+            const trustScore = Math.round((primaryScore + pressureScore + fieldScore) * 100) / 100;
+            
+            // Animate progress bar
+            const bar = document.getElementById('trust-bar');
+            const label = document.getElementById('trust-label');
+            const verdict = document.getElementById('verdict');
+            
+            setTimeout(() => {
+                bar.style.width = `${trustScore * 100}%`;
+                label.textContent = trustScore.toFixed(2);
+                
+                if (trustScore >= 0.7) {
+                    verdict.innerHTML = '<span class="success-text">VERIFIED_CANDIDATE</span>';
+                } else {
+                    verdict.innerHTML = '<span class="warning-text">INSUFFICIENT_EVIDENCE</span>';
+                }
+            }, 500);
+        }
+
+        // Render Evidence Chain
+        function renderEvidence() {
+            const container = document.getElementById('evidence-chain');
+            const evidenceChain = document.createElement('div');
+            evidenceChain.className = 'evidence-chain';
+            
+            mockData.evidence.forEach(ev => {
+                const item = document.createElement('div');
+                item.className = 'evidence-item';
+                item.innerHTML = `
+                    <strong class="highlight">${ev.type}</strong> — Observation ${ev.id}
+                    <br>Segment: ${ev.segment} | Weight: +${ev.weight}
+                    <div class="attestation">Attestation: ${ev.attestation}</div>
+                `;
+                evidenceChain.appendChild(item);
+            });
+            
+            container.appendChild(evidenceChain);
+        }
+
+        // Initialize
+        renderPasses();
+        renderSCADA();
+        calculateEIS();
+        renderEvidence();
+    </script>
+</body>
+</html>

@@ -1,0 +1,2816 @@
+I’ve prepared a standalone HTML dashboard that implements the full Evidence Console logic in a single file — no build tools, no dependencies (except the browser’s built‑in Web Crypto API). It mirrors the React console’s behavior:
+
+- **Load evidence** by file upload, drag‑and‑drop, URL fetch, or the built‑in reference replay.
+- **Automatic attestation audit** – every finding’s `attestation_signature` is recomputed client‑side using the same canonicalisation as Python and C; unmatched spines are **refused display** (Zero Fabrication Mandate).
+- **Visual trust gauge** that shows the EIS v1.0 weight segments (FLOW +0.30, PRESSURE +0.20, FIELD +0.50) and the 0.70 threshold.
+- **Terminal‑styled UI** with the same cyan/green/amber palette as the wrapper script.
+
+All the engine passes (normalisation, MNF baseline, scheduled‑event filtering, field‑evidence corroboration) run in‑browser, reproducing the documented 04:00Z single finding with baseline 97.0 and trust 1.0.
+
+---
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIR KERNEL — Evidence Console</title>
+  <style>
+    /* ── terminal‑style palette ── */
+    :root {
+      --bg: #0a0f12;
+      --panel: #10181d;
+      --line: #1e2c33;
+      --cyan: #22d3ee;
+      --green: #34d399;
+      --red: #f87171;
+      --amber: #fbbf24;
+      --fg: #cbd5d9;
+      --dim: #5b7280;
+      --mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .app {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── header ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 2px solid var(--cyan);
+      padding-bottom: 10px;
+    }
+    .header h1 {
+      color: var(--cyan);
+      font-size: 16px;
+      letter-spacing: 0.06em;
+      margin: 0;
+    }
+    .header .sub {
+      color: var(--dim);
+      font-weight: 400;
+    }
+    .mandate {
+      color: var(--amber);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+    }
+
+    /* ── states ── */
+    .empty, .error, .busy {
+      margin-top: 40px;
+      padding: 20px;
+      border: 1px dashed var(--line);
+    }
+    .empty .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 14px;
+    }
+    .error {
+      color: var(--red);
+      border-color: var(--red);
+    }
+    .busy {
+      color: var(--amber);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      50% { opacity: 0.55; }
+    }
+
+    button {
+      background: transparent;
+      color: var(--cyan);
+      border: 1px solid var(--cyan);
+      padding: 7px 14px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      transition: transform 0.08s ease, background 0.15s ease;
+    }
+    button:hover {
+      background: rgba(34, 211, 238, 0.09);
+      transform: translateY(-1px);
+    }
+    input {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      color: var(--fg);
+      padding: 7px 10px;
+      font-family: inherit;
+    }
+    input:focus {
+      outline: 1px solid var(--cyan);
+    }
+    ::file-selector-button { display: none; }
+
+    /* ── baseline panel ── */
+    .baseline {
+      display: flex;
+      gap: 28px;
+      align-items: center;
+      margin-top: 22px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      padding: 16px 20px;
+    }
+    .baseline-main .label {
+      color: var(--dim);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+    }
+    .baseline-main strong {
+      display: block;
+      color: var(--cyan);
+      font-size: 38px;
+    }
+    .baseline-main em {
+      font-size: 15px;
+      color: var(--dim);
+      margin-left: 6px;
+      font-style: normal;
+    }
+    .baseline-meta {
+      display: grid;
+      grid-template-columns: repeat(2, auto);
+      gap: 4px 22px;
+      font-size: 12px;
+    }
+    .baseline-meta .green b { color: var(--green); }
+    .baseline-meta .red b { color: var(--red); }
+
+    /* ── findings rail ── */
+    .rail {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 18px;
+    }
+    .allclear {
+      color: var(--green);
+      border: 1px solid var(--line);
+      padding: 14px 18px;
+    }
+
+    /* ── finding card ── */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--line);
+      padding: 14px 18px;
+      animation: rise 0.35s cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(8px); }
+    }
+    .card.is-verified { border-left-color: var(--green); }
+    .card.is-unconfirmed { border-left-color: var(--amber); }
+    .card header {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .card .idx {
+      color: var(--cyan);
+      letter-spacing: 0.1em;
+      font-weight: 700;
+    }
+    .card .ts {
+      color: var(--dim);
+    }
+    .badge {
+      padding: 2px 10px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      border-radius: 2px;
+    }
+    .badge.green { color: var(--bg); background: var(--green); }
+    .badge.amber { color: var(--bg); background: var(--amber); }
+
+    /* trust gauge */
+    .gauge-track {
+      position: relative;
+      display: flex;
+      height: 22px;
+      border: 1px solid var(--line);
+      background: #0c1216;
+    }
+    .gauge-seg {
+      border-right: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: var(--dim);
+      transition: background 0.35s ease;
+    }
+    .gauge-seg span { opacity: 0.55; }
+    .gauge-seg.earned {
+      background: linear-gradient(180deg, rgba(52, 211, 153, 0.28), rgba(52, 211, 153, 0.12));
+      color: var(--green);
+    }
+    .gauge-threshold {
+      position: absolute;
+      top: -5px;
+      bottom: -5px;
+      width: 2px;
+      background: var(--amber);
+      box-shadow: 0 0 6px rgba(251, 191, 36, 0.7);
+    }
+    .gauge {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .gauge-track { flex: 1; }
+    .gauge-score.over { color: var(--green); }
+    .gauge-score.under { color: var(--red); }
+
+    .spine {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 6px 18px;
+      margin: 10px 0;
+      padding: 0;
+    }
+    .spine > div {
+      display: flex;
+      gap: 10px;
+    }
+    .spine dt {
+      color: var(--dim);
+    }
+    .spine dd {
+      margin: 0;
+    }
+    .spine dd.hot { color: var(--red); }
+
+    .evidence-list {
+      list-style: none;
+      margin: 8px 0;
+      padding-left: 0;
+      font-size: 13px;
+    }
+    .evidence-list li { padding: 3px 0; }
+    .evidence-list code { color: var(--cyan); }
+    .dim { color: var(--dim); }
+
+    .card footer {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+      font-size: 12px;
+      word-break: break-all;
+    }
+    .card footer.ok { color: var(--green); }
+    .card footer.bad { color: var(--red); }
+
+    .card-refused {
+      border-left-color: var(--red);
+    }
+    .refusal {
+      white-space: pre-line;
+      color: var(--red);
+      background: rgba(248, 113, 113, 0.06);
+      padding: 14px;
+      margin-top: 8px;
+    }
+
+    /* ── footer ── */
+    .footer {
+      margin-top: 40px;
+      color: var(--dim);
+      font-size: 11px;
+      text-align: center;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- Header -->
+  <header class="header">
+    <h1>AIR KERNEL HYDRAULIC VALIDATION UTILITY<span class="sub"> EVIDENCE CONSOLE</span></h1>
+    <span class="mandate">ZERO FABRICATION MANDATE ACTIVE</span>
+  </header>
+
+  <!-- Dynamic container -->
+  <div id="main"></div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    Every spine is re‑digested client‑side (SHA‑256 over canonical key‑value form) before rendering.
+    Unverifiable evidence refuses to paint.
+  </footer>
+</div>
+
+<script>
+  // ===========================================================================
+  //  AIR KERNEL EVIDENCE CONSOLE — STANDALONE ENGINE + UI
+  //  Implements the same 5‑pass EIS v1.0 logic as Python/TS, with client‑side
+  //  attestation audit. No external libraries.
+  // ===========================================================================
+
+  // ---------- ISO helpers ----------
+  function parseIso(ts) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?Z$/.exec(ts.trim());
+    if (!m) throw new RangeError(`Unparseable ISO-8601: "${ts}"`);
+    return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6],
+                            m[7] ? Math.round(+`0.${m[7]}` * 1000) : 0));
+  }
+
+  function formatIso(d) {
+    const p = (n, w = 2) => String(n).padStart(w, '0');
+    return `${p(d.getUTCFullYear(), 4)}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}Z`;
+  }
+
+  function round2(v) { return Math.round((v + Number.EPSILON) * 100) / 100; }
+
+  // ---------- Canonicalisation ----------
+  function canonValue(v) {
+    if (typeof v === 'number') {
+      if (Number.isInteger(v)) return String(v);
+      // strip trailing zeros via parseFloat
+      return String(parseFloat(v.toFixed(6)));
+    }
+    if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+    return String(v);
+  }
+
+  function canonicalSpine(spine) {
+    const keys = Object.keys(spine).filter(k => k !== 'attestation_signature').sort();
+    return keys.map(k => `${k}=${canonValue(spine[k])}`).join('|');
+  }
+
+  async function sha256Hex(str) {
+    const enc = new TextEncoder().encode(str);
+    const buf = await crypto.subtle.digest('SHA-256', enc);
+    const bytes = new Uint8Array(buf);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function attestSpine(spine) {
+    const digest = await sha256Hex(canonicalSpine(spine));
+    return '0x' + digest.slice(0, 10) + '...';
+  }
+
+  // ---------- EIS v1.0 Engine (passes 1-5) ----------
+  function normalizeRows(flow, pressure) {
+    const vflow = flow.map(row => {
+      const raw = (row.flow_l_s || '').trim();
+      if (!raw) {
+        return { ...row, value: null, state: 'UNDEFINED', reason: 'Zero Fabrication Mandate: Missing Telemetry' };
+      }
+      const val = parseFloat(raw);
+      if (val < 0) {
+        return { ...row, value: val, state: 'IMPOSSIBLE_PHYSICS', reason: 'Flow rate less than physical threshold (0.0 L/s)' };
+      }
+      return { ...row, value: val, state: 'VALID', reason: 'Verified flow payload' };
+    });
+    const vpress = pressure.map(row => {
+      const raw = (row.pressure_m || '').trim();
+      if (!raw) {
+        return { ...row, value: null, state: 'UNDEFINED', reason: 'Zero Fabrication Mandate: Missing Telemetry' };
+      }
+      const val = parseFloat(raw);
+      if (val < 0 || val > 150) {
+        return { ...row, value: val, state: 'IMPOSSIBLE_PHYSICS', reason: 'Pressure out of bounds (0-150m)' };
+      }
+      return { ...row, value: val, state: 'VALID', reason: 'Verified pressure payload' };
+    });
+    return { vflow, vpress };
+  }
+
+  function calculateMnfBaseline(vflow) {
+    const night = vflow
+      .filter(r => r.state === 'VALID' && r.value !== null)
+      .filter(r => { const h = parseIso(r.timestamp).getUTCHours(); return h >= 2 && h <= 4; })
+      .map(r => r.value)
+      .sort((a, b) => a - b);
+    if (night.length === 0) throw new Error('No valid night-flow telemetry found to establish baseline.');
+    const n = night.length;
+    return n % 2 === 1 ? night[(n - 1) / 2] : (night[n / 2 - 1] + night[n / 2]) / 2;
+  }
+
+  async function integrateEvidence(bundle) {
+    // Pass 1 & 2
+    const { vflow, vpress } = normalizeRows(bundle.flow, bundle.pressure);
+
+    // Pass 3
+    const baseline = calculateMnfBaseline(vflow);
+
+    // Pass 4
+    const pressByTs = new Map();
+    for (const p of vpress) {
+      if (p.state === 'VALID' && p.value !== null) {
+        const key = parseIso(p.timestamp).getTime();
+        if (!pressByTs.has(key)) pressByTs.set(key, p);
+      }
+    }
+
+    const surgeThreshold = baseline * 1.10;
+    const events = vflow
+      .filter(f => f.state === 'VALID' && f.value !== null && f.value > surgeThreshold)
+      .filter(f => {
+        const p = pressByTs.get(parseIso(f.timestamp).getTime());
+        return !!p && f.value > baseline && p.value < 47.0;
+      })
+      .sort((a, b) => parseIso(a.timestamp).getTime() - parseIso(b.timestamp).getTime());
+
+    const findings = [];
+    for (const evt of events) {
+      const ts = parseIso(evt.timestamp);
+
+      // Scheduled operation filter
+      const active = bundle.context.filter(a => parseIso(a.timestamp) <= ts);
+      const latest = active.sort((a, b) => parseIso(a.timestamp).getTime() - parseIso(b.timestamp).getTime()).at(-1);
+      if (latest?.scheduled && latest.command_state === 'OPEN') continue;
+
+      const corroboration = bundle.field.filter(e =>
+        Math.abs(parseIso(e.timestamp).getTime() - ts.getTime()) / 3_600_000 <= 4.0
+      );
+
+      const flowScore = 0.3, pressureScore = 0.2;
+      const fieldScore = corroboration.length > 0 ? 0.5 : 0.0;
+      const trust = round2(flowScore + pressureScore + fieldScore);
+      const verdict = trust >= 0.7 ? 'VERIFIED_CANDIDATE' : 'UNCORROBORATED_ANOMALY';
+
+      const spine = {
+        timestamp: formatIso(ts),
+        dma_id: 'NMBM-DMA-07',
+        primary_sensor_id: evt.meter_id,
+        correlated_sensor_id: pressByTs.get(ts.getTime()).sensor_id,
+        hydraulic_baseline_l_s: round2(baseline),
+        observed_flow_l_s: round2(evt.value),
+        observed_pressure_m: round2(pressByTs.get(ts.getTime()).value),
+        independent_evidence_count: corroboration.length,
+        trust_index: trust,
+        verdict,
+      };
+      spine.attestation_signature = await attestSpine(spine);
+
+      findings.push({
+        provenance_spine: spine,
+        corroborated_evidence: corroboration.map(e => ({
+          type: e.type,
+          observation_id: e.observation_id,
+          segment_id: e.segment_id,
+          attestation: e.attestation,
+        })),
+      });
+    }
+
+    // Pass 5
+    return {
+      specification_version: 'v1.0-RC1',
+      dma_id: 'NMBM-DMA-07',
+      compilation_epoch: formatIso(new Date()),
+      hydraulic_baseline: {
+        established_baseline_l_s: round2(baseline),
+        calculation_method: 'MEDIAN_MINIMUM_NIGHT_FLOW',
+      },
+      findings,
+    };
+  }
+
+  // ---------- Attestation audit ----------
+  async function auditEvidence(log) {
+    const audited = await Promise.all(log.findings.map(async (f) => {
+      const recomputed = await attestSpine(f.provenance_spine);
+      return {
+        ...f,
+        attestation_status: recomputed === f.provenance_spine.attestation_signature ? 'VERIFIED' : 'UNVERIFIED',
+      };
+    }));
+    return { ...log, findings: audited };
+  }
+
+  // ---------- Reference Telemetry (from fixtures) ----------
+  const REFERENCE_TELEMETRY = {
+    flow: [
+      { timestamp: '2026-08-26T00:00:00Z', meter_id: 'NMBM-DMA-07-FM01', flow_l_s: '102.0', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T01:00:00Z', meter_id: 'NMBM-DMA-07-FM01', flow_l_s: '98.0', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T02:00:00Z', meter_id: 'NMBM-DMA-07-FM01', flow_l_s: '97.0', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T03:00:00Z', meter_id: 'NMBM-DMA-07-FM01', flow_l_s: '96.0', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T04:00:00Z', meter_id: 'NMBM-DMA-07-FM01', flow_l_s: '111.0', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T05:00:00Z', meter_id: 'NMBM-DMA-07-FM01', flow_l_s: '114.0', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T06:00:00Z', meter_id: 'NMBM-DMA-07-FM01', flow_l_s: '116.0', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T07:00:00Z', meter_id: 'NMBM-DMA-07-FM01', flow_l_s: '-999.0', quality_flag: 'IMPOSSIBLE_PHYSICS' },
+      { timestamp: '2026-08-26T08:00:00Z', meter_id: 'NMBM-DMA-07-FM01', flow_l_s: '', quality_flag: 'MISSING' },
+    ],
+    pressure: [
+      { timestamp: '2026-08-26T00:00:00Z', sensor_id: 'NMBM-DMA-07-PT14', pressure_m: '48.2', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T01:00:00Z', sensor_id: 'NMBM-DMA-07-PT14', pressure_m: '48.5', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T02:00:00Z', sensor_id: 'NMBM-DMA-07-PT14', pressure_m: '48.4', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T03:00:00Z', sensor_id: 'NMBM-DMA-07-PT14', pressure_m: '48.6', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T04:00:00Z', sensor_id: 'NMBM-DMA-07-PT14', pressure_m: '46.1', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T05:00:00Z', sensor_id: 'NMBM-DMA-07-PT14', pressure_m: '45.7', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T06:00:00Z', sensor_id: 'NMBM-DMA-07-PT14', pressure_m: '45.4', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T07:00:00Z', sensor_id: 'NMBM-DMA-07-PT14', pressure_m: '45.2', quality_flag: 'VALID' },
+      { timestamp: '2026-08-26T08:00:00Z', sensor_id: 'NMBM-DMA-07-PT14', pressure_m: '45.1', quality_flag: 'VALID' },
+    ],
+    field: [
+      { timestamp: '2026-08-26T06:30:00Z', observation_id: 'OBS-FLD-20260826-001', type: 'HUMAN_VISUAL', segment_id: 'NMBM-SEG-S-142', value: 'Persistent ground moisture surfacing on roadway', attestation: '0x7e8a9f02b' },
+      { timestamp: '2026-08-26T08:00:00Z', observation_id: 'OBS-ACO-20260826-002', type: 'ACOUSTIC', segment_id: 'NMBM-SEG-S-142', value: 'Abnormal 140Hz high-frequency vibration spike', attestation: '0x3c9f22e8d' },
+    ],
+    context: [
+      { timestamp: '2026-08-26T01:15:00Z', component_id: 'NMBM-DMA-07-VLV-02', component_type: 'BUTTERFLY_VALVE', command_state: 'CLOSED', scheduled: false },
+      { timestamp: '2026-08-26T04:35:00Z', component_id: 'NMBM-DMA-07-VLV-02', component_type: 'BUTTERFLY_VALVE', command_state: 'OPEN', scheduled: true },
+    ],
+  };
+
+  // ---------- UI rendering ----------
+  const mainEl = document.getElementById('main');
+
+  function renderEmpty() {
+    mainEl.innerHTML = `
+      <div class="empty">
+        <p>Ingest an <code>evidence_log.json</code> payload, fetch from uplink, or load the reference replay.</p>
+        <div class="row">
+          <button id="refBtn">LOAD REFERENCE PAYLOAD</button>
+          <input type="file" id="fileInput" accept=".json" />
+          <form id="fetchForm" style="display:inline-flex;gap:8px;flex-wrap:wrap;">
+            <input id="urlInput" placeholder="https://uplink…" style="flex:1;min-width:180px;" />
+            <button type="submit">FETCH</button>
+          </form>
+        </div>
+      </div>
+    `;
+    // Bind events
+    document.getElementById('refBtn').addEventListener('click', () => loadReference());
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+    });
+    document.getElementById('fetchForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const url = document.getElementById('urlInput').value.trim();
+      if (url) fetchRemote(url);
+    });
+    // Drag & drop on the whole app
+    document.getElementById('app').addEventListener('dragover', (e) => e.preventDefault());
+    document.getElementById('app').addEventListener('drop', (e) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+  }
+
+  function renderBusy(msg) {
+    mainEl.innerHTML = `<div class="busy">${msg}</div>`;
+  }
+
+  function renderError(msg) {
+    mainEl.innerHTML = `<div class="error">[ERROR] ${msg}</div>`;
+  }
+
+  function renderReady(log) {
+    let html = '';
+
+    // Baseline panel
+    const auditPass = log.findings.every(f => f.attestation_status === 'VERIFIED');
+    html += `
+      <div class="baseline">
+        <div class="baseline-main">
+          <span class="label">HYDRAULIC BASELINE (${log.hydraulic_baseline.calculation_method})</span>
+          <strong>${log.hydraulic_baseline.established_baseline_l_s.toFixed(2)}<em>L/s</em></strong>
+        </div>
+        <div class="baseline-meta">
+          <div>DMA <b>${log.dma_id}</b></div>
+          <div>SPEC <b>${log.specification_version}</b></div>
+          <div>EPOCH <b>${log.compilation_epoch}</b></div>
+          <div class="${auditPass ? 'green' : 'red'}">
+            ATTESTATION AUDIT <b>${auditPass ? 'PASS — ALL FINDINGS RE‑DERIVED' : 'FAIL — UNVERIFIED SPINES PRESENT'}</b>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Findings rail
+    html += `<div class="rail">`;
+    if (log.findings.length === 0) {
+      html += `<div class="allclear">[SUCCESS] No anomalies — DMA nominal within current replay window.</div>`;
+    } else {
+      log.findings.forEach((f, i) => {
+        html += renderFindingCard(f, i);
+      });
+    }
+    html += `</div>`;
+
+    mainEl.innerHTML = html;
+  }
+
+  function renderFindingCard(finding, index) {
+    const s = finding.provenance_spine;
+    const verified = finding.attestation_status === 'VERIFIED';
+
+    if (!verified) {
+      return `
+        <div class="card card-refused">
+          <header>
+            <span class="idx">FINDING #${index + 1}</span>
+            <span class="ts">${s.timestamp}</span>
+          </header>
+          <div class="refusal">
+            [ATTESTATION MISMATCH — RENDER REFUSED]
+            Recomputed digest over provenance spine did not match payload signature.
+            Per Zero Fabrication Mandate, unverifiable evidence is never painted.
+          </div>
+        </div>
+      `;
+    }
+
+    const trust = s.trust_index;
+    const segs = [
+      { label: 'FLOW', weight: 0.30, earned: true },
+      { label: 'PRESSURE', weight: 0.20, earned: true },
+      { label: 'FIELD', weight: 0.50, earned: s.independent_evidence_count > 0 },
+    ];
+
+    let gaugeHTML = `
+      <div class="gauge">
+        <div class="gauge-track">
+          ${segs.map(seg => `
+            <div class="gauge-seg ${seg.earned ? 'earned' : ''}" style="width:${seg.weight * 100}%;" title="${seg.label}: ${seg.earned ? '+' + seg.weight.toFixed(2) : '+0.00'}">
+              <span>${seg.label}</span>
+            </div>
+          `).join('')}
+          <div class="gauge-threshold" style="left:70%;"></div>
+        </div>
+        <div class="gauge-score ${trust >= 0.7 ? 'over' : 'under'}">
+          TRUST ${trust.toFixed(2)}
+        </div>
+      </div>
+    `;
+
+    const cardClass = s.verdict === 'VERIFIED_CANDIDATE' ? 'is-verified' : 'is-unconfirmed';
+    const badgeClass = s.verdict === 'VERIFIED_CANDIDATE' ? 'green' : 'amber';
+
+    let evHTML = '';
+    if (finding.corroborated_evidence.length === 0) {
+      evHTML = `<li class="dim">no independent corroboration within ±4h corridor</li>`;
+    } else {
+      evHTML = finding.corroborated_evidence.map(e =>
+        `<li><code>[${e.type}]</code> ${e.segment_id} <span class="dim">· ${e.observation_id} · ${e.attestation}</span></li>`
+      ).join('');
+    }
+
+    return `
+      <div class="card ${cardClass}">
+        <header>
+          <span class="idx">FINDING #${index + 1}</span>
+          <span class="ts">${s.timestamp}</span>
+          <span class="badge ${badgeClass}">${s.verdict}</span>
+        </header>
+
+        ${gaugeHTML}
+
+        <div class="spine">
+          <div><dt>primary_sensor</dt><dd>${s.primary_sensor_id}</dd></div>
+          <div><dt>correlated_sensor</dt><dd>${s.correlated_sensor_id}</dd></div>
+          <div><dt>baseline</dt><dd>${s.hydraulic_baseline_l_s.toFixed(2)} L/s</dd></div>
+          <div><dt>observed flow</dt><dd class="${s.observed_flow_l_s > s.hydraulic_baseline_l_s ? 'hot' : ''}">${s.observed_flow_l_s.toFixed(2)} L/s</dd></div>
+          <div><dt>observed pressure</dt><dd>${s.observed_pressure_m.toFixed(2)} m</dd></div>
+        </div>
+
+        <ul class="evidence-list">${evHTML}</ul>
+
+        <footer class="ok">✓ attestation re‑derived client‑side: ${s.attestation_signature}</footer>
+      </div>
+    `;
+  }
+
+  // ---------- Loader helpers ----------
+  async function loadAndRender(task) {
+    try {
+      renderBusy('Auditing attestation digests…');
+      const raw = await task();
+      const audited = await auditEvidence(raw);
+      renderReady(audited);
+    } catch (e) {
+      renderError(e.message || String(e));
+    }
+  }
+
+  function loadReference() {
+    loadAndRender(() => integrateEvidence(REFERENCE_TELEMETRY));
+  }
+
+  function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target.result;
+        const obj = JSON.parse(text);
+        if (!obj.specification_version || !Array.isArray(obj.findings)) {
+          throw new Error('Payload rejected: not an AIR v1.x evidence log.');
+        }
+        loadAndRender(() => Promise.resolve(obj));
+      } catch (err) {
+        renderError(err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function fetchRemote(url) {
+    loadAndRender(async () => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Uplink failed: HTTP ${res.status}`);
+      const text = await res.text();
+      const obj = JSON.parse(text);
+      if (!obj.specification_version || !Array.isArray(obj.findings)) {
+        throw new Error('Payload rejected: not an AIR v1.x evidence log.');
+      }
+      return obj;
+    });
+  }
+
+  // ---------- Boot ----------
+  renderEmpty();
+</script>
+</body>
+</html>
+```
+
+---
+
+## How to use
+
+1. **Save** the above HTML to a file (e.g., `console.html`) and open it in any modern browser (Chrome, Edge, Firefox, Safari).
+2. **Load evidence** via:
+   - Click **“LOAD REFERENCE PAYLOAD”** – this runs the full 5‑pass engine in‑browser and displays the documented 04:00Z finding.
+   - Upload a `evidence_log.json` file (drag‑and‑drop or file picker).
+   - Enter a URL pointing to a hosted JSON payload and click **FETCH**.
+3. **Verify** – the console automatically recomputes every `attestation_signature`; any mismatch results in a **refusal card** (no fabricated data shown).
+4. **Trust gauge** – the segmented bar shows the EIS v1.0 weight contributions; the threshold line at 70% indicates the VERIFIED_CANDIDATE boundary.
+
+The page is fully self‑contained, uses the Web Crypto API for SHA‑256, and exactly reproduces the cross‑runtime canonicalisation contract (`%g`‑style numbers, sorted keys). It’s ready for local use or embedding in your CI dashboard.on your specs, I've assembled a complete, runnable build of the AIR VVU validation stack. Two important notes before the code:
+
+**What I preserved exactly:** the 5-pass pipeline logic, EIS v1.0 trust scoring, MNF baseline math, the bash color/UI conventions, the CI structure, and the documented `evidence_log.json` schema.
+
+**What I had to complete** (the source reconstruction you pasted had stubs marked *"omitted for brevity"*):
+- Generated the missing **`operating_context.csv`** and **`asset_metadata.csv`** seeds — traced against the pipeline logic, these produce *exactly* the documented output (baseline 97.0, single finding at 04:00Z, trust 1.0, 2 corroborations).
+- Made directory paths env-overridable (`AIR_DATA_DIR` / `AIR_OUTPUT_DIR`) so the wrapper and CI work outside `/workspace`.
+- Implemented the PKI bootstrap for real using OpenSSL + an actual CRL (the audit now performs genuine `-crl_check` verification instead of filename matching).
+- Wired up `COMMAND` argument handling in the wrapper (it was referenced but never assigned).
+- Engine-computed attestation signatures are now real deterministic SHA-256 digests (truncated to the documented `0x…...` format) instead of hardcoded strings — consistent with the Zero Fabrication Mandate.
+
+---
+
+## Project Structure
+
+```
+air-vvu/
+├── README.md
+├── hydraulic-validator.py          # Core 5-pass engine (EIS v1.0)
+├── air-validator-wrapper.sh        # CLI orchestrator + self-healing data
+├── audit-pki-crl.sh                # mTLS certificate / CRL auditor
+├── hardware-spec.md                # Physical build constraints
+└── .github/
+    └── workflows/
+        └── air-pipeline.yml        # Zero-Leak Continuous Assurance
+```
+
+---
+
+## 1. `hydraulic-validator.py`
+
+```python
+#!/usr/bin/env python3
+"""
+72-HOUR VALIDATION PROTOCOL - INGESTION & EVIDENCE REPLAY PIPELINE
+Spec version: v1.0 (Production Release Candidate)
+Author: VVU Earth Tech Validation Engine
+"""
+
+import os
+import csv
+import json
+import hashlib
+from datetime import datetime, timezone
+
+# Path configuration (env-overridable; defaults preserve spec layout)
+DATA_DIR = os.environ.get("AIR_DATA_DIR", "/workspace/scratch")
+OUTPUT_DIR = os.environ.get("AIR_OUTPUT_DIR", "/workspace/out")
+EVIDENCE_LOG_FILE = os.path.join(OUTPUT_DIR, "evidence_log.json")
+
+
+def parse_iso8601(ts_str):
+    try:
+        return datetime.strptime(ts_str.strip(), "%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return datetime.strptime(ts_str.strip(), "%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+def format_iso8601(dt):
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def attest_spine(spine: dict) -> str:
+    """
+    Deterministic attestation digest over the provenance spine.
+    Zero Fabrication Mandate: the signature is derived, never asserted.
+    Format-compatible with spec: '0x' + 10 hex chars + '...'
+    """
+    canonical = "|".join(
+        f"{k}={spine[k]}" for k in sorted(spine) if k != "attestation_signature"
+    )
+    return "0x" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:10] + "..."
+
+
+class EvidenceIngestionPipeline:
+    def __init__(self):
+        self.flow_data = []
+        self.pressure_data = []
+        self.field_evidence = []
+        self.operating_context = []
+        self.asset_metadata = {}
+        self.validated_flow = []
+        self.validated_pressure = []
+        self.anomalies = []
+        self.baseline_flow = None
+
+    def load_all_csvs(self):
+        print("[Pass 1/5] Collecting raw telemetry files...")
+
+        metadata_path = os.path.join(DATA_DIR, "asset_metadata.csv")
+        with open(metadata_path, mode='r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                self.asset_metadata[row['pipe_id']] = {
+                    'dma_id': row['dma_id'],
+                    'material': row['material'],
+                    'diameter_mm': int(row['diameter_mm']),
+                    'install_year': int(row['install_year']),
+                    'lat': float(row['latitude']),
+                    'lon': float(row['longitude'])
+                }
+        print(f"  -> Asset Metadata Registry loaded: {len(self.asset_metadata)} segments verified.")
+
+        flow_path = os.path.join(DATA_DIR, "scada_flow.csv")
+        with open(flow_path, mode='r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                self.flow_data.append({
+                    'timestamp': parse_iso8601(row['timestamp']),
+                    'meter_id': row['meter_id'],
+                    'flow_l_s': row['flow_l_s'],
+                    'quality_flag': row['quality_flag']
+                })
+        print(f"  -> SCADA Inflow logs: {len(self.flow_data)} rows read.")
+
+        pressure_path = os.path.join(DATA_DIR, "scada_pressure.csv")
+        with open(pressure_path, mode='r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                self.pressure_data.append({
+                    'timestamp': parse_iso8601(row['timestamp']),
+                    'sensor_id': row['sensor_id'],
+                    'pressure_m': row['pressure_m'],
+                    'quality_flag': row['quality_flag']
+                })
+        print(f"  -> SCADA Pressure logs: {len(self.pressure_data)} rows read.")
+
+        field_path = os.path.join(DATA_DIR, "field_evidence.csv")
+        with open(field_path, mode='r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                self.field_evidence.append({
+                    'timestamp': parse_iso8601(row['timestamp']),
+                    'observation_id': row['observation_id'],
+                    'type': row['type'],
+                    'segment_id': row['segment_id'],
+                    'value': row['value'],
+                    'attestation': row['attestation']
+                })
+        print(f"  -> Field Evidence logs: {len(self.field_evidence)} reports read.")
+
+        context_path = os.path.join(DATA_DIR, "operating_context.csv")
+        with open(context_path, mode='r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                self.operating_context.append({
+                    'timestamp': parse_iso8601(row['timestamp']),
+                    'component_id': row['component_id'],
+                    'component_type': row['component_type'],
+                    'command_state': row['command_state'],
+                    'scheduled': row['scheduled'].strip().upper() == 'TRUE'
+                })
+        print(f"  -> Operating Context logs: {len(self.operating_context)} actions read.")
+
+    def run_normalization_and_physical_checks(self):
+        print("[Pass 2/5] Running normalization and physical boundary rules...")
+
+        for row in self.flow_data:
+            raw_val = row['flow_l_s'].strip()
+            if not raw_val:
+                self.validated_flow.append({**row, 'flow_l_s': None, 'state': 'UNDEFINED',
+                                            'reason': 'Zero Fabrication Mandate: Missing Telemetry'})
+                continue
+            val = float(raw_val)
+            if val < 0:
+                self.validated_flow.append({**row, 'flow_l_s': val, 'state': 'IMPOSSIBLE_PHYSICS',
+                                            'reason': 'Flow rate less than physical threshold (0.0 L/s)'})
+            else:
+                self.validated_flow.append({**row, 'flow_l_s': val, 'state': 'VALID',
+                                            'reason': 'Verified flow payload'})
+
+        for row in self.pressure_data:
+            raw_val = row['pressure_m'].strip()
+            if not raw_val:
+                self.validated_pressure.append({**row, 'pressure_m': None, 'state': 'UNDEFINED',
+                                                'reason': 'Zero Fabrication Mandate: Missing Telemetry'})
+                continue
+            val = float(raw_val)
+            if val < 0 or val > 150:
+                self.validated_pressure.append({**row, 'pressure_m': val, 'state': 'IMPOSSIBLE_PHYSICS',
+                                                'reason': 'Pressure out of bounds (0-150m)'})
+            else:
+                self.validated_pressure.append({**row, 'pressure_m': val, 'state': 'VALID',
+                                                'reason': 'Verified pressure payload'})
+
+    def calculate_minimum_night_flow_baseline(self):
+        print("[Pass 3/5] Calculating Minimum Night Flow (MNF) Baseline...")
+        night_flows = []
+        for row in self.validated_flow:
+            if row['state'] == 'VALID':
+                ts = row['timestamp']
+                if 2 <= ts.hour <= 4:
+                    night_flows.append(row['flow_l_s'])
+        if not night_flows:
+            raise ValueError("No valid night-flow telemetry found to establish baseline.")
+        night_flows.sort()
+        n = len(night_flows)
+        if n % 2 == 1:
+            self.baseline_flow = night_flows[n // 2]
+        else:
+            self.baseline_flow = (night_flows[n // 2 - 1] + night_flows[n // 2]) / 2.0
+        print(f"  -> Stable MNF baseline established at: {self.baseline_flow:.2f} L/s")
+
+    def run_multi_type_evidence_integration(self):
+        print("[Pass 4/5] Running Multi-Type Evidence Integration (EIS v1.0)...")
+        self.validated_flow.sort(key=lambda x: x['timestamp'])
+        self.validated_pressure.sort(key=lambda x: x['timestamp'])
+
+        # Timestamp-index pressure lookup (results unchanged; avoids O(n^2) scan)
+        pressure_by_ts = {}
+        for p_row in self.validated_pressure:
+            if p_row['state'] == 'VALID':
+                pressure_by_ts.setdefault(p_row['timestamp'], p_row)
+
+        for f_row in self.validated_flow:
+            if f_row['state'] != 'VALID':
+                continue
+            ts = f_row['timestamp']
+            flow_val = f_row['flow_l_s']
+            surge_threshold = self.baseline_flow * 1.10
+            if flow_val <= surge_threshold:
+                continue
+
+            p_row = pressure_by_ts.get(ts)
+            if not p_row:
+                continue
+            pressure_val = p_row['pressure_m']
+
+            is_hydraulic_anomaly = (flow_val > self.baseline_flow) and (pressure_val < 47.0)
+            if not is_hydraulic_anomaly:
+                continue
+
+            active_actions = [a for a in self.operating_context if a['timestamp'] <= ts]
+            is_scheduled = False
+            if active_actions:
+                latest_action = sorted(active_actions, key=lambda x: x['timestamp'])[-1]
+                if latest_action['scheduled'] and latest_action['command_state'] == 'OPEN':
+                    is_scheduled = True
+            if is_scheduled:
+                print(f"  -> Scheduled flow increase filtered out at {format_iso8601(ts)}")
+                continue
+
+            independent_evidence = []
+            for f_evidence in self.field_evidence:
+                time_delta_hrs = abs((f_evidence['timestamp'] - ts).total_seconds()) / 3600.0
+                if time_delta_hrs <= 4.0:
+                    independent_evidence.append(f_evidence)
+
+            flow_score = 0.3      # Primary SCADA flow signal
+            pressure_score = 0.2  # Correlated pressure drop
+            field_score = 0.0     # Independent human/acoustic corroboration
+            evidence_elements = []
+
+            if independent_evidence:
+                field_score = 0.5
+                for e in independent_evidence:
+                    evidence_elements.append({
+                        "type": e['type'],
+                        "observation_id": e['observation_id'],
+                        "segment_id": e['segment_id'],
+                        "attestation": e['attestation']
+                    })
+
+            trust_score = round(flow_score + pressure_score + field_score, 2)
+            verdict = "VERIFIED_CANDIDATE" if trust_score >= 0.7 else "UNCORROBORATED_ANOMALY"
+
+            spine = {
+                "timestamp": format_iso8601(ts),
+                "dma_id": "NMBM-DMA-07",
+                "primary_sensor_id": f_row['meter_id'],
+                "correlated_sensor_id": p_row['sensor_id'],
+                "hydraulic_baseline_l_s": round(self.baseline_flow, 2),
+                "observed_flow_l_s": round(flow_val, 2),
+                "observed_pressure_m": round(pressure_val, 2),
+                "independent_evidence_count": len(independent_evidence),
+                "trust_index": trust_score,
+                "verdict": verdict,
+            }
+            spine["attestation_signature"] = attest_spine(spine)
+
+            self.anomalies.append({
+                "provenance_spine": spine,
+                "corroborated_evidence": evidence_elements
+            })
+
+    def write_verifiable_evidence_log(self):
+        print("[Pass 5/5] Writing outputs to verified evidence log...")
+        output_payload = {
+            "specification_version": "v1.0-RC1",
+            "dma_id": "NMBM-DMA-07",
+            "compilation_epoch": format_iso8601(datetime.now(timezone.utc)),
+            "hydraulic_baseline": {
+                "established_baseline_l_s": round(self.baseline_flow, 2),
+                "calculation_method": "MEDIAN_MINIMUM_NIGHT_FLOW"
+            },
+            "findings": self.anomalies
+        }
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        with open(EVIDENCE_LOG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(output_payload, f, indent=2)
+        print(f"  -> EVIDENCE REPLAY COMPLETED. Saved: {EVIDENCE_LOG_FILE}")
+        return output_payload
+
+
+if __name__ == "__main__":
+    pipeline = EvidenceIngestionPipeline()
+    pipeline.load_all_csvs()
+    pipeline.run_normalization_and_physical_checks()
+    pipeline.calculate_minimum_night_flow_baseline()
+    pipeline.run_multi_type_evidence_integration()
+    result = pipeline.write_verifiable_evidence_log()
+
+    print("\n" + "=" * 60)
+    print("           VALIDATION ENGINE OUTPUT REPORT")
+    print("=" * 60)
+    print(f"DMA: {result['dma_id']} | Established Baseline: "
+          f"{result['hydraulic_baseline']['established_baseline_l_s']} L/s")
+    print("-" * 60)
+    for i, finding in enumerate(result['findings']):
+        spine = finding['provenance_spine']
+        print(f"Finding #{i + 1}: Potential Leak Event")
+        print(f"  - Timestamp: {spine['timestamp']}")
+        print(f"  - Observed Flow: {spine['observed_flow_l_s']} L/s "
+              f"(vs Baseline: {spine['hydraulic_baseline_l_s']} L/s)")
+        print(f"  - Observed Pressure: {spine['observed_pressure_m']} m")
+        print(f"  - Trust Index: {spine['trust_index']} ({spine['verdict']})")
+        print(f"  - Attestation: {spine['attestation_signature']}")
+        print(f"  - Independent Evidences Linked: {spine['independent_evidence_count']}")
+        for ev in finding['corroborated_evidence']:
+            print(f"    * [{ev['type']}] on segment {ev['segment_id']} | ID: {ev['observation_id']}")
+    print("=" * 60)
+```
+
+---
+
+## 2. `air-validator-wrapper.sh`
+
+```bash
+#!/usr/bin/env bash
+# ==============================================================================
+# PROOFBRIDGE-LINER AIR KERNEL - HYDRAULIC VALIDATION CLI WRAPPER
+# Self-healing data bootstrap + engine dispatch
+# ==============================================================================
+
+set -euo pipefail
+
+COLOR_CYAN='\033[0;36m'
+COLOR_GREEN='\033[0;32m'
+COLOR_YELLOW='\033[0;33m'
+COLOR_RED='\033[0;31m'
+COLOR_BOLD='\033[1m'
+COLOR_RESET='\033[0m'
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VALIDATOR_SCRIPT="${VALIDATOR_SCRIPT:-${SCRIPT_DIR}/hydraulic-validator.py}"
+PKI_AUDIT_SCRIPT="${SCRIPT_DIR}/audit-pki-crl.sh"
+
+export AIR_DATA_DIR="${AIR_DATA_DIR:-/workspace/scratch}"
+export AIR_OUTPUT_DIR="${AIR_OUTPUT_DIR:-/workspace/out}"
+
+COMMAND="${1:-help}"
+shift || true
+
+print_header() {
+    echo -e "${COLOR_CYAN}${COLOR_BOLD}============================================================${COLOR_RESET}"
+    echo -e "${COLOR_CYAN}${COLOR_BOLD}           AIR KERNEL HYDRAULIC VALIDATION UTILITY           ${COLOR_RESET}"
+    echo -e "${COLOR_CYAN}${COLOR_BOLD}============================================================${COLOR_RESET}"
+}
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") <command>
+
+Commands:
+  gate-check         Run the full 5-pass validation engine
+  telemetry-status   Audit local CSV ingestion matrices
+  pki-audit          Audit mTLS client certificates against the active CRL
+  help               Show this message
+
+Environment overrides:
+  AIR_DATA_DIR       Telemetry ingest root     (default: /workspace/scratch)
+  AIR_OUTPUT_DIR     Evidence log destination  (default: /workspace/out)
+  VALIDATOR_SCRIPT   Engine path override
+EOF
+}
+
+initialize_mock_data() {
+    mkdir -p "${AIR_DATA_DIR}"
+
+    if [[ ! -f "${AIR_DATA_DIR}/scada_flow.csv" ]]; then
+        cat <<'EOF' > "${AIR_DATA_DIR}/scada_flow.csv"
+timestamp,meter_id,flow_l_s,quality_flag
+2026-08-26T00:00:00Z,NMBM-DMA-07-FM01,102.0,VALID
+2026-08-26T01:00:00Z,NMBM-DMA-07-FM01,98.0,VALID
+2026-08-26T02:00:00Z,NMBM-DMA-07-FM01,97.0,VALID
+2026-08-26T03:00:00Z,NMBM-DMA-07-FM01,96.0,VALID
+2026-08-26T04:00:00Z,NMBM-DMA-07-FM01,111.0,VALID
+2026-08-26T05:00:00Z,NMBM-DMA-07-FM01,114.0,VALID
+2026-08-26T06:00:00Z,NMBM-DMA-07-FM01,116.0,VALID
+2026-08-26T07:00:00Z,NMBM-DMA-07-FM01,-999.0,IMPOSSIBLE_PHYSICS
+2026-08-26T08:00:00Z,NMBM-DMA-07-FM01,,MISSING
+EOF
+    fi
+
+    if [[ ! -f "${AIR_DATA_DIR}/scada_pressure.csv" ]]; then
+        cat <<'EOF' > "${AIR_DATA_DIR}/scada_pressure.csv"
+timestamp,sensor_id,pressure_m,quality_flag
+2026-08-26T00:00:00Z,NMBM-DMA-07-PT14,48.2,VALID
+2026-08-26T01:00:00Z,NMBM-DMA-07-PT14,48.5,VALID
+2026-08-26T02:00:00Z,NMBM-DMA-07-PT14,48.4,VALID
+2026-08-26T03:00:00Z,NMBM-DMA-07-PT14,48.6,VALID
+2026-08-26T04:00:00Z,NMBM-DMA-07-PT14,46.1,VALID
+2026-08-26T05:00:00Z,NMBM-DMA-07-PT14,45.7,VALID
+2026-08-26T06:00:00Z,NMBM-DMA-07-PT14,45.4,VALID
+2026-08-26T07:00:00Z,NMBM-DMA-07-PT14,45.2,VALID
+2026-08-26T08:00:00Z,NMBM-DMA-07-PT14,45.1,VALID
+EOF
+    fi
+
+    if [[ ! -f "${AIR_DATA_DIR}/field_evidence.csv" ]]; then
+        cat <<'EOF' > "${AIR_DATA_DIR}/field_evidence.csv"
+timestamp,observation_id,type,segment_id,value,attestation
+2026-08-26T06:30:00Z,OBS-FLD-20260826-001,HUMAN_VISUAL,NMBM-SEG-S-142,Persistent ground moisture surfacing on roadway,0x7e8a9f02b
+2026-08-26T08:00:00Z,OBS-ACO-20260826-002,ACOUSTIC,NMBM-SEG-S-142,Abnormal 140Hz high-frequency vibration spike,0x3c9f22e8d
+EOF
+    fi
+
+    # Scheduled valve operation at 04:35Z filters the 05:00Z and 06:00Z surges;
+    # the 04:00Z event precedes it and survives integration (matches spec payload).
+    if [[ ! -f "${AIR_DATA_DIR}/operating_context.csv" ]]; then
+        cat <<'EOF' > "${AIR_DATA_DIR}/operating_context.csv"
+timestamp,component_id,component_type,command_state,scheduled
+2026-08-26T01:15:00Z,NMBM-DMA-07-VLV-02,BUTTERFLY_VALVE,CLOSED,FALSE
+2026-08-26T04:35:00Z,NMBM-DMA-07-VLV-02,BUTTERFLY_VALVE,OPEN,TRUE
+EOF
+    fi
+
+    if [[ ! -f "${AIR_DATA_DIR}/asset_metadata.csv" ]]; then
+        cat <<'EOF' > "${AIR_DATA_DIR}/asset_metadata.csv"
+pipe_id,dma_id,material,diameter_mm,install_year,latitude,longitude
+NMBM-SEG-S-141,NMBM-DMA-07,uPVC,200,2001,-33.94012,25.60144
+NMBM-SEG-S-142,NMBM-DMA-07,DI,250,1987,-33.93987,25.60291
+NMBM-SEG-S-143,NMBM-DMA-07,AC,110,1995,-33.93920,25.60388
+NMBM-SEG-S-144,NMBM-DMA-07,HDPE,180,2012,-33.93855,25.60502
+EOF
+    fi
+}
+
+cmd_gate_check() {
+    if [[ ! -f "${VALIDATOR_SCRIPT}" ]]; then
+        echo -e "${COLOR_RED}[FAIL] Validation script not found at ${VALIDATOR_SCRIPT}.${COLOR_RESET}"
+        exit 1
+    fi
+    print_header
+    echo -e "${COLOR_YELLOW}[*] Ensuring ingestion matrices exist (self-healing)...${COLOR_RESET}"
+    initialize_mock_data
+    mkdir -p "${AIR_OUTPUT_DIR}"
+    python3 "${VALIDATOR_SCRIPT}"
+}
+
+cmd_telemetry_status() {
+    print_header
+    echo -e "${COLOR_YELLOW}[*] Auditing local CSV ingestion matrices...${COLOR_RESET}"
+    initialize_mock_data
+    local files=("scada_flow.csv" "scada_pressure.csv" "field_evidence.csv" "operating_context.csv" "asset_metadata.csv")
+    for file in "${files[@]}"; do
+        if [[ -f "${AIR_DATA_DIR}/${file}" ]]; then
+            local lines
+            lines=$(wc -l < "${AIR_DATA_DIR}/${file}")
+            echo -e "  -> ${COLOR_GREEN}[ONLINE]${COLOR_RESET} ${file} (${lines} records verified)"
+        else
+            echo -e "  -> ${COLOR_RED}[OFFLINE]${COLOR_RESET} ${file}"
+        fi
+    done
+    echo -e "${COLOR_GREEN}[SUCCESS] All physical boundary sensors verified online and active.${COLOR_RESET}"
+}
+
+cmd_pki_audit() {
+    if [[ ! -f "${PKI_AUDIT_SCRIPT}" ]]; then
+        echo -e "${COLOR_RED}[FAIL] PKI audit script not found.${COLOR_RESET}"
+        exit 1
+    fi
+    export PKI_DIR="${PKI_DIR:-${AIR_DATA_DIR}/pki}"
+    exec bash "${PKI_AUDIT_SCRIPT}"
+}
+
+case "${COMMAND}" in
+    gate-check)       cmd_gate_check ;;
+    telemetry-status) cmd_telemetry_status ;;
+    pki-audit)        cmd_pki_audit ;;
+    help|--help|-h)   usage ;;
+    *)
+        echo -e "${COLOR_RED}[FAIL] Unknown command: ${COMMAND}${COLOR_RESET}" >&2
+        usage >&2
+        exit 1
+        ;;
+esac
+```
+
+---
+
+## 3. `audit-pki-crl.sh`
+
+```bash
+#!/bin/bash
+# ============================================================
+#           AIR KERNEL PKI & CRL AUDIT UTILITY
+# Real X.509 chain verification against the live CRL.
+# Exit codes: 0 = all trusted | 2 = revocations present
+# ============================================================
+
+CYAN='\033[0;36m'; BOLD='\033[1m'
+GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[0;33m'; NC='\033[0m'
+
+PKI_DIR="${PKI_DIR:-/workspace/scratch/pki}"
+CERTS_DIR="$PKI_DIR/certs"
+KEYS_DIR="$PKI_DIR/private"
+CRL_DIR="$PKI_DIR/crl"
+CA_FILE="$PKI_DIR/ca.pem"
+CA_KEY="$KEYS_DIR/ca.key"
+CRL_FILE="$CRL_DIR/vvu_ca.crl"
+CA_CNF="$PKI_DIR/openssl-ca.cnf"
+
+issue_client_cert() {
+    local name="$1" serial="$2"
+    openssl genrsa -out "$KEYS_DIR/${name}.key" 2048 -quiet 2>/dev/null
+    openssl req -new -key "$KEYS_DIR/${name}.key" \
+        -subj "/CN=${name}/O=VVU Earth Tech Field Ops/C=ZA" \
+        -out "$PKI_DIR/${name}.csr"
+    openssl x509 -req -in "$PKI_DIR/${name}.csr" \
+        -CA "$CA_FILE" -CAkey "$CA_KEY" -set_serial "$serial" \
+        -days 365 -sha256 -out "$CERTS_DIR/${name}.pem" 2>/dev/null
+    rm -f "$PKI_DIR/${name}.csr"
+}
+
+write_ca_config() {
+    cat <<EOF > "$CA_CNF"
+[ ca ]
+default_ca = vvu_ca
+
+[ vvu_ca ]
+dir               = $PKI_DIR
+database          = \$dir/index.txt
+crlnumber         = \$dir/crlnumber
+default_md        = sha256
+default_crl_days  = 30
+EOF
+}
+
+if [ ! -d "$PKI_DIR" ]; then
+    echo -e "${YELLOW}[*] PKI directory missing. Bootstrapping mock PKI environment...${NC}"
+    mkdir -p "$CERTS_DIR" "$CRL_DIR" "$KEYS_DIR"
+
+    openssl req -x509 -newkey rsa:3072 -nodes \
+        -keyout "$CA_KEY" -out "$CA_FILE" -days 3650 -sha256 \
+        -subj "/CN=VVU Earth Root CA/O=VVU Earth Tech/C=ZA" 2>/dev/null
+
+    : > "$PKI_DIR/index.txt"; echo "1000" > "$PKI_DIR/crlnumber"
+
+    issue_client_cert "valve-controller-01"    0x1001
+    issue_client_cert "acoustic-sensor-07"     0x1002   # will be revoked below
+    issue_client_cert "pressure-gateway-02"    0x1003
+
+    write_ca_config
+    openssl ca -config "$CA_CNF" -revoke "$CERTS_DIR/acoustic-sensor-07.pem" 2>/dev/null
+    openssl ca -config "$CA_CNF" -gencrl -out "$CRL_FILE" 2>/dev/null
+
+    chmod 600 "$KEYS_DIR"/*.key
+fi
+
+valid_count=0
+revoked_count=0
+invalid_count=0
+
+for cert_path in "$CERTS_DIR"/*.pem; do
+    [ -e "$cert_path" ] || continue
+    filename=$(basename "$cert_path")
+
+    verify_output=$(openssl verify -CAfile "$CA_FILE" \
+                             -CRLfile "$CRL_FILE" -crl_check_all \
+                             "$cert_path" 2>&1)
+
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}[VALID]${NC}   $filename - Verified against trust chain & CRL check passed."
+        valid_count=$((valid_count+1))
+    elif echo "$verify_output" | grep -q "certificate revoked"; then
+        echo -e "${RED}[REVOKED]${NC} $filename - MATCHED ACTIVE CRL REVOCATION LIST!"
+        revoked_count=$((revoked_count+1))
+    else
+        echo -e "${RED}[INVALID]${NC} $filename - Chain verification failed."
+        invalid_count=$((invalid_count+1))
+    fi
+done
+
+if [ $revoked_count -gt 0 ]; then
+    echo -e "${RED}[WARNING] Revoked certificates are present in active client registry! Run SRE Revocation protocol.${NC}"
+    exit 2
+elif [ $invalid_count -gt 0 ]; then
+    echo -e "${RED}[WARNING] Invalid certificates detected in client registry.${NC}"
+    exit 3
+else
+    echo -e "${GREEN}[PASS] All active client certificates are fully trusted and valid.${NC}"
+    exit 0
+fi
+```
+
+---
+
+## 4. `.github/workflows/air-pipeline.yml`
+
+```yaml
+name: "AIR Kernel Zero-Leak Continuous Assurance"
+
+on:
+  push:
+    branches: [ "main", "release/*" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+  AIR_DATA_DIR: /workspace/scratch
+  AIR_OUTPUT_DIR: /workspace/out
+  MAX_DRIFT_MS: "50"
+
+jobs:
+  telemetry-audit:
+    name: "Pass 1-3: Ingestion, Normalization & Baselining"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Pre-Flight Telemetry Status Audit
+        run: |
+          chmod +x ./air-validator-wrapper.sh
+          sudo mkdir -p "${AIR_DATA_DIR}" "${AIR_OUTPUT_DIR}" && sudo chown -R runner "${AIR_DATA_DIR}" "${AIR_OUTPUT_DIR}"
+          ./air-validator-wrapper.sh telemetry-status
+
+  gate-check-validation:
+    name: "Pass 4-5: EIS v1.0 & Zero-Leak Assurance"
+    needs: telemetry-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Execute 5-Pass Compiler Validation Loop
+        run: |
+          chmod +x ./air-validator-wrapper.sh
+          sudo mkdir -p "${AIR_DATA_DIR}" "${AIR_OUTPUT_DIR}" && sudo chown -R runner "${AIR_DATA_DIR}" "${AIR_OUTPUT_DIR}"
+          ./air-validator-wrapper.sh gate-check
+      - name: Verify Cryptographic Evidence Payload
+        run: |
+          if [ ! -f "${AIR_OUTPUT_DIR}/evidence_log.json" ]; then
+            echo "[ERROR] evidence_log.json was not generated!"
+            exit 1
+          fi
+          python3 - <<'EOF'
+          import json, os
+          with open(os.environ["AIR_OUTPUT_DIR"] + "/evidence_log.json") as f:
+              log = json.load(f)
+          assert log["hydraulic_baseline"]["calculation_method"] == "MEDIAN_MINIMUM_NIGHT_FLOW"
+          verified = [x for x in log["findings"]
+                      if x["provenance_spine"]["verdict"] == "VERIFIED_CANDIDATE"]
+          assert verified, "[ERROR] No VERIFIED_CANDIDATE findings produced."
+          spine = verified[0]["provenance_spine"]
+          assert spine["trust_index"] >= 0.7
+          print(f"[SUCCESS] Evidence replay verified: {len(verified)} verified candidate(s), "
+                f"baseline {spine['hydraulic_baseline_l_s']} L/s.")
+          EOF
+
+  security-posture-check:
+    name: "PKI Revocation Control Verification"
+    needs: telemetry-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+      - name: Verify revocation controls detect the planted revoked cert (expect exit 2)
+        run: |
+          chmod +x ./audit-pki-crl.sh
+          export PKI_DIR=/tmp/vvu-pki
+          set +e
+          ./audit-pki-crl.sh
+          code=$?
+          set -e
+          if [ "$code" -eq 2 ]; then
+            echo "[SUCCESS] Revocation detection confirmed — planted revoked cert was caught."
+          else
+            echo "::error::Revocation control FAILED to trigger (exit=$code); expected 2."
+            exit 1
+          fi
+```
+
+*(Engine is Python stdlib-only — no pip install step required anymore.)*
+
+---
+
+## 5. `hardware-spec.md`
+
+```markdown
+# ProofBridge-Liner AIR Kernel — Physical Build Constraints
+
+## Module Placement
+
+| Module                 | X (mm) | Y (mm) |
+|------------------------|--------|--------|
+| Analog Sensor Interface| 20.0   | 180.0  |
+| Battery Core           | 140.0  | 15.0   |
+| AMD Compute Module     | 280.0  | 180.0  |
+
+## Constraints
+- **EMI Isolation:** Strict >15 mm physical gap between Analog Sensor Interface
+  and Compute Module — prevents switched-mode noise corrupting low-amplitude
+  analog acquisitions.
+- **Thermal Integrity:** Aerogel Thermal Barrier isolates Battery Core from CPU
+  heat spikes; prevents thermal runaway propagation and capacity drift.
+- **Hardware Root of Trust:** ATECC608B Secure Element signs every provenance
+  spine emitted by the onboard agent before uplink.
+```
+
+---
+
+## 6. `README.md`
+
+```markdown
+# AIR VVU — Autonomous Infrastructure Replay Validation Unit
+
+Deterministic leak-event evidence engine for District Metered Area NMBM-DMA-07.
+
+## Quickstart
+    chmod +x air-validator-wrapper.sh audit-pki-crl.sh
+    ./air-validator-wrapper.sh telemetry-status   # Pass 1 pre-flight
+    ./air-validator-wrapper.sh gate-check         # Full 5-pass replay
+    ./air-validator-wrapper.sh pki-audit          # mTLS posture (exit 2 = revocation found)
+
+## Pipeline Map
+| Pass | Function                                        |
+|------|--------------------------------------------------|
+| 1    | `load_all_csvs`                                  |
+| 2    | `run_normalization_and_physical_checks`          |
+| 3    | `calculate_minimum_night_flow_baseline` (median) |
+| 4    | `run_multi_type_evidence_integration` (EIS v1.0) |
+| 5    | `write_verifiable_evidence_log`                  |
+
+Trust weights: flow 0.30 + pressure-drop 0.20 + independent field evidence 0.50.
+Verdict threshold: ≥ 0.70 ⇒ VERIFIED_CANDIDATE.
+
+## Reproduction Contract
+On a clean tree, `gate-check` reproduces the reference payload:
+baseline **97.00 L/s**, one finding at **2026-08-26T04:00:00Z**,
+flow 111.0 vs pressure 46.1 m, trust **1.00**, two corroborations
+(OBS-FLD-20260826-001, OBS-ACO-20260826-002). The 05:00Z/06:00Z surges are
+filtered by the scheduled valve OPEN at 04:35Z. `attestation_signature` varies
+by design — it is a derived SHA-256 digest, not a constant.
+```
+
+---
+
+## Verification Trace
+
+I traced the pipeline manually to confirm the documented output — night window (hours 02–04 inclusive) captures flows `{97, 96, 111}`, median = **97.0** ✓; surge threshold = 106.7 flags 04:00/05:00/06:00Z; all three show pressure < 47.0; the 04:35Z scheduled OPEN filters the latter two while 01:15Z CLOSED permits 04:00Z ✓; both field observations fall within the ±4 h window of 04:00Z (Δ2.5 h and Δ4.0 h) giving trust 0.3+0.2+0.5 = **1.0** ✓.
+
+## Known Gaps (not recoverable from your source material)
+
+- **`EISv1Engine.ts`** and the React components were explicitly unrecoverable from your documents, so they're not fabricated here either — respecting the Zero Fabrication Mandate in spirit.
+- ATECC608B attestation is modeled as SHA-256 over the spine; swapping `attest_spine()` for a real device-signature call is a one-function change.
+
+Want me to build the TypeScript evidence renderer / React dashboard layer next, or wire the ATECC608B signing path onto the embedded side?Building both tracks. One prerequisite patch ships first — the attestation canonicalization must be pinned byte-for-byte across Python, TypeScript, and C or the cross-runtime verification contract fails.
+
+---
+
+## 0. Compatibility Patch — `hydraulic-validator.py` (canonical numeric format)
+
+Three runtimes must derive the **same digest string**. Python's `str(97.0)` renders `"97.0"` but JS/C render `"97"`. Pinning floats to C-style `%g` makes all three agree:
+
+```python
+def _canon_value(v):
+    """Canonical scalar rendering. Shared contract with EISv1Engine.ts (JS) and
+    canonical.c (firmware): integers as-is, floats via %g, booleans as TRUE/FALSE."""
+    if isinstance(v, bool):
+        return "TRUE" if v else "FALSE"
+    if isinstance(v, int):
+        return str(v)
+    if isinstance(v, float):
+        return "%g" % v
+    return str(v)
+
+
+def attest_spine(spine: dict) -> str:
+    """
+    Deterministic attestation digest over the provenance spine.
+    Zero Fabrication Mandate: derived, never asserted.
+    Format: '0x' + 10 hex chars + '...'
+    """
+    canonical = "|".join(
+        f"{k}={_canon_value(spine[k])}" for k in sorted(spine) if k != "attestation_signature"
+    )
+    return "0x" + hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:10] + "..."
+```
+
+This freezes the **golden canonical string** for the reference 04:00Z finding (identical on all three runtimes):
+
+```text
+correlated_sensor_id=NMBM-DMA-07-PT14|dma_id=NMBM-DMA-07|hydraulic_baseline_l_s=97|independent_evidence_count=2|observed_flow_l_s=111|observed_pressure_m=46.1|primary_sensor_id=NMBM-DMA-07-FM01|timestamp=2026-08-26T04:00:00Z|trust_index=1|verdict=VERIFIED_CANDIDATE
+```
+
+---
+
+# Track A — Evidence Console (TypeScript / React)
+
+## Structure
+
+```
+dashboard/
+├── package.json
+├── vite.config.ts
+├── tsconfig.json
+├── index.html
+└── src/
+    ├── main.tsx
+    ├── App.tsx
+    ├── styles/console.css
+    ├── engine/
+    │   ├── types.ts
+    │   ├── attestation.ts
+    │   └── EISv1Engine.ts        # ← the reconstructed EIS v1.0 core
+    ├── lib/
+    │   ├── fixtures.ts
+    │   └── loadEvidence.ts
+    └── components/
+        ├── BaselinePanel.tsx
+        ├── FindingCard.tsx
+        └── TrustGauge.tsx
+```
+
+## 1. `package.json` / `vite.config.ts` / `tsconfig.json` / `index.html`
+
+```json
+{
+  "name": "air-evidence-console",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "parity": "vitest run"
+  },
+  "dependencies": { "react": "^18.3.1", "react-dom": "^18.3.1" },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0",
+    "vitest": "^2.0.5"
+  }
+}
+```
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+export default defineConfig({ plugins: [react()] });
+```
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}
+```
+
+```html
+<!-- index.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIR KERNEL — Evidence Console</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+## 2. `src/engine/types.ts`
+
+```typescript
+/** Wire schema — byte-compatible with Python engine output (evidence_log.json). */
+
+export type Verdict = 'VERIFIED_CANDIDATE' | 'UNCORROBORATED_ANOMALY';
+
+export interface ProvenanceSpine {
+  timestamp: string;                // ISO-8601 UTC, 'Z'
+  dma_id: string;
+  primary_sensor_id: string;
+  correlated_sensor_id: string;
+  hydraulic_baseline_l_s: number;
+  observed_flow_l_s: number;
+  observed_pressure_m: number;
+  independent_evidence_count: number;
+  trust_index: number;
+  verdict: Verdict;
+  attestation_signature: string;    // '0x' + 10 hex + '...'
+}
+
+export interface CorroboratedEvidence {
+  type: string;
+  observation_id: string;
+  segment_id: string;
+  attestation: string;
+}
+
+export interface Finding {
+  provenance_spine: ProvenanceSpine;
+  corroborated_evidence: CorroboratedEvidence[];
+  /** Populated by the console after client-side digest recomputation. */
+  attestation_status?: 'VERIFIED' | 'UNVERIFIED';
+}
+
+export interface EvidenceLog {
+  specification_version: string;
+  dma_id: string;
+  compilation_epoch: string;
+  hydraulic_baseline: { established_baseline_l_s: number; calculation_method: string };
+  findings: Finding[];
+}
+
+/* ---- Raw ingestion row shapes (normalized upstream of the engine) ---- */
+
+export interface FlowRow     { timestamp: string; meter_id: string; flow_l_s: string; quality_flag: string }
+export interface PressureRow { timestamp: string; sensor_id: string; pressure_m: string; quality_flag: string }
+export interface FieldRow    { timestamp: string; observation_id: string; type: string; segment_id: string; value: string; attestation: string }
+export interface ContextRow  { timestamp: string; component_id: string; component_type: string; command_state: string; scheduled: boolean }
+
+export interface TelemetryBundle {
+  flow: FlowRow[];
+  pressure: PressureRow[];
+  field: FieldRow[];
+  context: ContextRow[];
+}
+```
+
+## 3. `src/engine/attestation.ts`
+
+```typescript
+/**
+ * Canonicalization contract — MUST remain identical to:
+ *   hydraulic-validator.py::_canon_value   (Python, "%g")
+ *   firmware/src/canonical.c::prov_canonical_value  (C, printf "%g")
+ * Any divergence breaks the Zero Fabrication Mandate end-to-end.
+ */
+
+export const GOLDEN_CANONICAL =
+  'correlated_sensor_id=NMBM-DMA-07-PT14|dma_id=NMBM-DMA-07|' +
+  'hydraulic_baseline_l_s=97|independent_evidence_count=2|' +
+  'observed_flow_l_s=111|observed_pressure_m=46.1|' +
+  'primary_sensor_id=NMBM-DMA-07-FM01|timestamp=2026-08-26T04:00:00Z|' +
+  'trust_index=1|verdict=VERIFIED_CANDIDATE';
+
+export function canonValue(v: unknown): string {
+  if (typeof v === 'number') {
+    // Integers and trailing-zero-stripped decimals track C's printf("%g")
+    return Number.isInteger(v)
+      ? v.toString()
+      : parseFloat(v.toFixed(6)).toString();
+  }
+  if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+  return String(v);
+}
+
+export function canonicalSpine(spine: Record<string, unknown>): string {
+  return Object.keys(spine)
+    .filter(k => k !== 'attestation_signature')
+    .sort()
+    .map(k => `${k}=${canonValue(spine[k])}`)
+    .join('|');
+}
+
+export async function sha256Hex(input: string): Promise<string> {
+  const data = new TextEncoder().encode(input);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export async function attestSpine(spine: Record<string, unknown>): Promise<string> {
+  const digest = await sha256Hex(canonicalSpine(spine));
+  return '0x' + digest.slice(0, 10) + '...';
+}
+```
+
+## 4. `src/engine/EISv1Engine.ts`
+
+```typescript
+import type {
+  ContextRow, EvidenceLog, FieldRow, Finding, FlowRow, PressureRow,
+  ProvenanceSpine, TelemetryBundle, ValidatedRow, Verdict,
+} from './types';
+import { attestSpine } from './attestation';
+
+/**
+ * EIS v1.0 — Multi-Type Evidence Integration Engine (TypeScript replay core).
+ * Mirrors hydraulic-validator.py Pass 1-5 deterministically. Headless (no DOM),
+ * consumed by the Evidence Console and by the CI parity suite.
+ *
+ * Zero Fabrication Mandate holds here too: missing telemetry becomes UNDEFINED,
+ * physics violations are surfaced verbatim, and every verdict carries a
+ * re-derivable attestation digest.
+ */
+
+export type PassHook = (pass: 1 | 2 | 3 | 4 | 5, message: string) => void;
+
+interface ValidatedFlow   extends Omit<FlowRow, 'flow_l_s'>     { value: number | null; state: RowState; reason: string }
+interface ValidatedPress  extends Omit<PressureRow, 'pressure_m'> { value: number | null; state: RowState; reason: string }
+
+type RowState = 'VALID' | 'IMPOSSIBLE_PHYSICS' | 'UNDEFINED';
+
+/* ---------- ISO-8601 helpers (UTC-locked, matches Python strptime pair) ---- */
+
+export function parseIso(ts: string): Date {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?Z$/.exec(ts.trim());
+  if (!m) throw new RangeError(`Unparseable ISO-8601 timestamp: "${ts}"`);
+  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6], m[7] ? Math.round(+`0.${m[7]}` * 1000) : 0));
+}
+
+export function formatIso(d: Date): string {
+  const p = (n: number, w = 2) => String(n).padStart(w, '0');
+  return (
+    `${p(d.getUTCFullYear(), 4)}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())}` +
+    `T${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}Z`
+  );
+}
+
+const round2 = (v: number): number => Math.round((v + Number.EPSILON) * 100) / 100;
+
+/* ---------------------------------- Passes -------------------------------- */
+
+export function normalizeRows(
+  flow: FlowRow[], pressure: PressureRow[],
+): { vflow: ValidatedFlow[]; vpress: ValidatedPress[] } {
+  const vflow = flow.map(row => {
+    const raw = row.flow_l_s?.trim() ?? '';
+    if (!raw) return { ...row, value: null, state: 'UNDEFINED' as RowState,
+                      reason: 'Zero Fabrication Mandate: Missing Telemetry' };
+    const val = parseFloat(raw);
+    return val < 0
+      ? { ...row, value: val, state: 'IMPOSSIBLE_PHYSICS' as RowState,
+          reason: 'Flow rate less than physical threshold (0.0 L/s)' }
+      : { ...row, value: val, state: 'VALID' as RowState, reason: 'Verified flow payload' };
+  });
+
+  const vpress = pressure.map(row => {
+    const raw = row.pressure_m?.trim() ?? '';
+    if (!raw) return { ...row, value: null, state: 'UNDEFINED' as RowState,
+                       reason: 'Zero Fabrication Mandate: Missing Telemetry' };
+    const val = parseFloat(raw);
+    return val < 0 || val > 150
+      ? { ...row, value: val, state: 'IMPOSSIBLE_PHYSICS' as RowState,
+          reason: 'Pressure out of bounds (0-150m)' }
+      : { ...row, value: val, state: 'VALID' as RowState, reason: 'Verified pressure payload' };
+  });
+
+  return { vflow, vpress };
+}
+
+export function calculateMnfBaseline(vflow: ValidatedFlow[], onPass?: PassHook): number {
+  onPass?.(3, 'Calculating Minimum Night Flow (MNF) Baseline...');
+  const night = vflow
+    .filter(r => r.state === 'VALID' && r.value !== null)
+    .filter(r => { const h = parseIso(r.timestamp).getUTCHours(); return h >= 2 && h <= 4; })
+    .map(r => r.value as number)
+    .sort((a, b) => a - b);
+  if (night.length === 0) throw new Error('No valid night-flow telemetry found to establish baseline.');
+  const n = night.length;
+  const median = n % 2 === 1 ? night[(n - 1) / 2] : (night[n / 2 - 1] + night[n / 2]) / 2;
+  return median;
+}
+
+export async function integrateEvidence(
+  bundle: TelemetryBundle, onPass?: PassHook,
+): Promise<EvidenceLog> {
+  onPass?.(1, 'Collecting raw telemetry files...');
+  const { vflow, vpress } = normalizeRows(bundle.flow, bundle.pressure);
+  onPass?.(2, 'Running normalization and physical boundary rules...');
+
+  const baseline = calculateMnfBaseline(vflow, onPass);
+
+  onPass?.(4, 'Running Multi-Type Evidence Integration (EIS v1.0)...');
+  const pressByTs = new Map<number, ValidatedPress>();
+  for (const p of vpress) {
+    if (p.state === 'VALID' && p.value !== null && !pressByTs.has(parseIso(p.timestamp).getTime()))
+      pressByTs.set(parseIso(p.timestamp).getTime(), p);
+  }
+
+  const surgeThreshold = baseline * 1.10;
+  const events = vflow
+    .filter(f => f.state === 'VALID' && f.value !== null && f.value > surgeThreshold)
+    .filter(f => {
+      const p = pressByTs.get(parseIso(f.timestamp).getTime());
+      return !!p && f.value! > baseline && p.value! < 47.0;   // correlated hydraulic anomaly
+    })
+    .sort((a, b) => parseIso(a.timestamp).getTime() - parseIso(b.timestamp).getTime());
+
+  const findings: Finding[] = [];
+  for (const evt of events) {
+    const ts = parseIso(evt.timestamp);
+
+    // Scheduled-operation filter: last action <= event; OPEN+scheduled ⇒ benign.
+    const active = bundle.context.filter(a => parseIso(a.timestamp) <= ts);
+    const latest = active.sort((a, b) =>
+      parseIso(a.timestamp).getTime() - parseIso(b.timestamp).getTime()).at(-1);
+    if (latest?.scheduled && latest.command_state === 'OPEN') {
+      onPass?.(4, `Scheduled flow increase filtered out at ${formatIso(ts)}`);
+      continue;
+    }
+
+    // Independent field evidence inside ±4h corridor (inclusive).
+    const corroboration = bundle.field.filter(e =>
+      Math.abs(parseIso(e.timestamp).getTime() - ts.getTime()) / 3_600_000 <= 4.0);
+
+    const flowScore = 0.3, pressureScore = 0.2;
+    const fieldScore = corroboration.length > 0 ? 0.5 : 0.0;
+    const trust = round2(flowScore + pressureScore + fieldScore);
+    const verdict: Verdict = trust >= 0.7 ? 'VERIFIED_CANDIDATE' : 'UNCORROBORATED_ANOMALY';
+
+    const candidate: ProvenanceSpine = {
+      timestamp: formatIso(ts),
+      dma_id: 'NMBM-DMA-07',
+      primary_sensor_id: evt.meter_id,
+      correlated_sensor_id: pressByTs.get(ts.getTime())!.sensor_id,
+      hydraulic_baseline_l_s: round2(baseline),
+      observed_flow_l_s: round2(evt.value!),
+      observed_pressure_m: round2(pressByTs.get(ts.getTime())!.value!),
+      independent_evidence_count: corroboration.length,
+      trust_index: trust,
+      verdict,
+      attestation_signature: '',
+    };
+    candidate.attestation_signature = await attestSpine(candidate);
+
+    findings.push({
+      provenance_spine: candidate,
+      corroborated_evidence: corroboration.map(e => ({
+        type: e.type, observation_id: e.observation_id,
+        segment_id: e.segment_id, attestation: e.attestation,
+      })),
+    });
+  }
+
+  onPass?.(5, 'Writing outputs to verified evidence log...');
+  return {
+    specification_version: 'v1.0-RC1',
+    dma_id: 'NMBM-DMA-07',
+    compilation_epoch: formatIso(new Date()),
+    hydraulic_baseline: {
+      established_baseline_l_s: round2(baseline),
+      calculation_method: 'MEDIAN_MINIMUM_NIGHT_FLOW',
+    },
+    findings,
+  };
+}
+
+/* ---------------------- Client-side attestation audit --------------------- */
+
+export async function auditEvidence(log: EvidenceLog): Promise<EvidenceLog> {
+  const findings = await Promise.all(log.findings.map(async f => {
+    const recomputed = await attestSpine(f.provenance_spine as unknown as Record<string, unknown>);
+    return {
+      ...f,
+      attestation_status:
+        recomputed === f.provenance_spine.attestation_signature ? ('VERIFIED' as const) : ('UNVERIFIED' as const),
+    };
+  }));
+  return { ...log, findings };
+}
+```
+
+*(Adjust the import line to match your `types.ts` — `ValidatedRow` there is shorthand; export `ValidatedFlow`/`ValidatedPress` locally as written above and drop them from the import.)*
+
+## 5. `src/lib/fixtures.ts` — reference payload
+
+```typescript
+import type { TelemetryBundle } from '../engine/types';
+
+/** Seeds reproduce the wrapper's self-healing CSVs exactly. */
+export const REFERENCE_TELEMETRY: TelemetryBundle = {
+  flow: [
+    ['2026-08-26T00:00:00Z', '102.0'], ['2026-08-26T01:00:00Z', '98.0'],
+    ['2026-08-26T02:00:00Z', '97.0'],  ['2026-08-26T03:00:00Z', '96.0'],
+    ['2026-08-26T04:00:00Z', '111.0'], ['2026-08-26T05:00:00Z', '114.0'],
+    ['2026-08-26T06:00:00Z', '116.0'], ['2026-08-26T07:00:00Z', '-999.0'],
+    ['2026-08-26T08:00:00Z', ''],
+  ].map(([t, v]) => ({ timestamp: t, meter_id: 'NMBM-DMA-07-FM01', flow_l_s: v,
+                       quality_flag: v === '' ? 'MISSING' : v.startsWith('-') ? 'IMPOSSIBLE_PHYSICS' : 'VALID' })),
+
+  pressure: [
+    ['2026-08-26T00:00:00Z', '48.2'], ['2026-08-26T01:00:00Z', '48.5'],
+    ['2026-08-26T02:00:00Z', '48.4'], ['2026-08-26T03:00:00Z', '48.6'],
+    ['2026-08-26T04:00:00Z', '46.1'], ['2026-08-26T05:00:00Z', '45.7'],
+    ['2026-08-26T06:00:00Z', '45.4'], ['2026-08-26T07:00:00Z', '45.2'],
+    ['2026-08-26T08:00:00Z', '45.1'],
+  ].map(([t, v]) => ({ timestamp: t, sensor_id: 'NMBM-DMA-07-PT14', pressure_m: v, quality_flag: 'VALID' })),
+
+  field: [
+    { timestamp: '2026-08-26T06:30:00Z', observation_id: 'OBS-FLD-20260826-001',
+      type: 'HUMAN_VISUAL', segment_id: 'NMBM-SEG-S-142',
+      value: 'Persistent ground moisture surfacing on roadway', attestation: '0x7e8a9f02b' },
+    { timestamp: '2026-08-26T08:00:00Z', observation_id: 'OBS-ACO-20260826-002',
+      type: 'ACOUSTIC', segment_id: 'NMBM-SEG-S-142',
+      value: 'Abnormal 140Hz high-frequency vibration spike', attestation: '0x3c9f22e8d' },
+  ],
+
+  context: [
+    { timestamp: '2026-08-26T01:15:00Z', component_id: 'NMBM-DMA-07-VLV-02',
+      component_type: 'BUTTERFLY_VALVE', command_state: 'CLOSED', scheduled: false },
+    { timestamp: '2026-08-26T04:35:00Z', component_id: 'NMBM-DMA-07-VLV-02',
+      component_type: 'BUTTERFLY_VALVE', command_state: 'OPEN', scheduled: true },
+  ],
+};
+```
+
+## 6. `src/lib/loadEvidence.ts`
+
+```typescript
+import type { EvidenceLog } from '../engine/types';
+
+export class AirPayloadError extends Error {}
+
+export function parseEvidenceJson(text: string): EvidenceLog {
+  let obj: unknown;
+  try { obj = JSON.parse(text); } catch (e) { throw new AirPayloadError('Payload is not valid JSON.'); }
+  const o = obj as Record<string, unknown>;
+  if (typeof o.specification_version !== 'string' || !Array.isArray(o.findings))
+    throw new AirPayloadError('Payload rejected: not an AIR v1.x evidence log.');
+  return o as unknown as EvidenceLog;
+}
+
+export async function fetchRemote(url: string): Promise<EvidenceLog> {
+  const res = await fetch(url);
+  if (!res.ok) throw new AirPayloadError(`Uplink failed: HTTP ${res.status}`);
+  return parseEvidenceJson(await res.text());
+}
+
+export function readFile(file: File): Promise<EvidenceLog> {
+  return file.text().then(parseEvidenceJson);
+}
+```
+
+## 7. `src/components/TrustGauge.tsx`
+
+```tsx
+import type { Finding } from '../engine/types';
+
+/**
+ * Segmented trust bar. Frame geometry encodes the EIS v1.0 weight vector
+ * (FLOW 0.30 | PRESSURE 0.20 | FIELD 0.50); segments illuminate only for
+ * contributions actually earned by the finding. Threshold tick at 0.70.
+ */
+export default function TrustGauge({ finding }: { finding: Finding }) {
+  const s = finding.provenance_spine;
+  const segs = [
+    { label: 'FLOW', weight: 0.30, earned: true },
+    { label: 'PRESSURE', weight: 0.20, earned: true },
+    { label: 'FIELD', weight: 0.50, earned: s.independent_evidence_count > 0 },
+  ];
+  return (
+    <div className="kc-gauge" role="img"
+         aria-label={`Trust index ${s.trust_index.toFixed(2)} of threshold 0.70`}>
+      <div className="kc-gauge-track">
+        {segs.map(seg => (
+          <div key={seg.label} title={`${seg.label}: ${seg.earned ? '+' + seg.weight : '+0.00'}`}
+               className={`kc-gauge-seg ${seg.earned ? 'earned' : ''}`}
+               style={{ width: `${seg.weight * 100}%` }}>
+            <span>{seg.label}</span>
+          </div>
+        ))}
+        <div className="kc-gauge-threshold" style={{ left: '70%' }} />
+      </div>
+      <div className={`kc-gauge-score ${s.trust_index >= 0.7 ? 'over' : 'under'}`}>
+        TRUST {s.trust_index.toFixed(2)}
+      </div>
+    </div>
+  );
+}
+```
+
+## 8. `src/components/FindingCard.tsx`
+
+```tsx
+import TrustGauge from './TrustGauge';
+import type { Finding } from '../engine/types';
+
+export default function FindingCard({ finding, index }: { finding: Finding; index: number }) {
+  const s = finding.provenance_spine;
+  const verified = finding.attestation_status === 'VERIFIED';
+
+  if (!verified) {
+    return (
+      <article className="kc-card kc-card-refused">
+        <header>FINDING #{index + 1} · {s.timestamp}</header>
+        <div className="kc-refusal">
+          [ATTESTATION MISMATCH — RENDER REFUSED]
+          {'\n'}Recomputed digest over provenance spine did not match payload signature.
+          {'\n'}Per Zero Fabrication Mandate, unverifiable evidence is never painted.
+        </div>
+      </article>
+    );
+  }
+
+  return (
+    <article className={`kc-card ${s.verdict === 'VERIFIED_CANDIDATE' ? 'is-verified' : 'is-unconfirmed'}`}>
+      <header>
+        <span className="kc-idx">FINDING #{index + 1}</span>
+        <span className="kc-ts">{s.timestamp}</span>
+        <span className={`kc-badge ${s.verdict === 'VERIFIED_CANDIDATE' ? 'green' : 'amber'}`}>
+          {s.verdict}
+        </span>
+      </header>
+
+      <TrustGauge finding={finding} />
+
+      <dl className="kc-spine">
+        <div><dt>primary_sensor</dt><dd>{s.primary_sensor_id}</dd></div>
+        <div><dt>correlated_sensor</dt><dd>{s.correlated_sensor_id}</dd></div>
+        <div><dt>baseline</dt><dd>{s.hydraulic_baseline_l_s.toFixed(2)} L/s</dd></div>
+        <div><dt>observed flow</dt><dd className={s.observed_flow_l_s > s.hydraulic_baseline_l_s ? 'hot' : ''}>
+          {s.observed_flow_l_s.toFixed(2)} L/s</dd></div>
+        <div><dt>observed pressure</dt><dd>{s.observed_pressure_m.toFixed(2)} m</dd></div>
+      </dl>
+
+      <ul className="kc-evidence">
+        {finding.corroborated_evidence.length === 0 && (
+          <li className="dim">no independent corroboration within ±4h corridor</li>
+        )}
+        {finding.corroborated_evidence.map(e => (
+          <li key={e.observation_id}>
+            <code>[{e.type}]</code> {e.segment_id}
+            <span className="dim"> · {e.observation_id} · {e.attestation}</span>
+          </li>
+        ))}
+      </ul>
+
+      <footer className={verified ? 'ok' : 'bad'}>
+        {verified ? '✓ attestation re-derived client-side: ' : '✗ '} {s.attestation_signature}
+      </footer>
+    </article>
+  );
+}
+```
+
+## 9. `src/components/BaselinePanel.tsx`
+
+```tsx
+import type { EvidenceLog } from '../engine/types';
+
+export default function BaselinePanel({ log }: { log: EvidenceLog }) {
+  const failed = log.findings.some(f => f.attestation_status === 'UNVERIFIED');
+  return (
+    <section className="kc-baseline">
+      <div className="kc-baseline-main">
+        <span className="label">HYDRAULIC BASELINE ({log.hydraulic_baseline.calculation_method})</span>
+        <strong>{log.hydraulic_baseline.established_baseline_l_s.toFixed(2)}<em>L/s</em></strong>
+      </div>
+      <div className="kc-baseline-meta">
+        <div>DMA <b>{log.dma_id}</b></div>
+        <div>SPEC <b>{log.specification_version}</b></div>
+        <div>EPOCH <b>{log.compilation_epoch}</b></div>
+        <div className={failed ? 'red' : 'green'}>
+          ATTESTATION AUDIT <b>{failed ? 'FAIL — UNVERIFIED SPINES PRESENT' : 'PASS — ALL FINDINGS RE-DERIVED'}</b>
+        </div>
+      </div>
+    </section>
+  );
+}
+```
+
+## 10. `src/App.tsx`
+
+```tsx
+import { useCallback, useState } from 'react';
+import type { EvidenceLog } from './engine/types';
+import { auditEvidence, integrateEvidence } from './engine/EISv1Engine';
+import { REFERENCE_TELEMETRY } from './lib/fixtures';
+import { fetchRemote, readFile, AirPayloadError } from './lib/loadEvidence';
+import BaselinePanel from './components/BaselinePanel';
+import FindingCard from './components/FindingCard';
+
+type Phase =
+  | { kind: 'empty' }
+  | { kind: 'busy'; msg: string }
+  | { kind: 'ready'; log: EvidenceLog }
+  | { kind: 'error'; msg: string };
+
+export default function App() {
+  const [phase, setPhase] = useState<Phase>({ kind: 'empty' });
+
+  const load = useCallback(async (task: () => Promise<EvidenceLog>) => {
+    try {
+      setPhase({ kind: 'busy', msg: 'Auditing attestation digests...' });
+      const log = await auditEvidence(await task());   // audit BEFORE paint
+      setPhase({ kind: 'ready', log });
+    } catch (e) {
+      setPhase({ kind: 'error', msg: e instanceof AirPayloadError || e instanceof Error ? e.message : String(e) });
+    }
+  }, []);
+
+  const onFile = useCallback((files: FileList | null) => {
+    if (!files?.[0]) return;
+    load(() => readFile(files[0]));
+  }, [load]);
+
+  const [url, setUrl] = useState('');
+
+  return (
+    <div className="kc-app"
+         onDragOver={e => e.preventDefault()}
+         onDrop={e => { e.preventDefault(); onFile(e.dataTransfer.files); }}>
+
+      <header className="kc-header">
+        <h1>AIR KERNEL HYDRAULIC VALIDATION UTILITY<span className="sub"> EVIDENCE CONSOLE</span></h1>
+        <span className="mandate">ZERO FABRICATION MANDATE ACTIVE</span>
+      </header>
+
+      {phase.kind === 'empty' && (
+        <div className="kc-empty">
+          <p>Ingest an <code>evidence_log.json</code> payload, fetch from uplink, or load the reference replay.</p>
+          <div className="row">
+            <button onClick={() => load(() => integrateEvidence(REFERENCE_TELEMETRY))}>
+              LOAD REFERENCE PAYLOAD
+            </button>
+            <input type="file" accept=".json"
+                   onChange={e => onFile(e.target.files)} aria-label="Choose evidence file" />
+            <form onSubmit={e => { e.preventDefault(); if (url) load(() => fetchRemote(url)); }}>
+              <input placeholder="https://uplink…" value={url}
+                     onChange={e => setUrl(e.target.value)} aria-label="Remote uplink URL" />
+              <button type="submit">FETCH</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {phase.kind === 'busy' && <div className="kc-busy">{phase.msg}</div>}
+
+      {phase.kind === 'error' && (
+        <div className="kc-error">[ERROR] {phase.msg}</div>
+      )}
+
+      {phase.kind === 'ready' && (
+        <>
+          <BaselinePanel log={phase.log} />
+          <section className="kc-rail">
+            {phase.log.findings.length === 0 && (
+              <div className="kc-allclear">[SUCCESS] No anomalies — DMA nominal within current replay window.</div>
+            )}
+            {phase.log.findings.map((f, i) => <FindingCard key={f.provenance_spine.timestamp + i} finding={f} index={i} />)}
+          </section>
+        </>
+      )}
+
+      <footer className="kc-footer">
+        Every spine is re-digested client-side (SHA-256 over canonical key-value form) before rendering.
+        Unverifiable evidence refuses to paint.
+      </footer>
+    </div>
+  );
+}
+```
+
+## 11. `src/main.tsx` + `src/styles/console.css`
+
+```tsx
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+import './styles/console.css';
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode><App /></StrictMode>,
+);
+```
+
+```css
+/* AIR KERNEL CONSOLE — terminal heritage of the wrapper's ANSI palette */
+:root {
+  --bg: #0a0f12; --panel: #10181d; --line: #1e2c33;
+  --cyan: #22d3ee; --green: #34d399; --red: #f87171; --amber: #fbbf24;
+  --fg: #cbd5d9; --dim: #5b7280;
+  --mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--mono); font-size: 14px; }
+.kc-app { max-width: 880px; margin: 0 auto; padding: 24px 16px 48px; }
+
+.kc-header { display: flex; justify-content: space-between; align-items: baseline;
+             border-bottom: 2px solid var(--cyan); padding-bottom: 10px; }
+.kc-header h1 { color: var(--cyan); font-size: 16px; letter-spacing: .06em; margin: 0; }
+.kc-header .sub { color: var(--dim); font-weight: 400; }
+.mandate { color: var(--amber); font-size: 11px; letter-spacing: .12em; }
+
+.kc-empty, .kc-error, .kc-busy { margin-top: 40px; padding: 20px; border: 1px dashed var(--line); }
+.kc-empty .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+.kc-error { color: var(--red); border-color: var(--red); }
+.kc-busy { color: var(--amber); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+
+button { background: transparent; color: var(--cyan); border: 1px solid var(--cyan);
+         padding: 7px 14px; cursor: pointer; font-family: inherit; font-size: 12px;
+         letter-spacing: .08em; transition: transform .08s ease, background .15s ease; }
+button:hover { background: rgba(34,211,238,.09); transform: translateY(-1px); }
+input { background: var(--panel); border: 1px solid var(--line); color: var(--fg);
+        padding: 7px 10px; font-family: inherit; }
+input:focus { outline: 1px solid var(--cyan); }
+::file-selector-button { display: none; }
+
+.kc-baseline { display: flex; gap: 28px; align-items: center; margin-top: 22px;
+               background: var(--panel); border: 1px solid var(--line); padding: 16px 20px; }
+.kc-baseline-main .label { color: var(--dim); font-size: 11px; letter-spacing: .1em; }
+.kc-baseline-main strong { display: block; color: var(--cyan); font-size: 38px; }
+.kc-baseline-main em { font-size: 15px; color: var(--dim); margin-left: 6px; font-style: normal; }
+.kc-baseline-meta { display: grid; grid-template-columns: repeat(2, auto); gap: 4px 22px; font-size: 12px; }
+.kc-baseline-meta .green b { color: var(--green); }
+.kc-baseline-meta .red b { color: var(--red); }
+
+.kc-rail { display: flex; flex-direction: column; gap: 16px; margin-top: 18px; }
+.kc-allclear { color: var(--green); border: 1px solid var(--line); padding: 14px 18px; }
+
+.kc-card { background: var(--panel); border: 1px solid var(--line);
+           border-left: 3px solid var(--line); padding: 14px 18px;
+           animation: rise .35s cubic-bezier(.2,.7,.2,1); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.kc-card.is-verified { border-left-color: var(--green); }
+.kc-card.is-unconfirmed { border-left-color: var(--amber); }
+.kc-card header { display: flex; gap: 14px; align-items: center; margin-bottom: 10px; }
+.kc-idx { color: var(--cyan); letter-spacing: .1em; font-weight: 700; }
+.kc-ts { color: var(--dim); }
+.kc-badge { padding: 2px 10px; font-size: 11px; letter-spacing: .08em; border-radius: 2px; }
+.kc-badge.green { color: var(--bg); background: var(--green); }
+.kc-badge.amber { color: var(--bg); background: var(--amber); }
+
+.kc-gauge-track { position: relative; display: flex; height: 22px;
+                  border: 1px solid var(--line); background: #0c1216; }
+.kc-gauge-seg { border-right: 1px solid var(--line); display: flex; align-items: center;
+                justify-content: center; font-size: 10px; color: var(--dim);
+                transition: background .35s ease; }
+.kc-gauge-seg span { opacity: .55; }
+.kc-gauge-seg.earned { background: linear-gradient(180deg, rgba(52,211,153,.28), rgba(52,211,153,.12));
+                       color: var(--green); }
+.kc-gauge-threshold { position: absolute; top: -5px; bottom: -5px; width: 2px;
+                      background: var(--amber); box-shadow: 0 0 6px rgba(251,191,36,.7); }
+.kc-gauge { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.kc-gauge-track { flex: 1; }
+.kc-gauge-score.over { color: var(--green); }
+.kc-gauge-score.under { color: var(--red); }
+
+.kc-spine { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 6px 18px; margin: 10px 0; padding: 0; }
+.kc-spine div { display: flex; gap: 10px; }
+.kc-spine dt { color: var(--dim); }
+.kc-spine dd { margin: 0; }
+.kc-spine dd.hot { color: var(--red); }
+
+.kc-evidence { list-style: none; margin: 8px 0; padding-left: 0; font-size: 13px; }
+.kc-evidence li { padding: 3px 0; }
+.kc-evidence code { color: var(--cyan); }
+.dim { color: var(--dim); }
+.kc-card footer { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; }
+.kc-card footer.ok { color: var(--green); word-break: break-all; }
+.kc-card footer.bad { color: var(--red); }
+
+.kc-card-refused { border-left-color: var(--red); }
+.kc-refusal { white-space: pre-line; color: var(--red); background: rgba(248,113,113,.06);
+              padding: 14px; margin-top: 8px; }
+
+.kc-footer { margin-top: 40px; color: var(--dim); font-size: 11px; text-align: center;
+             border-top: 1px solid var(--line); padding-top: 12px; }
+```
+
+## 12. `dashboard/src/__tests__/eis.parity.test.ts`
+
+```typescript
+import { describe, expect, it } from 'vitest';
+import { integrateEvidence } from '../engine/EISv1Engine';
+import { canonicalSpine, GOLDEN_CANONICAL } from '../engine/attestation';
+import { REFERENCE_TELEMETRY } from '../lib/fixtures';
+
+describe('EIS v1.0 — cross-runtime reproduction contract', () => {
+  it('replays the reference window to the documented payload', async () => {
+    const log = await integrateEvidence(REFERENCE_TELEMETRY);
+
+    expect(log.hydraulic_baseline.established_baseline_l_s).toBe(97);
+    expect(log.findings).toHaveLength(1);           // 05:00Z/06:00Z filtered by 04:35Z OPEN
+
+    const spine = log.findings[0].provenance_spine;
+    expect(spine.timestamp).toBe('2026-08-26T04:00:00Z');
+    expect(spine.observed_flow_l_s).toBe(111);
+    expect(spine.observed_pressure_m).toBe(46.1);
+    expect(spine.trust_index).toBe(1);
+    expect(spine.verdict).toBe('VERIFIED_CANDIDATE');
+    expect(log.findings[0].corroborated_evidence.map(e => e.type))
+      .toEqual(['HUMAN_VISUAL', 'ACOUSTIC']);
+
+    // Hard anchor against the C and Python canonicalizers:
+    expect(canonicalSpine(spine as unknown as Record<string, unknown>))
+      .toBe(GOLDEN_CANONICAL);
+  });
+});
+```
+
+---
+
+# Track B — ATECC608B Hardware Signing Path (Embedded)
+
+## Structure
+
+```
+firmware/
+├── CMakeLists.txt
+├── inc/provenance_signer.h
+└── src/
+    ├── canonical.c          # shared canonicalizer + string self-test
+    └── provenance_signer.c  # CryptoAuthLib integration (hash → ECDSA → counter)
+```
+
+## 13. `inc/provenance_signer.h`
+
+```c
+/**
+ * AIR KERNEL — ATECC608B Provenance Spine Signer
+ * ==============================================
+ * Hardware Root of Trust path from hardware-spec.md. The Secure Element signs
+ * every provenance spine onboard before uplink. Private key NEVER leaves
+ * slot 0; verification is done host-side with the provisioned public key.
+ *
+ * Provisioning (one-time, factory or bench):
+ *   1. atcab_init(); genkey without MAC into slot 0 (or import pre-split key).
+ *   2. Lock config + data zones.
+ *   3. Export public key -> air-vvu/device_pub.pem (host verifier trusts this).
+ *
+ * Wiring per spec: analog bay X<=~150mm stays clear of the digital stack; the
+ * ATECC sits on the compute-side I2C bus so its hashing traffic shares rails
+ * with nothing carrying sub-millivolt sensor amplitudes (>15mm separation rule).
+ */
+#ifndef PROVENANCE_SIGNER_H
+#define PROVENANCE_SIGNER_H
+
+#include <stdint.h>
+#include <stddef.h>
+
+#define PROV_SIG_LEN       64u   /* ECDSA P-256 R||S */
+#define PROV_DIGEST_LEN    32u   /* SHA-256 */
+#define PROV_CANON_MAX     384u
+#define PROV_ATTEST_ADDR   0xC0u /* ATECC608B default I2C (7-bit 0x60 << 1) */
+
+typedef enum {
+    PROV_OK = 0,
+    PROV_ERR_I2C            = -1,  /* wake/command failed                    */
+    PROV_ERR_CONFIG_UNLOCKED= -2,  /* zones must be locked before production */
+    PROV_ERR_SLOT_BAD       = -3,  /* slot 0 not a valid private key         */
+    PROV_ERR_CANON_OVERFLOW = -4,  /* spine too large for canonical buffer   */
+    PROV_ERR_SIGN           = -5,
+    PROV_ERR_ARG            = -6
+} prov_status_t;
+
+/**
+ * Numeric members mirror evidence_log.json units. trust_index is carried as
+ * permille (1000 == 1.00) to sidestep double-drift at the edge; the device
+ * converts back through the shared "%g" rule so the canonical string stays
+ * byte-identical to Python and TypeScript.
+ */
+typedef struct {
+    const char *timestamp;              /* "YYYY-MM-DDTHH:MM:SSZ"           */
+    const char *dma_id;
+    const char *primary_sensor_id;
+    const char *correlated_sensor_id;
+    double      hydraulic_baseline_l_s;
+    double      observed_flow_l_s;
+    double      observed_pressure_m;
+    uint32_t    independent_evidence_count;
+    uint32_t    trust_index_permille;
+    const char *verdict;                /* VERIFIED_CANDIDATE | UNCORROBORATED_ANOMALY */
+} prov_spine_t;
+
+typedef struct {
+    uint8_t  software_digest[PROV_DIGEST_LEN]; /* full SHA-256 (device-computed) */
+    char     attestation_signature[15];        /* "0x" + 10 hex + '\0' display truncation */
+    uint8_t  device_signature[PROV_SIG_LEN];   /* ECDSA(secp256r1) over digest   */
+    uint32_t signing_counter;                  /* Counter0, captured post-sign    */
+} prov_attestation_t;
+
+/** Build canonical string (must equal GOLDEN_CANONICAL bytes on all runtimes). */
+prov_status_t prov_canonicalize(const prov_spine_t *in,
+                                char *buf, size_t buflen, size_t *written);
+
+/** Full path: canonicalize -> HW SHA-256 -> HW ECDSA(sign) -> read Counter0. */
+prov_status_t prov_sign_spine(const prov_spine_t *in, prov_attestation_t *out);
+
+/** Compile-time confidence: canonicalizes the reference finding and compares
+ *  the literal bytes of the cross-runtime golden string. Returns PROV_OK iff match. */
+prov_status_t prov_self_test(void);
+
+#endif /* PROVENANCE_SIGNER_H */
+```
+
+## 14. `firmware/src/canonical.c`
+
+```c
+#include "../inc/provenance_signer.h"
+#include <stdio.h>
+#include <string.h>
+
+/*
+ * Canonical ordering is FIXED to match sorted() in Python / Object.keys().sort()
+ * in TS. Field order below is alphabetical by key name — do not reorder.
+ * Floats use printf("%g") exclusively, which is the shared contract.
+ */
+typedef enum {
+    F_CORRELATED_SENSOR_ID, F_DMA_ID, F_HYDRAULIC_BASELINE_L_S,
+    F_INDEPENDENT_EVIDENCE_COUNT, F_OBSERVED_FLOW_L_S, F_OBSERVED_PRESSURE_M,
+    F_PRIMARY_SENSOR_ID, F_TIMESTAMP, F_TRUST_INDEX, F_VERDICT,
+    FIELD_COUNT
+} field_order_t;
+
+static prov_status_t append(char *buf, size_t buflen, size_t *n,
+                            const char *fmt, ...)
+    __attribute__((format(printf, 4, 5)));
+
+static prov_status_t append(char *buf, size_t buflen, size_t *n, const char *fmt, ...) {
+    va_list ap; va_start(ap, fmt);
+    int w = vsnprintf(buf + *n, buflen - *n, fmt, ap);
+    va_end(ap);
+    if (w < 0 || (size_t)w >= buflen - *n) return PROV_ERR_CANON_OVERFLOW;
+    *n += (size_t)w;
+    return PROV_OK;
+}
+
+prov_status_t prov_canonicalize(const prov_spine_t *in,
+                                char *buf, size_t buflen, size_t *written) {
+    if (!in || !buf || !written) return PROV_ERR_ARG;
+    if (!in->timestamp || !in->dma_id || !in->primary_sensor_id ||
+        !in->correlated_sensor_id || !in->verdict) return PROV_ERR_ARG;
+
+    size_t n = 0; *written = 0; buf[0] = '\0';
+    prov_status_t st;
+
+    struct { const char *key; const char *val; } strs[] = {
+        { "correlated_sensor_id", in->correlated_sensor_id },
+        { "dma_id",               in->dma_id },
+        { "primary_sensor_id",    in->primary_sensor_id },
+        { "timestamp",            in->timestamp },
+        { "verdict",              in->verdict },
+    };
+
+    /* Interleave string and numeric pairs in strict alphabetical key order. */
+    st  = append(buf, buflen, &n, "correlated_sensor_id=%s|", in->correlated_sensor_id);
+    st |= append(buf, buflen, &n, "dma_id=%s|", in->dma_id);
+    st |= append(buf, buflen, &n, "hydraulic_baseline_l_s=%g", in->hydraulic_baseline_l_s);
+    st |= append(buf, buflen, &n, "|independent_evidence_count=%u", in->independent_evidence_count);
+    st |= append(buf, buflen, &n, "|observed_flow_l_s=%g", in->observed_flow_l_s);
+    st |= append(buf, buflen, &n, "|observed_pressure_m=%g", in->observed_pressure_m);
+    st |= append(buf, buflen, &n, "|primary_sensor_id=%s|", in->primary_sensor_id);
+    st |= append(buf, buflen, &n, "timestamp=%s|", in->timestamp);
+    st |= append(buf, buflen, &n, "trust_index=%g", in->trust_index_permille / 1000.0);
+    st |= append(buf, buflen, &n, "|verdict=%s", in->verdict);
+
+    *written = n;
+    return st;
+}
+
+prov_status_t prov_self_test(void) {
+    /* Reproduces the documented 04:00Z VERIFIED_CANDIDATE finding. */
+    const prov_spine_t ref = {
+        .timestamp               = "2026-08-26T04:00:00Z",
+        .dma_id                  = "NMBM-DMA-07",
+        .primary_sensor_id       = "NMBM-DMA-07-FM01",
+        .correlated_sensor_id    = "NMBM-DMA-07-PT14",
+        .hydraulic_baseline_l_s  = 97.0,
+        .observed_flow_l_s       = 111.0,
+        .observed_pressure_m     = 46.1,
+        .independent_evidence_count = 2,
+        .trust_index_permille    = 1000,
+        .verdict                 = "VERIFIED_CANDIDATE",
+    };
+    char buf[PROV_CANON_MAX]; size_t n = 0;
+    if (prov_canonicalize(&ref, buf, sizeof buf, &n) != PROV_OK) return PROV_ERR_CANON_OVERFLOW;
+
+    /* Byte-for-byte twin of GOLDEN_CANONICAL (attestation.ts / Python docstring). */
+    static const char GOLDEN[] =
+        "correlated_sensor_id=NMBM-DMA-07-PT14|dma_id=NMBM-DMA-07|"
+        "hydraulic_baseline_l_s=97|independent_evidence_count=2|"
+        "observed_flow_l_s=111|observed_pressure_m=46.1|"
+        "primary_sensor_id=NMBM-DMA-07-FM01|timestamp=2026-08-26T04:00:00Z|"
+        "trust_index=1|verdict=VERIFIED_CANDIDATE";
+
+    return (n == sizeof(GOLDEN) - 1 && memcmp(buf, GOLDEN, n) == 0)
+        ? PROV_OK : PROV_ERR_CANON_OVERFLOW;
+}
+```
+
+## 15. `firmware/src/provenance_signer.c`
+
+```c
+#include "../inc/provenance_signer.h"
+#include "atca_basic.h"
+#include "atca_cfgs.h"
+
+/*
+ * Device configuration contract (enforced at init):
+ *   - Slot 0 : P-256 private key. Config: KeyType P256, ReqAuth off for bench
+ *              builds, ReadKey NONE, KeyConfig.Private = 1 (never exportable).
+ *   - Counter0: wired to slot-0 usage increments (IncrementCounter in slot
+ *              config) -> monotonic ordinal per emission; anti-rollback metadata.
+ *   - Data zone LOCKED before deployment; prov_check_ready() gates otherwise.
+ */
+
+#define SLOT_PRIVKEY   0u
+#define MONOTONIC_CTR  0u
+
+static const uint8_t WAKE_RETRIES = 3;
+
+static prov_status_t ensure_device(void) {
+    static bool ready = false;
+    if (!ready) {
+        static ATCAIfaceCfg cfg;
+        cfg = cfg_ateccx08a_i2c_default;
+        cfg.atcai2c.address = PROV_ATTEST_ADDR;
+        cfg.devtype = ATECC608;
+        if (atcab_init(&cfg) != ATCA_SUCCESS) return PROV_ERR_I2C;
+        ready = true;
+    }
+
+    bool cfg_locked = false, data_locked = false;
+    if (atcab_is_locked(LOCK_ZONE_CONFIG, &cfg_locked) != ATCA_SUCCESS ||
+        atcab_is_locked(LOCK_ZONE_DATA,   &data_locked) != ATCA_SUCCESS)
+        return PROV_ERR_I2C;
+
+    if (!(cfg_locked && data_locked)) return PROV_ERR_CONFIG_UNLOCKED;
+
+    if (atcab_wakeup() != ATCA_SUCCESS) return PROV_ERR_I2C;
+    atcab_idle();
+    return PROV_OK;
+}
+
+static void hex_truncate(const uint8_t digest[PROV_DIGEST_LEN],
+                         char out[15]) {
+    static const char HEX[] = "0123456789abcdef";
+    out[0] = '0'; out[1] = 'x';
+    for (int i = 0; i < 5; i++) {
+        out[2 + i * 2]     = HEX[digest[i] >> 4];
+        out[3 + i * 2]     = HEX[digest[i] & 0x0F];
+    }
+    out[12] = '.'; out[13] = '.'; out[14] = '.';
+}
+
+prov_status_t prov_sign_spine(const prov_spine_t *in, prov_attestation_t *out) {
+    if (!in || !out) return PROV_ERR_ARG;
+
+    prov_status_t st = ensure_device();
+    if (st != PROV_OK) return st;
+
+    /* Run the cross-runtime self-test before emitting anything. A device that
+     * cannot reproduce GOLDEN bytes has a broken toolchain/locale — fail loud. */
+    if (prov_self_test() != PROV_OK) return PROV_ERR_CANON_OVERFLOW;
+
+    char canon[PROV_CANON_MAX]; size_t n = 0;
+    st = prov_canonicalize(in, canon, sizeof canon, &n);
+    if (st != PROV_OK) return st;
+
+    /* SHA-256 on the device itself: the hash being signed never crosses the
+     * bus in software form except as this canonicalized plaintext frame. */
+    if (atcab_sha((uint16_t)n, (const uint8_t *)canon, out->software_digest) != ATCA_SUCCESS)
+        return PROV_ERR_SIGN;
+
+    hex_truncate(out->software_digest, out->attestation_signature);
+
+    for (uint8_t attempt = 0; attempt < WAKE_RETRIES; attempt++) {
+        if (atcab_sign(SLOT_PRIVKEY, out->software_digest, out->device_signature) == ATCA_SUCCESS)
+            break;
+        if (attempt == WAKE_RETRIES - 1) return PROV_ERR_SIGN;
+        atcab_idle_delay_us(5000);
+    }
+
+    /* Post-sign read captures the increment bound to THIS emission (RC1: the
+     * counter rides as metadata adjacent to the signature — see roadmap). */
+    if (atcab_counter_read(MONOTONIC_CTR, &out->signing_counter) != ATCA_SUCCESS)
+        return PROV_ERR_I2C;
+
+    return PROV_OK;
+}
+```
+
+## 16. `firmware/CMakeLists.txt`
+
+```cmake
+cmake_minimum_required(VERSION 3.16)
+project(air_vvu_firmware C)
+
+find_package(cryptoauth REQUIRED)   # Microchip CryptoAuthLib
+
+add_library(air_provenance STATIC
+    src/canonical.c
+    src/provenance_signer.c
+)
+target_include_directories(air_provenance PUBLIC inc)
+target_compile_options(air_provenance PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(air_provenance PUBLIC cryptoauth3)
+
+add_executable(prov_selftest src/canonical.c)
+add_executable(run_selftest tests/run_selftest.c)
+target_link_libraries(run_selftest PRIVATE prov_selftest)  # exits nonzero iff golden mismatch
+enable_testing()
+add_test(NAME canonical_golden COMMAND run_selftest)
+```
+
+*(Optionally exclude `provenance_signer.c` from the host-build self-test target so the pure-canonical tier runs in desktop CI without the I2C backend.)*
+
+## 17. Host-side device-signature verifier — `tools/verify_device_signature.py`
+
+```python
+#!/usr/bin/env python3
+"""Verify an ATECC608B ECDSA device_signature attached to a finding."""
+import sys, hashlib, json
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+from cryptography.exceptions import InvalidSignature
+
+
+def canonical(spine: dict) -> bytes:
+    def cv(v):
+        if isinstance(v, bool): return "TRUE" if v else "FALSE"
+        if isinstance(v, int):  return str(v)
+        if isinstance(v, float):return "%g" % v
+        return str(v)
+    body = "|".join(f"{k}={cv(spine[k])}" for k in sorted(spine) if k not in
+                    ("attestation_signature", "device_signature", "signing_counter"))
+    return body.encode()
+
+
+def verify(evidence_path: str, pubkey_pem: str) -> bool:
+    log = json.load(open(evidence_path))
+    pub = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(),
+                                                       open(pubkey_pem, "rb").read())
+    ok = True
+    for finding in log["findings"]:
+        spine = finding["provenance_spine"]
+        sig_hex = spine.get("device_signature")
+        if not sig_hex:
+            continue                                  # software-only spine, skip
+        raw = bytes.fromhex(sig_hex)                  # 64-byte R||S from device
+        der = encode_dss_signature(int.from_bytes(raw[:32], "big"),
+                                   int.from_bytes(raw[32:], "big"))
+        digest = hashlib.sha256(canonical(spine)).digest()
+        try:
+            pub.verify(der, digest, ec.ECDSA(hashes := __import__("cryptography").hazmat.primitives.hashes.Prehashed(__import__("cryptography").hazmat.primitives.hashes.SHA256)))
+            print(f"[VALID]   {spine['timestamp']} counter={spine.get('signing_counter')}")
+        except InvalidSignature:
+            print(f"[INVALID] {spine['timestamp']} — DEVICE SIGNATURE REJECTED")
+            ok = False
+    return ok
+
+
+if __name__ == "__main__":
+    sys.exit(0 if verify(sys.argv[1], sys.argv[2]) else 4)
+```
+
+## 18. Uplink integration — spine assembly takes the hardware branch
+
+Wherever the onboard agent finalizes a spine before uplink (replacing the software-only path):
+
+```python
+# Agent pseudo-integration: hardware first, software digest as fallback only.
+from provenance_signer import ProvSignerBinding          # binds firmware API over UART/I2C bridge
+
+spine = { ... }                                          # as built today by integrate()
+try:
+    binding = ProvSignerBinding(addr=0xC0)
+    hw = binding.sign(canonical_bytes=build_canonical(spine))
+    spine["device_signature"]  = hw.signature_hex        # 128 hex chars (R||S)
+    spine["signing_counter"]   = hw.counter0
+except HwUnavailable:
+    pass                                                 # degrade gracefully; CI tolerates absence
+spine["attestation_signature"] = attest_spine(spine)     # display digest, still derived
+```
+
+Verification precedence documented for reviewers: `device_signature` (if present) > `attestation_signature`. The console's refusal logic currently enforces the software layer; verifying device signatures in-browser (WebCrypto ECDSA P-256 with the provisioned public key) is a drop-in extension of `auditEvidence` once the device public key ships with the payload manifest.
+
+---
+
+## Pipeline addition — `.github/workflows/air-pipeline.yml`
+
+Append this job so all three tiers assert the same canonical truth daily:
+
+```yaml
+  renderer-parity:
+    name: "Cross-Runtime Canonical Contract (C ↔ TS)"
+    needs: gate-check-validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: TypeScript replay parity
+        run: |
+          cd dashboard && npm ci && npm run parity
+      - name: C firmware canonicalizer golden test
+        run: |
+          sudo apt-get update && sudo apt-get install -y libssl-dev
+          cd firmware && cmake -S . -B build && cmake --build build \
+            &&ctest --test-dir build --output-on-failure
+```
+
+---
+
+## Verification Trace
+
+- **Canonical string (all runtimes):** walked the 10 sorted keys — `%g` collapses `97.0→97`, `111.0→111`, `46.1→46.1`, `1.0→1`; the `EVS=1` family of literals matches across Python `_canon_value`, TS `canonValue` (integer branch + `toFixed(6)` strip), and C `printf("%g")`. The C `prov_self_test` locks this at compile/deploy time with `memcmp`.
+- **TS replay determinism:** night filter `getUTCHours() ∈ {2,3,4}` over `{97,96,111}` → median 97 ✓; surge >106.7 → {04:00,05:00,06:00}; pressure-correlation drops none; latest-context ≤ event: 04:00Z sees the 01:15Z CLOSED (not scheduled → survives), 05:00/06:00Z see 04:35Z OPEN+scheduled → filtered ✓; ±4h window pulls both observations (Δ2.5h, Δ4.0h inclusive) → trust `round2(0.3+0.2+0.5)=1.0` ✓.
+- **Console mandate behavior:** a payload with a tampered `observed_flow_l_s` will fail digest recomputation, flip the BaselinePanel audit strip to red `FAIL`, and paint the finding as a refusal card rather than fabricated data.
+
+## Roadmap (RC2 candidates)
+
+1. Bind `signing_counter` **into** the signed message (prepend canonical counter frame) — closes metadata-level rollback.
+2. Ship device pubkey + slot-scope policy in an on-chain/off-chain manifest; extend `auditEvidence` for in-browser ECDSA device verification.
+3. MCP-2221-based bench harness so `prov_sign_spine` runs against real silicon in the security-posture-check CI job.
+
+Compilee
