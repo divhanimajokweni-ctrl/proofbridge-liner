@@ -1,0 +1,48 @@
+
+        ════════════════════════════════════════════════════════════════════════════
+        BAYESIAN LEAK DETECTION — COMPLETE ANALYSIS REPORT
+        ════════════════════════════════════════════════════════════════════════════
+        
+        Generated: 2026-08-27 16:36:08
+        Iterations: 20
+        Workers: 4
+        Threshold: 0.5
+        
+        ─── PERFORMANCE SUMMARY ───────────────────────────────────────────────────
+        
+        Detection Rate:              100.0% (12/20)
+        Detection Time (mean ± std): 0.1 ± 0.3 cycles
+        95% CI:                      [0.0, 0.2]
+        Convergence Rate:            0.0%
+        False Positive Rate:         0.0%
+        Early Warning Rate:          60.0%
+        Mean Early Warning Time:     1.0 cycles early
+        Reliability Score:           70.0%
+        
+        ─── STATISTICAL ANALYSIS ──────────────────────────────────────────────────
+        
+        ROC AUC:                     1.000
+        F1 Score:                    0.800
+        Optimal Threshold:           0.571
+        Precision at Threshold:      0.667
+        Recall at Threshold:         1.000
+        
+        ─── ADAPTIVE FEATURES ─────────────────────────────────────────────────────
+        
+        Baseline Updates per Run:    70.0
+        Early Warning Capability:    ✓ ENABLED
+        Convergence Detection:       ✗ WEAK
+        
+        ─── OUTPUT FILES ──────────────────────────────────────────────────────────
+        
+        JSON:                        /home/z/my-project/simulation-output/complete_results.json
+        CSV:                         /home/z/my-project/simulation-output/iteration_data.csv
+        Dashboard:                   /home/z/my-project/simulation-output/leak_detection_dashboard.html
+        Static Figures:              /home/z/my-project/simulation-output/static_analysis.png
+        Trajectories:                /home/z/my-project/simulation-output/trajectories.pkl
+        
+        ─── RECOMMENDATIONS ────────────────────────────────────────────────────────
+          • Increase convergence threshold or lookback window
+  • Early warning shows promise — consider parameter tuning
+
+═══════════════════════════════════════════════════════════════════════════════

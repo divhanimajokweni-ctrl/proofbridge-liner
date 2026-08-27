@@ -1,0 +1,647 @@
+{
+  "timestamp": "2026-08-27T16:36:06.948409",
+  "configuration": {
+    "detection_threshold": 0.5,
+    "convergence_threshold": 0.05,
+    "lookback_window": 10,
+    "num_iterations": 20,
+    "num_workers": 4
+  },
+  "aggregate_statistics": {
+    "num_iterations": 20,
+    "detection_rate": 1.0,
+    "detection_times_mean": 0.08333333333333333,
+    "detection_times_std": 0.2763853991962833,
+    "detection_times_median": 0.0,
+    "detection_times_ci_lower": 0.0,
+    "detection_times_ci_upper": 0.25,
+    "convergence_rate": 0.0,
+    "convergence_times_mean": 0,
+    "false_positive_rate": 0.0,
+    "false_positive_mean": 0.0,
+    "max_posterior_mean": 0.43459531142140995,
+    "max_posterior_std": 0.24324984985687328,
+    "early_warning_rate": 0.6,
+    "mean_early_warning_cycles": 1.0,
+    "reliability_score": 0.7,
+    "adaptive_baseline_updates_mean": 70.0,
+    "roc_auc": 1.0,
+    "precision_at_threshold": 0.6666666666666666,
+    "recall_at_threshold": 1.0,
+    "f1_score": 0.799999999952,
+    "optimal_threshold": 0.5710100389528923
+  },
+  "roc_data": {
+    "fpr": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "tpr": [
+      0.0,
+      0.08333333333333333,
+      1.0,
+      1.0
+    ],
+    "thresholds": [
+      Infinity,
+      0.6904612034440626,
+      0.5710100389528923,
+      0.1
+    ],
+    "auc": 1.0,
+    "optimal_threshold": 0.5710100389528923,
+    "precision_at_threshold": 0.6666666666666666,
+    "recall_at_threshold": 1.0,
+    "f1_score": 0.799999999952,
+    "precision": [
+      0.6,
+      0.631578947368421,
+      0.6666666666666666,
+      0.7058823529411765,
+      0.75,
+      0.8,
+      0.8571428571428571,
+      0.9230769230769231,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "recall": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      0.9166666666666666,
+      0.8333333333333334,
+      0.75,
+      0.6666666666666666,
+      0.5833333333333334,
+      0.5,
+      0.4166666666666667,
+      0.3333333333333333,
+      0.25,
+      0.16666666666666666,
+      0.08333333333333333,
+      0.0
+    ]
+  },
+  "iteration_results": [
+    {
+      "iteration_id": 0,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.6177866351071457,
+      "early_warning_triggered": true,
+      "early_warning_time": 1,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5440180205475685,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 1
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.46488392449259824,
+        "std": 0.2242811820783174,
+        "max": 0.6177866351071457,
+        "min": 0.09794428868942896,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 1,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.6417177773255793,
+      "early_warning_triggered": true,
+      "early_warning_time": 0,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5631634583031709,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.4748782734073434,
+        "std": 0.24216321992396153,
+        "max": 0.6417177773255793,
+        "min": 0.06578954245257664,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 2,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.643562937803796,
+      "early_warning_triggered": true,
+      "early_warning_time": 1,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5524753051757414,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 1
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.4773272031451116,
+        "std": 0.24377434124368383,
+        "max": 0.643562937803796,
+        "min": 0.07558945575480648,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 3,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.5956401830955841,
+      "early_warning_triggered": true,
+      "early_warning_time": 1,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5453357960527366,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 1
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.43955929897644835,
+        "std": 0.22006219380838343,
+        "max": 0.5956401830955841,
+        "min": 0.07617405153533759,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 4,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.6829563013989814,
+      "early_warning_triggered": true,
+      "early_warning_time": 1,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5667098848950674,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 1
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.5048558970933111,
+        "std": 0.2581523870555582,
+        "max": 0.6829563013989814,
+        "min": 0.0820466919365842,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 5,
+      "threshold_exceeded": true,
+      "detection_time": 1,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.5710100389528923,
+      "early_warning_triggered": true,
+      "early_warning_time": 0,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 1,
+        "max_posterior": 0.5308949473684882,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.42539542068728164,
+        "std": 0.20787068488767993,
+        "max": 0.5710100389528923,
+        "min": 0.0861372128473801,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 6,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.6904612034440626,
+      "early_warning_triggered": true,
+      "early_warning_time": 1,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5650825253569781,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 1
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.5119825876161238,
+        "std": 0.2593201258750306,
+        "max": 0.6904612034440626,
+        "min": 0.09649741302817563,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 7,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.6854945099747768,
+      "early_warning_triggered": true,
+      "early_warning_time": 0,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5598717540172101,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.5024833551592441,
+        "std": 0.2746391248348851,
+        "max": 0.6854945099747768,
+        "min": 0.03290384820719514,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 8,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.6027403505293919,
+      "early_warning_triggered": true,
+      "early_warning_time": 1,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5299533361390044,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 1
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.4506715803445935,
+        "std": 0.21812678543612948,
+        "max": 0.6027403505293919,
+        "min": 0.1,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 9,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.5984054380464273,
+      "early_warning_triggered": true,
+      "early_warning_time": 0,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5528210818572876,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.45243746478000657,
+        "std": 0.2170504042897081,
+        "max": 0.5984054380464273,
+        "min": 0.1,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 10,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.6042806649441507,
+      "early_warning_triggered": true,
+      "early_warning_time": 1,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5192955119109601,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 1
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.4471347009436972,
+        "std": 0.22620963055431614,
+        "max": 0.6042806649441507,
+        "min": 0.06745908511213014,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 11,
+      "threshold_exceeded": true,
+      "detection_time": 0,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.6367774780094643,
+      "early_warning_triggered": true,
+      "early_warning_time": 0,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.12,
+        "detected_cycle": 0,
+        "max_posterior": 0.5537583407543113,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.46597322470745356,
+        "std": 0.23639721890778187,
+        "max": 0.6367774780094643,
+        "min": 0.07342821438547875,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 12,
+      "threshold_exceeded": false,
+      "detection_time": null,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.1,
+      "early_warning_triggered": false,
+      "early_warning_time": null,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.0,
+        "detected_cycle": null,
+        "max_posterior": 0.1,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.04238052538877786,
+        "std": 0.027252938734959743,
+        "max": 0.1,
+        "min": 0.015341468960728282,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 13,
+      "threshold_exceeded": false,
+      "detection_time": null,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.11479722372465578,
+      "early_warning_triggered": false,
+      "early_warning_time": null,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.0,
+        "detected_cycle": null,
+        "max_posterior": 0.11479722372465578,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.07792314189598892,
+        "std": 0.020898051065105443,
+        "max": 0.11479722372465578,
+        "min": 0.03448481243134411,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 14,
+      "threshold_exceeded": false,
+      "detection_time": null,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.16088525254726424,
+      "early_warning_triggered": false,
+      "early_warning_time": null,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.0,
+        "detected_cycle": null,
+        "max_posterior": 0.16088525254726424,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.1139060886757417,
+        "std": 0.025174256823735613,
+        "max": 0.16088525254726424,
+        "min": 0.04170093397397214,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 15,
+      "threshold_exceeded": false,
+      "detection_time": null,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.11569497905047357,
+      "early_warning_triggered": false,
+      "early_warning_time": null,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.0,
+        "detected_cycle": null,
+        "max_posterior": 0.11569497905047357,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.07840074121088199,
+        "std": 0.02555843651604992,
+        "max": 0.11569497905047357,
+        "min": 0.03599165176150006,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 16,
+      "threshold_exceeded": false,
+      "detection_time": null,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.22037131263327459,
+      "early_warning_triggered": false,
+      "early_warning_time": null,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.0,
+        "detected_cycle": null,
+        "max_posterior": 0.22037131263327459,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.16090083928027615,
+        "std": 0.03580759668394005,
+        "max": 0.22037131263327459,
+        "min": 0.09832462083803668,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 17,
+      "threshold_exceeded": false,
+      "detection_time": null,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.14539000390315096,
+      "early_warning_triggered": false,
+      "early_warning_time": null,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.0,
+        "detected_cycle": null,
+        "max_posterior": 0.14539000390315096,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.1132715284290239,
+        "std": 0.01759860748641413,
+        "max": 0.14539000390315096,
+        "min": 0.062325004357320746,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 18,
+      "threshold_exceeded": false,
+      "detection_time": null,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.14465544543802056,
+      "early_warning_triggered": false,
+      "early_warning_time": null,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.0,
+        "detected_cycle": null,
+        "max_posterior": 0.14465544543802056,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.10432737768780073,
+        "std": 0.02007920602273726,
+        "max": 0.14465544543802056,
+        "min": 0.06296017558218323,
+        "length": 70
+      }
+    },
+    {
+      "iteration_id": 19,
+      "threshold_exceeded": false,
+      "detection_time": null,
+      "convergence_time": null,
+      "false_positive_count": 0,
+      "max_posterior": 0.11927849249910784,
+      "early_warning_triggered": false,
+      "early_warning_time": null,
+      "adaptive_baseline_updates": 70,
+      "leak_event": {
+        "pipe_id": "PIP3",
+        "rate": 0.0,
+        "detected_cycle": null,
+        "max_posterior": 0.11927849249910784,
+        "convergence_cycle": null,
+        "false_positives": 0,
+        "early_warning_cycles": 0
+      },
+      "posterior_trajectory_summary": {
+        "mean": 0.06572114653922348,
+        "std": 0.032748751538441104,
+        "max": 0.11927849249910784,
+        "min": 0.012961582824976137,
+        "length": 70
+      }
+    }
+  ]
+}
