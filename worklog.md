@@ -445,3 +445,80 @@ Stage Summary:
 - 3D Three.js activities: HBK MKII exploded hardware (Build), Villa Ravine (Build), 3D Mechanics (Build), HBK Localization (Data), EIS workspace (Data).
 - Evidence pipeline fully intact: EIS v1.0 + HBK + NMBM Sandbox + AIR Runtime + Field Evidence all accessible from Data Room.
 - System ready for DWS domain-validation demonstration.
+
+---
+Task ID: DOC-1
+Agent: doc-compiler (sub)
+Task: Compile VVU IVE Executive Documentation Bundle for DWS meeting.
+
+Work Log:
+- Read /home/z/my-project/worklog.md to load project context (VVU IVE =
+  evidence-verification layer for municipal water infrastructure, Next.js 16
+  + EIS v1.0 engine + HBK Bayesian localization).
+- Verified folder structure exists:
+  docs/executive-bundle/{01_Executive,02_Scientific,03_Software_Evidence,
+  04_Water_Demo,05_Pilot}/ — all empty, ready to receive files.
+- Verified all 8 source files present in upload/:
+  01a_ONE_PAGE_EXECUTIVE_BRIEF.md, 01b_TECHNICAL_DEMONSTRATION_BRIEF.md,
+  02a_HYDRAULIC_OBSERVABILITY_MODEL_HOM.md,
+  02c_EVIDENCE_INDEPENDENCE_SPEC_EIS_v1.md, 03a_VRES_v1_INVENTORY.md,
+  04a_WATER_INFRASTRUCTURE_EVIDENCE_LEAKAGE_VALIDATION_BRIEF.md,
+  08-NMBM-DATA-SANDBOX-SPECIFICATION.md,
+  10-72-HOUR-VALIDATION-PROTOCOL.md.
+- Copied 8 source files to correct destinations with renamed filenames per
+  user spec (lowercase, semantic naming):
+  01_Executive/01a_one_page_executive_brief.md
+  01_Executive/01b_technical_demonstration_brief.md
+  02_Scientific/02a_HOM.md
+  02_Scientific/02c_EIS_v1.md
+  03_Software_Evidence/03a_VRES_v1.md
+  04_Water_Demo/04a_leakage_validation_brief.md
+  04_Water_Demo/04b_NMBM_sandbox_spec.md
+  05_Pilot/05a_72h_protocol.md
+- Created 5 new markdown files verbatim from user-provided content:
+  02_Scientific/02b_sparse_sensor_hypothesis.md   (56 lines)
+  02_Scientific/02d_architecture_figure.md         (51 lines, md not png)
+  03_Software_Evidence/03b_repository_verification.md  (42 lines)
+  04_Water_Demo/04c_hydraulic_incident_replay.md   (55 lines)
+  05_Pilot/05b_data_requirements.md                (32 lines)
+- Created docs/executive-bundle/README.md (207 lines) as comprehensive
+  bundle index. README includes:
+  • Title, date, classification, repo, branch, custom domain header block
+  • Document index table — all 13 substantive docs with folder + description
+  • Folder structure tree
+  • How to run the system (bun install / bun run dev, governed deployment
+    at https://vvu-gov.space-z.ai)
+  • How to run the sandbox pipeline (./setup.sh + ./run.sh →
+    /evidence/leak_candidate_audit.json), with the 5-pass pipeline summary
+  • Key engineering claims (EIS prevents evidence inflation, HBK localizes
+    not pinpoints, Zero Fabrication Mandate, sparse sensors disclaimers,
+    auditable provenance chain)
+  • What we ask of DWS (domain validation, governed dataset for 72h
+    protocol, engineer review of audit trail)
+  • SIMULATION DATA classification reminder
+- Verified final file count: 14 markdown files total
+  (13 substantive docs + 1 README). Note: the user's spec said "13 files
+  (10 docs + README + architecture figure + 02d md)" but the spec listed
+  8 source files + 5 new files + README = 14. All required files are
+  present; the 13/14 mismatch is a small miscount in the spec.
+- Verified content with `wc -l` on all 14 files. Total: 1345 lines across
+  the bundle. Every file has substantive content (smallest is 05b at 32
+  lines, largest is README at 207 lines).
+
+Files produced (all in docs/executive-bundle/):
+  README.md                                      (207 lines)
+  01_Executive/01a_one_page_executive_brief.md   (57 lines)
+  01_Executive/01b_technical_demonstration_brief.md (139 lines)
+  02_Scientific/02a_HOM.md                       (121 lines)
+  02_Scientific/02b_sparse_sensor_hypothesis.md  (56 lines)
+  02_Scientific/02c_EIS_v1.md                    (112 lines)
+  02_Scientific/02d_architecture_figure.md       (51 lines)
+  03_Software_Evidence/03a_VRES_v1.md            (89 lines)
+  03_Software_Evidence/03b_repository_verification.md (42 lines)
+  04_Water_Demo/04a_leakage_validation_brief.md  (159 lines)
+  04_Water_Demo/04b_NMBM_sandbox_spec.md         (92 lines)
+  04_Water_Demo/04c_hydraulic_incident_replay.md (55 lines)
+  05_Pilot/05a_72h_protocol.md                   (133 lines)
+  05_Pilot/05b_data_requirements.md              (32 lines)
+
+Status: COMPLETE — bundle ready for DWS meeting handoff.
