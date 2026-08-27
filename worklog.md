@@ -84,3 +84,76 @@ Stage Summary:
 - All engineering rules from 02c EIS spec enforced: zero fabrication, independence scoring prevents evidence inflation, false-positive rejection on pump context, 100% deterministic reproducibility.
 - Audit receipt exports as SHA-256 hashed JSON with 11-field provenance per observation — auditable to municipal engineering standard.
 - The system correctly demonstrates the core EIS principle: "5 sensors agree ≠ 5 independent proofs" — even with flow + pressure anomaly, refuses to verify without independent corroboration from field + acoustic sources.
+
+---
+Task ID: 2
+Agent: orchestrator (main)
+Task: Add Hydro-Bayesian Kernel (HBK) — sequential Bayesian localization, 3D Three.js viewport, β-Binomial decision layer, mining-blast mixture-noise filter — as a second view in the existing VVU AIR KERNEL workspace.
+
+Work Log:
+- Read vvu_hbk_bayesian.html (1488 lines) — identified HBK architecture: 32×32 grid posterior, 4 sensor nodes (FLOW/PRESS/BR_N/BR_S), distance-attenuated Gaussian forward model, sequential Bayesian update, MAP + 95% credible radius, mixture-noise blast handling, β-Binomial decision layer, Three.js 3D scene
+- Installed three@0.128.0 + @types/three@0.128.0
+- Built src/lib/evidence/HydroBayesianKernel.ts:
+  - 32×32 grid (GRID_N=32, DOMAIN_HALF=4, METERS_PER_UNIT=1500)
+  - 4 sensor nodes, predictedAmplitude forward model (inverse-square/Gaussian decay)
+  - Sequential Bayesian update with LOG-SUM-EXP trick (numerically stable — fixes underflow bug in reference HTML where posterior collapses to all-zeros when qHat ≠ q)
+  - MAP estimate + 95% credible radius (smallest radius containing 95% mass)
+  - Blind fault injection (random hidden ground truth)
+  - Mixture-noise blast handling (widen σ during blast instead of excluding samples)
+  - Seedable RNG (Mulberry32) for reproducibility
+  - Convergence gate: MIN_VERIFY_TICKS=15 + flowSurplus≥5.0 before allowing verification (prevents early false verification on sensor-adjacent cells)
+- Built src/lib/evidence/BetaBinomialDecision.ts:
+  - Marsaglia-Tsang gamma sampler + Beta(α,β) via two Gamma variates
+  - α = μ(1−ρ)/ρ, β = (1−μ)(1−ρ)/ρ (intra-cluster correlation)
+  - Monte Carlo simulation: treatment DMA (riskMultiplier 1.4) vs control DMA
+  - Outputs: Relative Risk, Risk Difference, Information Density (fused with HBK posterior peak), Risk Tier classification
+- Built src/components/evidence/hbk-viewport.tsx:
+  - Three.js React component with useEffect cleanup
+  - Scene: stars, ground grid, pipe network (CatmullRomCurve3 tubes), valve, sensors (octahedrons), DMA boundary
+  - Posterior heatmap as InstancedMesh (1024 cells, HSL color by normalized posterior)
+  - Flow particles (drift along +x), leak particles (vertical burst), leak marker (red sphere on verify)
+  - OrbitControls + DeviceOrientation tilt mode
+  - ResizeObserver for responsive canvas
+- Built src/components/evidence/hbk-panel.tsx:
+  - 3-column layout (controls | 3D viewport | stats)
+  - Control buttons: INJECT LEAK, MINING BLAST, RESET, DEPLOY, TILT MODE toggle, BAYES LOOP run/pause
+  - Hydro-Bayesian Posterior panel: peak %, credible radius, blast samples filtered, MAP cell, localization error
+  - Trust Score gauge (3-segment bar with 0.70 threshold)
+  - β-Binomial Decision Layer: RUN RISK ANALYSIS button → RR/RD/ID/tier
+  - Evidence list (auto-populated on verification: SCADA_FLOW, SCADA_PRESS, ACOUSTIC)
+  - Event log (live, INFO/ALERT/CRITICAL/SUCCESS/BAYES levels, max 30 entries)
+  - HUD overlay (Flow/Press/Status with color tones)
+  - Fixed React state timing: blastActiveRef (synchronous ref) prevents tick loop from reading stale blastActive when setState hasn't committed
+  - Fixed bayesTick immutability: returns new HBKState shallow-copy (prevents React bailout on same-reference setState)
+- Updated src/app/page.tsx:
+  - Added view toggle (EIS WORKSPACE ↔ HBK LOCALIZATION) in header
+  - Conditional rendering: EIS panels when view='eis', HBKPanel when view='hbk'
+  - Header subtitle changes based on view
+- Updated src/app/globals.css with kernel-theme variables (already present from Task 1)
+
+Verification Results (Agent Browser + VLM + DOM eval):
+- Lint: 0 errors, 0 warnings ✓
+- Dev server: all routes 200, no runtime errors ✓
+- HBK view renders: 3D Three.js viewport with pipe network, sensors, posterior heatmap ✓
+- All 4 right panels visible: Hydro-Bayesian Posterior, Trust Score, Decision Layer, Evidence ✓
+- Left control panel: INJECT LEAK, MINING BLAST, RESET, DEPLOY + Event Log ✓
+- HUD overlay: live telemetry (Flow/Press/Status) ✓
+- Blind leak injection: random ground truth generated, posterior starts uniform ✓
+- Bayesian convergence: posterior concentrates to MAP cell as qHat converges ✓
+- Verification: VERIFIED_CANDIDATE at tick 15, 95% credible radius 0m ≤ 500m ✓
+- Localization accuracy: 158m, 196m, 232m, 265m, 332m across runs (all < 500m target) ✓
+- Mining blast: "Mining blast transient injected" log + 10 samples filtered + "Blast transient decayed" log ✓
+- β-Binomial decision layer: RR=1.37x, RD=+5.1%, ID=91.5/100, Tier=MODERATE ✓
+- Deploy attestation: "ATECC608B attestation signing" → "ATTESTATION DEPLOYED" with signature ✓
+- Evidence auto-spawned on verify: SCADA_FLOW, SCADA_PRESS, ACOUSTIC ✓
+- View toggle: EIS ↔ HBK switches cleanly, both views render correctly ✓
+- VLM screenshot verification: all panels present, 3D heatmap green/concentrated, red leak marker visible ✓
+- Mobile responsive: single-column layout on narrow viewports ✓
+
+Stage Summary:
+- Hydro-Bayesian Kernel (HBK) fully integrated as a second view in the VVU AIR KERNEL workspace.
+- Fixed two critical bugs in the reference HTML's algorithm:
+  1. Numerical underflow: Gaussian likelihood exp(-diff²/2σ²) collapses to zero when qHat≠q → fixed with log-sum-exp trick + prior floor
+  2. Early false verification: posterior peaks on sensor-adjacent cells before qHat converges → fixed with MIN_VERIFY_TICKS + qHat convergence gate
+- The HBK complements the EIS layer: EIS scores evidence independence (prevents inflation), HBK localizes the candidate leak zone via sequential Bayesian inference.
+- Together they form the complete evidence-verification pipeline from the 04a brief: sparse observations → anomaly detection (EIS) → evidence correlation (EIS) → independence assessment (EIS) → candidate location inference (HBK) → field verification → auditable evidence record.

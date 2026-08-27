@@ -1,0 +1,1488 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→    <meta charset="UTF-8">
+     5→    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+     6→    <title>VVU AIR KERNEL — TILT COMMAND CENTER</title>
+     7→    <style>
+     8→        :root {
+     9→            --bg: #04080d;
+    10→            --panel: #0a1016;
+    11→            --line: #1a2732;
+    12→            --cyan: #00d4ff;
+    13→            --green: #00ff88;
+    14→            --red: #ff4d4d;
+    15→            --amber: #ffb800;
+    16→            --dim: #4a6270;
+    17→            --fg: #c9d4dc;
+    18→            --mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    19→        }
+    20→
+    21→        * {
+    22→            margin: 0;
+    23→            padding: 0;
+    24→            box-sizing: border-box;
+    25→            -webkit-tap-highlight-color: transparent;
+    26→            user-select: none;
+    27→            -webkit-user-select: none;
+    28→            touch-action: none;
+    29→        }
+    30→
+    31→        body {
+    32→            font-family: var(--mono);
+    33→            background: var(--bg);
+    34→            color: var(--fg);
+    35→            height: 100dvh;
+    36→            width: 100vw;
+    37→            overflow: hidden;
+    38→            position: relative;
+    39→        }
+    40→
+    41→        /* ── Mobile-Landscape Grid ── */
+    42→        .mobile-grid {
+    43→            display: grid;
+    44→            grid-template-columns: 160px 1fr 170px;
+    45→            height: 100dvh;
+    46→            width: 100vw;
+    47→            gap: 1px;
+    48→            background: var(--line);
+    49→        }
+    50→
+    51→        /* ── Panel Base ── */
+    52→        .panel {
+    53→            background: var(--panel);
+    54→            overflow: hidden;
+    55→            display: flex;
+    56→            flex-direction: column;
+    57→            position: relative;
+    58→        }
+    59→
+    60→        .panel-header {
+    61→            background: rgba(0, 212, 255, 0.03);
+    62→            border-bottom: 1px solid var(--line);
+    63→            padding: 6px 8px;
+    64→            display: flex;
+    65→            justify-content: space-between;
+    66→            align-items: center;
+    67→            flex-shrink: 0;
+    68→            min-height: 32px;
+    69→        }
+    70→
+    71→        .panel-header h1 {
+    72→            font-size: 9px;
+    73→            letter-spacing: 1px;
+    74→            color: var(--cyan);
+    75→            text-transform: uppercase;
+    76→            margin: 0;
+    77→        }
+    78→
+    79→        .panel-header .status-chip {
+    80→            font-size: 8px;
+    81→            padding: 2px 6px;
+    82→            border-radius: 10px;
+    83→            background: rgba(0, 255, 136, 0.1);
+    84→            border: 1px solid var(--green);
+    85→            color: var(--green);
+    86→        }
+    87→
+    88→        .panel-body {
+    89→            flex: 1;
+    90→            overflow-y: auto;
+    91→            padding: 8px;
+    92→        }
+    93→
+    94→        /* ── Control Buttons ── */
+    95→        .btn-group {
+    96→            display: flex;
+    97→            flex-direction: column;
+    98→            gap: 6px;
+    99→            padding: 8px;
+   100→        }
+   101→
+   102→        .command-btn {
+   103→            background: var(--cyan);
+   104→            color: var(--bg);
+   105→            border: none;
+   106→            padding: 10px;
+   107→            font-family: var(--mono);
+   108→            font-size: 11px;
+   109→            font-weight: bold;
+   110→            letter-spacing: 1px;
+   111→            cursor: pointer;
+   112→            transition: all 0.2s ease;
+   113→            text-transform: uppercase;
+   114→            border-radius: 2px;
+   115→            width: 100%;
+   116→            margin-bottom: 4px;
+   117→        }
+   118→
+   119→        .command-btn:hover {
+   120→            background: var(--green);
+   121→            transform: translateY(-1px);
+   122→            box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
+   123→        }
+   124→
+   125→        .command-btn.danger {
+   126→            background: var(--red);
+   127→            color: white;
+   128→        }
+   129→
+   130→        .command-btn.deploy {
+   131→            background: var(--green);
+   132→            color: var(--bg);
+   133→        }
+   134→
+   135→        .command-btn.tilt-btn {
+   136→            background: var(--amber);
+   137→            color: var(--bg);
+   138→        }
+   139→
+   140→        .command-btn.tilt-btn.active {
+   141→            background: var(--green);
+   142→            color: var(--bg);
+   143→        }
+   144→
+   145→        .command-btn:disabled {
+   146→            opacity: 0.4;
+   147→            cursor: not-allowed;
+   148→            transform: none;
+   149→            box-shadow: none;
+   150→        }
+   151→
+   152→        /* ── Toggle ── */
+   153→        .tilt-toggle {
+   154→            display: flex;
+   155→            align-items: center;
+   156→            justify-content: space-between;
+   157→            background: var(--bg);
+   158→            border: 1px solid var(--line);
+   159→            border-radius: 4px;
+   160→            padding: 8px;
+   161→            margin: 8px;
+   162→            font-size: 10px;
+   163→        }
+   164→
+   165→        .tilt-toggle .toggle-label {
+   166→            color: var(--dim);
+   167→        }
+   168→
+   169→        .toggle-switch {
+   170→            position: relative;
+   171→            width: 44px;
+   172→            height: 24px;
+   173→            background: var(--line);
+   174→            border-radius: 12px;
+   175→            cursor: pointer;
+   176→            transition: background 0.3s ease;
+   177→        }
+   178→
+   179→        .toggle-switch.active {
+   180→            background: var(--green);
+   181→        }
+   182→
+   183→        .toggle-switch::after {
+   184→            content: '';
+   185→            position: absolute;
+   186→            top: 2px;
+   187→            left: 2px;
+   188→            width: 20px;
+   189→            height: 20px;
+   190→            background: white;
+   191→            border-radius: 50%;
+   192→            transition: transform 0.3s ease;
+   193→        }
+   194→
+   195→        .toggle-switch.active::after {
+   196→            transform: translateX(20px);
+   197→        }
+   198→
+   199→        /* ── 3D Viewport ── */
+   200→        .viewport-3d {
+   201→            position: relative;
+   202→            background: #020508;
+   203→        }
+   204→
+   205→        #three-canvas {
+   206→            width: 100%;
+   207→            height: 100%;
+   208→            display: block;
+   209→        }
+   210→
+   211→        /* ── HUD ── */
+   212→        .hud-overlay {
+   213→            position: absolute;
+   214→            top: 8px;
+   215→            left: 8px;
+   216→            background: rgba(4, 8, 13, 0.85);
+   217→            border: 1px solid var(--cyan);
+   218→            border-left: 2px solid var(--cyan);
+   219→            padding: 8px 10px;
+   220→            backdrop-filter: blur(4px);
+   221→            z-index: 10;
+   222→            min-width: 150px;
+   223→            pointer-events: none;
+   224→        }
+   225→
+   226→        .hud-title {
+   227→            color: var(--cyan);
+   228→            font-size: 8px;
+   229→            letter-spacing: 1px;
+   230→            margin-bottom: 6px;
+   231→            text-transform: uppercase;
+   232→        }
+   233→
+   234→        .hud-stat {
+   235→            display: flex;
+   236→            justify-content: space-between;
+   237→            gap: 12px;
+   238→            font-size: 11px;
+   239→            margin: 4px 0;
+   240→        }
+   241→
+   242→        .hud-stat .label { color: var(--dim); }
+   243→        .hud-stat .value { font-weight: bold; font-size: 12px; }
+   244→        .hud-stat .value.normal { color: var(--green); }
+   245→        .hud-stat .value.alert { color: var(--amber); }
+   246→        .hud-stat .value.critical { color: var(--red); }
+   247→
+   248→        /* ── Tilt Indicator ── */
+   249→        .tilt-indicator {
+   250→            position: absolute;
+   251→            bottom: 12px;
+   252→            left: 50%;
+   253→            transform: translateX(-50%);
+   254→            background: rgba(255, 184, 0, 0.9);
+   255→            color: var(--bg);
+   256→            padding: 6px 12px;
+   257→            border-radius: 20px;
+   258→            font-size: 9px;
+   259→            font-weight: bold;
+   260→            letter-spacing: 1px;
+   261→            z-index: 20;
+   262→            display: none;
+   263→            pointer-events: none;
+   264→            white-space: nowrap;
+   265→            box-shadow: 0 4px 15px rgba(255, 184, 0, 0.3);
+   266→        }
+   267→
+   268→        .tilt-indicator.show {
+   269→            display: block;
+   270→            animation: slideUp 0.5s ease;
+   271→        }
+   272→
+   273→        @keyframes slideUp {
+   274→            from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+   275→            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+   276→        }
+   277→
+   278→        /* ── EIS Trust Gauge ── */
+   279→        .trust-gauge-container {
+   280→            background: var(--bg);
+   281→            border: 1px solid var(--line);
+   282→            border-radius: 4px;
+   283→            padding: 10px;
+   284→            margin: 8px;
+   285→        }
+   286→
+   287→        .gauge-title {
+   288→            font-size: 9px;
+   289→            color: var(--dim);
+   290→            text-transform: uppercase;
+   291→            letter-spacing: 1px;
+   292→            margin-bottom: 8px;
+   293→        }
+   294→
+   295→        .trust-bar {
+   296→            height: 20px;
+   297→            background: #080c10;
+   298→            border: 1px solid var(--line);
+   299→            position: relative;
+   300→            display: flex;
+   301→            margin-bottom: 6px;
+   302→            border-radius: 2px;
+   303→            overflow: hidden;
+   304→        }
+   305→
+   306→        .trust-segment {
+   307→            height: 100%;
+   308→            border-right: 1px solid var(--line);
+   309→            display: flex;
+   310→            align-items: center;
+   311→            justify-content: center;
+   312→            font-size: 8px;
+   313→            color: var(--dim);
+   314→            transition: all 0.3s ease;
+   315→        }
+   316→
+   317→        .trust-segment.earned {
+   318→            background: linear-gradient(180deg, rgba(0, 255, 136, 0.4), rgba(0, 255, 136, 0.1));
+   319→            color: var(--green);
+   320→            font-weight: bold;
+   321→        }
+   322→
+   323→        .trust-threshold {
+   324→            position: absolute;
+   325→            top: -3px;
+   326→            bottom: -3px;
+   327→            width: 2px;
+   328→            background: var(--amber);
+   329→            box-shadow: 0 0 8px var(--amber);
+   330→            z-index: 2;
+   331→        }
+   332→
+   333→        .trust-value {
+   334→            text-align: center;
+   335→            font-size: 24px;
+   336→            font-weight: bold;
+   337→        }
+   338→
+   339→        .trust-value.verified { color: var(--green); }
+   340→        .trust-value.unverified { color: var(--amber); }
+   341→
+   342→        /* ── Verdict ── */
+   343→        .verdict-badge {
+   344→            text-align: center;
+   345→            padding: 10px;
+   346→            border: 2px solid;
+   347→            font-size: 11px;
+   348→            font-weight: bold;
+   349→            letter-spacing: 1px;
+   350→            margin: 8px;
+   351→            animation: pulse 2s infinite;
+   352→            border-radius: 2px;
+   353→        }
+   354→
+   355→        .verdict-badge.verified {
+   356→            border-color: var(--green);
+   357→            color: var(--green);
+   358→            background: rgba(0, 255, 136, 0.08);
+   359→        }
+   360→
+   361→        .verdict-badge.unconfirmed {
+   362→            border-color: var(--amber);
+   363→            color: var(--amber);
+   364→            background: rgba(255, 184, 0, 0.08);
+   365→        }
+   366→
+   367→        .verdict-badge.awaiting {
+   368→            border-color: var(--dim);
+   369→            color: var(--dim);
+   370→            background: rgba(74, 98, 112, 0.08);
+   371→        }
+   372→
+   373→        @keyframes pulse {
+   374→            0%, 100% { opacity: 1; }
+   375→            50% { opacity: 0.85; }
+   376→        }
+   377→
+   378→        /* ── Evidence List ── */
+   379→        .evidence-list-container {
+   380→            background: var(--bg);
+   381→            border: 1px solid var(--line);
+   382→            border-radius: 4px;
+   383→            flex: 1;
+   384→            overflow-y: auto;
+   385→            padding: 8px;
+   386→            margin: 8px;
+   387→            min-height: 120px;
+   388→            max-height: 180px;
+   389→        }
+   390→
+   391→        .evidence-item {
+   392→            background: rgba(0, 255, 136, 0.04);
+   393→            border: 1px solid rgba(0, 255, 136, 0.2);
+   394→            border-radius: 4px;
+   395→            padding: 6px;
+   396→            margin-bottom: 6px;
+   397→        }
+   398→
+   399→        .evidence-type {
+   400→            font-size: 9px;
+   401→            font-weight: bold;
+   402→            color: var(--cyan);
+   403→            margin-bottom: 2px;
+   404→        }
+   405→
+   406→        .evidence-value {
+   407→            font-size: 9px;
+   408→            color: var(--fg);
+   409→            margin-bottom: 4px;
+   410→        }
+   411→
+   412→        .evidence-attestation {
+   413→            font-size: 7px;
+   414→            color: var(--dim);
+   415→            word-break: break-all;
+   416→            border-top: 1px dashed var(--line);
+   417→            padding-top: 4px;
+   418→        }
+   419→
+   420→        /* ── Event Log ── */
+   421→        .log-container {
+   422→            background: var(--bg);
+   423→            border: 1px solid var(--line);
+   424→            border-radius: 4px;
+   425→            height: 120px;
+   426→            overflow-y: auto;
+   427→            padding: 6px;
+   428→            font-size: 8px;
+   429→            line-height: 1.6;
+   430→            margin: 8px;
+   431→        }
+   432→
+   433→        .log-entry {
+   434→            border-bottom: 1px solid rgba(26, 39, 50, 0.4);
+   435→            padding: 1px 0;
+   436→            display: flex;
+   437→            gap: 4px;
+   438→            white-space: nowrap;
+   439→            overflow: hidden;
+   440→            text-overflow: ellipsis;
+   441→        }
+   442→
+   443→        .log-entry .time { color: var(--dim); flex-shrink: 0; }
+   444→        .log-entry .level { font-weight: bold; flex-shrink: 0; width: 36px; }
+   445→        .log-entry .msg { overflow: hidden; text-overflow: ellipsis; }
+   446→
+   447→        .level.INFO { color: var(--cyan); }
+   448→        .level.ALERT { color: var(--amber); }
+   449→        .level.CRITICAL { color: var(--red); }
+   450→        .level.SUCCESS { color: var(--green); }
+   451→
+   452→        /* ── Toast ── */
+   453→        .toast {
+   454→            position: fixed;
+   455→            top: 12px;
+   456→            right: 12px;
+   457→            background: var(--panel);
+   458→            border: 1px solid var(--cyan);
+   459→            border-left: 3px solid var(--cyan);
+   460→            padding: 10px 14px;
+   461→            font-size: 10px;
+   462→            z-index: 1000;
+   463→            transform: translateX(120%);
+   464→            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+   465→            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+   466→            max-width: 280px;
+   467→            pointer-events: none;
+   468→        }
+   469→
+   470→        .toast.show { transform: translateX(0); }
+   471→        .toast.success { border-color: var(--green); border-left-color: var(--green); }
+   472→        .toast.error { border-color: var(--red); border-left-color: var(--red); }
+   473→        .toast.warning { border-color: var(--amber); border-left-color: var(--amber); }
+   474→
+   475→        /* ── Orientation Lock Banner ── */
+   476→        .rotate-banner {
+   477→            position: fixed;
+   478→            top: 0;
+   479→            left: 0;
+   480→            right: 0;
+   481→            background: var(--amber);
+   482→            color: var(--bg);
+   483→            text-align: center;
+   484→            padding: 10px;
+   485→            font-size: 12px;
+   486→            font-weight: bold;
+   487→            z-index: 9999;
+   488→            display: none;
+   489→        }
+   490→
+   491→        .rotate-banner.show {
+   492→            display: block;
+   493→        }
+   494→    </style>
+   495→</head>
+   496→<body>
+   497→    <div class="rotate-banner" id="rotate-banner">🔄 Rotate your phone to landscape for the best experience</div>
+   498→
+   499→    <div class="mobile-grid" id="mobile-grid">
+   500→        <!-- LEFT: Controls -->
+   501→        <div class="panel">
+   502→            <div class="panel-header">
+   503→                <h1>CONTROL</h1>
+   504→                <span class="status-chip">ACTIVE</span>
+   505→            </div>
+   506→            
+   507→            <div class="panel-body">
+   508→                <div class="btn-group">
+   509→                    <button class="command-btn" id="simulate-leak-btn">⚡ INJECT LEAK</button>
+   510→                    <button class="command-btn danger" id="blast-btn">💥 MINING BLAST</button>
+   511→                    <button class="command-btn danger" id="reset-btn">🔄 RESET</button>
+   512→                    <button class="command-btn deploy" id="deploy-btn">📡 DEPLOY</button>
+   513→                </div>
+   514→
+   515→                <!-- Tilt Mode Toggle -->
+   516→                <div class="tilt-toggle">
+   517→                    <span class="toggle-label">TILT MODE</span>
+   518→                    <div class="toggle-switch" id="tilt-toggle" onclick="toggleTiltMode()">
+   519→                        <div class="toggle-knob"></div>
+   520→                    </div>
+   521→                </div>
+   522→            </div>
+   523→
+   524→            <div class="panel-header" style="border-top:1px solid var(--line);">
+   525→                <h1 style="color:var(--green);">LOG</h1>
+   526→                <span class="status-chip" style="border-color:var(--green);color:var(--green);">LIVE</span>
+   527→            </div>
+   528→            <div class="log-container" id="event-log">
+   529→                <div class="log-entry">
+   530→                    <span class="time">[00:00]</span>
+   531→                    <span class="level INFO">INFO</span>
+   532→                    <span class="msg">AIR KERNEL booted</span>
+   533→                </div>
+   534→            </div>
+   535→        </div>
+   536→
+   537→        <!-- CENTER: 3D Viewport -->
+   538→        <div class="panel viewport-3d">
+   539→            <canvas id="three-canvas"></canvas>
+   540→            
+   541→            <div class="hud-overlay">
+   542→                <div class="hud-title">LIVE TELEMETRY</div>
+   543→                <div class="hud-stat">
+   544→                    <span class="label">Flow:</span>
+   545→                    <span class="value normal" id="hud-flow">97.0 L/s</span>
+   546→                </div>
+   547→                <div class="hud-stat">
+   548→                    <span class="label">Press:</span>
+   549→                    <span class="value normal" id="hud-pressure">48.4 m</span>
+   550→                </div>
+   551→                <div class="hud-stat">
+   552→                    <span class="label">Status:</span>
+   553→                    <span class="value normal" id="hud-status">NOMINAL</span>
+   554→                </div>
+   555→            </div>
+   556→
+   557→            <div class="tilt-indicator" id="tilt-indicator">📱 TILT MODE ACTIVE</div>
+   558→        </div>
+   559→
+   560→        <!-- RIGHT: EIS + Evidence -->
+   561→        <div class="panel">
+   562→            <div class="panel-header">
+   563→                <h1>EIS v1.0</h1>
+   564→                <span class="status-chip">ENGINE</span>
+   565→            </div>
+   566→            
+   567→            <div class="panel-body" style="display:flex;flex-direction:column;gap:8px;">
+   568→                <div class="trust-gauge-container">
+   569→                    <div class="gauge-title">HYDRO-BAYESIAN POSTERIOR</div>
+   570→                    <div class="hud-stat">
+   571→                        <span class="label">Posterior Peak:</span>
+   572→                        <span class="value normal" id="bayes-peak">0.0%</span>
+   573→                    </div>
+   574→                    <div class="hud-stat">
+   575→                        <span class="label">95% Credible Radius:</span>
+   576→                        <span class="value normal" id="bayes-radius">8,485m</span>
+   577→                    </div>
+   578→                    <div class="hud-stat">
+   579→                        <span class="label">Blast Samples Filtered:</span>
+   580→                        <span class="value normal" id="bayes-filtered">0</span>
+   581→                    </div>
+   582→                </div>
+   583→
+   584→                <div class="trust-gauge-container">
+   585→                    <div class="gauge-title">TRUST SCORE</div>
+   586→                    <div class="trust-bar" id="trust-bar">
+   587→                        <div class="trust-segment" style="width:30%;" id="seg-flow">
+   588→                            <span>FLOW</span>
+   589→                        </div>
+   590→                        <div class="trust-segment" style="width:20%;" id="seg-pressure">
+   591→                            <span>PRESS</span>
+   592→                        </div>
+   593→                        <div class="trust-segment" style="width:50%;" id="seg-field">
+   594→                            <span>FIELD</span>
+   595→                        </div>
+   596→                        <div class="trust-threshold" style="left:70%;"></div>
+   597→                    </div>
+   598→                    <div class="trust-value" id="trust-value">0.00</div>
+   599→                </div>
+   600→
+   601→                <div class="verdict-badge awaiting" id="verdict-badge">AWAITING</div>
+   602→
+   603→                <div class="gauge-title" style="margin-top:8px;">EVIDENCE</div>
+   604→                <div class="evidence-list-container" id="evidence-list">
+   605→                    <div style="color:var(--dim);font-size:9px;text-align:center;padding:10px;">
+   606→                        No evidence yet
+   607→                    </div>
+   608→                </div>
+   609→
+   610→                <div class="gauge-title" style="margin-top:8px;">DECISION LAYER (β-BINOMIAL)</div>
+   611→                <div style="margin:0 8px 8px;">
+   612→                    <button class="command-btn" id="risk-btn" style="margin-bottom:6px;">RUN RISK ANALYSIS</button>
+   613→                    <div id="risk-output" style="font-size:9px;color:var(--dim);line-height:1.5;">Not yet run</div>
+   614→                </div>
+   615→            </div>
+   616→        </div>
+   617→    </div>
+   618→
+   619→    <!-- Toast -->
+   620→    <div class="toast" id="toast"></div>
+   621→
+   622→    <!-- Three.js -->
+   623→    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+   624→    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+   625→    
+   626→    <script>
+   627→        // ===========================================================================
+   628→        //  VVU AIR KERNEL — MOBILE TILT COMMAND CENTER
+   629→        //  Uses DeviceOrientation API to control the 3D camera
+   630→        //  Requires HTTPS or localhost for iOS permission
+   631→        // ===========================================================================
+   632→
+   633→        // ---------- System State ----------
+   634→        const state = {
+   635→            baselineFlow: 97.0,
+   636→            baselinePressure: 48.4,
+   637→            currentFlow: 97.0,
+   638→            currentPressure: 48.4,
+   639→            leakActive: false,
+   640→            evidence: [],
+   641→            trustScore: 0.0,
+   642→            verdict: 'AWAITING_EVIDENCE',
+   643→            tiltEnabled: false,
+   644→            lastPermissionRequest: 0,
+   645→            trueLeak: null,       // hidden ground-truth {x,z,q} — blind fault injection
+   646→            blastActive: false,
+   647→            blastFiltered: 0,
+   648→            verifiedLogged: false,
+   649→            bayesTicks: 0,
+   650→            bayesInterval: null,
+   651→            map: { x: 0, z: 0 },
+   652→            posteriorPeak: 0,
+   653→            credibleRadiusM: 0,
+   654→        };
+   655→
+   656→        // ===========================================================================
+   657→        //  HYDRO-BAYESIAN KERNEL (HBK)
+   658→        //  Sequential Bayesian state estimation over a discrete location grid:
+   659→        //    P(S_t | O_1:t) ∝ P(O_t | S_t) · P(S_t | S_t-1)
+   660→        //  Location is inferred from distance-attenuated acoustic/pressure
+   661→        //  amplitude at fixed listening taps; leak magnitude is profiled from
+   662→        //  the live flow surplus. Mining-blast noise is handled as a Poisson
+   663→        //  mixture and down-weighted (not excluded) to suppress false positives.
+   664→        // ===========================================================================
+   665→        const GRID_N = 32;                 // 32x32 candidate-location grid
+   666→        const DOMAIN_HALF = 4;              // scene units, matches DMA boundary [-4,4]
+   667→        const CELL_SIZE = (2 * DOMAIN_HALF) / GRID_N;
+   668→        const METERS_PER_UNIT = 1500;       // scene-unit -> real-world meters
+   669→        const INITIAL_RADIUS_M = DOMAIN_HALF * Math.SQRT2 * METERS_PER_UNIT;
+   670→
+   671→        let posterior = new Float64Array(GRID_N * GRID_N).fill(1 / (GRID_N * GRID_N));
+   672→
+   673→        // Fixed listening taps (reuse existing pipe/sensor geometry positions)
+   674→        const sensorNodes = [
+   675→            { name: 'FLOW', x: -2, z: 0 },
+   676→            { name: 'PRESS', x: 2, z: 0 },
+   677→            { name: 'BR_N', x: 0, z: 4 },
+   678→            { name: 'BR_S', x: 0, z: -4 },
+   679→        ];
+   680→
+   681→        function cellCenter(i, j) {
+   682→            return {
+   683→                x: -DOMAIN_HALF + (i + 0.5) * CELL_SIZE,
+   684→                z: -DOMAIN_HALF + (j + 0.5) * CELL_SIZE
+   685→            };
+   686→        }
+   687→
+   688→        // Gaussian noise via Box-Muller
+   689→        function gaussianNoise(mean, sigma) {
+   690→            const u = 1 - Math.random(), v = Math.random();
+   691→            return mean + sigma * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+   692→        }
+   693→
+   694→        // Marsaglia-Tsang gamma sampler (for Beta-Binomial decision layer)
+   695→        function sampleGamma(shape) {
+   696→            if (shape < 1) {
+   697→                const u = Math.random();
+   698→                return sampleGamma(1 + shape) * Math.pow(u, 1 / shape);
+   699→            }
+   700→            const d = shape - 1 / 3;
+   701→            const c = 1 / Math.sqrt(9 * d);
+   702→            while (true) {
+   703→                let x, v;
+   704→                do {
+   705→                    x = gaussianNoise(0, 1);
+   706→                    v = 1 + c * x;
+   707→                } while (v <= 0);
+   708→                v = v * v * v;
+   709→                const u = Math.random();
+   710→                if (u < 1 - 0.0331 * x * x * x * x) return d * v;
+   711→                if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+   712→            }
+   713→        }
+   714→        function sampleBeta(a, b) {
+   715→            const x = sampleGamma(a), y = sampleGamma(b);
+   716→            return x / (x + y);
+   717→        }
+   718→
+   719→        // Physical forward model: predicted signal amplitude at a listening
+   720→        // tap given a candidate leak location & magnitude (inverse-square decay)
+   721→        function predictedAmplitude(cx, cz, q, sensor) {
+   722→            const dx = cx - sensor.x, dz = cz - sensor.z;
+   723→            const d2 = dx * dx + dz * dz;
+   724→            const decay = 2.2;
+   725→            return q * 3.2 * Math.exp(-d2 / (2 * decay * decay));
+   726→        }
+   727→
+   728→        function simulateObservations() {
+   729→            const obs = {};
+   730→            const q = state.trueLeak ? state.trueLeak.q : 0;
+   731→            const tx = state.trueLeak ? state.trueLeak.x : 0;
+   732→            const tz = state.trueLeak ? state.trueLeak.z : 0;
+   733→            sensorNodes.forEach(s => {
+   734→                let val = predictedAmplitude(tx, tz, q, s) + gaussianNoise(0, 0.15);
+   735→                if (state.blastActive) {
+   736→                    // Poisson-arriving impulse mixture (mining blast transients)
+   737→                    if (Math.random() < 0.4) val += 1.5 + Math.random() * 1.5;
+   738→                }
+   739→                obs[s.name] = val;
+   740→            });
+   741→            return obs;
+   742→        }
+   743→
+   744→        // Sequential Bayesian update: posterior(x) ∝ prior(x) · L(O_t | x)
+   745→        // Magnitude q is profiled from the live flow surplus each tick.
+   746→        function bayesianUpdate(obs) {
+   747→            const qHat = Math.max(0.5, state.currentFlow - state.baselineFlow);
+   748→            // Mixture-noise robustness: widen (down-weight) the likelihood
+   749→            // during a blast instead of hard-excluding samples — this is the
+   750→            // FPR-suppression mixture from the paper.
+   751→            const sigma = state.blastActive ? 0.9 : 0.18;
+   752→            const newPosterior = new Float64Array(GRID_N * GRID_N);
+   753→            let total = 0;
+   754→
+   755→            for (let i = 0; i < GRID_N; i++) {
+   756→                for (let j = 0; j < GRID_N; j++) {
+   757→                    const idx = i * GRID_N + j;
+   758→                    const { x, z } = cellCenter(i, j);
+   759→                    let logL = 0;
+   760→                    sensorNodes.forEach(s => {
+   761→                        const pred = predictedAmplitude(x, z, qHat, s);
+   762→                        const diff = obs[s.name] - pred;
+   763→                        logL += -(diff * diff) / (2 * sigma * sigma);
+   764→                    });
+   765→                    const val = posterior[idx] * Math.exp(logL);
+   766→                    newPosterior[idx] = val;
+   767→                    total += val;
+   768→                }
+   769→            }
+   770→            if (total > 0) {
+   771→                for (let k = 0; k < newPosterior.length; k++) newPosterior[k] /= total;
+   772→            }
+   773→            posterior = newPosterior;
+   774→        }
+   775→
+   776→        // MAP estimate + 95% credible radius (smallest radius around the MAP
+   777→        // cell containing 95% of the posterior mass)
+   778→        function computeMapAndRadius() {
+   779→            let maxP = -1, mi = 0, mj = 0;
+   780→            for (let i = 0; i < GRID_N; i++) {
+   781→                for (let j = 0; j < GRID_N; j++) {
+   782→                    const idx = i * GRID_N + j;
+   783→                    if (posterior[idx] > maxP) { maxP = posterior[idx]; mi = i; mj = j; }
+   784→                }
+   785→            }
+   786→            const mapCenter = cellCenter(mi, mj);
+   787→            state.map = mapCenter;
+   788→            state.posteriorPeak = maxP;
+   789→
+   790→            const cells = [];
+   791→            for (let i = 0; i < GRID_N; i++) {
+   792→                for (let j = 0; j < GRID_N; j++) {
+   793→                    const idx = i * GRID_N + j;
+   794→                    const c = cellCenter(i, j);
+   795→                    cells.push({ p: posterior[idx], d: Math.hypot(c.x - mapCenter.x, c.z - mapCenter.z) });
+   796→                }
+   797→            }
+   798→            cells.sort((a, b) => b.p - a.p);
+   799→            let cum = 0, radius = 0;
+   800→            for (const c of cells) {
+   801→                cum += c.p;
+   802→                if (c.d > radius) radius = c.d;
+   803→                if (cum >= 0.95) break;
+   804→            }
+   805→            state.credibleRadiusM = radius * METERS_PER_UNIT;
+   806→            return { mapCenter, radius };
+   807→        }
+   808→
+   809→        // ---------- Three.js Setup ----------
+   810→        const canvas = document.getElementById('three-canvas');
+   811→        const scene = new THREE.Scene();
+   812→        scene.background = new THREE.Color(0x020508);
+   813→        
+   814→        // Stars
+   815→        const starsGeo = new THREE.BufferGeometry();
+   816→        const starsVertices = [];
+   817→        for (let i = 0; i < 1000; i++) {
+   818→            starsVertices.push(
+   819→                (Math.random() - 0.5) * 60,
+   820→                (Math.random() - 0.5) * 60,
+   821→                (Math.random() - 0.5) * 60
+   822→            );
+   823→        }
+   824→        starsGeo.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+   825→        const stars = new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0x1a2732, size: 0.03 }));
+   826→        scene.add(stars);
+   827→
+   828→        const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 100);
+   829→        camera.position.set(12, 10, 16);
+   830→        camera.lookAt(0, 0, 0);
+   831→
+   832→        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+   833→        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+   834→        renderer.shadowMap.enabled = true;
+   835→
+   836→        const controls = new THREE.OrbitControls(camera, canvas);
+   837→        controls.enableDamping = true;
+   838→        controls.dampingFactor = 0.08;
+   839→        controls.maxPolarAngle = Math.PI / 2.1;
+   840→        controls.minDistance = 4;
+   841→        controls.maxDistance = 30;
+   842→        controls.enablePan = false; // Disable on mobile for simplicity
+   843→
+   844→        // Lighting
+   845→        scene.add(new THREE.AmbientLight(0x334455, 0.8));
+   846→        
+   847→        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+   848→        dirLight.position.set(8, 12, 6);
+   849→        dirLight.castShadow = true;
+   850→        scene.add(dirLight);
+   851→
+   852→        const cyanLight = new THREE.PointLight(0x00d4ff, 1.2, 20);
+   853→        cyanLight.position.set(-5, 2, 4);
+   854→        scene.add(cyanLight);
+   855→
+   856→        const greenLight = new THREE.PointLight(0x00ff88, 0.8, 15);
+   857→        greenLight.position.set(5, 2, -4);
+   858→        scene.add(greenLight);
+   859→
+   860→        // Ground grid
+   861→        const grid = new THREE.GridHelper(20, 20, 0x1a2732, 0x111a22);
+   862→        scene.add(grid);
+   863→
+   864→        // Pipe Network
+   865→        const pipeMat = new THREE.MeshPhongMaterial({
+   866→            color: 0x2a3d5c,
+   867→            specular: 0x00d4ff,
+   868→            shininess: 30,
+   869→            transparent: true,
+   870→            opacity: 0.85
+   871→        });
+   872→
+   873→        const pipeGroup = new THREE.Group();
+   874→        scene.add(pipeGroup);
+   875→
+   876→        function createPipe(points, radius = 0.15) {
+   877→            const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
+   878→            const geo = new THREE.TubeGeometry(curve, 48, radius, 8, false);
+   879→            const mesh = new THREE.Mesh(geo, pipeMat);
+   880→            mesh.castShadow = true;
+   881→            pipeGroup.add(mesh);
+   882→            return mesh;
+   883→        }
+   884→
+   885→        // Main trunk
+   886→        createPipe([[-5, 0, 0], [-2, 0, 0], [0, 0, 0], [2, 0, 0], [5, 0, 0]], 0.2);
+   887→        
+   888→        // DMA branches
+   889→        createPipe([[0, 0, 0], [0, 0, 2], [0, 0, 4]], 0.15);
+   890→        createPipe([[0, 0, 0], [0, 0, -2], [0, 0, -4]], 0.15);
+   891→        createPipe([[-2, 0, 0], [-2, 0, 1.5], [-2, 0, 3]], 0.12);
+   892→        createPipe([[2, 0, 0], [2, 0, -1.5], [2, 0, -3]], 0.12);
+   893→
+   894→        // Valve
+   895→        const valveBody = new THREE.Mesh(
+   896→            new THREE.CylinderGeometry(0.4, 0.4, 0.3, 12),
+   897→            new THREE.MeshPhongMaterial({ color: 0xffb800, metalness: 0.7, roughness: 0.3 })
+   898→        );
+   899→        valveBody.position.set(0, 0, 0);
+   900→        scene.add(valveBody);
+   901→
+   902→        const valveWheel = new THREE.Mesh(
+   903→            new THREE.TorusGeometry(0.3, 0.04, 8, 12),
+   904→            new THREE.MeshPhongMaterial({ color: 0x444444, metalness: 0.8 })
+   905→        );
+   906→        valveWheel.rotation.x = Math.PI / 2;
+   907→        valveWheel.position.y = 0.4;
+   908→        scene.add(valveWheel);
+   909→
+   910→        // Sensors
+   911→        const sensorGeo = new THREE.OctahedronGeometry(0.25);
+   912→        const flowSensor = new THREE.Mesh(sensorGeo, new THREE.MeshPhongMaterial({ 
+   913→            color: 0x00d4ff, emissive: 0x004d66, metalness: 0.5 
+   914→        }));
+   915→        flowSensor.position.set(-2, 0.6, 0);
+   916→        scene.add(flowSensor);
+   917→
+   918→        const pressureSensor = new THREE.Mesh(sensorGeo, new THREE.MeshPhongMaterial({ 
+   919→            color: 0xff4d4d, emissive: 0x4d0000, metalness: 0.5 
+   920→        }));
+   921→        pressureSensor.position.set(2, 0.6, 0);
+   922→        scene.add(pressureSensor);
+   923→
+   924→        // Leak particles
+   925→        const leakGroup = new THREE.Group();
+   926→        leakGroup.visible = false;
+   927→
+   928→        for (let i = 0; i < 30; i++) {
+   929→            const particle = new THREE.Mesh(
+   930→                new THREE.SphereGeometry(0.05, 4, 4),
+   931→                new THREE.MeshPhongMaterial({ 
+   932→                    color: 0x00ff88, 
+   933→                    emissive: 0x004d33,
+   934→                    transparent: true,
+   935→                    opacity: 0.8
+   936→                })
+   937→            );
+   938→            leakGroup.add(particle);
+   939→        }
+   940→        leakGroup.position.set(1, 0.2, 0);
+   941→        scene.add(leakGroup);
+   942→
+   943→        // Flow particles
+   944→        const flowParticles = [];
+   945→        const flowParticleGeo = new THREE.SphereGeometry(0.04, 4, 4);
+   946→        const flowParticleMat = new THREE.MeshBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0.6 });
+   947→
+   948→        for (let i = 0; i < 20; i++) {
+   949→            const particle = new THREE.Mesh(flowParticleGeo, flowParticleMat);
+   950→            particle.position.set(-5 + (i * 0.5), 0, 0);
+   951→            flowParticles.push(particle);
+   952→            scene.add(particle);
+   953→        }
+   954→
+   955→        // DMA Boundary
+   956→        const dmaBoundary = new THREE.LineLoop(
+   957→            new THREE.BufferGeometry().setFromPoints([
+   958→                new THREE.Vector3(-4, 0, -4),
+   959→                new THREE.Vector3(-4, 0, 4),
+   960→                new THREE.Vector3(4, 0, 4),
+   961→                new THREE.Vector3(4, 0, -4)
+   962→            ]),
+   963→            new THREE.LineBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0.3 })
+   964→        );
+   965→        scene.add(dmaBoundary);
+   966→
+   967→        // ---------- Bayesian Posterior Heatmap ----------
+   968→        const heatGeo = new THREE.PlaneGeometry(CELL_SIZE * 0.92, CELL_SIZE * 0.92);
+   969→        heatGeo.rotateX(-Math.PI / 2);
+   970→        const heatMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+   971→        const heatMesh = new THREE.InstancedMesh(heatGeo, heatMat, GRID_N * GRID_N);
+   972→        heatMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(GRID_N * GRID_N * 3), 3);
+   973→        scene.add(heatMesh);
+   974→
+   975→        {
+   976→            const dummy = new THREE.Object3D();
+   977→            let hi = 0;
+   978→            for (let i = 0; i < GRID_N; i++) {
+   979→                for (let j = 0; j < GRID_N; j++) {
+   980→                    const c = cellCenter(i, j);
+   981→                    dummy.position.set(c.x, 0.01, c.z);
+   982→                    dummy.updateMatrix();
+   983→                    heatMesh.setMatrixAt(hi, dummy.matrix);
+   984→                    heatMesh.setColorAt(hi, new THREE.Color(0x000000));
+   985→                    hi++;
+   986→                }
+   987→            }
+   988→            heatMesh.instanceMatrix.needsUpdate = true;
+   989→        }
+   990→
+   991→        function updatePosteriorVisual() {
+   992→            let maxP = 0;
+   993→            for (let k = 0; k < posterior.length; k++) if (posterior[k] > maxP) maxP = posterior[k];
+   994→            const color = new THREE.Color();
+   995→            let hi = 0;
+   996→            for (let i = 0; i < GRID_N; i++) {
+   997→                for (let j = 0; j < GRID_N; j++) {
+   998→                    const norm = maxP > 0 ? posterior[hi] / maxP : 0;
+   999→                    color.setHSL(0.75 - 0.75 * norm, 1.0, 0.12 + 0.35 * norm);
+  1000→                    heatMesh.setColorAt(hi, color);
+  1001→                    hi++;
+  1002→                }
+  1003→            }
+  1004→            heatMesh.instanceColor.needsUpdate = true;
+  1005→        }
+  1006→
+  1007→        let leakMarker = null;
+  1008→        function revealLeakMarker(pos) {
+  1009→            if (leakMarker) scene.remove(leakMarker);
+  1010→            leakMarker = new THREE.Mesh(
+  1011→                new THREE.SphereGeometry(0.18, 12, 12),
+  1012→                new THREE.MeshPhongMaterial({ color: 0xff4d4d, emissive: 0x660000 })
+  1013→            );
+  1014→            leakMarker.position.set(pos.x, 0.3, pos.z);
+  1015→            scene.add(leakMarker);
+  1016→        }
+  1017→
+  1018→        // ---------- Device Orientation (Tilt Mode) ----------
+  1019→        let targetRotation = { x: 0, y: 0 };
+  1020→        let currentRotation = { x: 0, y: 0 };
+  1021→
+  1022→        function toggleTiltMode() {
+  1023→            state.tiltEnabled = !state.tiltEnabled;
+  1024→            
+  1025→            const toggle = document.getElementById('tilt-toggle');
+  1026→            const tiltIndicator = document.getElementById('tilt-indicator');
+  1027→            
+  1028→            toggle.classList.toggle('active');
+  1029→            
+  1030→            if (state.tiltEnabled) {
+  1031→                // Request permission for iOS
+  1032→                if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+  1033→                    DeviceOrientationEvent.requestPermission()
+  1034→                        .then(permission => {
+  1035→                            if (permission === 'granted') {
+  1036→                                window.addEventListener('deviceorientation', handleOrientation);
+  1037→                                tiltIndicator.classList.add('show');
+  1038→                                logEvent('SUCCESS', 'Tilt mode activated - gyroscope access granted');
+  1039→                                showToast('📱 Tilt your phone to explore the 3D scene', 'success');
+  1040→                            } else {
+  1041→                                state.tiltEnabled = false;
+  1042→                                toggle.classList.remove('active');
+  1043→                                logEvent('ALERT', 'Motion permission denied by user');
+  1044→                                showToast('Motion access denied - tilt mode disabled', 'error');
+  1045→                            }
+  1046→                        })
+  1047→                        .catch(err => {
+  1048→                            logEvent('ERROR', 'Permission request failed: ' + err.message);
+  1049→                        });
+  1050→                } else {
+  1051→                    // Android or older iOS
+  1052→                    window.addEventListener('deviceorientation', handleOrientation);
+  1053→                    tiltIndicator.classList.add('show');
+  1054→                    logEvent('SUCCESS', 'Tilt mode activated');
+  1055→                    showToast('📱 Tilt your phone to explore the 3D scene', 'success');
+  1056→                }
+  1057→            } else {
+  1058→                // Disable tilt
+  1059→                window.removeEventListener('deviceorientation', handleOrientation);
+  1060→                tiltIndicator.classList.remove('show');
+  1061→                logEvent('INFO', 'Tilt mode deactivated - mouse controls enabled');
+  1062→            }
+  1063→        }
+  1064→
+  1065→        function handleOrientation(event) {
+  1066→            if (!state.tiltEnabled) return;
+  1067→            
+  1068→            // Normalize values (convert to radians for camera)
+  1069→            const beta = event.beta;  // Front-to-back tilt (0 to 180, 90 = flat)
+  1070→            const gamma = event.gamma; // Left-to-right tilt (-90 to 90, 0 = flat)
+  1071→            
+  1072→            // Convert to camera rotations
+  1073→            // Pitch: beta - 90 (so flat = 0)
+  1074→            // Roll: gamma
+  1075→            targetRotation.x = THREE.MathUtils.degToRad(beta - 90);
+  1076→            targetRotation.y = THREE.MathUtils.degToRad(gamma);
+  1077→        }
+  1078→
+  1079→        // ---------- Animation Loop ----------
+  1080→        let time = 0;
+  1081→        function animate() {
+  1082→            requestAnimationFrame(animate);
+  1083→            time += 0.016;
+  1084→
+  1085→            // Flow particles
+  1086→            flowParticles.forEach((particle, i) => {
+  1087→                particle.position.x = -5 + ((i * 0.5 + time * 2.5) % 10);
+  1088→                particle.position.z = Math.sin(time * 1.5 + i) * 0.08;
+  1089→            });
+  1090→
+  1091→            // Leak particles
+  1092→            if (state.leakActive) {
+  1093→                leakGroup.children.forEach((particle, i) => {
+  1094→                    const y = (i * 0.12 + time * 1.8) % 1.5;
+  1095→                    particle.position.y = y;
+  1096→                    particle.position.x = Math.sin(time * 2.5 + i) * 0.2 * (1 - y / 1.5);
+  1097→                    particle.position.z = Math.cos(time * 2.5 + i) * 0.2 * (1 - y / 1.5);
+  1098→                    particle.material.opacity = 0.8 * (1 - y / 1.5);
+  1099→                });
+  1100→                leakGroup.visible = true;
+  1101→            } else {
+  1102→                leakGroup.visible = false;
+  1103→            }
+  1104→
+  1105→            // Rotating sensors
+  1106→            flowSensor.rotation.y += 0.02;
+  1107→            pressureSensor.rotation.y += 0.02;
+  1108→            valveWheel.rotation.z += 0.01;
+  1109→
+  1110→            // Sensor color states
+  1111→            if (state.currentFlow > state.baselineFlow * 1.10) {
+  1112→                flowSensor.material.color.set(0xffb800);
+  1113→                flowSensor.material.emissive.set(0x4d3300);
+  1114→            } else if (state.currentFlow < 0) {
+  1115→                flowSensor.material.color.set(0xff4d4d);
+  1116→                flowSensor.material.emissive.set(0x4d0000);
+  1117→            } else {
+  1118→                flowSensor.material.color.set(0x00d4ff);
+  1119→                flowSensor.material.emissive.set(0x004d66);
+  1120→            }
+  1121→
+  1122→            // Apply tilt mode
+  1123→            if (state.tiltEnabled) {
+  1124→                // Smooth interpolation
+  1125→                currentRotation.x += (targetRotation.x - currentRotation.x) * 0.1;
+  1126→                currentRotation.y += (targetRotation.y - currentRotation.y) * 0.1;
+  1127→                
+  1128→                // Apply to camera (limited range)
+  1129→                camera.position.x = 12 * Math.sin(currentRotation.y) * Math.cos(currentRotation.x);
+  1130→                camera.position.y = 12 * Math.sin(currentRotation.x) * 0.5;
+  1131→                camera.position.z = 12 * Math.cos(currentRotation.y) * Math.cos(currentRotation.x);
+  1132→                camera.lookAt(0, 0, 0);
+  1133→            } else {
+  1134→                controls.update();
+  1135→            }
+  1136→
+  1137→            renderer.render(scene, camera);
+  1138→        }
+  1139→
+  1140→        // ---------- Utility Functions ----------
+  1141→        function logEvent(level, message) {
+  1142→            const log = document.getElementById('event-log');
+  1143→            const now = new Date();
+  1144→            const timeStr = `[${now.toISOString().substr(11, 8)}]`;
+  1145→            const entry = document.createElement('div');
+  1146→            entry.className = 'log-entry';
+  1147→            entry.innerHTML = `<span class="time">${timeStr}</span><span class="level ${level}">${level}</span><span class="msg">${message}</span>`;
+  1148→            log.insertBefore(entry, log.firstChild);
+  1149→            while (log.children.length > 30) log.removeChild(log.lastChild);
+  1150→        }
+  1151→
+  1152→        function showToast(message, type = 'info') {
+  1153→            const toast = document.getElementById('toast');
+  1154→            toast.textContent = message;
+  1155→            toast.className = `toast ${type}`;
+  1156→            toast.classList.add('show');
+  1157→            setTimeout(() => toast.classList.remove('show'), 3000);
+  1158→        }
+  1159→
+  1160→        function updateHUD() {
+  1161→            document.getElementById('hud-flow').textContent = state.currentFlow.toFixed(1) + ' L/s';
+  1162→            document.getElementById('hud-pressure').textContent = state.currentPressure.toFixed(1) + ' m';
+  1163→            
+  1164→            const status = document.getElementById('hud-status');
+  1165→            if (state.currentFlow < 0) {
+  1166→                status.textContent = 'IMPOSSIBLE';
+  1167→                status.className = 'value critical';
+  1168→            } else if (state.currentFlow > state.baselineFlow * 1.10) {
+  1169→                status.textContent = 'ANOMALY';
+  1170→                status.className = 'value alert';
+  1171→            } else {
+  1172→                status.textContent = 'NOMINAL';
+  1173→                status.className = 'value normal';
+  1174→            }
+  1175→        }
+  1176→
+  1177→        // ---------- EIS v1.0 Engine ----------
+  1178→        function updateEIS() {
+  1179→            const flowDev = (state.currentFlow - state.baselineFlow) / state.baselineFlow * 100;
+  1180→            const pressureDrop = state.baselinePressure - state.currentPressure;
+  1181→
+  1182→            // Reset segments
+  1183→            document.getElementById('seg-flow').classList.remove('earned');
+  1184→            document.getElementById('seg-pressure').classList.remove('earned');
+  1185→            document.getElementById('seg-field').classList.remove('earned');
+  1186→
+  1187→            let trust = 0;
+  1188→
+  1189→            if (flowDev > 10) {
+  1190→                trust += 0.30;
+  1191→                document.getElementById('seg-flow').classList.add('earned');
+  1192→            }
+  1193→
+  1194→            if (pressureDrop > 0.5 && state.currentPressure < 47.0) {
+  1195→                trust += 0.20;
+  1196→                document.getElementById('seg-pressure').classList.add('earned');
+  1197→            }
+  1198→
+  1199→            if (state.evidence.length > 0) {
+  1200→                trust += Math.min(state.evidence.length * 0.25, 0.50);
+  1201→                document.getElementById('seg-field').classList.add('earned');
+  1202→            }
+  1203→
+  1204→            state.trustScore = Math.round(trust * 100) / 100;
+  1205→
+  1206→            const trustValue = document.getElementById('trust-value');
+  1207→            trustValue.textContent = state.trustScore.toFixed(2);
+  1208→            
+  1209→            const verdictBadge = document.getElementById('verdict-badge');
+  1210→            if (state.trustScore >= 0.7) {
+  1211→                verdictBadge.textContent = 'VERIFIED';
+  1212→                verdictBadge.className = 'verdict-badge verified';
+  1213→                trustValue.className = 'trust-value verified';
+  1214→                showToast('✔ VERIFIED CANDIDATE DETECTED', 'success');
+  1215→            } else if (state.trustScore > 0.0) {
+  1216→                verdictBadge.textContent = 'INSUFFICIENT';
+  1217→                verdictBadge.className = 'verdict-badge unconfirmed';
+  1218→                trustValue.className = 'trust-value unverified';
+  1219→            } else {
+  1220→                verdictBadge.textContent = 'AWAITING';
+  1221→                verdictBadge.className = 'verdict-badge awaiting';
+  1222→                trustValue.className = 'trust-value';
+  1223→            }
+  1224→        }
+  1225→
+  1226→        // ---------- Evidence ----------
+  1227→        function addFieldEvidence(type, id, value) {
+  1228→            const evidence = {
+  1229→                type,
+  1230→                id,
+  1231→                value,
+  1232→                attestation: '0x' + Array.from(crypto.getRandomValues(new Uint8Array(5)))
+  1233→                    .map(b => b.toString(16).padStart(2, '0')).join('') + '...'
+  1234→            };
+  1235→            
+  1236→            state.evidence.push(evidence);
+  1237→            
+  1238→            const list = document.getElementById('evidence-list');
+  1239→            if (list.querySelector('div[style*="No evidence"]')) {
+  1240→                list.innerHTML = '';
+  1241→            }
+  1242→            
+  1243→            const item = document.createElement('div');
+  1244→            item.className = 'evidence-item';
+  1245→            item.innerHTML = `
+  1246→                <div class="evidence-type">[${type}] ${id}</div>
+  1247→                <div class="evidence-value">${value}</div>
+  1248→                <div class="evidence-attestation">${evidence.attestation}</div>
+  1249→            `;
+  1250→            list.appendChild(item);
+  1251→            
+  1252→            updateEIS();
+  1253→            logEvent('INFO', `${type} evidence linked: ${id}`);
+  1254→        }
+  1255→
+  1256→        // ---------- Inject Leak (blind fault injection + Bayesian search) ----------
+  1257→        function simulateLeak() {
+  1258→            if (state.leakActive) {
+  1259→                showToast('Leak already active', 'warning');
+  1260→                return;
+  1261→            }
+  1262→
+  1263→            state.leakActive = true;
+  1264→            state.verifiedLogged = false;
+  1265→            state.blastFiltered = 0;
+  1266→            document.getElementById('simulate-leak-btn').disabled = true;
+  1267→
+  1268→            // Hidden ground truth — the algorithm never sees this directly
+  1269→            const trueX = (Math.random() * 2 - 1) * 3.2;
+  1270→            const trueZ = (Math.random() * 2 - 1) * 3.2;
+  1271→            const trueQ = 8 + Math.random() * 10;
+  1272→            state.trueLeak = { x: trueX, z: trueZ, q: trueQ };
+  1273→            leakGroup.position.set(trueX, 0.2, trueZ);
+  1274→
+  1275→            // Reset to a flat (uninformative) prior over the full DMA — this
+  1276→            // is the "10km initial search radius" starting condition
+  1277→            posterior.fill(1 / (GRID_N * GRID_N));
+  1278→            updatePosteriorVisual();
+  1279→
+  1280→            logEvent('ALERT', `Blind leak injected. Prior search radius: ${Math.round(INITIAL_RADIUS_M)}m`);
+  1281→            showToast('Leak injected — Bayesian localization running', 'success');
+  1282→
+  1283→            state.bayesTicks = 0;
+  1284→            state.bayesInterval = setInterval(bayesTick, 400);
+  1285→        }
+  1286→
+  1287→        function bayesTick() {
+  1288→            state.bayesTicks++;
+  1289→
+  1290→            // Live hydraulic telemetry converges toward the true leak signature
+  1291→            const targetFlow = state.baselineFlow + state.trueLeak.q;
+  1292→            const targetPressure = state.baselinePressure - state.trueLeak.q * 0.18;
+  1293→            state.currentFlow += (targetFlow - state.currentFlow) * 0.35 + gaussianNoise(0, 0.4);
+  1294→            state.currentPressure += (targetPressure - state.currentPressure) * 0.35 + gaussianNoise(0, 0.08);
+  1295→            updateHUD();
+  1296→
+  1297→            // Sequential Bayesian update: P(S_t|O_1:t) ∝ P(O_t|S_t)·P(S_t|S_t-1)
+  1298→            const obs = simulateObservations();
+  1299→            bayesianUpdate(obs);
+  1300→            const { mapCenter } = computeMapAndRadius();
+  1301→            updatePosteriorVisual();
+  1302→
+  1303→            document.getElementById('bayes-peak').textContent = (state.posteriorPeak * 100).toFixed(1) + '%';
+  1304→            document.getElementById('bayes-radius').textContent = Math.round(state.credibleRadiusM).toLocaleString() + 'm';
+  1305→
+  1306→            if (state.blastActive) {
+  1307→                state.blastFiltered++;
+  1308→                document.getElementById('bayes-filtered').textContent = state.blastFiltered;
+  1309→                if (state.bayesTicks % 3 === 0) {
+  1310→                    logEvent('BAYES', 'Blast-corrupted samples down-weighted (mixture likelihood)');
+  1311→                }
+  1312→            }
+  1313→
+  1314→            updateEIS();
+  1315→
+  1316→            if (!state.verifiedLogged && state.credibleRadiusM <= 500 && state.posteriorPeak > 0.04) {
+  1317→                state.verifiedLogged = true;
+  1318→                clearInterval(state.bayesInterval);
+  1319→
+  1320→                const errM = Math.hypot(mapCenter.x - state.trueLeak.x, mapCenter.z - state.trueLeak.z) * METERS_PER_UNIT;
+  1321→                logEvent('SUCCESS', `HBK: VERIFIED_CANDIDATE. 95% credible radius ${Math.round(state.credibleRadiusM)}m ≤ 500m target`);
+  1322→                logEvent('BAYES', `Localization error vs ground truth: ${Math.round(errM)}m`);
+  1323→                revealLeakMarker(mapCenter);
+  1324→
+  1325→                addFieldEvidence('SCADA_FLOW', 'FM01', `Flow surge +${((state.trueLeak.q / state.baselineFlow) * 100).toFixed(1)}%`);
+  1326→                addFieldEvidence('SCADA_PRESS', 'PT14', `Pressure drop ${(state.baselinePressure - state.currentPressure).toFixed(1)}m`);
+  1327→                addFieldEvidence('ACOUSTIC', 'AC-07', `Posterior concentrated within 500m (95% CI)`);
+  1328→
+  1329→                document.getElementById('simulate-leak-btn').disabled = false;
+  1330→            } else if (state.bayesTicks > 150) {
+  1331→                clearInterval(state.bayesInterval);
+  1332→                logEvent('ALERT', 'Bayesian search exceeded tick budget — insufficient discriminating evidence');
+  1333→                document.getElementById('simulate-leak-btn').disabled = false;
+  1334→            }
+  1335→        }
+  1336→
+  1337→        // ---------- Reset ----------
+  1338→        function resetToBaseline() {
+  1339→            if (state.bayesInterval) clearInterval(state.bayesInterval);
+  1340→            state.leakActive = false;
+  1341→            state.trueLeak = null;
+  1342→            state.verifiedLogged = false;
+  1343→            state.blastFiltered = 0;
+  1344→            state.currentFlow = state.baselineFlow;
+  1345→            state.currentPressure = state.baselinePressure;
+  1346→            state.evidence = [];
+  1347→            state.trustScore = 0.0;
+  1348→
+  1349→            posterior.fill(1 / (GRID_N * GRID_N));
+  1350→            updatePosteriorVisual();
+  1351→            if (leakMarker) { scene.remove(leakMarker); leakMarker = null; }
+  1352→
+  1353→            document.getElementById('bayes-peak').textContent = '0.0%';
+  1354→            document.getElementById('bayes-radius').textContent = Math.round(INITIAL_RADIUS_M).toLocaleString() + 'm';
+  1355→            document.getElementById('bayes-filtered').textContent = '0';
+  1356→
+  1357→            document.getElementById('simulate-leak-btn').disabled = false;
+  1358→            document.getElementById('evidence-list').innerHTML = 
+  1359→                '<div style="color:var(--dim);font-size:9px;text-align:center;padding:10px;">No evidence yet</div>';
+  1360→            
+  1361→            updateHUD();
+  1362→            updateEIS();
+  1363→            logEvent('INFO', 'System reset to baseline. Posterior reset to uniform prior.');
+  1364→            showToast('System reset', 'info');
+  1365→        }
+  1366→
+  1367→        // ---------- Mining Blast (mixture-noise stress test) ----------
+  1368→        function simulateBlast() {
+  1369→            state.blastActive = true;
+  1370→            logEvent('ALERT', 'Mining blast transient injected (Poisson impulse train)');
+  1371→            showToast('Blast noise injected — testing FPR suppression', 'warning');
+  1372→            setTimeout(() => {
+  1373→                state.blastActive = false;
+  1374→                logEvent('SUCCESS', 'Blast transient decayed — mixture likelihood restored to nominal σ');
+  1375→            }, 3500);
+  1376→        }
+  1377→
+  1378→        // ---------- Decision Support Layer (Beta-Binomial) ----------
+  1379→        function runRiskAnalysis() {
+  1380→            const mu = 0.12, rho = 0.15; // baseline segment failure rate & intra-cluster correlation
+  1381→            const a = mu * (1 - rho) / rho;
+  1382→            const b = (1 - mu) * (1 - rho) / rho;
+  1383→
+  1384→            function simulateDMA(nSegments, trials, riskMultiplier) {
+  1385→                let fails = 0, total = 0;
+  1386→                for (let s = 0; s < nSegments; s++) {
+  1387→                    const p = Math.min(0.95, sampleBeta(a, b) * riskMultiplier);
+  1388→                    let f = 0;
+  1389→                    for (let t = 0; t < trials; t++) if (Math.random() < p) f++;
+  1390→                    fails += f; total += trials;
+  1391→                }
+  1392→                return fails / total;
+  1393→            }
+  1394→
+  1395→            const treatmentRate = simulateDMA(18, 40, 1.4); // near the detected leak zone
+  1396→            const controlRate = simulateDMA(18, 40, 1.0);
+  1397→            const rr = treatmentRate / controlRate;
+  1398→            const rd = (treatmentRate - controlRate) * 100;
+  1399→            const infoGained = state.posteriorPeak > 0 ? Math.min(1, state.posteriorPeak * GRID_N * GRID_N / 40) : 0;
+  1400→            const id = Math.max(0, Math.min(100, 55 + rr * 12 + infoGained * 20));
+  1401→
+  1402→            document.getElementById('risk-output').innerHTML =
+  1403→                `Relative Risk: <b style="color:var(--amber)">${rr.toFixed(2)}x</b><br>` +
+  1404→                `Risk Difference: <b style="color:${rd >= 0 ? 'var(--red)' : 'var(--green)'}">${rd >= 0 ? '+' : ''}${rd.toFixed(1)}%</b><br>` +
+  1405→                `Information Density: <b style="color:var(--cyan)">${id.toFixed(1)}/100</b>`;
+  1406→            logEvent('BAYES', `Risk analysis: RR=${rr.toFixed(2)}x, RD=${rd.toFixed(1)}%`);
+  1407→        }
+  1408→
+  1409→        // ---------- Deploy Attestation ----------
+  1410→        function deployAttestation() {
+  1411→            if (!state.leakActive || state.trustScore < 0.7) {
+  1412→                showToast('No verified evidence to deploy', 'error');
+  1413→                return;
+  1414→            }
+  1415→            
+  1416→            const deployBtn = document.getElementById('deploy-btn');
+  1417→            deployBtn.disabled = true;
+  1418→            deployBtn.textContent = 'SIGNING...';
+  1419→            
+  1420→            logEvent('INFO', 'ATECC608B attestation signing...');
+  1421→            
+  1422→            setTimeout(() => {
+  1423→                const signature = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(8)))
+  1424→                    .map(b => b.toString(16).padStart(2, '0')).join('') + '...';
+  1425→                
+  1426→                logEvent('SUCCESS', 'ATTESTATION DEPLOYED');
+  1427→                deployBtn.textContent = '✓ DEPLOYED';
+  1428→                deployBtn.style.background = 'var(--green)';
+  1429→                showToast('Evidence package sealed', 'success');
+  1430→            }, 2000);
+  1431→        }
+  1432→
+  1433→        // ---------- Orientation Detection ----------
+  1434→        function checkOrientation() {
+  1435→            const banner = document.getElementById('rotate-banner');
+  1436→            if (window.innerHeight > window.innerWidth) {
+  1437→                banner.classList.add('show');
+  1438→            } else {
+  1439→                banner.classList.remove('show');
+  1440→            }
+  1441→        }
+  1442→
+  1443→        // ---------- Initialize ----------
+  1444→        function initialize() {
+  1445→            // Start 3D
+  1446→            animate();
+  1447→            
+  1448→            // Initial HUD
+  1449→            updateHUD();
+  1450→            updateEIS();
+  1451→            
+  1452→            // Add initial log entry
+  1453→            logEvent('INFO', 'Mobile Tilt Command Center initialized');
+  1454→            
+  1455→            // Bind buttons
+  1456→            document.getElementById('simulate-leak-btn').addEventListener('click', simulateLeak);
+  1457→            document.getElementById('blast-btn').addEventListener('click', simulateBlast);
+  1458→            document.getElementById('reset-btn').addEventListener('click', resetToBaseline);
+  1459→            document.getElementById('deploy-btn').addEventListener('click', deployAttestation);
+  1460→            document.getElementById('risk-btn').addEventListener('click', runRiskAnalysis);
+  1461→            
+  1462→            // Tilt toggle
+  1463→            document.getElementById('tilt-toggle').addEventListener('click', toggleTiltMode);
+  1464→            
+  1465→            // Orientation detection
+  1466→            checkOrientation();
+  1467→            window.addEventListener('resize', checkOrientation);
+  1468→            
+  1469→            // Resize handling
+  1470→            function handleResize() {
+  1471→                const viewport = document.querySelector('.viewport-3d');
+  1472→                const width = viewport.clientWidth;
+  1473→                const height = viewport.clientHeight;
+  1474→                
+  1475→                camera.aspect = width / height;
+  1476→                camera.updateProjectionMatrix();
+  1477→                renderer.setSize(width, height);
+  1478→            }
+  1479→            
+  1480→            window.addEventListener('resize', handleResize);
+  1481→            handleResize();
+  1482→        }
+  1483→
+  1484→        // Boot
+  1485→        initialize();
+  1486→    </script>
+  1487→</body>
+  1488→</html>

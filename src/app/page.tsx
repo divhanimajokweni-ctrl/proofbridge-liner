@@ -6,10 +6,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Crosshair,
   Download,
   Fingerprint,
   Gauge,
   Layers,
+  Layers3,
   Pause,
   Play,
   RotateCcw,
@@ -53,6 +55,7 @@ import {
   SCENARIO_DATE,
   type ReplayStep,
 } from '@/lib/evidence/hydraulicScenario';
+import HBKPanel from '@/components/evidence/hbk-panel';
 
 // ─── API contract ────────────────────────────────────────────────────────
 
@@ -68,9 +71,12 @@ interface ComputeResponse {
   dmaId: string;
 }
 
+type View = 'eis' | 'hbk';
+
 // ─── Page ────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const [view, setView] = useState<View>('eis');
   const [calibration, setCalibration] = useState<DMACalibration>(DEFAULT_CALIBRATION);
   const [stepIdx, setStepIdx] = useState(0); // start at BASELINE (index 0)
   const [playing, setPlaying] = useState(false);
@@ -167,6 +173,8 @@ export default function Home() {
   return (
     <div className="kernel-theme min-h-screen flex flex-col k-grid-bg">
       <HeaderBar
+        view={view}
+        onViewChange={setView}
         stepIdx={stepIdx}
         totalSteps={REPLAY_STEPS.length}
         auditShortHash={resp?.auditShortHash ?? '——————'}
@@ -174,73 +182,79 @@ export default function Home() {
       />
 
       <main className="flex-1 px-3 sm:px-6 pb-8 max-w-[1600px] w-full mx-auto">
-        {/* Replay timeline */}
-        <ReplayTimeline
-          steps={REPLAY_STEPS}
-          currentIdx={stepIdx}
-          onSelect={(i) => setStepIdx(i)}
-        />
-
-        {/* Control bar */}
-        <ControlBar
-          playing={playing}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-          onStepFwd={() => step(1)}
-          onStepBack={() => step(-1)}
-          onReset={reset}
-          pumpSim={pumpSim}
-          onPumpSimChange={setPumpSim}
-          onExport={exportAudit}
-          currentStep={currentStep}
-        />
-
-        {error && (
-          <div className="k-card k-glow-red mt-4 text-sm">
-            <span className="k-danger">[ERROR]</span>{' '}
-            <span className="k-fg">{error}</span>
-          </div>
-        )}
-
-        {/* Main grid: 2 columns on lg, 1 col on mobile */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4">
-          {/* Left column: pipeline + calibration */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
-            <PipelinePanel pipeline={resp?.pipeline ?? []} />
-            <CalibrationPanel
-              calibration={calibration}
-              onChange={setCalibration}
+        {view === 'hbk' ? (
+          <HBKPanel />
+        ) : (
+          <>
+            {/* Replay timeline */}
+            <ReplayTimeline
+              steps={REPLAY_STEPS}
+              currentIdx={stepIdx}
+              onSelect={(i) => setStepIdx(i)}
             />
-          </div>
 
-          {/* Middle column: trust gauge + evidence chain */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
-            <TrustGaugePanel verdict={resp?.verdict ?? null} loading={loading} />
-            <EvidenceChainPanel
-              observations={resp?.observations ?? []}
+            {/* Control bar */}
+            <ControlBar
+              playing={playing}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              onStepFwd={() => step(1)}
+              onStepBack={() => step(-1)}
+              onReset={reset}
               pumpSim={pumpSim}
-            />
-          </div>
-
-          {/* Right column: SCADA telemetry + audit */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
-            <ScadaPanel stepIdx={stepIdx} />
-            <AuditPanel
-              resp={resp}
+              onPumpSimChange={setPumpSim}
               onExport={exportAudit}
+              currentStep={currentStep}
             />
-          </div>
-        </div>
 
-        {/* Provenance + classification section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <ProvenancePanel
-            observations={resp?.observations ?? []}
-            auditHash={resp?.auditHash ?? '——————'}
-            generatedAt={resp?.generatedAtUtc ?? '——————'}
-          />
-          <ClassificationPanel />
-        </div>
+            {error && (
+              <div className="k-card k-glow-red mt-4 text-sm">
+                <span className="k-danger">[ERROR]</span>{' '}
+                <span className="k-fg">{error}</span>
+              </div>
+            )}
+
+            {/* Main grid: 2 columns on lg, 1 col on mobile */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4">
+              {/* Left column: pipeline + calibration */}
+              <div className="lg:col-span-4 flex flex-col gap-4">
+                <PipelinePanel pipeline={resp?.pipeline ?? []} />
+                <CalibrationPanel
+                  calibration={calibration}
+                  onChange={setCalibration}
+                />
+              </div>
+
+              {/* Middle column: trust gauge + evidence chain */}
+              <div className="lg:col-span-4 flex flex-col gap-4">
+                <TrustGaugePanel verdict={resp?.verdict ?? null} loading={loading} />
+                <EvidenceChainPanel
+                  observations={resp?.observations ?? []}
+                  pumpSim={pumpSim}
+                />
+              </div>
+
+              {/* Right column: SCADA telemetry + audit */}
+              <div className="lg:col-span-4 flex flex-col gap-4">
+                <ScadaPanel stepIdx={stepIdx} />
+                <AuditPanel
+                  resp={resp}
+                  onExport={exportAudit}
+                />
+              </div>
+            </div>
+
+            {/* Provenance + classification section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+              <ProvenancePanel
+                observations={resp?.observations ?? []}
+                auditHash={resp?.auditHash ?? '——————'}
+                generatedAt={resp?.generatedAtUtc ?? '——————'}
+              />
+              <ClassificationPanel />
+            </div>
+          </>
+        )}
       </main>
 
       <FooterBar
@@ -254,11 +268,15 @@ export default function Home() {
 // ─── Header ───────────────────────────────────────────────────────────────
 
 function HeaderBar({
+  view,
+  onViewChange,
   stepIdx,
   totalSteps,
   auditShortHash,
   loading,
 }: {
+  view: View;
+  onViewChange: (v: View) => void;
   stepIdx: number;
   totalSteps: number;
   auditShortHash: string;
@@ -277,23 +295,54 @@ function HeaderBar({
                 VVU AIR KERNEL
               </h1>
               <p className="text-[var(--k-dim)] text-xs mt-0.5">
-                HYDRAULIC VALIDATION UTILITY · EIS v1.0 · {DMA_ID}
+                HYDRAULIC VALIDATION UTILITY · {view === 'hbk' ? 'HBK LOCALIZATION' : 'EIS v1.0'} · {DMA_ID}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-xs">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
-              <Clock className="w-3.5 h-3.5 text-[var(--k-dim)]" />
-              <span className="text-[var(--k-dim)]">SCENARIO:</span>
-              <span className="text-[var(--k-fg-bright)]">{SCENARIO_DATE}</span>
+          <div className="flex items-center gap-3 text-xs flex-wrap">
+            {/* View toggle: EIS Workspace ↔ HBK Localization */}
+            <div className="flex items-center gap-0 p-0.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
+              <button
+                type="button"
+                onClick={() => onViewChange('eis')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-[11px] font-bold tracking-wider transition-all ${
+                  view === 'eis'
+                    ? 'bg-[var(--k-cyan-bright)] text-black'
+                    : 'text-[var(--k-dim)] hover:text-[var(--k-fg)]'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                EIS WORKSPACE
+              </button>
+              <button
+                type="button"
+                onClick={() => onViewChange('hbk')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[5px] text-[11px] font-bold tracking-wider transition-all ${
+                  view === 'hbk'
+                    ? 'bg-[var(--k-cyan-bright)] text-black'
+                    : 'text-[var(--k-dim)] hover:text-[var(--k-fg)]'
+                }`}
+              >
+                <Crosshair className="w-3.5 h-3.5" />
+                HBK LOCALIZATION
+              </button>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
-              <span className="text-[var(--k-dim)]">STEP</span>
-              <span className="text-[var(--k-cyan-bright)] font-bold">
-                {String(stepIdx + 1).padStart(2, '0')}/{String(totalSteps).padStart(2, '0')}
-              </span>
-            </div>
+            {view === 'eis' && (
+              <>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
+                  <Clock className="w-3.5 h-3.5 text-[var(--k-dim)]" />
+                  <span className="text-[var(--k-dim)]">SCENARIO:</span>
+                  <span className="text-[var(--k-fg-bright)]">{SCENARIO_DATE}</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
+                  <span className="text-[var(--k-dim)]">STEP</span>
+                  <span className="text-[var(--k-cyan-bright)] font-bold">
+                    {String(stepIdx + 1).padStart(2, '0')}/{String(totalSteps).padStart(2, '0')}
+                  </span>
+                </div>
+              </>
+            )}
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--k-line)] bg-[var(--k-bg-elevated)]">
               <Fingerprint className="w-3.5 h-3.5 text-[var(--k-green-bright)]" />
               <span className="text-[var(--k-dim)]">RECEIPT</span>
