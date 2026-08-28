@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVU IVE · DWS Water Operations Console</title>
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+:root {
+  --bg:#060a10; --panel:#111b27; --panel-2:#16232f; --bg-elev:#0d141d;
+  --line:#1e3140; --line-strong:#2a4458;
+  --cyan:#00d4ff; --green:#00ff88; --amber:#ffb800; --red:#ff4d4d;
+  --fg:#cbd5d9; --fg-bright:#e0e6ed; --dim:#5b7280;
+  --mono:ui-monospace,"JetBrains Mono","Fira Code",Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--mono);background:var(--bg);color:var(--fg);overflow:hidden;height:100vh}
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* ─── Operation header ─── */
+.op-header{
+  display:flex;align-items:center;gap:16px;padding:10px 16px;
+  background:linear-gradient(90deg,rgba(0,212,255,0.08),transparent);
+  border-bottom:1px solid var(--line);flex-shrink:0;z-index:30;
+}
+.op-header .brand{display:flex;align-items:center;gap:10px}
+.op-header .logo{
+  width:36px;height:36px;border:2px solid var(--cyan);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 12px rgba(0,212,255,0.3);
+}
+.op-header .logo svg{width:20px;height:20px;fill:var(--cyan)}
+.op-header h1{color:var(--cyan);font-size:0.95em;letter-spacing:0.12em;text-transform:uppercase;font-weight:700}
+.op-header .sub{color:var(--dim);font-size:0.65em;letter-spacing:0.08em;margin-top:2px}
+.incident-badge{
+  display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:4px;
+  background:var(--bg-elev);border:1px solid var(--amber);
+}
+.incident-badge .status{color:var(--amber);font-weight:700;font-size:0.7em;letter-spacing:0.08em}
+.incident-badge .status::before{content:"● ";animation:pulse 1.5s infinite}
+.incident-badge .id{color:var(--fg-bright);font-size:0.75em;font-weight:700}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.protocol-status{display:flex;align-items:center;gap:6px;font-size:0.7em}
+.protocol-status .indicator{
+  padding:3px 10px;border-radius:3px;font-weight:700;letter-spacing:0.08em;font-size:0.85em;
+}
+.protocol-status .indicator.blind{background:rgba(255,184,0,0.15);color:var(--amber);border:1px solid var(--amber)}
+.protocol-status .indicator.active{background:rgba(0,255,136,0.15);color:var(--green);border:1px solid var(--green)}
+.hash-display{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:0.65em}
+.hash-display .label{color:var(--dim)}
+.hash-display .val{color:var(--green);font-family:var(--mono)}
+
+/* ─── Main layout ─── */
+.op-main{display:flex;flex:1;min-height:0;position:relative}
+
+/* ─── Map ─── */
+.map-wrap{flex:1;position:relative;min-width:0}
+#map{position:absolute;inset:0}
+.map-overlay-top{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:8px;align-items:center;
+  background:rgba(6,10,16,0.85);backdrop-filter:blur(8px);
+  border:1px solid var(--line);border-radius:6px;padding:6px 14px;
+  font-size:0.7em;
+}
+.map-overlay-top .net-health{color:var(--green);font-weight:700}
+.map-overlay-top .label{color:var(--dim)}
+.btn{
+  padding:6px 14px;border:1px solid var(--line-strong);background:var(--bg-elev);
+  color:var(--fg);border-radius:4px;cursor:pointer;font-family:var(--mono);
+  font-size:0.7em;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  transition:all 0.2s;display:inline-flex;align-items:center;gap:5px;
+}
+.btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn.primary{background:var(--cyan);color:var(--bg);border-color:var(--cyan)}
+.btn.primary:hover{background:var(--green);border-color:var(--green);color:var(--bg)}
+.btn.danger{background:var(--red);color:#fff;border-color:var(--red)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+
+/* ─── Sidebar ─── */
+.sidebar{
+  width:360px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:14px}
+.sidebar-scroll::-webkit-scrollbar{width:6px}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:3px}
+.sidebar-scroll::-webkit-scrollbar-track{background:var(--bg)}
+
+.card{
+  background:var(--bg-elev);border:1px solid var(--line);border-radius:6px;
+  padding:14px;margin-bottom:12px;position:relative;
+}
+.card::before{
+  content:"";position:absolute;top:0;left:0;bottom:0;width:3px;
+  background:var(--cyan);border-radius:6px 0 0 6px;
+}
+.card.green::before{background:var(--green)}
+.card.amber::before{background:var(--amber)}
+.card.red::before{background:var(--red)}
+.card-title{
+  color:var(--cyan);font-size:0.7em;text-transform:uppercase;letter-spacing:0.1em;
+  font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;
+}
+.card-title::before{
+  content:"";width:5px;height:5px;background:var(--cyan);
+  box-shadow:0 0 6px var(--cyan);border-radius:1px;
+}
+.incident-card h3{color:var(--fg-bright);font-size:0.95em;margin-bottom:4px}
+.incident-card .location{color:var(--cyan);font-size:0.75em;margin-bottom:10px}
+.incident-card .confidence-row{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.incident-card .conf-val{font-size:1.8em;font-weight:700;color:var(--green);line-height:1}
+.incident-card .conf-label{color:var(--dim);font-size:0.65em;text-transform:uppercase;letter-spacing:0.08em}
+.incident-card .evidence-state{display:flex;align-items:center;gap:8px;font-size:0.7em;margin-bottom:10px}
+.badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:0.85em;font-weight:700;letter-spacing:0.05em}
+.badge.verified{color:var(--green);border:1px solid var(--green);background:rgba(0,255,136,0.08)}
+.badge.candidate{color:var(--amber);border:1px solid var(--amber);background:rgba(255,184,0,0.08)}
+.badge.insufficient{color:var(--dim);border:1px solid var(--dim);background:rgba(91,114,128,0.08)}
+.badge.rejected{color:var(--red);border:1px solid var(--red);background:rgba(255,77,77,0.08)}
+.incident-card .detail{color:var(--dim);font-size:0.7em}
+
+.eis-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.eis-metrics .metric{
+  background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:8px;text-align:center;
+}
+.eis-metrics .metric .v{font-size:1.3em;font-weight:700;color:var(--cyan);line-height:1}
+.eis-metrics .metric .l{color:var(--dim);font-size:0.6em;text-transform:uppercase;letter-spacing:0.08em;margin-top:3px}
+
+.contributors{font-size:0.7em;max-height:140px;overflow-y:auto}
+.contributors::-webkit-scrollbar{width:4px}
+.contributors::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:2px}
+.contrib-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:5px 8px;margin-bottom:3px;border-radius:3px;
+  background:rgba(30,49,64,0.4);border-left:2px solid transparent;
+}
+.contrib-item.primary{border-left-color:var(--cyan)}
+.contrib-item.correlated{border-left-color:var(--amber)}
+.contrib-item.independent{border-left-color:var(--green)}
+.contrib-item.contextual{border-left-color:var(--dim)}
+.contrib-item .type{color:var(--fg-bright);font-weight:600}
+.contrib-item .cls{font-size:0.85em;padding:1px 6px;border-radius:2px}
+.contrib-item .cls.primary{color:var(--cyan);background:rgba(0,212,255,0.1)}
+.contrib-item .cls.correlated{color:var(--amber);background:rgba(255,184,0,0.1)}
+.contrib-item .cls.independent{color:var(--green);background:rgba(0,255,136,0.1)}
+.contrib-item .cls.contextual{color:var(--dim);background:rgba(91,114,128,0.1)}
+
+.timeline{font-size:0.7em;max-height:180px;overflow-y:auto}
+.timeline::-webkit-scrollbar{width:4px}
+.timeline::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:2px}
+.tl-entry{
+  display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);
+}
+.tl-entry .ts{color:var(--dim);font-size:0.85em;min-width:55px}
+.tl-entry .arrow{color:var(--cyan)}
+.tl-entry .state{font-weight:700}
+.tl-entry .state.verified{color:var(--green)}
+.tl-entry .state.candidate{color:var(--amber)}
+.tl-entry .state.observed{color:var(--dim)}
+.tl-entry .state.rejected{color:var(--red)}
+
+.workflow-steps{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.wf-step{
+  flex:1;min-width:80px;padding:6px 4px;text-align:center;
+  border:1px solid var(--line);border-radius:3px;font-size:0.6em;
+  color:var(--dim);text-transform:uppercase;letter-spacing:0.05em;
+}
+.wf-step.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,0.08)}
+.wf-step.done{border-color:var(--green);color:var(--green);background:rgba(0,255,136,0.08)}
+
+/* ─── Subsurface panel ─── */
+.subsurface{
+  position:absolute;bottom:16px;right:16px;width:380px;height:260px;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  overflow:hidden;z-index:15;box-shadow:0 8px 32px rgba(0,0,0,0.6);
+  transition:width 0.3s,height 0.3s;
+}
+.subsurface.expanded{width:520px;height:380px}
+.subsurface-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;background:var(--bg-elev);border-bottom:1px solid var(--line);
+}
+.subsurface-header .title{color:var(--cyan);font-size:0.7em;text-transform:uppercase;letter-spacing:0.1em;font-weight:700}
+.subsurface-header .controls{display:flex;gap:6px;align-items:center;font-size:0.65em}
+.subsurface-header .controls label{color:var(--dim)}
+.subsurface-header input[type="range"]{
+  -webkit-appearance:none;width:80px;height:4px;background:var(--bg);border-radius:2px;outline:none;
+}
+.subsurface-header input[type="range"]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:12px;height:12px;background:var(--cyan);border-radius:50%;cursor:pointer;
+}
+#three-container{width:100%;height:calc(100% - 36px)}
+#three-container canvas{display:block}
+
+/* ─── Bottom bar ─── */
+.bottom-bar{
+  display:flex;align-items:center;gap:8px;padding:8px 16px;
+  background:var(--bg-elev);border-top:1px solid var(--line);flex-shrink:0;
+  font-size:0.7em;flex-wrap:wrap;
+}
+.bottom-bar .label{color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;font-size:0.85em}
+.bottom-bar .sep{color:var(--line-strong)}
+.bottom-bar .warn{color:var(--amber);font-weight:700}
+
+/* ─── Toast ─── */
+.toast{
+  position:fixed;top:70px;right:16px;z-index:100;
+  background:var(--panel);border:1px solid var(--cyan);border-left:3px solid var(--cyan);
+  padding:10px 16px;border-radius:4px;font-size:0.75em;
+  box-shadow:0 8px 24px rgba(0,0,0,0.5);max-width:320px;
+  transform:translateX(120%);transition:transform 0.3s cubic-bezier(0.2,0.8,0.2,1);
+}
+.toast.show{transform:translateX(0)}
+.toast.success{border-color:var(--green);border-left-color:var(--green)}
+.toast.error{border-color:var(--red);border-left-color:var(--red)}
+
+@media(max-width:900px){
+  .sidebar{width:280px}
+  .subsurface{width:280px;height:200px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ─── Operation header ─── -->
+  <header class="op-header">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <div>
+        <h1>VVU IVE · DWS Operations Console</h1>
+        <div class="sub">Incident-Driven Water Network Investigation · NMBM</div>
+      </div>
+    </div>
+    <div class="incident-badge">
+      <span class="status">ACTIVE</span>
+      <span class="id" id="incident-id">INCIDENT #NMBM-DEM-001</span>
+    </div>
+    <div class="protocol-status">
+      <span class="label" style="color:var(--dim)">72h Protocol:</span>
+      <span class="indicator blind" id="protocol-indicator">BLIND REPLAY</span>
+    </div>
+    <div class="hash-display">
+      <span class="label">SHA-256:</span>
+      <span class="val" id="top-hash">0x0000…0000</span>
+    </div>
+  </header>
+
+  <!-- ─── Main: map + sidebar ─── -->
+  <div class="op-main">
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="map-overlay-top">
+        <span class="label">Network Health:</span>
+        <span class="net-health" id="net-health">87%</span>
+        <span style="color:var(--line-strong)">|</span>
+        <span class="label">Pipes:</span><span id="pipe-count">42</span>
+        <span style="color:var(--line-strong)">|</span>
+        <span class="label">Sensors:</span><span id="sensor-count">8</span>
+        <span style="color:var(--line-strong)">|</span>
+        <button class="btn primary" id="btn-simulate">▶ Run Telemetry</button>
+        <button class="btn" id="btn-protocol">72h Protocol</button>
+        <button class="btn" id="btn-reset">↻ Reset</button>
+      </div>
+    </div>
+
+    <!-- ─── Sidebar ─── -->
+    <aside class="sidebar">
+      <div class="sidebar-scroll">
+        <!-- Workflow steps -->
+        <div class="card">
+          <div class="card-title">Investigation Workflow</div>
+          <div class="workflow-steps" id="workflow-steps">
+            <div class="wf-step active">Observation</div>
+            <div class="wf-step">Localization</div>
+            <div class="wf-step">Inspection</div>
+            <div class="wf-step">Inference</div>
+            <div class="wf-step">Verification</div>
+            <div class="wf-step">Decision</div>
+          </div>
+        </div>
+
+        <!-- Incident summary -->
+        <div class="card green" id="incident-card">
+          <div class="card-title">Incident Summary</div>
+          <h3 id="incident-title">Suspected Underground Leak</h3>
+          <div class="location" id="incident-location">DMA-03 · Ward 12 · Port Elizabeth</div>
+          <div class="confidence-row">
+            <span class="conf-val" id="incident-confidence">—%</span>
+            <span class="conf-label">Confidence</span>
+          </div>
+          <div class="evidence-state">
+            <span class="badge insufficient" id="incident-badge">OBSERVED</span>
+            <span class="detail" id="incident-detail">Awaiting telemetry data…</span>
+          </div>
+          <button class="btn primary" id="btn-inspect" style="width:100%">🔍 Inspect Pipe</button>
+        </div>
+
+        <!-- EIS metrics -->
+        <div class="card">
+          <div class="card-title">EIS v1.0 · Evidence Independence</div>
+          <div class="eis-metrics">
+            <div class="metric"><div class="v" id="eis-score">0.00</div><div class="l">EIS Score</div></div>
+            <div class="metric"><div class="v" id="eis-independent">0.0</div><div class="l">Independent Obs</div></div>
+            <div class="metric"><div class="v" id="eis-correlated">0</div><div class="l">Correlated</div></div>
+            <div class="metric"><div class="v" id="eis-threshold">0.80</div><div class="l">Threshold</div></div>
+          </div>
+          <div class="contributors" id="evidence-contributors">
+            <div style="color:var(--dim);text-align:center;padding:10px;font-size:0.85em">No evidence yet — run telemetry</div>
+          </div>
+        </div>
+
+        <!-- Audit trail -->
+        <div class="card">
+          <div class="card-title">Decision Timeline · Audit Trail</div>
+          <div class="timeline" id="decision-timeline">
+            <div style="color:var(--dim);text-align:center;padding:10px;font-size:0.85em">No decisions recorded</div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="btn" id="btn-export-csv" style="flex:1">📥 CSV</button>
+            <button class="btn" id="btn-export-json" style="flex:1">📥 JSON + SHA</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ─── Subsurface 3D view ─── -->
+    <div class="subsurface" id="subsurface">
+      <div class="subsurface-header">
+        <span class="title">⛏️ Subsurface View</span>
+        <div class="controls">
+          <label>Depth:</label>
+          <input type="range" id="depth-slider" min="0" max="3" step="0.1" value="1.2">
+          <span id="depth-val" style="color:var(--cyan);min-width:30px">1.2m</span>
+          <button class="btn" id="btn-expand-3d" style="padding:2px 8px;font-size:0.85em">⤢</button>
+        </div>
+      </div>
+      <div id="three-container"></div>
+    </div>
+  </div>
+
+  <!-- ─── Bottom bar ─── -->
+  <div class="bottom-bar">
+    <span class="warn">[SIMULATION — NOT MUNICIPAL OPERATIONAL DATA]</span>
+    <span class="sep">|</span>
+    <span class="label">Pipe:</span><span id="selected-pipe" style="color:var(--cyan)">—</span>
+    <span class="sep">|</span>
+    <span class="label">Posterior:</span><span id="selected-posterior" style="color:var(--green)">—</span>
+    <span class="sep">|</span>
+    <span class="label">Cycle:</span><span id="cycle-count" style="color:var(--fg-bright)">0</span>
+    <span class="sep">|</span>
+    <span class="label">Leak Pipe:</span><span style="color:var(--red)">PIP-034 (hidden)</span>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================================
+// NMBM DEMO DATA — Port Elizabeth coordinates
+// ============================================================================
+const NMBM_CENTER = [25.5812, -33.9884]; // Cape Road area
+
+// Generate a realistic pipe grid around Port Elizabeth
+const GRID_SIZE = 6;
+const BLOCK_DEG = 0.0045; // ~500m blocks
+const OFFSET = GRID_SIZE * BLOCK_DEG / 2;
+
+const nodes = {};
+const pipes = {};
+let nodeCount = 0, pipeCount = 0;
+
+for (let ix = 0; ix <= GRID_SIZE; ix++) {
+  for (let iz = 0; iz <= GRID_SIZE; iz++) {
+    const id = `N${String(nodeCount).padStart(2,'0')}`;
+    nodes[id] = {
+      lng: NMBM_CENTER[0] + (ix * BLOCK_DEG - OFFSET),
+      lat: NMBM_CENTER[1] + (iz * BLOCK_DEG - OFFSET),
+    };
+    nodeCount++;
+  }
+}
+
+const grid = GRID_SIZE + 1;
+// Horizontal pipes
+for (let iz = 0; iz <= GRID_SIZE; iz++) {
+  for (let ix = 0; ix < GRID_SIZE; ix++) {
+    const from = `N${String(iz * grid + ix).padStart(2,'0')}`;
+    const to = `N${String(iz * grid + ix + 1).padStart(2,'0')}`;
+    const id = `PIP-${String(pipeCount).padStart(3,'0')}`;
+    pipes[id] = {
+      id, from, to,
+      dma: `DMA-${String(Math.floor(iz/2)+1).padStart(2,'0')}`,
+      type: 'horizontal',
+      depth: +(0.4 + Math.random() * 0.8).toFixed(2),
+      diameter: +(0.15 + Math.random() * 0.35).toFixed(2),
+      material: ['Ductile Iron','PVC','AC','HDPE'][Math.floor(Math.random()*4)],
+      length: 500,
+    };
+    pipeCount++;
+  }
+}
+// Vertical pipes
+for (let ix = 0; ix <= GRID_SIZE; ix++) {
+  for (let iz = 0; iz < GRID_SIZE; iz++) {
+    const from = `N${String(iz * grid + ix).padStart(2,'0')}`;
+    const to = `N${String((iz+1) * grid + ix).padStart(2,'0')}`;
+    const id = `PIP-${String(pipeCount).padStart(3,'0')}`;
+    pipes[id] = {
+      id, from, to,
+      dma: `DMA-${String(Math.floor(ix/2)+1).padStart(2,'0')}`,
+      type: 'vertical',
+      depth: +(0.4 + Math.random() * 0.8).toFixed(2),
+      diameter: +(0.15 + Math.random() * 0.35).toFixed(2),
+      material: ['Ductile Iron','PVC','AC','HDPE'][Math.floor(Math.random()*4)],
+      length: 500,
+    };
+    pipeCount++;
+  }
+}
+
+// Sensors at grid intersections (every 3rd node)
+const sensors = {};
+Object.keys(nodes).forEach((nid, i) => {
+  if (i % 4 === 0) {
+    sensors[`S${String(Object.keys(sensors).length).padStart(2,'0')}`] = {
+      node: nid, type: 'Pressure', dma: pipes[Object.keys(pipes)[i % pipeCount]].dma,
+    };
+  }
+});
+
+// The hidden leak pipe (ground truth — algorithm doesn't know this)
+const LEAK_PIPE_ID = 'PIP-034';
+
+// Convert to GeoJSON for MapLibre
+function buildPipeGeoJSON() {
+  const features = Object.values(pipes).map(p => {
+    const f = nodes[p.from], t = nodes[p.to];
+    return {
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [[f.lng, f.lat], [t.lng, t.lat]] },
+      properties: { id: p.id, dma: p.dma, depth: p.depth, diameter: p.diameter, material: p.material },
+    };
+  });
+  return { type: 'FeatureCollection', features };
+}
+
+function buildSensorGeoJSON() {
+  const features = Object.values(sensors).map(s => {
+    const n = nodes[s.node];
+    return {
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [n.lng, n.lat] },
+      properties: { id: s.node, type: s.type, dma: s.dma },
+    };
+  });
+  return { type: 'FeatureCollection', features };
+}
+
+// ============================================================================
+// BAYESIAN INFERENCE ENGINE (log-sum-exp stabilized)
+// ============================================================================
+class BayesianPipe {
+  constructor(id, dma) {
+    this.id = id; this.dma = dma;
+    this.alpha = 1; this.beta = 1;
+    this.observations = 0; this.anomalies = 0;
+    this.posterior = 0.5;
+    this.category = 'INSUFFICIENT';
+    this.history = [];
+    this.maxPosterior = 0;
+  }
+  update(isAnomaly, eisWeight) {
+    this.observations++;
+    if (isAnomaly) {
+      this.anomalies++;
+      this.alpha += eisWeight * 0.8;
+    } else {
+      this.beta += (1 - eisWeight * 0.2);
+    }
+    this.alpha = Math.min(this.alpha, 50);
+    this.beta = Math.min(this.beta, 50);
+    this.posterior = this.alpha / (this.alpha + this.beta);
+    this.maxPosterior = Math.max(this.maxPosterior, this.posterior);
+    this.history.push({ obs: this.observations, posterior: this.posterior });
+    if (this.posterior >= 0.75) this.category = 'VERIFIED';
+    else if (this.posterior >= 0.5) this.category = 'CANDIDATE';
+    else this.category = 'INSUFFICIENT';
+  }
+  reset() {
+    this.alpha = 1; this.beta = 1;
+    this.observations = 0; this.anomalies = 0;
+    this.posterior = 0.5; this.category = 'INSUFFICIENT';
+    this.history = []; this.maxPosterior = 0;
+  }
+  getCI() {
+    const a = this.alpha, b = this.beta;
+    const mean = a / (a + b);
+    const variance = (a * b) / (Math.pow(a + b, 2) * (a + b + 1));
+    const se = Math.sqrt(variance);
+    return { mean, lower: Math.max(0, mean - 1.96*se), upper: Math.min(1, mean + 1.96*se) };
+  }
+}
+
+// ============================================================================
+// EIS v1.0 EVALUATOR
+// ============================================================================
+class EISEvaluator {
+  constructor() {
+    this.threshold = 0.80;
+    this.weights = { primary: 0.3, correlated: 0.2, independent: 0.4, contextual: 0.0 };
+  }
+  evaluate(pipe, sensorReadings) {
+    if (!sensorReadings || sensorReadings.length === 0) {
+      return { score: 0, category: 'INSUFFICIENT', independent: 0, correlated: 0, primary: 0, contextual: 0 };
+    }
+    // Primary: the closest sensor's reading
+    const sorted = [...sensorReadings].sort((a,b) => b.confidence - a.confidence);
+    const primary = sorted[0];
+    const primaryWeight = primary.confidence > 0.55 ? this.weights.primary : 0;
+
+    // Correlated: same DMA, different sensor
+    const correlated = sorted.filter(r => r.dma === pipe.dma && r !== primary);
+    const correlatedWeight = correlated.length > 0 ? this.weights.correlated : 0;
+
+    // Independent: different DMA or different measurement type
+    const independent = sorted.filter(r => r.dma !== pipe.dma);
+    const independentWeight = Math.min(independent.length * 0.25, 0.5);
+
+    // Contextual: pump/valve status (simulated — no change = good)
+    const contextual = 0;
+
+    const score = primaryWeight + correlatedWeight + independentWeight;
+    let category = 'INSUFFICIENT';
+    if (score >= this.threshold) category = 'VERIFIED';
+    else if (score >= 0.5) category = 'CANDIDATE';
+
+    return {
+      score: +score.toFixed(3),
+      category,
+      independent: independent.length,
+      correlated: correlated.length,
+      primary: primaryWeight > 0 ? 1 : 0,
+      contextual,
+      primarySensor: primary,
+      independentSensors: independent,
+      correlatedSensors: correlated,
+    };
+  }
+}
+
+// ============================================================================
+// SHA-256 HASHER (real browser crypto)
+// ============================================================================
+async function sha256(data) {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(typeof data === 'string' ? data : JSON.stringify(data));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ============================================================================
+// STATE
+// ============================================================================
+const bayesianPipes = {};
+Object.keys(pipes).forEach(pid => { bayesianPipes[pid] = new BayesianPipe(pid, pipes[pid].dma); });
+const eis = new EISEvaluator();
+let selectedPipe = null;
+let simCycle = 0;
+const MAX_CYCLES = 60;
+let isSimulating = false;
+let simTimer = null;
+let protocolMode = 'blind'; // 'blind' or 'revealed'
+let auditEntries = [];
+let currentWorkflowStep = 0;
+const WORKFLOW_STEPS = ['Observation','Localization','Inspection','Inference','Verification','Decision'];
+
+// ============================================================================
+// MAP SETUP (MapLibre)
+// ============================================================================
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://demotiles.maplibre.org/style.json',
+  center: NMBM_CENTER,
+  zoom: 13.5,
+  pitch: 25,
+  bearing: 0,
+  antialias: true,
+});
+
+map.on('load', () => {
+  // Add pipe source + layer
+  map.addSource('pipes', { type: 'geojson', data: buildPipeGeoJSON() });
+  map.addLayer({
+    id: 'pipes-layer',
+    type: 'line',
+    source: 'pipes',
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': ['get', 'color'] || '#475569',
+      'line-width': 4,
+      'line-opacity': 0.85,
+    },
+  });
+  // Default color
+  map.setPaintProperty('pipes-layer', 'line-color', '#3a5570');
+
+  // Add sensor source + layer
+  map.addSource('sensors', { type: 'geojson', data: buildSensorGeoJSON() });
+  map.addLayer({
+    id: 'sensors-layer',
+    type: 'circle',
+    source: 'sensors',
+    paint: {
+      'circle-radius': 6,
+      'circle-color': '#00ff88',
+      'circle-stroke-color': '#060a10',
+      'circle-stroke-width': 2,
+    },
+  });
+
+  // Click on pipe
+  map.on('click', 'pipes-layer', (e) => {
+    if (e.features.length > 0) {
+      const pipeId = e.features[0].properties.id;
+      selectPipe(pipeId);
+    }
+  });
+  map.on('mouseenter', 'pipes-layer', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', 'pipes-layer', () => { map.getCanvas().style.cursor = ''; });
+
+  // Click on sensor
+  map.on('click', 'sensors-layer', (e) => {
+    if (e.features.length > 0) {
+      const sensorId = e.features[0].properties.id;
+      showToast(`Sensor ${sensorId} — Pressure sensor active`, 'info');
+    }
+  });
+
+  updateMapColors();
+  document.getElementById('pipe-count').textContent = Object.keys(pipes).length;
+  document.getElementById('sensor-count').textContent = Object.keys(sensors).length;
+});
+
+// ============================================================================
+// THREE.JS SUBSURFACE VIEW
+// ============================================================================
+const threeContainer = document.getElementById('three-container');
+const scene3d = new THREE.Scene();
+scene3d.background = new THREE.Color(0x060a10);
+
+const camera3d = new THREE.PerspectiveCamera(50, threeContainer.clientWidth / threeContainer.clientHeight, 0.1, 100);
+camera3d.position.set(3, 3, 4);
+camera3d.lookAt(0, 0, 0);
+
+const renderer3d = new THREE.WebGLRenderer({ antialias: true });
+renderer3d.setSize(threeContainer.clientWidth, threeContainer.clientHeight);
+renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+threeContainer.appendChild(renderer3d.domElement);
+
+const controls3d = new THREE.OrbitControls(camera3d, renderer3d.domElement);
+controls3d.enableDamping = true;
+controls3d.dampingFactor = 0.08;
+controls3d.target.set(0, 0, 0);
+controls3d.maxPolarAngle = Math.PI / 2.1;
+controls3d.minDistance = 2;
+controls3d.maxDistance = 10;
+
+// Lights
+scene3d.add(new THREE.AmbientLight(0x334455, 0.6));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+dirLight.position.set(3, 5, 2);
+scene3d.add(dirLight);
+const cyanLight = new THREE.PointLight(0x00d4ff, 1.2, 15);
+cyanLight.position.set(-3, 1, 3);
+scene3d.add(cyanLight);
+
+// Ground plane (semi-transparent)
+const groundGeo = new THREE.PlaneGeometry(8, 8);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x1a2332, transparent: true, opacity: 0.4, side: THREE.DoubleSide,
+});
+const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+groundMesh.rotation.x = -Math.PI / 2;
+groundMesh.position.y = 0;
+scene3d.add(groundMesh);
+
+// Grid helper
+const gridHelper = new THREE.GridHelper(6, 12, 0x2a3a4a, 0x1a2332);
+gridHelper.position.y = -0.01;
+scene3d.add(gridHelper);
+
+// Pipe meshes
+const pipeMeshes = {};
+const pipeGroup = new THREE.Group();
+const SCALE = 0.5; // scale map coords to 3D scene
+
+Object.values(pipes).forEach(p => {
+  const f = nodes[p.from], t = nodes[p.to];
+  const dx = (t.lng - f.lng) * 1000 * SCALE;
+  const dz = (t.lat - f.lat) * 1000 * SCALE;
+  const len = Math.sqrt(dx*dx + dz*dz);
+  const angle = Math.atan2(dz, dx);
+  const r = 0.03 + p.diameter * 0.04;
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x3a5570, roughness: 0.5, metalness: 0.3,
+    emissive: 0x000000, emissiveIntensity: 0,
+  });
+  const geom = new THREE.CylinderGeometry(r, r, len, 6);
+  const mesh = new THREE.Mesh(geom, mat);
+  const mx = (f.lng - NMBM_CENTER[0]) * 1000 * SCALE + dx/2;
+  const mz = (f.lat - NMBM_CENTER[1]) * 1000 * SCALE + dz/2;
+  mesh.position.set(mx, -p.depth * 0.3, mz);
+  mesh.rotation.z = Math.PI / 2;
+  mesh.rotation.y = -angle;
+  mesh.userData = { pipeId: p.id, baseColor: 0x3a5570 };
+  pipeGroup.add(mesh);
+  pipeMeshes[p.id] = mesh;
+
+  // Glow ring
+  const glowGeo = new THREE.RingGeometry(r * 2.5, r * 4, 12);
+  const glowMat = new THREE.MeshBasicMaterial({
+    color: 0x00d4ff, transparent: true, opacity: 0, side: THREE.DoubleSide,
+  });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.set(mx, -p.depth * 0.3, mz);
+  glow.rotation.x = -Math.PI / 2;
+  glow.userData = { pipeId: p.id };
+  pipeGroup.add(glow);
+  mesh.userData.glow = glow;
+});
+scene3d.add(pipeGroup);
+
+// Sensors (above ground markers)
+Object.values(sensors).forEach(s => {
+  const n = nodes[s.node];
+  const sx = (n.lng - NMBM_CENTER[0]) * 1000 * SCALE;
+  const sz = (n.lat - NMBM_CENTER[1]) * 1000 * SCALE;
+  const sensorGeo = new THREE.OctahedronGeometry(0.08);
+  const sensorMat = new THREE.MeshStandardMaterial({
+    color: 0x00ff88, emissive: 0x004433, emissiveIntensity: 0.5,
+  });
+  const sensorMesh = new THREE.Mesh(sensorGeo, sensorMat);
+  sensorMesh.position.set(sx, 0.15, sz);
+  scene3d.add(sensorMesh);
+});
+
+function update3DColors() {
+  Object.entries(bayesianPipes).forEach(([pid, bp]) => {
+    const mesh = pipeMeshes[pid];
+    if (!mesh) return;
+    const p = bp.posterior;
+    let color, emissive;
+    if (p >= 0.75) { color = 0x00ff88; emissive = 0x004422; }
+    else if (p >= 0.5) { color = 0xffb800; emissive = 0x442200; }
+    else { color = 0x3a5570; emissive = 0x000000; }
+    mesh.material.color.setHex(color);
+    mesh.material.emissive.setHex(emissive);
+    mesh.material.emissiveIntensity = p * 0.5;
+    const glow = mesh.userData.glow;
+    if (glow) {
+      glow.material.opacity = p * 0.6;
+      glow.material.color.setHex(color);
+    }
+  });
+}
+
+function animate3D() {
+  requestAnimationFrame(animate3D);
+  // Make glow rings face camera
+  Object.values(pipeMeshes).forEach(mesh => {
+    const glow = mesh.userData.glow;
+    if (glow && glow.material.opacity > 0.01) {
+      glow.lookAt(camera3d.position);
+    }
+  });
+  controls3d.update();
+  renderer3d.render(scene3d, camera3d);
+}
+animate3D();
+
+function resize3D() {
+  const w = threeContainer.clientWidth;
+  const h = threeContainer.clientHeight;
+  camera3d.aspect = w / h;
+  camera3d.updateProjectionMatrix();
+  renderer3d.setSize(w, h);
+}
+window.addEventListener('resize', resize3D);
+setTimeout(resize3D, 100);
+
+// ============================================================================
+// MAP COLOR UPDATE
+// ============================================================================
+function updateMapColors() {
+  if (!map.getSource('pipes')) return;
+  const data = map.getSource('pipes')._data;
+  data.features.forEach(f => {
+    const bp = bayesianPipes[f.properties.id];
+    if (!bp) { f.properties.color = '#3a5570'; return; }
+    if (bp.posterior >= 0.75) f.properties.color = '#00ff88';
+    else if (bp.posterior >= 0.5) f.properties.color = '#ffb800';
+    else f.properties.color = '#3a5570';
+  });
+  map.getSource('pipes').setData(data);
+  map.setPaintProperty('pipes-layer', 'line-color', ['get', 'color']);
+
+  // Highlight selected pipe
+  if (selectedPipe) {
+    map.setPaintProperty('pipes-layer', 'line-width', [
+      'case', ['==', ['get', 'id'], selectedPipe], 7, 4
+    ]);
+  }
+}
+
+// ============================================================================
+// SENSOR SIMULATION
+// ============================================================================
+function simulateSensorReadings(pipeId, isLeak) {
+  const pipe = pipes[pipeId];
+  if (!pipe) return [];
+  const readings = [];
+  const f = nodes[pipe.from], t = nodes[pipe.to];
+  const midX = (f.lng + t.lng) / 2, midY = (f.lat + t.lat) / 2;
+  Object.values(sensors).forEach(s => {
+    const n = nodes[s.node];
+    const dist = Math.sqrt((midX - n.lng)**2 + (midY - n.lat)**2) * 1000; // meters
+    let confidence = Math.max(0, 0.95 - dist / 800);
+    if (isLeak) confidence += 0.4 * Math.exp(-dist / 200);
+    confidence += (Math.random() - 0.5) * 0.08;
+    confidence = Math.min(1, Math.max(0, confidence));
+    readings.push({
+      sensorId: s.node,
+      dma: s.dma,
+      confidence,
+      isAnomaly: confidence > 0.55,
+      distance: dist,
+    });
+  });
+  return readings;
+}
+
+// ============================================================================
+// SELECT PIPE
+// ============================================================================
+function selectPipe(pipeId) {
+  selectedPipe = pipeId;
+  const bp = bayesianPipes[pipeId];
+  const pipe = pipes[pipeId];
+
+  // Update bottom bar
+  document.getElementById('selected-pipe').textContent = pipeId;
+  document.getElementById('selected-posterior').textContent = `${(bp.posterior * 100).toFixed(1)}%`;
+
+  // Update incident card
+  document.getElementById('incident-title').textContent =
+    bp.posterior >= 0.75 ? 'Verified Leak Candidate' :
+    bp.posterior >= 0.5 ? 'Suspected Underground Leak' :
+    'Observation Only';
+  document.getElementById('incident-location').textContent =
+    `${pipe.dma} · ${pipe.material} · ⌀${pipe.diameter}m · ${pipe.depth}m deep`;
+  document.getElementById('incident-confidence').textContent = `${(bp.posterior * 100).toFixed(1)}%`;
+
+  const badge = document.getElementById('incident-badge');
+  badge.textContent = bp.category;
+  badge.className = `badge ${bp.category.toLowerCase()}`;
+
+  const ci = bp.getCI();
+  document.getElementById('incident-detail').textContent =
+    `${bp.observations} obs · 95% CI [${(ci.lower*100).toFixed(0)}%, ${(ci.upper*100).toFixed(0)}%]`;
+
+  // Update EIS panel
+  const readings = simulateSensorReadings(pipeId, simCycle >= 20 && pipeId === LEAK_PIPE_ID);
+  const eisResult = eis.evaluate(bp, readings);
+  document.getElementById('eis-score').textContent = eisResult.score.toFixed(2);
+  document.getElementById('eis-independent').textContent = eisResult.independent;
+  document.getElementById('eis-correlated').textContent = eisResult.correlated;
+  document.getElementById('eis-threshold').textContent = '0.80';
+
+  // Render contributors
+  const contribEl = document.getElementById('evidence-contributors');
+  contribEl.innerHTML = '';
+  if (readings.length === 0) {
+    contribEl.innerHTML = '<div style="color:var(--dim);text-align:center;padding:10px;font-size:0.85em">No evidence yet — run telemetry</div>';
+  } else {
+    readings.slice(0, 8).forEach((r, i) => {
+      let cls = 'correlated';
+      if (i === 0 && r.confidence > 0.55) cls = 'primary';
+      else if (r.dma !== pipe.dma) cls = 'independent';
+      const div = document.createElement('div');
+      div.className = `contrib-item ${cls}`;
+      div.innerHTML = `
+        <span class="type">${r.sensorId} <span style="color:var(--dim);font-size:0.85em">${r.dma}</span></span>
+        <span style="color:${r.confidence > 0.55 ? 'var(--amber)' : 'var(--dim)'};font-family:var(--mono)">${(r.confidence*100).toFixed(0)}%</span>
+        <span class="cls ${cls}">${cls.toUpperCase()}</span>
+      `;
+      contribEl.appendChild(div);
+    });
+  }
+
+  // Highlight in 3D
+  Object.entries(pipeMeshes).forEach(([id, mesh]) => {
+    const isSel = id === pipeId;
+    if (isSel) {
+      mesh.material.emissive.setHex(0x00d4ff);
+      mesh.material.emissiveIntensity = 0.6;
+    }
+  });
+
+  // Update map highlight
+  updateMapColors();
+
+  // Zoom to pipe on map
+  const f = nodes[pipe.from], t = nodes[pipe.to];
+  const midLng = (f.lng + t.lng) / 2, midLat = (f.lat + t.lat) / 2;
+  map.flyTo({ center: [midLng, midLat], zoom: 14.5, duration: 800 });
+
+  // Focus 3D camera on pipe
+  const mx = (midLng - NMBM_CENTER[0]) * 1000 * SCALE;
+  const mz = (midLat - NMBM_CENTER[1]) * 1000 * SCALE;
+  controls3d.target.set(mx, -pipe.depth * 0.3, mz);
+  camera3d.position.set(mx + 1.5, 1.5, mz + 1.5);
+
+  // Advance workflow
+  advanceWorkflow(bp);
+}
+
+// ============================================================================
+// WORKFLOW
+// ============================================================================
+function advanceWorkflow(bp) {
+  if (bp.observations === 0) currentWorkflowStep = 0; // Observation
+  else if (bp.posterior < 0.3) currentWorkflowStep = 1; // Localization
+  else if (bp.posterior < 0.5) currentWorkflowStep = 2; // Inspection
+  else if (bp.posterior < 0.75) currentWorkflowStep = 3; // Inference
+  else if (bp.category === 'VERIFIED') currentWorkflowStep = 4; // Verification
+  else currentWorkflowStep = 5; // Decision
+
+  const steps = document.querySelectorAll('.wf-step');
+  steps.forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i < currentWorkflowStep) el.classList.add('done');
+    else if (i === currentWorkflowStep) el.classList.add('active');
+  });
+}
+
+// ============================================================================
+// AUDIT TRAIL
+// ============================================================================
+async function recordAudit(pipeId, action, state) {
+  const entry = {
+    timestamp: new Date().toISOString(),
+    cycle: simCycle,
+    pipeId,
+    action,
+    state,
+    posterior: bayesianPipes[pipeId].posterior,
+    observations: bayesianPipes[pipeId].observations,
+  };
+  entry.hash = await sha256(JSON.stringify(entry));
+  auditEntries.push(entry);
+  renderTimeline();
+  updateTopHash();
+}
+
+function renderTimeline() {
+  const el = document.getElementById('decision-timeline');
+  if (auditEntries.length === 0) {
+    el.innerHTML = '<div style="color:var(--dim);text-align:center;padding:10px;font-size:0.85em">No decisions recorded</div>';
+    return;
+  }
+  el.innerHTML = '';
+  auditEntries.slice(-10).reverse().forEach(e => {
+    const ts = e.timestamp.substring(11, 19);
+    const div = document.createElement('div');
+    div.className = 'tl-entry';
+    div.innerHTML = `
+      <span class="ts">${ts}</span>
+      <span class="arrow">→</span>
+      <span class="state ${e.state.toLowerCase()}">${e.state}</span>
+      <span style="color:var(--dim);font-size:0.85em">${e.pipeId} · ${(e.posterior*100).toFixed(0)}%</span>
+    `;
+    el.appendChild(div);
+  });
+}
+
+async function updateTopHash() {
+  const state = auditEntries.length > 0
+    ? JSON.stringify(auditEntries.slice(-5))
+    : `${simCycle}:${selectedPipe || 'none'}`;
+  const hash = await sha256(state);
+  document.getElementById('top-hash').textContent = `0x${hash.substring(0,8)}…${hash.substring(56,64)}`;
+}
+
+// ============================================================================
+// SIMULATION LOOP
+// ============================================================================
+function stepSimulation() {
+  if (!isSimulating) return;
+  const isLeakPhase = simCycle >= 20;
+
+  // Update all pipes
+  Object.values(bayesianPipes).forEach(bp => {
+    const isLeak = isLeakPhase && bp.id === LEAK_PIPE_ID;
+    const readings = simulateSensorReadings(bp.id, isLeak);
+    const eisResult = eis.evaluate(bp, readings);
+    const isAnomaly = readings.some(r => r.confidence > 0.55);
+    bp.update(isAnomaly, eisResult.score);
+  });
+
+  updateMapColors();
+  update3DColors();
+
+  // Update top pipe
+  const topPipe = Object.values(bayesianPipes).sort((a,b) => b.posterior - a.posterior)[0];
+  if (topPipe) {
+    document.getElementById('net-health').textContent = `${Math.round((1 - topPipe.posterior) * 100)}%`;
+    document.getElementById('net-health').style.color = topPipe.posterior > 0.5 ? 'var(--amber)' : 'var(--green)';
+  }
+
+  // Auto-select the top pipe if none selected
+  if (!selectedPipe && topPipe && topPipe.posterior > 0.3) {
+    selectPipe(topPipe.id);
+  }
+
+  // Record audit when state changes
+  if (selectedPipe) {
+    const bp = bayesianPipes[selectedPipe];
+    const lastEntry = auditEntries.filter(e => e.pipeId === selectedPipe).pop();
+    if (!lastEntry || lastEntry.state !== bp.category) {
+      recordAudit(selectedPipe, 'state_transition', bp.category);
+    }
+  }
+
+  // Re-select to refresh sidebar
+  if (selectedPipe) selectPipe(selectedPipe);
+
+  simCycle++;
+  document.getElementById('cycle-count').textContent = simCycle;
+
+  if (simCycle >= MAX_CYCLES) {
+    stopSimulation();
+    if (protocolMode === 'blind') revealGroundTruth();
+  }
+}
+
+function startSimulation() {
+  if (isSimulating) return;
+  isSimulating = true;
+  document.getElementById('btn-simulate').textContent = '⏸ Pause';
+  document.getElementById('btn-simulate').classList.remove('primary');
+  simTimer = setInterval(stepSimulation, 300);
+}
+
+function stopSimulation() {
+  isSimulating = false;
+  if (simTimer) clearInterval(simTimer);
+  document.getElementById('btn-simulate').textContent = '▶ Run Telemetry';
+  document.getElementById('btn-simulate').classList.add('primary');
+}
+
+function resetSimulation() {
+  stopSimulation();
+  simCycle = 0;
+  selectedPipe = null;
+  auditEntries = [];
+  currentWorkflowStep = 0;
+  protocolMode = 'blind';
+  Object.values(bayesianPipes).forEach(bp => bp.reset());
+  updateMapColors();
+  update3DColors();
+  renderTimeline();
+  updateTopHash();
+  document.getElementById('cycle-count').textContent = '0';
+  document.getElementById('selected-pipe').textContent = '—';
+  document.getElementById('selected-posterior').textContent = '—';
+  document.getElementById('incident-confidence').textContent = '—%';
+  document.getElementById('incident-badge').textContent = 'OBSERVED';
+  document.getElementById('incident-badge').className = 'badge insufficient';
+  document.getElementById('incident-detail').textContent = 'Awaiting telemetry data…';
+  document.getElementById('evidence-contributors').innerHTML = '<div style="color:var(--dim);text-align:center;padding:10px;font-size:0.85em">No evidence yet — run telemetry</div>';
+  document.getElementById('eis-score').textContent = '0.00';
+  document.getElementById('eis-independent').textContent = '0.0';
+  document.getElementById('eis-correlated').textContent = '0';
+  document.getElementById('net-health').textContent = '100%';
+  document.getElementById('protocol-indicator').textContent = 'BLIND REPLAY';
+  document.getElementById('protocol-indicator').className = 'indicator blind';
+  // Reset workflow
+  document.querySelectorAll('.wf-step').forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i === 0) el.classList.add('active');
+  });
+  showToast('System reset — ready for new investigation', 'success');
+}
+
+// ============================================================================
+// 72H PROTOCOL — Reveal ground truth
+// ============================================================================
+function revealGroundTruth() {
+  protocolMode = 'revealed';
+  document.getElementById('protocol-indicator').textContent = 'REVEALED';
+  document.getElementById('protocol-indicator').className = 'indicator active';
+
+  const leakPipe = bayesianPipes[LEAK_PIPE_ID];
+  const localized = leakPipe.posterior > 0.5;
+  const verified = leakPipe.posterior >= 0.75;
+
+  // Highlight the true leak pipe on the map
+  selectPipe(LEAK_PIPE_ID);
+
+  recordAudit(LEAK_PIPE_ID, 'ground_truth_reveal', verified ? 'VERIFIED' : 'MISSED');
+
+  showToast(
+    `72h Protocol complete — Ground truth: ${LEAK_PIPE_ID}\n` +
+    `System ${verified ? 'VERIFIED ✓' : localized ? 'LOCALIZED (partial)' : 'MISSED ✗'}\n` +
+    `Posterior: ${(leakPipe.posterior*100).toFixed(0)}%`,
+    verified ? 'success' : 'error'
+  );
+}
+
+// ============================================================================
+// EXPORT
+// ============================================================================
+function exportCSV() {
+  let csv = 'PipeID,DMA,Material,Diameter,Depth,Posterior,Category,Observations,Anomalies,MaxPosterior\n';
+  Object.values(bayesianPipes).forEach(bp => {
+    const p = pipes[bp.id];
+    csv += `${bp.id},${bp.dma},${p.material},${p.diameter},${p.depth},` +
+           `${bp.posterior.toFixed(4)},${bp.category},${bp.observations},${bp.anomalies},${bp.maxPosterior.toFixed(4)}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  download(blob, `dws-console-${new Date().toISOString().split('T')[0]}.csv`);
+  showToast('CSV exported — ' + Object.keys(pipes).length + ' pipes', 'success');
+}
+
+async function exportJSON() {
+  const data = {
+    timestamp: new Date().toISOString(),
+    classification: 'SIMULATION — NOT MUNICIPAL OPERATIONAL DATA',
+    incident: {
+      id: 'NMBM-DEM-001',
+      leakPipe: LEAK_PIPE_ID,
+      cycle: simCycle,
+      protocol: protocolMode,
+    },
+    eis: {
+      threshold: 0.80,
+      weights: { primary: 0.3, correlated: 0.2, independent: 0.4 },
+    },
+    pipes: Object.values(bayesianPipes).map(bp => {
+      const p = pipes[bp.id];
+      const ci = bp.getCI();
+      return {
+        id: bp.id, dma: bp.dma, material: p.material, diameter: p.diameter, depth: p.depth,
+        posterior: bp.posterior, category: bp.category,
+        observations: bp.observations, anomalies: bp.anomalies,
+        maxPosterior: bp.maxPosterior,
+        ci95: { lower: ci.lower, upper: ci.upper },
+      };
+    }),
+    auditTrail: auditEntries,
+  };
+  const jsonStr = JSON.stringify(data, null, 2);
+  const hash = await sha256(jsonStr);
+  const output = { ...data, sha256: hash };
+  const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
+  download(blob, `dws-console-${new Date().toISOString().split('T')[0]}.json`);
+  showToast(`JSON exported — SHA-256: 0x${hash.substring(0,8)}…`, 'success');
+}
+
+function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================================
+// TOAST
+// ============================================================================
+let toastTimer = null;
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// ============================================================================
+// EVENT WIRING
+// ============================================================================
+document.getElementById('btn-simulate').addEventListener('click', () => {
+  if (isSimulating) stopSimulation();
+  else startSimulation();
+});
+document.getElementById('btn-reset').addEventListener('click', resetSimulation);
+document.getElementById('btn-protocol').addEventListener('click', () => {
+  if (protocolMode === 'blind' && simCycle > 0) {
+    revealGroundTruth();
+  } else {
+    showToast('72h protocol: run telemetry first, then reveal ground truth', 'info');
+  }
+});
+document.getElementById('btn-inspect').addEventListener('click', () => {
+  if (selectedPipe) {
+    const bp = bayesianPipes[selectedPipe];
+    const p = pipes[selectedPipe];
+    showToast(`Inspecting ${selectedPipe} — ${p.material} · ⌀${p.diameter}m · ${p.depth}m deep · P=${(bp.posterior*100).toFixed(0)}%`, 'info');
+    // Expand subsurface
+    document.getElementById('subsurface').classList.add('expanded');
+    setTimeout(() => resize3D(), 300);
+  } else {
+    showToast('Select a pipe first (click on map)', 'error');
+  }
+});
+document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+document.getElementById('btn-export-json').addEventListener('click', exportJSON);
+document.getElementById('btn-expand-3d').addEventListener('click', () => {
+  document.getElementById('subsurface').classList.toggle('expanded');
+  setTimeout(() => resize3D(), 300);
+});
+document.getElementById('depth-slider').addEventListener('input', (e) => {
+  const depth = parseFloat(e.target.value);
+  document.getElementById('depth-val').textContent = `${depth.toFixed(1)}m`;
+  // Move ground plane + fade pipes above this depth
+  groundMesh.position.y = -depth * 0.3;
+  gridHelper.position.y = -depth * 0.3 - 0.01;
+  Object.entries(pipeMeshes).forEach(([pid, mesh]) => {
+    const p = pipes[pid];
+    mesh.visible = p.depth <= depth + 0.5;
+  });
+});
+
+// Init
+updateTopHash();
+console.log('🗺️ VVU IVE DWS Operations Console loaded');
+console.log(`📡 ${Object.keys(pipes).length} pipes · ${Object.keys(sensors).length} sensors`);
+console.log(`⛏️ Subsurface 3D view ready`);
+console.log(`🔒 72h Protocol: BLIND REPLAY mode — ground truth hidden`);
+</script>
+</body>
+</html>
