@@ -1,0 +1,74 @@
+# VVU-IVE Envoy Egress Gateway — Deployment + Service
+# ----------------------------------------------------------------------------
+# 2 replicas for HA. Listens on port 10001 (egress) and 9901 (admin).
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: envoy-egress
+  namespace: vvu-ive
+  labels:
+    app: envoy-egress
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: envoy-egress
+  template:
+    metadata:
+      labels:
+        app: envoy-egress
+    spec:
+      containers:
+      - name: envoy
+        image: envoyproxy/envoy:v1.30-latest
+        ports:
+        - containerPort: 10001
+          name: egress
+        - containerPort: 9901
+          name: admin
+        volumeMounts:
+        - name: envoy-config
+          mountPath: /etc/envoy
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: 9901
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 9901
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: envoy-config
+        configMap:
+          name: envoy-egress-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-egress
+  namespace: vvu-ive
+  labels:
+    app: envoy-egress
+spec:
+  selector:
+    app: envoy-egress
+  ports:
+  - name: egress
+    port: 10001
+    targetPort: 10001
+  - name: admin
+    port: 9901
+    targetPort: 9901
+  type: ClusterIP

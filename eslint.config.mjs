@@ -44,7 +44,11 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
+<<<<<<< HEAD
   ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "searm1-app/**", "searm1-backend/**", "public/searm1/**", "download/searm1/**", "download/**", "tool-results/**"]
+=======
+  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
+>>>>>>> origin/main
 }];
 
 export default eslintConfig;

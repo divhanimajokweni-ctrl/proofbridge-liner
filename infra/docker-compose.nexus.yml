@@ -1,0 +1,107 @@
+# docker-compose.nexus.yml — The Village Nexus Core
+#
+# Spins up the privacy-first digital headquarters that integrates
+# the Village Feed, Treasury, Social Mesh, and Privacy Airlock.
+#
+# Usage:
+#   docker compose -f infra/docker-compose.nexus.yml up -d
+#
+# All user data persists in ./nexus_vault/ on the host.
+# No data leaves this container unless the user explicitly publishes.
+
+version: "3.8"
+
+services:
+  # ── Nexus Core (UI + API + Integrations) ────────────────────────────
+  nexus-core:
+    image: node:20-alpine
+    container_name: proofbridge-nexus
+    ports:
+      - "3000:3000"   # Next.js dashboard (Village)
+      - "4000:4000"   # API gateway for plugin integrations
+    working_dir: /app
+    volumes:
+      - ../:/app:ro       # Mount source code (read-only for security)
+      - ./nexus_vault:/data/vault  # Encrypted user data (persistent)
+    environment:
+      # ── Privacy Configuration ──
+      - PRIVACY_LEVEL=HIGH
+      - NEXUS_VAULT_PATH=/data/vault
+
+      # ── Plugin Integrations (OAuth tokens mounted as secrets) ──
+      # Social
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN:-}
+      - TWITTER_BEARER_TOKEN=${TWITTER_BEARER_TOKEN:-}
+      - MATRIX_HOMESERVER_URL=${MATRIX_HOMESERVER_URL:-}
+      - TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID:-}
+
+      # Financial
+      - STRIPE_API_KEY=${STRIPE_API_KEY:-}
+      - LINDIWE_API_URL=http://proofbridge-lindiwe:8080
+
+      # ── Internal Services ──
+      - NEXT_PUBLIC_ARENA_API=http://localhost:3000/api/arena
+      - NEXT_PUBLIC_FEED_API=http://localhost:3000/api/feed
+      - MILVUS_HOST=craft-milvus
+      - MILVUS_PORT=19530
+    command: >
+      sh -c "
+        npm install --legacy-peer-deps &&
+        npm run build &&
+        npx next start -p 3000
+      "
+    restart: unless-stopped
+    networks:
+      - proofbridge-net
+    depends_on:
+      - nexus-vault-init
+
+  # ── Vault Initialiser (one-shot) ────────────────────────────────────
+  nexus-vault-init:
+    image: alpine:3.19
+    container_name: proofbridge-nexus-init
+    volumes:
+      - ./nexus_vault:/data/vault
+    command: >
+      sh -c "
+        mkdir -p /data/vault/keys &&
+        mkdir -p /data/vault/plugins &&
+        mkdir -p /data/vault/cache &&
+        chmod 0700 /data/vault &&
+        echo 'Nexus Vault initialised at /data/vault' &&
+        echo 'Created directories: keys, plugins, cache'
+      "
+    restart: "no"
+
+  # ── Stream Relay (RTMP for live coding broadcasts) ──────────────────
+  nexus-stream-relay:
+    image: alfg/nginx-rtmp:latest
+    container_name: proofbridge-nexus-stream
+    ports:
+      - "1935:1935"   # RTMP ingest
+      - "8080:80"     # HLS playback
+    volumes:
+      - ./nexus_vault/streams:/tmp/hls
+    restart: unless-stopped
+    networks:
+      - proofbridge-net
+
+  # ── Plugin Proxy (OAuth token exchange, never exposes secrets) ──────
+  nexus-plugin-proxy:
+    image: nginx:alpine
+    container_name: proofbridge-nexus-proxy
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./nginx.nexus.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    networks:
+      - proofbridge-net
+
+networks:
+  proofbridge-net:
+    external: true
+    name: proofbridge-net
+
+volumes:
+  nexus_vault:

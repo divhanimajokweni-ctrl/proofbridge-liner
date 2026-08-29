@@ -1,0 +1,5 @@
+import { CONSUMER_CONFIG } from "../config";
+const DEFAULT_CONSUMER_CONFIG = CONSUMER_CONFIG;
+export {
+  DEFAULT_CONSUMER_CONFIG
+};

@@ -1,7 +1,14 @@
 {
+<<<<<<< HEAD
   "name": "nextjs_tailwind_shadcn_ts",
   "version": "0.2.1",
   "private": true,
+=======
+  "name": "proofbridge-liner",
+  "version": "0.2.1",
+  "private": true,
+  "type": "module",
+>>>>>>> origin/main
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
@@ -10,7 +17,20 @@
     "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+<<<<<<< HEAD
     "db:reset": "prisma migrate reset"
+=======
+    "db:reset": "prisma migrate reset",
+    "webhook:worker": "bun --hot scripts/webhook-worker.js",
+    "webhook:admin": "bun --hot scripts/admin-worker.js",
+    "webhook:create-topics": "bun scripts/create-topics.js",
+    "webhook:rotate-secret": "bun scripts/rotate-webhook-secret.js",
+    "watchdog": "bun run scripts/watchdog.js",
+    "watchdog:prod": "NODE_ENV=production bun run scripts/watchdog.js",
+    "hardhat:compile": "hardhat compile",
+    "watch:dev-sync": "bun run scripts/auto-deploy-watcher.js",
+    "watch:dev-sync:dry": "DRY_RUN=true bun run scripts/auto-deploy-watcher.js"
+>>>>>>> origin/main
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -54,8 +74,15 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
+<<<<<<< HEAD
     "framer-motion": "^12.23.2",
     "input-otp": "^1.4.2",
+=======
+    "esbuild": "^0.28.2",
+    "framer-motion": "^12.23.2",
+    "input-otp": "^1.4.2",
+    "kafkajs": "^2.2.4",
+>>>>>>> origin/main
     "lucide-react": "^0.525.0",
     "next": "^16.1.1",
     "next-auth": "^4.24.11",
@@ -74,7 +101,11 @@
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+<<<<<<< HEAD
     "three": "0.128.0",
+=======
+    "three": "0.160.0",
+>>>>>>> origin/main
     "uuid": "^11.1.0",
     "vaul": "^1.1.2",
     "z-ai-web-dev-sdk": "^0.0.18",
@@ -82,6 +113,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+<<<<<<< HEAD
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -92,5 +124,17 @@
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"
+=======
+    "@nomicfoundation/hardhat-toolbox": "^6.1.2",
+    "@playwright/test": "^1.62.1",
+    "@tailwindcss/postcss": "^4",
+    "dotenv": "^17.4.2",
+    "eslint": "^9",
+    "eslint-config-next": "^16.1.1",
+    "ethers": "^6.17.0",
+    "hardhat": "^2.22.0",
+    "tailwindcss": "^4",
+    "tw-animate-css": "^1.3.5"
+>>>>>>> origin/main
   }
 }

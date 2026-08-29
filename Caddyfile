@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ─── Custom domain: vvu-gov.space-z.ai ─────────────────────────────────
 # Dedicated route for the VVU IVE government deployment.
 # This domain serves the feat/vvu-gov-deploy branch of
@@ -34,4 +35,112 @@ vvu-gov.space-z.ai:81 {
                         header_up X-Real-IP {remote_host}
                 }
         }
+=======
+# ============================================================================
+# VVU·SEARM Unified Grid — Caddy reverse proxy
+# ============================================================================
+# Production domain: venturevisionubuntu.co.za
+#
+# Caddy automatically provisions + renews Let's Encrypt TLS for this
+# domain once DNS A records point at the host running Caddy.
+#
+# Required DNS (operator action — Caddy cannot configure DNS for you):
+#   A     venturevisionubuntu.co.za   → <host public IPv4>
+#   AAAA  venturevisionubuntu.co.za   → <host public IPv6, if applicable>
+#   CNAME www.venturevisionubuntu.co.za → venturevisionubuntu.co.za
+#
+# Architecture:
+#   External (HTTPS)         Caddy (this file)
+#   Internal (HTTP)          Next.js dev server on :3000  (or :PORT)
+#   Webhook ingress          Webhook worker on :4000 (Kafka-backed)
+#
+# Caddy also exposes the XTransformPort query escape hatch — used by
+# the VVU dev sandbox to spin up ephemeral preview ports without
+# touching Caddyfile.
+# ============================================================================
+
+# Primary production domain.
+venturevisionubuntu.co.za {
+	# Optional www → apex redirect (idempotent — Caddy handles both).
+	redir https://venturevisionubuntu.co.za{uri} permanent
+
+	# Security headers — fail-closed posture.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		# No 'Server' / 'X-Powered-By' leaking.
+		-Server
+		-X-Powered-By
+	}
+
+	# Escape hatch — let the VVU sandbox proxy to an ephemeral port.
+	@transform_port_query {
+		query XTransformPort=*
+	}
+	handle @transform_port_query {
+		reverse_proxy localhost:{query.XTransformPort} {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Webhook ingress — route /webhook/* to the Kafka-backed worker.
+	@webhook path /webhook/*
+	handle @webhook {
+		reverse_proxy localhost:4000 {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Theorem-state API — the watchdog polls this. Cache-bust headers
+	# so the watchdog never sees a stale verdict tuple.
+	@theorem_state path /api/theorem-state
+	handle @theorem_state {
+		reverse_proxy localhost:3000 {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+			header_down Cache-Control "no-store, no-cache, must-revalidate"
+		}
+	}
+
+	# Default — everything else to the Next.js app.
+	handle {
+		reverse_proxy localhost:3000 {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}
+
+# Explicit www. → apex redirect (in case the wildcard above doesn't fire).
+www.venturevisionubuntu.co.za {
+	redir https://venturevisionubuntu.co.za{uri} permanent
+}
+
+# Internal-only dev port — no TLS, no public exposure.
+:81 {
+	@transform_port_query {
+		query XTransformPort=*
+	}
+	handle @transform_port_query {
+		reverse_proxy localhost:{query.XTransformPort} {
+			header_up Host {host}
+		}
+	}
+	handle {
+		reverse_proxy localhost:3000
+	}
+>>>>>>> origin/main
 }

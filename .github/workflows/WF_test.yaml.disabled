@@ -1,0 +1,10 @@
+name: CI / Syntax Test (no deploy)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Syntax test is available on manual trigger"
