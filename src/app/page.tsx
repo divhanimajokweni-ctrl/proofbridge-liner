@@ -58,17 +58,19 @@ export default function Home() {
       <header className="border-b border-[var(--k-line)] bg-gradient-to-r from-[rgba(0,212,255,0.08)] via-transparent to-transparent sticky top-0 z-40 backdrop-blur-sm">
         <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            {/* Logo + title */}
+            {/* Logo + title — VVU Three Rings brand */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-md border border-[var(--k-cyan-bright)] flex items-center justify-center k-glow-cyan">
-                <Terminal className="w-5 h-5 text-[var(--k-cyan-bright)]" />
+              <div className="w-10 h-10 flex items-center justify-center">
+                <img src="/brand/vvu-three-rings.svg" alt="VVU Three Rings" className="w-10 h-10" />
               </div>
               <div>
-                <h1 className="text-[var(--k-cyan-bright)] font-bold tracking-[0.18em] text-sm sm:text-base uppercase">
-                  VVU IVE
+                <h1 className="font-bold tracking-[0.18em] text-sm sm:text-base uppercase">
+                  <span className="text-[#D4AF37]">VENTURE</span>{' '}
+                  <span className="text-[var(--k-cyan-bright)]">VISION</span>{' '}
+                  <span className="text-[var(--k-green-bright)]">UBUNTU</span>
                 </h1>
                 <p className="text-[var(--k-dim)] text-[10px] mt-0.5 uppercase tracking-widest">
-                  Immersive Virtual Environment · {totalActivities} Activities · 4 Rooms
+                  TRUST · INNOVATION · IMPACT · IVE · {totalActivities} Activities · 4 Rooms
                 </p>
               </div>
             </div>
@@ -124,7 +126,7 @@ export default function Home() {
             </span>
           </div>
           <div className="k-dim uppercase tracking-widest">
-            VVU IVE · {currentRoom.label} Room · NMBM-DMA-07 · v1.0
+            VVU · TRUST · INNOVATION · IMPACT · {currentRoom.label} Room · hello@venturevisionubuntu.co.za
           </div>
         </div>
       </footer>
