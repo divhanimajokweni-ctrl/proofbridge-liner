@@ -22,6 +22,7 @@ import networkRouter from './routes/network';
 import eventsRouter from './routes/events';
 import simulatorRouter from './routes/simulator';
 import pilotRouter from './routes/pilot';
+import b2bRouter from './routes/b2b';
 
 dotenv.config();
 
@@ -57,6 +58,7 @@ app.use('/api/network', networkRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/simulator', simulatorRouter);
 app.use('/api/pilot', pilotRouter);
+app.use('/api/b2b', b2bRouter);
 
 // ── Root redirect (helps anyone hitting / directly) ─────────
 app.get('/', (_req: Request, res: Response) => {
@@ -75,6 +77,10 @@ app.get('/', (_req: Request, res: Response) => {
       'POST /api/simulator/burst',
       'POST /api/pilot',
       'GET  /api/pilot',
+      'GET  /api/b2b/pipeline',
+      'GET  /api/b2b/pipeline/:company',
+      'GET  /api/b2b/subsectors',
+      'GET  /api/b2b/parameters',
     ],
   });
 });

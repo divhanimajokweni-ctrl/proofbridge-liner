@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVU · B2B Industrial Pipeline Dashboard</title>
+<style>
+:root{--bg:#060a10;--panel:#111b27;--bg-elev:#0d141d;--line:#1e3140;--cyan:#00d4ff;--green:#00ff88;--amber:#ffb800;--red:#ff4d4d;--fg:#cbd5d9;--fg-bright:#e0e6ed;--dim:#5b7280;--mono:ui-monospace,"JetBrains Mono",monospace}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--mono);background:var(--bg);color:var(--fg);min-height:100vh;background-image:linear-gradient(rgba(0,212,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.03) 1px,transparent 1px);background-size:24px 24px}
+.header{border-bottom:2px solid var(--cyan);padding:16px 24px;background:linear-gradient(90deg,rgba(0,212,255,.08),transparent);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.header h1{color:var(--cyan);font-size:1.2em;letter-spacing:.12em;text-transform:uppercase;font-weight:700}
+.header .sub{color:var(--dim);font-size:.7em;margin-top:2px}
+.header .badge{padding:4px 12px;border-radius:3px;background:rgba(255,184,0,.15);color:var(--amber);border:1px solid var(--amber);font-size:.7em;font-weight:700;letter-spacing:.08em}
+.container{max-width:1600px;margin:0 auto;padding:16px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+.stat-card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;position:relative;overflow:hidden}
+.stat-card::before{content:"";position:absolute;top:0;left:0;width:3px;height:100%;background:var(--cyan)}
+.stat-card.green::before{background:var(--green)}.stat-card.amber::before{background:var(--amber)}.stat-card.red::before{background:var(--red)}
+.stat-card .label{font-size:.6em;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.stat-card .value{font-size:1.6em;font-weight:700;color:var(--fg-bright);line-height:1}
+.stat-card.green .value{color:var(--green)}.stat-card.amber .value{color:var(--amber)}.stat-card.cyan .value{color:var(--cyan)}
+.stat-card .trend{font-size:.6em;color:var(--dim);margin-top:4px}
+.section-title{color:var(--cyan);font-size:.75em;text-transform:uppercase;letter-spacing:.12em;font-weight:700;margin:20px 0 10px;display:flex;align-items:center;gap:6px}
+.section-title::before{content:"";width:5px;height:5px;background:var(--cyan);box-shadow:0 0 6px var(--cyan);border-radius:1px}
+.table-wrap{background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:.7em}
+th{background:var(--bg-elev);color:var(--cyan);text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:10px 8px;text-align:left;border-bottom:1px solid var(--cyan);font-size:.85em}
+td{padding:6px 8px;border-bottom:1px solid var(--line);color:var(--fg)}
+tr:hover td{background:var(--bg-elev)}
+.badge{display:inline-block;padding:2px 8px;border-radius:2px;font-size:.85em;font-weight:700;letter-spacing:.04em}
+.badge.not_contacted{color:var(--dim);border:1px solid var(--dim);background:rgba(91,114,128,.08)}
+.badge.email_sent{color:var(--cyan);border:1px solid var(--cyan);background:rgba(0,212,255,.08)}
+.badge.review{color:var(--amber);border:1px solid var(--amber);background:rgba(255,184,0,.08)}
+.badge.proposal{color:var(--purple,#9b59b6);border:1px solid #9b59b6;background:rgba(155,89,182,.08)}
+.badge.pilot{color:var(--green);border:1px solid var(--green);background:rgba(0,255,136,.08)}
+.subsector-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:.7em}
+.subsector-bar .name{min-width:180px;color:var(--fg-bright);font-weight:600}
+.subsector-bar .bar-wrap{flex:1;height:12px;background:var(--bg-elev);border-radius:3px;overflow:hidden}
+.subsector-bar .bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--green));border-radius:3px;transition:width .5s}
+.subsector-bar .val{min-width:120px;text-align:right;color:var(--green);font-family:var(--mono);font-weight:700}
+.footer{border-top:1px solid var(--line);background:var(--bg-elev);padding:12px 24px;text-align:center;font-size:.65em;color:var(--dim);letter-spacing:.1em;margin-top:24px}
+.footer .warn{color:var(--amber);font-weight:700}
+.params-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;margin-bottom:16px}
+.param-card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:10px;font-size:.7em}
+.param-card .l{color:var(--dim);font-size:.85em;text-transform:uppercase;letter-spacing:.06em}
+.param-card .v{color:var(--cyan);font-weight:700;font-size:1.2em;margin-top:2px}
+.loading{text-align:center;padding:40px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <h1>VVU · B2B Industrial Pipeline</h1>
+    <div class="sub">Venture Vision Ubuntu · Unilateral B2B Industrial Asset Protection · ZAR 149M Pipeline</div>
+  </div>
+  <div class="badge">● ACTIVE · 5-GATE ROADMAP</div>
+</div>
+<div class="container">
+  <div class="stats-grid" id="stats-grid">
+    <div class="stat-card"><div class="label">Pipeline Targets</div><div class="value" id="s-targets">—</div><div class="trend" id="s-targets-t">loading…</div></div>
+    <div class="stat-card green"><div class="label">Total Pipeline Value</div><div class="value" id="s-value">—</div><div class="trend">ZAR/yr</div></div>
+    <div class="stat-card amber"><div class="label">Annual Fluid Loss</div><div class="value" id="s-loss">—</div><div class="trend">m³/yr</div></div>
+    <div class="stat-card cyan"><div class="label">Contacted</div><div class="value" id="s-contacted">—</div><div class="trend" id="s-contacted-t">— / —</div></div>
+    <div class="stat-card"><div class="label">Avg Loss per Target</div><div class="value" id="s-avg">—</div><div class="trend">ZAR/yr</div></div>
+    <div class="stat-card green"><div class="label">Active Pilots</div><div class="value" id="s-pilots">—</div><div class="trend">closed deals</div></div>
+  </div>
+  <div class="section-title">Subsector Breakdown · Loss Value Distribution</div>
+  <div id="subsector-bars"></div>
+  <div class="section-title">B2B Pipeline Tracker · 20 Industrial Targets</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Company</th><th>Subsector</th><th>Facility</th><th>Decision Maker</th><th>Loss (m³/yr)</th><th>Loss (ZAR/yr)</th><th>Status</th><th>Pain Point</th></tr></thead>
+      <tbody id="pipeline-tbody"><tr><td colspan="9" class="loading">Loading pipeline data…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="section-title">Reference Parameters</div>
+  <div class="params-grid" id="params-grid"></div>
+</div>
+<div class="footer"><span class="warn">[SIMULATION — NOT MUNICIPAL OPERATIONAL DATA]</span> | VVU B2B Suite · Vaguely Vanity LLC (Pty) Ltd · Reg 2026/259053/07 · 100% Equity Retention</div>
+<script>
+const API_PORT='3001';
+const GATEWAY=window.location.port==='3000'?window.location.protocol+'//localhost:81':'';
+function apiUrl(p){const s=p.includes('?')?'&':'?';return GATEWAY+p+s+'XTransformPort='+API_PORT}
+async function loadPipeline(){
+  try{
+    const res=await fetch(apiUrl('/api/b2b/pipeline'));
+    const d=await res.json();
+    const s=d.summary;
+    document.getElementById('s-targets').textContent=s.totalTargets;
+    document.getElementById('s-targets-t').textContent=`${s.contacted} contacted · ${s.notContacted} pending`;
+    document.getElementById('s-value').textContent='R '+(s.totalLossZar/1e6).toFixed(1)+'M';
+    document.getElementById('s-loss').textContent=(s.totalLossM3/1e3).toFixed(0)+'K';
+    document.getElementById('s-contacted').textContent=s.contacted;
+    document.getElementById('s-contacted-t').textContent=s.contacted+' / '+s.totalTargets;
+    document.getElementById('s-avg').textContent='R '+(s.avgLossZar/1e6).toFixed(2)+'M';
+    const pilots=d.targets.filter(t=>t.status==='CLOSED_ACTIVE_PILOT').length;
+    document.getElementById('s-pilots').textContent=pilots;
+    // Table
+    const tbody=document.getElementById('pipeline-tbody');
+    tbody.innerHTML='';
+    const statusClass={NOT_CONTACTED:'not_contacted',INITIAL_EMAIL_SENT:'email_sent',TECHNICAL_REVIEW_SCHEDULED:'review',PDU_PROPOSAL_SENT:'proposal',CLOSED_ACTIVE_PILOT:'pilot'};
+    const statusLabel={NOT_CONTACTED:'NOT CONTACTED',INITIAL_EMAIL_SENT:'EMAIL SENT',TECHNICAL_REVIEW_SCHEDULED:'REVIEW',PDU_PROPOSAL_SENT:'PROPOSAL',CLOSED_ACTIVE_PILOT:'PILOT'};
+    d.targets.forEach((t,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${i+1}</td><td style="color:var(--fg-bright);font-weight:600">${t.company}</td><td>${t.subsector}</td><td>${t.facility}</td><td style="color:var(--dim)">${t.decisionMaker}</td><td style="text-align:right;color:var(--amber)">${t.annualLossM3.toLocaleString()}</td><td style="text-align:right;color:var(--green);font-weight:700">R ${t.lossValueZar.toLocaleString()}</td><td><span class="badge ${statusClass[t.status]}">${statusLabel[t.status]}</span></td><td style="color:var(--dim);font-size:.9em">${t.painPoint}</td>`;
+      tbody.appendChild(tr);
+    });
+    // Subsectors
+    const subRes=await fetch(apiUrl('/api/b2b/subsectors'));
+    const subs=await subRes.json();
+    const subEl=document.getElementById('subsector-bars');
+    subEl.innerHTML='';
+    const maxVal=Math.max(...Object.values(subs).map(s=>s.totalLossZar));
+    for(const[name,data]of Object.entries(subs).sort((a,b)=>b[1].totalLossZar-a[1].totalLossZar)){
+      const pct=(data.totalLossZar/maxVal*100).toFixed(0);
+      const div=document.createElement('div');
+      div.className='subsector-bar';
+      div.innerHTML=`<div class="name">${name} (${data.count})</div><div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div><div class="val">R ${(data.totalLossZar/1e6).toFixed(1)}M · ${(data.totalLossM3/1e3).toFixed(0)}K m³</div>`;
+      subEl.appendChild(div);
+    }
+    // Parameters
+    const paramRes=await fetch(apiUrl('/api/b2b/parameters'));
+    const params=await paramRes.json();
+    const paramEl=document.getElementById('params-grid');
+    paramEl.innerHTML='';
+    const labels={industrialPotableWaterTariffZar:'Potable Water Tariff',industrialEffluentSurchargeZar:'Effluent Surcharge',combinedLossFactorZar:'Combined Loss Factor',unavoidableLeakageFlowTargetLps:'Min Leak Target',bayesianLocalisationRadiusM:'Bayesian Search Radius',hbkCoreUnitMassKg:'HBK Core Mass',hardLiftingCeilingKg:'Lifting Ceiling',reservedMassMarginG:'Mass Margin',nominalDesignPressureBar:'Design Pressure',peakCatastrophicSurgeBar:'Peak Surge'};
+    const units={industrialPotableWaterTariffZar:'ZAR/m³',industrialEffluentSurchargeZar:'ZAR/m³',combinedLossFactorZar:'ZAR/m³',unavoidableLeakageFlowTargetLps:'L/s',bayesianLocalisationRadiusM:'m',hbkCoreUnitMassKg:'kg',hardLiftingCeilingKg:'kg',reservedMassMarginG:'g',nominalDesignPressureBar:'bar',peakCatastrophicSurgeBar:'bar'};
+    for(const[k,v]of Object.entries(params)){
+      const div=document.createElement('div');
+      div.className='param-card';
+      div.innerHTML=`<div class="l">${labels[k]||k}</div><div class="v">${v} <span style="color:var(--dim);font-size:.7em">${units[k]||''}</span></div>`;
+      paramEl.appendChild(div);
+    }
+  }catch(e){console.error('Failed to load pipeline:',e);document.getElementById('pipeline-tbody').innerHTML='<tr><td colspan="9" class="loading">Error: '+e.message+'</td></tr>'}
+}
+loadPipeline();
+</script>
+</body>
+</html>
