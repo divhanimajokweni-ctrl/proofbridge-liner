@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVU IVE · DWS Digital Twin Console v2</title>
+<link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<style>
+:root {
+  --bg:#060a10; --panel:#111b27; --panel-2:#16232f; --bg-elev:#0d141d;
+  --line:#1e3140; --line-strong:#2a4458;
+  --cyan:#00d4ff; --green:#00ff88; --amber:#ffb800; --red:#ff4d4d; --purple:#9b59b6;
+  --fg:#cbd5d9; --fg-bright:#e0e6ed; --dim:#5b7280;
+  --mono:ui-monospace,"JetBrains Mono","Fira Code",Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--mono);background:var(--bg);color:var(--fg);overflow:hidden;height:100vh}
+body.fullscreen-mode .op-header,body.fullscreen-mode .bottom-bar{display:none}
+body.fullscreen-mode .sidebar{width:0;overflow:hidden;border:none}
+#app{display:flex;flex-direction:column;height:100vh}
+.op-header{display:flex;align-items:center;gap:14px;padding:8px 14px;background:linear-gradient(90deg,rgba(0,212,255,0.08),transparent);border-bottom:1px solid var(--line);flex-shrink:0;z-index:30;flex-wrap:wrap}
+.op-header .brand{display:flex;align-items:center;gap:10px}
+.op-header .logo{width:32px;height:32px;border:2px solid var(--cyan);border-radius:5px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 10px rgba(0,212,255,0.3)}
+.op-header .logo svg{width:18px;height:18px;fill:var(--cyan)}
+.op-header h1{color:var(--cyan);font-size:0.85em;letter-spacing:0.1em;text-transform:uppercase;font-weight:700}
+.op-header .sub{color:var(--dim);font-size:0.6em;letter-spacing:0.08em;margin-top:1px}
+.badge-row{display:flex;gap:6px;align-items:center;font-size:0.65em;flex-wrap:wrap}
+.badge-row .b{padding:3px 10px;border-radius:3px;font-weight:700;letter-spacing:0.06em;display:inline-flex;align-items:center;gap:4px}
+.badge-row .b.active{background:rgba(255,184,0,0.15);color:var(--amber);border:1px solid var(--amber)}
+.badge-row .b.verified{background:rgba(0,255,136,0.15);color:var(--green);border:1px solid var(--green)}
+.badge-row .b.id{background:var(--bg-elev);color:var(--fg-bright);border:1px solid var(--line)}
+.hash-disp{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:0.62em}
+.hash-disp .l{color:var(--dim)}
+.hash-disp .v{color:var(--green);font-family:var(--mono)}
+.op-main{display:flex;flex:1;min-height:0;position:relative}
+.map-wrap{flex:1;position:relative;min-width:0}
+#map{position:absolute;inset:0}
+.map-top{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:6px;align-items:center;background:rgba(6,10,16,0.85);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:5px;padding:5px 10px;font-size:0.65em;flex-wrap:wrap;max-width:90%}
+.map-top .label{color:var(--dim)}
+.map-top .v{color:var(--fg-bright);font-weight:700}
+.map-top .sep{color:var(--line-strong)}
+.btn{padding:5px 11px;border:1px solid var(--line-strong);background:var(--bg-elev);color:var(--fg);border-radius:3px;cursor:pointer;font-family:var(--mono);font-size:0.65em;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;transition:all 0.2s;display:inline-flex;align-items:center;gap:4px}
+.btn:hover{border-color:var(--cyan);color:var(--cyan)}
+.btn.primary{background:var(--cyan);color:var(--bg);border-color:var(--cyan)}
+.btn.primary:hover{background:var(--green);border-color:var(--green);color:var(--bg)}
+.btn.green{background:var(--green);color:var(--bg);border-color:var(--green)}
+.btn.purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.sidebar{width:340px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;transition:width 0.3s}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:12px}
+.sidebar-scroll::-webkit-scrollbar{width:5px}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:3px}
+.card{background:var(--bg-elev);border:1px solid var(--line);border-radius:5px;padding:12px;margin-bottom:10px;position:relative}
+.card::before{content:"";position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--cyan);border-radius:5px 0 0 5px}
+.card.green::before{background:var(--green)}
+.card.amber::before{background:var(--amber)}
+.card.red::before{background:var(--red)}
+.card.purple::before{background:var(--purple)}
+.card-title{color:var(--cyan);font-size:0.65em;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:5px;justify-content:space-between}
+.card-title .l{display:flex;align-items:center;gap:5px}
+.card-title .l::before{content:"";width:4px;height:4px;background:var(--cyan);box-shadow:0 0 5px var(--cyan);border-radius:1px}
+.card-title .toggle{font-size:0.85em;cursor:pointer;color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0}
+.card-title .toggle:hover{color:var(--cyan)}
+.incident-card h3{color:var(--fg-bright);font-size:0.85em;margin-bottom:3px}
+.incident-card .loc{color:var(--cyan);font-size:0.7em;margin-bottom:8px}
+.conf-row{display:flex;align-items:baseline;gap:6px;margin-bottom:6px}
+.conf-row .cv{font-size:1.6em;font-weight:700;color:var(--green);line-height:1}
+.conf-row .cl{color:var(--dim);font-size:0.6em;text-transform:uppercase;letter-spacing:0.08em}
+.ev-state{display:flex;align-items:center;gap:6px;font-size:0.65em;margin-bottom:8px}
+.bg{display:inline-block;padding:2px 7px;border-radius:2px;font-size:0.85em;font-weight:700;letter-spacing:0.04em}
+.bg.verified{color:var(--green);border:1px solid var(--green);background:rgba(0,255,136,0.08)}
+.bg.candidate{color:var(--amber);border:1px solid var(--amber);background:rgba(255,184,0,0.08)}
+.bg.insufficient{color:var(--dim);border:1px solid var(--dim);background:rgba(91,114,128,0.08)}
+.bg.rejected{color:var(--red);border:1px solid var(--red);background:rgba(255,77,77,0.08)}
+.incident-card .det{color:var(--dim);font-size:0.65em}
+.eis-metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.eis-metrics .m{background:var(--bg);border:1px solid var(--line);border-radius:3px;padding:6px;text-align:center}
+.eis-metrics .m .v{font-size:1.1em;font-weight:700;color:var(--cyan);line-height:1}
+.eis-metrics .m .l{color:var(--dim);font-size:0.55em;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px}
+.contrib{font-size:0.65em;max-height:100px;overflow-y:auto}
+.contrib::-webkit-scrollbar{width:3px}
+.contrib::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:2px}
+.c-item{display:flex;justify-content:space-between;align-items:center;padding:3px 6px;margin-bottom:2px;border-radius:2px;background:rgba(30,49,64,0.4);border-left:2px solid transparent}
+.c-item.primary{border-left-color:var(--cyan)}
+.c-item.correlated{border-left-color:var(--amber)}
+.c-item.independent{border-left-color:var(--green)}
+.c-item.downgraded{border-left-color:var(--red);opacity:0.6}
+.c-item .t{color:var(--fg-bright);font-weight:600}
+.c-item .x{font-size:0.85em;padding:1px 5px;border-radius:2px}
+.c-item .x.primary{color:var(--cyan);background:rgba(0,212,255,0.1)}
+.c-item .x.correlated{color:var(--amber);background:rgba(255,184,0,0.1)}
+.c-item .x.independent{color:var(--green);background:rgba(0,255,136,0.1)}
+.c-item .x.downgraded{color:var(--red);background:rgba(255,77,77,0.1)}
+.timeline{font-size:0.65em;max-height:120px;overflow-y:auto}
+.timeline::-webkit-scrollbar{width:3px}
+.timeline::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:2px}
+.tl-entry{display:flex;gap:6px;padding:4px 0;border-bottom:1px solid var(--line);align-items:center}
+.tl-entry .ts{color:var(--dim);font-size:0.85em;min-width:50px}
+.tl-entry .ar{color:var(--cyan)}
+.tl-entry .st{font-weight:700}
+.tl-entry .st.verified{color:var(--green)}
+.tl-entry .st.candidate{color:var(--amber)}
+.tl-entry .st.observed{color:var(--dim)}
+.tl-entry .dt{color:var(--dim);font-size:0.85em}
+.wf-steps{display:flex;gap:3px;margin-bottom:8px;flex-wrap:wrap}
+.wf-step{flex:1;min-width:70px;padding:5px 3px;text-align:center;border:1px solid var(--line);border-radius:2px;font-size:0.55em;color:var(--dim);text-transform:uppercase;letter-spacing:0.04em}
+.wf-step.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,0.08)}
+.wf-step.done{border-color:var(--green);color:var(--green);background:rgba(0,255,136,0.08)}
+/* Hydraulic panel */
+.hydr-row{display:flex;justify-content:space-between;font-size:0.65em;padding:3px 0;border-bottom:1px solid var(--line)}
+.hydr-row .l{color:var(--dim)}
+.hydr-row .v{font-family:var(--mono);font-weight:700}
+.hydr-row .v.ok{color:var(--green)}
+.hydr-row .v.warn{color:var(--amber)}
+.hydr-row .v.bad{color:var(--red)}
+.hydr-formula{font-family:var(--mono);font-size:0.6em;color:var(--cyan);background:var(--bg);padding:6px;border-radius:3px;margin:6px 0;text-align:center}
+/* Cost slider */
+.cost-slider{margin-top:8px}
+.cost-slider label{display:flex;justify-content:space-between;font-size:0.6em;color:var(--dim);margin-bottom:3px}
+.cost-slider label .v{color:var(--cyan);font-weight:700}
+.cost-slider input[type="range"]{-webkit-appearance:none;width:100%;height:4px;background:var(--bg);border-radius:2px;outline:none}
+.cost-slider input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--cyan);border-radius:50%;cursor:pointer;box-shadow:0 0 6px rgba(0,212,255,0.4)}
+.cost-slider input[type="range"]::-moz-range-thumb{width:14px;height:14px;background:var(--cyan);border-radius:50%;cursor:pointer;border:none}
+.cost-display{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:0.62em}
+.cost-display .c{background:var(--bg);padding:5px;border-radius:3px;border:1px solid var(--line)}
+.cost-display .c .l{color:var(--dim);font-size:0.9em}
+.cost-display .c .v{font-weight:700}
+.cost-display .c.fp .v{color:var(--red)}
+.cost-display .c.fn .v{color:var(--amber)}
+.cost-display .c.thresh .v{color:var(--cyan)}
+.cost-display .c.mode .v{color:var(--green)}
+/* Geological layers */
+.geo-layers{margin-top:6px}
+.geo-layer{display:flex;align-items:center;gap:6px;font-size:0.6em;padding:2px 0}
+.geo-layer .swatch{width:16px;height:10px;border-radius:2px;flex-shrink:0}
+.geo-layer .name{color:var(--fg);min-width:60px}
+.geo-layer .depth{color:var(--dim);font-family:var(--mono)}
+/* Subsurface */
+.subsurface{position:absolute;bottom:12px;right:12px;width:360px;height:240px;background:var(--panel);border:1px solid var(--line);border-radius:6px;overflow:hidden;z-index:15;box-shadow:0 6px 24px rgba(0,0,0,0.6);transition:width 0.3s,height 0.3s}
+.subsurface.expanded{width:520px;height:360px}
+.subsurface-header{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:var(--bg-elev);border-bottom:1px solid var(--line)}
+.subsurface-header .t{color:var(--cyan);font-size:0.65em;text-transform:uppercase;letter-spacing:0.1em;font-weight:700}
+.subsurface-header .ctrls{display:flex;gap:5px;align-items:center;font-size:0.6em}
+.subsurface-header .ctrls label{color:var(--dim)}
+.subsurface-header input[type="range"]{-webkit-appearance:none;width:70px;height:3px;background:var(--bg);border-radius:2px;outline:none}
+.subsurface-header input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;background:var(--cyan);border-radius:50%;cursor:pointer}
+.subsurface-header input[type="checkbox"]{cursor:pointer}
+#three-container{width:100%;height:calc(100% - 32px)}
+#three-container canvas{display:block}
+.bottom-bar{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--bg-elev);border-top:1px solid var(--line);flex-shrink:0;font-size:0.65em;flex-wrap:wrap}
+.bottom-bar .label{color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;font-size:0.85em}
+.bottom-bar .sep{color:var(--line-strong)}
+.bottom-bar .warn{color:var(--amber);font-weight:700}
+.bottom-bar .v{color:var(--fg-bright)}
+.bottom-bar .v.cyan{color:var(--cyan)}
+.bottom-bar .v.green{color:var(--green)}
+.bottom-bar .v.red{color:var(--red)}
+/* Fullscreen controls overlay */
+.fs-controls{position:fixed;top:10px;right:10px;z-index:50;display:flex;gap:5px}
+.fs-controls .btn{font-size:0.7em;padding:8px 14px}
+.fs-screen-info{position:fixed;top:50px;right:10px;z-index:50;background:var(--panel);border:1px solid var(--cyan);border-radius:4px;padding:8px 12px;font-size:0.65em;display:none;max-width:280px}
+.fs-screen-info.show{display:block}
+.fs-screen-info .t{color:var(--cyan);font-weight:700;margin-bottom:4px}
+.fs-screen-info .d{color:var(--fg);margin:2px 0}
+.fs-screen-info .d .l{color:var(--dim)}
+.toast{position:fixed;top:60px;right:12px;z-index:100;background:var(--panel);border:1px solid var(--cyan);border-left:3px solid var(--cyan);padding:8px 14px;border-radius:3px;font-size:0.7em;box-shadow:0 6px 20px rgba(0,0,0,0.5);max-width:300px;transform:translateX(120%);transition:transform 0.3s cubic-bezier(0.2,0.8,0.2,1);white-space:pre-line}
+.toast.show{transform:translateX(0)}
+.toast.success{border-color:var(--green);border-left-color:var(--green)}
+.toast.error{border-color:var(--red);border-left-color:var(--red)}
+@media(max-width:900px){.sidebar{width:260px}.subsurface{width:280px;height:200px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="op-header">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <div>
+        <h1>VVU IVE · Digital Twin Console v2</h1>
+        <div class="sub">Hydraulic Twin · Probability Particles · Flow Animation · Cost-Sensitive EIS</div>
+      </div>
+    </div>
+    <div class="badge-row">
+      <span class="b active" id="incident-badge">● ACTIVE</span>
+      <span class="b id" id="incident-id">NMBM-DEM-001</span>
+      <span class="b active" id="protocol-b">72h: BLIND</span>
+    </div>
+    <div class="hash-disp">
+      <span class="l">SHA-256:</span>
+      <span class="v" id="top-hash">0x0000…0000</span>
+    </div>
+  </header>
+
+  <div class="op-main">
+    <div class="map-wrap">
+      <div id="map"></div>
+      <div class="map-top">
+        <span class="label">Health:</span><span class="v" id="net-health" style="color:var(--green)">100%</span>
+        <span class="sep">|</span>
+        <span class="label">Pipes:</span><span class="v" id="pipe-count">84</span>
+        <span class="sep">|</span>
+        <span class="label">Sensors:</span><span class="v" id="sensor-count">8</span>
+        <span class="sep">|</span>
+        <button class="btn primary" id="btn-simulate">▶ Run Telemetry</button>
+        <button class="btn" id="btn-flow">⇄ Flow: ON</button>
+        <button class="btn" id="btn-particles">✦ Particles: ON</button>
+        <button class="btn" id="btn-geo">⛰ Geo: ON</button>
+        <button class="btn" id="btn-protocol">72h Reveal</button>
+        <button class="btn" id="btn-reset">↻ Reset</button>
+      </div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-scroll">
+        <!-- Workflow -->
+        <div class="card">
+          <div class="card-title"><span class="l">Investigation Workflow</span></div>
+          <div class="wf-steps" id="wf-steps">
+            <div class="wf-step active">Observe</div>
+            <div class="wf-step">Localize</div>
+            <div class="wf-step">Inspect</div>
+            <div class="wf-step">Infer</div>
+            <div class="wf-step">Verify</div>
+            <div class="wf-step">Decide</div>
+          </div>
+        </div>
+
+        <!-- Incident -->
+        <div class="card green" id="incident-card">
+          <div class="card-title"><span class="l">Incident Summary</span></div>
+          <h3 id="inc-title">Awaiting Telemetry</h3>
+          <div class="loc" id="inc-loc">DMA-03 · Ward 12 · Port Elizabeth</div>
+          <div class="conf-row">
+            <span class="cv" id="inc-conf">—%</span>
+            <span class="cl">Confidence</span>
+          </div>
+          <div class="ev-state">
+            <span class="bg insufficient" id="inc-bg">OBSERVED</span>
+            <span class="det" id="inc-det">0 obs · awaiting data</span>
+          </div>
+          <button class="btn primary" id="btn-inspect" style="width:100%">🔍 Inspect Pipe</button>
+        </div>
+
+        <!-- EIS -->
+        <div class="card">
+          <div class="card-title"><span class="l">EIS v1.0 · Evidence Independence</span><span class="toggle" id="eis-cost-toggle">⚙ Cost</span></div>
+          <div class="eis-metrics">
+            <div class="m"><div class="v" id="eis-score">0.00</div><div class="l">EIS Score</div></div>
+            <div class="m"><div class="v" id="eis-indep">0</div><div class="l">Independent</div></div>
+            <div class="m"><div class="v" id="eis-corr">0</div><div class="l">Correlated</div></div>
+            <div class="m"><div class="v" id="eis-thresh">0.80</div><div class="l">Threshold</div></div>
+          </div>
+          <div class="contrib" id="eis-contrib">
+            <div style="color:var(--dim);text-align:center;padding:6px;font-size:0.85em">No evidence — run telemetry</div>
+          </div>
+          <div class="cost-slider" id="cost-panel" style="display:none">
+            <label>Cost Ratio (C_FP : C_FN)<span class="v" id="cost-ratio-val">1 : 3</span></label>
+            <input type="range" id="cost-slider" min="1" max="10" value="3" step="1">
+            <div class="cost-display">
+              <div class="c fp"><div class="l">False Positive Cost</div><div class="v" id="cost-fp">R 50k</div></div>
+              <div class="c fn"><div class="l">False Negative Cost</div><div class="v" id="cost-fn">R 150k</div></div>
+              <div class="c thresh"><div class="l">Adjusted Threshold</div><div class="v" id="cost-thresh">0.70</div></div>
+              <div class="c mode"><div class="l">Optimization Mode</div><div class="v" id="cost-mode">BALANCED</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hydraulic Twin -->
+        <div class="card purple">
+          <div class="card-title"><span class="l">Hydraulic Twin · Hazen-Williams</span></div>
+          <div class="hydr-formula">h_f = 10.67 · L · C⁻¹·⁸⁵ · D⁻⁴·⁸⁷ · Q¹·⁸⁵</div>
+          <div class="hydr-row"><span class="l">Pipe Material:</span><span class="v" id="hyd-material">—</span></div>
+          <div class="hydr-row"><span class="l">Hazen-Williams C:</span><span class="v" id="hyd-c">—</span></div>
+          <div class="hydr-row"><span class="l">Length / Diameter:</span><span class="v" id="hyd-ld">—</span></div>
+          <div class="hydr-row"><span class="l">Flow Rate Q:</span><span class="v" id="hyd-q">—</span></div>
+          <div class="hydr-row"><span class="l">Expected h_f:</span><span class="v" id="hyd-hf">—</span></div>
+          <div class="hydr-row"><span class="l">Observed ΔP:</span><span class="v" id="hyd-obs">—</span></div>
+          <div class="hydr-row"><span class="l">Cross-Validation:</span><span class="v" id="hyd-valid">—</span></div>
+        </div>
+
+        <!-- Geological Layers -->
+        <div class="card" id="geo-card">
+          <div class="card-title"><span class="l">Geological Stratigraphy</span></div>
+          <div class="geo-layers" id="geo-layers"></div>
+        </div>
+
+        <!-- Audit Trail -->
+        <div class="card">
+          <div class="card-title"><span class="l">Decision Timeline</span></div>
+          <div class="timeline" id="timeline">
+            <div style="color:var(--dim);text-align:center;padding:6px;font-size:0.85em">No decisions recorded</div>
+          </div>
+          <div style="display:flex;gap:5px;margin-top:8px">
+            <button class="btn" id="btn-csv" style="flex:1">📥 CSV</button>
+            <button class="btn" id="btn-json" style="flex:1">📥 JSON+SHA</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Subsurface -->
+    <div class="subsurface" id="subsurface">
+      <div class="subsurface-header">
+        <span class="t">⛏️ Subsurface · Probability Particles</span>
+        <div class="ctrls">
+          <label>Depth:</label>
+          <input type="range" id="depth-slider" min="0" max="3" step="0.1" value="1.5">
+          <span id="depth-val" style="color:var(--cyan);min-width:28px">1.5m</span>
+          <label style="margin-left:4px">Flow:</label>
+          <input type="checkbox" id="flow-3d-toggle" checked>
+          <button class="btn" id="btn-expand-3d" style="padding:2px 7px;font-size:0.8em">⤢</button>
+        </div>
+      </div>
+      <div id="three-container"></div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <span class="warn">[SIMULATION — NOT MUNICIPAL OPERATIONAL DATA]</span>
+    <span class="sep">|</span>
+    <span class="label">Pipe:</span><span class="v cyan" id="sel-pipe">—</span>
+    <span class="sep">|</span>
+    <span class="label">Posterior:</span><span class="v green" id="sel-post">—</span>
+    <span class="sep">|</span>
+    <span class="label">Cycle:</span><span class="v" id="cycle">0/60</span>
+    <span class="sep">|</span>
+    <span class="label">Leak:</span><span class="v red">PIP-034 (hidden)</span>
+    <span class="sep">|</span>
+    <span class="label">Flow:</span><span class="v cyan" id="flow-status">animated</span>
+    <span class="sep">|</span>
+    <span class="label">Particles:</span><span class="v cyan" id="particle-status">active</span>
+  </div>
+</div>
+
+<!-- Fullscreen controls -->
+<div class="fs-controls">
+  <button class="btn primary" id="btn-fullscreen">⛶ Fullscreen</button>
+  <button class="btn" id="btn-second-screen" style="display:none">🖥 Extend to Screen 2</button>
+</div>
+<div class="fs-screen-info" id="screen-info">
+  <div class="t">🖥 Screen Detection</div>
+  <div class="d"><span class="l">Primary:</span> <span id="screen-primary">—</span></div>
+  <div class="d"><span class="l">Extended:</span> <span id="screen-extended">—</span></div>
+  <div class="d"><span class="l">Screens:</span> <span id="screen-count">1</span></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================================
+// NMBM DEMO DATA — Port Elizabeth
+// ============================================================================
+const NMBM_CENTER = [25.5812, -33.9884];
+const GRID_SIZE = 6;
+const BLOCK_DEG = 0.0045;
+const OFFSET = GRID_SIZE * BLOCK_DEG / 2;
+
+const nodes = {};
+const pipes = {};
+let nc = 0, pc = 0;
+
+for (let ix = 0; ix <= GRID_SIZE; ix++) {
+  for (let iz = 0; iz <= GRID_SIZE; iz++) {
+    const id = `N${String(nc).padStart(2,'0')}`;
+    nodes[id] = { lng: NMBM_CENTER[0] + (ix*BLOCK_DEG - OFFSET), lat: NMBM_CENTER[1] + (iz*BLOCK_DEG - OFFSET) };
+    nc++;
+  }
+}
+const grid = GRID_SIZE + 1;
+const MATERIALS = [
+  { name: 'Ductile Iron', C: 130, color: 0x4a5568 },
+  { name: 'PVC', C: 150, color: 0x2d8b8b },
+  { name: 'AC', C: 120, color: 0x8b6f47 },
+  { name: 'HDPE', C: 140, color: 0x4a7a4a },
+];
+for (let iz = 0; iz <= GRID_SIZE; iz++) {
+  for (let ix = 0; ix < GRID_SIZE; ix++) {
+    const id = `PIP-${String(pc).padStart(3,'0')}`;
+    const mat = MATERIALS[Math.floor(Math.random()*MATERIALS.length)];
+    pipes[id] = {
+      id, from: `N${String(iz*grid+ix).padStart(2,'0')}`, to: `N${String(iz*grid+ix+1).padStart(2,'0')}`,
+      dma: `DMA-${String(Math.floor(iz/2)+1).padStart(2,'0')}`, type: 'horizontal',
+      depth: +(0.4+Math.random()*0.8).toFixed(2),
+      diameter: +(0.15+Math.random()*0.35).toFixed(2),
+      material: mat.name, C: mat.C, length: 500, flowRate: 0,
+    };
+    pc++;
+  }
+}
+for (let ix = 0; ix <= GRID_SIZE; ix++) {
+  for (let iz = 0; iz < GRID_SIZE; iz++) {
+    const id = `PIP-${String(pc).padStart(3,'0')}`;
+    const mat = MATERIALS[Math.floor(Math.random()*MATERIALS.length)];
+    pipes[id] = {
+      id, from: `N${String(iz*grid+ix).padStart(2,'0')}`, to: `N${String((iz+1)*grid+ix).padStart(2,'0')}`,
+      dma: `DMA-${String(Math.floor(ix/2)+1).padStart(2,'0')}`, type: 'vertical',
+      depth: +(0.4+Math.random()*0.8).toFixed(2),
+      diameter: +(0.15+Math.random()*0.35).toFixed(2),
+      material: mat.name, C: mat.C, length: 500, flowRate: 0,
+    };
+    pc++;
+  }
+}
+
+const sensors = {};
+Object.keys(nodes).forEach((nid, i) => {
+  if (i % 4 === 0) {
+    sensors[`S${String(Object.keys(sensors).length).padStart(2,'0')}`] = { node: nid, type: 'Pressure', dma: pipes[Object.keys(pipes)[i % pc]].dma };
+  }
+});
+
+const LEAK_PIPE_ID = 'PIP-034';
+
+// Geological strata (Port Elizabeth typical)
+const GEO_LAYERS = [
+  { name: 'Surface Asphalt', depthFrom: 0, depthTo: 0.3, color: '#2a2a2a', opacity: 0.7 },
+  { name: 'Backfill Sand', depthFrom: 0.3, depthTo: 0.8, color: '#8b7355', opacity: 0.5 },
+  { name: 'Clay Layer', depthFrom: 0.8, depthTo: 1.5, color: '#6b4423', opacity: 0.5 },
+  { name: 'Bedrock (Sandstone)', depthFrom: 1.5, depthTo: 3.0, color: '#4a4a3a', opacity: 0.4 },
+];
+
+// ============================================================================
+// BAYESIAN PIPE STATE
+// ============================================================================
+class BayesianPipe {
+  constructor(id, dma) {
+    this.id = id; this.dma = dma;
+    this.alpha = 1; this.beta = 1;
+    this.observations = 0; this.anomalies = 0;
+    this.posterior = 0.5; this.category = 'INSUFFICIENT';
+    this.history = []; this.maxPosterior = 0;
+    this.sensorValidated = true; // hydraulic cross-validation flag
+  }
+  update(isAnomaly, eisWeight) {
+    this.observations++;
+    if (isAnomaly) { this.anomalies++; this.alpha += eisWeight * 0.8 * (this.sensorValidated ? 1 : 0.5); }
+    else { this.beta += (1 - eisWeight * 0.2); }
+    this.alpha = Math.min(this.alpha, 50);
+    this.beta = Math.min(this.beta, 50);
+    this.posterior = this.alpha / (this.alpha + this.beta);
+    this.maxPosterior = Math.max(this.maxPosterior, this.posterior);
+    this.history.push({ obs: this.observations, posterior: this.posterior });
+    this.category = this.posterior >= 0.75 ? 'VERIFIED' : this.posterior >= 0.5 ? 'CANDIDATE' : 'INSUFFICIENT';
+  }
+  reset() {
+    this.alpha = 1; this.beta = 1; this.observations = 0; this.anomalies = 0;
+    this.posterior = 0.5; this.category = 'INSUFFICIENT'; this.history = []; this.maxPosterior = 0;
+    this.sensorValidated = true;
+  }
+  getCI() {
+    const a = this.alpha, b = this.beta;
+    const mean = a/(a+b);
+    const variance = (a*b)/(Math.pow(a+b,2)*(a+b+1));
+    const se = Math.sqrt(variance);
+    return { mean, lower: Math.max(0, mean-1.96*se), upper: Math.min(1, mean+1.96*se) };
+  }
+}
+
+// ============================================================================
+// HAZEN-WILLIAMS HYDRAULIC SOLVER
+// ============================================================================
+class HydraulicSolver {
+  // h_f = 10.67 * L * C^-1.85 * D^-4.87 * Q^1.85
+  // L in meters, D in meters, Q in m³/s, h_f in meters (head loss)
+  static computeHeadLoss(length, C, diameter, flowRate) {
+    if (flowRate <= 0 || C <= 0 || diameter <= 0) return 0;
+    const L = length;
+    const D = diameter; // already in meters (0.15–0.50)
+    const Q = flowRate / 1000; // L/s to m³/s
+    const hf = 10.67 * L * Math.pow(C, -1.852) * Math.pow(D, -4.87) * Math.pow(Q, 1.852);
+    return hf;
+  }
+  // Cross-validate: does observed pressure drop match expected head loss?
+  static crossValidate(pipe, observedDrop, flowRate) {
+    const expected = this.computeHeadLoss(pipe.length, pipe.C, pipe.diameter, flowRate);
+    const tolerance = expected * 0.3; // 30% tolerance
+    const residual = Math.abs(observedDrop - expected);
+    const valid = residual <= tolerance;
+    return { expected, observed: observedDrop, residual, valid, ratio: observedDrop / Math.max(expected, 0.01) };
+  }
+}
+
+// ============================================================================
+// EIS v1.0 with Cost-Sensitive Thresholds
+// ============================================================================
+class EISEvaluator {
+  constructor() {
+    this.baseThreshold = 0.80;
+    this.weights = { primary: 0.3, correlated: 0.2, independent: 0.4 };
+    this.costRatio = 3; // C_FN / C_FP
+  }
+  getThreshold(pipe) {
+    // Dynamic threshold: higher C_FN → lower threshold (catch more leaks)
+    // Higher C_FP → higher threshold (fewer false alarms)
+    // Pipe age/material can modulate: old AC pipes → lower threshold
+    const materialFactor = pipe.material === 'AC' ? -0.05 : pipe.material === 'Ductile Iron' ? 0.03 : 0;
+    const costAdjustment = (this.costRatio - 1) * 0.03; // higher ratio → lower threshold
+    const threshold = Math.max(0.5, Math.min(0.95, this.baseThreshold - costAdjustment + materialFactor));
+    return threshold;
+  }
+  evaluate(pipe, sensorReadings) {
+    if (!sensorReadings || sensorReadings.length === 0) {
+      return { score: 0, category: 'INSUFFICIENT', independent: 0, correlated: 0, primary: 0, threshold: this.getThreshold(pipe) };
+    }
+    const sorted = [...sensorReadings].sort((a,b) => b.confidence - a.confidence);
+    const primary = sorted[0];
+    const primaryWeight = primary.confidence > 0.55 ? this.weights.primary : 0;
+    // Downgrade if hydraulic cross-validation failed
+    const primaryEffective = primary.hydraulicValid === false ? primaryWeight * 0.5 : primaryWeight;
+    const correlated = sorted.filter(r => r.dma === pipe.dma && r !== primary && r.hydraulicValid !== false);
+    const correlatedWeight = correlated.length > 0 ? this.weights.correlated : 0;
+    const independent = sorted.filter(r => r.dma !== pipe.dma && r.hydraulicValid !== false);
+    const independentWeight = Math.min(independent.length * 0.25, 0.5);
+    const score = primaryEffective + correlatedWeight + independentWeight;
+    const threshold = this.getThreshold(pipe);
+    const category = score >= threshold ? 'VERIFIED' : score >= 0.5 ? 'CANDIDATE' : 'INSUFFICIENT';
+    return {
+      score: +score.toFixed(3), category, threshold,
+      independent: independent.length, correlated: correlated.length,
+      primary: primaryEffective > 0 ? 1 : 0,
+      primarySensor: primary, independentSensors: independent, correlatedSensors: correlated,
+    };
+  }
+}
+
+// ============================================================================
+// SHA-256
+// ============================================================================
+async function sha256(data) {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(typeof data === 'string' ? data : JSON.stringify(data));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ============================================================================
+// STATE
+// ============================================================================
+const bayesPipes = {};
+Object.keys(pipes).forEach(pid => { bayesPipes[pid] = new BayesianPipe(pid, pipes[pid].dma); });
+const eis = new EISEvaluator();
+let selectedPipe = null;
+let simCycle = 0;
+const MAX_CYCLES = 60;
+let isSimulating = false;
+let simTimer = null;
+let protocolMode = 'blind';
+let auditEntries = [];
+let currentWfStep = 0;
+let flowEnabled = true;
+let particlesEnabled = true;
+let geoEnabled = true;
+let flowAnimOffset = 0;
+let dashAnimTimer = null;
+
+// ============================================================================
+// MAP SETUP
+// ============================================================================
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://demotiles.maplibre.org/style.json',
+  center: NMBM_CENTER, zoom: 13.5, pitch: 25, bearing: 0, antialias: true,
+});
+
+map.on('load', () => {
+  // Geological raster underlay (simulated as a colored rectangle source)
+  // We'll add it as a geojson polygon layer with stratigraphic colors
+  const geoFeatures = [];
+  GEO_LAYERS.forEach(layer => {
+    const ring = [
+      [NMBM_CENTER[0]-OFFSET, NMBM_CENTER[1]-OFFSET],
+      [NMBM_CENTER[0]+OFFSET, NMBM_CENTER[1]-OFFSET],
+      [NMBM_CENTER[0]+OFFSET, NMBM_CENTER[1]+OFFSET],
+      [NMBM_CENTER[0]-OFFSET, NMBM_CENTER[1]+OFFSET],
+      [NMBM_CENTER[0]-OFFSET, NMBM_CENTER[1]-OFFSET],
+    ];
+    geoFeatures.push({
+      type: 'Feature',
+      geometry: { type: 'Polygon', coordinates: [ring] },
+      properties: { color: layer.color, opacity: layer.opacity, layer: layer.name, depthTo: layer.depthTo },
+    });
+  });
+
+  map.addSource('geo', { type: 'geojson', data: { type: 'FeatureCollection', features: geoFeatures } });
+  map.addLayer({
+    id: 'geo-layer', type: 'fill', source: 'geo',
+    paint: { 'fill-color': ['get','color'], 'fill-opacity': ['get','opacity'] },
+    layout: { visibility: geoEnabled ? 'visible' : 'none' },
+  });
+
+  // Pipes
+  const pipeFeatures = Object.values(pipes).map(p => {
+    const f = nodes[p.from], t = nodes[p.to];
+    return { type: 'Feature', geometry: { type: 'LineString', coordinates: [[f.lng,f.lat],[t.lng,t.lat]] }, properties: { id: p.id, dma: p.dma, color: '#3a5570' } };
+  });
+  map.addSource('pipes', { type: 'geojson', data: { type: 'FeatureCollection', features: pipeFeatures } });
+
+  // Base pipe layer (solid)
+  map.addLayer({
+    id: 'pipes-base', type: 'line', source: 'pipes',
+    layout: { 'line-join':'round','line-cap':'round' },
+    paint: { 'line-color': ['get','color'], 'line-width': 5, 'line-opacity': 0.9 },
+  });
+
+  // Flow animation layer (dashed, animated)
+  map.addLayer({
+    id: 'pipes-flow', type: 'line', source: 'pipes',
+    layout: { 'line-join':'round','line-cap':'round', visibility: flowEnabled ? 'visible' : 'none' },
+    paint: {
+      'line-color': '#00d4ff', 'line-width': 2, 'line-opacity': 0.6,
+      'line-dasharray': [0.5, 2],
+    },
+  });
+
+  // Sensors
+  const sensorFeatures = Object.values(sensors).map(s => {
+    const n = nodes[s.node];
+    return { type:'Feature', geometry:{ type:'Point', coordinates:[n.lng,n.lat] }, properties:{ id:s.node, dma:s.dma } };
+  });
+  map.addSource('sensors', { type: 'geojson', data: { type:'FeatureCollection', features: sensorFeatures } });
+  map.addLayer({
+    id: 'sensors-layer', type: 'circle', source: 'sensors',
+    paint: { 'circle-radius': 6, 'circle-color':'#00ff88', 'circle-stroke-color':'#060a10', 'circle-stroke-width': 2 },
+  });
+
+  map.on('click', 'pipes-base', (e) => {
+    if (e.features.length > 0) selectPipe(e.features[0].properties.id);
+  });
+  map.on('mouseenter','pipes-base', () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave','pipes-base', () => { map.getCanvas().style.cursor = ''; });
+
+  updateMapColors();
+  document.getElementById('pipe-count').textContent = Object.keys(pipes).length;
+  document.getElementById('sensor-count').textContent = Object.keys(sensors).length;
+});
+
+// Animated flow dasharray
+function startFlowAnimation() {
+  if (dashAnimTimer) clearInterval(dashAnimTimer);
+  dashAnimTimer = setInterval(() => {
+    flowAnimOffset = (flowAnimOffset + 0.15) % 2.5;
+    if (map.getLayer('pipes-flow')) {
+      map.setPaintProperty('pipes-flow', 'line-dasharray', [0.5, flowAnimOffset + 0.5]);
+    }
+  }, 60);
+}
+startFlowAnimation();
+
+// ============================================================================
+// THREE.JS SUBSURFACE
+// ============================================================================
+const threeContainer = document.getElementById('three-container');
+const scene3d = new THREE.Scene();
+scene3d.background = new THREE.Color(0x060a10);
+const camera3d = new THREE.PerspectiveCamera(50, threeContainer.clientWidth/threeContainer.clientHeight, 0.1, 100);
+camera3d.position.set(3, 3, 4);
+camera3d.lookAt(0,0,0);
+const renderer3d = new THREE.WebGLRenderer({ antialias: true });
+renderer3d.setSize(threeContainer.clientWidth, threeContainer.clientHeight);
+renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+threeContainer.appendChild(renderer3d.domElement);
+const controls3d = new THREE.OrbitControls(camera3d, renderer3d.domElement);
+controls3d.enableDamping = true; controls3d.dampingFactor = 0.08;
+controls3d.target.set(0,0,0); controls3d.maxPolarAngle = Math.PI/2.1;
+controls3d.minDistance = 2; controls3d.maxDistance = 10;
+
+scene3d.add(new THREE.AmbientLight(0x334455, 0.6));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+dirLight.position.set(3,5,2); scene3d.add(dirLight);
+const cyanLight = new THREE.PointLight(0x00d4ff, 1.2, 15);
+cyanLight.position.set(-3,1,3); scene3d.add(cyanLight);
+
+// Geological strata planes (semi-transparent)
+const geoPlanes = [];
+GEO_LAYERS.forEach((layer, i) => {
+  const geo = new THREE.PlaneGeometry(8, 8);
+  const mat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(layer.color), transparent: true, opacity: layer.opacity * 0.3, side: THREE.DoubleSide,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = -layer.depthTo * 0.3;
+  mesh.visible = geoEnabled;
+  scene3d.add(mesh);
+  geoPlanes.push(mesh);
+});
+
+// Ground grid
+const gridHelper = new THREE.GridHelper(6, 12, 0x2a3a4a, 0x1a2332);
+gridHelper.position.y = -0.01; scene3d.add(gridHelper);
+
+// Pipe meshes
+const pipeMeshes = {};
+const pipeGroup = new THREE.Group();
+const SCALE = 0.5;
+Object.values(pipes).forEach(p => {
+  const f = nodes[p.from], t = nodes[p.to];
+  const dx = (t.lng-f.lng)*1000*SCALE, dz = (t.lat-f.lat)*1000*SCALE;
+  const len = Math.sqrt(dx*dx+dz*dz);
+  const angle = Math.atan2(dz, dx);
+  const r = 0.03 + p.diameter*0.04;
+  const mat = new THREE.MeshStandardMaterial({ color: 0x3a5570, roughness: 0.5, metalness: 0.3, emissive: 0x000000, emissiveIntensity: 0 });
+  const geom = new THREE.CylinderGeometry(r, r, len, 6);
+  const mesh = new THREE.Mesh(geom, mat);
+  const mx = (f.lng-NMBM_CENTER[0])*1000*SCALE + dx/2;
+  const mz = (f.lat-NMBM_CENTER[1])*1000*SCALE + dz/2;
+  mesh.position.set(mx, -p.depth*0.3, mz);
+  mesh.rotation.z = Math.PI/2; mesh.rotation.y = -angle;
+  mesh.userData = { pipeId: p.id };
+  pipeGroup.add(mesh);
+  pipeMeshes[p.id] = mesh;
+  // Glow ring
+  const glowGeo = new THREE.RingGeometry(r*2.5, r*4, 12);
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0, side: THREE.DoubleSide });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.set(mx, -p.depth*0.3, mz);
+  glow.rotation.x = -Math.PI/2;
+  pipeGroup.add(glow);
+  mesh.userData.glow = glow;
+});
+scene3d.add(pipeGroup);
+
+// Sensors (above ground)
+Object.values(sensors).forEach(s => {
+  const n = nodes[s.node];
+  const sx = (n.lng-NMBM_CENTER[0])*1000*SCALE, sz = (n.lat-NMBM_CENTER[1])*1000*SCALE;
+  const sensorGeo = new THREE.OctahedronGeometry(0.08);
+  const sensorMat = new THREE.MeshStandardMaterial({ color: 0x00ff88, emissive: 0x004433, emissiveIntensity: 0.5 });
+  const sensorMesh = new THREE.Mesh(sensorGeo, sensorMat);
+  sensorMesh.position.set(sx, 0.15, sz);
+  scene3d.add(sensorMesh);
+});
+
+// PROBABILITY PARTICLE SYSTEM
+// Particles emit along pipe axes where density ∝ posterior
+let particleSystem = null;
+let particleVelocities = null;
+const MAX_PARTICLES = 2000;
+
+function createParticleSystem() {
+  const positions = new Float32Array(MAX_PARTICLES * 3);
+  const colors = new Float32Array(MAX_PARTICLES * 3);
+  const sizes = new Float32Array(MAX_PARTICLES);
+  particleVelocities = new Float32Array(MAX_PARTICLES * 3);
+  particleVelocities = new Float32Array(MAX_PARTICLES * 3);
+
+  for (let i = 0; i < MAX_PARTICLES; i++) {
+    positions[i*3] = 0; positions[i*3+1] = -10; positions[i*3+2] = 0;
+    colors[i*3] = 0; colors[i*3+1] = 1; colors[i*3+2] = 0.5;
+    sizes[i] = 0.05;
+  }
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geom.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.08, vertexColors: true, transparent: true, opacity: 0.7,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  particleSystem = new THREE.Points(geom, mat);
+  scene3d.add(particleSystem);
+}
+createParticleSystem();
+
+function updateParticles() {
+  if (!particleSystem || !particlesEnabled) {
+    if (particleSystem) particleSystem.visible = false;
+    return;
+  }
+  particleSystem.visible = true;
+  const positions = particleSystem.geometry.attributes.position.array;
+  const colors = particleSystem.geometry.attributes.color.array;
+  // For each particle, assign it to a pipe weighted by posterior
+  const pipeList = Object.values(bayesPipes).filter(bp => bp.posterior > 0.15);
+  if (pipeList.length === 0) {
+    for (let i = 0; i < MAX_PARTICLES; i++) { positions[i*3+1] = -10; }
+    particleSystem.geometry.attributes.position.needsUpdate = true;
+    return;
+  }
+  // Weighted random selection
+  const totalWeight = pipeList.reduce((s,p) => s + p.posterior, 0);
+  let particleIdx = 0;
+  for (const bp of pipeList) {
+    const numForPipe = Math.floor((bp.posterior / totalWeight) * MAX_PARTICLES);
+    const pipe = pipes[bp.id];
+    const f = nodes[pipe.from], t = nodes[pipe.to];
+    const fx = (f.lng-NMBM_CENTER[0])*1000*SCALE, fz = (f.lat-NMBM_CENTER[1])*1000*SCALE;
+    const tx = (t.lng-NMBM_CENTER[0])*1000*SCALE, tz = (t.lat-NMBM_CENTER[1])*1000*SCALE;
+    for (let i = 0; i < numForPipe && particleIdx < MAX_PARTICLES; i++) {
+      const frac = Math.random();
+      const px = fx + (tx-fx)*frac;
+      const pz = fz + (tz-fz)*frac;
+      const py = -pipe.depth*0.3 + (Math.random()-0.5)*0.1;
+      positions[particleIdx*3] = px + (Math.random()-0.5)*0.05;
+      positions[particleIdx*3+1] = py;
+      positions[particleIdx*3+2] = pz + (Math.random()-0.5)*0.05;
+      // Color by posterior
+      if (bp.posterior >= 0.75) { colors[particleIdx*3]=0; colors[particleIdx*3+1]=1; colors[particleIdx*3+2]=0.53; }
+      else if (bp.posterior >= 0.5) { colors[particleIdx*3]=1; colors[particleIdx*3+1]=0.72; colors[particleIdx*3+2]=0; }
+      else { colors[particleIdx*3]=0; colors[particleIdx*3+1]=0.83; colors[particleIdx*3+2]=1; }
+      particleIdx++;
+    }
+  }
+  // Hide unused
+  for (let i = particleIdx; i < MAX_PARTICLES; i++) { positions[i*3+1] = -10; }
+  particleSystem.geometry.attributes.position.needsUpdate = true;
+  particleSystem.geometry.attributes.color.needsUpdate = true;
+}
+
+// FLOW ANIMATION in 3D (instanced spheres moving along pipes)
+const flowPackets = [];
+const FLOW_PACKET_COUNT = 150;
+for (let i = 0; i < FLOW_PACKET_COUNT; i++) {
+  const geom = new THREE.SphereGeometry(0.04, 4, 4);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x00d4ff, transparent: true, opacity: 0.6 });
+  const mesh = new THREE.Mesh(geom, mat);
+  mesh.visible = false;
+  scene3d.add(mesh);
+  flowPackets.push({ mesh, pipeId: null, frac: 0, speed: 0.002 + Math.random()*0.003 });
+}
+function updateFlowPackets() {
+  if (!flowEnabled) {
+    flowPackets.forEach(fp => { fp.mesh.visible = false; });
+    return;
+  }
+  const pipeList = Object.values(pipes);
+  flowPackets.forEach((fp, i) => {
+    if (!fp.pipeId) {
+      fp.pipeId = pipeList[Math.floor(Math.random()*pipeList.length)].id;
+      fp.frac = Math.random();
+    }
+    const pipe = pipes[fp.pipeId];
+    const bp = bayesPipes[fp.pipeId];
+    const f = nodes[pipe.from], t = nodes[pipe.to];
+    const fx = (f.lng-NMBM_CENTER[0])*1000*SCALE, fz = (f.lat-NMBM_CENTER[1])*1000*SCALE;
+    const tx = (t.lng-NMBM_CENTER[0])*1000*SCALE, tz = (t.lat-NMBM_CENTER[1])*1000*SCALE;
+    fp.frac += fp.speed * (1 + bp.posterior*2); // faster on high-probability pipes
+    if (fp.frac > 1) { fp.frac = 0; fp.pipeId = pipeList[Math.floor(Math.random()*pipeList.length)].id; return; }
+    fp.mesh.position.set(fx+(tx-fx)*fp.frac, -pipe.depth*0.3, fz+(tz-fz)*fp.frac);
+    // Color: cyan for normal, green if high probability
+    const c = bp.posterior >= 0.5 ? 0x00ff88 : 0x00d4ff;
+    fp.mesh.material.color.setHex(c);
+    fp.mesh.visible = true;
+  });
+}
+
+function update3DColors() {
+  Object.entries(bayesPipes).forEach(([pid, bp]) => {
+    const mesh = pipeMeshes[pid]; if (!mesh) return;
+    const p = bp.posterior;
+    let color, emissive;
+    if (p >= 0.75) { color = 0x00ff88; emissive = 0x004422; }
+    else if (p >= 0.5) { color = 0xffb800; emissive = 0x442200; }
+    else { color = 0x3a5570; emissive = 0x000000; }
+    mesh.material.color.setHex(color);
+    mesh.material.emissive.setHex(emissive);
+    mesh.material.emissiveIntensity = p * 0.5;
+    const glow = mesh.userData.glow;
+    if (glow) { glow.material.opacity = p * 0.6; glow.material.color.setHex(color); }
+  });
+}
+
+function animate3D() {
+  requestAnimationFrame(animate3D);
+  Object.values(pipeMeshes).forEach(mesh => {
+    const glow = mesh.userData.glow;
+    if (glow && glow.material.opacity > 0.01) glow.lookAt(camera3d.position);
+  });
+  updateFlowPackets();
+  controls3d.update();
+  renderer3d.render(scene3d, camera3d);
+}
+animate3D();
+
+function resize3D() {
+  const w = threeContainer.clientWidth, h = threeContainer.clientHeight;
+  camera3d.aspect = w/h; camera3d.updateProjectionMatrix();
+  renderer3d.setSize(w, h);
+}
+window.addEventListener('resize', resize3D);
+setTimeout(resize3D, 100);
+
+// ============================================================================
+// MAP COLORS
+// ============================================================================
+function updateMapColors() {
+  if (!map.getSource('pipes')) return;
+  const data = map.getSource('pipes')._data;
+  data.features.forEach(f => {
+    const bp = bayesPipes[f.properties.id];
+    if (!bp) { f.properties.color = '#3a5570'; return; }
+    f.properties.color = bp.posterior >= 0.75 ? '#00ff88' : bp.posterior >= 0.5 ? '#ffb800' : '#3a5570';
+  });
+  map.getSource('pipes').setData(data);
+  if (selectedPipe) {
+    map.setPaintProperty('pipes-base', 'line-width', ['case', ['==',['get','id'], selectedPipe], 7, 5]);
+  }
+}
+
+// ============================================================================
+// SENSOR SIMULATION + HYDRAULIC CROSS-VALIDATION
+// ============================================================================
+function simulateSensorReadings(pipeId, isLeak) {
+  const pipe = pipes[pipeId];
+  if (!pipe) return [];
+  const readings = [];
+  const f = nodes[pipe.from], t = nodes[pipe.to];
+  const midX = (f.lng+t.lng)/2, midY = (f.lat+t.lat)/2;
+  // Simulate flow rate (L/s) — base 20 L/s, +leak adds flow
+  pipe.flowRate = isLeak ? 35 + Math.random()*5 : 20 + Math.random()*3;
+  Object.values(sensors).forEach(s => {
+    const n = nodes[s.node];
+    const dist = Math.sqrt((midX-n.lng)**2 + (midY-n.lat)**2) * 1000;
+    let confidence = Math.max(0, 0.95 - dist/800);
+    if (isLeak) confidence += 0.4 * Math.exp(-dist/200);
+    confidence += (Math.random()-0.5)*0.08;
+    confidence = Math.min(1, Math.max(0, confidence));
+    // Observed pressure drop (if leak nearby)
+    const observedDrop = isLeak ? Math.max(0, (confidence * 15) + (Math.random()-0.5)*3) : Math.random()*2;
+    // Hydraulic cross-validation
+    const hydResult = HydraulicSolver.crossValidate(pipe, observedDrop, pipe.flowRate);
+    readings.push({
+      sensorId: s.node, dma: s.dma, confidence, isAnomaly: confidence > 0.55,
+      distance: dist, observedDrop, hydraulicValid: hydResult.valid, hydResult,
+    });
+  });
+  return readings;
+}
+
+// ============================================================================
+// SELECT PIPE
+// ============================================================================
+function selectPipe(pipeId) {
+  selectedPipe = pipeId;
+  const bp = bayesPipes[pipeId];
+  const pipe = pipes[pipeId];
+  document.getElementById('sel-pipe').textContent = pipeId;
+  document.getElementById('sel-post').textContent = `${(bp.posterior*100).toFixed(1)}%`;
+  document.getElementById('inc-title').textContent = bp.posterior >= 0.75 ? 'Verified Leak Candidate' : bp.posterior >= 0.5 ? 'Suspected Underground Leak' : 'Observation Only';
+  document.getElementById('inc-loc').textContent = `${pipe.dma} · ${pipe.material} · ⌀${pipe.diameter}m · ${pipe.depth}m deep`;
+  document.getElementById('inc-conf').textContent = `${(bp.posterior*100).toFixed(1)}%`;
+  const bg = document.getElementById('inc-bg');
+  bg.textContent = bp.category; bg.className = `bg ${bp.category.toLowerCase()}`;
+  const ci = bp.getCI();
+  document.getElementById('inc-det').textContent = `${bp.observations} obs · 95% CI [${(ci.lower*100).toFixed(0)}%, ${(ci.upper*100).toFixed(0)}%]`;
+
+  // EIS panel
+  const readings = simulateSensorReadings(pipeId, simCycle >= 20 && pipeId === LEAK_PIPE_ID);
+  const eisResult = eis.evaluate(bp, readings);
+  document.getElementById('eis-score').textContent = eisResult.score.toFixed(2);
+  document.getElementById('eis-indep').textContent = eisResult.independent;
+  document.getElementById('eis-corr').textContent = eisResult.correlated;
+  document.getElementById('eis-thresh').textContent = eisResult.threshold.toFixed(2);
+
+  // Contributors
+  const contribEl = document.getElementById('eis-contrib');
+  contribEl.innerHTML = '';
+  if (readings.length === 0) {
+    contribEl.innerHTML = '<div style="color:var(--dim);text-align:center;padding:6px;font-size:0.85em">No evidence — run telemetry</div>';
+  } else {
+    readings.slice(0,6).forEach((r, i) => {
+      let cls = 'correlated';
+      if (i === 0 && r.confidence > 0.55) cls = 'primary';
+      else if (r.dma !== pipe.dma) cls = 'independent';
+      if (r.hydraulicValid === false) cls = 'downgraded';
+      const div = document.createElement('div');
+      div.className = `c-item ${cls}`;
+      div.innerHTML = `<span class="t">${r.sensorId} <span style="color:var(--dim);font-size:0.85em">${r.dma}</span></span><span style="color:${r.confidence>0.55?'var(--amber)':'var(--dim)'}">${(r.confidence*100).toFixed(0)}%</span><span class="x ${cls}">${cls.toUpperCase()}</span>`;
+      contribEl.appendChild(div);
+    });
+  }
+
+  // Hydraulic panel
+  document.getElementById('hyd-material').textContent = pipe.material;
+  document.getElementById('hyd-c').textContent = pipe.C;
+  document.getElementById('hyd-ld').textContent = `${pipe.length}m / ${pipe.diameter}m`;
+  document.getElementById('hyd-q').textContent = `${pipe.flowRate.toFixed(1)} L/s`;
+  const primaryReading = readings[0];
+  if (primaryReading && primaryReading.hydResult) {
+    const hr = primaryReading.hydResult;
+    document.getElementById('hyd-hf').textContent = `${hr.expected.toFixed(2)} m`;
+    document.getElementById('hyd-obs').textContent = `${hr.observed.toFixed(2)} m`;
+    const validEl = document.getElementById('hyd-valid');
+    validEl.textContent = hr.valid ? '✓ CONSISTENT' : '✗ MISMATCH';
+    validEl.className = `v ${hr.valid ? 'ok' : 'bad'}`;
+  }
+
+  // 3D highlight
+  Object.entries(pipeMeshes).forEach(([id, mesh]) => {
+    if (id === pipeId) { mesh.material.emissive.setHex(0x00d4ff); mesh.material.emissiveIntensity = 0.6; }
+  });
+  updateMapColors();
+  // Fly to pipe
+  const f = nodes[pipe.from], t = nodes[pipe.to];
+  map.flyTo({ center: [(f.lng+t.lng)/2, (f.lat+t.lat)/2], zoom: 14.5, duration: 800 });
+  // 3D focus
+  const mx = ((f.lng+t.lng)/2 - NMBM_CENTER[0])*1000*SCALE;
+  const mz = ((f.lat+t.lat)/2 - NMBM_CENTER[1])*1000*SCALE;
+  controls3d.target.set(mx, -pipe.depth*0.3, mz);
+  camera3d.position.set(mx+1.5, 1.5, mz+1.5);
+
+  advanceWorkflow(bp);
+}
+
+// ============================================================================
+// WORKFLOW
+// ============================================================================
+function advanceWorkflow(bp) {
+  if (bp.observations === 0) currentWfStep = 0;
+  else if (bp.posterior < 0.3) currentWfStep = 1;
+  else if (bp.posterior < 0.5) currentWfStep = 2;
+  else if (bp.posterior < 0.75) currentWfStep = 3;
+  else if (bp.category === 'VERIFIED') currentWfStep = 4;
+  else currentWfStep = 5;
+  document.querySelectorAll('.wf-step').forEach((el, i) => {
+    el.classList.remove('active','done');
+    if (i < currentWfStep) el.classList.add('done');
+    else if (i === currentWfStep) el.classList.add('active');
+  });
+}
+
+// ============================================================================
+// AUDIT TRAIL
+// ============================================================================
+async function recordAudit(pipeId, action, state) {
+  const entry = { timestamp: new Date().toISOString(), cycle: simCycle, pipeId, action, state, posterior: bayesPipes[pipeId].posterior, observations: bayesPipes[pipeId].observations };
+  entry.hash = await sha256(JSON.stringify(entry));
+  auditEntries.push(entry);
+  renderTimeline(); updateTopHash();
+}
+function renderTimeline() {
+  const el = document.getElementById('timeline');
+  if (auditEntries.length === 0) { el.innerHTML = '<div style="color:var(--dim);text-align:center;padding:6px;font-size:0.85em">No decisions recorded</div>'; return; }
+  el.innerHTML = '';
+  auditEntries.slice(-8).reverse().forEach(e => {
+    const ts = e.timestamp.substring(11,19);
+    const div = document.createElement('div');
+    div.className = 'tl-entry';
+    div.innerHTML = `<span class="ts">${ts}</span><span class="ar">→</span><span class="st ${e.state.toLowerCase()}">${e.state}</span><span class="dt">${e.pipeId} · ${(e.posterior*100).toFixed(0)}%</span>`;
+    el.appendChild(div);
+  });
+}
+async function updateTopHash() {
+  const state = auditEntries.length > 0 ? JSON.stringify(auditEntries.slice(-5)) : `${simCycle}:${selectedPipe||'none'}`;
+  const hash = await sha256(state);
+  document.getElementById('top-hash').textContent = `0x${hash.substring(0,8)}…${hash.substring(56,64)}`;
+}
+
+// ============================================================================
+// SIMULATION
+// ============================================================================
+function stepSimulation() {
+  if (!isSimulating) return;
+  const isLeakPhase = simCycle >= 20;
+  Object.values(bayesPipes).forEach(bp => {
+    const isLeak = isLeakPhase && bp.id === LEAK_PIPE_ID;
+    const readings = simulateSensorReadings(bp.id, isLeak);
+    const eisResult = eis.evaluate(bp, readings);
+    const isAnomaly = readings.some(r => r.confidence > 0.55);
+    // Hydraulic cross-validation: downgrade if sensor mismatch
+    const hasMismatch = readings.some(r => r.hydraulicValid === false);
+    bp.sensorValidated = !hasMismatch;
+    bp.update(isAnomaly, eisResult.score);
+  });
+  updateMapColors(); update3DColors(); updateParticles();
+  const topPipe = Object.values(bayesPipes).sort((a,b) => b.posterior - a.posterior)[0];
+  if (topPipe) {
+    document.getElementById('net-health').textContent = `${Math.round((1-topPipe.posterior)*100)}%`;
+    document.getElementById('net-health').style.color = topPipe.posterior > 0.5 ? 'var(--amber)' : 'var(--green)';
+  }
+  if (!selectedPipe && topPipe && topPipe.posterior > 0.3) selectPipe(topPipe.id);
+  if (selectedPipe) {
+    const bp = bayesPipes[selectedPipe];
+    const lastEntry = auditEntries.filter(e => e.pipeId === selectedPipe).pop();
+    if (!lastEntry || lastEntry.state !== bp.category) recordAudit(selectedPipe, 'state_transition', bp.category);
+    selectPipe(selectedPipe);
+  }
+  simCycle++;
+  document.getElementById('cycle').textContent = `${simCycle}/${MAX_CYCLES}`;
+  if (simCycle >= MAX_CYCLES) { stopSimulation(); if (protocolMode === 'blind') revealGroundTruth(); }
+}
+function startSimulation() {
+  if (isSimulating) return;
+  isSimulating = true;
+  document.getElementById('btn-simulate').textContent = '⏸ Pause';
+  document.getElementById('btn-simulate').classList.remove('primary');
+  simTimer = setInterval(stepSimulation, 300);
+}
+function stopSimulation() {
+  isSimulating = false;
+  if (simTimer) clearInterval(simTimer);
+  document.getElementById('btn-simulate').textContent = '▶ Run Telemetry';
+  document.getElementById('btn-simulate').classList.add('primary');
+}
+function resetSimulation() {
+  stopSimulation(); simCycle = 0; selectedPipe = null; auditEntries = []; currentWfStep = 0; protocolMode = 'blind';
+  Object.values(bayesPipes).forEach(bp => bp.reset());
+  updateMapColors(); update3DColors(); updateParticles(); renderTimeline(); updateTopHash();
+  document.getElementById('cycle').textContent = '0/60';
+  document.getElementById('sel-pipe').textContent = '—';
+  document.getElementById('sel-post').textContent = '—';
+  document.getElementById('inc-conf').textContent = '—%';
+  document.getElementById('inc-bg').textContent = 'OBSERVED';
+  document.getElementById('inc-bg').className = 'bg insufficient';
+  document.getElementById('inc-det').textContent = '0 obs · awaiting data';
+  document.getElementById('inc-title').textContent = 'Awaiting Telemetry';
+  document.getElementById('eis-contrib').innerHTML = '<div style="color:var(--dim);text-align:center;padding:6px;font-size:0.85em">No evidence — run telemetry</div>';
+  document.getElementById('eis-score').textContent = '0.00';
+  document.getElementById('eis-indep').textContent = '0';
+  document.getElementById('eis-corr').textContent = '0';
+  document.getElementById('net-health').textContent = '100%';
+  document.getElementById('protocol-b').textContent = '72h: BLIND';
+  document.getElementById('protocol-b').className = 'b active';
+  document.querySelectorAll('.wf-step').forEach((el, i) => { el.classList.remove('active','done'); if (i===0) el.classList.add('active'); });
+  showToast('System reset — ready for new investigation', 'success');
+}
+
+// ============================================================================
+// 72H REVEAL
+// ============================================================================
+function revealGroundTruth() {
+  protocolMode = 'revealed';
+  document.getElementById('protocol-b').textContent = '72h: REVEALED';
+  document.getElementById('protocol-b').className = 'b verified';
+  const leakPipe = bayesPipes[LEAK_PIPE_ID];
+  const verified = leakPipe.posterior >= 0.75;
+  selectPipe(LEAK_PIPE_ID);
+  recordAudit(LEAK_PIPE_ID, 'ground_truth_reveal', verified ? 'VERIFIED' : 'MISSED');
+  showToast(`72h Protocol complete — Ground truth: ${LEAK_PIPE_ID}\nSystem ${verified ? 'VERIFIED ✓' : leakPipe.posterior > 0.5 ? 'LOCALIZED' : 'MISSED ✗'}\nPosterior: ${(leakPipe.posterior*100).toFixed(0)}%`, verified ? 'success' : 'error');
+}
+
+// ============================================================================
+// EXPORT
+// ============================================================================
+function exportCSV() {
+  let csv = 'PipeID,DMA,Material,C,Diameter,Depth,Posterior,Category,Observations,Anomalies,MaxPosterior,HydraulicValid,FlowRate\n';
+  Object.values(bayesPipes).forEach(bp => {
+    const p = pipes[bp.id];
+    csv += `${bp.id},${bp.dma},${p.material},${p.C},${p.diameter},${p.depth},${bp.posterior.toFixed(4)},${bp.category},${bp.observations},${bp.anomalies},${bp.maxPosterior.toFixed(4)},${bp.sensorValidated},${p.flowRate.toFixed(1)}\n`;
+  });
+  download(new Blob([csv], { type: 'text/csv' }), `dws-twin-${new Date().toISOString().split('T')[0]}.csv`);
+  showToast(`CSV exported — ${Object.keys(pipes).length} pipes`, 'success');
+}
+async function exportJSON() {
+  const data = {
+    timestamp: new Date().toISOString(), classification: 'SIMULATION — NOT MUNICIPAL OPERATIONAL DATA',
+    incident: { id: 'NMBM-DEM-001', leakPipe: LEAK_PIPE_ID, cycle: simCycle, protocol: protocolMode },
+    eis: { threshold: 0.80, weights: { primary:0.3, correlated:0.2, independent:0.4 }, costRatio: eis.costRatio },
+    hydraulic: { formula: 'Hazen-Williams: h_f = 10.67 * L * C^-1.85 * D^-4.87 * Q^1.85' },
+    pipes: Object.values(bayesPipes).map(bp => {
+      const p = pipes[bp.id]; const ci = bp.getCI();
+      return { id:bp.id, dma:bp.dma, material:p.material, C:p.C, diameter:p.diameter, depth:p.depth, flowRate:p.flowRate, posterior:bp.posterior, category:bp.category, observations:bp.observations, anomalies:bp.anomalies, maxPosterior:bp.maxPosterior, hydraulicValid:bp.sensorValidated, ci95:{lower:ci.lower,upper:ci.upper} };
+    }),
+    auditTrail: auditEntries,
+  };
+  const jsonStr = JSON.stringify(data, null, 2);
+  const hash = await sha256(jsonStr);
+  const output = { ...data, sha256: hash };
+  download(new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' }), `dws-twin-${new Date().toISOString().split('T')[0]}.json`);
+  showToast(`JSON exported — SHA-256: 0x${hash.substring(0,8)}…`, 'success');
+}
+function download(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ============================================================================
+// TOAST
+// ============================================================================
+let toastTimer = null;
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast ${type} show`;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 5000);
+}
+
+// ============================================================================
+// COST SLIDER
+// ============================================================================
+function updateCost() {
+  const ratio = parseInt(document.getElementById('cost-slider').value);
+  eis.costRatio = ratio;
+  document.getElementById('cost-ratio-val').textContent = `1 : ${ratio}`;
+  const fpCost = 50000;
+  const fnCost = fpCost * ratio;
+  document.getElementById('cost-fp').textContent = `R ${(fpCost/1000).toFixed(0)}k`;
+  document.getElementById('cost-fn').textContent = `R ${(fnCost/1000).toFixed(0)}k`;
+  const threshold = eis.getThreshold({ material: 'PVC' });
+  document.getElementById('cost-thresh').textContent = threshold.toFixed(2);
+  const mode = ratio >= 5 ? 'HIGH RECALL' : ratio >= 3 ? 'BALANCED' : 'HIGH PRECISION';
+  document.getElementById('cost-mode').textContent = mode;
+}
+
+// ============================================================================
+// GEOLOGICAL LAYERS RENDER
+// ============================================================================
+function renderGeoLayers() {
+  const el = document.getElementById('geo-layers');
+  el.innerHTML = '';
+  GEO_LAYERS.forEach(l => {
+    const div = document.createElement('div');
+    div.className = 'geo-layer';
+    div.innerHTML = `<div class="swatch" style="background:${l.color};opacity:${l.opacity}"></div><span class="name">${l.name}</span><span class="depth">${l.depthFrom}–${l.depthTo}m</span>`;
+    el.appendChild(div);
+  });
+}
+renderGeoLayers();
+
+// ============================================================================
+// FULLSCREEN + SECOND SCREEN DETECTION
+// ============================================================================
+let isFullscreen = false;
+let screenDetailsApi = null;
+
+async function detectScreens() {
+  const info = document.getElementById('screen-info');
+  const extendBtn = document.getElementById('btn-second-screen');
+  // Check if Screen Details API is available
+  if ('getScreenDetails' in window) {
+    try {
+      screenDetailsApi = await window.getScreenDetails();
+      const screens = screenDetailsApi.screens;
+      const primary = screens.find(s => s.isPrimary) || screens[0];
+      const extended = screens.filter(s => !s.isPrimary);
+      document.getElementById('screen-primary').textContent = `${primary.width}×${primary.height}`;
+      document.getElementById('screen-extended').textContent = extended.length > 0 ? `${extended[0].width}×${extended[0].height}` : 'None';
+      document.getElementById('screen-count').textContent = screens.length;
+      info.classList.add('show');
+      if (extended.length > 0) extendBtn.style.display = 'inline-flex';
+      return { screens, primary, extended, available: true };
+    } catch (e) {
+      console.log('Screen Details API permission denied:', e);
+    }
+  }
+  // Fallback: check window.screen.isExtended (limited support)
+  if ('isExtended' in screen) {
+    const extended = screen.isExtended;
+    document.getElementById('screen-primary').textContent = `${screen.width}×${screen.height}`;
+    document.getElementById('screen-extended').textContent = extended ? 'Yes (detected)' : 'None';
+    document.getElementById('screen-count').textContent = extended ? '2+' : '1';
+    info.classList.add('show');
+    if (extended) extendBtn.style.display = 'inline-flex';
+    return { available: false, isExtended: extended };
+  }
+  // No API available
+  document.getElementById('screen-primary').textContent = `${screen.width}×${screen.height}`;
+  document.getElementById('screen-extended').textContent = 'API not available';
+  document.getElementById('screen-count').textContent = '1';
+  info.classList.add('show');
+  setTimeout(() => info.classList.remove('show'), 4000);
+  return { available: false };
+}
+
+async function toggleFullscreen() {
+  const btn = document.getElementById('btn-fullscreen');
+  if (!isFullscreen) {
+    // Enter fullscreen — request on the app container
+    try {
+      await document.documentElement.requestFullscreen();
+      isFullscreen = true;
+      document.body.classList.add('fullscreen-mode');
+      btn.textContent = '⛶ Exit Fullscreen';
+      btn.classList.remove('primary');
+      showToast('Fullscreen mode — press ESC or click button to exit', 'success');
+      // Detect screens after entering fullscreen
+      setTimeout(() => detectScreens(), 500);
+      setTimeout(() => resize3D(), 300);
+    } catch (e) {
+      showToast('Fullscreen not available: ' + e.message, 'error');
+    }
+  } else {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+    isFullscreen = false;
+    document.body.classList.remove('fullscreen-mode');
+    btn.textContent = '⛶ Fullscreen';
+    btn.classList.add('primary');
+    document.getElementById('screen-info').classList.remove('show');
+    document.getElementById('btn-second-screen').style.display = 'none';
+    setTimeout(() => resize3D(), 300);
+  }
+}
+
+// Listen for fullscreen change (e.g. user presses ESC)
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement && isFullscreen) {
+    isFullscreen = false;
+    document.body.classList.remove('fullscreen-mode');
+    const btn = document.getElementById('btn-fullscreen');
+    btn.textContent = '⛶ Fullscreen';
+    btn.classList.add('primary');
+    document.getElementById('screen-info').classList.remove('show');
+    document.getElementById('btn-second-screen').style.display = 'none';
+    setTimeout(() => resize3D(), 300);
+  }
+});
+
+async function extendToSecondScreen() {
+  if (!screenDetailsApi) {
+    const result = await detectScreens();
+    if (!result.available) {
+      showToast('Second screen not detected. Connect a display or grant screen permission.', 'error');
+      return;
+    }
+  }
+  if (screenDetailsApi && screenDetailsApi.screens.length > 1) {
+    const secondScreen = screenDetailsApi.screens.find(s => !s.isPrimary);
+    if (secondScreen) {
+      // Place the window on the second screen (if Window Management API is available)
+      try {
+        // Request fullscreen on the second screen by positioning
+        // Note: actual window placement requires Window Management API permission
+        const features = `left=${secondScreen.left},top=${secondScreen.top},width=${secondScreen.width},height=${secondScreen.height}`;
+        // Open a new window on the second screen showing this same page
+        const popup = window.open(window.location.href, '_blank', features);
+        if (popup) {
+          showToast(`Extended to Screen 2 (${secondScreen.width}×${secondScreen.height})\nMap view moved to second display`, 'success');
+        } else {
+          showToast('Popup blocked — please allow popups for second screen extension', 'error');
+        }
+      } catch (e) {
+        showToast('Could not extend: ' + e.message, 'error');
+      }
+    }
+  } else {
+    showToast('Only 1 screen detected. Connect a second display to extend.', 'error');
+  }
+}
+
+// ============================================================================
+// EVENT WIRING
+// ============================================================================
+document.getElementById('btn-simulate').addEventListener('click', () => { if (isSimulating) stopSimulation(); else startSimulation(); });
+document.getElementById('btn-reset').addEventListener('click', resetSimulation);
+document.getElementById('btn-protocol').addEventListener('click', () => {
+  if (protocolMode === 'blind' && simCycle > 0) revealGroundTruth();
+  else showToast('72h protocol: run telemetry first, then reveal ground truth', 'info');
+});
+document.getElementById('btn-inspect').addEventListener('click', () => {
+  if (selectedPipe) {
+    const bp = bayesPipes[selectedPipe]; const p = pipes[selectedPipe];
+    showToast(`Inspecting ${selectedPipe} — ${p.material} · ⌀${p.diameter}m · ${p.depth}m deep · P=${(bp.posterior*100).toFixed(0)}%`, 'info');
+    document.getElementById('subsurface').classList.add('expanded');
+    setTimeout(() => resize3D(), 300);
+  } else showToast('Select a pipe first (click on map)', 'error');
+});
+document.getElementById('btn-csv').addEventListener('click', exportCSV);
+document.getElementById('btn-json').addEventListener('click', exportJSON);
+document.getElementById('btn-expand-3d').addEventListener('click', () => {
+  document.getElementById('subsurface').classList.toggle('expanded');
+  setTimeout(() => resize3D(), 300);
+});
+document.getElementById('depth-slider').addEventListener('input', (e) => {
+  const depth = parseFloat(e.target.value);
+  document.getElementById('depth-val').textContent = `${depth.toFixed(1)}m`;
+  // Move ground plane + filter pipes
+  gridHelper.position.y = -depth * 0.3 - 0.01;
+  geoPlanes.forEach((plane, i) => {
+    plane.visible = geoEnabled && GEO_LAYERS[i].depthTo <= depth + 0.5;
+  });
+  Object.entries(pipeMeshes).forEach(([pid, mesh]) => {
+    const p = pipes[pid];
+    mesh.visible = p.depth <= depth + 0.5;
+  });
+});
+// Flow toggle
+document.getElementById('btn-flow').addEventListener('click', () => {
+  flowEnabled = !flowEnabled;
+  document.getElementById('btn-flow').textContent = `⇄ Flow: ${flowEnabled ? 'ON' : 'OFF'}`;
+  document.getElementById('flow-status').textContent = flowEnabled ? 'animated' : 'static';
+  if (map.getLayer('pipes-flow')) {
+    map.setLayoutProperty('pipes-flow', 'visibility', flowEnabled ? 'visible' : 'none');
+  }
+});
+// Particles toggle
+document.getElementById('btn-particles').addEventListener('click', () => {
+  particlesEnabled = !particlesEnabled;
+  document.getElementById('btn-particles').textContent = `✦ Particles: ${particlesEnabled ? 'ON' : 'OFF'}`;
+  document.getElementById('particle-status').textContent = particlesEnabled ? 'active' : 'disabled';
+  if (!particlesEnabled && particleSystem) particleSystem.visible = false;
+});
+// Geo toggle
+document.getElementById('btn-geo').addEventListener('click', () => {
+  geoEnabled = !geoEnabled;
+  document.getElementById('btn-geo').textContent = `⛰ Geo: ${geoEnabled ? 'ON' : 'OFF'}`;
+  if (map.getLayer('geo-layer')) {
+    map.setLayoutProperty('geo-layer', 'visibility', geoEnabled ? 'visible' : 'none');
+  }
+  geoPlanes.forEach(p => { p.visible = geoEnabled; });
+});
+// 3D flow toggle
+document.getElementById('flow-3d-toggle').addEventListener('change', (e) => {
+  flowEnabled = e.target.checked;
+  document.getElementById('btn-flow').textContent = `⇄ Flow: ${flowEnabled ? 'ON' : 'OFF'}`;
+  document.getElementById('flow-status').textContent = flowEnabled ? 'animated' : 'static';
+  if (map.getLayer('pipes-flow')) {
+    map.setLayoutProperty('pipes-flow', 'visibility', flowEnabled ? 'visible' : 'none');
+  }
+});
+// Cost toggle
+document.getElementById('eis-cost-toggle').addEventListener('click', () => {
+  const panel = document.getElementById('cost-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('cost-slider').addEventListener('input', updateCost);
+// Fullscreen + second screen
+document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
+document.getElementById('btn-second-screen').addEventListener('click', extendToSecondScreen);
+
+// Init
+updateCost();
+updateTopHash();
+setTimeout(() => detectScreens(), 1000);
+console.log('🗺️ VVU IVE Digital Twin Console v2 loaded');
+console.log(`📡 ${Object.keys(pipes).length} pipes · ${Object.keys(sensors).length} sensors · Hazen-Williams solver active`);
+console.log('✦ Probability particles · ⇄ Flow animation · ⛰ Geological layers · ⚙ Cost-sensitive EIS');
+console.log('⛶ Fullscreen + second-screen detection ready');
+</script>
+</body>
+</html>
