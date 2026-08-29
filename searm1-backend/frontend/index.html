@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SEARM1 · Evidence Pipeline (Live API)</title>
+<style>
+  :root {
+    --bg:        #0a0e14;
+    --bg-elev:   #11161f;
+    --bg-card:   #0e131c;
+    --border:    #1f2733;
+    --cyan:      #00d4ff;
+    --green:     #00ff88;
+    --amber:     #ffb800;
+    --red:       #ff4d4d;
+    --text:      #c9d1d9;
+    --text-dim:  #7d8590;
+    --text-bright: #f0f6fc;
+    --mono:      "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ── Header ───────────────────────────────────────────── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(180deg, #0d121b 0%, var(--bg) 100%);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  header .title-block { display: flex; align-items: center; gap: 12px; }
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-bright);
+    letter-spacing: 0.02em;
+  }
+  header h1 .dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 8px;
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  header .meta {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header .meta span b { color: var(--cyan); font-weight: 600; }
+
+  /* ── Main grid ────────────────────────────────────────── */
+  main {
+    flex: 1;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .card h2 {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card h2 .badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(0, 212, 255, 0.12);
+    color: var(--cyan);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+  }
+
+  /* ── Layout spans ─────────────────────────────────────── */
+  .span-3 { grid-column: span 3; }
+  .span-4 { grid-column: span 4; }
+  .span-5 { grid-column: span 5; }
+  .span-6 { grid-column: span 6; }
+  .span-7 { grid-column: span 7; }
+  .span-8 { grid-column: span 8; }
+  .span-12 { grid-column: span 12; }
+
+  @media (max-width: 1100px) {
+    .span-3, .span-4, .span-5, .span-6, .span-7, .span-8 { grid-column: span 12; }
+  }
+
+  /* ── Status row ──────────────────────────────────────── */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .stat {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .stat .label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+  }
+  .stat .value {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-bright);
+  }
+  .stat .value.cyan { color: var(--cyan); }
+  .stat .value.green { color: var(--green); }
+  .stat .value.amber { color: var(--amber); }
+  .stat .value.red { color: var(--red); }
+
+  /* ── Asset list ─────────────────────────────────────── */
+  .asset-list {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg);
+  }
+  .asset-list::-webkit-scrollbar { width: 8px; }
+  .asset-list::-webkit-scrollbar-track { background: transparent; }
+  .asset-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .asset-list::-webkit-scrollbar-thumb:hover { background: #2a3340; }
+
+  .asset-row {
+    display: grid;
+    grid-template-columns: 80px 60px 1fr 1fr;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    align-items: center;
+    transition: background 0.15s;
+  }
+  .asset-row:hover { background: rgba(0, 212, 255, 0.04); }
+  .asset-row:last-child { border-bottom: none; }
+  .asset-row .id { color: var(--cyan); font-weight: 600; }
+  .asset-row .type { color: var(--text-dim); font-size: 10px; text-transform: uppercase; }
+  .asset-row .meta { color: var(--text); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .asset-row .baseline { color: var(--green); font-size: 11px; }
+
+  .asset-header {
+    display: grid;
+    grid-template-columns: 80px 60px 1fr 1fr;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    background: var(--bg-elev);
+    position: sticky;
+    top: 0;
+  }
+
+  /* ── Evidence gauge ──────────────────────────────────── */
+  .evidence-display {
+    text-align: center;
+    padding: 8px 0 16px;
+  }
+  .confidence-ring {
+    width: 140px;
+    height: 140px;
+    margin: 0 auto 12px;
+    position: relative;
+  }
+  .confidence-ring svg { transform: rotate(-90deg); }
+  .confidence-ring .track { stroke: var(--border); stroke-width: 8; fill: none; }
+  .confidence-ring .fill {
+    stroke-width: 8;
+    fill: none;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease, stroke 0.3s;
+  }
+  .confidence-ring .center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .confidence-ring .center .pct {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-bright);
+    line-height: 1;
+  }
+  .confidence-ring .center .lbl {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+  }
+
+  .classification {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 3px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .classification.VERIFIED     { background: rgba(0, 255, 136, 0.15); color: var(--green); border: 1px solid rgba(0, 255, 136, 0.4); }
+  .classification.CANDIDATE     { background: rgba(255, 184, 0, 0.15); color: var(--amber); border: 1px solid rgba(255, 184, 0, 0.4); }
+  .classification.INSUFFICIENT  { background: rgba(125, 133, 144, 0.15); color: var(--text-dim); border: 1px solid var(--border); }
+
+  /* ── Event detail ────────────────────────────────────── */
+  .event-detail {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .event-detail .row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    color: var(--text-dim);
+  }
+  .event-detail .row b { color: var(--text); font-weight: 500; }
+
+  /* ── Buttons ─────────────────────────────────────────── */
+  .btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover {
+    background: rgba(0, 212, 255, 0.08);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn.primary {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: var(--cyan);
+    color: var(--cyan);
+  }
+  .btn.primary:hover {
+    background: rgba(0, 212, 255, 0.2);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+  }
+  .btn.danger {
+    background: rgba(255, 77, 77, 0.1);
+    border-color: var(--red);
+    color: var(--red);
+  }
+  .btn.danger:hover {
+    background: rgba(255, 77, 77, 0.2);
+    box-shadow: 0 0 12px rgba(255, 77, 77, 0.3);
+  }
+
+  /* ── Form ────────────────────────────────────────────── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .form-field { display: flex; flex-direction: column; gap: 4px; }
+  .form-field.full { grid-column: span 2; }
+  .form-field label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .form-field input,
+  .form-field select,
+  .form-field textarea {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px 10px;
+    color: var(--text);
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  .form-field input:focus,
+  .form-field select:focus,
+  .form-field textarea:focus {
+    outline: none;
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.15);
+  }
+  .form-field textarea { resize: vertical; min-height: 56px; font-family: var(--mono); }
+  .form-field .check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+  .form-field input[type="checkbox"] {
+    width: 14px; height: 14px;
+    accent-color: var(--cyan);
+  }
+
+  /* ── Event log ──────────────────────────────────────── */
+  .log-list {
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+  }
+  .log-list::-webkit-scrollbar { width: 8px; }
+  .log-list::-webkit-scrollbar-track { background: transparent; }
+  .log-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .log-row {
+    display: grid;
+    grid-template-columns: 110px 60px 70px 1fr 60px;
+    gap: 8px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .log-row:last-child { border-bottom: none; }
+  .log-row .ts { color: var(--text-dim); font-size: 10px; }
+  .log-row .asset { color: var(--cyan); font-weight: 600; }
+  .log-row .evtype { color: var(--amber); font-size: 10px; text-transform: uppercase; }
+  .log-row .conf { color: var(--text-bright); font-weight: 600; }
+  .log-row .cls {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+  .log-row .cls.VERIFIED    { background: rgba(0, 255, 136, 0.15); color: var(--green); }
+  .log-row .cls.CANDIDATE   { background: rgba(255, 184, 0, 0.15); color: var(--amber); }
+  .log-row .cls.INSUFFICIENT{ background: rgba(125, 133, 144, 0.15); color: var(--text-dim); }
+
+  /* ── Toast ──────────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg-elev);
+    border: 1px solid var(--cyan);
+    border-radius: 4px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(0, 212, 255, 0.2);
+    z-index: 1000;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+    max-width: 360px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.error { border-color: var(--red); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(255, 77, 77, 0.2); }
+  .toast.success { border-color: var(--green); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 16px rgba(0, 255, 136, 0.2); }
+
+  /* ── Footer ─────────────────────────────────────────── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 10px 24px;
+    background: var(--bg);
+    font-size: 10px;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  footer code { color: var(--cyan); }
+
+  /* ── Empty state ────────────────────────────────────── */
+  .empty {
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+  .empty .icon { font-size: 24px; opacity: 0.5; margin-bottom: 8px; }
+
+  /* ── Loading spinner ───────────────────────────────── */
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid var(--border);
+    border-top-color: var(--cyan);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1><span class="dot"></span>SEARM1 · Evidence Pipeline (Live API)</h1>
+  </div>
+  <div class="meta">
+    <span>API: <b id="api-url">localhost:3001</b></span>
+    <span>Status: <b id="api-status">connecting…</b></span>
+    <span>Poll: <b>2s</b></span>
+    <span>Engine: <b>EIS v1.0</b></span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ═══ STATUS ROW ═══ -->
+  <section class="card span-12">
+    <h2>Pipeline Overview <span class="badge" id="tick-badge">live</span></h2>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="label">Assets (pipes + nodes)</div>
+        <div class="value cyan" id="stat-assets">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Telemetry Rows</div>
+        <div class="value green" id="stat-telemetry">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Evidence Events</div>
+        <div class="value amber" id="stat-events">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ ASSET DIRECTORY ═══ -->
+  <section class="card span-5">
+    <h2>Network Assets <span class="badge" id="assets-count">—</span></h2>
+    <div class="asset-list">
+      <div class="asset-header">
+        <span>ID</span><span>TYPE</span><span>METADATA</span><span>BASELINE</span>
+      </div>
+      <div id="asset-rows">
+        <div class="empty"><div class="spinner"></div><br>Loading assets…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ EIS EVIDENCE GAUGE ═══ -->
+  <section class="card span-4">
+    <h2>Latest Evidence Event</h2>
+    <div class="evidence-display">
+      <div class="confidence-ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle class="track" cx="70" cy="70" r="62"></circle>
+          <circle class="fill" id="ring-fill" cx="70" cy="70" r="62"
+                  stroke="#7d8590"
+                  stroke-dasharray="389.56"
+                  stroke-dashoffset="389.56"></circle>
+        </svg>
+        <div class="center">
+          <div class="pct" id="conf-pct">—</div>
+          <div class="lbl">confidence</div>
+        </div>
+      </div>
+      <div id="classification-tag">
+        <span class="classification INSUFFICIENT">— NONE —</span>
+      </div>
+    </div>
+    <div class="event-detail" id="event-detail">
+      <div class="row"><span>Asset</span><b id="ev-asset">—</b></div>
+      <div class="row"><span>Event type</span><b id="ev-type">—</b></div>
+      <div class="row"><span>Pressure Δ</span><b id="ev-pressure">—</b></div>
+      <div class="row"><span>Flow Δ</span><b id="ev-flow">—</b></div>
+      <div class="row"><span>Spatial signal</span><b id="ev-spatial">—</b></div>
+      <div class="row"><span>Created at</span><b id="ev-time">—</b></div>
+    </div>
+  </section>
+
+  <!-- ═══ SIMULATOR CONTROLS ═══ -->
+  <section class="card span-3">
+    <h2>Simulator</h2>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <button class="btn primary" id="btn-leak">⚡ Trigger Leak</button>
+      <button class="btn danger" id="btn-burst">💥 Trigger Burst</button>
+      <div style="margin-top:8px; font-size:10px; color:var(--text-dim); line-height:1.6;">
+        Leak: <code style="color:var(--cyan)">pressure × 0.7</code><br>
+        <code style="color:var(--cyan)">flow × 1.2</code><br><br>
+        Burst: <code style="color:var(--red)">pressure × 0.4</code><br>
+        <code style="color:var(--red)">flow × 1.6</code><br><br>
+        Each trigger writes a telemetry row + an evidence_event.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ EVENT LOG ═══ -->
+  <section class="card span-8">
+    <h2>Evidence Event Log <span class="badge" id="events-count">—</span></h2>
+    <div class="log-list" id="log-list">
+      <div class="empty"><div class="spinner"></div><br>Loading events…</div>
+    </div>
+  </section>
+
+  <!-- ═══ PILOT PROPOSAL FORM ═══ -->
+  <section class="card span-4">
+    <h2>Pilot Proposal</h2>
+    <form id="pilot-form" style="display:flex; flex-direction:column; gap:10px;">
+      <div class="form-grid">
+        <div class="form-field full">
+          <label>Company *</label>
+          <input name="company" required placeholder="NMBM Water Dept" />
+        </div>
+        <div class="form-field">
+          <label>Contact name *</label>
+          <input name="contact" required placeholder="Jane Doe" />
+        </div>
+        <div class="form-field">
+          <label>Email *</label>
+          <input name="email" type="email" required placeholder="jane@nmbm.gov.za" />
+        </div>
+        <div class="form-field">
+          <label>Facility type</label>
+          <select name="facility_type">
+            <option value="">— select —</option>
+            <option>municipal</option>
+            <option>industrial</option>
+            <option>commercial</option>
+            <option>residential</option>
+            <option>agricultural</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Current method</label>
+          <input name="current_method" placeholder="manual meter reading" />
+        </div>
+        <div class="form-field full">
+          <label>Pain points</label>
+          <textarea name="pain_points" placeholder="silent leaks, slow response, no GIS layer…"></textarea>
+        </div>
+        <div class="form-field full">
+          <label>Desired outcomes</label>
+          <textarea name="desired_outcomes" placeholder="localize leaks within 50m, 24/7 evidence log…"></textarea>
+        </div>
+        <div class="form-field">
+          <label>Budget range</label>
+          <select name="budget_range">
+            <option value="">— select —</option>
+            <option>R 100k–250k</option>
+            <option>R 250k–500k</option>
+            <option>R 500k–1M</option>
+            <option>R 1M+</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Timeline</label>
+          <select name="timeline">
+            <option value="">— select —</option>
+            <option>30 days</option>
+            <option>90 days</option>
+            <option>6 months</option>
+            <option>1 year+</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>DMA size</label>
+          <input name="dma_size" placeholder="Ward 42 (≈ 1,800 connections)" />
+        </div>
+        <div class="form-field">
+          <label>Sensor count</label>
+          <input name="sensor_count" type="number" min="0" placeholder="18" />
+        </div>
+        <div class="form-field">
+          <label>Telemetry interval (s)</label>
+          <input name="telemetry_interval" type="number" min="1" placeholder="5" />
+        </div>
+        <div class="form-field">
+          <label>Historical incidents / yr</label>
+          <input name="historical_incidents" type="number" min="0" placeholder="24" />
+        </div>
+        <div class="form-field full">
+          <div class="check-row">
+            <input type="checkbox" name="scada_available" id="ck-scada" />
+            <label for="ck-scada" style="text-transform:none; letter-spacing:0; font-size:12px; color:var(--text);">SCADA available</label>
+          </div>
+          <div class="check-row">
+            <input type="checkbox" name="gis_available" id="ck-gis" />
+            <label for="ck-gis" style="text-transform:none; letter-spacing:0; font-size:12px; color:var(--text);">GIS layer available</label>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn primary">Submit Proposal</button>
+    </form>
+  </section>
+
+</main>
+
+<footer>
+  <span>SEARM1 backend · <code>SQLite + Express + VVU-IVE engine</code> · SIMULATION DATA · Zero Fabrication Mandate</span>
+  <span>EIS v1.0 thresholds: <code style="color:var(--green)">≥0.75 VERIFIED</code> · <code style="color:var(--amber)">≥0.50 CANDIDATE</code> · <code style="color:var(--text-dim)">&lt;0.50 INSUFFICIENT</code></span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ─────────────────────────────────────────────────────────────
+  // SEARM1 dashboard — vanilla JS, no build step.
+  // API calls use relative paths with XTransformPort=3001 so the
+  // Caddy gateway routes them to the backend (port 3001).
+  // The dashboard's own UI shows "localhost:3001" for readability.
+  // ─────────────────────────────────────────────────────────────
+  const API_PORT = '3001';
+  function apiUrl(path) {
+    // path can be '/api/...' or 'api/...' — normalize to leading slash.
+    const p = path.startsWith('/') ? path : '/' + path;
+    // Append XTransformPort without clobbering existing query string.
+    const sep = p.includes('?') ? '&' : '?';
+    return p + sep + 'XTransformPort=' + API_PORT;
+  }
+
+  // ── State ───────────────────────────────────────────────────
+  let pollTimer = null;
+  let latestEvent = null;
+
+  // ── DOM refs ─────────────────────────────────────────────────
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    apiUrl:        $('api-url'),
+    apiStatus:     $('api-status'),
+    assetsCount:   $('assets-count'),
+    eventsCount:   $('events-count'),
+    assetRows:     $('asset-rows'),
+    logList:       $('log-list'),
+    statAssets:    $('stat-assets'),
+    statTelemetry: $('stat-telemetry'),
+    statEvents:    $('stat-events'),
+    confPct:       $('conf-pct'),
+    ringFill:      $('ring-fill'),
+    classificationTag: $('classification-tag'),
+    evAsset:       $('ev-asset'),
+    evType:        $('ev-type'),
+    evPressure:    $('ev-pressure'),
+    evFlow:        $('ev-flow'),
+    evSpatial:     $('ev-spatial'),
+    evTime:        $('ev-time'),
+    btnLeak:       $('btn-leak'),
+    btnBurst:      $('btn-burst'),
+    pilotForm:     $('pilot-form'),
+    toast:         $('toast'),
+  };
+
+  els.apiUrl.textContent = 'localhost:3001 (via gateway)';
+
+  // ── Toast helper ─────────────────────────────────────────────
+  function toast(message, kind = '') {
+    els.toast.className = 'toast ' + kind;
+    els.toast.textContent = message;
+    requestAnimationFrame(() => els.toast.classList.add('show'));
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => els.toast.classList.remove('show'), 3500);
+  }
+
+  // ── Fetch helper ────────────────────────────────────────────
+  async function api(path, opts = {}) {
+    const url = apiUrl(path);
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`${res.status} ${res.statusText}: ${text}`);
+    }
+    return res.json();
+  }
+
+  // ── Render: assets ──────────────────────────────────────────
+  function renderAssets(payload) {
+    const assets = payload.assets || [];
+    els.assetsCount.textContent = assets.length;
+    els.statAssets.textContent = assets.length;
+    if (!assets.length) {
+      els.assetRows.innerHTML = '<div class="empty">No assets. Run `bun --filter=@searm1/api seed`.</div>';
+      return;
+    }
+    els.assetRows.innerHTML = assets.map((a) => {
+      const meta = a.metadata || {};
+      let metaStr = '';
+      let baselineStr = '';
+      if (a.type === 'pipe') {
+        metaStr = `Ø${meta.diameter || '?'} · ${meta.length || '?'}m · ${meta.material || '?'}`;
+        baselineStr = `P=${meta.baselinePressure?.toFixed(1) || '?'}  Q=${meta.baselineFlow || '?'}`;
+      } else {
+        metaStr = meta.role || '—';
+        baselineStr = '—';
+      }
+      return `
+        <div class="asset-row">
+          <span class="id">${a.id}</span>
+          <span class="type">${a.type}</span>
+          <span class="meta" title="${metaStr}">${metaStr}</span>
+          <span class="baseline">${baselineStr}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Render: latest evidence event ────────────────────────────
+  const RING_CIRCUMFERENCE = 2 * Math.PI * 62; // ≈ 389.56
+  function renderLatestEvent(event) {
+    latestEvent = event;
+    if (!event) {
+      els.confPct.textContent = '—';
+      els.ringFill.setAttribute('stroke-dashoffset', RING_CIRCUMFERENCE);
+      els.ringFill.setAttribute('stroke', '#7d8590');
+      els.classificationTag.innerHTML = '<span class="classification INSUFFICIENT">— NONE —</span>';
+      els.evAsset.textContent = '—';
+      els.evType.textContent = '—';
+      els.evPressure.textContent = '—';
+      els.evFlow.textContent = '—';
+      els.evSpatial.textContent = '—';
+      els.evTime.textContent = '—';
+      return;
+    }
+    const conf = event.confidence;
+    const pct = Math.round(conf * 100);
+    els.confPct.textContent = pct + '%';
+
+    const offset = RING_CIRCUMFERENCE * (1 - conf);
+    els.ringFill.setAttribute('stroke-dashoffset', offset);
+
+    let strokeColor = '#7d8590';
+    if (event.classification === 'VERIFIED')        strokeColor = '#00ff88';
+    else if (event.classification === 'CANDIDATE')   strokeColor = '#ffb800';
+    else                                              strokeColor = '#7d8590';
+    els.ringFill.setAttribute('stroke', strokeColor);
+
+    els.classificationTag.innerHTML =
+      `<span class="classification ${event.classification}">${event.classification}</span>`;
+
+    const ev = event.evidence || {};
+    els.evAsset.textContent = event.assetId || '—';
+    els.evType.textContent = event.eventType || '—';
+    els.evPressure.textContent = (ev.pressureSignal != null ? (ev.pressureSignal * 100).toFixed(1) + '%' : '—');
+    els.evFlow.textContent = (ev.flowSignal != null ? (ev.flowSignal * 100).toFixed(1) + '%' : '—');
+    els.evSpatial.textContent = (ev.spatialSignal != null ? (ev.spatialSignal * 100).toFixed(1) + '%' : '—');
+    els.evTime.textContent = event.createdAt ? new Date(event.createdAt).toLocaleTimeString() : '—';
+  }
+
+  // ── Render: event log ───────────────────────────────────────
+  function renderHistory(payload) {
+    const events = payload.events || [];
+    els.eventsCount.textContent = events.length;
+    els.statEvents.textContent = events.length;
+    if (!events.length) {
+      els.logList.innerHTML =
+        '<div class="empty"><div class="icon">∅</div>No evidence events yet.<br>Click <b style="color:var(--cyan)">Trigger Leak</b> to generate one.</div>';
+      return;
+    }
+    els.logList.innerHTML = events.map((e) => {
+      const conf = (e.confidence * 100).toFixed(0) + '%';
+      const ts = new Date(e.createdAt).toLocaleTimeString();
+      const ev = e.evidence || {};
+      const pStr = (ev.pressureSignal * 100).toFixed(0) + '%';
+      const qStr = (ev.flowSignal * 100).toFixed(0) + '%';
+      return `
+        <div class="log-row">
+          <span class="ts">${ts}</span>
+          <span class="asset">${e.assetId}</span>
+          <span class="evtype">${e.eventType}</span>
+          <span class="conf">P:${pStr} · Q:${qStr} · conf ${conf}</span>
+          <span class="cls ${e.classification}">${e.classification}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ── Fetch: telemetry count (proxy for "alive") ──────────────
+  async function refreshTelemetryCount() {
+    try {
+      // Use the latest telemetry for PIP3 as a heartbeat — every asset has rows
+      // seeded by the simulator.
+      const t = await api('/api/network/telemetry/PIP3/latest');
+      els.statTelemetry.textContent = 'live';
+      els.apiStatus.textContent = 'online';
+      els.apiStatus.style.color = 'var(--green)';
+    } catch (e) {
+      els.statTelemetry.textContent = '—';
+      els.apiStatus.textContent = 'offline';
+      els.apiStatus.style.color = 'var(--red)';
+    }
+  }
+
+  // ── Pollers ─────────────────────────────────────────────────
+  async function loadAssets() {
+    try {
+      const payload = await api('/api/network/assets');
+      renderAssets(payload);
+    } catch (e) {
+      els.assetRows.innerHTML = `<div class="empty" style="color:var(--red)">Failed to load assets: ${e.message}</div>`;
+    }
+  }
+
+  async function loadLatestEvent() {
+    try {
+      const event = await api('/api/events/latest');
+      renderLatestEvent(event);
+    } catch (e) {
+      // 404 = no events yet — that's fine, just clear the gauge.
+      renderLatestEvent(null);
+    }
+  }
+
+  async function loadHistory() {
+    try {
+      const payload = await api('/api/events/history?limit=20');
+      renderHistory(payload);
+    } catch (e) {
+      els.logList.innerHTML = `<div class="empty" style="color:var(--red)">Failed to load events: ${e.message}</div>`;
+    }
+  }
+
+  // ── Actions ─────────────────────────────────────────────────
+  async function triggerLeak(kind = 'leak') {
+    const btn = kind === 'burst' ? els.btnBurst : els.btnLeak;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.innerHTML = '<span class="spinner"></span> triggering…';
+    try {
+      const result = await api('/api/simulator/' + kind, { method: 'POST' });
+      toast(`${kind.toUpperCase()} triggered on ${result.event.assetId} — ${result.eis.classification} (${(result.eis.confidence * 100).toFixed(0)}%)`,
+            result.eis.classification === 'VERIFIED' ? 'success' : '');
+      // Refresh views immediately.
+      await Promise.all([loadLatestEvent(), loadHistory(), refreshTelemetryCount()]);
+    } catch (e) {
+      toast('Failed to trigger ' + kind + ': ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+
+  async function submitPilot(ev) {
+    ev.preventDefault();
+    const form = ev.target;
+    const data = Object.fromEntries(new FormData(form).entries());
+    // Convert numeric fields
+    ['sensor_count', 'telemetry_interval', 'historical_incidents'].forEach((k) => {
+      if (data[k] != null && data[k] !== '') data[k] = parseInt(data[k], 10);
+      else delete data[k];
+    });
+    // Booleans
+    data.scada_available = !!form.scada_available.checked;
+    data.gis_available = !!form.gis_available.checked;
+
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.innerHTML = '<span class="spinner"></span> submitting…';
+    try {
+      const result = await api('/api/pilot', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+      toast('Proposal submitted · id ' + result.id, 'success');
+      form.reset();
+    } catch (e) {
+      toast('Failed to submit proposal: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+
+  // ── Wire up ─────────────────────────────────────────────────
+  els.btnLeak.addEventListener('click', () => triggerLeak('leak'));
+  els.btnBurst.addEventListener('click', () => triggerLeak('burst'));
+  els.pilotForm.addEventListener('submit', submitPilot);
+
+  // Initial load
+  loadAssets();
+  loadLatestEvent();
+  loadHistory();
+  refreshTelemetryCount();
+
+  // Poll latest event every 2s (so the gauge updates when simulator triggers run)
+  pollTimer = setInterval(() => {
+    loadLatestEvent();
+    loadHistory();
+    refreshTelemetryCount();
+  }, 2000);
+</script>
+
+</body>
+</html>

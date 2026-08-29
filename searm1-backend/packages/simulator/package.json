@@ -1,0 +1,13 @@
+{
+  "name": "@searm1/simulator",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/sensor-generator.js",
+    "dev": "bun --watch src/sensor-generator.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.11.0"
+  }
+}

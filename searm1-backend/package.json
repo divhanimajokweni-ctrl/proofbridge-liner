@@ -1,0 +1,15 @@
+{
+  "name": "searm1-backend",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun run build --filter='*'",
+    "dev:api": "bun --filter=@searm1/api dev",
+    "dev:sim": "bun --filter=@searm1/simulator dev",
+    "start:api": "bun --filter=@searm1/api start",
+    "seed": "bun --filter=@searm1/api seed"
+  }
+}

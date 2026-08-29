@@ -1,0 +1,65 @@
+# SEARM1 Backend — Production Docker Compose
+# Deploys: TimescaleDB (PostgreSQL 15) + API + Sensor Simulator
+# For sandbox/local development: see README.md (bun install + bun run dev:api)
+
+version: "3.9"
+
+services:
+  # ───────────────────────────────────────────────────────────
+  # TimescaleDB — production time-series database for telemetry
+  # ───────────────────────────────────────────────────────────
+  timescaledb:
+    image: timescale/timescaledb:2.11.0-pg15
+    container_name: searm1-timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: searm1
+      POSTGRES_PASSWORD: searm1_dev
+      POSTGRES_DB: searm1
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./packages/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U searm1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ───────────────────────────────────────────────────────────
+  # API — Express server with VVU-IVE evidence engine
+  # ───────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: searm1-api
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://searm1:searm1_dev@timescaledb:5432/searm1
+      PORT: "3001"
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+
+  # ───────────────────────────────────────────────────────────
+  # Simulator — sensor data generator (5s tick)
+  # ───────────────────────────────────────────────────────────
+  simulator:
+    build:
+      context: .
+      dockerfile: packages/simulator/Dockerfile
+    container_name: searm1-simulator
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      API_URL: http://api:3001
+
+volumes:
+  timescaledb_data:

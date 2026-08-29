@@ -522,3 +522,140 @@ Files produced (all in docs/executive-bundle/):
   05_Pilot/05b_data_requirements.md              (32 lines)
 
 Status: COMPLETE — bundle ready for DWS meeting handoff.
+
+---
+Task ID: BACKEND-1
+Agent: searm1-backend (sub)
+Task: Build the SEARM1 Backend — Node.js + TypeScript monorepo with VVU-IVE evidence engine, Express API, sensor simulator, and SQLite database layer. Replaces synthetic frontend data with a real event pipeline.
+
+Work Log:
+- Read /home/z/my-project/worklog.md to load project context (VVU IVE =
+  evidence-verification layer for NMBM/DWS water infrastructure; Next.js 16
+  frontend with 4 rooms; EIS v1.0 engine; HBK Bayesian localization).
+- Acknowledged sandbox constraints: Bun (not npm), SQLite (not PostgreSQL/
+  TimescaleDB), API on port 3001 (port 3000 taken by Next.js frontend).
+
+Files produced (all under /home/z/my-project/searm1-backend/):
+  Root: package.json (workspaces root), tsconfig.base.json, .env,
+        docker-compose.yml (TimescaleDB + api + simulator for prod),
+        README.md (architecture + run instructions)
+  @searm1/engine (pure TS, zero deps):
+    packages/engine/{package.json, tsconfig.json, src/types.ts,
+    src/evidence.ts, src/eis.ts, src/index.ts}
+    — types: Observation, EvidenceVector (3 axes ∈ [0,1]), EvidenceEvent,
+      EvidenceClassification union ('VERIFIED'|'CANDIDATE'|'INSUFFICIENT')
+    — evidence.ts: computeEvidenceVector() — pressure/flow/spatial axes
+    — eis.ts: calculateEIS() — confidence = mean(3 axes), classification
+      thresholds VERIFIED ≥0.75, CANDIDATE ≥0.50, INSUFFICIENT <0.50
+      (mirrors src/lib/evidence/EISv1Engine.ts in the Next.js frontend)
+  @searm1/api (Express + SQLite):
+    packages/api/{package.json, tsconfig.json, Dockerfile,
+    src/db.ts, src/seed.ts, src/server.ts,
+    src/routes/{network,events,simulator,pilot}.ts}
+    — db.ts: runtime-tolerant loader (tries bun:sqlite, falls back to
+      better-sqlite3); schema = assets + telemetry + evidence_events +
+      pilot_proposals tables; path anchored to backend root
+    — seed.ts: 10 pipes (PIP1–PIP10) + 8 nodes (N1–N8) + 10 baseline
+      telemetry rows; idempotent via INSERT...ON CONFLICT UPDATE
+    — server.ts: Express on PORT=3001, CORS, JSON body, mounts /api/
+      {health, network, events, simulator, pilot}, graceful SIGINT/SIGTERM
+    — routes/network.ts: GET /assets, GET /assets/:id,
+      GET /telemetry/:assetId/latest, POST /telemetry
+    — routes/events.ts: GET /latest, GET /history?limit=N (default 20)
+    — routes/simulator.ts: POST /leak + POST /burst — full pipeline
+      (baseline lookup → leak observation P×factor/Q×factor → telemetry
+      insert → compute evidence vector → calculate EIS → persist
+      evidence_event → return event payload)
+    — routes/pilot.ts: POST / (validates company/contact/email required),
+      GET / (list recent proposals)
+  @searm1/simulator:
+    packages/simulator/{package.json, tsconfig.json, Dockerfile,
+    src/sensor-generator.ts}
+    — 5s tick, POSTs 10 pipes/tick to /api/network/telemetry, ±2% jitter
+      around MNF baselines (mirrors seed.ts values)
+  Database + frontend:
+    packages/database/schema.sql — TimescaleDB + PostGIS production schema
+      (hypertables on telemetry.time + evidence_events.created_at,
+       continuous aggregate for hourly evidence classification rollup)
+    frontend/index.html — self-contained dark-theme dashboard
+      (bg #0a0e14, cyan #00d4ff, green #00ff88, amber #ffb800);
+      loads assets, polls latest event every 2s, Trigger Leak/Burst
+      buttons, pilot proposal form, event log; uses relative paths with
+      ?XTransformPort=3001 so requests route through Caddy gateway
+
+Adapter decisions (deviations from spec, all driven by sandbox constraints):
+  1. SQLite driver: bun:sqlite instead of better-sqlite3 (better-sqlite3's
+     native binding doesn't load under Bun 1.3.x). Runtime-tolerant loader
+     tries bun:sqlite first, falls back to better-sqlite3 (production Docker).
+     Switched db.pragma() → db.exec('PRAGMA ...') because bun:sqlite 1.3.x
+     doesn't expose .pragma() as a method.
+  2. Database path anchored to <backend-root>/searm1.db via __dirname,
+     ignoring DATABASE_URL unless it explicitly mentions "searm1" — this
+     prevents accidentally writing into the parent Next.js project's
+     custom.db (which has its own DATABASE_URL=file:/home/z/my-project/
+     db/custom.db for Prisma).
+  3. Process detachment via `( setsid bash -c '...exec bun...' & )`
+     pattern — bun's parent becomes init (PID 1), gets its own session
+     ID, no controlling terminal. Verified persistent across multiple
+     bash invocations (uptime >150s at last check).
+  4. Frontend API calls use relative paths with ?XTransformPort=3001 so
+     they route through the Caddy gateway (port 81) → backend (port 3001).
+     The spec's `http://localhost:3001` would be unreachable from a
+     browser outside the sandbox.
+
+Verification — every endpoint tested with curl through Caddy (port 81):
+  GET  /api/health                              → 200, status:ok, engine:vvu-ive / EIS v1.0
+  GET  /api/network/assets                     → 18 assets (PIP1–PIP10 + N1–N8)
+  GET  /api/network/assets/PIP3                 → pipe metadata (Ø200mm, 274m, AC, baseline 4.8/91)
+  GET  /api/network/telemetry/PIP3/latest       → latest telemetry row
+  POST /api/simulator/leak (default PIP3)      → INSUFFICIENT event (conf 0.46)
+  POST /api/simulator/leak body {assetId:PIP7}  → INSUFFICIENT event (conf 0.43)
+  POST /api/simulator/burst body {assetId:PIP5}→ CANDIDATE event (conf 0.70)
+  GET  /api/events/latest                      → most recent event
+  GET  /api/events/history?limit=5             → 4 events newest-first
+                                                 (3 INSUFFICIENT + 1 CANDIDATE)
+  POST /api/pilot (full 16-field body)         → 201, {success:true, id:PIL-<uuid>}
+  POST /api/pilot (missing email)              → 400, missing:["contact","email"]
+  POST /api/pilot (invalid email shape)        → 400, invalid email
+  GET  /api/pilot                              → 1 proposal (NMBM Water Dept / Jane Doe)
+  POST /api/network/telemetry                  → 201, sim-style insert works
+
+Simulator verified: ran continuously, POSTed 10 rows/tick every 5s, API
+persisted rows with sequential IDs. Subsequent /leak triggers correctly
+picked up the simulator's latest jittered value as the new "baseline"
+(e.g. PIP3 baseline became 4.87 bar / 91.15 L/min instead of static 4.8/91).
+
+Dashboard (frontend/index.html, also at /home/z/my-project/public/
+searm1-pipeline.html):
+  - GET /searm1-pipeline.html via Caddy port 81 → 200 OK, 34524 bytes
+  - Loads 18 assets on page load
+  - Polls /api/events/latest every 2 seconds, updates SVG confidence ring
+  - Trigger Leak + Trigger Burst buttons POST to /api/simulator/{leak,burst}
+  - Color codes by classification (green VERIFIED, amber CANDIDATE,
+    gray INSUFFICIENT)
+  - Pilot proposal form posts to /api/pilot
+  - Dark theme per spec (bg #0a0e14, cyan #00d4ff, green #00ff88, amber #ffb800)
+  - Title: "SEARM1 · Evidence Pipeline (Live API)"
+
+Final state:
+  - API process pid 3703, parent = init (1), session leader, no tty
+  - Simulator process pid 3800, same detachment pattern
+  - Listening ports: 3001 (API), 3000 (Next.js), 81 (Caddy gateway)
+  - Database: 18 assets + telemetry rows (10 seeded + ~30 simulated) +
+    4 evidence_events + 1 pilot_proposal
+  - EIS classifications working correctly: leak factors (0.7/1.2) give
+    pressureSignal=0.30 + flowSignal=0.20 → INSUFFICIENT; burst factors
+    (0.4/1.6) give 0.60+0.60 → CANDIDATE (with 0.9 spatial signal,
+    mean=0.70, just under the 0.75 VERIFIED threshold).
+
+Status: COMPLETE — full SEARM1 backend pipeline operational. All
+endpoints respond through Caddy, evidence classifications computed and
+persisted correctly, simulator feeds the API continuously, dashboard
+renders live. Production path (Docker + TimescaleDB) staged via
+docker-compose.yml + packages/database/schema.sql + per-package
+Dockerfiles; the only production swap needed is changing the SQLite
+loader in db.ts to a pg/TimescaleDB client (route handlers unchanged).
+
+Files: 28 files written under /home/z/my-project/searm1-backend/ +
+1 file copied to /home/z/my-project/public/searm1-pipeline.html +
+1 work record at /home/z/my-project/agent-ctx/BACKEND-1-searm1-backend.md.
