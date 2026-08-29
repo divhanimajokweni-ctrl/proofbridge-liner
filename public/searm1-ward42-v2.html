@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEARM1 · Ward 42 Scene Viewer v2</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #0a0e14;
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', 'Segoe UI', monospace;
+      overflow: hidden;
+      height: 100vh;
+    }
+    #topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 44px;
+      z-index: 1000;
+      background: #14181f;
+      border-bottom: 1px solid #263244;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+    }
+    #logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 900;
+      font-size: 12px;
+      color: #7dd3fc;
+      white-space: nowrap;
+    }
+    #logo b {
+      width: 27px;
+      height: 27px;
+      background: #0ea5e9;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    #search {
+      flex: 1;
+      max-width: 390px;
+      background: #1a1f2b;
+      border: 1px solid #2a3446;
+      border-radius: 8px;
+      padding: 7px 12px;
+      color: #dbeafe;
+      font-size: 11px;
+      outline: none;
+    }
+    #search:focus {
+      border-color: #38bdf8;
+    }
+    .btn {
+      padding: 6px 11px;
+      border-radius: 8px;
+      background: #1e2632;
+      border: 1px solid #2a3446;
+      color: #94a3b8;
+      font-size: 10px;
+      cursor: pointer;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      border-color: #38bdf8;
+      color: #e2e8f0;
+    }
+    .btn.active {
+      background: linear-gradient(135deg, #0ea5e9, #6366f1);
+      color: #fff;
+      border-color: transparent;
+    }
+    #status {
+      margin-left: auto;
+      font-size: 9px;
+      color: #34d399;
+      white-space: nowrap;
+    }
+    #viewport {
+      position: fixed;
+      inset: 44px 0 28px 0;
+      z-index: 1;
+      transition: right .2s;
+    }
+    #viewport canvas {
+      display: block;
+    }
+    #street-map {
+      position: fixed;
+      inset: 44px 0 28px 0;
+      z-index: 2;
+      display: none;
+      background: #dfe7ef;
+    }
+    #street-map.active {
+      display: block;
+    }
+    #panel-right {
+      position: fixed;
+      right: 10px;
+      top: 54px;
+      z-index: 15;
+      width: 238px;
+      background: rgba(14, 18, 26, .94);
+      backdrop-filter: blur(12px);
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 10px;
+      max-height: calc(100vh - 110px);
+      overflow: auto;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+    }
+    #panel-right.collapsed {
+      max-height: 44px;
+      padding: 6px 10px;
+      overflow: hidden;
+    }
+    #panel-right .panel-content {
+      display: block;
+    }
+    #panel-right.collapsed .panel-content {
+      display: none;
+    }
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    #toggle-panel {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 4px;
+    }
+    #toggle-panel:hover {
+      color: #e2e8f0;
+    }
+    .panel-title {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      color: #64748b;
+      margin: 0;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .stat {
+      background: #0f141e;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 8px;
+    }
+    .stat .k {
+      font-size: 8px;
+      color: #475569;
+    }
+    .stat .v {
+      font-size: 18px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+    .layer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 9px;
+      color: #94a3b8;
+    }
+    .layer input {
+      accent-color: #38bdf8;
+    }
+    #elev-scale {
+      position: fixed;
+      left: 50%;
+      top: 56px;
+      transform: translateX(-50%);
+      z-index: 14;
+      width: 24px;
+      height: 140px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, .15);
+      display: flex;
+      flex-direction: column;
+      pointer-events: none;
+    }
+    #elev-scale div {
+      flex: 1;
+    }
+    #subsurface {
+      position: fixed;
+      right: 10px;
+      bottom: 38px;
+      z-index: 15;
+      width: 300px;
+      height: 174px;
+      background: #0a0e14;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    #sub-header {
+      height: 24px;
+      background: #14181f;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 10px;
+      font-size: 8px;
+      font-weight: 800;
+      color: #94a3b8;
+      border-bottom: 1px solid #1e293b;
+    }
+    #sub-wrap {
+      width: 100%;
+      height: 150px;
+    }
+    #footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 28px;
+      z-index: 20;
+      background: #0f141e;
+      border-top: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 9px;
+      color: #64748b;
+      gap: 10px;
+    }
+    #tooltip {
+      position: fixed;
+      background: #0f141e;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 11px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s;
+      z-index: 2000;
+      min-width: 220px;
+      box-shadow: 0 12px 30px #0008;
+    }
+    #tooltip.visible {
+      opacity: 1;
+    }
+    .ward-label {
+      background: rgba(14, 18, 26, .92);
+      border: 1px solid #38bdf8;
+      color: #7dd3fc;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .legend-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    @media(max-width:900px) {
+      #status {
+        display: none;
+      }
+      .btn {
+        padding: 6px 8px;
+      }
+      #panel-right {
+        width: 205px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <div id="logo"><b>◈</b> SEARM1 SCENE VIEWER</div>
+    <input id="search" placeholder="Find pipe, node, file or place…" />
+    <button class="btn active" id="btn-synth">3D Scene</button>
+    <button class="btn" id="btn-streets">Streets</button>
+    <button class="btn" id="btn-both">Split</button>
+    <button class="btn" id="btn-leak">Leak Test</button>
+    <button class="btn" id="btn-reset">Reset</button>
+    <div id="status">● SCENE READY • WARD 42</div>
+  </div>
+
+  <div id="viewport"></div>
+  <div id="street-map"></div>
+
+  <div id="elev-scale">
+    <div style="background:#ff4b4b"></div><div style="background:#ff7b3b"></div>
+    <div style="background:#ffad3b"></div><div style="background:#ffd23b"></div>
+    <div style="background:#dfff3b"></div><div style="background:#7dff4a"></div>
+    <div style="background:#3bff9a"></div><div style="background:#3bffd2"></div>
+    <div style="background:#3bd4ff"></div><div style="background:#3b8aff"></div>
+    <div style="background:#3b4bff"></div><div style="background:#1e3a8a"></div>
+  </div>
+
+  <!-- RIGHT PANEL with collapse toggle -->
+  <div id="panel-right">
+    <div class="panel-header">
+      <span class="panel-title">SCENE STATUS</span>
+      <button id="toggle-panel" title="Minimize / expand panel">−</button>
+    </div>
+    <div class="panel-content">
+      <div class="stat-grid">
+        <div class="stat"><div class="k">PIPE SEGMENTS</div><div class="v">10</div></div>
+        <div class="stat"><div class="k">NETWORK NODES</div><div class="v">8</div></div>
+        <div class="stat"><div class="k">CODE FOLDERS</div><div class="v">8</div></div>
+        <div class="stat"><div class="k">CODE FILES</div><div class="v">19</div></div>
+      </div>
+      <div class="panel-title">LAYERS</div>
+      <label class="layer">Terrain <input type="checkbox" id="layer-terrain" checked /></label>
+      <label class="layer">Code City <input type="checkbox" id="layer-code" checked /></label>
+      <label class="layer">Water Network <input type="checkbox" id="layer-water" checked /></label>
+      <label class="layer">Network Nodes <input type="checkbox" id="layer-nodes" checked /></label>
+      <label class="layer">Flow Particles <input type="checkbox" id="layer-flow" checked /></label>
+      <label class="layer">Labels <input type="checkbox" id="layer-labels" checked /></label>
+      <div class="panel-title" style="margin-top:12px">ELEVATION • WARD 42</div>
+      <div style="font-size:9px;line-height:1.8">
+        <div>🔴 232 m • High ridge</div><div>🟠 200 m</div>
+        <div>🟡 169 m • Cora Terrace</div><div>🟢 148 m</div>
+        <div>🟢 119 m • Bird Street</div><div>🔵 82 m</div>
+        <div>🔵 52 m • Low / flood-sensitive</div>
+      </div>
+      <div class="panel-title" style="margin-top:12px">INSPECTION</div>
+      <div id="inspection" style="font-size:9px;line-height:1.7;color:#94a3b8">No object selected.</div>
+    </div>
+  </div>
+
+  <div id="subsurface">
+    <div id="sub-header"><span>SUBSURFACE INSPECTION • NETWORK PROFILE</span><span id="sub-state">LIVE</span></div>
+    <div id="sub-wrap"></div>
+  </div>
+
+  <div id="footer">
+    <div><span class="legend-dot" style="background:#34d399"></span><span id="sel-info">No object selected • Click terrain, pipe, node or building</span></div>
+    <div>SEARM1 • WARD 42 • TOPO 52–232m • SYNTHETIC GIS</div>
+  </div>
+  <div id="tooltip"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+    // ----- DATA (synthetic but coherent) -----
+    const WARD42_CENTER = [-33.83306, 25.3875];
+    const pipes = [
+      { id: 'PIP1', from: 'N1', to: 'N2', elev: 148, dma: 'A', flow: 72 },
+      { id: 'PIP2', from: 'N2', to: 'N3', elev: 138, dma: 'A', flow: 68 },
+      { id: 'PIP3', from: 'N3', to: 'N4', elev: 124, dma: 'B', flow: 91 },
+      { id: 'PIP4', from: 'N4', to: 'N5', elev: 109, dma: 'B', flow: 55 },
+      { id: 'PIP5', from: 'N5', to: 'N6', elev: 82, dma: 'C', flow: 44 },
+      { id: 'PIP6', from: 'N6', to: 'N7', elev: 66, dma: 'C', flow: 37 },
+      { id: 'PIP7', from: 'N7', to: 'N8', elev: 91, dma: 'A', flow: 61 },
+      { id: 'PIP8', from: 'N8', to: 'N1', elev: 158, dma: 'A', flow: 78 },
+      { id: 'PIP9', from: 'N2', to: 'N8', elev: 119, dma: 'B', flow: 64 },
+      { id: 'PIP10', from: 'N4', to: 'N6', elev: 74, dma: 'C', flow: 42 }
+    ];
+
+    const nodes = {
+      N1: { x: -15, z: -7, elev: 158 }, N2: { x: -9, z: 6, elev: 148 },
+      N3: { x: 0, z: 2, elev: 138 }, N4: { x: 9, z: 7, elev: 124 },
+      N5: { x: 15, z: 2, elev: 109 }, N6: { x: 9, z: -8, elev: 82 },
+      N7: { x: 0, z: -14, elev: 66 }, N8: { x: -9, z: -8, elev: 91 }
+    };
+
+    const files = [
+      ['Dashboard.js', 190], ['Chart.js', 210], ['Table.js', 160], ['Button.js', 70],
+      ['auth.js', 200], ['db.js', 300], ['User.js', 120], ['Product.js', 150], ['Home.js', 80],
+      ['main.js', 240], ['api.js', 180], ['fetch.js', 90], ['utils.js', 130],
+      ['theme.css', 320], ['layout.css', 150], ['helpers.js', 110], ['validators.js', 80],
+      ['useData.js', 100], ['useTheme.js', 45]
+    ];
+
+    const streets = [
+      ['Cora Terrace', -33.960, 25.609, 169, 'Central PE'],
+      ['Bird Street', -33.962, 25.611, 148, 'Central PE'],
+      ['Addo Road', -33.831, 25.385, 119, 'Motherwell'],
+      ['Daku Road', -33.835, 25.390, 109, 'Ward 42'],
+      ['Ngonyama Street', -33.829, 25.392, 124, 'Ward 42'],
+      ['Mbilini Street', -33.837, 25.395, 82, 'Low elevation'],
+      ['Coega Road', -33.820, 25.400, 74, 'Coega corridor'],
+      ['Motherwell Centre', -33.833, 25.387, 124, 'Ward 42 centre']
+    ];
+
+    // ----- THREE.JS SETUP -----
+    const viewport = document.getElementById('viewport');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0e14);
+    scene.fog = new THREE.FogExp2(0x0a0e14, .009);
+
+    const camera = new THREE.PerspectiveCamera(40, viewport.clientWidth / viewport.clientHeight, .1, 300);
+    camera.position.set(30, 25, 32);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    viewport.appendChild(renderer.domElement);
+
+    const labels = new CSS2DRenderer();
+    labels.setSize(viewport.clientWidth, viewport.clientHeight);
+    labels.domElement.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none';
+    viewport.appendChild(labels.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxPolarAngle = Math.PI * .49;
+    controls.minDistance = 8;
+    controls.maxDistance = 100;
+    controls.target.set(0, 0, 0);
+
+    scene.add(new THREE.HemisphereLight(0x9cc8ff, 0x162010, 1.1));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.25);
+    sun.position.set(25, 40, 15);
+    scene.add(sun);
+
+    // Groups
+    const terrainGroup = new THREE.Group();
+    const codeGroup = new THREE.Group();
+    const waterGroup = new THREE.Group();
+    const nodeGroup = new THREE.Group();
+    const flowGroup = new THREE.Group();
+    const labelGroup = new THREE.Group();
+    scene.add(terrainGroup, codeGroup, waterGroup, nodeGroup, flowGroup, labelGroup);
+
+    // ----- TERRAIN -----
+    function terrainHeight(x, z) {
+      const ridge = 3.8 * Math.sin(x * .075) * Math.cos(z * .065);
+      const valley = 2.2 * Math.sin((x + z) * .055);
+      const slope = -z * .055;
+      const local = 1.4 * Math.exp(-((x + 8) ** 2 + (z - 5) ** 2) / 300);
+      return ridge + valley + slope + local;
+    }
+
+    const size = 70,
+      segments = 80;
+    const tg = new THREE.PlaneGeometry(size, size, segments, segments);
+    const tp = tg.attributes.position;
+    const tc = [];
+    for (let i = 0; i < tp.count; i++) {
+      const x = tp.getX(i),
+        y = tp.getY(i),
+        h = terrainHeight(x, y);
+      tp.setZ(i, h);
+      const t = THREE.MathUtils.clamp((h + 6) / 15, 0, 1);
+      const c = new THREE.Color().setHSL(.62 - t * .78, .72, .34 + t * .16);
+      tc.push(c.r, c.g, c.b);
+    }
+    tg.setAttribute('color', new THREE.Float32BufferAttribute(tc, 3));
+    tg.computeVertexNormals();
+    const terrain = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .92 }));
+    terrain.rotation.x = -Math.PI / 2;
+    terrainGroup.add(terrain);
+    const grid = new THREE.GridHelper(70, 35, 0x29415d, 0x1a2a3b);
+    grid.position.y = -.2;
+    terrainGroup.add(grid);
+
+    // ----- CODE CITY (buildings) -----
+    const buildingObjects = [];
+    files.forEach((f, i) => {
+      const x = (i % 6 - 2.5) * 4.2;
+      const z = (Math.floor(i / 6) - 1) * 5.2;
+      const h = .8 + f[1] / 75;
+      const y = terrainHeight(x, z);
+      const mat = new THREE.MeshStandardMaterial({ color: 0x2563c9, emissive: 0x071b4a, emissiveIntensity: .5, roughness: .7 });
+      const b = new THREE.Mesh(new THREE.BoxGeometry(1.8, h, 1.8), mat);
+      b.position.set(x, y + h / 2 + .15, z);
+      b.userData = { type: 'file', name: f[0], lines: f[1], elev: Math.round(124 + y * 10) };
+      codeGroup.add(b);
+      buildingObjects.push(b);
+      const d = document.createElement('div');
+      d.textContent = f[0];
+      d.style.cssText = 'color:#93c5fd;font-size:9px;background:#081525cc;padding:2px 5px;border-radius:7px;border:1px solid #31557d;white-space:nowrap';
+      const l = new CSS2DObject(d);
+      l.position.set(x, y + h + .45, z);
+      l.userData.parent = b;
+      labelGroup.add(l);
+    });
+
+    // ----- WATER NETWORK (pipes + nodes + flow) -----
+    const pipeMeshes = {};
+    const flowPoints = [];
+
+    function elevColor(e) {
+      const t = THREE.MathUtils.clamp((e - 52) / 180, 0, 1);
+      return new THREE.Color().setHSL(.62 - t * .75, .85, .52);
+    }
+
+    pipes.forEach(p => {
+      const a = nodes[p.from],
+        b = nodes[p.to];
+      const ya = terrainHeight(a.x, a.z) - 1.15,
+        yb = terrainHeight(b.x, b.z) - 1.15;
+      const mid = new THREE.Vector3((a.x + b.x) / 2, (ya + yb) / 2 - 1.1, (a.z + b.z) / 2);
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(a.x, ya, a.z), mid, new THREE.Vector3(b.x, yb, b.z)
+      ]);
+      const geo = new THREE.TubeGeometry(curve, 32, .16, 8, false);
+      const col = elevColor(p.elev);
+      const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: .25, roughness: .5 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.userData = { type: 'pipe', ...p };
+      waterGroup.add(mesh);
+      pipeMeshes[p.id] = mesh;
+
+      for (let i = 0; i < 7; i++) {
+        const s = new THREE.Mesh(new THREE.SphereGeometry(.11, 7, 7),
+          new THREE.MeshBasicMaterial({ color: 0x9eeaff }));
+        s.userData = { curve, t: i / 7, id: p.id };
+        flowGroup.add(s);
+        flowPoints.push(s);
+      }
+    });
+
+    Object.entries(nodes).forEach(([id, n]) => {
+      const y = terrainHeight(n.x, n.z) + .1;
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(.42, .5, .25, 16),
+        new THREE.MeshStandardMaterial({ color: 0x334155, metalness: .4, roughness: .5 }));
+      base.position.set(n.x, y, n.z);
+      base.userData = { type: 'node', id, elev: n.elev };
+      nodeGroup.add(base);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(.25, 12, 12),
+        new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0x6b4300, emissiveIntensity: .5 }));
+      cap.position.set(n.x, y + .22, n.z);
+      cap.userData = base.userData;
+      nodeGroup.add(cap);
+
+      const d = document.createElement('div');
+      d.textContent = id;
+      d.style.cssText = 'color:#fbbf24;font-size:9px;font-weight:800;text-shadow:0 1px 3px #000';
+      const l = new CSS2DObject(d);
+      l.position.set(n.x, y + 1, n.z);
+      l.userData.parent = base;
+      labelGroup.add(l);
+    });
+
+    // ----- INTERACTION (raycaster) -----
+    const ray = new THREE.Raycaster(),
+      mouse = new THREE.Vector2();
+    const tooltip = document.getElementById('tooltip');
+
+    function inspect(obj, x, y) {
+      const u = obj.userData || {};
+      let title = '',
+        body = '';
+      if (u.type === 'pipe') {
+        title = u.id;
+        body = `Ward 42 • DMA ${u.dma}<br/>Elevation ${u.elev}m • Flow ${u.flow}%<br/>${u.from} → ${u.to}`;
+      } else if (u.type === 'node') {
+        title = u.id;
+        body = `Network node / valve<br/>Elevation ${u.elev}m • Ward 42`;
+      } else if (u.type === 'file') {
+        title = u.name;
+        body = `Code City building<br/>${u.lines} lines • Elev ${u.elev}m`;
+      } else return;
+      tooltip.innerHTML = `<b>${title}</b><br/><span style="color:#94a3b8">${body}</span>`;
+      tooltip.style.left = Math.min(x + 14, innerWidth - 250) + 'px';
+      tooltip.style.top = Math.min(y + 12, innerHeight - 100) + 'px';
+      tooltip.classList.add('visible');
+      document.getElementById('sel-info').textContent = `${title} • selected • Ward 42`;
+      document.getElementById('inspection').innerHTML = `<b style="color:#7dd3fc">${title}</b><br/>${body}`;
+    }
+
+    renderer.domElement.addEventListener('pointerdown', e => {
+      const r = renderer.domElement.getBoundingClientRect();
+      mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+      mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(mouse, camera);
+      const hits = ray.intersectObjects([...buildingObjects, Object.values(pipeMeshes), nodeGroup.children].flat(), true);
+      if (hits.length) inspect(hits[0].object, e.clientX, e.clientY);
+    });
+
+    // ----- STREET MAP (Leaflet) -----
+    const streetMapDiv = document.getElementById('street-map');
+    const map = L.map('street-map', { zoomControl: false, attributionControl: true }).setView(WARD42_CENTER, 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' })
+      .addTo(map);
+    L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17, opacity: .48, attribution: '© OpenTopoMap' })
+      .addTo(map);
+
+    streets.forEach(s => {
+      const c = s[3] >= 160 ? '#ef4444' : s[3] >= 120 ? '#f59e0b' : s[3] >= 90 ? '#22c55e' : '#3b82f6';
+      const m = L.circleMarker([s[1], s[2]], { radius: 8, color: c, fillColor: c, fillOpacity: .85, weight: 2 }).addTo(map);
+      m.bindPopup(`<b>${s[0]}</b><br/>Elevation: ${s[3]}m<br/>${s[4]} • Ward 42`);
+      m.on('click', () => selectStreet(s));
+    });
+
+    const wardPoly = [
+      [-33.84206, 25.37277],
+      [-33.84206, 25.40207],
+      [-33.82416, 25.40207],
+      [-33.82416, 25.37277]
+    ];
+    L.polygon(wardPoly, { color: '#38bdf8', fillColor: '#38bdf8', fillOpacity: .08, weight: 2, dashArray: '8 6' })
+      .addTo(map).bindPopup('<b>Ward 42</b><br/>Synthetic scene extent • elevation range 52–232m');
+    L.marker(WARD42_CENTER, { icon: L.divIcon({ className: 'ward-label', html: 'WARD 42 • 124m AVG', iconSize: [120, 22] }) })
+      .addTo(map);
+
+    function selectStreet(s) {
+      document.getElementById('sel-info').textContent = `${s[0]} • Elev ${s[3]}m • ${s[4]} • Ward 42`;
+      document.getElementById('inspection').innerHTML = `<b style="color:#7dd3fc">${s[0]}</b><br/>Elevation ${s[3]}m<br/>${s[4]} • Ward 42`;
+    }
+
+    // ----- SUBSURFACE PANEL (mini 3D) -----
+    const subWrap = document.getElementById('sub-wrap');
+    const subScene = new THREE.Scene();
+    subScene.background = new THREE.Color(0x080c12);
+    const subCam = new THREE.PerspectiveCamera(35, 300 / 150, .1, 100);
+    subCam.position.set(0, 15, 18);
+    subCam.lookAt(0, 0, 0);
+    const subR = new THREE.WebGLRenderer({ antialias: true });
+    subR.setPixelRatio(Math.min(devicePixelRatio, 2));
+    subR.setSize(300, 150);
+    subWrap.appendChild(subR.domElement);
+    subScene.add(new THREE.AmbientLight(0x7890a8, 1.2));
+    const subGrid = new THREE.GridHelper(34, 17, 0x26364a, 0x152231);
+    subGrid.rotation.x = Math.PI / 2;
+    subScene.add(subGrid);
+
+    // draw network in subsurface
+    pipes.forEach(p => {
+      const a = nodes[p.from],
+        b = nodes[p.to];
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(a.x * .72, -1, a.z * .72),
+          new THREE.Vector3(b.x * .72, -1, b.z * .72)
+        ]),
+        new THREE.LineBasicMaterial({ color: elevColor(p.elev) })
+      );
+      subScene.add(line);
+    });
+    Object.entries(nodes).forEach(([id, n]) => {
+      const s = new THREE.Mesh(new THREE.SphereGeometry(.28, 10, 10), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+      s.position.set(n.x * .72, -1, n.z * .72);
+      subScene.add(s);
+    });
+
+    // ----- LEAK SIMULATION -----
+    let leak = false;
+
+    function setLeak(on) {
+      leak = on;
+      document.getElementById('btn-leak').classList.toggle('active', on);
+      document.getElementById('btn-leak').textContent = on ? 'Leak ACTIVE' : 'Leak Test';
+      const m = pipeMeshes.PIP3;
+      m.material.color.set(on ? 0xfb7185 : elevColor(124));
+      m.material.emissive.set(on ? 0x7f1d1d : 0x000000);
+      m.material.emissiveIntensity = on ? .9 : .25;
+      document.getElementById('status').textContent = on ? '● LEAK SIMULATION • PIP3' : '● SCENE READY • WARD 42';
+      document.getElementById('sub-state').textContent = on ? 'LEAK' : 'LIVE';
+    }
+    document.getElementById('btn-leak').onclick = () => setLeak(!leak);
+
+    // ----- MODE SWITCHING (synth / streets / split) -----
+    function mode(m) {
+      const vp = document.getElementById('viewport');
+      document.querySelectorAll('#topbar .btn').forEach(b => b.classList.remove('active'));
+      if (m === 'synth') {
+        vp.style.right = '0';
+        streetMapDiv.classList.remove('active');
+        document.getElementById('btn-synth').classList.add('active');
+      } else if (m === 'streets') {
+        vp.style.right = '100%';
+        streetMapDiv.style.inset = '44px 0 28px 0';
+        streetMapDiv.classList.add('active');
+        document.getElementById('btn-streets').classList.add('active');
+        setTimeout(() => map.invalidateSize(), 50);
+      } else {
+        vp.style.right = '50%';
+        streetMapDiv.style.inset = '44px 0 28px 50%';
+        streetMapDiv.classList.add('active');
+        document.getElementById('btn-both').classList.add('active');
+        setTimeout(() => map.invalidateSize(), 50);
+      }
+    }
+    document.getElementById('btn-synth').onclick = () => mode('synth');
+    document.getElementById('btn-streets').onclick = () => mode('streets');
+    document.getElementById('btn-both').onclick = () => mode('both');
+
+    document.getElementById('btn-reset').onclick = () => {
+      camera.position.set(30, 25, 32);
+      controls.target.set(0, 0, 0);
+      controls.update();
+      mode('synth');
+      setLeak(false);
+    };
+
+    // ----- LAYER CONTROLS -----
+    function setGroup(id, on) { document.getElementById(id).visible = on }
+    document.getElementById('layer-terrain').onchange = e => { terrainGroup.visible = e.target.checked };
+    document.getElementById('layer-code').onchange = e => { codeGroup.visible = e.target.checked };
+    document.getElementById('layer-water').onchange = e => { waterGroup.visible = e.target.checked };
+    document.getElementById('layer-nodes').onchange = e => { nodeGroup.visible = e.target.checked };
+    document.getElementById('layer-flow').onchange = e => { flowGroup.visible = e.target.checked };
+    document.getElementById('layer-labels').onchange = e => { labelGroup.visible = e.target.checked };
+
+    // ----- SEARCH -----
+    function search(q) {
+      q = q.trim().toLowerCase();
+      if (!q) return;
+      const file = buildingObjects.find(o => o.userData.name.toLowerCase().includes(q));
+      const pipe = Object.values(pipeMeshes).find(o => o.userData.id.toLowerCase() === q || o.userData.id.toLowerCase()
+        .includes(q));
+      const node = Object.entries(nodes).find(([id]) => id.toLowerCase() === q);
+      const street = streets.find(s => s[0].toLowerCase().includes(q));
+      if (file) { mode('synth');
+        const p = file.position;
+        camera.position.set(p.x + 10, p.y + 8, p.z + 10);
+        controls.target.copy(p);
+        inspect(file, innerWidth / 2, 100); return }
+      if (pipe) { mode('synth');
+        const p = pipe.position;
+        camera.position.set(p.x + 14, p.y + 10, p.z + 14);
+        controls.target.copy(p);
+        inspect(pipe, innerWidth / 2, 100); return }
+      if (node) { mode('synth');
+        const n = nodes[node[0]];
+        controls.target.set(n.x, terrainHeight(n.x, n.z), n.z);
+        camera.position.set(n.x + 12, terrainHeight(n.x, n.z) + 10, n.z + 12); return }
+      if (street) { mode('streets');
+        map.setView([street[1], street[2]], 16);
+        selectStreet(street); return }
+      document.getElementById('sel-info').textContent = `No result for "${q}"`;
+    }
+    document.getElementById('search').addEventListener('keydown', e => { if (e.key === 'Enter') search(e.target.value) });
+
+    // ----- ANIMATION LOOP -----
+    let t = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      t += .006;
+      flowPoints.forEach(s => {
+        const o = (s.userData.t + t) % 1;
+        const p = s.userData.curve.getPointAt(o);
+        s.position.copy(p);
+        if (leak && s.userData.id === 'PIP3') s.scale.setScalar(1.8);
+        else s.scale.setScalar(1);
+      });
+      controls.update();
+      renderer.render(scene, camera);
+      labels.render(scene, camera);
+      subR.render(subScene, subCam);
+    }
+    animate();
+
+    // ----- RESIZE HANDLER -----
+    function resize() {
+      const w = viewport.clientWidth,
+        h = viewport.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      labels.setSize(w, h);
+      map.invalidateSize();
+    }
+    window.addEventListener('resize', resize);
+
+    // ----- PANEL TOGGLE (added) -----
+    document.getElementById('toggle-panel').addEventListener('click', function() {
+      const panel = document.getElementById('panel-right');
+      panel.classList.toggle('collapsed');
+      this.textContent = panel.classList.contains('collapsed') ? '+' : '−';
+    });
+
+    mode('synth');
+  </script>
+</body>
+</html>
