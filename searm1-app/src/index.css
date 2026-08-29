@@ -1,0 +1,122 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas,
+    monospace;
+
+  /* Dark ops-console palette (user-authored: cyan accent + slate background). */
+  --color-background: #0f172a;
+  --color-surface: #111c30;
+  --color-surface-2: #0b1322;
+  --color-foreground: #f8fafc;
+  --color-muted: #94a3b8;
+  --color-edge: #1e293b;
+  --color-primary: #1e293b;
+
+  --color-accent: #38bdf8;
+  --color-accent-strong: #0ea5e9;
+
+  /* Status colours for pipe assessment. */
+  --color-normal: #64748b;
+  --color-candidate: #fbbf24;
+  --color-verified: #34d399;
+  --color-warn: #f87171;
+  --color-destructive: #ef4444;
+
+  --animate-pulse-dot: pulse-dot 1.1s ease-in-out infinite;
+  @keyframes pulse-dot {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.4;
+      transform: scale(0.75);
+    }
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Section headings inside the sidebar. */
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--color-muted);
+}
+
+/* EIS grade badges. */
+.grade-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-edge);
+}
+.grade-none {
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-normal) 14%, transparent);
+}
+.grade-weak {
+  color: var(--color-muted);
+  background: color-mix(in srgb, var(--color-normal) 18%, transparent);
+}
+.grade-moderate {
+  color: var(--color-candidate);
+  background: color-mix(in srgb, var(--color-candidate) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-candidate) 40%, transparent);
+}
+.grade-strong {
+  color: var(--color-verified);
+  background: color-mix(in srgb, var(--color-verified) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-verified) 40%, transparent);
+}
+
+/* Slim dark scrollbars for the sidebar. */
+.app-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge) transparent;
+}
+.app-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.app-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-edge);
+  border-radius: 8px;
+}
+.app-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Reduce, don't remove, motion for users who ask for less. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-dot {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
