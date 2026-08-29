@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>SEARM1 · 4‑Dashboard Enterprise Suite</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <style>
+        /* ─── GLOBAL RESET ─── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0f1419;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ─── TOP NAV / TABS ─── */
+        #nav {
+            background: #141a24;
+            border-bottom: 2px solid #2d3748;
+            display: flex;
+            align-items: stretch;
+            flex-shrink: 0;
+            padding: 0 12px;
+            gap: 4px;
+            min-height: 48px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab {
+            padding: 12px 18px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: #94a3b8;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all .2s;
+        }
+        .tab:hover {
+            color: #e2e8f0;
+            background: rgba(255, 255, 255, .04);
+        }
+        .tab.active {
+            color: #38bdf8;
+            border-bottom-color: #38bdf8;
+        }
+        .tab .badge {
+            background: #0ea5e9;
+            color: #fff;
+            font-size: 8px;
+            border-radius: 10px;
+            padding: 1px 7px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
+        /* ─── PANEL CONTAINER ─── */
+        #panels {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        .panel {
+            position: absolute;
+            inset: 0;
+            display: none;
+            overflow: auto;
+            padding: 12px 16px 20px;
+            background: #0f1419;
+        }
+        .panel.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ─── SCROLLBAR ─── */
+        .panel::-webkit-scrollbar,
+        #content-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .panel::-webkit-scrollbar-track,
+        #content-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .panel::-webkit-scrollbar-thumb,
+        #content-scroll::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 2px;
+        }
+
+        /* ─── PANEL 1: DEMO ENVIRONMENT ─── */
+        #demo-panel {
+            padding: 0;
+        }
+        #demo-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        #demo-3d {
+            flex: 1;
+            position: relative;
+            background: #0a0e14;
+            min-height: 300px;
+        }
+        #demo-3d canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        #demo-map {
+            height: 200px;
+            flex-shrink: 0;
+            border-top: 2px solid #2d3748;
+            background: #1a1f2e;
+        }
+        #demo-map .leaflet-container {
+            height: 100%;
+            background: #1a1f2e;
+        }
+        .demo-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            z-index: 10;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .demo-overlay .btn-sm {
+            padding: 4px 12px;
+            font-size: 9px;
+            font-weight: 700;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: rgba(15, 23, 42, .85);
+            color: #94a3b8;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: .2s;
+        }
+        .demo-overlay .btn-sm:hover {
+            border-color: #38bdf8;
+            color: #e2e8f0;
+        }
+        .demo-overlay .btn-sm.active {
+            background: #0ea5e9;
+            border-color: #0ea5e9;
+            color: #fff;
+        }
+        .demo-stats {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            z-index: 10;
+            background: rgba(15, 23, 42, .88);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 9px;
+            backdrop-filter: blur(4px);
+            line-height: 1.6;
+            color: #94a3b8;
+        }
+        .demo-stats strong {
+            color: #e2e8f0;
+        }
+
+        /* ─── PANEL 2: TECHNICAL ONE-PAGER ─── */
+        #onepager-panel {
+            padding: 20px 24px;
+            background: #0f1419;
+            align-items: center;
+        }
+        #onepager-panel .page {
+            max-width: 900px;
+            width: 100%;
+            background: #141a24;
+            border: 1px solid #2d3748;
+            border-radius: 16px;
+            padding: 32px 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #2d3748;
+            padding-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .page-header h1 {
+            font-size: 22px;
+            font-weight: 900;
+            color: #f1f5f9;
+            letter-spacing: -.5px;
+        }
+        .page-header h1 span {
+            color: #38bdf8;
+        }
+        .page-header .version {
+            font-size: 10px;
+            color: #64748b;
+            background: #1e293b;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .page-section {
+            margin: 20px 0;
+        }
+        .page-section h2 {
+            font-size: 14px;
+            font-weight: 800;
+            color: #38bdf8;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            margin-bottom: 8px;
+        }
+        .page-section p,
+        .page-section li {
+            font-size: 13px;
+            line-height: 1.7;
+            color: #cbd5e1;
+        }
+        .page-section ul {
+            padding-left: 20px;
+            margin: 6px 0;
+        }
+        .page-section .highlight {
+            background: rgba(14, 165, 233, .1);
+            border-left: 3px solid #0ea5e9;
+            padding: 10px 16px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin: 12px 0;
+        }
+        .metric-grid .m {
+            background: #1a1f2e;
+            border: 1px solid #2d3748;
+            border-radius: 8px;
+            padding: 12px 14px;
+            text-align: center;
+        }
+        .metric-grid .m .num {
+            font-size: 22px;
+            font-weight: 900;
+            color: #10b981;
+            font-family: 'Monaco', monospace;
+        }
+        .metric-grid .m .lbl {
+            font-size: 9px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+        .page-footer {
+            border-top: 1px solid #2d3748;
+            padding-top: 16px;
+            margin-top: 16px;
+            font-size: 10px;
+            color: #64748b;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        /* ─── PANEL 3: 3D ARCHITECTURE DIAGRAM ─── */
+        #arch-panel {
+            padding: 0;
+            background: #0a0e14;
+        }
+        #arch-container {
+            flex: 1;
+            position: relative;
+            background: #0a0e14;
+            min-height: 400px;
+        }
+        #arch-container canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .arch-legend {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            z-index: 10;
+            background: rgba(15, 23, 42, .88);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 9px;
+            backdrop-filter: blur(4px);
+            color: #94a3b8;
+            line-height: 1.8;
+        }
+        .arch-legend .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        .arch-legend .row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ─── PANEL 4: PILOT PROPOSAL FORM ─── */
+        #proposal-panel {
+            padding: 20px 24px;
+            align-items: center;
+            background: #0f1419;
+        }
+        #proposal-panel .form-wrap {
+            max-width: 720px;
+            width: 100%;
+            background: #141a24;
+            border: 1px solid #2d3748;
+            border-radius: 16px;
+            padding: 28px 34px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+        }
+        .form-wrap h2 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #f1f5f9;
+            margin-bottom: 4px;
+        }
+        .form-wrap .sub {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            color: #94a3b8;
+            margin-bottom: 4px;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            background: #0f1419;
+            border: 1px solid #2d3748;
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #e2e8f0;
+            font-size: 13px;
+            font-family: inherit;
+            transition: .2s;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, .15);
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .form-actions .btn {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            cursor: pointer;
+            transition: transform .1s, background .2s;
+        }
+        .form-actions .btn:active {
+            transform: scale(.96);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+        }
+        .btn-secondary {
+            background: #2d3748;
+            color: #94a3b8;
+        }
+        .btn-secondary:hover {
+            background: #3d4a62;
+            color: #e2e8f0;
+        }
+        #form-status {
+            margin-top: 12px;
+            font-size: 12px;
+            color: #10b981;
+            display: none;
+        }
+        #form-status.show {
+            display: block;
+        }
+
+        /* ─── SHARED STATE BADGE ─── */
+        .shared-state {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 9px;
+            color: #94a3b8;
+            flex-wrap: wrap;
+        }
+        .shared-state .pill {
+            background: #1e293b;
+            padding: 2px 12px;
+            border-radius: 20px;
+            border: 1px solid #334155;
+        }
+        .shared-state .pill strong {
+            color: #e2e8f0;
+        }
+
+        /* ─── RESPONSIVE ─── */
+        @media(max-width:700px) {
+            .tab {
+                font-size: 9px;
+                padding: 10px 12px;
+            }
+            #onepager-panel .page {
+                padding: 20px 16px;
+            }
+            #proposal-panel .form-wrap {
+                padding: 20px 16px;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .metric-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .page-header h1 {
+                font-size: 17px;
+            }
+            .demo-overlay {
+                top: 8px;
+                left: 8px;
+                gap: 4px;
+            }
+            .demo-overlay .btn-sm {
+                font-size: 8px;
+                padding: 3px 8px;
+            }
+            .demo-stats {
+                font-size: 8px;
+                padding: 4px 10px;
+                bottom: 8px;
+                right: 8px;
+            }
+        }
+        @media(max-width:480px) {
+            #nav {
+                gap: 0;
+                padding: 0 4px;
+            }
+            .tab {
+                font-size: 8px;
+                padding: 8px 10px;
+            }
+            .tab .badge {
+                font-size: 7px;
+                padding: 0 6px;
+                margin-left: 3px;
+            }
+            #demo-map {
+                height: 140px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── NAVIGATION ─── -->
+    <nav id="nav">
+        <button class="tab active" data-panel="demo">🌐 Demo Environment <span class="badge">LIVE</span></button>
+        <button class="tab" data-panel="onepager">📄 Technical One‑Pager</button>
+        <button class="tab" data-panel="arch">🏗️ 3D Architecture</button>
+        <button class="tab" data-panel="proposal">📋 Pilot Proposal</button>
+        <div style="flex:1;min-width:12px;"></div>
+        <div class="shared-state">
+            <span class="pill">EIS <strong id="nav-eis">0.80</strong></span>
+            <span class="pill">Status <strong id="nav-status">VERIFIED</strong></span>
+        </div>
+    </nav>
+
+    <!-- ─── PANELS ─── -->
+    <div id="panels">
+
+        <!-- ===== PANEL 1: DEMO ENVIRONMENT ===== -->
+        <div class="panel active" id="demo-panel">
+            <div id="demo-container">
+                <div id="demo-3d"></div>
+                <div id="demo-map"></div>
+                <div class="demo-overlay">
+                    <button class="btn-sm active" id="demo-leak">💧 Leak Test</button>
+                    <button class="btn-sm" id="demo-reset">↻ Reset View</button>
+                    <button class="btn-sm" id="demo-focus">🎯 Focus Network</button>
+                </div>
+                <div class="demo-stats">
+                    <div>Pipes <strong id="d-pipes">10</strong> · Nodes <strong id="d-nodes">8</strong></div>
+                    <div>Selected <strong id="d-selected">—</strong></div>
+                    <div>EIS <strong id="d-eis">0.80</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== PANEL 2: TECHNICAL ONE-PAGER ===== -->
+        <div class="panel" id="onepager-panel">
+            <div class="page">
+                <div class="page-header">
+                    <h1>SEARM1 <span>Enterprise</span></h1>
+                    <span class="version">v2.0 · Infrastructure Intelligence</span>
+                </div>
+
+                <div class="page-section">
+                    <h2>Overview</h2>
+                    <p>SEARM1 is an <strong>evidence‑validation and hydraulic observability platform</strong> that transforms sparse operational data into confidence‑ranked, spatially verified events. It helps infrastructure operators identify anomalies earlier, reduce investigation cost, and create an auditable chain of evidence.</p>
+                    <div class="highlight">
+                        <strong>Core thesis:</strong> Water is the first application — not the whole company. The same architecture extends to industrial cooling, data centres, and energy infrastructure.
+                    </div>
+                </div>
+
+                <div class="page-section">
+                    <h2>VVU‑IVE Engine</h2>
+                    <p><strong>V</strong>alidation · <strong>V</strong>erification · <strong>U</strong>nification · <strong>I</strong>ndependence · <strong>V</strong>alue · <strong>E</strong>vidence</p>
+                    <p style="margin-top:6px;">The VVU‑IVE core combines sparse sensor telemetry, spatial network models, and evidence‑independence scoring to produce a single <strong>Evidence Independence Score (EIS)</strong> — a 0–1 measure of event confidence.</p>
+                </div>
+
+                <div class="page-section">
+                    <h2>Evidence Independence Specification</h2>
+                    <ul>
+                        <li><strong>Primary evidence</strong> – direct sensor readings (flow, pressure, acoustic)</li>
+                        <li><strong>Correlated evidence</strong> – cross‑sensor consistency checks</li>
+                        <li><strong>Independent evidence</strong> – spatial / temporal pattern validation</li>
+                        <li><strong>Audit trail</strong> – SHA‑256 integrity hash for every event</li>
+                    </ul>
+                </div>
+
+                <div class="page-section">
+                    <h2>Key Metrics</h2>
+                    <div class="metric-grid">
+                        <div class="m"><div class="num" id="op-rate">99.2%</div><div class="lbl">Detection Accuracy</div></div>
+                        <div class="m"><div class="num" id="op-fp">0</div><div class="lbl">False Positives</div></div>
+                        <div class="m"><div class="num" id="op-eis">0.80</div><div class="lbl">Current EIS</div></div>
+                        <div class="m"><div class="num">✓</div><div class="lbl">Audit Trail</div></div>
+                    </div>
+                </div>
+
+                <div class="page-section">
+                    <h2>Use Cases</h2>
+                    <ul>
+                        <li><strong>Industrial facilities</strong> – manufacturing, mining, beverage plants</li>
+                        <li><strong>Data centres</strong> – cooling infrastructure assurance</li>
+                        <li><strong>Water utilities</strong> – network monitoring and leak detection</li>
+                        <li><strong>Energy</strong> – thermal and process water systems</li>
+                    </ul>
+                </div>
+
+                <div class="page-footer">
+                    <span>SEARM1 Enterprise · Infrastructure Intelligence Platform</span>
+                    <span id="op-timestamp">Updated in real‑time</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== PANEL 3: 3D ARCHITECTURE DIAGRAM ===== -->
+        <div class="panel" id="arch-panel">
+            <div id="arch-container">
+                <div class="arch-legend">
+                    <div class="row"><span class="dot" style="background:#0ea5e9;"></span> Data Ingestion</div>
+                    <div class="row"><span class="dot" style="background:#8b5cf6;"></span> VVU‑IVE Engine</div>
+                    <div class="row"><span class="dot" style="background:#10b981;"></span> Evidence Scoring</div>
+                    <div class="row"><span class="dot" style="background:#f59e0b;"></span> Visualization &amp; Audit</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== PANEL 4: PILOT PROPOSAL FORM ===== -->
+        <div class="panel" id="proposal-panel">
+            <div class="form-wrap">
+                <h2>🚀 Pilot Proposal</h2>
+                <div class="sub">Complete this form to initiate a SEARM1 Enterprise pilot. We'll respond within 48 hours.</div>
+
+                <form id="proposal-form" autocomplete="off">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Company Name *</label>
+                            <input type="text" id="f-company" placeholder="e.g. Acme Industries" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Contact Person *</label>
+                            <input type="text" id="f-contact" placeholder="Full name" required />
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Email *</label>
+                            <input type="email" id="f-email" placeholder="you@company.com" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" id="f-phone" placeholder="+1 234 567 890" />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Facility Type *</label>
+                        <select id="f-facility" required>
+                            <option value="">— Select —</option>
+                            <option value="manufacturing">Manufacturing Plant</option>
+                            <option value="datacenter">Data Centre</option>
+                            <option value="utility">Water Utility</option>
+                            <option value="mining">Mining / Processing</option>
+                            <option value="beverage">Beverage / Food Production</option>
+                            <option value="energy">Energy / Power</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Current Detection Method</label>
+                        <input type="text" id="f-current" placeholder="e.g. Manual inspection, SCADA thresholds, None" />
+                    </div>
+
+                    <div class="form-group">
+                        <label>Key Pain Points</label>
+                        <textarea id="f-pain" placeholder="What challenges are you facing with water / infrastructure monitoring?"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Desired Outcomes</label>
+                        <textarea id="f-outcomes" placeholder="What would success look like for your pilot?"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Budget Range</label>
+                            <select id="f-budget">
+                                <option value="">— Select —</option>
+                                <option value="5-25k">$5K – $25K</option>
+                                <option value="25-100k">$25K – $100K</option>
+                                <option value="100-500k">$100K – $500K</option>
+                                <option value="500k+">$500K+</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Target Timeline</label>
+                            <select id="f-timeline">
+                                <option value="">— Select —</option>
+                                <option value="immediate">Immediate (&lt; 1 month)</option>
+                                <option value="1-3m">1 – 3 months</option>
+                                <option value="3-6m">3 – 6 months</option>
+                                <option value="6m+">6+ months</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">📤 Submit Proposal</button>
+                        <button type="reset" class="btn btn-secondary">Clear</button>
+                    </div>
+                    <div id="form-status">✓ Proposal submitted! We'll contact you within 48 hours.</div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ─── TOOLTIP (shared) ─── -->
+    <div id="tooltip" style="position:fixed;z-index:999;display:none;background:#1a1f2e;border:1px solid #334155;border-radius:8px;padding:8px 12px;font-size:11px;pointer-events:none;max-width:260px;box-shadow:0 8px 30px rgba(0,0,0,.7);color:#e2e8f0;"></div>
+
+    <!-- ─── MAIN SCRIPT ─── -->
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 1. SHARED STATE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const state = {
+            eis: 0.80,
+            category: 'VERIFIED',
+            selected: '—',
+            leakActive: false,
+            pipes: [],
+            nodes: {},
+            buildingObjects: [],
+            pipeMeshes: new Map(),
+            flowPoints: [],
+            nodeMeshes: new Map(),
+        };
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 2. DATA (synthetic)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const PIPES_DATA = [
+            { id: 'PIP1', from: 'N1', to: 'N2', elev: 148, dma: 'A', flow: 72 },
+            { id: 'PIP2', from: 'N2', to: 'N3', elev: 138, dma: 'A', flow: 68 },
+            { id: 'PIP3', from: 'N3', to: 'N4', elev: 124, dma: 'B', flow: 91 },
+            { id: 'PIP4', from: 'N4', to: 'N5', elev: 109, dma: 'B', flow: 55 },
+            { id: 'PIP5', from: 'N5', to: 'N6', elev: 82, dma: 'C', flow: 44 },
+            { id: 'PIP6', from: 'N6', to: 'N7', elev: 66, dma: 'C', flow: 37 },
+            { id: 'PIP7', from: 'N7', to: 'N8', elev: 91, dma: 'A', flow: 61 },
+            { id: 'PIP8', from: 'N8', to: 'N1', elev: 158, dma: 'A', flow: 78 },
+            { id: 'PIP9', from: 'N2', to: 'N8', elev: 119, dma: 'B', flow: 64 },
+            { id: 'PIP10', from: 'N4', to: 'N6', elev: 74, dma: 'C', flow: 42 }
+        ];
+        state.pipes = PIPES_DATA;
+
+        const NODES_DATA = {
+            N1: { x: -15, z: -7, elev: 158 },
+            N2: { x: -9, z: 6, elev: 148 },
+            N3: { x: 0, z: 2, elev: 138 },
+            N4: { x: 9, z: 7, elev: 124 },
+            N5: { x: 15, z: 2, elev: 109 },
+            N6: { x: 9, z: -8, elev: 82 },
+            N7: { x: 0, z: -14, elev: 66 },
+            N8: { x: -9, z: -8, elev: 91 }
+        };
+        state.nodes = NODES_DATA;
+
+        const FILES_DATA = [
+            ['Dashboard.js', 190],
+            ['Chart.js', 210],
+            ['Table.js', 160],
+            ['Button.js', 70],
+            ['auth.js', 200],
+            ['db.js', 300],
+            ['User.js', 120],
+            ['Product.js', 150],
+            ['Home.js', 80],
+            ['main.js', 240],
+            ['api.js', 180],
+            ['fetch.js', 90],
+            ['utils.js', 130],
+            ['theme.css', 320],
+            ['layout.css', 150],
+            ['helpers.js', 110],
+            ['validators.js', 80],
+            ['useData.js', 100],
+            ['useTheme.js', 45]
+        ];
+
+        const STREETS_DATA = [
+            ['Cora Terrace', -33.960, 25.609, 169],
+            ['Bird Street', -33.962, 25.611, 148],
+            ['Addo Road', -33.831, 25.385, 119],
+            ['Daku Road', -33.835, 25.390, 109],
+            ['Ngonyama Street', -33.829, 25.392, 124],
+            ['Mbilini Street', -33.837, 25.395, 82],
+            ['Coega Road', -33.820, 25.400, 74],
+            ['Motherwell Centre', -33.833, 25.387, 124]
+        ];
+        const WARD_CENTER = [-33.83306, 25.3875];
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 3. DEMO 3D SCENE
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const container3d = document.getElementById('demo-3d');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0e14);
+        scene.fog = new THREE.FogExp2(0x0a0e14, 0.009);
+
+        const camera = new THREE.PerspectiveCamera(40, container3d.clientWidth / container3d.clientHeight, 0.1, 300);
+        camera.position.set(30, 25, 32);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        renderer.setSize(container3d.clientWidth, container3d.clientHeight);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        container3d.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(container3d.clientWidth, container3d.clientHeight);
+        labelRenderer.domElement.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none';
+        container3d.appendChild(labelRenderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.maxPolarAngle = Math.PI * 0.49;
+        controls.minDistance = 8;
+        controls.maxDistance = 100;
+        controls.target.set(0, 0, 0);
+
+        // Lights
+        scene.add(new THREE.HemisphereLight(0x9cc8ff, 0x162010, 1.1));
+        const sun = new THREE.DirectionalLight(0xffffff, 1.25);
+        sun.position.set(25, 40, 15);
+        scene.add(sun);
+
+        // Groups
+        const terrainGroup = new THREE.Group();
+        const codeGroup = new THREE.Group();
+        const waterGroup = new THREE.Group();
+        const nodeGroup = new THREE.Group();
+        const flowGroup = new THREE.Group();
+        const labelGroup = new THREE.Group();
+        scene.add(terrainGroup, codeGroup, waterGroup, nodeGroup, flowGroup, labelGroup);
+
+        // Terrain
+        function terrainHeight(x, z) {
+            const ridge = 3.8 * Math.sin(x * .075) * Math.cos(z * .065);
+            const valley = 2.2 * Math.sin((x + z) * .055);
+            const slope = -z * .055;
+            const local = 1.4 * Math.exp(-((x + 8) ** 2 + (z - 5) ** 2) / 300);
+            return ridge + valley + slope + local;
+        }
+        const size = 70,
+            segs = 80;
+        const tg = new THREE.PlaneGeometry(size, size, segs, segs);
+        const tp = tg.attributes.position;
+        const tc = [];
+        for (let i = 0; i < tp.count; i++) {
+            const x = tp.getX(i),
+                y = tp.getY(i),
+                h = terrainHeight(x, y);
+            tp.setZ(i, h);
+            const t = THREE.MathUtils.clamp((h + 6) / 15, 0, 1);
+            const c = new THREE.Color().setHSL(.62 - t * .78, .72, .34 + t * .16);
+            tc.push(c.r, c.g, c.b);
+        }
+        tg.setAttribute('color', new THREE.Float32BufferAttribute(tc, 3));
+        tg.computeVertexNormals();
+        const terrain = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .92 }));
+        terrain.rotation.x = -Math.PI / 2;
+        terrainGroup.add(terrain);
+        const grid = new THREE.GridHelper(70, 35, 0x29415d, 0x1a2a3b);
+        grid.position.y = -.2;
+        terrainGroup.add(grid);
+
+        // Code City buildings
+        const buildingObjects = [];
+        FILES_DATA.forEach((f, i) => {
+            const x = (i % 6 - 2.5) * 4.2;
+            const z = (Math.floor(i / 6) - 1) * 5.2;
+            const h = .8 + f[1] / 75;
+            const y = terrainHeight(x, z);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x2563c9, emissive: 0x071b4a, emissiveIntensity: .5,
+                roughness: .7 });
+            const b = new THREE.Mesh(new THREE.BoxGeometry(1.8, h, 1.8), mat);
+            b.position.set(x, y + h / 2 + .15, z);
+            b.userData = { type: 'file', name: f[0], lines: f[1], elev: Math.round(124 + y * 10) };
+            codeGroup.add(b);
+            buildingObjects.push(b);
+            state.buildingObjects = buildingObjects;
+            const d = document.createElement('div');
+            d.textContent = f[0];
+            d.style.cssText =
+                'color:#93c5fd;font-size:9px;background:#081525cc;padding:2px 5px;border-radius:7px;border:1px solid #31557d;white-space:nowrap';
+            const l = new CSS2DObject(d);
+            l.position.set(x, y + h + .45, z);
+            l.userData.parent = b;
+            labelGroup.add(l);
+        });
+
+        // Water network
+        const pipeMeshes = new Map();
+        const flowPoints = [];
+        const pipeCurves = new Map();
+
+        function elevColor(e) {
+            const t = THREE.MathUtils.clamp((e - 52) / 180, 0, 1);
+            return new THREE.Color().setHSL(.62 - t * .75, .85, .52);
+        }
+        PIPES_DATA.forEach(p => {
+            const a = NODES_DATA[p.from],
+                b = NODES_DATA[p.to];
+            const ya = terrainHeight(a.x, a.z) - 1.15,
+                yb = terrainHeight(b.x, b.z) - 1.15;
+            const mid = new THREE.Vector3((a.x + b.x) / 2, (ya + yb) / 2 - 1.1, (a.z + b.z) / 2);
+            const curve = new THREE.CatmullRomCurve3([
+                new THREE.Vector3(a.x, ya, a.z), mid, new THREE.Vector3(b.x, yb, b.z)
+            ]);
+            pipeCurves.set(p.id, curve);
+            const geo = new THREE.TubeGeometry(curve, 32, .16, 8, false);
+            const col = elevColor(p.elev);
+            const mat = new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: .25,
+                roughness: .5 });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.userData = { type: 'pipe', ...p };
+            waterGroup.add(mesh);
+            pipeMeshes.set(p.id, mesh);
+            state.pipeMeshes = pipeMeshes;
+
+            for (let i = 0; i < 7; i++) {
+                const s = new THREE.Mesh(new THREE.SphereGeometry(.11, 7, 7),
+                    new THREE.MeshBasicMaterial({ color: 0x9eeaff }));
+                s.userData = { curve, t: i / 7, id: p.id };
+                flowGroup.add(s);
+                flowPoints.push(s);
+                state.flowPoints = flowPoints;
+            }
+        });
+
+        // Nodes
+        const nodeMeshes = new Map();
+        Object.entries(NODES_DATA).forEach(([id, n]) => {
+            const y = terrainHeight(n.x, n.z) + .1;
+            const base = new THREE.Mesh(new THREE.CylinderGeometry(.42, .5, .25, 16),
+                new THREE.MeshStandardMaterial({ color: 0x334155, metalness: .4, roughness: .5 }));
+            base.position.set(n.x, y, n.z);
+            base.userData = { type: 'node', id, elev: n.elev };
+            nodeGroup.add(base);
+            nodeMeshes.set(id, base);
+            state.nodeMeshes = nodeMeshes;
+            const cap = new THREE.Mesh(new THREE.SphereGeometry(.25, 12, 12),
+                new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0x6b4300, emissiveIntensity: .5 }));
+            cap.position.set(n.x, y + .22, n.z);
+            cap.userData = base.userData;
+            nodeGroup.add(cap);
+            const d = document.createElement('div');
+            d.textContent = id;
+            d.style.cssText = 'color:#fbbf24;font-size:9px;font-weight:800;text-shadow:0 1px 3px #000';
+            const l = new CSS2DObject(d);
+            l.position.set(n.x, y + 1, n.z);
+            l.userData.parent = base;
+            labelGroup.add(l);
+        });
+
+        // ─── Interaction ───
+        const tooltipEl = document.getElementById('tooltip');
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        function inspect(obj, x, y) {
+            const u = obj.userData || {};
+            let title = '',
+                body = '';
+            if (u.type === 'pipe') {
+                title = u.id;
+                body = `Ward 42 · DMA ${u.dma}<br/>Elev ${u.elev}m · Flow ${u.flow}%<br/>${u.from} → ${u.to}`;
+            } else if (u.type === 'node') {
+                title = u.id;
+                body = `Network node / valve<br/>Elev ${u.elev}m · Ward 42`;
+            } else if (u.type === 'file') {
+                title = u.name;
+                body = `Code City building<br/>${u.lines} lines · Elev ${u.elev}m`;
+            } else return;
+            tooltipEl.innerHTML = `<b>${title}</b><br/><span style="color:#94a3b8">${body}</span>`;
+            tooltipEl.style.display = 'block';
+            tooltipEl.style.left = Math.min(x + 14, window.innerWidth - 280) + 'px';
+            tooltipEl.style.top = Math.min(y + 12, window.innerHeight - 100) + 'px';
+            state.selected = title;
+            document.getElementById('d-selected').textContent = title;
+        }
+
+        renderer.domElement.addEventListener('pointerdown', e => {
+            const r = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+            mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const all = [...buildingObjects, ...pipeMeshes.values(), ...nodeMeshes.values()];
+            const hits = raycaster.intersectObjects(all, true);
+            if (hits.length) inspect(hits[0].object, e.clientX, e.clientY);
+            else { tooltipEl.style.display = 'none';
+                document.getElementById('d-selected').textContent = '—'; }
+        });
+        renderer.domElement.addEventListener('pointermove', e => {
+            const r = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+            mouse.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const all = [...buildingObjects, ...pipeMeshes.values(), ...nodeMeshes.values()];
+            const hits = raycaster.intersectObjects(all, true);
+            renderer.domElement.style.cursor = hits.length ? 'pointer' : 'default';
+        });
+
+        // ─── Leak ───
+        let leakActive = false;
+
+        function setLeak(on) {
+            leakActive = on;
+            state.leakActive = on;
+            const btn = document.getElementById('demo-leak');
+            btn.classList.toggle('active', on);
+            btn.textContent = on ? '💧 Leak ON' : '💧 Leak Test';
+            const m = pipeMeshes.get('PIP3');
+            if (m) {
+                m.material.color.set(on ? 0xfb7185 : elevColor(124));
+                m.material.emissive.set(on ? 0x7f1d1d : 0x000000);
+                m.material.emissiveIntensity = on ? .9 : .25;
+            }
+            // update nav
+            document.getElementById('nav-status').textContent = on ? 'LEAK' : 'VERIFIED';
+        }
+        document.getElementById('demo-leak').addEventListener('click', () => setLeak(!leakActive));
+
+        document.getElementById('demo-reset').addEventListener('click', () => {
+            camera.position.set(30, 25, 32);
+            controls.target.set(0, 0, 0);
+            controls.update();
+            setLeak(false);
+            tooltipEl.style.display = 'none';
+            document.getElementById('d-selected').textContent = '—';
+        });
+
+        document.getElementById('demo-focus').addEventListener('click', () => {
+            const p = pipeMeshes.get('PIP3');
+            if (p) {
+                const pos = p.position;
+                camera.position.set(pos.x + 12, pos.y + 8, pos.z + 12);
+                controls.target.set(pos.x, pos.y, pos.z);
+                controls.update();
+            }
+        });
+
+        // ─── Resize 3D ───
+        function resize3d() {
+            const w = container3d.clientWidth,
+                h = container3d.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            labelRenderer.setSize(w, h);
+        }
+        window.addEventListener('resize', resize3d);
+        new ResizeObserver(resize3d).observe(container3d);
+
+        // ─── Animate 3D ───
+        let t = 0;
+
+        function animate3d() {
+            requestAnimationFrame(animate3d);
+            t += .006;
+            flowPoints.forEach(s => {
+                const o = (s.userData.t + t) % 1;
+                const p = s.userData.curve.getPointAt(o);
+                s.position.copy(p);
+                if (leakActive && s.userData.id === 'PIP3') s.scale.setScalar(1.8);
+                else s.scale.setScalar(1);
+            });
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate3d();
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 4. LEAFLET MAP (demo)
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const mapContainer = document.getElementById('demo-map');
+        const map = L.map(mapContainer, { zoomControl: false, attributionControl: true }).setView(WARD_CENTER, 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            maxZoom: 17,
+            opacity: .35,
+            attribution: '© OpenTopoMap'
+        }).addTo(map);
+
+        STREETS_DATA.forEach(s => {
+            const c = s[3] >= 160 ? '#ef4444' : s[3] >= 120 ? '#f59e0b' : s[3] >= 90 ? '#22c55e' : '#3b82f6';
+            L.circleMarker([s[1], s[2]], { radius: 6, color: c, fillColor: c, fillOpacity: .7, weight: 1 })
+                .addTo(map)
+                .bindPopup(`<b>${s[0]}</b><br/>Elev ${s[3]}m`);
+        });
+        const wardPoly = [
+            [-33.84206, 25.37277],
+            [-33.84206, 25.40207],
+            [-33.82416, 25.40207],
+            [-33.82416, 25.37277]
+        ];
+        L.polygon(wardPoly, { color: '#38bdf8', fillColor: '#38bdf8', fillOpacity: .06, weight: 2, dashArray: '8 6' })
+            .addTo(map).bindPopup('Ward 42 · Synthetic GIS');
+        L.marker(WARD_CENTER, {
+            icon: L.divIcon({ className: 'ward-label', html: 'WARD 42', iconSize: [80, 18] })
+        }).addTo(map);
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 5. 3D ARCHITECTURE DIAGRAM
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const archContainer = document.getElementById('arch-container');
+        const archScene = new THREE.Scene();
+        archScene.background = new THREE.Color(0x0a0e14);
+        const archCam = new THREE.PerspectiveCamera(45, archContainer.clientWidth / archContainer.clientHeight, 0.1, 300);
+        archCam.position.set(0, 12, 28);
+        archCam.lookAt(0, 0, 0);
+        const archRenderer = new THREE.WebGLRenderer({ antialias: true });
+        archRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+        archRenderer.setSize(archContainer.clientWidth, archContainer.clientHeight);
+        archContainer.appendChild(archRenderer.domElement);
+        const archControls = new OrbitControls(archCam, archRenderer.domElement);
+        archControls.enableDamping = true;
+        archControls.maxPolarAngle = Math.PI * 0.45;
+        archControls.minDistance = 12;
+        archControls.maxDistance = 60;
+        archControls.target.set(0, 0, 0);
+
+        archScene.add(new THREE.AmbientLight(0x7890a8, 0.8));
+        const archSun = new THREE.DirectionalLight(0xffffff, 1.2);
+        archSun.position.set(10, 20, 15);
+        archScene.add(archSun);
+
+        // helper grid
+        const gHelper = new THREE.GridHelper(40, 20, 0x2d3748, 0x1a1f2e);
+        gHelper.position.y = -2;
+        archScene.add(gHelper);
+
+        // architecture nodes
+        const archNodes = [
+            { label: 'Sensors', x: -9, z: 0, color: 0x0ea5e9, w: 3.2, h: 1.6, d: 2.0 },
+            { label: 'Ingestion', x: -4.5, z: 0, color: 0x0ea5e9, w: 3.2, h: 1.6, d: 2.0 },
+            { label: 'VVU-IVE Engine', x: 0, z: 0, color: 0x8b5cf6, w: 4.4, h: 2.0, d: 2.4 },
+            { label: 'Evidence Scoring', x: 4.5, z: 0, color: 0x10b981, w: 3.8, h: 1.8, d: 2.2 },
+            { label: 'Visualization', x: 9, z: 0, color: 0xf59e0b, w: 3.4, h: 1.6, d: 2.0 },
+            { label: 'Audit Trail', x: 9, z: -4.5, color: 0xf59e0b, w: 3.4, h: 1.6, d: 2.0 },
+        ];
+
+        const archMeshes = [];
+        archNodes.forEach(n => {
+            const geo = new THREE.BoxGeometry(n.w, n.h, n.d);
+            const mat = new THREE.MeshStandardMaterial({
+                color: n.color,
+                emissive: n.color,
+                emissiveIntensity: 0.15,
+                roughness: 0.4,
+                metalness: 0.3,
+                transparent: true,
+                opacity: 0.92
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(n.x, 0, n.z);
+            archScene.add(mesh);
+            archMeshes.push(mesh);
+            // label
+            const div = document.createElement('div');
+            div.textContent = n.label;
+            div.style.cssText =
+                'color:#fff;font-size:11px;font-weight:700;text-shadow:0 2px 8px #000;background:rgba(0,0,0,.4);padding:3px 10px;border-radius:4px;backdrop-filter:blur(2px);';
+            const label = new CSS2DObject(div);
+            label.position.set(n.x, n.h / 2 + 0.8, n.z);
+            archScene.add(label);
+            // small sub-label
+            if (n.label === 'VVU-IVE Engine') {
+                const sub = document.createElement('div');
+                sub.textContent = 'Validation · Verification · Unification · Independence · Value · Evidence';
+                sub.style.cssText =
+                    'color:#a5b4fc;font-size:7px;font-weight:400;text-shadow:0 1px 4px #000;background:rgba(0,0,0,.3);padding:1px 8px;border-radius:3px;';
+                const sl = new CSS2DObject(sub);
+                sl.position.set(n.x, -n.h / 2 - 0.5, n.z);
+                archScene.add(sl);
+            }
+            // glow ring
+            const ring = new THREE.Mesh(
+                new THREE.RingGeometry(n.w * 0.55, n.w * 0.65, 24),
+                new THREE.MeshBasicMaterial({ color: n.color, transparent: true, opacity: 0.15, side: THREE
+                        .DoubleSide })
+            );
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.set(n.x, -n.h / 2 - 0.05, n.z);
+            archScene.add(ring);
+        });
+
+        // connections (lines with arrows)
+        const connections = [
+            [0, 1],
+            [1, 2],
+            [2, 3],
+            [3, 4],
+            [4, 5]
+        ];
+        connections.forEach(([i, j]) => {
+            const a = archNodes[i],
+                b = archNodes[j];
+            const pts = [
+                new THREE.Vector3(a.x + a.w / 2 + 0.3, 0, a.z),
+                new THREE.Vector3(b.x - b.w / 2 - 0.3, 0, b.z)
+            ];
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const mat = new THREE.LineBasicMaterial({ color: 0x4a5a7a, transparent: true, opacity: 0.6 });
+            const line = new THREE.Line(geo, mat);
+            archScene.add(line);
+            // small arrow dots
+            const mid = new THREE.Vector3((a.x + b.x) / 2, 0, (a.z + b.z) / 2);
+            const dot = new THREE.Mesh(
+                new THREE.SphereGeometry(0.12, 6, 6),
+                new THREE.MeshBasicMaterial({ color: 0x4a5a7a })
+            );
+            dot.position.copy(mid);
+            archScene.add(dot);
+        });
+
+        // ─── Resize arch ───
+        function resizeArch() {
+            const w = archContainer.clientWidth,
+                h = archContainer.clientHeight;
+            archCam.aspect = w / h;
+            archCam.updateProjectionMatrix();
+            archRenderer.setSize(w, h);
+        }
+        new ResizeObserver(resizeArch).observe(archContainer);
+
+        // ─── Animate arch ───
+        function animateArch() {
+            requestAnimationFrame(animateArch);
+            archControls.update();
+            archRenderer.render(archScene, archCam);
+        }
+        animateArch();
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 6. SHARED STATE UPDATES
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        function updateSharedState(eis, category) {
+            state.eis = eis;
+            state.category = category;
+            document.getElementById('nav-eis').textContent = eis.toFixed(2);
+            document.getElementById('nav-status').textContent = category;
+            document.getElementById('d-eis').textContent = eis.toFixed(2);
+            document.getElementById('op-eis').textContent = eis.toFixed(2);
+            document.getElementById('op-timestamp').textContent = new Date().toLocaleTimeString();
+        }
+
+        // Simulate EIS updates
+        let eisCounter = 0;
+
+        function simulateEIS() {
+            eisCounter++;
+            const base = 0.80;
+            const noise = (Math.random() - 0.5) * 0.08;
+            let eis = Math.min(0.98, Math.max(0.55, base + noise));
+            if (leakActive) eis = Math.min(0.92, eis + 0.06);
+            const cat = eis >= 0.75 ? 'VERIFIED' : eis >= 0.5 ? 'CANDIDATE' : 'INSUFFICIENT';
+            updateSharedState(eis, cat);
+            // update one-pager rate
+            const rate = 92 + (eis - 0.5) * 14;
+            document.getElementById('op-rate').textContent = Math.min(99.9, rate).toFixed(1) + '%';
+            document.getElementById('op-fp').textContent = eis >= 0.75 ? '0' : '1-2';
+        }
+        setInterval(simulateEIS, 2500);
+        setTimeout(simulateEIS, 100);
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 7. TAB SWITCHING
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const tabs = document.querySelectorAll('.tab');
+        const panels = {
+            demo: document.getElementById('demo-panel'),
+            onepager: document.getElementById('onepager-panel'),
+            arch: document.getElementById('arch-panel'),
+            proposal: document.getElementById('proposal-panel'),
+        };
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const target = tab.dataset.panel;
+                Object.entries(panels).forEach(([key, el]) => {
+                    el.classList.toggle('active', key === target);
+                });
+                // resize 3d views after transition
+                setTimeout(() => {
+                    resize3d();
+                    resizeArch();
+                    map.invalidateSize();
+                }, 50);
+            });
+        });
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 8. PROPOSAL FORM
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        const form = document.getElementById('proposal-form');
+        const formStatus = document.getElementById('form-status');
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            // simple validation
+            const company = document.getElementById('f-company').value.trim();
+            const contact = document.getElementById('f-contact').value.trim();
+            const email = document.getElementById('f-email').value.trim();
+            const facility = document.getElementById('f-facility').value;
+            if (!company || !contact || !email || !facility) {
+                formStatus.textContent = '⚠️ Please fill in all required fields.';
+                formStatus.style.color = '#f87171';
+                formStatus.classList.add('show');
+                return;
+            }
+            formStatus.textContent = '✓ Proposal submitted! We\'ll contact you within 48 hours.';
+            formStatus.style.color = '#10b981';
+            formStatus.classList.add('show');
+            // log
+            console.log('Proposal submitted:', {
+                company,
+                contact,
+                email,
+                facility,
+                current: document.getElementById('f-current').value,
+                pain: document.getElementById('f-pain').value,
+                outcomes: document.getElementById('f-outcomes').value,
+                budget: document.getElementById('f-budget').value,
+                timeline: document.getElementById('f-timeline').value,
+                eis: state.eis,
+                leakActive: state.leakActive
+            });
+            setTimeout(() => form.reset(), 300);
+        });
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 9. INIT
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        console.log('🌊 SEARM1 · 4-Dashboard Enterprise Suite ready');
+        updateSharedState(0.80, 'VERIFIED');
+        document.getElementById('d-pipes').textContent = PIPES_DATA.length;
+        document.getElementById('d-nodes').textContent = Object.keys(NODES_DATA).length;
+        document.getElementById('op-timestamp').textContent = new Date().toLocaleTimeString();
+    </script>
+</body>
+</html>
