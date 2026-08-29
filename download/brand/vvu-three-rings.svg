@@ -1,37 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
-  <defs>
-    <!-- Metallic gold gradient — brushed gold with highlight -->
-    <linearGradient id="goldTop" x1="20%" y1="0%" x2="80%" y2="100%">
-      <stop offset="0%" stop-color="#F9E596"/>
-      <stop offset="35%" stop-color="#D4AF37"/>
-      <stop offset="70%" stop-color="#AA8C2C"/>
-      <stop offset="100%" stop-color="#8A6E2F"/>
-    </linearGradient>
-    <!-- Muted bronze-gold for bottom rings -->
-    <linearGradient id="goldBottom" x1="20%" y1="0%" x2="80%" y2="100%">
-      <stop offset="0%" stop-color="#C9BF94"/>
-      <stop offset="50%" stop-color="#9A9368"/>
-      <stop offset="100%" stop-color="#6B6444"/>
-    </linearGradient>
-    <!-- Drop shadow filter -->
-    <filter id="ringShadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.5"/>
-    </filter>
-    <!-- Inner bevel highlight -->
-    <filter id="bevel">
-      <feSpecularLighting result="spec" specularExponent="20" specularConstant="0.8" lighting-color="#F9E596">
-        <feDistantLight azimuth="225" elevation="55"/>
-      </feSpecularLighting>
-      <feComposite in="SourceGraphic" in2="spec" operator="arithmetic" k1="0" k2="1" k3="0.3" k4="0"/>
-    </filter>
-  </defs>
-  <!-- Three interlocking rings — equilateral triangular formation -->
-  <g filter="url(#ringShadow)">
-    <!-- Bottom-left ring -->
-    <circle cx="38" cy="72" r="28" stroke="url(#goldBottom)" stroke-width="6" fill="none"/>
-    <!-- Bottom-right ring -->
-    <circle cx="82" cy="72" r="28" stroke="url(#goldBottom)" stroke-width="6" fill="none"/>
-    <!-- Top ring (brightest gold, on top of the other two) -->
-    <circle cx="60" cy="38" r="28" stroke="url(#goldTop)" stroke-width="6" fill="none"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <!-- VVU Three Rings — Trust Sphere brand mark -->
+  <!-- Official colors from Trust Sphere HTML -->
+  <!-- Ring 1: Sage (top-left) — TRUST -->
+  <circle cx="35" cy="40" r="16" stroke="#8A9A5B" stroke-width="5"/>
+  <!-- Ring 2: Ember (top-right) — INNOVATION -->
+  <circle cx="65" cy="40" r="16" stroke="#CC7722" stroke-width="5"/>
+  <!-- Ring 3: Stone (bottom) — IMPACT -->
+  <circle cx="50" cy="64" r="16" stroke="#E2E3DB" stroke-width="5"/>
 </svg>

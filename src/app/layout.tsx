@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VVU AIR KERNEL — Evidence Analysis Workspace",
+  title: "Venture Vision Ubuntu — Trust Sphere",
   description: "Evidence Independence Scoring (EIS v1.0) for water infrastructure validation. NMBM-DMA-07 hydraulic incident replay with audit-grade provenance.",
   keywords: ["VVU", "EIS v1.0", "NMBM", "DWS", "water infrastructure", "evidence verification", "SCADA", "leakage validation"],
   authors: [{ name: "Venture Vision Ubuntu (VVU)" }],
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
   openGraph: {
-    title: "VVU AIR KERNEL — Evidence Analysis Workspace",
+    title: "Venture Vision Ubuntu — Trust Sphere",
     description: "EIS v1.0 evidence independence scoring for NMBM water infrastructure validation",
     url: "https://chat.z.ai",
     siteName: "VVU IVE",

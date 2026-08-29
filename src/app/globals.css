@@ -605,3 +605,123 @@
   justify-content: center;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════
+   VVU TRUST SPHERE · OFFICIAL BRAND IDENTITY
+   ───────────────────────────────────────────────────────────────────────
+   Source: Trust Sphere — Venture Vision Ubuntu (official brand page)
+   Colors extracted from the canonical brand HTML.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Official VVU brand palette */
+  --vvu-void: #09090f;
+  --vvu-void-2: #0f0f18;
+  --vvu-glass: rgba(15, 15, 24, 0.65);
+  --vvu-glass-border: rgba(255, 255, 255, 0.06);
+  --vvu-glass-hover: rgba(255, 255, 255, 0.04);
+  --vvu-gold: #C9A84C;
+  --vvu-crimson: #C41E3A;
+  /* Three Rings — official colors */
+  --vvu-ring-sage: #8A9A5B;    /* Trust */
+  --vvu-ring-ember: #CC7722;   /* Innovation */
+  --vvu-ring-stone: #E2E3DB;   /* Impact */
+  /* Trust Sphere state colors */
+  --vvu-identity: #3d6bff;
+  --vvu-contribution: #3dd6ff;
+  --vvu-receipt: #3dffb0;
+  --vvu-hash: #c9a84c;
+  --vvu-zk: #b23dff;
+  --vvu-trust: #ff2e5f;
+  /* Text */
+  --vvu-text: #e8e6e0;
+  --vvu-dim: #7b7d8c;
+}
+
+/* ─── VVU glassmorphism (official Trust Sphere style) ───────────────── */
+.vvu-glass {
+  background: var(--vvu-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--vvu-glass-border);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.vvu-glass:hover {
+  background: var(--vvu-glass-hover);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Brand ring text colors ────────────────────────────────────────── */
+.text-sage { color: var(--vvu-ring-sage); }
+.text-ember { color: var(--vvu-ring-ember); }
+.text-stone { color: var(--vvu-ring-stone); }
+.text-gold { color: var(--vvu-gold); }
+.text-trust { color: var(--vvu-trust); }
+.text-identity { color: var(--vvu-identity); }
+.text-contribution { color: var(--vvu-contribution); }
+.text-receipt { color: var(--vvu-receipt); }
+
+/* ─── VVU brand header (Trust Sphere style) ─────────────────────────── */
+.vvu-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--vvu-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--vvu-glass-border);
+  border-radius: 10px;
+}
+.vvu-brand-header .logo-wrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+.vvu-brand-header .logo-wrap svg,
+.vvu-brand-header .logo-wrap img {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.4s ease;
+}
+.vvu-brand-header:hover .logo-wrap svg,
+.vvu-brand-header:hover .logo-wrap img {
+  transform: scale(1.05);
+}
+.vvu-brand-header h1 {
+  font-family: 'Syne', 'Georgia', serif;
+  font-weight: 700;
+  font-size: 0.9em;
+  letter-spacing: 0.02em;
+  color: var(--vvu-text);
+  line-height: 1.2;
+}
+.vvu-brand-header h1 .accent {
+  color: var(--vvu-gold);
+}
+.vvu-brand-header .tagline {
+  font-family: 'IBM Plex Mono', 'Fragment Mono', monospace;
+  font-size: 0.6em;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--vvu-dim);
+  margin-top: 1px;
+}
+
+/* ─── Trust Sphere state indicators ──────────────────────────────────── */
+.trust-state-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.trust-state-dot.identity { background: var(--vvu-identity); box-shadow: 0 0 6px var(--vvu-identity); }
+.trust-state-dot.contribution { background: var(--vvu-contribution); box-shadow: 0 0 6px var(--vvu-contribution); }
+.trust-state-dot.receipt { background: var(--vvu-receipt); box-shadow: 0 0 6px var(--vvu-receipt); }
+.trust-state-dot.hash { background: var(--vvu-hash); box-shadow: 0 0 6px var(--vvu-hash); }
+.trust-state-dot.zk { background: var(--vvu-zk); box-shadow: 0 0 6px var(--vvu-zk); }
+.trust-state-dot.trust { background: var(--vvu-trust); box-shadow: 0 0 6px var(--vvu-trust); }

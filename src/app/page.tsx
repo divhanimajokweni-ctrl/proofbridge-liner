@@ -58,20 +58,14 @@ export default function Home() {
       <header className="border-b border-[var(--k-line)] bg-gradient-to-r from-[rgba(0,212,255,0.08)] via-transparent to-transparent sticky top-0 z-40 backdrop-blur-sm">
         <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            {/* Logo + title — VVU Three Rings brand with glassmorphism */}
-            <div className="flex items-center gap-3 glass-panel anim-shimmer" style={{padding: '8px 16px', borderRadius: '8px'}}>
-              <div className="vvu-logo">
-                <img src="/brand/vvu-three-rings.svg" alt="VVU Three Rings — Trust · Innovation · Impact" className="w-10 h-10 ring-spin" />
+            {/* Logo + title — VVU Trust Sphere official brand */}
+            <div className="vvu-brand-header anim-shimmer">
+              <div className="logo-wrap">
+                <img src="/brand/vvu-three-rings.svg" alt="VVU Three Rings — Trust · Innovation · Impact" />
               </div>
               <div>
-                <h1 className="font-bold tracking-[0.18em] text-sm sm:text-base uppercase">
-                  <span className="gold-text-bright">VENTURE</span>{' '}
-                  <span className="gold-text">VISION</span>{' '}
-                  <span className="gold-text" style={{color: 'var(--gold-bronze)'}}>UBUNTU</span>
-                </h1>
-                <p className="text-[var(--k-dim)] text-[10px] mt-0.5 uppercase tracking-widest">
-                  <span className="gold-text">TRUST</span> · <span className="gold-text">INNOVATION</span> · <span className="gold-text">IMPACT</span> · IVE · {totalActivities} Activities
-                </p>
+                <h1>Venture Vision <span className="accent">Ubuntu</span></h1>
+                <div className="tagline">TRUST RUNTIME · VERIFICATION STATE SPACE</div>
               </div>
             </div>
 
@@ -126,7 +120,7 @@ export default function Home() {
             </span>
           </div>
           <div className="k-dim uppercase tracking-widest">
-            VVU · TRUST · INNOVATION · IMPACT · {currentRoom.label} Room · hello@venturevisionubuntu.co.za
+            VVU · We Serve Trust · {currentRoom.label} Room · hello@venturevisionubuntu.co.za
           </div>
         </div>
       </footer>
