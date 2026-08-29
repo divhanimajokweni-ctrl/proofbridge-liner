@@ -46,6 +46,6 @@ The mechanical and software-calibration kernels of the HBK Mk-II are designed to
 
 To bypass the Zero Fabrication Catch-22 and acquire physical, site-specific water chemistry variables, the HBK Mk-II supports the inline deployment of our zero-power Passive Dummy Unit (PDU) loop. Using the non-conductive PDU-CC-IND-01 PEEK coupon clamp bracket, operators can securely hold flat metallurgical coupons directly inside live process flows to empirically measure gravimetric mass loss and pitting depths over 90-day intervals, delivering zero-risk environmental baselines for digital-twin calibration.
 
-**For technical inquiries or production lead times, contact:** info@vaguelyvanity.co.za
+**For technical inquiries or production lead times, contact:** hello@venturevisionubuntu.co.za
 
 ---

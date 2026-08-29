@@ -21,7 +21,7 @@ import time
 # ─── CONFIGURATION ─────────────────────────────────────────────────────────────
 CONFIG = {
     "resend_api_key": "re_your_api_key_here",
-    "sender_email": "Mihle Majokweni <outreach@vaguelyvanity.co.za>",
+    "sender_email": "Mihle Majokweni <outreach@venturevisionubuntu.co.za>",
     "db_host": "localhost",
     "db_name": "vvu_pis_db",
     "db_user": "postgres",
@@ -218,7 +218,7 @@ if __name__ == "__main__":
     <p>Are you available for a brief, 15-minute call next week to review our design specifications?</p>
     <br/>
     <p>Kind regards,</p>
-    <p><b>Mihle Iviwe Majokweni</b><br/>Commercial & Compliance Orchestrator<br/>Vaguely Vanity LLC (Pty) Ltd</p>
+    <p><b>Mihle Iviwe Majokweni</b><br/>Commercial & Compliance Orchestrator<br/>Venture Vision Ubuntu (VVU) — Vaguely Vanity LLC (Pty) Ltd</p>
     """
     
     print("\n[AGENT] Simulating outbound pipeline...")

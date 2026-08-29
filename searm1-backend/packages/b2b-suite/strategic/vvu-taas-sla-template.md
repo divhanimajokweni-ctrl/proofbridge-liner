@@ -46,7 +46,7 @@ In the event of an unscheduled compute outage that drops system uptime below the
 
 ### 6. SIGN-OFF & FIELD EXECUTION AUTHORISATION
 
-**AUTHORIZED FOR THE PROVIDER:** Vaguely Vanity LLC (Pty) Ltd
+**AUTHORIZED FOR THE PROVIDER:** Venture Vision Ubuntu (VVU) — Vaguely Vanity LLC (Pty) Ltd
 
 **AUTHORIZED FOR THE OPERATOR:** Industrial Site Lead / Plant Director
 
