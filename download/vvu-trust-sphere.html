@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trust Sphere — Venture Vision Ubuntu</title>
     <meta name="description" content="VVU Trust Runtime — a living verification state space. Identity, contribution, receipt, hash, ZK proof, trust." />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='35' cy='40' r='16' stroke='%238A9A5B' stroke-width='7' fill='none'/%3E%3Ccircle cx='65' cy='40' r='16' stroke='%23CC7722' stroke-width='7' fill='none'/%3E%3Ccircle cx='50' cy='64' r='16' stroke='%23E2E3DB' stroke-width='7' fill='none'/%3E%3C/svg%3E" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='35' cy='40' r='16' stroke='%23D4AF37' stroke-width='7' fill='none'/%3E%3Ccircle cx='65' cy='40' r='16' stroke='%23C9A84C' stroke-width='7' fill='none'/%3E%3Ccircle cx='50' cy='64' r='16' stroke='%23FFFFFF' stroke-width='7' fill='none'/%3E%3C/svg%3E" />
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@400;500&family=Fragment+Mono:ital@0;1&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -16,16 +16,16 @@
             --glass-hover: rgba(255, 255, 255, 0.04);
             --crimson: #C41E3A;
             --gold: #C9A84C;
-            --ring-sage: #8A9A5B;
-            --ring-ember: #CC7722;
-            --ring-stone: #E2E3DB;
-            --unknown: #2a2d3a;
-            --identity: #3d6bff;
-            --contribution: #3dd6ff;
-            --receipt: #3dffb0;
+            --ring-sage: #D4AF37;
+            --ring-ember: #C9A84C;
+            --ring-stone: #FFFFFF;
+            --unknown: #2a2520;
+            --identity: #D4AF37;
+            --contribution: #C9A84C;
+            --receipt: #F9E596;
             --hash: #c9a84c;
-            --zk: #b23dff;
-            --trust: #ff2e5f;
+            --zk: #8A6E2F;
+            --trust: #D4AF37;
             --text: #e8e6e0;
             --dim: #7b7d8c;
             --s-1: 3px;
@@ -106,6 +106,26 @@
             width: 32px;
             height: 32px;
             flex-shrink: 0;
+            animation: ring-swirl 8s ease-in-out infinite;
+            transform-origin: 50% 55%;
+        }
+        @keyframes ring-swirl {
+            0% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(90deg) scale(1.08); }
+            50% { transform: rotate(180deg) scale(1); }
+            75% { transform: rotate(270deg) scale(1.08); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        .rings-svg circle {
+            animation: ring-pulse 4s ease-in-out infinite;
+            transform-origin: center;
+        }
+        .rings-svg circle:nth-child(1) { animation-delay: 0s; }
+        .rings-svg circle:nth-child(2) { animation-delay: 1.3s; }
+        .rings-svg circle:nth-child(3) { animation-delay: 2.6s; }
+        @keyframes ring-pulse {
+            0%, 100% { stroke-width: 5; opacity: 1; }
+            50% { stroke-width: 7; opacity: 0.7; }
         }
         .brand-text h1 {
             font-family: var(--font-display);
@@ -142,7 +162,7 @@
             width: 7px;
             height: 7px;
             border-radius: 50%;
-            background: #3dffb0;
+            background: #F9E596;
             box-shadow: 0 0 8px rgba(61, 255, 176, 0.5);
             animation: livePulse 2s ease-in-out infinite;
         }
@@ -583,13 +603,13 @@
 
             const STATES = ['unknown', 'identity', 'contribution', 'receipt', 'hash', 'zk', 'trust'];
             const STATE_COLORS = {
-                unknown: '#2a2d3a',
-                identity: '#3d6bff',
-                contribution: '#3dd6ff',
-                receipt: '#3dffb0',
-                hash: '#c9a84c',
-                zk: '#b23dff',
-                trust: '#ff2e5f'
+                unknown: '#2a2520',
+                identity: '#D4AF37',
+                contribution: '#C9A84C',
+                receipt: '#F9E596',
+                hash: '#C9A84C',
+                zk: '#8A6E2F',
+                trust: '#D4AF37'
             };
             const STATE_LABELS = {
                 unknown: 'Unverified',
@@ -729,7 +749,7 @@
                         if (p.isSelf) { r *= 2.4;
                             alpha = 1; } else { alpha *= 0.35; }
                     }
-                    if (p.isSelf) { color = '#ff2e5f'; }
+                    if (p.isSelf) { color = '#D4AF37'; }
 
                     if (p.ripple > 0) {
                         ctx.beginPath();
