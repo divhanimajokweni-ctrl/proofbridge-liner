@@ -58,19 +58,19 @@ export default function Home() {
       <header className="border-b border-[var(--k-line)] bg-gradient-to-r from-[rgba(0,212,255,0.08)] via-transparent to-transparent sticky top-0 z-40 backdrop-blur-sm">
         <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3">
           <div className="flex items-center justify-between flex-wrap gap-3">
-            {/* Logo + title — VVU Three Rings brand */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 flex items-center justify-center">
-                <img src="/brand/vvu-three-rings.svg" alt="VVU Three Rings" className="w-10 h-10" />
+            {/* Logo + title — VVU Three Rings brand with glassmorphism */}
+            <div className="flex items-center gap-3 glass-panel anim-shimmer" style={{padding: '8px 16px', borderRadius: '8px'}}>
+              <div className="vvu-logo">
+                <img src="/brand/vvu-three-rings.svg" alt="VVU Three Rings — Trust · Innovation · Impact" className="w-10 h-10 ring-spin" />
               </div>
               <div>
                 <h1 className="font-bold tracking-[0.18em] text-sm sm:text-base uppercase">
-                  <span className="text-[#D4AF37]">VENTURE</span>{' '}
-                  <span className="text-[var(--k-cyan-bright)]">VISION</span>{' '}
-                  <span className="text-[var(--k-green-bright)]">UBUNTU</span>
+                  <span className="gold-text-bright">VENTURE</span>{' '}
+                  <span className="gold-text">VISION</span>{' '}
+                  <span className="gold-text" style={{color: 'var(--gold-bronze)'}}>UBUNTU</span>
                 </h1>
                 <p className="text-[var(--k-dim)] text-[10px] mt-0.5 uppercase tracking-widest">
-                  TRUST · INNOVATION · IMPACT · IVE · {totalActivities} Activities · 4 Rooms
+                  <span className="gold-text">TRUST</span> · <span className="gold-text">INNOVATION</span> · <span className="gold-text">IMPACT</span> · IVE · {totalActivities} Activities
                 </p>
               </div>
             </div>
@@ -132,4 +132,32 @@ export default function Home() {
       </footer>
     </div>
   );
+}
+
+// ─── Compute-conserving stress relief ─────────────────────────────────
+// Pause all CSS animations when the tab is hidden (visibilitychange).
+// No JS RAF loop — purely CSS class toggle. Conserves GPU + battery.
+if (typeof window !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      document.body.classList.add('tab-hidden');
+    } else {
+      document.body.classList.remove('tab-hidden');
+    }
+  });
+
+  // Low-power detection: if the device reports battery saver or low memory,
+  // add .low-power to disable backdrop-filter and all animations.
+  // This is the "high interval" stress relief.
+  const checkLowPower = () => {
+    const connection = (navigator as unknown as { connection?: { saveData?: boolean } }).connection;
+    if (connection?.saveData) {
+      document.body.classList.add('low-power');
+    }
+    // Also check if prefers-reduced-motion is set (accessibility)
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.body.classList.add('low-power');
+    }
+  };
+  checkLowPower();
 }

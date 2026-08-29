@@ -1,14 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
-  <!-- VVU Three Rings Logo — interlocking triangular formation -->
-  <!-- Ring 1: Trust (gold) — top -->
-  <circle cx="100" cy="65" r="42" stroke="#D4AF37" stroke-width="8" fill="none" opacity="0.9"/>
-  <!-- Ring 2: Innovation (cyan) — bottom left -->
-  <circle cx="65" cy="130" r="42" stroke="#00d4ff" stroke-width="8" fill="none" opacity="0.9"/>
-  <!-- Ring 3: Impact (green) — bottom right -->
-  <circle cx="135" cy="130" r="42" stroke="#00ff88" stroke-width="8" fill="none" opacity="0.9"/>
-  <!-- Center convergence point -->
-  <circle cx="100" cy="108" r="5" fill="#D4AF37" opacity="0.8"/>
-  <!-- Brand text -->
-  <text x="100" y="185" text-anchor="middle" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#D4AF37" letter-spacing="2">VENTURE VISION UBUNTU</text>
-  <text x="100" y="197" text-anchor="middle" font-family="ui-monospace, monospace" font-size="7" fill="#5b7280" letter-spacing="1">TRUST · INNOVATION · IMPACT</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <!-- Metallic gold gradient — brushed gold with highlight -->
+    <linearGradient id="goldTop" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#F9E596"/>
+      <stop offset="35%" stop-color="#D4AF37"/>
+      <stop offset="70%" stop-color="#AA8C2C"/>
+      <stop offset="100%" stop-color="#8A6E2F"/>
+    </linearGradient>
+    <!-- Muted bronze-gold for bottom rings -->
+    <linearGradient id="goldBottom" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#C9BF94"/>
+      <stop offset="50%" stop-color="#9A9368"/>
+      <stop offset="100%" stop-color="#6B6444"/>
+    </linearGradient>
+    <!-- Drop shadow filter -->
+    <filter id="ringShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+    <!-- Inner bevel highlight -->
+    <filter id="bevel">
+      <feSpecularLighting result="spec" specularExponent="20" specularConstant="0.8" lighting-color="#F9E596">
+        <feDistantLight azimuth="225" elevation="55"/>
+      </feSpecularLighting>
+      <feComposite in="SourceGraphic" in2="spec" operator="arithmetic" k1="0" k2="1" k3="0.3" k4="0"/>
+    </filter>
+  </defs>
+  <!-- Three interlocking rings — equilateral triangular formation -->
+  <g filter="url(#ringShadow)">
+    <!-- Bottom-left ring -->
+    <circle cx="38" cy="72" r="28" stroke="url(#goldBottom)" stroke-width="6" fill="none"/>
+    <!-- Bottom-right ring -->
+    <circle cx="82" cy="72" r="28" stroke="url(#goldBottom)" stroke-width="6" fill="none"/>
+    <!-- Top ring (brightest gold, on top of the other two) -->
+    <circle cx="60" cy="38" r="28" stroke="url(#goldTop)" stroke-width="6" fill="none"/>
+  </g>
 </svg>
