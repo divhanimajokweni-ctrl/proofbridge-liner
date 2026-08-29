@@ -145,10 +145,10 @@
   --k-dim: #5b7280;
   --k-mono: ui-monospace, "JetBrains Mono", "Fira Code", "Geist Mono", Menlo, Consolas, monospace;
 
-  background-color: var(--k-bg);
-  color: var(--k-fg);
-  font-family: var(--k-mono);
-  min-height: 100vh;
+  background-color: #060a10;
+  color: #cbd5d9;
+  font-family: ui-monospace, "JetBrains Mono", monospace;
+  min-height: 100vh; background: #060a10;
 }
 
 .kernel-theme ::-webkit-scrollbar {
