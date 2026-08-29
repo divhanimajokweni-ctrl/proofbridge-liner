@@ -1011,6 +1011,23 @@ form.addEventListener('submit', (e) => {
 });
 
 console.log('🌐 VVU Trust Dashboard — 3D scene rendering now visible');
+
+// ─── TAB SWITCHING ──────────────────────────────────────────────────
+// Wire up the 4 nav tabs (Scene, One-Pager, Architecture, Pilot)
+document.querySelectorAll('.tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    // Remove active from all tabs
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    // Add active to clicked tab
+    tab.classList.add('active');
+    // Hide all panels
+    document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+    // Show the target panel
+    var target = tab.dataset.panel;
+    var panel = document.getElementById(target + '-panel');
+    if (panel) panel.classList.add('active');
+  });
+});
 </script>
 </body>
 </html>
