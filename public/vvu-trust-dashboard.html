@@ -18,7 +18,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',monospace;height:100vh;overflow:hidden;display:flex;flex-direction:column;background-image:linear-gradient(rgba(212,175,55,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,.02) 1px,transparent 1px);background-size:32px 32px}
 :root{--gold:#D4AF37;--gold2:#C9A84C;--gold3:#8A6E2F;--void:#060a10;--panel:#111b27;--line:#1e3140;--fg:#cbd5d9;--fg-bright:#e0e6ed;--dim:#5b7280;--mono:ui-monospace,'JetBrains Mono',monospace;--display:'Syne','Georgia',serif;--touch:44px}
-#nav{background:linear-gradient(180deg,#0d141d,#060a10);border-bottom:2px solid var(--gold);display:flex;align-items:center;flex-shrink:0;padding:0 12px;gap:4px;min-height:52px;overflow-x:auto}
+#nav{position:relative;z-index:10;background:rgba(13,20,29,0.75);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:2px solid var(--gold);display:flex;align-items:center;flex-shrink:0;padding:0 12px;gap:4px;min-height:52px;overflow-x:auto}
 .brand-block{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-right:12px}
 .brand-logo{width:28px;height:28px;flex-shrink:0}
 .brand-text h1{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.04em;color:var(--fg-bright);line-height:1}
@@ -35,8 +35,8 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
 .nav-right .eis{color:var(--gold2)}
 .nav-right .eis strong{color:var(--fg-bright)}
 
-#panels{flex:1;position:relative;overflow:hidden}
-.panel{position:absolute;inset:0;display:none;overflow:auto;background:var(--void);padding:12px 16px 20px}
+#panels{flex:1;position:relative;overflow:hidden;z-index:5}
+.panel{position:absolute;inset:0;display:none;overflow:auto;background:rgba(6,10,16,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);padding:12px 16px 20px}
 .panel.active{display:flex;flex-direction:column}
 .panel::-webkit-scrollbar{width:4px}
 .panel::-webkit-scrollbar-track{background:transparent}
@@ -112,6 +112,129 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
 </head>
 <body>
 
+<!-- ═══ TRUST SPHERE BACKGROUND CANVAS ═══════════════════════════════ -->
+<!-- The gold dot sphere swirls behind the dashboard panels -->
+<canvas id="sphere-bg" style="position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0.6"></canvas>
+<script>
+// Trust Sphere background — Fibonacci gold dot sphere, dual-axis tumble
+(function(){
+  var canvas = document.getElementById('sphere-bg');
+  var ctx = canvas.getContext('2d');
+  var W, H, DPR;
+  function resize(){ DPR=window.devicePixelRatio||1; W=window.innerWidth; H=window.innerHeight; canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
+  window.addEventListener('resize', resize); resize();
+
+  var STATES = ['unknown','identity','contribution','receipt','hash','zk','trust'];
+  var STATE_COLORS = { unknown:'#2a2520', identity:'#D4AF37', contribution:'#C9A84C', receipt:'#F9E596', hash:'#C9A84C', zk:'#8A6E2F', trust:'#D4AF37' };
+  var N = 400;
+  var golden = Math.PI * (3 - Math.sqrt(5));
+  var points = [];
+  for(var i=0;i<N;i++){
+    var y = 1 - (i/(N-1))*2;
+    var r = Math.sqrt(1 - y*y);
+    var theta = golden * i;
+    points.push({ x: Math.cos(theta)*r, y: y, z: Math.sin(theta)*r, state:'unknown', stateT: Math.random()*8000, ripple:0, _jit: Math.random()*4000 });
+  }
+  points[7].isSelf = true; points[7].state = 'trust';
+
+  var rotY=0, rotX=0, angVelY=0.00028, angVelX=0.00011;
+  var STATE_DURATION = 3200;
+  var lastTime = performance.now();
+  var paused = false;
+
+  // Pause when tab hidden (compute-conserving)
+  document.addEventListener('visibilitychange', function(){ paused = document.hidden; });
+
+  function project(p){
+    var x = p.x*Math.cos(rotY) - p.z*Math.sin(rotY);
+    var z = p.x*Math.sin(rotY) + p.z*Math.cos(rotY);
+    var y = p.y;
+    var y2 = y*Math.cos(rotX) - z*Math.sin(rotX);
+    var z2 = y*Math.sin(rotX) + z*Math.cos(rotX);
+    var scale = Math.min(W,H) * 0.35;
+    var persp = 2.6 / (2.6 + z2);
+    return { sx: W/2 + x*scale*persp, sy: H/2 + y2*scale*persp, depth: z2, persp: persp };
+  }
+
+  function tick(now){
+    if(paused){ requestAnimationFrame(tick); return; }
+    var dt = now - lastTime; lastTime = now;
+    rotY += angVelY * dt;
+    rotX += angVelX * dt;
+
+    for(var pi=0; pi<points.length; pi++){
+      var p = points[pi];
+      p.stateT += dt;
+      if(p.stateT > STATE_DURATION + p._jit){
+        var idx = STATES.indexOf(p.state);
+        if(idx < STATES.length - 1){ p.state = STATES[idx+1]; p.ripple = 1; }
+        p.stateT = 0;
+      }
+      if(p.ripple > 0) p.ripple = Math.max(0, p.ripple - dt/900);
+    }
+
+    ctx.clearRect(0, 0, W, H);
+    var proj = points.map(function(p){ return { p:p, project: project(p) }; });
+    proj.sort(function(a,b){ return a.project.depth - b.project.depth; });
+
+    // Draw connection lines
+    ctx.lineWidth = 0.4;
+    for(var i=0; i<proj.length; i++){
+      var a = proj[i];
+      if(STATES.indexOf(a.p.state) < 2) continue;
+      for(var j=i+1; j<Math.min(i+5, proj.length); j++){
+        var b = proj[j];
+        if(STATES.indexOf(b.p.state) < 2) continue;
+        var dx = a.project.sx - b.project.sx;
+        var dy = a.project.sy - b.project.sy;
+        var d = Math.sqrt(dx*dx + dy*dy);
+        if(d < 42){
+          var alpha = (1 - d/42) * 0.08 * Math.min(a.project.persp, b.project.persp);
+          ctx.strokeStyle = 'rgba(201,168,76,' + alpha + ')';
+          ctx.beginPath();
+          ctx.moveTo(a.project.sx, a.project.sy);
+          ctx.lineTo(b.project.sx, b.project.sy);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw nodes
+    for(var k=0; k<proj.length; k++){
+      var item = proj[k];
+      var p = item.p;
+      var sx = item.project.sx, sy = item.project.sy, persp = item.project.persp;
+      var rad = 2.5 * persp + 0.8;
+      var color = STATE_COLORS[p.state];
+      var alpha = 0.5 + 0.5 * persp;
+
+      if(p.isSelf){ color = '#D4AF37'; rad *= 2; alpha = 0.8; }
+
+      if(p.ripple > 0){
+        ctx.beginPath();
+        ctx.arc(sx, sy, rad + p.ripple * 8, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(201,168,76,' + (p.ripple * 0.4) + ')';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      ctx.beginPath();
+      ctx.arc(sx, sy, rad, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = alpha;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = p.isSelf ? 14 : 5 * persp;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    }
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+
 <nav id="nav">
   <div class="brand-block">
     <svg class="brand-logo" viewBox="0 0 100 100" fill="none">
@@ -179,7 +302,7 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
   </div>
 
   <div class="panel" id="arch-panel">
-    <div id="arch-container" style="flex:1;position:relative;background:var(--void);min-height:300px;">
+    <div id="arch-container" style="flex:1;position:relative;background:transparent;min-height:300px;">
       <div style="position:absolute;bottom:12px;left:12px;z-index:10;background:rgba(6,10,16,.88);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:7px;backdrop-filter:blur(4px);color:var(--dim);line-height:1.8;">
         <div style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:3px;background:#D4AF37;"></span> Data Ingestion</div>
         <div style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:3px;background:#C9A84C;"></span> VVU‑IVE Engine</div>
