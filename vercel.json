@@ -2,15 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "public/searm1-enterprise-suite.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "public/searm1-pipeline.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "public/searm1-b2b-dashboard.html",
+      "src": "public/vvu-trust-dashboard.html",
       "use": "@vercel/static"
     }
   ],
