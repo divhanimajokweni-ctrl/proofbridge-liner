@@ -1,0 +1,83 @@
+name: repair-deployment-readiness
+
+on:
+  push:
+    branches:
+      - repair/deployment-readiness-20260830
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: repair/deployment-readiness-20260830
+          fetch-depth: 1
+
+      - name: Resolve remaining conflict markers
+        shell: python
+        run: |
+          from pathlib import Path
+
+          files = [
+              'prisma/schema.prisma',
+              'deploy.sh',
+          ]
+
+          def resolve(text, combine_first=False):
+              out=[]
+              i=0
+              first=True
+              while i < len(text):
+                  if text.startswith('<<<<<<< HEAD\n', i):
+                      a_start=i+len('<<<<<<< HEAD\n')
+                      sep=text.find('\n=======\n', a_start)
+                      if sep < 0: raise SystemExit('unclosed conflict')
+                      b_start=sep+len('\n=======\n')
+                      end=text.find('\n>>>>>>> origin/main', b_start)
+                      if end < 0: raise SystemExit('unclosed conflict')
+                      ours=text[a_start:sep]
+                      theirs=text[b_start:end]
+                      out.append((ours+'\n'+theirs) if (combine_first and first) else theirs)
+                      first=False
+                      i=end+len('\n>>>>>>> origin/main')
+                      if i < len(text) and text[i]=='\n': i+=1
+                  else:
+                      j=text.find('<<<<<<< HEAD\n', i)
+                      if j < 0:
+                          out.append(text[i:]); break
+                      out.append(text[i:j]); i=j
+              return ''.join(out)
+
+          p=Path('prisma/schema.prisma')
+          p.write_text(resolve(p.read_text(), combine_first=True))
+          p=Path('deploy.sh')
+          p.write_text(resolve(p.read_text(), combine_first=False))
+
+      - name: Assert no conflict markers remain
+        run: |
+          if grep -RInE '^(<<<<<<<|=======|>>>>>>>)( |$)' --exclude-dir=.git .; then
+            echo 'Conflict markers remain'
+            exit 1
+          fi
+
+      - name: Remove tracked environment and conflicted lockfile
+        run: |
+          rm -f .env bun.lock
+          git rm --cached --ignore-unmatch .env bun.lock || true
+
+      - name: Validate Prisma schema
+        run: |
+          npm install --ignore-scripts
+          npx prisma validate
+
+      - name: Commit repaired source
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: complete deployment-readiness source repair' || exit 0
+          git push origin repair/deployment-readiness-20260830
