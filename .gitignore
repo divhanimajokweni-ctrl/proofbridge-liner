@@ -1,88 +1,32 @@
-<<<<<<< HEAD
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-local-*
-.claude
-.z-ai-config
-*.log
-dev.log
-dev.out.log
-test
-prompt
-
-server.log
-# Skills directory
-/skills/
-=======
-# ─── Dependencies ─────────────────────────────────────────────────────────
+# Dependencies
 node_modules/
 .pnp
 .pnp.js
 
-# ─── Next.js ───────────────────────────────────────────────────────────────
+# Next.js
 .next/
 out/
 .vercel/
 
-# ─── Build artifacts ──────────────────────────────────────────────────────
+# Build artifacts
 artifacts/
 cache/
 typechain-types/
 dist/
 build/
 
-# ─── Hardhat ──────────────────────────────────────────────────────────────
+# Hardhat
 cache/hardhat/
 artifacts/contract-address.txt
 
-# ─── Production databases (never commit operator state) ───────────────────
-db/
+# Production databases
+/db/
 *.db
 *.db-journal
 *.sqlite
 *.sqlite-journal
 
-# ─── Local env files (secrets — NEVER commit) ────────────────────────────
+# Local env files — never commit secrets
 .env
 .env.local
 .env.*.local
@@ -90,31 +34,27 @@ db/
 .env.development
 .env.preview
 
-# ─── Test / E2E artifacts ─────────────────────────────────────────────────
+# Test / E2E artifacts
 test-results/
 playwright-report/
 playwright/.cache/
 trace.zip
 *.webm
 
-# ─── Dev server logs ─────────────────────────────────────────────────────
-dev.log
-server.log
-watchdog.log
+# Logs
 *.log
 
-# ─── TypeScript incremental build cache ──────────────────────────────────
-tsconfig.tsbuildinfo
+# TypeScript
 *.tsbuildinfo
 
-# ─── Editor / OS noise ───────────────────────────────────────────────────
+# Editor / OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 
-# ─── Skill system internals (not for production deploy) ───────────────────
+# Local / internal tooling
 skills/
 tool-results/
 upload/
->>>>>>> origin/main
+prompt
