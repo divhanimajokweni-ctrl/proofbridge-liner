@@ -34,6 +34,19 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #D4AF37;
     }
+  /* Mobile-first: stack columns on smartphone */
+  @media(max-width:767px){
+    body{flex-direction:column;overflow:auto;height:auto;min-height:100vh}
+    .flex-1.flex{flex-direction:column}
+    aside.w-80{width:100%;height:auto;max-height:240px;flex-shrink:0;border-right:none;border-bottom:1px solid #1e293b}
+    main{width:100%;height:50vh}
+    .w-1\/4{width:100%;border-right:none;border-top:1px solid #1e293b;flex-direction:row;overflow-x:auto}
+    #demo-3d{min-height:200px}
+  }
+  @media(max-width:480px){
+    aside.w-80{padding:8px;gap:8px}
+    .w-1\/4{font-size:8px}
+  }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 overflow-hidden h-screen w-screen flex flex-col select-none">

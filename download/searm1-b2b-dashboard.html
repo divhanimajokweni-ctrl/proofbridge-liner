@@ -46,6 +46,40 @@ tr:hover td{background:var(--bg-elev)}
 .param-card .l{color:var(--dim);font-size:.85em;text-transform:uppercase;letter-spacing:.06em}
 .param-card .v{color:var(--cyan);font-weight:700;font-size:1.2em;margin-top:2px}
 .loading{text-align:center;padding:40px;color:var(--dim)}
+/* Mobile-first */
+
+@media(max-width:768px){
+
+  .stats-grid{grid-template-columns:1fr 1fr;gap:8px}
+
+  .stat-card .value{font-size:1.2em}
+
+  .subsector-bar .name{min-width:120px;font-size:0.65em}
+
+  .subsector-bar .val{min-width:80px;font-size:0.6em}
+
+  table{font-size:0.6em}
+
+  th,td{padding:4px 4px}
+
+  .params-grid{grid-template-columns:1fr 1fr}
+
+}
+
+@media(max-width:480px){
+
+  .stats-grid{grid-template-columns:1fr}
+
+  .params-grid{grid-template-columns:1fr}
+
+  .header h1{font-size:0.9em}
+
+  table{font-size:0.55em}
+
+}
+/* Mobile-first responsive */
+@media(max-width:768px){.stats-grid{grid-template-columns:1fr 1fr;gap:8px}.stat-card .value{font-size:1.2em}.subsector-bar .name{min-width:120px;font-size:0.65em}.subsector-bar .val{min-width:80px;font-size:0.6em}table{font-size:0.6em}th,td{padding:4px}.params-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:480px){.stats-grid{grid-template-columns:1fr}.params-grid{grid-template-columns:1fr}.header h1{font-size:0.9em}table{font-size:0.55em}}
 </style>
 </head>
 <body>
