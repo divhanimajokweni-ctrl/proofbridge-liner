@@ -385,7 +385,7 @@
         if (leakCoord) {
           const distToLeak = Math.sqrt(Math.pow(x - leakCoord, 2) + Math.pow(y - (-leakCoord), 2));
           if (distToLeak < 22.0) {
-            // Apply soil saturation color grading (simulate Sentinel-2 wet mud profile)
+            // Apply soil saturation color grading (Sentinel-2 SWIR wet mud profile)
             const dampFactor = Math.pow(1.0 - (distToLeak / 22.0), 2);
             r += (0.01 - r) * dampFactor;
             g += (0.02 - g) * dampFactor;

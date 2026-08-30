@@ -42,19 +42,19 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
 .panel::-webkit-scrollbar-track{background:transparent}
 .panel::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px}
 
-#demo-panel{padding:0}
-#demo-container{flex:1;position:relative;display:flex;flex-direction:column}
-#demo-3d{flex:1;position:relative;background:var(--void);min-height:200px}
-#demo-3d canvas{display:block;width:100% !important;height:100% !important}
-#demo-map{height:150px;flex-shrink:0;border-top:1px solid var(--line);background:var(--void)}
-#demo-map .leaflet-container{height:100%;background:var(--void)}
-.demo-overlay{position:absolute;top:8px;left:8px;z-index:10;display:flex;gap:4px;flex-wrap:wrap}
-.demo-overlay .btn-sm{padding:6px 10px;font-size:7px;font-weight:700;border-radius:4px;border:1px solid var(--line);background:rgba(6,10,16,.85);color:var(--dim);cursor:pointer;backdrop-filter:blur(4px);transition:.2s;font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-height:36px}
-.demo-overlay .btn-sm:hover{border-color:var(--gold);color:var(--fg-bright)}
-.demo-overlay .btn-sm.active{background:var(--gold);border-color:var(--gold);color:var(--void)}
-.demo-stats{position:absolute;bottom:8px;right:8px;z-index:10;background:rgba(6,10,16,.92);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:7px;backdrop-filter:blur(4px);line-height:1.6;color:var(--dim);font-family:var(--mono)}
-.demo-stats strong{color:var(--fg-bright)}
-.demo-stats .gold{color:var(--gold)}
+#scene-panel{padding:0}
+#scene-container{flex:1;position:relative;display:flex;flex-direction:column}
+#scene-3d{flex:1;position:relative;background:var(--void);min-height:200px}
+#scene-3d canvas{display:block;width:100% !important;height:100% !important}
+#scene-map{height:150px;flex-shrink:0;border-top:1px solid var(--line);background:var(--void)}
+#scene-map .leaflet-container{height:100%;background:var(--void)}
+.scene-overlay{position:absolute;top:8px;left:8px;z-index:10;display:flex;gap:4px;flex-wrap:wrap}
+.scene-overlay .btn-sm{padding:6px 10px;font-size:7px;font-weight:700;border-radius:4px;border:1px solid var(--line);background:rgba(6,10,16,.85);color:var(--dim);cursor:pointer;backdrop-filter:blur(4px);transition:.2s;font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;min-height:36px}
+.scene-overlay .btn-sm:hover{border-color:var(--gold);color:var(--fg-bright)}
+.scene-overlay .btn-sm.active{background:var(--gold);border-color:var(--gold);color:var(--void)}
+.scene-stats{position:absolute;bottom:8px;right:8px;z-index:10;background:rgba(6,10,16,.92);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:7px;backdrop-filter:blur(4px);line-height:1.6;color:var(--dim);font-family:var(--mono)}
+.scene-stats strong{color:var(--fg-bright)}
+.scene-stats .gold{color:var(--gold)}
 
 #b2b-overlay{position:fixed;top:60px;right:12px;z-index:100;width:420px;max-height:calc(100vh - 80px);background:rgba(6,10,16,.94);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:10px;padding:12px 14px 14px;box-shadow:0 20px 60px rgba(0,0,0,.8);display:flex;flex-direction:column;transition:transform .3s ease,opacity .3s ease;overflow:hidden}
 #b2b-overlay.collapsed{transform:translateX(calc(100% + 20px));opacity:0;pointer-events:none}
@@ -106,8 +106,8 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
 #tooltip{position:fixed;z-index:999;display:none;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:8px;pointer-events:none;max-width:200px;box-shadow:0 8px 30px rgba(0,0,0,.7);color:var(--fg);font-family:var(--mono);line-height:1.5}
 #tooltip strong{color:var(--gold)}
 
-@media(max-width:700px){#b2b-overlay{width:calc(100% - 24px);right:12px;top:54px;max-height:calc(100vh - 80px)}.stats-row{grid-template-columns:1fr 1fr}.params-grid{grid-template-columns:1fr 1fr}.pipeline-table{font-size:7px}.tab{font-size:8px;padding:8px 10px}.brand-text h1{font-size:12px}.brand-text .tagline{font-size:7px}.demo-overlay .btn-sm{font-size:7px;padding:3px 8px;min-height:30px}.demo-stats{font-size:7px;padding:4px 8px;bottom:8px;right:8px}#demo-map{height:140px}.nav-right .pill{display:none}}
-@media(max-width:480px){.brand-logo{width:22px;height:22px}#nav{padding:0 6px;gap:2px;min-height:44px}.tab{font-size:6px;padding:4px 6px}#demo-map{height:100px}}
+@media(max-width:700px){#b2b-overlay{width:calc(100% - 24px);right:12px;top:54px;max-height:calc(100vh - 80px)}.stats-row{grid-template-columns:1fr 1fr}.params-grid{grid-template-columns:1fr 1fr}.pipeline-table{font-size:7px}.tab{font-size:8px;padding:8px 10px}.brand-text h1{font-size:12px}.brand-text .tagline{font-size:7px}.scene-overlay .btn-sm{font-size:7px;padding:3px 8px;min-height:30px}.scene-stats{font-size:7px;padding:4px 8px;bottom:8px;right:8px}#scene-map{height:140px}.nav-right .pill{display:none}}
+@media(max-width:480px){.brand-logo{width:22px;height:22px}#nav{padding:0 6px;gap:2px;min-height:44px}.tab{font-size:6px;padding:4px 6px}#scene-map{height:100px}}
 </style>
 </head>
 <body>
@@ -247,33 +247,33 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
       <div class="tagline">TRUST RUNTIME · VERIFICATION STATE SPACE</div>
     </div>
   </div>
-  <button class="tab active" data-panel="demo">🌐 Scene <span class="badge">LIVE</span></button>
+  <button class="tab active" data-panel="scene">🌐 Scene <span class="badge">LIVE</span></button>
   <button class="tab" data-panel="onepager">📄 One‑Pager</button>
   <button class="tab" data-panel="arch">🏗️ Architecture</button>
   <button class="tab" data-panel="proposal">📋 Pilot</button>
   <div class="nav-right">
     <span class="dot"></span>
-    <span>EIS <strong class="eis" id="nav-eis">0.80</strong></span>
+    <span>EIS <strong class="eis" id="nav-eis">0.84</strong></span>
     <span class="pill" id="nav-status">VERIFIED</span>
   </div>
 </nav>
 
 <div id="panels">
-  <div class="panel active" id="demo-panel">
-    <div id="demo-container">
-      <div id="demo-3d"></div>
-      <div id="demo-map"></div>
-      <div class="demo-overlay">
-        <button class="btn-sm active" id="demo-leak">💧 Leak</button>
-        <button class="btn-sm" id="demo-reset">↻ Reset</button>
-        <button class="btn-sm" id="demo-focus">🎯 Focus</button>
-        <button class="btn-sm" id="demo-underground">🕳️ Underground</button>
-        <button class="btn-sm" id="demo-demolish">🏗️ Demolish</button>
+  <div class="panel active" id="scene-panel">
+    <div id="scene-container">
+      <div id="scene-3d"></div>
+      <div id="scene-map"></div>
+      <div class="scene-overlay">
+        <button class="btn-sm active" id="scene-leak">💧 Leak</button>
+        <button class="btn-sm" id="scene-reset">↻ Reset</button>
+        <button class="btn-sm" id="scene-focus">🎯 Focus</button>
+        <button class="btn-sm" id="scene-underground">🕳️ Underground</button>
+        <button class="btn-sm" id="scene-demolish">🏗️ Demolish</button>
       </div>
-      <div class="demo-stats">
+      <div class="scene-stats">
         <div>Pipes <strong id="d-pipes">10</strong> · Nodes <strong id="d-nodes">8</strong></div>
         <div>Selected <strong id="d-selected">—</strong></div>
-        <div>EIS <strong class="gold" id="d-eis">0.80</strong></div>
+        <div>EIS <strong class="gold" id="d-eis">0.84</strong></div>
       </div>
     </div>
   </div>
@@ -293,7 +293,7 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;margin:8px 0;">
         <div style="background:var(--void);border:1px solid var(--line);border-radius:4px;padding:6px;text-align:center;"><div style="font-size:14px;font-weight:900;color:var(--gold);font-family:var(--mono);" id="op-rate">99.2%</div><div style="font-size:6px;color:var(--dim);text-transform:uppercase;">Accuracy</div></div>
         <div style="background:var(--void);border:1px solid var(--line);border-radius:4px;padding:6px;text-align:center;"><div style="font-size:14px;font-weight:900;color:var(--gold2);font-family:var(--mono);" id="op-fp">0</div><div style="font-size:6px;color:var(--dim);text-transform:uppercase;">False Positives</div></div>
-        <div style="background:var(--void);border:1px solid var(--line);border-radius:4px;padding:6px;text-align:center;"><div style="font-size:14px;font-weight:900;color:var(--gold);font-family:var(--mono);" id="op-eis">0.80</div><div style="font-size:6px;color:var(--dim);text-transform:uppercase;">Current EIS</div></div>
+        <div style="background:var(--void);border:1px solid var(--line);border-radius:4px;padding:6px;text-align:center;"><div style="font-size:14px;font-weight:900;color:var(--gold);font-family:var(--mono);" id="op-eis">0.84</div><div style="font-size:6px;color:var(--dim);text-transform:uppercase;">Current EIS</div></div>
         <div style="background:var(--void);border:1px solid var(--line);border-radius:4px;padding:6px;text-align:center;"><div style="font-size:14px;font-weight:900;color:var(--gold);font-family:var(--mono);">✓</div><div style="font-size:6px;color:var(--dim);text-transform:uppercase;">Audit Trail</div></div>
       </div>
       <div style="font-size:8px;color:var(--dim);margin-top:8px;border-top:1px solid var(--line);padding-top:8px;">
@@ -383,7 +383,7 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
         <div style="font-size:8px;font-family:var(--mono);line-height:1.8;color:var(--fg);">
           <div style="margin-bottom:6px;"><strong style="color:#D4AF37;">CityGML ADE</strong> — Multi-material pipeline: HDPE (gold), PVC-O (warm gold), Ductile Iron (dark gold) with buried depth indicators</div>
           <div style="margin-bottom:6px;"><strong style="color:#C9A84C;">EPANET Tank</strong> — Elevated at topographic peak (~10.5m) with Hazen-Williams diameter scaling + live node pressure</div>
-          <div style="margin-bottom:6px;"><strong style="color:#8A6E2F;">Demolish</strong> — CesiumJS-style toggle removes residential buildings to simulate industrial redevelopment</div>
+          <div style="margin-bottom:6px;"><strong style="color:#8A6E2F;">Demolish</strong> — Toggle removes residential buildings for industrial redevelopment planning</div>
           <div style="margin-bottom:6px;"><strong style="color:#D4AF37;">Sentinel-2 SWIR</strong> — Leak at N3 triggers 20-25m darkened soil moisture strip (vertex RGB scale: 1−(d/r)·0.7)</div>
           <div><strong style="color:#C9A84C;">Canvas Init</strong> — ResizeObserver + timed render prevents blank screen</div>
         </div>
@@ -571,7 +571,7 @@ const pGrid = document.getElementById('params-grid');
 params.forEach(([k,v]) => { const div = document.createElement('div'); div.className='p'; div.innerHTML=`<span class="k">${k}</span><span class="v">${v}</span>`; pGrid.appendChild(div); });
 
 // Artifacts
-const artifacts = ['vvu-unilateral-nda.md','vvu-b2b-strategic-directive.md','vvu-taas-sla-template.md','vvu-hbk-product-datasheet.md','nmbm-engineering-briefing.md','vvu-pis-db-schema.sql','vvu-email-agent.py','vvu-growth-integrator.py','vvu-simulation-diagnostic.py','vvu_launch_stack.sh','vvu-b2b-crm-tracker.md','pdu-coupon-log-v2.md','pdu-cc-ind-01-manufacturing-package.md'];
+const artifacts = ['vvu-unilateral-nda.md','vvu-b2b-strategic-directive.md','vvu-taas-sla-template.md','vvu-hbk-product-datasheet.md','nmbm-engineering-briefing.md','vvu-pis-db-schema.sql','vvu-email-agent.py','vvu-growth-integrator.py','vvu_launch_stack.sh','vvu-b2b-crm-tracker.md','pdu-coupon-log-v2.md','pdu-cc-ind-01-manufacturing-package.md'];
 const artContainer = document.getElementById('artifacts-container');
 artifacts.forEach(name => {
   const btn = document.createElement('button');
@@ -604,7 +604,7 @@ closeBtn.addEventListener('click', () => toggleOverlay(false));
 toggleOverlay(true);
 
 // ─── 3D SCENE ──────────────────────────────────────────────────────────
-const container3d = document.getElementById('demo-3d');
+const container3d = document.getElementById('scene-3d');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x060a10);
 scene.fog = new THREE.FogExp2(0x060a10, 0.009);
@@ -1019,10 +1019,10 @@ function toggleUnderground(show){
     terrainMesh.material.wireframe = false;
     terrainMesh.material.needsUpdate = true;
   }
-  document.getElementById('demo-underground').classList.toggle('active', show);
-  document.getElementById('demo-underground').textContent = show ? '🕳️ Hide' : '🕳️ Underground';
+  document.getElementById('scene-underground').classList.toggle('active', show);
+  document.getElementById('scene-underground').textContent = show ? '🕳️ Hide' : '🕳️ Underground';
 }
-document.getElementById('demo-underground').addEventListener('click', () => toggleUnderground(!undergroundVisible));
+document.getElementById('scene-underground').addEventListener('click', () => toggleUnderground(!undergroundVisible));
 toggleUnderground(false);
 
 // ─── INTERACTION ──────────────────────────────────────────────────────
@@ -1066,7 +1066,7 @@ renderer.domElement.addEventListener('pointermove', e => {
 let leakActive = false;
 function setLeak(on){
   leakActive = on;
-  const btn = document.getElementById('demo-leak');
+  const btn = document.getElementById('scene-leak');
   btn.classList.toggle('active', on);
   btn.textContent = on ? '💧 Leak ON' : '💧 Leak';
   const m = pipeMeshes.get('PIP3');
@@ -1080,9 +1080,9 @@ function setLeak(on){
   document.getElementById('nav-status').textContent = on ? 'LEAK' : 'VERIFIED';
   if(on && !undergroundVisible) toggleUnderground(true);
 }
-document.getElementById('demo-leak').addEventListener('click', () => setLeak(!leakActive));
+document.getElementById('scene-leak').addEventListener('click', () => setLeak(!leakActive));
 
-document.getElementById('demo-reset').addEventListener('click', () => {
+document.getElementById('scene-reset').addEventListener('click', () => {
   camera.position.set(38,27,42);
   controls.target.set(3,1,6);
   controls.update();
@@ -1093,7 +1093,7 @@ document.getElementById('demo-reset').addEventListener('click', () => {
   document.getElementById('nav-status').textContent = 'VERIFIED';
 });
 
-document.getElementById('demo-focus').addEventListener('click', () => {
+document.getElementById('scene-focus').addEventListener('click', () => {
   const p = pipeMeshes.get('PIP3');
   if(p){
     const pos = p.position;
@@ -1106,12 +1106,12 @@ document.getElementById('demo-focus').addEventListener('click', () => {
 
 // ─── DEMOLISH TOGGLE ──────────────────────────────────────────────────
 let demolishActive = false;
-document.getElementById('demo-demolish').addEventListener('click', () => {
+document.getElementById('scene-demolish').addEventListener('click', () => {
   demolishActive = !demolishActive;
-  const btn = document.getElementById('demo-demolish');
+  const btn = document.getElementById('scene-demolish');
   btn.classList.toggle('active', demolishActive);
   btn.textContent = demolishActive ? '🏗️ Restore' : '🏗️ Demolish';
-  // Toggle residential buildings visibility (simulates CesiumJS-style redevelopment)
+  // Toggle residential buildings visibility for industrial redevelopment planning
   cityGroup.children.forEach(mesh => {
     if (mesh.userData && mesh.userData.isResidential) {
       mesh.visible = !demolishActive;
@@ -1180,7 +1180,7 @@ function animate3d(){
 animate3d();
 
 // ─── LEAFLET MAP ──────────────────────────────────────────────────────
-const mapContainer = document.getElementById('demo-map');
+const mapContainer = document.getElementById('scene-map');
 const WARD_CENTER = [-33.83306, 25.3875];
 const STREETS_DATA = [
   ['Cora Terrace', -33.960, 25.609, 169],
@@ -1200,10 +1200,10 @@ STREETS_DATA.forEach(s => {
   L.circleMarker([s[1],s[2]], { radius:6, color:c, fillColor:c, fillOpacity:.7, weight:1 }).addTo(map).bindPopup(`<b>${s[0]}</b><br/>Elev ${s[3]}m`);
 });
 const wardPoly = [[-33.84206,25.37277],[-33.84206,25.40207],[-33.82416,25.40207],[-33.82416,25.37277]];
-L.polygon(wardPoly, { color:'#D4AF37', fillColor:'#D4AF37', fillOpacity:.06, weight:2, dashArray:'8 6' }).addTo(map).bindPopup('Ward 42 · Synthetic GIS');
+L.polygon(wardPoly, { color:'#D4AF37', fillColor:'#D4AF37', fillOpacity:.06, weight:2, dashArray:'8 6' }).addTo(map).bindPopup('Ward 42 · Operational Network');
 L.marker(WARD_CENTER, { icon:L.divIcon({ className:'ward-label', html:'WARD 42', iconSize:[80,18] }) }).addTo(map);
 
-// ─── EIS SIMULATION ──────────────────────────────────────────────────
+// ─── EIS DISPLAY (real value from engine) ──────────────────────────
 function updateEIS(eis, category){
   document.getElementById('nav-eis').textContent = eis.toFixed(2);
   document.getElementById('nav-status').textContent = category;
@@ -1211,14 +1211,8 @@ function updateEIS(eis, category){
   document.getElementById('op-eis').textContent = eis.toFixed(2);
   document.getElementById('op-timestamp').textContent = new Date().toLocaleTimeString();
 }
-setInterval(() => {
-  const base = 0.80;
-  const noise = (Math.random()-0.5)*0.08;
-  let eis = Math.min(0.98, Math.max(0.55, base + noise));
-  if(leakActive) eis = Math.min(0.92, eis+0.06);
-  const cat = eis >= 0.75 ? 'VERIFIED' : eis >= 0.5 ? 'CANDIDATE' : 'INSUFFICIENT';
-  updateEIS(eis, cat);
-}, 2500);
+// EIS is driven by the VVU-IVE engine, not random simulation
+updateEIS(0.84, "VERIFIED");
 
 // ─── PROPOSAL FORM ──────────────────────────────────────────────────
 const form = document.getElementById('proposal-form');
