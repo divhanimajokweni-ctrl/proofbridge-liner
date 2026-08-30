@@ -1,0 +1,44 @@
+// HBK Mk-II crawler enclosure envelope
+// Exact external envelope; wall, lid, gasket, and sealing construction require engineering data.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+enclosureLength = 400mm
+enclosureWidth = 300mm
+enclosureHeight = 200mm
+
+enclosureProfile = sketch(on = XY) {
+  lowerEdge = line(start = [var -200mm, var -150mm], end = [var 200mm, var -150mm])
+  rightEdge = line(start = [var 200mm, var -150mm], end = [var 200mm, var 150mm])
+  upperEdge = line(start = [var 200mm, var 150mm], end = [var -200mm, var 150mm])
+  leftEdge = line(start = [var -200mm, var 150mm], end = [var -200mm, var -150mm])
+
+  coincident([lowerEdge.end, rightEdge.start])
+  coincident([rightEdge.end, upperEdge.start])
+  coincident([upperEdge.end, leftEdge.start])
+  coincident([leftEdge.end, lowerEdge.start])
+
+  horizontal(lowerEdge)
+  vertical(rightEdge)
+  horizontal(upperEdge)
+  vertical(leftEdge)
+
+  horizontalDistance([ORIGIN, lowerEdge.start]) == -enclosureLength / 2
+  verticalDistance([ORIGIN, lowerEdge.start]) == -enclosureWidth / 2
+  horizontalDistance([lowerEdge.start, lowerEdge.end]) == enclosureLength
+  verticalDistance([rightEdge.start, rightEdge.end]) == enclosureWidth
+}
+
+enclosureRegion = region(
+  segments = [
+    enclosureProfile.lowerEdge,
+    enclosureProfile.rightEdge
+  ],
+  intersectionIndex = -1,
+  direction = CCW,
+)
+
+export enclosureBody = extrude(enclosureRegion, length = enclosureHeight, symmetric = true)
+  |> appearance(color = "#34586f", metalness = 45, roughness = 48)
+
+hide(enclosureProfile)
+enclosureBody
