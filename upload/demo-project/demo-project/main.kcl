@@ -1,0 +1,46 @@
+// HBK Mk-II differential-drive crawler chassis
+// Exact supplied enclosure and wheel envelopes; sensor brackets await defined mounting engineering data.
+@settings(defaultLengthUnit = mm, kclVersion = 2.0)
+
+import enclosureBody from "partEnclosure.kcl"
+import driveWheel from "partDriveWheel.kcl"
+
+bodyLength = 400mm
+bodyWidth = 300mm
+bodyHeight = 200mm
+wheelRadius = 100mm
+wheelWidth = 50mm
+wheelAxialCenter = bodyWidth / 2 + wheelWidth / 2
+wheelLongitudinalCenter = 0mm
+wheelVerticalCenter = wheelRadius
+bodyVerticalCenter = bodyHeight / 2
+
+enclosurePlaced = enclosureBody
+  |> translate(z = bodyVerticalCenter, global = true)
+
+rightWheelRaw = driveWheel
+leftWheelRaw = clone(rightWheelRaw)
+
+rightDriveWheel = rightWheelRaw
+  |> translate(
+       x = wheelLongitudinalCenter,
+       y = wheelAxialCenter,
+       z = wheelVerticalCenter,
+       global = true,
+     )
+
+leftDriveWheel = leftWheelRaw
+  |> translate(
+       x = wheelLongitudinalCenter,
+       y = -wheelAxialCenter,
+       z = wheelVerticalCenter,
+       global = true,
+     )
+
+export crawlerChassisAssembly = [
+  enclosurePlaced,
+  rightDriveWheel,
+  leftDriveWheel
+]
+
+crawlerChassisAssembly

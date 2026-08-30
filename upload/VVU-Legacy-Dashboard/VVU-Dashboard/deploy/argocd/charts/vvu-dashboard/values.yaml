@@ -1,0 +1,98 @@
+replicaCount: 1
+
+image:
+  repository: vvu/dashboard
+  tag: latest
+  pullPolicy: Always
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: dashboard.vvu.africa
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: vvu-dashboard-tls
+      hosts:
+        - dashboard.vvu.africa
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+pdb:
+  enabled: true
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+
+env:
+  NODE_ENV: production
+  NEXTAUTH_URL: https://dashboard.vvu.africa
+  NATS_URL: nats://nats:4222
+  POLYGON_RPC_URL: https://rpc-amoy.polygon.technology
+  POLYGON_CHAIN: amoy
+  LOG_LEVEL: info
+
+secrets:
+  NEXTAUTH_SECRET: ""
+  DATABASE_ENCRYPTION_KEY: ""
+  STITCH_API_KEY: ""
+  STITCH_WEBHOOK_SECRET: ""
+  POLYGON_PRIVATE_KEY: ""
+  RESEND_API_KEY: ""
+
+probes:
+  readiness:
+    path: /api/stats
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  liveness:
+    path: /api/stats
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  startup:
+    path: /api/stats
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
