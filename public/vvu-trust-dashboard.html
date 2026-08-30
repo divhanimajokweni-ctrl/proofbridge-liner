@@ -268,6 +268,7 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
         <button class="btn-sm" id="demo-reset">↻ Reset</button>
         <button class="btn-sm" id="demo-focus">🎯 Focus</button>
         <button class="btn-sm" id="demo-underground">🕳️ Underground</button>
+        <button class="btn-sm" id="demo-demolish">🏗️ Demolish</button>
       </div>
       <div class="demo-stats">
         <div>Pipes <strong id="d-pipes">10</strong> · Nodes <strong id="d-nodes">8</strong></div>
@@ -302,12 +303,105 @@ body{background:#060a10;color:#cbd5d9;font-family:ui-monospace,'JetBrains Mono',
   </div>
 
   <div class="panel" id="arch-panel">
-    <div id="arch-container" style="flex:1;position:relative;background:transparent;min-height:300px;">
-      <div style="position:absolute;bottom:12px;left:12px;z-index:10;background:rgba(6,10,16,.88);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:7px;backdrop-filter:blur(4px);color:var(--dim);line-height:1.8;">
-        <div style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:3px;background:#D4AF37;"></span> Data Ingestion</div>
-        <div style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:3px;background:#C9A84C;"></span> VVU‑IVE Engine</div>
-        <div style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:3px;background:#8A6E2F;"></span> Evidence Scoring</div>
-        <div style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:8px;height:8px;border-radius:3px;background:#D4AF37;"></span> Visualization &amp; Audit</div>
+    <div style="max-width:960px;width:100%;margin:0 auto;padding:16px 20px;overflow-y:auto;height:100%;">
+      <h2 style="font-family:var(--display);font-size:16px;color:var(--gold);margin-bottom:4px;">🏗️ System Architecture</h2>
+      <div style="font-size:9px;color:var(--dim);margin-bottom:16px;">Multi-tiered settlement digital twin · CityGML Utility Network ADE · EPANET integration</div>
+
+      <!-- Architecture diagram -->
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;font-family:var(--mono);font-size:9px;line-height:1.8;color:var(--fg);">
+        <div style="text-align:center;color:var(--gold);font-weight:700;margin-bottom:8px;">SEARM1 ENTERPRISE — ARCHITECTURE STACK</div>
+        <pre style="color:var(--fg-bright);font-size:8px;line-height:1.6;overflow-x:auto;">
+┌─────────────────────────────────────────────────────────┐
+│                  SEARM1 DASHBOARD                         │
+│         (3D Scene + B2B Overlay + Trust Sphere)          │
+└──────────────────────────┬──────────────────────────────┘
+                           │ REST API / WebSocket
+┌──────────────────────────▼──────────────────────────────┐
+│              SEARM1 EVIDENCE API                          │
+│           (Express.js + TypeScript)                      │
+└──────────────────────────┬──────────────────────────────┘
+                           │
+     ┌─────────────────────┼─────────────────────┐
+     │                     │                     │
+┌────▼──────┐    ┌────────▼────────┐    ┌──────▼──────┐
+│ Telemetry  │    │  VVU-IVE Engine │    │   Asset     │
+│   Store    │    │ (EIS Calculator)│    │  Registry   │
+│ (Timescale)│    │  TypeScript    │    │(Facilities, │
+└───────────┘    └────────┬────────┘    │ Nodes,Pipes)│
+                          │             └─────────────┘
+              ┌───────────┴───────────┐
+              │                       │
+    ┌─────────▼─────────┐   ┌────────▼────────┐
+    │  Sensor / SCADA   │   │  GIS / Network   │
+    │   Telemetry       │   │  Model (EPANET) │
+    └───────────────────┘   └─────────────────┘
+        </pre>
+      </div>
+
+      <!-- Multi-tiered settlement model -->
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;">
+        <div style="color:var(--gold);font-weight:700;font-size:10px;margin-bottom:12px;">MULTI-TIERED SETTLEMENT MODEL</div>
+        <div style="font-family:var(--mono);font-size:8px;line-height:2;color:var(--fg);">
+          <div style="background:rgba(212,175,55,0.06);border-left:3px solid #D4AF37;padding:6px 10px;margin-bottom:4px;border-radius:0 4px 4px 0;">
+            <strong style="color:#D4AF37;">TIER 1 — Natural Surface Terrain + Hydrology</strong><br>
+            <span style="color:var(--dim);">Topographic DEM · Water bodies · Vegetation · Soil moisture (Sentinel-2 SWIR)</span>
+          </div>
+          <div style="text-align:center;color:var(--dim);">│</div>
+          <div style="background:rgba(201,168,76,0.06);border-left:3px solid #C9A84C;padding:6px 10px;margin-bottom:4px;border-radius:0 4px 4px 0;">
+            <strong style="color:#C9A84C;">TIER 2 — Physical Surface Infrastructure & Settlement</strong><br>
+            <span style="color:var(--dim);">Houses · Shops · Roads · Bridges · Skyline · Demolish toggle (CesiumJS-style)</span>
+          </div>
+          <div style="text-align:center;color:var(--dim);">│</div>
+          <div style="background:rgba(138,110,47,0.06);border-left:3px solid #8A6E2F;padding:6px 10px;margin-bottom:4px;border-radius:0 4px 4px 0;">
+            <strong style="color:#8A6E2F;">TIER 3 — Subsurface Technical Overlay</strong><br>
+            <span style="color:var(--dim);">CityGML Pipe ADE · EPANET Storage Tank · Multi-material pipes (HDPE / PVC-O / Ductile Iron)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Technical feature verification -->
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;">
+        <div style="color:var(--gold);font-weight:700;font-size:10px;margin-bottom:10px;">TECHNICAL FEATURE VERIFICATION</div>
+        <table style="width:100%;font-size:8px;border-collapse:collapse;font-family:var(--mono);">
+          <thead><tr style="border-bottom:1px solid var(--gold);">
+            <th style="text-align:left;padding:4px;color:var(--dim);font-weight:400;text-transform:uppercase;">Feature</th>
+            <th style="text-align:left;padding:4px;color:var(--dim);font-weight:400;text-transform:uppercase;">Status</th>
+          </tr></thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--line);"><td style="padding:4px;color:var(--fg);">CityGML Utility Network ADE</td><td style="padding:4px;color:#D4AF37;">✓ Active — HDPE / PVC-O / Ductile Iron mapped</td></tr>
+            <tr style="border-bottom:1px solid var(--line);"><td style="padding:4px;color:var(--fg);">EPANET Water Storage Tank</td><td style="padding:4px;color:#D4AF37;">✓ Active — Peak elevation anchoring + Hazen-Williams</td></tr>
+            <tr style="border-bottom:1px solid var(--line);"><td style="padding:4px;color:var(--fg);">CesiumJS Demolish Toggle</td><td style="padding:4px;color:#D4AF37;">✓ Active — Removes residential layers</td></tr>
+            <tr style="border-bottom:1px solid var(--line);"><td style="padding:4px;color:var(--fg);">Sentinel-2 Moisture Discoloration</td><td style="padding:4px;color:#D4AF37;">✓ Active — Vertex SWIR darken on leak (22m radius)</td></tr>
+            <tr><td style="padding:4px;color:var(--fg);">Canvas Observer Init</td><td style="padding:4px;color:#D4AF37;">✓ Active — ResizeObserver prevents 0×0 render</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Engineering upgrades -->
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;">
+        <div style="color:var(--gold);font-weight:700;font-size:10px;margin-bottom:10px;">ENGINEERING UPGRADES</div>
+        <div style="font-size:8px;font-family:var(--mono);line-height:1.8;color:var(--fg);">
+          <div style="margin-bottom:6px;"><strong style="color:#D4AF37;">CityGML ADE</strong> — Multi-material pipeline: HDPE (gold), PVC-O (warm gold), Ductile Iron (dark gold) with buried depth indicators</div>
+          <div style="margin-bottom:6px;"><strong style="color:#C9A84C;">EPANET Tank</strong> — Elevated at topographic peak (~10.5m) with Hazen-Williams diameter scaling + live node pressure</div>
+          <div style="margin-bottom:6px;"><strong style="color:#8A6E2F;">Demolish</strong> — CesiumJS-style toggle removes residential buildings to simulate industrial redevelopment</div>
+          <div style="margin-bottom:6px;"><strong style="color:#D4AF37;">Sentinel-2 SWIR</strong> — Leak at N3 triggers 20-25m darkened soil moisture strip (vertex RGB scale: 1−(d/r)·0.7)</div>
+          <div><strong style="color:#C9A84C;">Canvas Init</strong> — ResizeObserver + timed render prevents blank screen</div>
+        </div>
+      </div>
+
+      <!-- B2B pipeline summary -->
+      <div style="background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;">
+        <div style="color:var(--gold);font-weight:700;font-size:10px;margin-bottom:10px;">B2B PIPELINE SUMMARY</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:9px;font-family:var(--mono);">
+          <div style="text-align:center;background:var(--void);border-radius:4px;padding:8px;"><div style="font-size:14px;font-weight:800;color:#D4AF37;">20</div><div style="font-size:7px;color:var(--dim);text-transform:uppercase;">Targets</div></div>
+          <div style="text-align:center;background:var(--void);border-radius:4px;padding:8px;"><div style="font-size:14px;font-weight:800;color:#C9A84C;">R146M</div><div style="font-size:7px;color:var(--dim);text-transform:uppercase;">Pipeline</div></div>
+          <div style="text-align:center;background:var(--void);border-radius:4px;padding:8px;"><div style="font-size:14px;font-weight:800;color:#8A6E2F;">1</div><div style="font-size:7px;color:var(--dim);text-transform:uppercase;">Active Pilot</div></div>
+        </div>
+      </div>
+
+      <!-- SHA-256 hash -->
+      <div style="text-align:center;font-size:7px;color:var(--dim);font-family:var(--mono);padding:8px;">
+        SHA256: <span id="arch-hash" style="color:#D4AF37;">—</span> · Venture Vision Ubuntu · 100% Equity Retention
       </div>
     </div>
   </div>
@@ -672,7 +766,7 @@ function createHouse(x,z,scale=1,rotation=0,metadata={}){
   group.add(door);
   group.position.set(x,y,z);
   group.rotation.y = rotation;
-  group.userData = {type:'file', name: metadata.name||'House', lines: metadata.lines||0, elev: Math.round(124+y*10), buildingType:'residential'};
+  group.userData = {type:'file', name: metadata.name||'House', lines: metadata.lines||0, elev: Math.round(124+y*10), buildingType:'residential', isResidential: true};
   cityGroup.add(group);
   buildingObjects.push(group);
   return group;
@@ -1008,6 +1102,21 @@ document.getElementById('demo-focus').addEventListener('click', () => {
     controls.update();
     if(!undergroundVisible) toggleUnderground(true);
   }
+});
+
+// ─── DEMOLISH TOGGLE ──────────────────────────────────────────────────
+let demolishActive = false;
+document.getElementById('demo-demolish').addEventListener('click', () => {
+  demolishActive = !demolishActive;
+  const btn = document.getElementById('demo-demolish');
+  btn.classList.toggle('active', demolishActive);
+  btn.textContent = demolishActive ? '🏗️ Restore' : '🏗️ Demolish';
+  // Toggle residential buildings visibility (simulates CesiumJS-style redevelopment)
+  cityGroup.children.forEach(mesh => {
+    if (mesh.userData && mesh.userData.isResidential) {
+      mesh.visible = !demolishActive;
+    }
+  });
 });
 
 // ─── FACILITY HIGHLIGHT ──────────────────────────────────────────────
