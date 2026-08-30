@@ -1,0 +1,110 @@
+# VVU Validation Suite — Taskfile.yml
+#
+# Modern task runner. Install `task`: https://taskfile.dev
+# The Makefile delegates to this when `task` is available.
+#
+# Usage:
+#   task rehearsal     — private dress rehearsal (compressed 72h)
+#   task validate      — public 72-hour validation (real-time)
+#   task freeze        — freeze build (git tag + digest pin)
+#   task evidence      — generate hourly bundle (HOUR=12)
+#   task verify        — verify replay (BUNDLE=path)
+#   task release       — publish evidence as GitHub Release
+#   task index         — compute Validation Index (METRICS=path)
+#   task sha256        — generate SHA-256 manifest
+#   task list          — list all tasks
+
+version: "3"
+
+vars:
+  VAL_ID: VVU-VAL-001
+  VAL_DIR: validation/VVU-VAL-001
+  RUNTIME_NS: vvu-runtime
+
+tasks:
+  default:
+    desc: List all tasks
+    cmds:
+      - task --list
+
+  rehearsal:
+    desc: Run the private dress rehearsal (compressed 72h in ~2min)
+    cmds:
+      - bash {{.VAL_DIR}}/rehearsal/run-rehearsal.sh
+    sources:
+      - "{{.VAL_DIR}}/rehearsal/run-rehearsal.sh"
+      - "{{.VAL_DIR}}/chaos/schedule.yaml"
+
+  validate:
+    desc: Run the public 72-hour validation (real-time, requires frozen build)
+    cmds:
+      - bash {{.VAL_DIR}}/rehearsal/run-rehearsal.sh --realtime
+    preconditions:
+      - sh: test -f {{.VAL_DIR}}/protocol/frozen-build.json
+        msg: "Build not frozen. Run `task freeze` first."
+
+  freeze:
+    desc: Freeze the build (git tag + container digest pin)
+    cmds:
+      - bash {{.VAL_DIR}}/rehearsal/freeze-build.sh
+      - |
+        echo "✓ build frozen — see {{.VAL_DIR}}/protocol/frozen-build.json"
+
+  evidence:
+    desc: Generate a single hourly evidence bundle
+    vars:
+      HOUR: 1
+    cmds:
+      - HOUR={{.HOUR}} bash {{.VAL_DIR}}/evidence/bundle.sh {{.HOUR}}
+
+  verify:
+    desc: Verify replay determinism against a bundle
+    vars:
+      BUNDLE: "{{.VAL_DIR}}/evidence/bundles/Hour-01.zip"
+    cmds:
+      - bash {{.VAL_DIR}}/evidence/replay.sh --bundle "{{.BUNDLE}}"
+
+  release:
+    desc: Publish the evidence package as a GitHub Release
+    cmds:
+      - bash {{.VAL_DIR}}/evidence/archive.sh --release
+    preconditions:
+      - sh: test -f {{.VAL_DIR}}/protocol/frozen-build.json
+        msg: "Build not frozen. Run `task freeze` first."
+
+  index:
+    desc: Compute the Validation Index from metrics
+    vars:
+      METRICS: ""
+    cmds:
+      - |
+        if [ -z "{{.METRICS}}" ]; then
+          echo "usage: task index METRICS=path/to/metrics.json"
+          exit 2
+        fi
+        python3 {{.VAL_DIR}}/evidence/validation-index.py --metrics "{{.METRICS}}"
+
+  sha256:
+    desc: Generate the SHA-256 manifest for all evidence bundles
+    cmds:
+      - |
+        cd {{.VAL_DIR}}/evidence/bundles && \
+        sha256sum *.zip > ../SHA256SUMS
+        echo "✓ SHA256SUMS written to {{.VAL_DIR}}/evidence/SHA256SUMS"
+
+  clean:
+    desc: Remove generated evidence (does NOT remove committed source)
+    cmds:
+      - rm -rf {{.VAL_DIR}}/evidence/bundles/ {{.VAL_DIR}}/evidence/SHA256SUMS {{.VAL_DIR}}/evidence/logs/
+      - echo "✓ clean"
+
+  observer-verify:
+    desc: Run the independent-observer verification procedure (§12 of protocol)
+    cmds:
+      - bash {{.VAL_DIR}}/evidence/replay.sh --observer-mode
+      - |
+        echo ""
+        echo "=== Independent Observer Verification Complete ==="
+        echo "If all steps printed VERIFICATION PASS, the published artifacts"
+        echo "match what was observed during the run. Publish your attestation"
+        echo "per §10 of the protocol."

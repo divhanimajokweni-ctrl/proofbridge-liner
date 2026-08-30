@@ -1,0 +1,39 @@
+# ── Ingress (sync wave 2: after pods are ready) ──
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vvu-dashboard
+  namespace: vvu-dashboard
+  labels:
+    app.kubernetes.io/name: vvu-dashboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+      more_set_headers "Permissions-Policy: geolocation=(), microphone=(), camera=()";
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/acme-challenge-type: http01
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - dashboard.vvu.africa
+      secretName: vvu-dashboard-tls
+  rules:
+    - host: dashboard.vvu.africa
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vvu-dashboard
+                port:
+                  name: http

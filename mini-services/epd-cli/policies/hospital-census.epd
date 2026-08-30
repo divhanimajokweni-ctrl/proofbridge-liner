@@ -1,0 +1,54 @@
+# Federated hospital census — privacy-preserving epistemic merge
+# Two hospitals reconcile patient counts without exposing raw data (ZK).
+
+policy "hospital_census" {
+  description "Privacy-preserving epidemic census reconciliation"
+  domain "public_health"
+  version "0.9.0"
+
+  shard by facility {
+    key "facility_id"
+    strategy hash
+    replication 2
+  }
+
+  invariant "monotonic_admits" "Cumulative admissions must never decrease" {
+    predicate cumulative_admits >= prev_admits
+    severity high
+  }
+
+  invariant "discharge_bound" "Discharges cannot exceed admissions" {
+    predicate total_discharges <= total_admits
+    severity high
+  }
+
+  soft invariant "bed_ratio" "ICU bed occupancy should stay below 92%" {
+    predicate icu_occupancy in [0, 92]
+    severity medium
+  }
+
+  expect merge {
+    preserves max(cumulative_admits)
+    requires monotonic_admits
+    locality_preserving true
+  }
+
+  on_violation {
+    strategy self_repair
+    objective max_consistency
+    max_iters 200
+  }
+
+  ancestry {
+    proof mmr
+    zk true
+    gossip mesh
+    anchor transparency_log
+  }
+
+  shadow_bridge {
+    enabled false
+  }
+
+  export to wasm
+}

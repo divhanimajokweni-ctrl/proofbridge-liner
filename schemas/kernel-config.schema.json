@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "epistemic://runtime/v0.8/schemas/kernel-config",
+  "title": "KernelConfig",
+  "description": "Configuration for creating a deterministic RuntimeKernel. Same config → identical replay.",
+  "type": "object",
+  "properties": {
+    "initialClockTime": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Initial clock time for DeterministicClock (NOT Date.now())"
+    },
+    "entropySeed": {
+      "type": "string",
+      "contentEncoding": "base64",
+      "description": "Entropy seed for DeterministicEntropy (xorshift128+ PRNG)"
+    },
+    "uuidNamespace": {
+      "type": "string",
+      "description": "UUID namespace for DeterministicUuid (SHA-256-based v5-like)"
+    },
+    "signerPrivateKey": {
+      "type": "string",
+      "description": "Signer private key (hex for Ed25519, string for HmacSigner)"
+    }
+  },
+  "required": [
+    "initialClockTime",
+    "entropySeed",
+    "uuidNamespace",
+    "signerPrivateKey"
+  ],
+  "additionalProperties": false
+}

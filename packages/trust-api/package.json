@@ -1,0 +1,23 @@
+{
+  "name": "@proofbridge/trust-api",
+  "version": "1.0.0-rc1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  },
+  "dependencies": {
+    "@proofbridge/trust-types": "workspace:*",
+    "@proofbridge/trust-runtime": "workspace:*",
+    "@proofbridge/trust-events": "workspace:*",
+    "@proofbridge/trust-crypto": "workspace:*",
+    "express": "^4.21.0",
+    "@types/express": "^5.0.0"
+  }
+}

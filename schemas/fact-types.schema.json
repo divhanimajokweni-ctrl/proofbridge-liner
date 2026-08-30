@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "epistemic://runtime/v0.8/schemas/fact-types",
+  "title": "FactTypes",
+  "description": "Enumeration of all fact types in the Epistemic Runtime",
+  "type": "string",
+  "enum": [
+    "observation",
+    "migration_plan",
+    "migration_execute",
+    "migration_verify",
+    "migration_complete",
+    "migration_rollback",
+    "projection_registered",
+    "projection_deprecated",
+    "schema_change",
+    "policy_change",
+    "identity_change",
+    "system"
+  ]
+}

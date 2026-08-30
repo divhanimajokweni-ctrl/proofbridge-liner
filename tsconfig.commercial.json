@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./",
+    "outDir": "./dist/commercial",
+    "paths": {
+      "@vvu/shared/*": ["shared/*"],
+      "@vvu/kernel/*": ["src/lib/kernel/*"],
+      "@vvu/commercial/*": ["commercial/*"],
+      "@vvu/open-source/*": ["open-source/*"]
+    }
+  },
+  "include": [
+    "open-source/**/*",
+    "shared/**/*",
+    "commercial/**/*",
+    "src/lib/kernel/**/*",
+    "src/engine/**/*",
+    "src/signer/**/*",
+    "src/storage/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

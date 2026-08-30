@@ -1,0 +1,15 @@
+{
+  "name": "epd-cli",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Epistemic Policy Definition (.epd) validator CLI + HTTP service (port 3031)",
+  "scripts": {
+    "dev": "bun --hot index.ts",
+    "start": "bun index.ts",
+    "cli": "bun index.ts"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.4"
+  }
+}

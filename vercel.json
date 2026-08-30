@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "public/vvu-trust-dashboard.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/enterprise", "dest": "/public/searm1-enterprise-suite.html" },
+    { "src": "/pipeline", "dest": "/public/searm1-pipeline.html" },
+    { "src": "/b2b", "dest": "/public/searm1-b2b-dashboard.html" }
+  ]
+}
