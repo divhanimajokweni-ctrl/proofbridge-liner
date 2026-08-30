@@ -1,0 +1,10 @@
+name: Vercel Production Deployment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Vercel production deployment is available on manual trigger"

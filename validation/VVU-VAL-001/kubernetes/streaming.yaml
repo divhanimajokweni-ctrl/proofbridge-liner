@@ -1,0 +1,31 @@
+# VVU-VAL-001 · Streaming Namespace
+# Headless streaming service (implementation-agnostic — OBS, FFmpeg, or cloud API).
+# Captures the Grafana dashboard and publishes to the public stream.
+# This is SUPPORTING evidence — the real evidence is the immutable logs/hashes.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: video-pvc, namespace: streaming }
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources: { requests: { storage: 200Gi } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: streaming-service, namespace: streaming, labels: { app: streaming-service } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: streaming-service } }
+  template:
+    metadata: { labels: { app: streaming-service } }
+    spec:
+      containers:
+        - name: streamer
+          image: vvu/headless-streaming-service:VAL-001
+          env:
+            - { name: STREAM_KEY, valueFrom: { secretKeyRef: { name: stream-key, key: key } } }
+            - { name: GRAFANA_URL, value: "http://grafana.monitoring:3000" }
+            - { name: STREAM_TARGET, value: "youtube" }  # youtube / twitch / rtmp
+            - { name: RESOLUTION, value: "1080p" }
+            - { name: FRAMERATE, value: "30" }
+          volumeMounts: [{ name: video, mountPath: /recordings }]
+      volumes: [{ name: video, persistentVolumeClaim: { claimName: video-pvc } }]

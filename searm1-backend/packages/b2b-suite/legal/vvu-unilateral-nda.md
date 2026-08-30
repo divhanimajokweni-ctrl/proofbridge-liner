@@ -4,7 +4,7 @@
 
 **STANDARD B2B UNILATERAL INTELLECTUAL PROPERTY & DATA PROTECTION FRAMEWORK**
 
-This Unilateral Proprietary Information and Non-Disclosure Agreement (the "Agreement") is entered into and made effective as of the date of electronic signing or download (the "Effective Date"), by and between Vaguely Vanity LLC (Pty) Ltd (Registration Number: 2026/259053/07), having its registered office at 14 Bird Street, Gqeberha, 6001, Eastern Cape, South Africa (hereinafter referred to as the "Disclosing Party"), and the corporate entity downloading, receiving, or reviewing these engineering packages (hereinafter referred to as the "Recipient").
+This Unilateral Proprietary Information and Non-Disclosure Agreement (the "Agreement") is entered into and made effective as of the date of electronic signing or download (the "Effective Date"), by and between Venture Vision Ubuntu (VVU) — Vaguely Vanity LLC (Pty) Ltd (Registration Number: 2026/259053/07), having its registered office at 14 Bird Street, Gqeberha, 6001, Eastern Cape, South Africa (hereinafter referred to as the "Disclosing Party"), and the corporate entity downloading, receiving, or reviewing these engineering packages (hereinafter referred to as the "Recipient").
 
 **WHEREAS**, the Disclosing Party has designed, developed, and owns highly proprietary cyber-physical systems, hardware architectures, computational algorithms, and database structures relating to the Hydro-Gateway (HBK Mk-II) and the Passive Dummy Unit (PDU) Asset Protection and Energy Recovery System under the name and style of Venture Vision Ubuntu (VVU);
 
@@ -36,7 +36,7 @@ The Recipient shall use the Confidential Information solely and exclusively for 
 
 ### 3. SOVEREIGNTY AND INTELLECTUAL PROPERTY EQUITY
 
-All Confidential Information disclosed under this Agreement, including all patents, copyrights, trademarks, software repositories, and trade secrets embedded within the VVU architecture, remains the sole and exclusive property of Vaguely Vanity LLC (Pty) Ltd. No license, copyright transfer, or joint-venture partnership is granted, implied, or established by this Agreement. Recipient explicitly acknowledges that the Disclosing Party retains 100% intellectual property equity and absolute data sovereignty over all physical telemetry streams and digital twin dashboards generated during any subsequent pilot operations.
+All Confidential Information disclosed under this Agreement, including all patents, copyrights, trademarks, software repositories, and trade secrets embedded within the VVU architecture, remains the sole and exclusive property of Venture Vision Ubuntu (VVU) — Vaguely Vanity LLC (Pty) Ltd. No license, copyright transfer, or joint-venture partnership is granted, implied, or established by this Agreement. Recipient explicitly acknowledges that the Disclosing Party retains 100% intellectual property equity and absolute data sovereignty over all physical telemetry streams and digital twin dashboards generated during any subsequent pilot operations.
 
 ### 4. SECURE TRANSMISSION AND DESTRUCTION
 

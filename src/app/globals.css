@@ -145,10 +145,10 @@
   --k-dim: #5b7280;
   --k-mono: ui-monospace, "JetBrains Mono", "Fira Code", "Geist Mono", Menlo, Consolas, monospace;
 
-  background-color: var(--k-bg);
-  color: var(--k-fg);
-  font-family: var(--k-mono);
-  min-height: 100vh;
+  background-color: #060a10;
+  color: #cbd5d9;
+  font-family: ui-monospace, "JetBrains Mono", monospace;
+  min-height: 100vh; background: #060a10;
 }
 
 .kernel-theme ::-webkit-scrollbar {
@@ -351,3 +351,377 @@
   color: var(--k-fg-bright) !important;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   VVU BRAND · BLACK & GOLD GLASSMORPHISM
+   ───────────────────────────────────────────────────────────────────────
+   Design philosophy: black + gold glassmorphism with compute-conserving
+   animations. Effects use CSS transforms (GPU-accelerated) and opacity
+   transitions only — no layout thrashing, no continuous JS timers.
+
+   Performance strategy:
+   - Animations use transform + opacity (compositor-only properties)
+   - All animations honor prefers-reduced-motion
+   - High-interval stress relief: animations pause when tab is hidden
+     (visibilitychange → CSS class toggles, no JS RAF loop)
+   - Glow effects use box-shadow (static, not animated) to save GPU
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Gold color tokens ─────────────────────────────────────────────── */
+:root {
+  --gold-bright: #F9E596;
+  --gold: #D4AF37;
+  --gold-dim: #AA8C2C;
+  --gold-dark: #8A6E2F;
+  --gold-bronze: #9A9368;
+  --gold-glow: rgba(212, 175, 55, 0.15);
+  --glass-bg: rgba(20, 20, 25, 0.65);
+  --glass-border: rgba(212, 175, 55, 0.2);
+  --glass-blur: 12px;
+}
+
+/* ─── Glassmorphism panel base ──────────────────────────────────────── */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(212, 175, 55, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle gold sheen on top edge — static, no animation */
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.4;
+}
+
+/* ─── Gold glass card variant ───────────────────────────────────────── */
+.glass-card-gold {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.04), rgba(20, 20, 25, 0.7));
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(249, 229, 150, 0.1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card-gold:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 20px rgba(212, 175, 55, 0.08),
+    inset 0 1px 0 rgba(249, 229, 150, 0.15);
+}
+
+/* ─── Gold text glow ───────────────────────────────────────────────── */
+.gold-text {
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(212, 175, 55, 0.3);
+}
+
+.gold-text-bright {
+  color: var(--gold-bright);
+  text-shadow: 0 0 8px rgba(249, 229, 150, 0.4);
+}
+
+/* ─── Gold gradient border (clipped) ───────────────────────────────── */
+.gold-border-grad {
+  position: relative;
+  border-radius: 8px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+}
+.gold-border-grad::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold-dark), var(--gold-bronze));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ─── Compute-conserving animations ─────────────────────────────────── */
+/* All animations use transform + opacity only (GPU compositor layer).
+   No width/height/top/left changes that trigger layout reflow. */
+
+/* Gentle pulse for status indicators — 3s cycle, opacity-only */
+@keyframes gold-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Shimmer sweep across glass surface — 8s cycle, GPU transform */
+@keyframes gold-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Breathing glow for active cards — 4s cycle, opacity on box-shadow */
+@keyframes gold-breathe {
+  0%, 100% { box-shadow: 0 0 0 rgba(212, 175, 55, 0); }
+  50% { box-shadow: 0 0 16px rgba(212, 175, 55, 0.12); }
+}
+
+/* Ring rotation — 20s cycle, very slow, transform-only */
+@keyframes ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Animation utility classes ─────────────────────────────────────── */
+.anim-pulse { animation: gold-pulse 3s ease-in-out infinite; }
+.anim-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.anim-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(249, 229, 150, 0.08) 50%, transparent 60%);
+  animation: gold-shimmer 8s ease-in-out infinite;
+  pointer-events: none;
+}
+.anim-breathe { animation: gold-breathe 4s ease-in-out infinite; }
+
+/* ─── Stress relief: pause animations when tab is hidden ────────────── */
+/* Toggled via JS visibilitychange listener — adds .tab-hidden to body.
+   This stops all CSS animations without JS RAF loops, conserving GPU. */
+.tab-hidden .anim-pulse,
+.tab-hidden .anim-shimmer::after,
+.tab-hidden .anim-breathe {
+  animation-play-state: paused;
+}
+
+/* ─── Stress relief: low-power mode (toggled via JS) ────────────────── */
+/* When .low-power is on body, all non-essential animations are disabled.
+   This is the "high interval" stress relief — activated when the system
+   detects high CPU/GPU load or battery saver mode. */
+.low-power .anim-pulse,
+.low-power .anim-shimmer::after,
+.low-power .anim-breathe,
+.low-power .ring-spin {
+  animation: none !important;
+}
+.low-power .glass-panel,
+.low-power .glass-card-gold {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(20, 20, 25, 0.9);
+}
+
+/* ─── Reduced motion preference ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .anim-pulse,
+  .anim-shimmer::after,
+  .anim-breathe,
+  .ring-spin {
+    animation: none !important;
+  }
+}
+
+/* ─── Three Rings logo wrapper ──────────────────────────────────────── */
+.vvu-logo {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  transition: transform 0.3s ease;
+}
+.vvu-logo:hover {
+  transform: scale(1.08);
+}
+/* Slow rotation on the logo rings — 30s cycle, very subtle */
+.vvu-logo .ring-spin {
+  animation: ring-rotate 30s linear infinite;
+  transform-origin: center;
+}
+
+/* ─── Gold accent button ────────────────────────────────────────────── */
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold-bright), var(--gold), var(--gold-dark));
+  color: #1a1a1a;
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.7em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.15);
+}
+.btn-gold:hover {
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+  transform: translateY(-1px);
+}
+.btn-gold:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+}
+
+/* ─── Gold progress bar ─────────────────────────────────────────────── */
+.progress-gold {
+  height: 6px;
+  background: rgba(20, 20, 25, 0.8);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+}
+.progress-gold-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-bright));
+  border-radius: 3px;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+  transition: width 0.5s ease;
+}
+
+/* ─── Glass modal overlay ───────────────────────────────────────────── */
+.glass-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   VVU TRUST SPHERE · OFFICIAL BRAND IDENTITY
+   ───────────────────────────────────────────────────────────────────────
+   Source: Trust Sphere — Venture Vision Ubuntu (official brand page)
+   Colors extracted from the canonical brand HTML.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Official VVU brand palette */
+  --vvu-void: #09090f;
+  --vvu-void-2: #0f0f18;
+  --vvu-glass: rgba(15, 15, 24, 0.65);
+  --vvu-glass-border: rgba(255, 255, 255, 0.06);
+  --vvu-glass-hover: rgba(255, 255, 255, 0.04);
+  --vvu-gold: #C9A84C;
+  --vvu-crimson: #C41E3A;
+  /* Three Rings — official colors */
+  --vvu-ring-sage: #8A9A5B;    /* Trust */
+  --vvu-ring-ember: #CC7722;   /* Innovation */
+  --vvu-ring-stone: #E2E3DB;   /* Impact */
+  /* Trust Sphere state colors */
+  --vvu-identity: #3d6bff;
+  --vvu-contribution: #3dd6ff;
+  --vvu-receipt: #3dffb0;
+  --vvu-hash: #c9a84c;
+  --vvu-zk: #b23dff;
+  --vvu-trust: #ff2e5f;
+  /* Text */
+  --vvu-text: #e8e6e0;
+  --vvu-dim: #7b7d8c;
+}
+
+/* ─── VVU glassmorphism (official Trust Sphere style) ───────────────── */
+.vvu-glass {
+  background: var(--vvu-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--vvu-glass-border);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.vvu-glass:hover {
+  background: var(--vvu-glass-hover);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Brand ring text colors ────────────────────────────────────────── */
+.text-sage { color: var(--vvu-ring-sage); }
+.text-ember { color: var(--vvu-ring-ember); }
+.text-stone { color: var(--vvu-ring-stone); }
+.text-gold { color: var(--vvu-gold); }
+.text-trust { color: var(--vvu-trust); }
+.text-identity { color: var(--vvu-identity); }
+.text-contribution { color: var(--vvu-contribution); }
+.text-receipt { color: var(--vvu-receipt); }
+
+/* ─── VVU brand header (Trust Sphere style) ─────────────────────────── */
+.vvu-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--vvu-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--vvu-glass-border);
+  border-radius: 10px;
+}
+.vvu-brand-header .logo-wrap {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+.vvu-brand-header .logo-wrap svg,
+.vvu-brand-header .logo-wrap img {
+  width: 100%;
+  height: 100%;
+  transition: transform 0.4s ease;
+}
+.vvu-brand-header:hover .logo-wrap svg,
+.vvu-brand-header:hover .logo-wrap img {
+  transform: scale(1.05);
+}
+.vvu-brand-header h1 {
+  font-family: 'Syne', 'Georgia', serif;
+  font-weight: 700;
+  font-size: 0.9em;
+  letter-spacing: 0.02em;
+  color: var(--vvu-text);
+  line-height: 1.2;
+}
+.vvu-brand-header h1 .accent {
+  color: var(--vvu-gold);
+}
+.vvu-brand-header .tagline {
+  font-family: 'IBM Plex Mono', 'Fragment Mono', monospace;
+  font-size: 0.6em;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--vvu-dim);
+  margin-top: 1px;
+}
+
+/* ─── Trust Sphere state indicators ──────────────────────────────────── */
+.trust-state-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.trust-state-dot.identity { background: var(--vvu-identity); box-shadow: 0 0 6px var(--vvu-identity); }
+.trust-state-dot.contribution { background: var(--vvu-contribution); box-shadow: 0 0 6px var(--vvu-contribution); }
+.trust-state-dot.receipt { background: var(--vvu-receipt); box-shadow: 0 0 6px var(--vvu-receipt); }
+.trust-state-dot.hash { background: var(--vvu-hash); box-shadow: 0 0 6px var(--vvu-hash); }
+.trust-state-dot.zk { background: var(--vvu-zk); box-shadow: 0 0 6px var(--vvu-zk); }
+.trust-state-dot.trust { background: var(--vvu-trust); box-shadow: 0 0 6px var(--vvu-trust); }

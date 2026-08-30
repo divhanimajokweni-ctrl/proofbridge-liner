@@ -1,0 +1,10 @@
+name: Qodana Code Inspection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  qodana:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Qodana inspection is available on manual trigger"

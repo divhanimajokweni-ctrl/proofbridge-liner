@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "epistemic://runtime/v0.8/schemas/replay-verification",
+  "title": "ReplayVerification",
+  "description": "Verification result from the DeterministicReplay engine. All 5 checks must pass for deterministic guarantee.",
+  "type": "object",
+  "properties": {
+    "projectionRoot1": {
+      "type": "string",
+      "description": "First run projection root hashes (JSON-serialized map)"
+    },
+    "projectionRoot2": {
+      "type": "string",
+      "description": "Second run projection root hashes (JSON-serialized map)"
+    },
+    "rootsMatch": {
+      "type": "boolean",
+      "description": "Whether projection roots match between runs"
+    },
+    "canonicalBytesMatch": {
+      "type": "boolean",
+      "description": "Whether canonical bytes are identical between runs"
+    },
+    "signaturesMatch": {
+      "type": "boolean",
+      "description": "Whether signatures are identical between runs"
+    },
+    "mmrRootsMatch": {
+      "type": "boolean",
+      "description": "Whether MMR roots are identical between runs"
+    },
+    "factIdsMatch": {
+      "type": "boolean",
+      "description": "Whether fact IDs are identical between runs"
+    },
+    "deterministic": {
+      "type": "boolean",
+      "description": "True only if ALL 5 checks pass"
+    },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "passed",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Individual assertion results"
+    }
+  },
+  "required": [
+    "projectionRoot1",
+    "projectionRoot2",
+    "rootsMatch",
+    "canonicalBytesMatch",
+    "signaturesMatch",
+    "mmrRootsMatch",
+    "factIdsMatch",
+    "deterministic",
+    "assertions"
+  ],
+  "additionalProperties": false
+}
