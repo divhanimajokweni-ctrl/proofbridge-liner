@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SEARM1 · Deep-Level Mining · Interactive 3D Slide</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: #030712;
+      color: #e2e8f0;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .code-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #020617;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #f59e0b;
+    }
+
+    /* ─── SLIDE CONTAINER ─── */
+    #slide-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: #030712;
+    }
+
+    /* ─── TOP BAR ─── */
+    #topbar {
+      background: rgba(3, 7, 18, 0.92);
+      border-bottom: 1px solid #1e293b;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 20;
+      backdrop-filter: blur(8px);
+    }
+    #topbar .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #topbar .brand .logo {
+      width: 28px;
+      height: 28px;
+      border: 2px solid #f59e0b;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #f59e0b;
+      font-weight: 900;
+    }
+    #topbar .brand h1 {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #f1f5f9;
+    }
+    #topbar .brand h1 span {
+      color: #f59e0b;
+    }
+    #topbar .brand .sub {
+      font-size: 8px;
+      color: #64748b;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #topbar .status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #topbar .status .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,
+      100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.3;
+      }
+    }
+    #topbar .status .badge {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      padding: 2px 10px;
+      border-radius: 12px;
+      color: #f59e0b;
+      font-weight: 700;
+      font-size: 9px;
+    }
+
+    /* ─── MAIN LAYOUT ─── */
+    #main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ─── 3D VIEWPORT ─── */
+    #viewport {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+      background: #030712;
+    }
+    #viewport canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* ─── SLIDE OVERLAY CONTROLS ─── */
+    #slide-controls {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 30;
+      display: flex;
+      gap: 8px;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 8px 14px;
+      align-items: center;
+    }
+    #slide-controls .dot-nav {
+      display: flex;
+      gap: 6px;
+    }
+    #slide-controls .dot-nav button {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 1px solid #334155;
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.3s;
+      padding: 0;
+    }
+    #slide-controls .dot-nav button.active {
+      background: #f59e0b;
+      border-color: #f59e0b;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+    }
+    #slide-controls .dot-nav button:hover {
+      border-color: #f59e0b;
+    }
+    #slide-controls .slide-label {
+      font-size: 9px;
+      color: #94a3b8;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 0 8px;
+      border-left: 1px solid #1e293b;
+      border-right: 1px solid #1e293b;
+    }
+    #slide-controls .nav-btn {
+      background: none;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      transition: all 0.2s;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #slide-controls .nav-btn:hover {
+      border-color: #f59e0b;
+      color: #f1f5f9;
+    }
+
+    /* ─── SLIDE INFORMATION PANEL ─── */
+    #slide-info {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 25;
+      background: rgba(3, 7, 18, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 16px;
+      max-width: 340px;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+    #slide-info .title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    #slide-info .title .highlight {
+      color: #f59e0b;
+    }
+    #slide-info .desc {
+      font-size: 10px;
+      color: #94a3b8;
+      line-height: 1.5;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    #slide-info .metrics {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+      font-size: 9px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #64748b;
+    }
+    #slide-info .metrics .val {
+      color: #f1f5f9;
+      font-weight: 700;
+    }
+    #slide-info .metrics .val.gold {
+      color: #f59e0b;
+    }
+    #slide-info .metrics .val.cyan {
+      color: #22d3ee;
+    }
+    #slide-info .metrics .val.rose {
+      color: #f43f5e;
+    }
+
+    /* ─── RIGHT PANEL: HBK OSCILLOSCOPE ─── */
+    #hbk-panel {
+      position: absolute;
+      bottom: 80px;
+      right: 16px;
+      z-index: 25;
+      width: 300px;
+      background: rgba(3, 7, 18, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      transition: opacity 0.5s ease;
+    }
+    #hbk-panel .hbk-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #94a3b8;
+      border-bottom: 1px solid #1e293b;
+      padding-bottom: 6px;
+    }
+    #hbk-panel .hbk-header .active {
+      color: #10b981;
+      font-weight: 700;
+    }
+    #hbk-panel .scope {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 4px;
+      padding: 4px;
+    }
+    #hbk-panel .scope canvas {
+      width: 100%;
+      height: 40px;
+      display: block;
+      border-radius: 2px;
+    }
+    #hbk-panel .scope-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 7px;
+      font-family: 'JetBrains Mono', monospace;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    #hbk-panel .scope-label .poisson {
+      color: #f59e0b;
+    }
+    #hbk-panel .scope-label .gaussian {
+      color: #22d3ee;
+    }
+
+    /* ─── ACTION BUTTONS ─── */
+    #action-bar {
+      position: absolute;
+      bottom: 80px;
+      left: 16px;
+      z-index: 25;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    #action-bar button {
+      padding: 6px 14px;
+      font-size: 9px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      background: rgba(3, 7, 18, 0.85);
+      backdrop-filter: blur(8px);
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    #action-bar button:hover {
+      border-color: #f59e0b;
+      color: #f1f5f9;
+    }
+    #action-bar button.active {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: #f59e0b;
+      color: #f59e0b;
+    }
+    #action-bar button.danger {
+      border-color: #f43f5e;
+    }
+    #action-bar button.danger:hover {
+      border-color: #f43f5e;
+      color: #f43f5e;
+    }
+    #action-bar button.danger.active {
+      background: rgba(244, 63, 94, 0.15);
+      border-color: #f43f5e;
+      color: #f43f5e;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media(max-width:900px) {
+      #hbk-panel {
+        width: 220px;
+        bottom: 70px;
+        right: 10px;
+        padding: 8px 10px;
+      }
+      #hbk-panel .scope canvas {
+        height: 30px;
+      }
+      #slide-info {
+        max-width: 220px;
+        padding: 8px 12px;
+        top: 10px;
+        left: 10px;
+      }
+      #slide-info .title {
+        font-size: 11px;
+      }
+      #action-bar {
+        bottom: 70px;
+        left: 10px;
+      }
+      #action-bar button {
+        font-size: 7px;
+        padding: 4px 10px;
+      }
+    }
+    @media(max-width:600px) {
+      #hbk-panel {
+        display: none;
+      }
+      #slide-info .metrics {
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      #slide-controls .slide-label {
+        font-size: 7px;
+        padding: 0 4px;
+      }
+      #slide-controls .nav-btn {
+        font-size: 8px;
+        padding: 2px 6px;
+      }
+      #topbar .brand .sub {
+        display: none;
+      }
+      #topbar .status .badge {
+        font-size: 7px;
+        padding: 1px 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="slide-container">
+
+    <!-- TOP BAR -->
+    <div id="topbar">
+      <div class="brand">
+        <div class="logo">⌬</div>
+        <div>
+          <h1>VENTURE <span>VISION</span> UBUNTU</h1>
+          <div class="sub">Deep-Level Mining · Dewatering &amp; Seismic Monitoring</div>
+        </div>
+      </div>
+      <div class="status">
+        <span class="dot"></span>
+        <span>LIVE</span>
+        <span class="badge">HBK ACTIVE</span>
+        <span id="slide-counter" class="code-font" style="color:#64748b;font-size:9px;">1 / 5</span>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div id="main">
+
+      <!-- 3D Viewport -->
+      <div id="viewport"></div>
+
+      <!-- Slide Info Panel -->
+      <div id="slide-info">
+        <div class="title"><span class="highlight">⛏️</span> <span id="slide-title">Deep-Level Subterranean Profile</span></div>
+        <div class="desc" id="slide-desc">West Wits Line · Driefontein &amp; Kloof · Witwatersrand Basin</div>
+        <div class="metrics">
+          <span>DEPTH <span class="val" id="m-depth">3,300m</span></span>
+          <span>REEF <span class="val gold" id="m-reef">CL / VCR</span></span>
+          <span>INFLOW <span class="val cyan" id="m-inflow">42.5 ML/day</span></span>
+          <span>STATUS <span class="val rose" id="m-status">NOMINAL</span></span>
+        </div>
+      </div>
+
+      <!-- HBK Noise Discrimination Panel -->
+      <div id="hbk-panel">
+        <div class="hbk-header">
+          <span>🔊 HBK Noise Discrimination Engine</span>
+          <span class="active">● ACTIVE</span>
+        </div>
+        <div class="scope">
+          <canvas id="scope-poisson"></canvas>
+          <div class="scope-label"><span class="poisson">⬡ POISSON (Blast)</span><span id="scope-p-status" style="color:#64748b;">QUIET</span></div>
+        </div>
+        <div class="scope">
+          <canvas id="scope-gaussian"></canvas>
+          <div class="scope-label"><span class="gaussian">～ GAUSSIAN (Leak)</span><span id="scope-g-status" style="color:#64748b;">NOMINAL</span></div>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div id="action-bar">
+        <button id="btn-blast" class="danger">💥 Blast (Poisson)</button>
+        <button id="btn-leak" class="danger">💧 Leak (Gaussian)</button>
+        <button id="btn-reset">↻ Reset</button>
+        <button id="btn-export">📸 Export</button>
+      </div>
+
+      <!-- Slide Controls -->
+      <div id="slide-controls">
+        <button class="nav-btn" id="prev-slide">‹</button>
+        <div class="dot-nav" id="dot-nav">
+          <button class="active" data-slide="0"></button>
+          <button data-slide="1"></button>
+          <button data-slide="2"></button>
+          <button data-slide="3"></button>
+          <button data-slide="4"></button>
+        </div>
+        <span class="slide-label" id="slide-label">SUBSURFACE PROFILE</span>
+        <button class="nav-btn" id="next-slide">›</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 1. SLIDE DATA
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const SLIDES = [{
+      id: 0,
+      title: 'Deep-Level Subterranean Profile',
+      desc: 'West Wits Line · Driefontein & Kloof · Witwatersrand Basin',
+      depth: '3,300m',
+      reef: 'CL / VCR',
+      inflow: '42.5 ML/day',
+      status: 'NOMINAL',
+      camera: { x: 0, y: 80, z: 120 },
+      target: { x: 0, y: -60, z: 0 },
+      label: 'SUBSURFACE PROFILE'
+    }, {
+      id: 1,
+      title: 'Carbon Leader Reef Facies',
+      desc: 'CSCLR · SCLR · MCLR · Pyrite-Rich Gold Seams',
+      depth: '1,200m',
+      reef: 'CL',
+      inflow: '38.2 ML/day',
+      status: 'STABLE',
+      camera: { x: 60, y: 40, z: 100 },
+      target: { x: 20, y: -80, z: -20 },
+      label: 'REEF GEOLOGY'
+    }, {
+      id: 2,
+      title: 'Dewatering Column & Advection',
+      desc: 'High-Pressure Lifting · 20–250 bar · Upward Flow',
+      depth: '2,100m',
+      reef: 'VCR',
+      inflow: '51.7 ML/day',
+      status: 'OPERATIONAL',
+      camera: { x: -50, y: 50, z: 80 },
+      target: { x: -40, y: -100, z: 0 },
+      label: 'DEWATERING HYDRAULICS'
+    }, {
+      id: 3,
+      title: 'Ventersdorp Contact Reef Facies',
+      desc: 'Milky Cobble · Sandy 1 & 2 · Palaeomorphological Model',
+      depth: '2,800m',
+      reef: 'VCR',
+      inflow: '44.9 ML/day',
+      status: 'VERIFIED',
+      camera: { x: 40, y: 30, z: 110 },
+      target: { x: -10, y: -140, z: 30 },
+      label: 'VCR FACIES'
+    }, {
+      id: 4,
+      title: 'HBK Noise Discrimination Engine',
+      desc: 'Poisson Blasts vs Gaussian Leaks · FPR ≤ 5.0%',
+      depth: '3,300m',
+      reef: 'CL / VCR',
+      inflow: '58.2 ML/day',
+      status: 'MONITORING',
+      camera: { x: 0, y: 60, z: 140 },
+      target: { x: 0, y: -80, z: 0 },
+      label: 'HBK MONITORING'
+    }];
+
+    let currentSlide = 0;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 2. THREE.JS 3D SCENE
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    const container = document.getElementById('viewport');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x030712);
+    scene.fog = new THREE.FogExp2(0x030712, 0.002);
+
+    const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 1, 500);
+    camera.position.set(0, 80, 120);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.maxPolarAngle = Math.PI * 0.48;
+    controls.minDistance = 20;
+    controls.maxDistance = 250;
+    controls.target.set(0, -60, 0);
+    controls.update();
+
+    // ─── LIGHTS ───
+    const ambient = new THREE.AmbientLight(0x1a1a3e, 0.5);
+    scene.add(ambient);
+
+    const keyLight = new THREE.DirectionalLight(0xffcc88, 1.2);
+    keyLight.position.set(80, 120, 60);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 1024;
+    keyLight.shadow.mapSize.height = 1024;
+    keyLight.shadow.camera.far = 300;
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0x4488ff, 0.3);
+    fillLight.position.set(-60, 40, -80);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xff8844, 0.2);
+    rimLight.position.set(0, -100, 80);
+    scene.add(rimLight);
+
+    // ─── GROUPS ───
+    const terrainGroup = new THREE.Group();
+    const shaftGroup = new THREE.Group();
+    const reefGroup = new THREE.Group();
+    const pipeGroup = new THREE.Group();
+    const particleGroup = new THREE.Group();
+    scene.add(terrainGroup, shaftGroup, reefGroup, pipeGroup, particleGroup);
+
+    // ─── TERRAIN ───
+    const terrainSize = 180;
+    const terrainSeg = 60;
+    const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSeg, terrainSeg);
+    const terrainPos = terrainGeo.attributes.position;
+    for (let i = 0; i < terrainPos.count; i++) {
+      const x = terrainPos.getX(i);
+      const y = terrainPos.getY(i);
+      const z = Math.sin(x * 0.035) * Math.cos(y * 0.035) * 4 + Math.sin(x * 0.07 + y * 0.05) * 1.5;
+      terrainPos.setZ(i, z);
+    }
+    terrainGeo.computeVertexNormals();
+    const terrainMat = new THREE.MeshStandardMaterial({
+      color: 0x0f1420,
+      roughness: 0.95,
+      metalness: 0.05,
+      flatShading: true,
+    });
+    const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+    terrainMesh.rotation.x = -Math.PI / 2;
+    terrainMesh.position.y = -2;
+    terrainMesh.receiveShadow = true;
+    terrainGroup.add(terrainMesh);
+
+    // ─── SHAFTS ───
+    const shaftData = [
+      { x: 30, z: 20, top: 0, bottom: -110, radius: 2.0, color: 0x334155 },
+      { x: -50, z: -30, top: 0, bottom: -150, radius: 2.4, color: 0x334155 },
+      { x: -10, z: 50, top: 0, bottom: -80, radius: 1.6, color: 0x2d3748 },
+      { x: 40, z: -40, top: 0, bottom: -90, radius: 1.8, color: 0x2d3748 },
+    ];
+
+    shaftData.forEach(s => {
+      const h = Math.abs(s.bottom - s.top);
+      const geo = new THREE.CylinderGeometry(s.radius, s.radius, h, 14, 1, true);
+      const mat = new THREE.MeshStandardMaterial({
+        color: s.color,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.3,
+        metalness: 0.5,
+        roughness: 0.5,
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(s.x, s.top - h / 2, s.z);
+      mesh.castShadow = true;
+      shaftGroup.add(mesh);
+
+      // Solid inner core
+      const coreMat = new THREE.MeshStandardMaterial({
+        color: 0x1a2332,
+        transparent: true,
+        opacity: 0.15,
+        metalness: 0.3,
+        roughness: 0.7,
+      });
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(s.radius * 0.5, s.radius * 0.5, h, 8), coreMat);
+      core.position.set(s.x, s.top - h / 2, s.z);
+      shaftGroup.add(core);
+
+      // Level markers
+      for (let lv = -20; lv > s.bottom; lv -= 20) {
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(s.radius + 0.3, 0.06, 6, 16),
+          new THREE.MeshBasicMaterial({ color: 0x4a5a7a, transparent: true, opacity: 0.2 })
+        );
+        ring.position.set(s.x, lv, s.z);
+        ring.rotation.x = Math.PI / 2;
+        shaftGroup.add(ring);
+      }
+    });
+
+    // Declines
+    const declineMat = new THREE.MeshStandardMaterial({
+      color: 0x2d3748,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.2,
+    });
+    const declinePaths = [
+      [
+        [-50, -150, -30],
+        [-110, -185, -90]
+      ],
+      [
+        [30, -80, 20],
+        [-20, -120, 50]
+      ],
+    ];
+    declinePaths.forEach(([start, end]) => {
+      const p1 = new THREE.Vector3(...start);
+      const p2 = new THREE.Vector3(...end);
+      const curve = new THREE.LineCurve3(p1, p2);
+      const tube = new THREE.TubeGeometry(curve, 12, 1.2, 6, false);
+      const mesh = new THREE.Mesh(tube, declineMat);
+      shaftGroup.add(mesh);
+    });
+
+    // ─── REEF FACIES ───
+    const reefSize = 140;
+    const reefSeg = 50;
+    const reefGeo = new THREE.PlaneGeometry(reefSize, reefSize, reefSeg, reefSeg);
+    const reefPos = reefGeo.attributes.position;
+    const reefColors = new Float32Array(reefPos.count * 3);
+
+    for (let i = 0; i < reefPos.count; i++) {
+      const x = reefPos.getX(i);
+      const y = reefPos.getY(i);
+      let z = -60 - (x * 0.12) - (y * 0.08);
+      // Fault displacement
+      if (x > -10) z -= 12.0;
+      if (x > 20) z -= 8.0;
+      // Geological wrinkles
+      z += Math.sin(x * 0.08) * Math.cos(y * 0.08) * 1.5;
+      reefPos.setZ(i, z);
+
+      // Color mapping: gold-bearing seams
+      const seam = Math.abs(z % 12) < 0.5 || (x > 5 && x < 15 && y > -10 && y < 10);
+      if (seam) {
+        reefColors[i * 3] = 0.95;
+        reefColors[i * 3 + 1] = 0.55 + Math.sin(x * 0.2 + y * 0.15) * 0.2;
+        reefColors[i * 3 + 2] = 0.04;
+      } else {
+        reefColors[i * 3] = 0.08;
+        reefColors[i * 3 + 1] = 0.07;
+        reefColors[i * 3 + 2] = 0.18;
+      }
+    }
+    reefGeo.setAttribute('color', new THREE.BufferAttribute(reefColors, 3));
+    reefGeo.computeVertexNormals();
+
+    const reefMat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.85,
+      metalness: 0.2,
+      side: THREE.DoubleSide,
+      flatShading: true,
+      transparent: true,
+      opacity: 0.85,
+    });
+    const reefMesh = new THREE.Mesh(reefGeo, reefMat);
+    reefMesh.rotation.x = -Math.PI / 2;
+    reefMesh.position.y = 0;
+    reefMesh.receiveShadow = true;
+    reefGroup.add(reefMesh);
+
+    // Secondary reef (VCR) — slightly above
+    const reef2Geo = new THREE.PlaneGeometry(reefSize * 0.7, reefSize * 0.6, 30, 30);
+    const reef2Pos = reef2Geo.attributes.position;
+    const reef2Colors = new Float32Array(reef2Pos.count * 3);
+    for (let i = 0; i < reef2Pos.count; i++) {
+      const x = reef2Pos.getX(i);
+      const y = reef2Pos.getY(i);
+      let z = -30 - (x * 0.08) - (y * 0.06) + Math.sin(x * 0.06 + y * 0.04) * 0.8;
+      reef2Pos.setZ(i, z);
+      const seam = Math.abs(z % 8) < 0.4;
+      if (seam) {
+        reef2Colors[i * 3] = 0.85;
+        reef2Colors[i * 3 + 1] = 0.65;
+        reef2Colors[i * 3 + 2] = 0.10;
+      } else {
+        reef2Colors[i * 3] = 0.06;
+        reef2Colors[i * 3 + 1] = 0.05;
+        reef2Colors[i * 3 + 2] = 0.14;
+      }
+    }
+    reef2Geo.setAttribute('color', new THREE.BufferAttribute(reef2Colors, 3));
+    reef2Geo.computeVertexNormals();
+    const reef2Mat = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.85,
+      metalness: 0.15,
+      side: THREE.DoubleSide,
+      flatShading: true,
+      transparent: true,
+      opacity: 0.6,
+    });
+    const reef2Mesh = new THREE.Mesh(reef2Geo, reef2Mat);
+    reef2Mesh.rotation.x = -Math.PI / 2;
+    reef2Mesh.position.set(10, 0, -10);
+    reefGroup.add(reef2Mesh);
+
+    // ─── DEWATERING PIPES ───
+    const pipeMat = new THREE.MeshStandardMaterial({
+      color: 0x1e3a8a,
+      transparent: true,
+      opacity: 0.55,
+      roughness: 0.15,
+      metalness: 0.85,
+    });
+    const pipeLeakMat = new THREE.MeshStandardMaterial({
+      color: 0xf43f5e,
+      transparent: true,
+      opacity: 0.8,
+      roughness: 0.2,
+      metalness: 0.3,
+    });
+
+    const pipePaths = [
+      { start: [30, -110, 20], end: [30, 0, 20] },
+      { start: [-50, -150, -30], end: [-50, 0, -30] },
+      { start: [-10, -80, 50], end: [-10, 0, 50] },
+      { start: [40, -90, -40], end: [40, 0, -40] },
+    ];
+
+    const pipeMeshes = [];
+    pipePaths.forEach((p) => {
+      const s = new THREE.Vector3(...p.start);
+      const e = new THREE.Vector3(...p.end);
+      const curve = new THREE.LineCurve3(s, e);
+      const tube = new THREE.TubeGeometry(curve, 16, 0.6, 8, false);
+      const mesh = new THREE.Mesh(tube, pipeMat);
+      mesh.castShadow = true;
+      pipeGroup.add(mesh);
+      pipeMeshes.push(mesh);
+
+      // Flow particles for this pipe
+      const pCount = 25;
+      const positions = new Float32Array(pCount * 3);
+      const states = [];
+      for (let i = 0; i < pCount; i++) {
+        const t = i / pCount;
+        const pt = curve.getPointAt(t);
+        positions[i * 3] = pt.x;
+        positions[i * 3 + 1] = pt.y;
+        positions[i * 3 + 2] = pt.z;
+        states.push({ t, curve, speed: 0.08 + Math.random() * 0.04 });
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({
+        color: 0x38bdf8,
+        size: 0.5,
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+      });
+      const points = new THREE.Points(geo, mat);
+      particleGroup.add(points);
+      pipeMeshes.push({ points, states, curve });
+    });
+
+    // ─── PUMP STATION NODES ───
+    const pumpMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      metalness: 0.7,
+      roughness: 0.3,
+    });
+    const pumpPositions = [
+      [-50, -140, -30],
+      [30, -100, 20],
+      [-10, -70, 50],
+      [40, -80, -40],
+    ];
+    pumpPositions.forEach((pos) => {
+      const pump = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 1.5, 8), pumpMat);
+      pump.position.set(...pos);
+      pump.castShadow = true;
+      pipeGroup.add(pump);
+      const indicator = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3, 6, 6),
+        new THREE.MeshBasicMaterial({ color: 0x10b981 })
+      );
+      indicator.position.set(pos[0], pos[1] + 1.2, pos[2]);
+      pipeGroup.add(indicator);
+    });
+
+    // ─── SEISMIC BLAST SPHERE ───
+    let blastSphere = null;
+    let isBlastActive = false;
+    let blastTime = 0;
+
+    // ─── LEAK INDICATOR ───
+    let leakSphere = null;
+    let leakRipple = null;
+    let isLeakActive = false;
+
+    // ─── RESIZE ───
+    function resize() {
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    }
+    window.addEventListener('resize', resize);
+    new ResizeObserver(resize).observe(container);
+    setTimeout(resize, 50);
+
+    // ─── SLIDE NAVIGATION ───
+    function goToSlide(index) {
+      currentSlide = Math.max(0, Math.min(SLIDES.length - 1, index));
+      const slide = SLIDES[currentSlide];
+
+      // Update UI
+      document.getElementById('slide-title').textContent = slide.title;
+      document.getElementById('slide-desc').textContent = slide.desc;
+      document.getElementById('m-depth').textContent = slide.depth;
+      document.getElementById('m-reef').textContent = slide.reef;
+      document.getElementById('m-inflow').textContent = slide.inflow;
+      document.getElementById('m-status').textContent = slide.status;
+      document.getElementById('slide-label').textContent = slide.label;
+      document.getElementById('slide-counter').textContent = `${currentSlide + 1} / ${SLIDES.length}`;
+
+      // Dot nav
+      document.querySelectorAll('#dot-nav button').forEach((btn, i) => {
+        btn.classList.toggle('active', i === currentSlide);
+      });
+
+      // Animate camera
+      const targetCam = slide.camera;
+      const targetTarget = slide.target;
+      const startPos = camera.position.clone();
+      const startTarget = controls.target.clone();
+      const duration = 800;
+      const startTime = Date.now();
+
+      function animateCamera() {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - t, 3);
+        camera.position.lerpVectors(startPos, new THREE.Vector3(targetCam.x, targetCam.y, targetCam.z), ease);
+        controls.target.lerpVectors(startTarget, new THREE.Vector3(targetTarget.x, targetTarget.y, targetTarget.z), ease);
+        controls.update();
+        if (t < 1) requestAnimationFrame(animateCamera);
+      }
+      animateCamera();
+    }
+
+    document.querySelectorAll('#dot-nav button').forEach((btn) => {
+      btn.addEventListener('click', () => goToSlide(parseInt(btn.dataset.slide)));
+    });
+    document.getElementById('prev-slide').addEventListener('click', () => goToSlide(currentSlide - 1));
+    document.getElementById('next-slide').addEventListener('click', () => goToSlide(currentSlide + 1));
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') goToSlide(currentSlide - 1);
+      if (e.key === 'ArrowRight') goToSlide(currentSlide + 1);
+      if (e.key === 'b' || e.key === 'B') triggerBlast();
+      if (e.key === 'l' || e.key === 'L') triggerLeak();
+      if (e.key === 'r' || e.key === 'R') resetState();
+    });
+
+    // ─── BLAST (POISSON) ───
+    function triggerBlast() {
+      if (isBlastActive) return;
+      isBlastActive = true;
+      blastTime = 0;
+
+      const source = new THREE.Vector3(-50, -140, -30);
+      blastSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(1.0, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.9 })
+      );
+      blastSphere.position.copy(source);
+      scene.add(blastSphere);
+
+      document.getElementById('scope-p-status').textContent = '🔥 BLAST';
+      document.getElementById('scope-p-status').style.color = '#f59e0b';
+      document.getElementById('m-status').textContent = 'SEISMIC';
+      document.getElementById('m-status').style.color = '#f59e0b';
+      document.getElementById('btn-blast').classList.add('active');
+
+      // Log
+      console.log('[POISSON] Seismic blast triggered at', source);
+    }
+
+    // ─── LEAK (GAUSSIAN) ───
+    function triggerLeak() {
+      if (isLeakActive) return;
+      isLeakActive = true;
+
+      const pos = new THREE.Vector3(-50, -80, -30);
+      leakSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(1.8, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.7 })
+      );
+      leakSphere.position.copy(pos);
+      pipeGroup.add(leakSphere);
+
+      leakRipple = new THREE.Mesh(
+        new THREE.RingGeometry(0.5, 4, 16),
+        new THREE.MeshBasicMaterial({ color: 0xf43f5e, side: THREE.DoubleSide, transparent: true, opacity: 0.5 })
+      );
+      leakRipple.rotation.x = Math.PI / 2;
+      leakRipple.position.set(pos.x, pos.y, pos.z);
+      scene.add(leakRipple);
+
+      document.getElementById('scope-g-status').textContent = '⚠️ LEAK';
+      document.getElementById('scope-g-status').style.color = '#f43f5e';
+      document.getElementById('m-inflow').textContent = '58.2 ML/day';
+      document.getElementById('m-status').textContent = 'ALERT';
+      document.getElementById('m-status').style.color = '#f43f5e';
+      document.getElementById('btn-leak').classList.add('active');
+
+      // Highlight nearest pipe
+      pipeMeshes.forEach(m => {
+        if (m.material && m.material.color) {
+          m.material.color.setHex(0xf43f5e);
+          m.material.emissive = new THREE.Color(0xf43f5e);
+          m.material.emissiveIntensity = 0.3;
+        }
+      });
+      console.log('[GAUSSIAN] Continuous leak detected at', pos);
+    }
+
+    // ─── RESET ───
+    function resetState() {
+      isBlastActive = false;
+      isLeakActive = false;
+
+      if (blastSphere) { scene.remove(blastSphere);
+        blastSphere = null; }
+      if (leakSphere) { pipeGroup.remove(leakSphere);
+        leakSphere = null; }
+      if (leakRipple) { scene.remove(leakRipple);
+        leakRipple = null; }
+
+      document.getElementById('scope-p-status').textContent = 'QUIET';
+      document.getElementById('scope-p-status').style.color = '#64748b';
+      document.getElementById('scope-g-status').textContent = 'NOMINAL';
+      document.getElementById('scope-g-status').style.color = '#64748b';
+      document.getElementById('m-inflow').textContent = SLIDES[currentSlide].inflow;
+      document.getElementById('m-status').textContent = SLIDES[currentSlide].status;
+      document.getElementById('m-status').style.color = '';
+      document.getElementById('btn-blast').classList.remove('active');
+      document.getElementById('btn-leak').classList.remove('active');
+
+      pipeMeshes.forEach(m => {
+        if (m.material && m.material.color) {
+          m.material.color.setHex(0x1e3a8a);
+          m.material.emissive = new THREE.Color(0x000000);
+          m.material.emissiveIntensity = 0;
+        }
+      });
+      console.log('[RESET] System state normalized');
+    }
+
+    // ─── EXPORT ───
+    function exportScene() {
+      renderer.render(scene, camera);
+      const link = document.createElement('a');
+      link.download = `searm1-mining-slide-${currentSlide + 1}.png`;
+      link.href = renderer.domElement.toDataURL('image/png');
+      link.click();
+    }
+
+    // ─── BUTTON BINDINGS ───
+    document.getElementById('btn-blast').addEventListener('click', triggerBlast);
+    document.getElementById('btn-leak').addEventListener('click', triggerLeak);
+    document.getElementById('btn-reset').addEventListener('click', resetState);
+    document.getElementById('btn-export').addEventListener('click', exportScene);
+
+    // ─── OSCILLOSCOPE RENDER ───
+    const canvasP = document.getElementById('scope-poisson');
+    const canvasG = document.getElementById('scope-gaussian');
+    const ctxP = canvasP.getContext('2d');
+    const ctxG = canvasG.getContext('2d');
+    let graphOffset = 0;
+
+    function renderScopes() {
+      requestAnimationFrame(renderScopes);
+
+      const w = canvasP.width = canvasP.clientWidth || 200;
+      const h = canvasP.height = canvasP.clientHeight || 36;
+      canvasG.width = canvasG.clientWidth || 200;
+      canvasG.height = canvasG.clientHeight || 36;
+
+      ctxP.fillStyle = '#020617';
+      ctxP.fillRect(0, 0, w, h);
+      ctxG.fillStyle = '#020617';
+      ctxG.fillRect(0, 0, w, h);
+
+      // Poisson
+      ctxP.beginPath();
+      ctxP.strokeStyle = '#f59e0b';
+      ctxP.lineWidth = 1.2;
+      for (let x = 0; x < w; x++) {
+        let y = h / 2 + (Math.random() - 0.5) * 1.5;
+        if (isBlastActive) {
+          const offset = 40;
+          if (x > offset && x < offset + 100) {
+            const decay = Math.exp(-(x - offset) * 0.035);
+            y += Math.sin((x - offset) * 0.5) * 12 * decay;
+          }
+        }
+        if (x === 0) ctxP.moveTo(x, y);
+        else ctxP.lineTo(x, y);
+      }
+      ctxP.stroke();
+
+      // Gaussian
+      ctxG.beginPath();
+      ctxG.strokeStyle = '#22d3ee';
+      ctxG.lineWidth = 1.2;
+      for (let x = 0; x < w; x++) {
+        let y = h / 2 + Math.sin(x * 0.12 + graphOffset) * 1.5 + (Math.random() - 0.5) * 1.8;
+        if (isLeakActive) {
+          y += Math.sin(x * 0.25 + graphOffset * 0.7) * 6 + (Math.random() - 0.5) * 4;
+        }
+        if (x === 0) ctxG.moveTo(x, y);
+        else ctxG.lineTo(x, y);
+      }
+      ctxG.stroke();
+
+      graphOffset += 0.2;
+    }
+    renderScopes();
+
+    // ─── ANIMATION LOOP ───
+    const clock = new THREE.Clock();
+    let particleTime = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      particleTime += dt;
+
+      // Animate flow particles
+      pipeMeshes.forEach(item => {
+        if (item.points && item.states) {
+          const pos = item.points.geometry.attributes.position;
+          const states = item.states;
+          for (let i = 0; i < pos.count; i++) {
+            const s = states[i];
+            s.t += dt * s.speed;
+            if (s.t > 1) s.t = 0;
+            const pt = s.curve.getPointAt(s.t);
+            pos.setXYZ(i, pt.x, pt.y, pt.z);
+          }
+          pos.needsUpdate = true;
+        }
+      });
+
+      // Animate blast sphere
+      if (isBlastActive && blastSphere) {
+        blastTime += dt;
+        const radius = 1 + blastTime * 35;
+        blastSphere.scale.setScalar(radius / 1);
+        blastSphere.material.opacity = 0.9 * (1 - Math.min(radius / 80, 1));
+        if (radius > 80) {
+          scene.remove(blastSphere);
+          blastSphere = null;
+          isBlastActive = false;
+          document.getElementById('scope-p-status').textContent = 'QUIET';
+          document.getElementById('scope-p-status').style.color = '#64748b';
+          document.getElementById('m-status').textContent = SLIDES[currentSlide].status;
+          document.getElementById('m-status').style.color = '';
+          document.getElementById('btn-blast').classList.remove('active');
+        }
+      }
+
+      // Animate leak ripple
+      if (isLeakActive && leakRipple) {
+        const scale = 1 + Math.sin(Date.now() * 0.005) * 0.3;
+        leakSphere.scale.set(scale, scale, scale);
+        const rScale = (Date.now() * 0.003) % 5;
+        leakRipple.scale.setScalar(rScale);
+        leakRipple.material.opacity = 0.6 * (1 - (rScale / 5));
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ─── INIT ───
+    goToSlide(0);
+    console.log('⛏️ SEARM1 Deep-Level Mining Interactive Slide loaded');
+    console.log('   Controls: Arrow keys ← → | B: Blast | L: Leak | R: Reset');
+    console.log('   Click & drag to orbit, scroll to zoom');
+  </script>
+</body>
+</html>
