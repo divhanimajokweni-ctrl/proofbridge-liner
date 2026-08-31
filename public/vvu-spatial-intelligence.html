@@ -1387,7 +1387,88 @@ const DEG = Math.PI/180;
     { id: 'teraco',   name: 'Teraco Isando JB1',       lat: -26.1450,  lon: 28.2360,  alt: 1600, tag: 'B2B: R14.19M/yr loss' },
     { id: 'default',  name: 'Gqeberha (VVU HQ)',       lat: -33.9608,  lon: 25.6022,  alt: 0,    tag: 'Default — VVU Home Base' },
   ];
-  let ORIGIN = { lat: -33.9608, lon: 25.6022, alt: 0 };
+  
+  // ─── MODELARTS DETECTION CLASSES (YOLOv8 Quantized) ──────────────
+  const MODELARTS_CLASSES = [
+    { id: 0, name: 'ANOMALOUS_WATER_POOLING',  color: 0x3b82f6, hex: '#3b82f6' },
+    { id: 1, name: 'UNAUTHORIZED_VEHICLE',     color: 0xef4444, hex: '#ef4444' },
+    { id: 2, name: 'EXCAVATION_EQUIPMENT',      color: 0xf59e0b, hex: '#f59e0b' },
+    { id: 3, name: 'INFRASTRUCTURE_CRACK',      color: 0x8b5cf6, hex: '#8b5cf6' },
+    { id: 4, name: 'MAINTENANCE_TECHNICIAN',    color: 0x10b981, hex: '#10b981' },
+  ];
+
+  // ─── MODELARTS DETECTION STATE ──────────────────────────────────
+  let maDetections = [];
+  let maMarkers = [];
+  let maDemoActive = true;
+  let maDemoInterval = null;
+
+  function generateModelArtsDetections() {
+    const count = 5 + Math.floor(Math.random() * 12);
+    const dets = [];
+    for (let i = 0; i < count; i++) {
+      const cls = MODELARTS_CLASSES[Math.floor(Math.random() * MODELARTS_CLASSES.length)];
+      const angle = Math.random() * 2 * Math.PI;
+      const radius = 50 + Math.random() * 300;
+      const x = radius * Math.cos(angle);
+      const z = radius * Math.sin(angle);
+      dets.push({
+        classId: cls.id,
+        className: cls.name,
+        color: cls.color,
+        hex: cls.hex,
+        confidence: 0.6 + Math.random() * 0.38,
+        position: { x, y: 0, z },
+        timestamp: Date.now()
+      });
+    }
+    return dets;
+  }
+
+  function updateModelArtsUI(dets) {
+    const counts = [0, 0, 0, 0, 0];
+    for (const d of dets) counts[d.classId]++;
+    for (let i = 0; i < 5; i++) {
+      const el = document.getElementById('ma-count-' + i);
+      if (el) el.textContent = counts[i];
+    }
+    const totalEl = document.getElementById('ma-total');
+    if (totalEl) totalEl.textContent = dets.length;
+    const infEl = document.getElementById('ma-inference');
+    if (infEl) infEl.textContent = (15 + Math.random() * 20).toFixed(1) + ' ms';
+    const rateEl = document.getElementById('ma-rate');
+    if (rateEl) rateEl.textContent = Math.round(dets.length / 0.5);
+
+    // Alert log
+    if (Math.random() > 0.6) {
+      const logEl = document.getElementById('ma-alert-log');
+      if (logEl && dets.length > 0) {
+        const d = dets[0];
+        const time = new Date().toLocaleTimeString();
+        const entry = '<div style="color:' + d.hex + ';">[' + time + '] ' + d.className + ' ' + (d.confidence*100).toFixed(0) + '%</div>';
+        logEl.innerHTML = entry + logEl.innerHTML.substring(0, 400);
+      }
+    }
+  }
+
+  function startModelArtsDemo() {
+    if (maDemoInterval) clearInterval(maDemoInterval);
+    maDemoInterval = setInterval(function() {
+      maDetections = generateModelArtsDetections();
+      updateModelArtsUI(maDetections);
+    }, 500);
+  }
+
+  function stopModelArtsDemo() {
+    if (maDemoInterval) { clearInterval(maDemoInterval); maDemoInterval = null; }
+    maDetections = [];
+    updateModelArtsUI([]);
+  }
+
+  // Start demo immediately
+  startModelArtsDemo();
+
+let ORIGIN = { lat: -33.9608, lon: 25.6022, alt: 0 };
 const QS = new URLSearchParams(location.search);
 const GMAPS_KEY = QS.get('gmaps_key') || 'AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0';
 
@@ -2068,5 +2149,37 @@ window.__vvu = { ORIGIN };
 
 })();
 </script>
+
+    <!-- ModelArts Detection Panel -->
+    <div class="glass" style="padding:14px;border-radius:10px;margin-bottom:16px;">
+      <h3 style="font-size:11px;font-weight:700;color:#00d4ff;display:flex;align-items:center;gap:6px;border-bottom:1px solid #1e293b;padding-bottom:8px;margin-bottom:10px;">
+        <span style="display:inline-block;width:8px;height:8px;background:#10b981;border-radius:50%;animation:pulse 2s infinite;"></span>
+        MODELARTS EDGE DETECTION
+      </h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:9px;color:#94a3b8;margin-bottom:12px;">
+        <span>MODEL:</span><span style="text-align:right;color:#10b981;font-weight:bold;">YOLOv8_Quantized</span>
+        <span>DEPLOYMENT:</span><span style="text-align:right;color:#00d4ff;font-weight:bold;">Kria K26 (ONNX)</span>
+        <span>INFERENCE:</span><span style="text-align:right;color:#e2e8f0;font-weight:bold;" id="ma-inference">22 ms</span>
+        <span>DET/s:</span><span style="text-align:right;color:#e2e8f0;font-weight:bold;" id="ma-rate">12</span>
+        <span>TOTAL:</span><span style="text-align:right;color:#10b981;font-weight:bold;" id="ma-total">0</span>
+      </div>
+      <div style="border-top:1px solid #1e293b;padding-top:8px;">
+        <div style="font-size:9px;color:#94a3b8;margin-bottom:6px;">CLASS BREAKDOWN</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;font-size:9px;">
+          <span style="color:#3b82f6;">● WATER_POOLING</span><span style="text-align:right;font-weight:bold;" id="ma-count-0">0</span>
+          <span style="color:#ef4444;">● UNAUTH_VEHICLE</span><span style="text-align:right;font-weight:bold;" id="ma-count-1">0</span>
+          <span style="color:#f59e0b;">● EXCAVATION_EQUIP</span><span style="text-align:right;font-weight:bold;" id="ma-count-2">0</span>
+          <span style="color:#8b5cf6;">● INFRA_CRACK</span><span style="text-align:right;font-weight:bold;" id="ma-count-3">0</span>
+          <span style="color:#10b981;">● MAINT_TECH</span><span style="text-align:right;font-weight:bold;" id="ma-count-4">0</span>
+        </div>
+      </div>
+      <div style="border-top:1px solid #1e293b;padding-top:8px;margin-top:8px;">
+        <div style="font-size:9px;color:#94a3b8;margin-bottom:4px;">RECENT ALERTS</div>
+        <div id="ma-alert-log" style="font-size:8px;max-height:80px;overflow-y:auto;background:rgba(2,6,23,0.6);border-radius:4px;padding:4px 6px;">
+          <div style="color:#64748b;">— No alerts —</div>
+        </div>
+      </div>
+    </div>
+
 </body>
 </html>
