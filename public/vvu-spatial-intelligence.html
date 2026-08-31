@@ -593,6 +593,39 @@
 <!-- ═══════════════════════════════════════════════════════════════
      SIM WARNING BANNER
      ═══════════════════════════════════════════════════════════════ -->
+<!-- Location Switcher -->
+<div id="loc-switcher" style="position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:4px;padding:3px;background:rgba(2,6,23,0.85);backdrop-filter:blur(12px);border:1px solid rgba(0,212,255,0.2);border-radius:8px;pointer-events:auto">
+  <select id="loc-select" style="background:#0a0e17;color:#00d4ff;border:1px solid rgba(0,212,255,0.3);border-radius:6px;padding:4px 10px;font-size:11px;font-family:monospace;cursor:pointer;outline:none" onchange="switchLocation(this.value)">
+    <option value="default">Gqeberha (VVU HQ)</option>
+    <option value="coega">Coega IDZ / Ward 42</option>
+    <option value="ward4">Gqeberha Ward 4</option>
+    <option value="ward5">Gqeberha Ward 5</option>
+    <option value="marikana">Sibanye Marikana Mine</option>
+    <option value="rustenburg">Anglo American Rustenburg</option>
+    <option value="secunda">Sasol Secunda Synfuels</option>
+    <option value="teraco">Teraco Isando JB1</option>
+  </select>
+  <span id="loc-tag" style="font-size:9px;color:#94a3b8;padding:5px 8px;background:rgba(0,212,255,0.1);border-radius:4px;align-self:center;font-family:monospace">Default — VVU Home Base</span>
+</div>
+<script>
+function switchLocation(id) {
+  const loc = LOCATIONS.find(l => l.id === id);
+  if (!loc) return;
+  ORIGIN = { lat: loc.lat, lon: loc.lon, alt: loc.alt };
+  // Update readouts
+  const fmt = (v, dir) => Math.abs(v).toFixed(4) + '\u00b0 ' + dir;
+  const el = document.getElementById('rd-lat');
+  const elon = document.getElementById('rd-lon');
+  if (el) el.textContent = fmt(loc.lat, loc.lat >= 0 ? 'N' : 'S');
+  if (elon) elon.textContent = fmt(loc.lon, loc.lon >= 0 ? 'E' : 'W');
+  // Update tag
+  const tag = document.getElementById('loc-tag');
+  if (tag) tag.textContent = loc.tag;
+  console.log('[VVU] Switched to:', loc.name, loc.lat, loc.lon);
+  // Re-center terrain (if the 3D scene has a recenter function)
+  if (typeof recenterTerrain === 'function') recenterTerrain(loc.lat, loc.lon, loc.alt);
+}
+</script>
 <div id="sim-banner">
   <b>SIMULATION WORKSPACE</b> — NOT MUNICIPAL OPERATIONAL SCADA · ALL TELEMETRY SYNTHETIC · DEMO ONLY
 </div>
@@ -1343,7 +1376,18 @@ import * as THREE from 'three';
 
 /* ── geolocation (Gqeberha fallback) ─────────────────────────── */
 const DEG = Math.PI/180;
-let ORIGIN = { lat: -33.9608, lon: 25.6022, alt: 0 };
+// ─── B2B TARGET LOCATIONS ──────────────────────────────────
+  const LOCATIONS = [
+    { id: 'coega',    name: 'Coega IDZ / Ward 42',     lat: -33.83306, lon: 25.3875,  alt: 124, tag: 'PDU Deployment Zone' },
+    { id: 'ward4',    name: 'Gqeberha Ward 4',          lat: -33.9176,  lon: 25.5701,  alt: 60,  tag: 'Municipal DMA-7' },
+    { id: 'ward5',    name: 'Gqeberha Ward 5',          lat: -33.9321,  lon: 25.6126,  alt: 55,  tag: 'Constituency: Terri Stander' },
+    { id: 'marikana', name: 'Sibanye-Stillwater Marikana', lat: -25.6833, lon: 27.4833, alt: 1150, tag: 'B2B: R10.8M/yr loss' },
+    { id: 'rustenburg', name: 'Anglo American Rustenburg', lat: -25.5667, lon: 27.2500, alt: 1170, tag: 'B2B: R8.3M/yr loss' },
+    { id: 'secunda',  name: 'Sasol Secunda Synfuels',   lat: -26.5500,  lon: 29.1833,  alt: 1600, tag: 'B2B: R13.95M/yr loss' },
+    { id: 'teraco',   name: 'Teraco Isando JB1',       lat: -26.1450,  lon: 28.2360,  alt: 1600, tag: 'B2B: R14.19M/yr loss' },
+    { id: 'default',  name: 'Gqeberha (VVU HQ)',       lat: -33.9608,  lon: 25.6022,  alt: 0,    tag: 'Default — VVU Home Base' },
+  ];
+  let ORIGIN = { lat: -33.9608, lon: 25.6022, alt: 0 };
 const QS = new URLSearchParams(location.search);
 const GMAPS_KEY = QS.get('gmaps_key') || 'AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0';
 
