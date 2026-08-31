@@ -594,8 +594,67 @@
 }
 
 </style>
+
+  <!-- Leaflet for 2D map overlay -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 </head>
 <body>
+
+<!-- ═══ PETAL MAP OVERLAY (toggleable 2D dark map) ═══ -->
+<div id="petal-map-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:15;display:none;background:#0b0e14;"></div>
+<script>
+let _petalMap=null,_petalMapVisible=false;
+function initPetalMap(){
+  if(_petalMap)return;
+  _petalMap=L.map('petal-map-overlay',{center:[ORIGIN.lat,ORIGIN.lon],zoom:14,zoomControl:false,attributionControl:false,fadeAnimation:true});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19}).addTo(_petalMap);
+  // POI markers for current location
+  const pois=[
+    {lat:ORIGIN.lat+0.002,lng:ORIGIN.lon+0.001,label:'Node VVU-HG-NMBM-01'},
+    {lat:ORIGIN.lat-0.001,lng:ORIGIN.lon+0.002,label:'Sensor Array A'},
+    {lat:ORIGIN.lat+0.001,lng:ORIGIN.lon-0.002,label:'PDU Zone'},
+    {lat:ORIGIN.lat-0.002,lng:ORIGIN.lon-0.001,label:'DMA-7 Boundary'},
+  ];
+  for(const p of pois){
+    L.circleMarker([p.lat,p.lng],{radius:5,color:'#00d4ff',fillColor:'#00d4ff',fillOpacity:0.7,weight:1})
+      .addTo(_petalMap)
+      .bindTooltip(p.label,{permanent:false,direction:'top',className:'petal-tooltip'});
+  }
+  setTimeout(()=>_petalMap.invalidateSize(),100);
+}
+function togglePetalMap(){
+  _petalMapVisible=!_petalMapVisible;
+  document.getElementById('petal-map-overlay').style.display=_petalMapVisible?'block':'none';
+  document.getElementById('petal-map-btn').textContent=_petalMapVisible?'\u2715 MAP':'\ud83d\uddfa MAP';
+  if(_petalMapVisible){if(!_petalMap)initPetalMap();else _petalMap.invalidateSize();}
+}
+</script>
+<style>
+.petal-tooltip{background:rgba(0,0,0,0.7)!important;backdrop-filter:blur(4px);border:1px solid rgba(0,212,255,0.2)!important;color:#e8edf3!important;font-size:10px!important;padding:3px 8px!important;border-radius:8px!important;}
+</style>
+
+<!-- ═══ TEMPERATURE DISPLAY (Petal Maps style) ═══ -->
+<div id="petal-temp" style="position:fixed;top:20px;right:20px;z-index:20;background:rgba(0,0,0,0.55);backdrop-filter:blur(8px);border-radius:24px;padding:6px 14px;font-size:14px;font-weight:500;color:#fff;border:1px solid rgba(255,255,255,0.1);box-shadow:0 4px 16px rgba(0,0,0,0.4);pointer-events:none;display:none;">18<span style="font-weight:300;font-size:11px;margin-left:2px;opacity:0.7;">°C</span></div>
+
+<!-- ═══ BOTTOM STATUS BAR (Petal Maps style) ═══ -->
+<div id="petal-bottom-bar" style="position:fixed;bottom:0;left:0;width:100%;z-index:20;background:rgba(0,0,0,0.65);backdrop-filter:blur(12px);border-top:1px solid rgba(0,212,255,0.08);padding:8px 16px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#94a3b8;pointer-events:none;display:none;">
+  <div style="font-weight:600;color:#cbd5e1;display:flex;align-items:center;gap:6px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+    VVU GIS
+  </div>
+  <div style="display:flex;gap:12px;font-size:10px;">
+    <span><span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:#10b981;margin-right:4px;animation:pulse 1.8s infinite;"></span>LIVE</span>
+    <span id="petal-altitude">ALT 0m</span>
+    <span id="petal-time"></span>
+  </div>
+</div>
+
+<!-- ═══ MAP TOGGLE BUTTON ═══ -->
+<button id="petal-map-btn" onclick="togglePetalMap()" style="position:fixed;bottom:60px;right:16px;z-index:30;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.12);border-radius:24px;padding:6px 14px;color:#fff;font-size:11px;font-weight:500;cursor:pointer;transition:0.3s;box-shadow:0 4px 12px rgba(0,0,0,0.4);display:none;">🗺 MAP</button>
+
+
 
 <!-- ═══════════════════════════════════════════════════════════════
      SIM WARNING BANNER
@@ -631,6 +690,12 @@ function switchLocation(id) {
   const tag = document.getElementById('loc-tag');
   if (tag) tag.textContent = loc.tag;
   console.log('[VVU] Switched to:', loc.name, loc.lat, loc.lon);
+  // Update Petal Map center if visible
+  if(_petalMap){_petalMap.setView([loc.lat,loc.lon],14);}
+  // Update altitude display
+  const altEl2=document.getElementById('petal-altitude');
+  if(altEl2)altEl2.textContent='ALT '+Math.round(loc.alt||0)+'m';
+
 
   // ── LOAD NEW SATELLITE TEXTURE for the new location ──
   if (GMAPS_KEY && typeof THREE !== 'undefined') {
@@ -2384,6 +2449,27 @@ window.__vvu = { ORIGIN };
         </div>
       </div>
     </div>
+
+
+<!-- Petal Maps data simulation -->
+<script>
+(function(){
+  // Temperature
+  const tempEl=document.getElementById('petal-temp');
+  setInterval(()=>{const t=(14+Math.random()*6).toFixed(1);tempEl.innerHTML=t+'<span style="font-weight:300;font-size:11px;margin-left:2px;opacity:0.7;">°C</span>';},5000);
+  // Time
+  const timeEl=document.getElementById('petal-time');
+  setInterval(()=>{const d=new Date();timeEl.textContent=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});},1000);
+  // Altitude from ORIGIN
+  const altEl=document.getElementById('petal-altitude');
+  if(typeof ORIGIN!=='undefined'&&altEl)altEl.textContent='ALT '+Math.round(ORIGIN.alt||0)+'m';
+})();
+// Show Petal UI elements after load
+setTimeout(()=>{
+  const els=['petal-temp','petal-bottom-bar','petal-map-btn'];
+  els.forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='flex';});
+},2000);
+</script>
 
 </body>
 </html>
