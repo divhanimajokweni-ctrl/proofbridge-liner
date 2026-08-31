@@ -1,0 +1,63 @@
+# ==============================================================================
+# COMPANY: VAGUELY VANITY LLC / VENTURE VISION UBUNTU (VVU)
+# MODULE: vvu-modelarts-exeml-config.yaml
+# TARGET PLATFORM: HUAWEI CLOUD MODELARTS (v1.0 ExeML/AutoML)
+# DATE: 2026-08-31
+# DESCRIPTION: Machine-readable configuration template for initiating a ModelArts
+#              ExeML (Zero-Code AutoML) Object Detection training job. Coordinates
+#              OBS dataset paths, label definitions, and resource provisioning.
+# ==============================================================================
+
+project_metadata:
+  project_name: "vvu_gqeberha_leak_detection_v1"
+  project_type: "exe_ml_object_detection"       # ModelArts ExeML Object Detection format
+  description: "Automated real-time ground defect, vehicle, and pooling detection for VVU edge nodes."
+  creator: "Mihle Iviwe Majokweni"
+  organization: "Vaguely Vanity (Pty) Ltd"
+  region: "af-south-1"                          # Johannesburg local Huawei Cloud region
+
+dataset_configuration:
+  data_source_type: "OBS"
+  obs_input_path: "obs://vvu-modelarts-datasets/gqeberha-leaks-v1/20_Clients/"
+  annotation_format: "YOLO"                     # Standardized YOLO txt formatting (x_center, y_center, width, height)
+  data_split:
+    train_ratio: 0.80                           # 80% Training
+    validation_ratio: 0.15                      # 15% Validation (Model selection)
+    test_ratio: 0.05                            # 5% Test (Generalization check)
+  
+  # Structural class mapping aligned with our YOLO ground-level vision models
+  label_classes:
+    - class_id: 0
+      name: "ANOMALOUS_WATER_POOLING"          # Surface-level pipeline leaks/moisture anomalies
+    - class_id: 1
+      name: "UNAUTHORIZED_VEHICLE"            # Sabotage/tampering protection tracking
+    - class_id: 2
+      name: "EXCAVATION_EQUIPMENT"             # Early physical damage hazard alerts
+    - class_id: 3
+      name: "INFRASTRUCTURE_CRACK"             # Visible joint separation/structural stress
+    - class_id: 4
+      name: "MAINTENANCE_TECHNICIAN"           # Non-repudiation & crew safety tracking
+
+training_parameters:
+  engine_type: "ExeML_Object_Detection_v2"      # High-performance zero-code AutoML engine
+  max_training_duration_hours: 2.0             # Strict timeout gate to control development budgets
+  target_accuracy_mAP: 0.92                    # Baseline mAP@0.5 target
+  hyperparameters:
+    batch_size: 16
+    initial_learning_rate: 0.001
+    model_backbone: "YOLOv8_Quantized"         # Optimized for edge deployment on Kria K26 SoMs
+    optimizer: "SGD"
+
+resource_provisioning:
+  compute_flavor: "modelarts.vm.gpu.t4"        # Cost-efficient NVIDIA T4 GPU node
+  node_count: 1
+  auto_stop_on_completion: true                # Automatically release node to prevent overrun billing
+
+output_configuration:
+  obs_output_path: "obs://vvu-modelarts-datasets/gqeberha-leaks-v1/outputs/"
+  model_export_formats:
+    - "ONNX"                                    # For cross-platform runtime support
+    - "TFLite_INT8"                             # Quantized for rugged mobile devices
+    - "TensorRT"                                # For edge workstation simulation acceleration
+  log_export_path: "obs://vvu-modelarts-datasets/gqeberha-leaks-v1/logs/"
+```
