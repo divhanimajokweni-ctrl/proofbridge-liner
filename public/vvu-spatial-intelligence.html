@@ -602,6 +602,33 @@
 </head>
 <body>
 
+<!-- Offline/loading fallback -->
+<div id="vvu-loading" style="position:fixed;inset:0;z-index:9999;background:#0b0e14;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+  <div style="font-size:36px;font-weight:700;letter-spacing:0.3em;background:linear-gradient(90deg,#a5f3fc,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent;">▲ VVU</div>
+  <div style="font-size:12px;color:#64748b;letter-spacing:0.15em;">LOADING SPATIAL MATRIX...</div>
+  <div style="width:120px;height:2px;background:#1e293b;border-radius:2px;overflow:hidden;"><div style="height:100%;width:40%;background:linear-gradient(90deg,#22d3ee,#38bdf8);animation:scan 1.2s ease-in-out infinite alternate;"></div></div>
+  <div id="vvu-offline-msg" style="display:none;font-size:10px;color:#ef4444;margin-top:8px;">⚠️ OFFLINE — CDN resources unavailable. Connect to internet for full 3D view.</div>
+</div>
+<style>@keyframes scan{from{transform:translateX(-60%)}to{transform:translateX(380%)}}</style>
+<script>
+// Hide loading after 3s, show offline message if Three.js didn't load
+setTimeout(function(){
+  var t=typeof THREE;
+  if(t==='undefined'){
+    document.getElementById('vvu-offline-msg').style.display='block';
+    document.querySelector('#vvu-loading > div:nth-child(2)').textContent='OFFLINE MODE';
+    document.querySelector('#vvu-loading > div:nth-child(2)').style.color='#f59e0b';
+  }else{
+    document.getElementById('vvu-loading').style.opacity='0';
+    document.getElementById('vvu-loading').style.pointerEvents='none';
+    document.getElementById('vvu-loading').style.transition='opacity 0.5s';
+    setTimeout(function(){document.getElementById('vvu-loading').style.display='none';},600);
+  }
+},3000);
+</script>
+
+
+
 <!-- ═══ PETAL MAP OVERLAY (toggleable 2D dark map) ═══ -->
 <div id="petal-map-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:15;display:none;background:#0b0e14;"></div>
 <script>
