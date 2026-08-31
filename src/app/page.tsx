@@ -8,11 +8,7 @@ import { useEffect } from 'react';
  */
 export default function Home() {
   useEffect(() => {
-    const gmapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-    const target = gmapsKey
-      ? `/vvu-3d-gis-traffic.html?gmaps_key=${encodeURIComponent(gmapsKey)}`
-      : '/vvu-3d-gis-traffic.html';
-    window.location.replace(target);
+    window.location.replace('/vvu-3d-gis-traffic.html');
   }, []);
   return null;
 }

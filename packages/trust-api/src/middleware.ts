@@ -1,31 +1,16 @@
 // packages/trust-api/src/middleware.ts
-// ───────────────────────────────────────────────────────────────
 // Trust API Middleware
 // Enforces Trust Context integrity and policy verification
-// ───────────────────────────────────────────────────────────────
-
-import type { Request, Response, NextFunction } from 'express';
-import type { 
-  TrustContextManager,
-  RiskEngine,
-} from '@proofbridge/trust-runtime';
-import type { 
-  AgentTransactionRequest,
-  VerificationResult 
-} from '@proofbridge/trust-types';
 
 export interface TrustApiMiddlewareConfig {
-  contextManager: TrustContextManager;
-  riskEngine: RiskEngine;
+  contextManager: any;
+  riskEngine: any;
 }
 
-/**
- * Trust API Middleware Factory
- */
 export function createTrustMiddleware(config: TrustApiMiddlewareConfig) {
   const { contextManager, riskEngine } = config;
 
-  return async (req: Request, res: Response, next: NextFunction) => {
+  return async (req: any, res: any, next: any) => {
     const contextId = req.headers['x-trust-context-id'] as string;
 
     if (!contextId) {
@@ -47,22 +32,37 @@ export function createTrustMiddleware(config: TrustApiMiddlewareConfig) {
       });
     }
 
-    // Attach context to request for downstream use
     (req as any).trustContext = context;
-    
     next();
   };
 }
 
-/**
- * Verification Guard Middleware
- * Enforces the Risk Engine's verification policy
- */
+export function requireApiKey() {
+  const expectedKey = process.env.TRUST_API_KEY;
+
+  return (req: any, res: any, next: any) => {
+    if (!expectedKey) {
+      return res.status(503).json({
+        error: 'Server misconfiguration: TRUST_API_KEY is not set',
+      });
+    }
+
+    const providedKey = req.headers['x-trust-api-key'] as string | undefined;
+    if (!providedKey || providedKey !== expectedKey) {
+      return res.status(401).json({
+        error: 'Missing or invalid x-trust-api-key header',
+      });
+    }
+
+    next();
+  };
+}
+
 export function createVerificationGuard(config: TrustApiMiddlewareConfig) {
   const { riskEngine } = config;
 
-  return async (req: Request, res: Response, next: NextFunction) => {
-    const transactionRequest = req.body as AgentTransactionRequest;
+  return async (req: any, res: any, next: any) => {
+    const transactionRequest = req.body;
 
     if (!transactionRequest.agentId || !transactionRequest.targetContract) {
       return res.status(400).json({
@@ -71,7 +71,7 @@ export function createVerificationGuard(config: TrustApiMiddlewareConfig) {
     }
 
     const context = (req as any).trustContext;
-    const result: VerificationResult = riskEngine.verifyRequest(
+    const result = riskEngine.verifyRequest(
       transactionRequest,
       context.verificationPolicy
     );
@@ -84,9 +84,7 @@ export function createVerificationGuard(config: TrustApiMiddlewareConfig) {
       });
     }
 
-    // Attach verification result for receipt generation
     (req as any).verificationResult = result;
-
     next();
   };
 }

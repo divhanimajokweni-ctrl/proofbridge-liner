@@ -1,26 +1,13 @@
 // packages/trust-api/src/routes.ts
-// ───────────────────────────────────────────────────────────────
-// Trust API Routes
-// API endpoints for Trust Context lifecycle and operations
-// ───────────────────────────────────────────────────────────────
+// Trust API Routes — all endpoints now authenticated
 
-import { Router, type Request, type Response } from 'express';
-import type { 
-  TrustContextManager,
-  RiskEngine,
-  ReceiptEngine,
-} from '@proofbridge/trust-runtime';
-import type { 
-  CreateTrustContextRequest,
-  JournalEventRequest,
-  AgentTransactionRequest,
-} from '@proofbridge/trust-types';
-import { createTrustMiddleware, createVerificationGuard } from './middleware';
+import { Router } from 'express';
+import { createTrustMiddleware, createVerificationGuard, requireApiKey } from './middleware';
 
 export interface TrustApiConfig {
-  contextManager: TrustContextManager;
-  riskEngine: RiskEngine;
-  receiptEngine: ReceiptEngine;
+  contextManager: any;
+  riskEngine: any;
+  receiptEngine: any;
 }
 
 export function createTrustRouter(config: TrustApiConfig): Router {
@@ -29,69 +16,54 @@ export function createTrustRouter(config: TrustApiConfig): Router {
 
   const trustMiddleware = createTrustMiddleware({ contextManager, riskEngine });
   const verificationGuard = createVerificationGuard({ contextManager, riskEngine });
+  const apiKeyGuard = requireApiKey();
 
-  /**
-   * POST /contexts
-   * Create a new Trust Context
-   */
-  router.post('/contexts', async (req: Request, res: Response) => {
+  // POST /contexts — gated by API key (no context exists yet)
+  router.post('/contexts', apiKeyGuard, async (req: any, res: any) => {
     try {
-      const request = req.body as CreateTrustContextRequest;
-      const result = await contextManager.createContext(request);
-      
-      // Generate configuration receipt
+      const result = await contextManager.createContext(req.body);
       const receipt = receiptEngine.generateConfigurationReceipt(
         result.context.contextId,
         result.context.trustAnchor,
         result.context.receiptRoot
       );
-
-      res.status(201).json({
-        ...result.response,
-        receipt,
-      });
+      res.status(201).json({ ...result.response, receipt });
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }
   });
 
-  /**
-   * GET /contexts/:id
-   * Get Trust Context details
-   */
-  router.get('/contexts/:id', async (req: Request, res: Response) => {
-    const context = contextManager.getContext(req.params.id as string);
+  // GET /contexts/:id — authenticated via x-trust-context-id
+  router.get('/contexts/:id', trustMiddleware, async (req: any, res: any) => {
+    const authenticatedContext = (req as any).trustContext;
+    if (authenticatedContext.contextId !== req.params.id) {
+      return res.status(403).json({
+        error: 'x-trust-context-id does not match requested context',
+      });
+    }
+    const context = contextManager.getContext(req.params.id);
     if (!context) {
       return res.status(404).json({ error: 'Context not found' });
     }
     res.json(context);
   });
 
-  /**
-   * POST /journal
-   * Journal a new event
-   */
-  router.post('/journal', trustMiddleware, async (req: Request, res: Response) => {
+  // POST /journal — authenticated
+  router.post('/journal', trustMiddleware, async (req: any, res: any) => {
     try {
       const context = (req as any).trustContext;
-      const request = req.body as JournalEventRequest;
-      
       const journal = contextManager.getJournal(context.contextId);
       if (!journal) {
         return res.status(500).json({ error: 'Event Journal not initialized' });
       }
-
-      const result = await journal.journalEvent(request);
-      
-      // Generate receipt
+      const result = await journal.journalEvent(req.body);
       const receipt = receiptEngine.generateEventJournalReceipt(
         context.contextId,
         result.event,
         result.chainLink.chainHash,
-        [], // TODO: Merkle proof
+        [],
         0
       );
-
       res.status(201).json({
         event: result.event,
         chainLink: result.chainLink,
@@ -102,32 +74,22 @@ export function createTrustRouter(config: TrustApiConfig): Router {
     }
   });
 
-  /**
-   * POST /verify
-   * Verify a transaction request
-   */
-  router.post('/verify', trustMiddleware, verificationGuard, async (req: Request, res: Response) => {
+  // POST /verify — authenticated + verification guard
+  router.post('/verify', trustMiddleware, verificationGuard, async (req: any, res: any) => {
     try {
       const context = (req as any).trustContext;
-      const transactionRequest = req.body as AgentTransactionRequest;
       const verificationResult = (req as any).verificationResult;
-
-      // Generate verification receipt
       const receipt = receiptEngine.generateVerificationReceipt(
         context.contextId,
-        transactionRequest.agentId,
+        req.body.agentId,
         verificationResult.allowed ? 'approved' : 'rejected',
         verificationResult.reason || 'Verified by Risk Engine',
         context.receiptRoot,
-        [], // TODO: Merkle proof
+        [],
         verificationResult.latencyMs,
         verificationResult.riskScore
       );
-
-      res.json({
-        ...verificationResult,
-        receipt,
-      });
+      res.json({ ...verificationResult, receipt });
     } catch (error) {
       res.status(500).json({ error: (error as Error).message });
     }

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>▲ VVU · 3D GIS Traffic Sim (Offline)</title>
-  <!-- Local Leaflet CSS -->
+  <title>▲ VVU · 3D GIS Traffic Sim v2</title>
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="/three/leaflet.css" />
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -59,33 +59,10 @@
       #sidebar-toggle { right:8px; width:32px; height:80px; }
       #sidebar-toggle.open { right:calc(100% - 32px); }
     }
-    /* ── Loading overlay ── */
-    #loading {
-      position:fixed; inset:0; z-index:100;
-      display:flex; flex-direction:column; justify-content:center; align-items:center;
-      background:#0b0e14; color:#c8d0dc;
-      font-family:'Courier New',monospace; font-size:14px;
-      transition:opacity 0.6s ease;
-    }
-    #loading .title { font-size:28px; font-weight:700; color:#4a8cff; letter-spacing:0.1em; }
-    #loading .sub { margin-top:10px; font-size:12px; color:#64748b; letter-spacing:0.15em; }
-    #loading .bar { width:200px; height:3px; background:#1e293b; border-radius:4px; margin-top:20px; overflow:hidden; }
-    #loading .bar .fill { height:100%; width:30%; background:#4a8cff; border-radius:4px; animation:load 1.2s ease-in-out infinite; }
-    @keyframes load { 0% { transform:translateX(-100%); } 100% { transform:translateX(400%); } }
-    #loading .error { color:#ef4444; display:none; margin-top:10px; font-size:12px; }
   </style>
 </head>
 <body>
 
-  <!-- Loading overlay -->
-  <div id="loading">
-    <div class="title">▲ VVU</div>
-    <div class="sub">LOADING SPATIAL MATRIX ...</div>
-    <div class="bar"><div class="fill"></div></div>
-    <div class="error" id="load-error">⚠️ LOAD ERROR — CHECK CONSOLE</div>
-  </div>
-
-  <!-- Main content -->
   <div id="three-canvas"></div>
   <div id="map-overlay"></div>
 
@@ -94,7 +71,7 @@
   <div id="bottom-bar">
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-      VVU GIS · Traffic Sim (Offline)
+      VVU GIS · Traffic Sim v2
     </div>
     <div class="right"><span><span class="dot"></span> LIVE</span><span>▲ 2.3 km</span><span id="clock-display">⏱ 12:34</span></div>
   </div>
@@ -165,10 +142,9 @@
     </div>
   </aside>
 
-  <!-- Local Leaflet JS -->
+  <!-- Leaflet JS -->
   <script src="/three/leaflet.js"></script>
 
-  <!-- Import Map with local paths -->
   <script type="importmap">
   {
     "imports": {
@@ -178,259 +154,264 @@
   }
   </script>
 
-  <!-- Main script -->
   <script type="module">
-    // ─── LOADING OVERLAY CONTROL ──────────────────────────────
-    const loading = document.getElementById('loading');
-    const loadError = document.getElementById('load-error');
-    let loadTimer;
+    // ─── IMPORTS ────────────────────────────────────────────────
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    // Function to dismiss loading overlay
-    function dismissLoading() {
-      clearTimeout(loadTimer);
-      loading.style.opacity = '0';
-      setTimeout(() => { loading.style.display = 'none'; }, 600);
+    // ─── CONSTANTS ───────────────────────────────────────────────
+    const GQEBERHA_LAT = -33.9608;
+    const GQEBERHA_LNG = 25.6022;
+    const DEG = Math.PI / 180;
+    const ORIGIN = { lat: GQEBERHA_LAT, lon: GQEBERHA_LNG };
+
+    // ─── DOM REFS ────────────────────────────────────────────────
+    const container = document.getElementById('three-canvas');
+    const mapOverlay = document.getElementById('map-overlay');
+    const toggleBtn = document.getElementById('toggle-map');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('analytics-sidebar');
+    const closeSidebar = document.getElementById('close-sidebar');
+
+    // ─── THREE.JS SETUP ──────────────────────────────────────────
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0e14);
+    scene.fog = new THREE.FogExp2(0x0b0e14, 0.0002);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+    camera.position.set(0, 150, 300);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxPolarAngle = Math.PI / 2.2;
+    controls.target.set(0, 0, 0);
+    controls.update();
+
+    // Lights
+    const ambientLight = new THREE.AmbientLight(0x020617, 0.6);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0x0ea5e9, 1.5);
+    directionalLight.position.set(100, 300, 50);
+    scene.add(directionalLight);
+
+    // ─── TERRAIN (height map) ────────────────────────────────────
+    const terrainSegments = 80;
+    const terrainGeometry = new THREE.PlaneGeometry(800, 800, terrainSegments, terrainSegments);
+    terrainGeometry.rotateX(-Math.PI / 2);
+    const pos = terrainGeometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const z = pos.getZ(i);
+      const height = Math.sin(x * 0.01) * Math.cos(z * 0.01) * 30 +
+                     Math.sin(x * 0.005) * 15 +
+                     (Math.random() * 2);
+      pos.setY(i, height);
+    }
+    terrainGeometry.computeVertexNormals();
+    const terrainMat = new THREE.MeshBasicMaterial({
+      color: 0x0f172a,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.35
+    });
+    const terrainMesh = new THREE.Mesh(terrainGeometry, terrainMat);
+    scene.add(terrainMesh);
+
+    // ─── BUILDINGS (OSM style) ──────────────────────────────────
+    const buildingsGroup = new THREE.Group();
+    const buildingMat = new THREE.MeshBasicMaterial({
+      color: 0x0ea5e9,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.4
+    });
+    const glowMat = new THREE.MeshBasicMaterial({
+      color: 0x10b981,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.7
+    });
+    const buildingCount = 40;
+    for (let i = 0; i < buildingCount; i++) {
+      const w = Math.random() * 25 + 10;
+      const h = Math.random() * 70 + 20;
+      const d = Math.random() * 25 + 10;
+      const geo = new THREE.BoxGeometry(w, h, d);
+      geo.translate(0, h / 2, 0);
+      const mesh = new THREE.Mesh(geo, i % 5 === 0 ? glowMat : buildingMat);
+      const x = (Math.random() * 600 - 300) + (Math.random() > 0.5 ? 50 : -50);
+      const z = (Math.random() * 600 - 300) + (Math.random() > 0.5 ? 50 : -50);
+      mesh.position.set(x, 0, z);
+      buildingsGroup.add(mesh);
+    }
+    scene.add(buildingsGroup);
+
+    // ─── NEON BEAMS ──────────────────────────────────────────────
+    const beamsGroup = new THREE.Group();
+    const beamPaths = [];
+    const beamProgresses = [];
+    const beamObjects = [];
+    const beamMatBeam = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9 });
+    for (let b = 0; b < 4; b++) {
+      const points = [];
+      const startX = Math.random() * 400 - 200;
+      const startZ = Math.random() * 400 - 200;
+      points.push(new THREE.Vector3(startX, 5, startZ));
+      points.push(new THREE.Vector3(startX + 100, 15, startZ + 50));
+      points.push(new THREE.Vector3(startX + 200, 5, startZ + 150));
+      const curve = new THREE.CatmullRomCurve3(points);
+      beamPaths.push(curve);
+      beamProgresses.push(Math.random());
+      const beamGeo = new THREE.CylinderGeometry(1.5, 1.5, 12, 8);
+      const beam = new THREE.Mesh(beamGeo, beamMatBeam);
+      beamsGroup.add(beam);
+      beamObjects.push(beam);
+    }
+    scene.add(beamsGroup);
+
+    // ─── TRACK FIELD (shared) ──────────────────────────────────
+    const CLASS_COLOR = { person: 0x22d3ee, vehicle: 0xa3e635, truck: 0xfb923c, unknown: 0x94a3b8 };
+    const TRACK_TTL = 1500;
+    const LERP_RATE = 12;
+
+    class TrackField {
+      constructor(max = 512) {
+        const g = new THREE.BoxGeometry(1, 1, 1);
+        g.translate(0, 0.5, 0);
+        this.fill = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.2, depthWrite: false }), max);
+        this.fill.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.fill.frustumCulled = false;
+        this.edges = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.6 }), max);
+        this.edges.frustumCulled = false;
+        this.fill.setColorAt(0, new THREE.Color(1,1,1));
+        this.edges.instanceMatrix = this.fill.instanceMatrix;
+        this.edges.instanceColor = this.fill.instanceColor;
+        this.max = max;
+        this.tracks = new Map();
+        this.dummy = new THREE.Object3D();
+        this.col = new THREE.Color();
+        scene.add(this.fill, this.edges);
+      }
+      ingest(t) {
+        let r = this.tracks.get(t.id);
+        if (!r) {
+          r = {
+            cur: new THREE.Vector3(...t.pos),
+            tgt: new THREE.Vector3(...t.pos),
+            cd: new THREE.Vector3(1, 1, 1),
+            td: new THREE.Vector3(...t.dims),
+            yaw: t.yaw || 0,
+            tYaw: t.yaw || 0,
+            vel: new THREE.Vector3(...t.vel),
+            tVel: new THREE.Vector3(...t.vel),
+            hasHdg: t.hasHdg || false,
+            conf: t.conf || 0.8,
+            cls: t.cls || 'unknown',
+            seen: t.seen || performance.now(),
+            born: performance.now()
+          };
+          this.tracks.set(t.id, r);
+        } else {
+          r.tgt.set(...t.pos);
+          r.td.set(...t.dims);
+          r.tYaw = t.yaw || 0;
+          r.tVel.set(...t.vel);
+          r.hasHdg = t.hasHdg || false;
+          r.conf = t.conf || 0.8;
+          r.cls = t.cls || 'unknown';
+          r.seen = performance.now();
+        }
+      }
+      update(dt, now) {
+        const k = 1 - Math.exp(-dt * LERP_RATE);
+        let i = 0;
+        for (const [id, r] of this.tracks) {
+          if (now - r.seen > TRACK_TTL) { this.tracks.delete(id); continue; }
+          r.cur.lerp(r.tgt, k);
+          r.cd.lerp(r.td, k);
+          const dy = r.tYaw - r.yaw;
+          r.yaw += Math.atan2(Math.sin(dy), Math.cos(dy)) * k;
+          const s = Math.max(0.01, 1 - (now - r.seen) / TRACK_TTL);
+          this.dummy.position.copy(r.cur);
+          this.dummy.rotation.set(0, r.yaw, 0);
+          this.dummy.scale.set(r.cd.x * s, r.cd.y * s, r.cd.z * s);
+          this.dummy.updateMatrix();
+          this.fill.setMatrixAt(i, this.dummy.matrix);
+          this.col.setHex(CLASS_COLOR[r.cls] || CLASS_COLOR.unknown);
+          this.fill.setColorAt(i, this.col);
+          i++;
+          if (i >= this.max) break;
+        }
+        this.fill.count = this.edges.count = i;
+        this.fill.instanceMatrix.needsUpdate = true;
+        if (this.fill.instanceColor) this.fill.instanceColor.needsUpdate = true;
+      }
+      getSnapshot() {
+        const now = performance.now();
+        const result = [];
+        for (const [id, r] of this.tracks) {
+          if (now - r.seen > TRACK_TTL) continue;
+          result.push({
+            id,
+            pos: r.cur.clone(),
+            cls: r.cls,
+            conf: r.conf,
+            dims: r.cd.clone(),
+            yaw: r.yaw,
+          });
+        }
+        return result;
+      }
+    }
+    const field = new TrackField(512);
+
+    // ─── AGENTS ──────────────────────────────────────────────────
+    let agents = [];
+    let speedMultiplier = 1.0;
+    let targetAgentCount = 14;
+
+    function createAgents(count) {
+      const newAgents = [];
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const dist = 200 + Math.random() * 300;
+        const speed = (2 + Math.random() * 6) * speedMultiplier;
+        const dir = Math.random() * 2 * Math.PI;
+        const cls = ['person', 'vehicle', 'truck'][i % 3];
+        newAgents.push({
+          id: 'trk-' + i,
+          cls: cls,
+          conf: 0.7 + Math.random() * 0.25,
+          pos: new THREE.Vector3(dist * Math.cos(angle), 0, dist * Math.sin(angle)),
+          dir: dir,
+          speed: speed,
+          dims: cls === 'person' ? [0.5, 0.5, 1.7] : cls === 'truck' ? [8, 2.5, 3] : [4.5, 1.8, 1.5],
+          yaw: 0,
+          baseSpeed: speed / speedMultiplier
+        });
+      }
+      return newAgents;
     }
 
-    // If loading takes >5s, show error
-    loadTimer = setTimeout(() => {
-      loadError.style.display = 'block';
-    }, 5000);
+    agents = createAgents(targetAgentCount);
 
-    // ─── IMPORTS ──────────────────────────────────────────────────
-    try {
-      const { default: THREE } = await import('three');
-      const { OrbitControls } = await import('three/addons/OrbitControls.js');
-
-      // Dismiss loading after 500ms min (or immediately after import)
-      setTimeout(dismissLoading, 500);
-
-      // ─── CONSTANTS ─────────────────────────────────────────────
-      const GQEBERHA_LAT = -33.9608;
-      const GQEBERHA_LNG = 25.6022;
-      const DEG = Math.PI / 180;
-      const ORIGIN = { lat: GQEBERHA_LAT, lon: GQEBERHA_LNG };
-
-      // ─── DOM REFS ──────────────────────────────────────────────
-      const container = document.getElementById('three-canvas');
-      const mapOverlay = document.getElementById('map-overlay');
-      const toggleBtn = document.getElementById('toggle-map');
-      const sidebarToggle = document.getElementById('sidebar-toggle');
-      const sidebar = document.getElementById('analytics-sidebar');
-      const closeSidebar = document.getElementById('close-sidebar');
-
-      // ─── THREE.JS SETUP ────────────────────────────────────────
-      const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-      container.appendChild(renderer.domElement);
-
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0b0e14);
-      scene.fog = new THREE.FogExp2(0x0b0e14, 0.0002);
-
-      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-      camera.position.set(0, 150, 300);
-
-      const controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.maxPolarAngle = Math.PI / 2.2;
-      controls.target.set(0, 0, 0);
-      controls.update();
-
-      // Lights
-      const ambientLight = new THREE.AmbientLight(0x020617, 0.6);
-      scene.add(ambientLight);
-      const directionalLight = new THREE.DirectionalLight(0x0ea5e9, 1.5);
-      directionalLight.position.set(100, 300, 50);
-      scene.add(directionalLight);
-
-      // ─── TERRAIN ────────────────────────────────────────────────
-      const terrainSegments = 80;
-      const terrainGeometry = new THREE.PlaneGeometry(800, 800, terrainSegments, terrainSegments);
-      terrainGeometry.rotateX(-Math.PI / 2);
-      const pos = terrainGeometry.attributes.position;
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i);
-        const z = pos.getZ(i);
-        const height = Math.sin(x * 0.01) * Math.cos(z * 0.01) * 30 +
-                       Math.sin(x * 0.005) * 15 +
-                       (Math.random() * 2);
-        pos.setY(i, height);
-      }
-      terrainGeometry.computeVertexNormals();
-      const terrainMat = new THREE.MeshBasicMaterial({
-        color: 0x0f172a,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.35
-      });
-      const terrainMesh = new THREE.Mesh(terrainGeometry, terrainMat);
-      scene.add(terrainMesh);
-
-      // ─── BUILDINGS ──────────────────────────────────────────────
-      const buildingsGroup = new THREE.Group();
-      const buildingMat = new THREE.MeshBasicMaterial({
-        color: 0x0ea5e9,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.4
-      });
-      const glowMat = new THREE.MeshBasicMaterial({
-        color: 0x10b981,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.7
-      });
-      const buildingCount = 40;
-      for (let i = 0; i < buildingCount; i++) {
-        const w = Math.random() * 25 + 10;
-        const h = Math.random() * 70 + 20;
-        const d = Math.random() * 25 + 10;
-        const geo = new THREE.BoxGeometry(w, h, d);
-        geo.translate(0, h / 2, 0);
-        const mesh = new THREE.Mesh(geo, i % 5 === 0 ? glowMat : buildingMat);
-        const x = (Math.random() * 600 - 300) + (Math.random() > 0.5 ? 50 : -50);
-        const z = (Math.random() * 600 - 300) + (Math.random() > 0.5 ? 50 : -50);
-        mesh.position.set(x, 0, z);
-        buildingsGroup.add(mesh);
-      }
-      scene.add(buildingsGroup);
-
-      // ─── NEON BEAMS ─────────────────────────────────────────────
-      const beamsGroup = new THREE.Group();
-      const beamPaths = [];
-      const beamProgresses = [];
-      const beamObjects = [];
-      const beamMatBeam = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9 });
-      for (let b = 0; b < 4; b++) {
-        const points = [];
-        const startX = Math.random() * 400 - 200;
-        const startZ = Math.random() * 400 - 200;
-        points.push(new THREE.Vector3(startX, 5, startZ));
-        points.push(new THREE.Vector3(startX + 100, 15, startZ + 50));
-        points.push(new THREE.Vector3(startX + 200, 5, startZ + 150));
-        const curve = new THREE.CatmullRomCurve3(points);
-        beamPaths.push(curve);
-        beamProgresses.push(Math.random());
-        const beamGeo = new THREE.CylinderGeometry(1.5, 1.5, 12, 8);
-        const beam = new THREE.Mesh(beamGeo, beamMatBeam);
-        beamsGroup.add(beam);
-        beamObjects.push(beam);
-      }
-      scene.add(beamsGroup);
-
-      // ─── TRACK FIELD ────────────────────────────────────────────
-      const CLASS_COLOR = { person: 0x22d3ee, vehicle: 0xa3e635, truck: 0xfb923c, unknown: 0x94a3b8 };
-      const TRACK_TTL = 1500;
-      const LERP_RATE = 12;
-
-      class TrackField {
-        constructor(max = 512) {
-          const g = new THREE.BoxGeometry(1, 1, 1);
-          g.translate(0, 0.5, 0);
-          this.fill = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.2, depthWrite: false }), max);
-          this.fill.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-          this.fill.frustumCulled = false;
-          this.edges = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.6 }), max);
-          this.edges.frustumCulled = false;
-          this.fill.setColorAt(0, new THREE.Color(1,1,1));
-          this.edges.instanceMatrix = this.fill.instanceMatrix;
-          this.edges.instanceColor = this.fill.instanceColor;
-          this.max = max;
-          this.tracks = new Map();
-          this.dummy = new THREE.Object3D();
-          this.col = new THREE.Color();
-          scene.add(this.fill, this.edges);
-        }
-        ingest(t) {
-          let r = this.tracks.get(t.id);
-          if (!r) {
-            r = {
-              cur: new THREE.Vector3(...t.pos),
-              tgt: new THREE.Vector3(...t.pos),
-              cd: new THREE.Vector3(1, 1, 1),
-              td: new THREE.Vector3(...t.dims),
-              yaw: t.yaw || 0,
-              tYaw: t.yaw || 0,
-              vel: new THREE.Vector3(...t.vel),
-              tVel: new THREE.Vector3(...t.vel),
-              hasHdg: t.hasHdg || false,
-              conf: t.conf || 0.8,
-              cls: t.cls || 'unknown',
-              seen: t.seen || performance.now(),
-              born: performance.now()
-            };
-            this.tracks.set(t.id, r);
-          } else {
-            r.tgt.set(...t.pos);
-            r.td.set(...t.dims);
-            r.tYaw = t.yaw || 0;
-            r.tVel.set(...t.vel);
-            r.hasHdg = t.hasHdg || false;
-            r.conf = t.conf || 0.8;
-            r.cls = t.cls || 'unknown';
-            r.seen = performance.now();
-          }
-        }
-        update(dt, now) {
-          const k = 1 - Math.exp(-dt * LERP_RATE);
-          let i = 0;
-          for (const [id, r] of this.tracks) {
-            if (now - r.seen > TRACK_TTL) { this.tracks.delete(id); continue; }
-            r.cur.lerp(r.tgt, k);
-            r.cd.lerp(r.td, k);
-            const dy = r.tYaw - r.yaw;
-            r.yaw += Math.atan2(Math.sin(dy), Math.cos(dy)) * k;
-            const s = Math.max(0.01, 1 - (now - r.seen) / TRACK_TTL);
-            this.dummy.position.copy(r.cur);
-            this.dummy.rotation.set(0, r.yaw, 0);
-            this.dummy.scale.set(r.cd.x * s, r.cd.y * s, r.cd.z * s);
-            this.dummy.updateMatrix();
-            this.fill.setMatrixAt(i, this.dummy.matrix);
-            this.col.setHex(CLASS_COLOR[r.cls] || CLASS_COLOR.unknown);
-            this.fill.setColorAt(i, this.col);
-            i++;
-            if (i >= this.max) break;
-          }
-          this.fill.count = this.edges.count = i;
-          this.fill.instanceMatrix.needsUpdate = true;
-          if (this.fill.instanceColor) this.fill.instanceColor.needsUpdate = true;
-        }
-        getSnapshot() {
-          const now = performance.now();
-          const result = [];
-          for (const [id, r] of this.tracks) {
-            if (now - r.seen > TRACK_TTL) continue;
-            result.push({
-              id,
-              pos: r.cur.clone(),
-              cls: r.cls,
-              conf: r.conf,
-              dims: r.cd.clone(),
-              yaw: r.yaw,
-            });
-          }
-          return result;
-        }
-      }
-      const field = new TrackField(512);
-
-      // ─── AGENTS ──────────────────────────────────────────────────
-      let agents = [];
-      let speedMultiplier = 1.0;
-      let targetAgentCount = 14;
-
-      function createAgents(count) {
-        const newAgents = [];
-        for (let i = 0; i < count; i++) {
+    function updateAgentCount(newCount) {
+      targetAgentCount = Math.max(1, newCount);
+      if (targetAgentCount > agents.length) {
+        const extra = targetAgentCount - agents.length;
+        for (let i = 0; i < extra; i++) {
           const angle = Math.random() * 2 * Math.PI;
           const dist = 200 + Math.random() * 300;
           const speed = (2 + Math.random() * 6) * speedMultiplier;
           const dir = Math.random() * 2 * Math.PI;
-          const cls = ['person', 'vehicle', 'truck'][i % 3];
-          newAgents.push({
-            id: 'trk-' + i,
+          const cls = ['person', 'vehicle', 'truck'][(agents.length + i) % 3];
+          agents.push({
+            id: 'trk-' + (agents.length + i),
             cls: cls,
             conf: 0.7 + Math.random() * 0.25,
             pos: new THREE.Vector3(dist * Math.cos(angle), 0, dist * Math.sin(angle)),
@@ -441,275 +422,243 @@
             baseSpeed: speed / speedMultiplier
           });
         }
-        return newAgents;
+      } else if (targetAgentCount < agents.length) {
+        agents = agents.slice(0, targetAgentCount);
       }
-
-      agents = createAgents(targetAgentCount);
-
-      function updateAgentCount(newCount) {
-        targetAgentCount = Math.max(1, newCount);
-        if (targetAgentCount > agents.length) {
-          const extra = targetAgentCount - agents.length;
-          for (let i = 0; i < extra; i++) {
-            const angle = Math.random() * 2 * Math.PI;
-            const dist = 200 + Math.random() * 300;
-            const speed = (2 + Math.random() * 6) * speedMultiplier;
-            const dir = Math.random() * 2 * Math.PI;
-            const cls = ['person', 'vehicle', 'truck'][(agents.length + i) % 3];
-            agents.push({
-              id: 'trk-' + (agents.length + i),
-              cls: cls,
-              conf: 0.7 + Math.random() * 0.25,
-              pos: new THREE.Vector3(dist * Math.cos(angle), 0, dist * Math.sin(angle)),
-              dir: dir,
-              speed: speed,
-              dims: cls === 'person' ? [0.5, 0.5, 1.7] : cls === 'truck' ? [8, 2.5, 3] : [4.5, 1.8, 1.5],
-              yaw: 0,
-              baseSpeed: speed / speedMultiplier
-            });
-          }
-        } else if (targetAgentCount < agents.length) {
-          agents = agents.slice(0, targetAgentCount);
-        }
-        document.getElementById('agent-count').textContent = targetAgentCount;
-      }
-
-      function updateSpeed(newSpeed) {
-        speedMultiplier = parseFloat(newSpeed);
-        document.getElementById('speed-label').textContent = speedMultiplier.toFixed(1) + 'x';
-        for (const a of agents) {
-          a.speed = a.baseSpeed * speedMultiplier;
-        }
-      }
-
-      // ─── SIMULATE TRACKS ────────────────────────────────────────
-      function simulateTracks() {
-        const now = performance.now();
-        for (const a of agents) {
-          a.pos.x += Math.cos(a.dir) * a.speed * 0.1;
-          a.pos.z += Math.sin(a.dir) * a.speed * 0.1;
-          if (Math.abs(a.pos.x) > 350) a.dir = Math.PI - a.dir;
-          if (Math.abs(a.pos.z) > 350) a.dir = -a.dir;
-          a.yaw = -a.dir;
-          const track = {
-            id: a.id,
-            cls: a.cls,
-            conf: a.conf,
-            pos: [a.pos.x, 0, a.pos.z],
-            dims: a.dims,
-            yaw: a.yaw,
-            vel: [Math.cos(a.dir) * a.speed, 0, Math.sin(a.dir) * a.speed],
-            hasHdg: true,
-            seen: now
-          };
-          field.ingest(track);
-        }
-      }
-      setInterval(simulateTracks, 100);
-
-      // ─── LEAFLET MAP ────────────────────────────────────────────
-      let map = null;
-      let mapVisible = false;
-      let markerLayer = null;
-
-      function initMap() {
-        if (map) return;
-        map = L.map(mapOverlay, {
-          center: [ORIGIN.lat, ORIGIN.lon],
-          zoom: 14,
-          zoomControl: false,
-          attributionControl: false,
-          fadeAnimation: true,
-        });
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CartoDB',
-          subdomains: 'abcd',
-          maxZoom: 19,
-        }).addTo(map);
-        markerLayer = L.layerGroup().addTo(map);
-        // Static street markers
-        const locations = [
-          { lat: -33.9608, lng: 25.6022, label: 'Army PE Central' },
-          { lat: -33.9580, lng: 25.6000, label: 'Capitol Mall' },
-          { lat: -33.9620, lng: 25.6050, label: '21st St.' },
-          { lat: -33.9635, lng: 25.5980, label: 'Clyde Street' },
-          { lat: -33.9575, lng: 25.6080, label: 'Rose Street' },
-          { lat: -33.9595, lng: 25.6120, label: 'Tewa Power' },
-          { lat: -33.9650, lng: 25.6040, label: 'Havelock Street' },
-          { lat: -33.9640, lng: 25.5950, label: 'All nite caffe' },
-        ];
-        for (const loc of locations) {
-          const marker = L.circleMarker([loc.lat, loc.lng], {
-            radius: 3,
-            color: '#4a8cff',
-            fillColor: '#4a8cff',
-            fillOpacity: 0.5,
-            weight: 1,
-          }).addTo(map);
-          marker.bindTooltip(loc.label, { permanent: false, direction: 'top', className: 'custom-tooltip' });
-        }
-        setTimeout(() => map.invalidateSize(), 100);
-      }
-
-      function updateMapMarkers() {
-        if (!map || !markerLayer || !mapVisible) return;
-        const tracks = field.getSnapshot();
-        markerLayer.clearLayers();
-        for (const t of tracks) {
-          const lat = ORIGIN.lat + (t.pos.z) / 110540;
-          const lon = ORIGIN.lon + (t.pos.x) / (111320 * Math.cos(ORIGIN.lat * DEG));
-          const color = CLASS_COLOR[t.cls] ? '#' + CLASS_COLOR[t.cls].toString(16).padStart(6,'0') : '#94a3b8';
-          const marker = L.circleMarker([lat, lon], {
-            radius: Math.max(4, t.dims.x * 2),
-            color: color,
-            fillColor: color,
-            fillOpacity: 0.7,
-            weight: 1.5,
-          });
-          marker.bindTooltip(`${t.cls} (${(t.conf*100)|0}%)`, { permanent: false, direction: 'top', className: 'custom-tooltip' });
-          markerLayer.addLayer(marker);
-        }
-      }
-      setInterval(updateMapMarkers, 1000);
-
-      // ─── TOGGLE MAP ──────────────────────────────────────────────
-      toggleBtn.addEventListener('click', () => {
-        mapVisible = !mapVisible;
-        mapOverlay.style.display = mapVisible ? 'block' : 'none';
-        toggleBtn.textContent = mapVisible ? '✕ Hide Map' : '🗺 Show Map';
-        if (mapVisible) {
-          if (!map) initMap();
-          else map.invalidateSize();
-          updateMapMarkers();
-        }
-      });
-
-      // ─── CONTROLS ────────────────────────────────────────────────
-      document.getElementById('agent-slider').addEventListener('input', (e) => {
-        updateAgentCount(parseInt(e.target.value));
-      });
-      document.getElementById('speed-slider').addEventListener('input', (e) => {
-        updateSpeed(e.target.value);
-      });
-
-      // ─── SIDEBAR TOGGLE ──────────────────────────────────────────
-      let sidebarOpen = false;
-      function toggleSidebar(open) {
-        sidebarOpen = (open !== undefined) ? open : !sidebarOpen;
-        sidebar.classList.toggle('open', sidebarOpen);
-        sidebarToggle.classList.toggle('open', sidebarOpen);
-      }
-      sidebarToggle.addEventListener('click', () => toggleSidebar());
-      closeSidebar.addEventListener('click', () => toggleSidebar(false));
-
-      // ─── ANALYTICS SIMULATION ────────────────────────────────────
-      const metrics = {
-        fps: 60, frameMs: 16.6, apiCalls: 12, apiRequests: 148,
-        peopleTotal: 1077, peopleStreet: 542, peopleSidewalk: 384, peopleAlley: 151,
-        vehiclesTotal: 45, vehTrucks: 8, vehBuses: 4, vehCars: 28, vehVans: 5,
-        marsoAnimals: 12, marsoVehicles: 31,
-        factoryDefects: 3, factoryYield: 99.4,
-        retailCustomers: 188, retailFoot: 420
-      };
-      function updateAnalyticsUI() {
-        document.getElementById('fps-badge').textContent = `${metrics.fps} FPS`;
-        document.getElementById('frame-ms').textContent = `${metrics.frameMs} ms`;
-        document.getElementById('api-calls').textContent = `${metrics.apiCalls} /s`;
-        document.getElementById('api-requests').textContent = `${metrics.apiRequests} req`;
-        document.getElementById('people-total').textContent = metrics.peopleTotal;
-        document.getElementById('people-street').textContent = metrics.peopleStreet;
-        document.getElementById('people-sidewalk').textContent = metrics.peopleSidewalk;
-        document.getElementById('people-alley').textContent = metrics.peopleAlley;
-        document.getElementById('bar-street').style.width = `${(metrics.peopleStreet / metrics.peopleTotal * 100)}%`;
-        document.getElementById('bar-sidewalk').style.width = `${(metrics.peopleSidewalk / metrics.peopleTotal * 100)}%`;
-        document.getElementById('bar-alley').style.width = `${(metrics.peopleAlley / metrics.peopleTotal * 100)}%`;
-        document.getElementById('vehicle-total').textContent = `TOTAL: ${metrics.vehiclesTotal}`;
-        document.getElementById('veh-trucks').textContent = metrics.vehTrucks;
-        document.getElementById('veh-buses').textContent = metrics.vehBuses;
-        document.getElementById('veh-cars').textContent = metrics.vehCars;
-        document.getElementById('veh-vans').textContent = metrics.vehVans;
-        document.getElementById('marso-animals').textContent = `${metrics.marsoAnimals} units/h`;
-        document.getElementById('marso-vehicles').textContent = `${metrics.marsoVehicles} trans/h`;
-        document.getElementById('factory-yield').textContent = `${metrics.factoryYield}% YIELD`;
-        document.getElementById('factory-defects').textContent = `${metrics.factoryDefects} LIMIT-VIOLATIONS`;
-        document.getElementById('retail-customers').textContent = metrics.retailCustomers;
-        document.getElementById('retail-foot').textContent = `${metrics.retailFoot} people`;
-      }
-      setInterval(() => {
-        metrics.fps = Math.max(20, 60 + Math.floor(Math.random() * 10) - 5);
-        metrics.frameMs = parseFloat((1000 / metrics.fps).toFixed(1));
-        metrics.apiCalls = Math.max(5, metrics.apiCalls + Math.floor(Math.random() * 3) - 1);
-        metrics.apiRequests += Math.floor(Math.random() * 5);
-        metrics.peopleTotal += Math.floor(Math.random() * 20) - 10;
-        metrics.peopleStreet = Math.max(0, metrics.peopleStreet + Math.floor(Math.random() * 10) - 5);
-        metrics.peopleSidewalk = Math.max(0, metrics.peopleSidewalk + Math.floor(Math.random() * 8) - 4);
-        metrics.peopleAlley = Math.max(0, metrics.peopleAlley + Math.floor(Math.random() * 5) - 2);
-        metrics.vehiclesTotal = Math.max(20, metrics.vehiclesTotal + Math.floor(Math.random() * 4) - 2);
-        metrics.vehTrucks = Math.max(2, metrics.vehTrucks + Math.floor(Math.random() * 2) - 1);
-        metrics.vehBuses = Math.max(1, metrics.vehBuses + Math.floor(Math.random() * 2) - 1);
-        metrics.vehCars = Math.max(10, metrics.vehCars + Math.floor(Math.random() * 4) - 2);
-        metrics.vehVans = Math.max(1, metrics.vehVans + Math.floor(Math.random() * 2) - 1);
-        metrics.marsoAnimals = Math.max(5, metrics.marsoAnimals + Math.floor(Math.random() * 4) - 2);
-        metrics.marsoVehicles = Math.max(15, metrics.marsoVehicles + Math.floor(Math.random() * 4) - 2);
-        metrics.factoryDefects = Math.max(0, metrics.factoryDefects + (Math.random() > 0.8 ? 1 : -1));
-        metrics.factoryYield = Math.min(99.9, Math.max(98.0, metrics.factoryYield + (Math.random() - 0.5) * 0.4));
-        metrics.retailCustomers = Math.max(80, metrics.retailCustomers + Math.floor(Math.random() * 12) - 6);
-        metrics.retailFoot = Math.max(200, metrics.retailFoot + Math.floor(Math.random() * 20) - 10);
-        updateAnalyticsUI();
-      }, 2500);
-
-      // ─── TEMPERATURE & CLOCK ────────────────────────────────────
-      setInterval(() => {
-        const temp = (12 + Math.random() * 3).toFixed(1);
-        document.querySelector('#temperature').innerHTML = `${temp}<span>°C</span>`;
-      }, 5000);
-
-      function updateClock() {
-        const now = new Date();
-        const h = String(now.getHours()).padStart(2,'0');
-        const m = String(now.getMinutes()).padStart(2,'0');
-        document.getElementById('clock-display').textContent = `⏱ ${h}:${m}`;
-      }
-      setInterval(updateClock, 10000);
-      updateClock();
-
-      // ─── RESIZE ──────────────────────────────────────────────────
-      window.addEventListener('resize', () => {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        if (map) map.invalidateSize();
-      });
-
-      // ─── RENDER LOOP ─────────────────────────────────────────────
-      const clock = new THREE.Clock();
-      function animate() {
-        requestAnimationFrame(animate);
-        const dt = Math.min(clock.getDelta(), 0.1);
-        const now = performance.now();
-        field.update(dt, now);
-        // Animate beams
-        for (let b = 0; b < beamObjects.length; b++) {
-          beamProgresses[b] += dt * 0.15;
-          if (beamProgresses[b] > 1.0) beamProgresses[b] = 0;
-          const pos = beamPaths[b].getPointAt(beamProgresses[b]);
-          const tangent = beamPaths[b].getTangentAt(beamProgresses[b]);
-          beamObjects[b].position.copy(pos);
-          beamObjects[b].quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
-        }
-        controls.update();
-        renderer.render(scene, camera);
-      }
-      animate();
-
-      console.log('▲ VVU GIS Traffic Sim v2 (offline) — ready');
-
-    } catch (err) {
-      console.error('VVU load error:', err);
-      loadError.style.display = 'block';
-      loadError.textContent = '⚠️ LOAD ERROR: ' + err.message;
-      // Keep loading visible with error
+      document.getElementById('agent-count').textContent = targetAgentCount;
     }
+
+    function updateSpeed(newSpeed) {
+      speedMultiplier = parseFloat(newSpeed);
+      document.getElementById('speed-label').textContent = speedMultiplier.toFixed(1) + 'x';
+      for (const a of agents) {
+        a.speed = a.baseSpeed * speedMultiplier;
+      }
+    }
+
+    // ─── SIMULATE TRACKS ────────────────────────────────────────
+    function simulateTracks() {
+      const now = performance.now();
+      for (const a of agents) {
+        a.pos.x += Math.cos(a.dir) * a.speed * 0.1;
+        a.pos.z += Math.sin(a.dir) * a.speed * 0.1;
+        if (Math.abs(a.pos.x) > 350) a.dir = Math.PI - a.dir;
+        if (Math.abs(a.pos.z) > 350) a.dir = -a.dir;
+        a.yaw = -a.dir;
+        const track = {
+          id: a.id,
+          cls: a.cls,
+          conf: a.conf,
+          pos: [a.pos.x, 0, a.pos.z],
+          dims: a.dims,
+          yaw: a.yaw,
+          vel: [Math.cos(a.dir) * a.speed, 0, Math.sin(a.dir) * a.speed],
+          hasHdg: true,
+          seen: now
+        };
+        field.ingest(track);
+      }
+    }
+    setInterval(simulateTracks, 100);
+
+    // ─── LEAFLET MAP ────────────────────────────────────────────
+    let map = null;
+    let mapVisible = false;
+    let markerLayer = null;
+
+    function initMap() {
+      if (map) return;
+      map = L.map(mapOverlay, {
+        center: [ORIGIN.lat, ORIGIN.lon],
+        zoom: 14,
+        zoomControl: false,
+        attributionControl: false,
+        fadeAnimation: true,
+      });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CartoDB',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }).addTo(map);
+      markerLayer = L.layerGroup().addTo(map);
+      // Static street markers
+      const locations = [
+        { lat: -33.9608, lng: 25.6022, label: 'Army PE Central' },
+        { lat: -33.9580, lng: 25.6000, label: 'Capitol Mall' },
+        { lat: -33.9620, lng: 25.6050, label: '21st St.' },
+        { lat: -33.9635, lng: 25.5980, label: 'Clyde Street' },
+        { lat: -33.9575, lng: 25.6080, label: 'Rose Street' },
+        { lat: -33.9595, lng: 25.6120, label: 'Tewa Power' },
+        { lat: -33.9650, lng: 25.6040, label: 'Havelock Street' },
+        { lat: -33.9640, lng: 25.5950, label: 'All nite caffe' },
+      ];
+      for (const loc of locations) {
+        const marker = L.circleMarker([loc.lat, loc.lng], {
+          radius: 3,
+          color: '#4a8cff',
+          fillColor: '#4a8cff',
+          fillOpacity: 0.5,
+          weight: 1,
+        }).addTo(map);
+        marker.bindTooltip(loc.label, { permanent: false, direction: 'top', className: 'custom-tooltip' });
+      }
+      setTimeout(() => map.invalidateSize(), 100);
+    }
+
+    function updateMapMarkers() {
+      if (!map || !markerLayer || !mapVisible) return;
+      const tracks = field.getSnapshot();
+      markerLayer.clearLayers();
+      for (const t of tracks) {
+        const lat = ORIGIN.lat + (t.pos.z) / 110540;
+        const lon = ORIGIN.lon + (t.pos.x) / (111320 * Math.cos(ORIGIN.lat * DEG));
+        const color = CLASS_COLOR[t.cls] ? '#' + CLASS_COLOR[t.cls].toString(16).padStart(6,'0') : '#94a3b8';
+        const marker = L.circleMarker([lat, lon], {
+          radius: Math.max(4, t.dims.x * 2),
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.7,
+          weight: 1.5,
+        });
+        marker.bindTooltip(`${t.cls} (${(t.conf*100)|0}%)`, { permanent: false, direction: 'top', className: 'custom-tooltip' });
+        markerLayer.addLayer(marker);
+      }
+    }
+    setInterval(updateMapMarkers, 1000);
+
+    // ─── TOGGLE MAP ──────────────────────────────────────────────
+    toggleBtn.addEventListener('click', () => {
+      mapVisible = !mapVisible;
+      mapOverlay.style.display = mapVisible ? 'block' : 'none';
+      toggleBtn.textContent = mapVisible ? '✕ Hide Map' : '🗺 Show Map';
+      if (mapVisible) {
+        if (!map) initMap();
+        else map.invalidateSize();
+        updateMapMarkers();
+      }
+    });
+
+    // ─── CONTROLS ────────────────────────────────────────────────
+    document.getElementById('agent-slider').addEventListener('input', (e) => {
+      updateAgentCount(parseInt(e.target.value));
+    });
+    document.getElementById('speed-slider').addEventListener('input', (e) => {
+      updateSpeed(e.target.value);
+    });
+
+    // ─── SIDEBAR TOGGLE ─────────────────────────────────────────
+    let sidebarOpen = false;
+    function toggleSidebar(open) {
+      sidebarOpen = (open !== undefined) ? open : !sidebarOpen;
+      sidebar.classList.toggle('open', sidebarOpen);
+      sidebarToggle.classList.toggle('open', sidebarOpen);
+    }
+    sidebarToggle.addEventListener('click', () => toggleSidebar());
+    closeSidebar.addEventListener('click', () => toggleSidebar(false));
+
+    // ─── ANALYTICS SIMULATION ────────────────────────────────────
+    const metrics = {
+      fps: 60, frameMs: 16.6, apiCalls: 12, apiRequests: 148,
+      peopleTotal: 1077, peopleStreet: 542, peopleSidewalk: 384, peopleAlley: 151,
+      vehiclesTotal: 45, vehTrucks: 8, vehBuses: 4, vehCars: 28, vehVans: 5,
+      marsoAnimals: 12, marsoVehicles: 31,
+      factoryDefects: 3, factoryYield: 99.4,
+      retailCustomers: 188, retailFoot: 420
+    };
+    function updateAnalyticsUI() {
+      document.getElementById('fps-badge').textContent = `${metrics.fps} FPS`;
+      document.getElementById('frame-ms').textContent = `${metrics.frameMs} ms`;
+      document.getElementById('api-calls').textContent = `${metrics.apiCalls} /s`;
+      document.getElementById('api-requests').textContent = `${metrics.apiRequests} req`;
+      document.getElementById('people-total').textContent = metrics.peopleTotal;
+      document.getElementById('people-street').textContent = metrics.peopleStreet;
+      document.getElementById('people-sidewalk').textContent = metrics.peopleSidewalk;
+      document.getElementById('people-alley').textContent = metrics.peopleAlley;
+      document.getElementById('bar-street').style.width = `${(metrics.peopleStreet / metrics.peopleTotal * 100)}%`;
+      document.getElementById('bar-sidewalk').style.width = `${(metrics.peopleSidewalk / metrics.peopleTotal * 100)}%`;
+      document.getElementById('bar-alley').style.width = `${(metrics.peopleAlley / metrics.peopleTotal * 100)}%`;
+      document.getElementById('vehicle-total').textContent = `TOTAL: ${metrics.vehiclesTotal}`;
+      document.getElementById('veh-trucks').textContent = metrics.vehTrucks;
+      document.getElementById('veh-buses').textContent = metrics.vehBuses;
+      document.getElementById('veh-cars').textContent = metrics.vehCars;
+      document.getElementById('veh-vans').textContent = metrics.vehVans;
+      document.getElementById('marso-animals').textContent = `${metrics.marsoAnimals} units/h`;
+      document.getElementById('marso-vehicles').textContent = `${metrics.marsoVehicles} trans/h`;
+      document.getElementById('factory-yield').textContent = `${metrics.factoryYield}% YIELD`;
+      document.getElementById('factory-defects').textContent = `${metrics.factoryDefects} LIMIT-VIOLATIONS`;
+      document.getElementById('retail-customers').textContent = metrics.retailCustomers;
+      document.getElementById('retail-foot').textContent = `${metrics.retailFoot} people`;
+    }
+    setInterval(() => {
+      metrics.fps = Math.max(20, 60 + Math.floor(Math.random() * 10) - 5);
+      metrics.frameMs = parseFloat((1000 / metrics.fps).toFixed(1));
+      metrics.apiCalls = Math.max(5, metrics.apiCalls + Math.floor(Math.random() * 3) - 1);
+      metrics.apiRequests += Math.floor(Math.random() * 5);
+      metrics.peopleTotal += Math.floor(Math.random() * 20) - 10;
+      metrics.peopleStreet = Math.max(0, metrics.peopleStreet + Math.floor(Math.random() * 10) - 5);
+      metrics.peopleSidewalk = Math.max(0, metrics.peopleSidewalk + Math.floor(Math.random() * 8) - 4);
+      metrics.peopleAlley = Math.max(0, metrics.peopleAlley + Math.floor(Math.random() * 5) - 2);
+      metrics.vehiclesTotal = Math.max(20, metrics.vehiclesTotal + Math.floor(Math.random() * 4) - 2);
+      metrics.vehTrucks = Math.max(2, metrics.vehTrucks + Math.floor(Math.random() * 2) - 1);
+      metrics.vehBuses = Math.max(1, metrics.vehBuses + Math.floor(Math.random() * 2) - 1);
+      metrics.vehCars = Math.max(10, metrics.vehCars + Math.floor(Math.random() * 4) - 2);
+      metrics.vehVans = Math.max(1, metrics.vehVans + Math.floor(Math.random() * 2) - 1);
+      metrics.marsoAnimals = Math.max(5, metrics.marsoAnimals + Math.floor(Math.random() * 4) - 2);
+      metrics.marsoVehicles = Math.max(15, metrics.marsoVehicles + Math.floor(Math.random() * 4) - 2);
+      metrics.factoryDefects = Math.max(0, metrics.factoryDefects + (Math.random() > 0.8 ? 1 : -1));
+      metrics.factoryYield = Math.min(99.9, Math.max(98.0, metrics.factoryYield + (Math.random() - 0.5) * 0.4));
+      metrics.retailCustomers = Math.max(80, metrics.retailCustomers + Math.floor(Math.random() * 12) - 6);
+      metrics.retailFoot = Math.max(200, metrics.retailFoot + Math.floor(Math.random() * 20) - 10);
+      updateAnalyticsUI();
+    }, 2500);
+
+    // ─── TEMPERATURE & CLOCK ────────────────────────────────────
+    setInterval(() => {
+      const temp = (12 + Math.random() * 3).toFixed(1);
+      document.querySelector('#temperature').innerHTML = `${temp}<span>°C</span>`;
+    }, 5000);
+
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2,'0');
+      const m = String(now.getMinutes()).padStart(2,'0');
+      document.getElementById('clock-display').textContent = `⏱ ${h}:${m}`;
+    }
+    setInterval(updateClock, 10000);
+    updateClock();
+
+    // ─── RESIZE ──────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if (map) map.invalidateSize();
+    });
+
+    // ─── RENDER LOOP ─────────────────────────────────────────────
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.1);
+      const now = performance.now();
+      field.update(dt, now);
+
+      // Animate beams
+      for (let b = 0; b < beamObjects.length; b++) {
+        beamProgresses[b] += dt * 0.15;
+        if (beamProgresses[b] > 1.0) beamProgresses[b] = 0;
+        const pos = beamPaths[b].getPointAt(beamProgresses[b]);
+        const tangent = beamPaths[b].getTangentAt(beamProgresses[b]);
+        beamObjects[b].position.copy(pos);
+        beamObjects[b].quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tangent);
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    console.log('▲ VVU GIS Traffic Sim v2 — integrated');
   </script>
 </body>
 </html>
