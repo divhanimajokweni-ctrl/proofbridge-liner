@@ -1,62 +1,27 @@
-<<<<<<< HEAD
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-=======
 // VVU — Verification Village Universe
 // IVE (Integrated Verification Environment) — persistence schema
 // EIS (Evidence Independence Specification) — backend logic lives in src/lib/eis
->>>>>>> origin/main
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-<<<<<<< HEAD
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-=======
-// Claim — a proposition that must be supported by evidence before authorization.
-// States form a lattice (see src/lib/eis/state-lattice.ts):
-//   PROVEN >= VERIFIED >= SUPPORTED >= OBSERVED >= INCONCLUSIVE
-//   FALSIFIED (incomparable — terminal denial)
-//   UNVALIDATED / UNTESTED / STALE (pre-conditions)
 model Claim {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  // "mathematical" | "semantic" | "empirical" | "operational"
-  // EIS ranks: mathematical > semantic > empirical > operational
-  claimType   String   @default("empirical")
-  state       String   @default("UNTESTED")
-  // The action that would be authorized if this claim reaches authorization
+  id            String   @id @default(cuid())
+  title         String
+  description   String
+  claimType     String   @default("empirical")
+  state         String   @default("UNTESTED")
   intendedAction String @default("deploy")
-  // Safety-critical flag — when true, circuit breaker is armed
   safetyCritical Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   evidence       Evidence[]
   authorizations Authorization[]
@@ -67,39 +32,31 @@ model Claim {
   @@index([claimType])
 }
 
-// Evidence — observations collected by the Evidence Mesh.
-// Sources: "you.com" | "brave" | "firecrawl" | "watchdog"
-// embedding is a JSON-serialized R^D vector (D default 20)
 model Evidence {
-  id          String   @id @default(cuid())
-  claimId     String
-  claim       Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  source      String
-  content     String
-  // JSON-serialized number[] — provenance embedding
-  embedding   String
-  // Confidence in [0,1] — modulates weight in N_ind
-  weight      Float    @default(1.0)
-  // Lattice state contributed by this evidence item
-  state       String   @default("OBSERVED")
-  collectedAt DateTime @default(now())
+  id            String   @id @default(cuid())
+  claimId       String
+  claim         Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  source        String
+  content       String
+  embedding     String
+  weight        Float    @default(1.0)
+  state         String   @default("OBSERVED")
+  collectedAt   DateTime @default(now())
 
   @@index([claimId])
   @@index([source])
 }
 
-// Authorization — record of an A = C ∧ E ∧ I ∧ S ∧ R evaluation.
 model Authorization {
   id            String   @id @default(cuid())
   claimId       String
   claim         Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  // The 5 conjuncts of the EIS authorization formula
-  claimOk       Boolean  // C — claim state meets threshold
-  evidenceOk    Boolean  // E — sufficient evidence exists
-  integrityOk   Boolean  // I — provenance integrity (N_ind >= threshold)
-  safetyOk      Boolean  // S — SafeGrid / SafeStacks clearance
-  reviewOk      Boolean  // R — second-reviewer signoff
-  authorized    Boolean  // A = C ∧ E ∧ I ∧ S ∧ R
+  claimOk       Boolean
+  evidenceOk    Boolean
+  integrityOk   Boolean
+  safetyOk      Boolean
+  reviewOk      Boolean
+  authorized    Boolean
   reason        String   @default("")
   createdAt     DateTime @default(now())
 
@@ -107,14 +64,11 @@ model Authorization {
   @@index([authorized])
 }
 
-// CircuitBreaker — fail-closed event log.
-// Per Theorem 5: loss of E(S) => loss of V(S) => loss of A(S) => breaker trips.
 model CircuitBreaker {
   id            String   @id @default(cuid())
   claimId       String
   claim         Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
   triggered     Boolean  @default(false)
-  // "evidence_lost" | "verification_failed" | "safety_violation" | "stale_evidence"
   reason        String   @default("")
   trippedAt     DateTime @default(now())
 
@@ -122,73 +76,42 @@ model CircuitBreaker {
   @@index([triggered])
 }
 
-// NIndComputation — participation ratio record for a claim's evidence set.
-// N_ind = (∑λ_i)² / ∑λ_i²  where λ_i are eigenvalues of the RBF Gram matrix.
 model NIndComputation {
   id            String   @id @default(cuid())
   claimId       String
   claim         Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
   numEvidence   Int
-  numSources    Int      // estimated latent sources
+  numSources    Int
   nInd          Float
   gamma         Float
-  // JSON-serialized number[] — top eigenvalues
   eigenvalues   String   @default("[]")
   createdAt     DateTime @default(now())
 
   @@index([claimId])
 }
 
-// HeatKernelStep — diffusion trace for evidence smoothing on the provenance graph.
-// Per Theorem 3: heat kernel u_t = -κLu is the correct epistemic diffusion model.
 model HeatKernelStep {
   id            String   @id @default(cuid())
   claimId       String
   step          Int
   l2Norm        Float
   highFreqEnergy Float
-  // JSON-serialized number[] — node values at this step
   nodeValues    String   @default("[]")
   createdAt     DateTime @default(now())
 
   @@index([claimId])
 }
 
-// ============================================================================
-// WEBHOOK DELIVERY SUBSYSTEM — VVU-IVE Reliability Contract v1.1
-// ----------------------------------------------------------------------------
-// Implementation of: Kafka 12 partitions, per-webhook concurrency=1,
-// 4-attempt retry with full-jitter exponential backoff (5s->25s->125s->625s),
-// per-webhook circuit breaker (10 terminal failures, 300s OPEN, 1 probe),
-// 30-day DLQ, explicit manual replay (no auto-resume on CB close).
-//
-// CRITICAL: This is the EXECUTION/RELIABILITY LAYER (per v1.1 contract).
-// It is SEPARATE from the EIS Theorem 5 fail-closed breaker above.
-//   - CircuitBreaker (above)        = trust decision fail-closed (Theorem 5)
-//   - WebhookCircuitBreakerState    = HTTP delivery channel fail-isolated
-// Do NOT conflate. Different layer, different trigger, different persistence.
-// ============================================================================
-
-// Webhook — registered external endpoint that receives verified claim state.
-// Examples: ProofBridge callback, GitHub status check, Discord alert.
 model Webhook {
-  id              String   @id @default(cuid())
-  // Human-readable label (e.g. "ProofBridge Production Callback")
-  name            String
-  // Full HTTPS endpoint URL
-  url             String
-  // "proofbridge" | "github" | "discord" | "custom"
-  type            String   @default("custom")
-  // Shared secret used to sign outbound payloads (HMAC-SHA256, X-VVU-Signature header)
-  secret          String   @default("")
-  // STAGED ROTATION: when set, both `secret` and `nextSecret` validate inbound
-  // signatures. Once all clients have migrated, an admin promotes nextSecret
-  // → secret and clears nextSecret. See Section 16 of the dossier.
-  nextSecret      String?  @default("")
-  // Soft-disable flag (admin toggle, NOT circuit breaker state)
-  enabled         Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  url         String
+  type        String   @default("custom")
+  secret      String   @default("")
+  nextSecret  String?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   deliveries      WebhookDelivery[]
   cbState         WebhookCircuitBreakerState?
@@ -196,46 +119,28 @@ model Webhook {
   @@index([enabled])
 }
 
-// WebhookSecretAudit — append-only rotation history.
-// Stores SHA-256 hashes (never the raw secret) so we can audit rotation
-// events without retaining the secret material itself.
 model WebhookSecretAudit {
-  id              String   @id @default(cuid())
-  webhookId       String
-  // SHA-256 hash of the OLD secret (never the secret itself)
-  oldSecretHash   String
-  // SHA-256 hash of the NEW secret (never the secret itself)
-  newSecretHash   String
-  // Who triggered the rotation
-  rotatedBy       String
-  // "scheduled" | "emergency" | "promoted"
-  reason          String   @default("scheduled")
-  rotatedAt       DateTime @default(now())
+  id            String   @id @default(cuid())
+  webhookId     String
+  oldSecretHash String
+  newSecretHash String
+  rotatedBy     String
+  reason        String   @default("scheduled")
+  rotatedAt     DateTime @default(now())
 
   @@index([webhookId])
   @@index([rotatedAt])
 }
 
-// WebhookDelivery — one logical event to deliver (e.g. "claim X authorized").
-// Each delivery has:
-//   - stable eventId (external systems may dedup on this)
-//   - unique deliveryId (used as Idempotency-Key header for at-least-once)
-// Partitioned by webhookId so events for the same webhook process in order.
 model WebhookDelivery {
-  id              String   @id @default(cuid())   // = delivery_id, used as Idempotency-Key
+  id              String   @id @default(cuid())
   webhookId       String
   webhook         Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
-  // Stable event identifier (e.g. "evt_abc123") — external systems may dedup on this
   eventId         String
-  // Event payload (JSON-serialized)
   payload         String
-  // "PENDING" | "IN_FLIGHT" | "DELIVERED" | "FAILED" | "DLQ" | "SKIPPED"
   status          String   @default("PENDING")
-  // Reason for current status (e.g. "CIRCUIT_BREAKER_OPEN" when SKIPPED, "EXHAUSTED_RETRIES" when DLQ)
   statusReason    String   @default("")
-  // Kafka partition this delivery was assigned to (1..12)
   kafkaPartition  Int?
-  // Kafka offset within that partition
   kafkaOffset     Int?
   attempts        WebhookDeliveryAttempt[]
   dlqEntries      DeadLetterQueueEntry[]
@@ -247,76 +152,46 @@ model WebhookDelivery {
   @@index([eventId])
 }
 
-// WebhookDeliveryAttempt — one HTTP attempt to deliver a WebhookDelivery.
-// Max 4 attempts per delivery (1 initial + 3 retries).
 model WebhookDeliveryAttempt {
-  id              String   @id @default(cuid())
-  deliveryId      String
-  delivery        WebhookDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
-  // 1..4 — attempt number (1 = initial, 4 = final)
-  attemptNumber   Int
-  // HTTP status code returned (0 if connection/TLS/timeout failure)
-  httpStatus      Int      @default(0)
-  // "success" | "retryable" | "non_retryable" | "timeout" | "connection_failure"
-  outcome         String
-  // Response body snippet for audit (truncated to first 2KB)
-  responseBody    String   @default("")
-  // Jittered delay actually waited before this attempt (ms)
-  delayMs         Int      @default(0)
-  startedAt       DateTime @default(now())
-  finishedAt      DateTime?
+  id            String   @id @default(cuid())
+  deliveryId    String
+  delivery      WebhookDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  attemptNumber Int
+  httpStatus    Int      @default(0)
+  outcome       String
+  responseBody  String   @default("")
+  delayMs       Int      @default(0)
+  startedAt     DateTime @default(now())
+  finishedAt    DateTime?
 
   @@index([deliveryId])
   @@index([outcome])
 }
 
-// WebhookCircuitBreakerState — per-webhook CB state (one row per webhook).
-// Tracks terminal failure count and OPEN/CLOSED/HALF_OPEN state.
-// Threshold: 10 terminal failures (an event that exhausted all 4 attempts).
-// OPEN duration: 300s. Half-open allows exactly 1 probe.
 model WebhookCircuitBreakerState {
-  id                       String   @id @default(cuid())
-  webhookId                String   @unique
-  webhook                  Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
-  // "CLOSED" | "OPEN" | "HALF_OPEN"
-  state                    String   @default("CLOSED")
-  // Counter of terminal failures (events that exhausted all 4 attempts)
-  terminalFailureCount     Int      @default(0)
-  // When state last transitioned to OPEN (used to compute 300s cooldown)
-  openedAt                 DateTime?
-  // When the half-open probe was issued (used to limit to 1 probe at a time)
-  halfOpenProbeAt          DateTime?
-  // Outcome of the most recent half-open probe ("success" | "failure" | null)
-  halfOpenProbeResult      String?
-  updatedAt                DateTime @updatedAt
+  id                String   @id @default(cuid())
+  webhookId         String   @unique
+  webhook           Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  state             String   @default("CLOSED")
+  terminalFailureCount Int    @default(0)
+  openedAt          DateTime?
+  halfOpenProbeAt   DateTime?
+  halfOpenProbeResult String?
+  updatedAt         DateTime @updatedAt
 }
 
-// DeadLetterQueueEntry — events that exhausted all 4 attempts OR were
-// skipped while CB was OPEN. Retained 30 days. Manual replay ONLY.
-//
-// Per Pillar 4: When a circuit breaker is OPEN and events are skipped, they
-// do NOT auto-retry when the breaker closes. They stay dead in the DLQ until
-// an operator explicitly replays them via
-//   POST /api/v1/webhooks/{id}/delivery-attempts/{attempt_id}/retry
 model DeadLetterQueueEntry {
   id              String   @id @default(cuid())
   deliveryId      String?
   webhookId       String
   eventId         String
-  // "exhausted_retries" | "circuit_breaker_open_skipped" | "non_retryable_error"
   reason          String
-  // Final HTTP status (if applicable, 0 if skipped before any attempt)
   finalHttpStatus Int      @default(0)
-  // Snapshot of original payload (so we can replay even if WebhookDelivery is purged)
   payload         String
-  // Operator who triggered replay (empty = not yet replayed)
   replayedBy      String   @default("")
-  // When replay was triggered (null = never)
   replayedAt      DateTime?
   createdAt       DateTime @default(now())
 
-  // Delivery relation is optional — we keep the entry even if the delivery
-  // row is later deleted (the snapshot above lets us replay)
   delivery        WebhookDelivery? @relation(fields: [deliveryId], references: [id], onDelete: SetNull)
 
   @@index([webhookId])
@@ -325,20 +200,14 @@ model DeadLetterQueueEntry {
   @@index([deliveryId])
 }
 
-// AuditEvent — admin/audit worker records every CB state transition and
-// delivery outcome here, in a separate consumer group (vvu-admin-audit-workers)
-// decoupled from the delivery path. Provides redundant audit trail.
 model AuditEvent {
-  id              String   @id @default(cuid())
-  // "delivery_attempted" | "delivery_succeeded" | "delivery_failed"
-  // | "delivery_dlq" | "delivery_skipped" | "cb_state_change" | "cb_replayed"
-  type            String
-  webhookId       String   @default("")
-  deliveryId      String   @default("")
-  attemptId       String   @default("")
-  // JSON-serialized details (HTTP status, reason, CB prev/next state, etc.)
-  details         String   @default("{}")
-  createdAt       DateTime @default(now())
+  id        String   @id @default(cuid())
+  type      String
+  webhookId String   @default("")
+  deliveryId String  @default("")
+  attemptId String   @default("")
+  details   String   @default("{}")
+  createdAt DateTime @default(now())
 
   @@index([type])
   @@index([webhookId])
@@ -346,32 +215,16 @@ model AuditEvent {
   @@index([createdAt])
 }
 
-// StudiGate — corporate-governance gate that must be RESOLVED before
-// the IVE engineering-release valve opens. The STUDI workspace shows
-// the live state of these gates on its overview; flipping any of them
-// from PENDING/NOT-FILED/BLOCKED → RESOLVED/GO/FILED drives the
-// Evolution Matrix from the "sphere" warning state to the "antone"
-// proven state in real time (via the /api/theorem-state store).
-//
-// Status lattice (matched by studiVerdictFromGates in the API):
-//   PENDING / NOT-FILED / BLOCKED   → STUDI verdict UNKNOWN  (sphere held)
-//   DRAFT / READY (mixed only)      → STUDI verdict INCONCLUSIVE (sphere held)
-//   GO / FILED / RESOLVED (all met) → STUDI verdict PROVEN (antone morph)
 model StudiGate {
   id          String   @id @default(cuid())
-  // Stable slug — used as the URL path parameter for PATCH.
   slug        String   @unique
   label       String
   description String   @default("")
-  // "PENDING" | "NOT-FILED" | "BLOCKED" | "DRAFT" | "READY" | "GO" | "FILED" | "RESOLVED"
   status      String   @default("PENDING")
-  // Free-form operator note (last mutation rationale, who, when).
   note        String   @default("")
-  // Optional ordering for display.
   order       Int      @default(0)
   updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())
 
   @@index([status])
 }
->>>>>>> origin/main

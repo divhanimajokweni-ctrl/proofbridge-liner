@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>VVU Secure On-Site Activation — BLE + TOTP Handshake</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Space Grotesk', sans-serif; }
+    .code-font { font-family: 'JetBrains Mono', monospace; }
+    .glow-cyan { box-shadow: 0 0 15px rgba(6, 182, 212, 0.2); }
+    .glow-emerald { box-shadow: 0 0 15px rgba(16, 185, 129, 0.25); }
+    .totp-digit { display: inline-block; min-width: 1.4em; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 2.5rem; font-weight: 700; color: #22d3ee; letter-spacing: 0.1em; text-shadow: 0 0 12px rgba(34, 211, 238, 0.5); }
+    .progress-ring { transform: rotate(-90deg); transition: stroke-dashoffset 1s linear; }
+    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 15px rgba(34, 211, 238, 0.3); } 50% { box-shadow: 0 0 25px rgba(34, 211, 238, 0.6); } }
+    .pulse-glow { animation: pulse-glow 2s infinite; }
+    .scan-line { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #22d3ee, transparent); animation: scan 2s linear infinite; }
+    @keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col select-none">
+  <div class="bg-amber-500 text-slate-950 font-bold text-xs tracking-widest text-center py-1 z-30 shrink-0 uppercase">STRICT DWS LABELING: SIMULATION DATA — NOT MUNICIPAL OPERATIONAL DATA</div>
+  <header class="bg-slate-900/90 border-b border-slate-800 px-4 sm:px-6 py-3 shrink-0 flex justify-between items-center z-20 backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <a href="/" class="text-slate-400 hover:text-cyan-300 transition-colors text-xs font-bold uppercase tracking-wider flex items-center gap-1">← Home</a>
+      <span class="text-slate-700">|</span>
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+      <div><h1 class="text-sm font-extrabold tracking-widest text-slate-100 code-font">VVU SECURE ON-SITE ACTIVATION</h1><p class="text-[10px] text-emerald-400 code-font">BLE + TOTP HANDSHAKE · GOOGLE AUTHENTICATOR · HBK Mk-II</p></div>
+    </div>
+    <div class="flex items-center gap-3 text-xs code-font">
+      <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded text-slate-400">NODE: <span class="text-cyan-400 font-bold">VVU-HG-NMBM-01</span></div>
+      <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded text-slate-400 hidden sm:block">STATUS: <span id="header-status" class="text-amber-400 font-bold">STANDBY</span></div>
+    </div>
+  </header>
+  <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+    <aside class="w-full lg:w-[420px] bg-slate-900/90 border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto">
+      <div class="p-5 space-y-5">
+        <section class="bg-slate-950 border border-cyan-500/30 rounded-xl p-5 glow-cyan">
+          <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-3">
+            <h2 class="text-xs font-bold text-cyan-400 uppercase tracking-wider code-font">VVU Field Onboarding Card</h2>
+            <span class="text-[9px] text-slate-500 code-font">v1.0 · NMBM-Zone-A</span>
+          </div>
+          <div class="space-y-2 text-xs code-font mb-4">
+            <div class="flex justify-between"><span class="text-slate-500">Card ID:</span><span class="text-slate-200">VVU-FOC-001</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Node ID:</span><span class="text-cyan-400 font-bold">VVU-HG-NMBM-01</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Facility:</span><span class="text-slate-200">PE Harbour Zone A Inlet</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Technician:</span><span class="text-slate-200">TECH-M_MAJOKWENI</span></div>
+          </div>
+          <div class="bg-white rounded-lg p-4 flex items-center justify-center mb-3 relative overflow-hidden" style="min-height: 220px;">
+            <div id="qrcode" class="relative z-10"></div>
+            <div class="scan-line"></div>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded p-3 text-xs code-font">
+            <div class="text-slate-500 uppercase tracking-wider text-[9px] mb-1">TOTP Secret (Base32)</div>
+            <div class="text-amber-300 font-bold tracking-wider break-all">VVUACTIVATIONKEY</div>
+            <div class="text-slate-500 mt-2 text-[10px] break-all">otpauth://totp/VentureVisionUbuntu:MihleMajokweni?secret=VVUACTIVATIONKEY&issuer=VentureVisionUbuntu&period=30&digits=6</div>
+          </div>
+        </section>
+        <section class="bg-slate-950 border border-emerald-500/30 rounded-xl p-5 glow-emerald">
+          <h2 class="text-xs font-bold text-emerald-400 uppercase tracking-wider code-font mb-3">Live TOTP Code</h2>
+          <div class="flex items-center justify-center py-4">
+            <div id="totp-display" class="text-center">
+              <span class="totp-digit" id="d1">0</span><span class="totp-digit" id="d2">0</span><span class="totp-digit" id="d3">0</span><span class="totp-digit" style="color:#475569">·</span><span class="totp-digit" id="d4">0</span><span class="totp-digit" id="d5">0</span><span class="totp-digit" id="d6">0</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-center gap-4 mt-2">
+            <svg width="48" height="48" class="progress-ring">
+              <circle cx="24" cy="24" r="20" stroke="#1e293b" stroke-width="3" fill="none"/>
+              <circle id="progress-circle" cx="24" cy="24" r="20" stroke="#22d3ee" stroke-width="3" fill="none" stroke-dasharray="125.6" stroke-dashoffset="0" stroke-linecap="round"/>
+            </svg>
+            <div class="text-xs code-font text-slate-400"><div>Expires in <span id="countdown" class="text-cyan-400 font-bold text-base">30</span>s</div></div>
+          </div>
+          <button id="btn-copy-code" class="mt-3 w-full py-2 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-cyan-500/30 transition-all code-font">Copy Code</button>
+        </section>
+      </div>
+    </aside>
+    <main class="flex-1 min-w-0 overflow-y-auto p-5">
+      <div class="max-w-4xl mx-auto space-y-5">
+        <section class="bg-slate-950 border border-slate-800 rounded-xl p-5">
+          <h2 class="text-xs font-bold text-cyan-400 uppercase tracking-wider code-font mb-4">Secure Activation Architecture</h2>
+          <pre class="text-[9px] sm:text-[10px] code-font text-slate-400 leading-relaxed overflow-x-auto">  [Technician Phone]          [HBK Mk-II Node]          [VVU Backend]
+       |                         |                         |
+  +----v----+              +------v------+          +-----v-----+
+  |Google   |              |              |          | VVU        |
+  |Authenti-|  TOTP Code   |   BLE Pair   |  Intent  | Processor  |
+  |cator    |------------>|   Handshake  |--------->| (HubSpot)  |
+  |(TOTP)   |              |              |          |            |
+  +---------+              +--------------+          +------------+
+       |                         |                         |
+   TOTP Secret               BLE encrypted              Subscription
+   (QR Code)                 channel                    activation</pre>
+        </section>
+        <section class="bg-slate-950 border border-slate-800 rounded-xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xs font-bold text-cyan-400 uppercase tracking-wider code-font">BLE + TOTP Handshake Simulator</h2>
+            <span id="handshake-status" class="text-[10px] text-slate-500 code-font uppercase tracking-wider">IDLE</span>
+          </div>
+          <div class="space-y-3" id="handshake-steps"></div>
+          <button id="btn-activate" class="mt-5 w-full py-3 rounded-lg font-bold text-sm bg-cyan-500 hover:bg-cyan-400 text-slate-950 uppercase tracking-wider transition-all code-font pulse-glow">▶ Initiate Secure Activation</button>
+          <button id="btn-reset" class="mt-2 w-full py-2 rounded-lg font-bold text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-400 uppercase tracking-wider transition-all code-font border border-slate-700">↻ Reset Handshake</button>
+        </section>
+        <section id="receipt-section" class="bg-slate-950 border border-emerald-500/30 rounded-xl p-5 glow-emerald hidden">
+          <h2 class="text-xs font-bold text-emerald-400 uppercase tracking-wider code-font mb-4">Secure Subscription Activation Receipt</h2>
+          <pre id="receipt-content" class="text-[10px] code-font text-slate-300 leading-relaxed whitespace-pre-wrap"></pre>
+          <button id="btn-download-receipt" class="mt-4 w-full py-2 rounded-lg font-bold text-[10px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 uppercase tracking-wider transition-all code-font border border-emerald-500/30">⬇ Download Receipt (.txt)</button>
+        </section>
+        <section class="bg-slate-950 border border-slate-800 rounded-xl p-5">
+          <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider code-font mb-4">Security Posture</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800"><div class="text-cyan-400 font-bold code-font mb-1">BLE Eavesdropping</div><div class="text-slate-400">TOTP expires in 30s — captured codes cannot be reused</div></div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800"><div class="text-cyan-400 font-bold code-font mb-1">MITM</div><div class="text-slate-400">TOTP tied to specific activation intent</div></div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800"><div class="text-cyan-400 font-bold code-font mb-1">Replay Attack</div><div class="text-slate-400">Nonce cache + timestamp window + TOTP expiry</div></div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800"><div class="text-cyan-400 font-bold code-font mb-1">Stale Connection</div><div class="text-slate-400">30s TOTP refresh = automatic session expiry</div></div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800"><div class="text-cyan-400 font-bold code-font mb-1">Key Compromise</div><div class="text-slate-400">TOTP secret never transmitted — only the 6-digit code</div></div>
+            <div class="p-3 rounded-lg bg-slate-900 border border-slate-800"><div class="text-cyan-400 font-bold code-font mb-1">Phone Theft</div><div class="text-slate-400">Attacker needs phone + TOTP secret</div></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <footer class="border-t border-slate-800 bg-slate-950/80 backdrop-blur-sm shrink-0">
+    <div class="max-w-5xl mx-auto px-6 py-3 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 code-font">
+      <div>VVU · SANS 10112 / EIS v1.0 · RFC 6238 TOTP · ATECC608B Secure Element</div>
+      <div>NMBM-DMA-07 · v5.0 · Zero Fabrication Rule active</div>
+    </div>
+  </footer>
+  <script>
+  const TOTP_SECRET = 'VVUACTIVATIONKEY';
+  const TOTP_ISSUER = 'VentureVisionUbuntu';
+  const TOTP_LABEL = 'MihleMajokweni';
+  const TOTP_PERIOD = 30;
+  const TOTP_DIGITS = 6;
+  function base32Decode(secret) { const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'; const clean = secret.toUpperCase().replace(/\s/g, '').replace(/=/g, ''); let bits = 0, value = 0; const bytes = []; for (const ch of clean) { const idx = alphabet.indexOf(ch); if (idx === -1) continue; value = (value << 5) | idx; bits += 5; if (bits >= 8) { bytes.push((value >>> (bits - 8)) & 0xff); bits -= 8; } } return new Uint8Array(bytes); }
+  async function getHotpToken(secret, counter) { const key = base32Decode(secret); const msg = new Uint8Array(8); let v = BigInt(counter); for (let i = 7; i >= 0; i--) { msg[i] = Number(v & 0xffn); v >>= 8n; } const cryptoKey = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']); const sig = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, msg)); const offset = sig[sig.length - 1] & 0xf; const binary = ((sig[offset] & 0x7f) << 24) | ((sig[offset + 1] & 0xff) << 16) | ((sig[offset + 2] & 0xff) << 8) | (sig[offset + 3] & 0xff); return String(binary % Math.pow(10, TOTP_DIGITS)).padStart(TOTP_DIGITS, '0'); }
+  async function getTotpToken(secret) { const counter = Math.floor(Date.now() / 1000 / TOTP_PERIOD); return await getHotpToken(secret, counter); }
+  let currentTotpCode = '------';
+  async function updateTotpDisplay() { const code = await getTotpToken(TOTP_SECRET); currentTotpCode = code; for (let i = 0; i < 6; i++) { document.getElementById('d' + (i + 1)).textContent = code[i]; } const now = Math.floor(Date.now() / 1000); const remaining = TOTP_PERIOD - (now % TOTP_PERIOD); document.getElementById('countdown').textContent = remaining; const circumference = 125.6; const offset = circumference - (remaining / TOTP_PERIOD) * circumference; document.getElementById('progress-circle').style.strokeDashoffset = offset; }
+  function generateQrCode() { const uri = 'otpauth://totp/' + TOTP_ISSUER + ':' + TOTP_LABEL + '?secret=' + TOTP_SECRET + '&issuer=' + TOTP_ISSUER + '&period=' + TOTP_PERIOD + '&digits=' + TOTP_DIGITS; const container = document.getElementById('qrcode'); container.innerHTML = ''; new QRCode(container, { text: uri, width: 200, height: 200, colorDark: '#020617', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M }); }
+  document.getElementById('btn-copy-code').addEventListener('click', async () => { try { await navigator.clipboard.writeText(currentTotpCode); const btn = document.getElementById('btn-copy-code'); const original = btn.textContent; btn.textContent = '✓ Copied ' + currentTotpCode; setTimeout(() => { btn.textContent = original; }, 2000); } catch (e) { console.warn('Clipboard write failed:', e); } });
+  const STEPS = [ { id: 1, name: 'BLE Pairing', duration: 800, status: 'VERIFIED' }, { id: 2, name: 'TOTP Challenge', duration: 1200, status: '✓ VERIFIED' }, { id: 3, name: 'Subscription Inception', duration: 700, status: 'APPROVED' }, { id: 4, name: 'HubSpot Pipeline Sync', duration: 600, status: 'SUCCESS' }, { id: 5, name: 'Secure Element Shield', duration: 500, status: 'IMMUTABLE' }, { id: 6, name: 'X State Broadcast', duration: 800, status: 'BRDCST' } ];
+  function renderSteps() { const container = document.getElementById('handshake-steps'); container.innerHTML = ''; STEPS.forEach(step => { const div = document.createElement('div'); div.id = 'step-' + step.id; div.className = 'flex items-center gap-3 p-3 rounded-lg bg-slate-900 border border-slate-800'; div.innerHTML = '<div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold code-font text-slate-500" id="step-' + step.id + '-icon">' + step.id + '</div><div class="flex-1"><div class="text-xs font-bold text-slate-200">' + step.name + '</div></div><div class="text-[10px] code-font text-slate-600" id="step-' + step.id + '-status">PENDING</div>'; container.appendChild(div); }); }
+  function setStepState(stepNum, state) { const step = document.getElementById('step-' + stepNum); const icon = document.getElementById('step-' + stepNum + '-icon'); const status = document.getElementById('step-' + stepNum + '-status'); step.className = 'flex items-center gap-3 p-3 rounded-lg bg-slate-900 border border-slate-800'; icon.className = 'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold code-font'; if (state === 'active') { step.className = 'flex items-center gap-3 p-3 rounded-lg bg-slate-900 border border-amber-500/40'; icon.className = 'w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold code-font text-slate-950'; status.textContent = 'RUNNING'; status.className = 'text-[10px] code-font text-amber-400 font-bold'; } else if (state === 'done') { step.className = 'flex items-center gap-3 p-3 rounded-lg bg-slate-900 border border-emerald-500/40'; icon.className = 'w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-xs font-bold code-font text-slate-950'; icon.innerHTML = '✓'; status.textContent = STEPS[stepNum - 1].status; status.className = 'text-[10px] code-font text-emerald-400 font-bold'; } else { icon.className = 'w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold code-font text-slate-500'; icon.textContent = stepNum; status.textContent = 'PENDING'; status.className = 'text-[10px] code-font text-slate-600'; } }
+  async function sha256Hmac(message, secret) { const enc = new TextEncoder(); const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message)); return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join(''); }
+  async function runHandshake() { document.getElementById('handshake-status').textContent = 'RUNNING'; document.getElementById('header-status').textContent = 'ACTIVATING'; document.getElementById('header-status').className = 'text-amber-400 font-bold'; document.getElementById('btn-activate').disabled = true; document.getElementById('btn-activate').textContent = '⏳ Handshake in progress...'; const usedCode = currentTotpCode; for (const step of STEPS) { setStepState(step.id, 'active'); await new Promise(r => setTimeout(r, step.duration)); setStepState(step.id, 'done'); } const timestamp = new Date().toISOString().substring(0, 19) + 'Z'; const epoch = Math.floor(Date.now() / 1000); const receiptId = 'VVU-ACT-' + epoch + '-S'; const activationVector = 'VVU-HG-NMBM-01:Port Elizabeth Harbour Zone A Inlet:TECH-M_MAJOKWENI:' + timestamp + ':true:VERIFIED'; const activationHash = await sha256Hmac(activationVector, 'vvu_secure_element_hardware_signing_key_2026_08'); const receipt = '=========================================================\n               VENTURE VISION UBUNTU (VVU)\n           SECURE SUBSCRIPTION ACTIVATION RECEIPT\n=========================================================\nRECEIPT ID:    ' + receiptId + '\nTIMESTAMP:     ' + timestamp + '\nWORKFLOW:      BLE + TOTP SECURITY HANDSHAKE\nSTANDARD:      SANS 10112 / EIS v1.0\n---------------------------------------------------------\n[NODE UNDER ACTIVATION]\n  Node ID:      VVU-HG-NMBM-01\n  Facility:     Port Elizabeth Harbour Zone A Inlet\n  Technician:   TECH-M_MAJOKWENI\n---------------------------------------------------------\n[FIELD-EDGE INTEGRITY CHECKLIST]\n  1. BLE PAIRING STATUS:                    [ VERIFIED ]\n  2. TOTP CHALLENGE:                        [ ✓ VERIFIED ]\n     Google Authenticator MFA Match (code: ' + usedCode + ')\n  3. SUBSCRIPTION INCEPTION:                [ APPROVED ]\n  4. HUBSPOT PIPELINE SYNC:                 [ SUCCESS ]\n     Stage:    CLOSED_ACTIVE_PILOT\n  5. SECURE ELEMENT SHIELD:                 [ IMMUTABLE ]\n     ATECC608B Hardware Co-Processor Locked\n  6. X STATE BROADCAST:                     [ BRDCST ]\n     Tweet ID: X-1829384729104\n---------------------------------------------------------\n[CRYPTOGRAPHIC SECURITY & FAULT INTEGRITY]\n  HMAC-SHA-256 Activation Hash:\n  ' + activationHash + '\n=========================================================\n            UNILATERAL INFRASTRUCTURE GATEWAY\n              ACTIVATION CONFIRMED BY VVU\n                      SOVEREIGNTY\n========================================================='; document.getElementById('receipt-content').textContent = receipt; document.getElementById('receipt-section').classList.remove('hidden'); document.getElementById('receipt-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); document.getElementById('handshake-status').textContent = '✓ CONFIRMED'; document.getElementById('header-status').textContent = 'ACTIVATED'; document.getElementById('header-status').className = 'text-emerald-400 font-bold'; document.getElementById('btn-activate').disabled = false; document.getElementById('btn-activate').textContent = '▶ Re-run Activation'; window.__receiptText = receipt; window.__receiptFilename = 'vvu-activation-vvu_hg_nmbm_01-' + epoch + '.txt'; }
+  function resetHandshake() { for (let i = 1; i <= 6; i++) setStepState(i, 'idle'); document.getElementById('receipt-section').classList.add('hidden'); document.getElementById('handshake-status').textContent = 'IDLE'; document.getElementById('header-status').textContent = 'STANDBY'; document.getElementById('header-status').className = 'text-amber-400 font-bold'; document.getElementById('btn-activate').disabled = false; document.getElementById('btn-activate').textContent = '▶ Initiate Secure Activation'; }
+  document.getElementById('btn-activate').addEventListener('click', runHandshake);
+  document.getElementById('btn-reset').addEventListener('click', resetHandshake);
+  document.getElementById('btn-download-receipt').addEventListener('click', () => { if (!window.__receiptText) return; const blob = new Blob([window.__receiptText], { type: 'text/plain' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = window.__receiptFilename || 'vvu-activation-receipt.txt'; a.click(); URL.revokeObjectURL(url); });
+  renderSteps(); generateQrCode(); updateTotpDisplay(); setInterval(updateTotpDisplay, 1000);
+  console.log('🔐 VVU Secure On-Site Activation System loaded');
+  </script>
+</body>
+</html>

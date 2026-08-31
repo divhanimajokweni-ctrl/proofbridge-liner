@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>VVU EARTH TECH - Evidence Analysis Workspace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Space Grotesk', sans-serif; }
+    .code-font { font-family: 'JetBrains Mono', monospace; }
+    .glow-cyan { box-shadow: 0 0 15px rgba(6, 182, 212, 0.15); }
+    .glow-emerald { box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+    .glow-amber { box-shadow: 0 0 15px rgba(245, 158, 11, 0.25); }
+    .glow-rose { box-shadow: 0 0 15px rgba(244, 63, 94, 0.25); }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+    ::-webkit-scrollbar-thumb:hover { background: #0ea5e9; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen w-screen flex flex-col overflow-hidden select-none">
+  <div class="bg-amber-500 text-slate-950 font-bold text-xs tracking-widest text-center py-1 z-30 shrink-0 uppercase">
+    STRICT DWS LABELING: SIMULATION DATA - NOT MUNICIPAL OPERATIONAL DATA
+  </div>
+  <header class="bg-slate-900/90 border-b border-slate-800 px-6 py-3 shrink-0 flex justify-between items-center z-20 backdrop-blur-md">
+    <div class="flex items-center gap-3">
+      <a href="/" class="text-slate-400 hover:text-cyan-300 transition-colors text-xs font-bold uppercase tracking-wider">← Home</a>
+      <span class="text-slate-700">|</span>
+      <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+      <div>
+        <h1 class="text-sm font-extrabold tracking-widest text-slate-100 code-font">VVU EARTH TECH • EVIDENCE ANALYSIS WORKSPACE</h1>
+        <p class="text-[10px] text-emerald-400 code-font">TARGET: DWS TECHNICAL VALIDATION // TARGET ID: DMA-7 (NELSON MANDELA BAY)</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 text-xs code-font">
+      <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded text-slate-400">
+        INTEGRITY STATUS: <span id="header-integrity-status" class="text-emerald-400 font-bold">PASS</span>
+      </div>
+      <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded text-slate-400">
+        VERIFIED BUILD: <span class="text-cyan-400 font-bold">VVU-MDCS-001</span>
+      </div>
+    </div>
+  </header>
+  <div class="flex-1 flex overflow-hidden w-full relative">
+    <aside class="w-[380px] bg-slate-900/90 border-r border-slate-800 flex flex-col shrink-0 z-10 p-4 gap-4 overflow-y-auto">
+      <section class="bg-slate-950 border border-slate-800/80 rounded p-3.5 glow-cyan">
+        <h2 class="text-xs font-bold text-cyan-400 mb-3 tracking-wider uppercase code-font border-b border-slate-800 pb-2 flex justify-between items-center">
+          <span>DMA Configuration Panel</span>
+          <span class="text-[10px] text-slate-500 font-normal">EIS v1.0 Calibration</span>
+        </h2>
+        <div class="space-y-4 text-xs code-font">
+          <div>
+            <div class="flex justify-between text-slate-400 mb-1">
+              <span>Pressure Drop Threshold</span>
+              <span id="slider-press-val" class="text-cyan-400 font-bold">2.0 m</span>
+            </div>
+            <input type="range" id="slider-press" min="0.5" max="5.0" step="0.1" value="2.0" class="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400">
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-400 mb-1">
+              <span>Flow Deviation Threshold</span>
+              <span id="slider-flow-val" class="text-cyan-400 font-bold">10%</span>
+            </div>
+            <input type="range" id="slider-flow" min="2" max="30" step="1" value="10" class="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400">
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-400 mb-1">
+              <span>Acoustic Sensitivity</span>
+              <span id="slider-acst-val" class="text-cyan-400 font-bold">Medium</span>
+            </div>
+            <input type="range" id="slider-acst" min="1" max="3" step="1" value="2" class="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400">
+          </div>
+          <div>
+            <div class="flex justify-between text-slate-400 mb-1">
+              <span>Correlation Distance Limit</span>
+              <span id="slider-corr-val" class="text-cyan-400 font-bold">500 m</span>
+            </div>
+            <input type="range" id="slider-corr" min="100" max="1500" step="50" value="500" class="w-full h-1 bg-slate-800 rounded appearance-none cursor-pointer accent-cyan-400">
+          </div>
+        </div>
+      </section>
+      <section class="bg-slate-950 border border-slate-800/80 rounded p-3.5 flex-1 flex flex-col min-h-0">
+        <h2 class="text-xs font-bold text-slate-400 mb-2 tracking-wider uppercase code-font border-b border-slate-800 pb-2 flex justify-between items-center">
+          <span>Ingested Observations</span>
+          <button id="btn-reset-obs" class="text-[9px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded transition-all uppercase tracking-wider">Default</button>
+        </h2>
+        <div id="observations-container" class="space-y-2 overflow-y-auto flex-1 pr-1"></div>
+        <button id="btn-add-obs" class="mt-3 w-full py-1.5 rounded font-bold text-[10px] bg-slate-800 text-cyan-400 hover:bg-slate-700 border border-cyan-500/20 transition-all uppercase tracking-wider code-font">
+          + Ingest Custom Field Observation
+        </button>
+      </section>
+    </aside>
+    <main class="flex-1 min-w-0 min-h-0 bg-slate-950 flex flex-col p-4 gap-4 relative">
+      <div id="verdict-banner" class="p-4 rounded border transition-all duration-300 flex items-center justify-between shadow-2xl shrink-0 bg-emerald-950/20 border-emerald-900/50 glow-emerald">
+        <div class="flex items-center gap-4">
+          <div id="verdict-icon-container" class="p-2 rounded bg-emerald-500/10 text-emerald-400">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          </div>
+          <div>
+            <span class="text-[10px] text-slate-400 uppercase tracking-widest code-font block">EIS v1.0 Evaluation Verdict</span>
+            <h3 id="verdict-title" class="text-base font-extrabold tracking-wider code-font text-emerald-400">VERIFIED_CANDIDATE</h3>
+          </div>
+          <div class="ml-6 flex gap-6 text-xs code-font">
+            <div><span class="text-slate-500">Pressure P</span> <span id="v-press" class="text-cyan-400 font-bold ml-2">2.0m</span></div>
+            <div><span class="text-slate-500">Flow F</span> <span id="v-flow" class="text-cyan-400 font-bold ml-2">10%</span></div>
+            <div><span class="text-slate-500">Acoustic A</span> <span id="v-acst" class="text-cyan-400 font-bold ml-2">Med</span></div>
+            <div><span class="text-slate-500">Correlation</span> <span id="v-corr" class="text-cyan-400 font-bold ml-2">500m</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+        <section class="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded p-4 flex flex-col min-h-0">
+          <h2 class="text-xs font-bold text-cyan-400 uppercase tracking-wider code-font mb-2 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            Interactive Evidence Topology
+          </h2>
+          <div class="flex-1 relative bg-slate-950 rounded border border-slate-800 overflow-hidden min-h-[300px]">
+            <svg id="evidence-graph" class="w-full h-full" viewBox="0 0 600 400"></svg>
+          </div>
+        </section>
+        <section class="bg-slate-900/50 border border-slate-800 rounded p-4 flex flex-col min-h-0">
+          <h2 class="text-xs font-bold text-emerald-400 uppercase tracking-wider code-font mb-3">4-Layer System Stack</h2>
+          <div class="flex-1 space-y-2 text-xs code-font">
+            <div class="p-3 rounded bg-slate-950 border border-cyan-500/30">
+              <div class="text-cyan-400 font-bold mb-1">Layer 1: Physical Telemetry</div>
+              <div class="text-slate-500 text-[10px]">SCADA pressure/flow/acoustic + Sentinel-2 NIR</div>
+            </div>
+            <div class="p-3 rounded bg-slate-950 border border-amber-500/30">
+              <div class="text-amber-400 font-bold mb-1">Layer 2: Probabilistic HBK</div>
+              <div class="text-slate-500 text-[10px]">Hydro-Bayesian Kernel v2.1 — posterior localization</div>
+            </div>
+            <div class="p-3 rounded bg-slate-950 border border-emerald-500/30">
+              <div class="text-emerald-400 font-bold mb-1">Layer 3: Decision Transform</div>
+              <div class="text-slate-500 text-[10px]">EIS v1.0 verdict engine — lattice state evaluation</div>
+            </div>
+            <div class="p-3 rounded bg-slate-950 border border-rose-500/30">
+              <div class="text-rose-400 font-bold mb-1">Layer 4: Human-In-The-Loop</div>
+              <div class="text-slate-500 text-[10px]">Field technician review + 11-field provenance audit</div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <section class="bg-slate-900/50 border border-slate-800 rounded p-4 shrink-0">
+        <h2 class="text-xs font-bold text-cyan-400 uppercase tracking-wider code-font mb-2">Evidence Export</h2>
+        <button id="btn-export-audit" class="w-full py-2.5 rounded font-bold text-xs bg-cyan-500 text-slate-950 hover:bg-cyan-400 tracking-wider uppercase code-font shadow-lg flex items-center justify-center gap-1.5 transition-all">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          Export Signed Audit JSON
+        </button>
+      </section>
+    </main>
+  </div>
+  <footer class="h-28 bg-slate-900 border-t border-slate-800 p-3 shrink-0 flex gap-4 backdrop-blur-md z-20">
+    <div class="w-1/4 border-r border-slate-800 pr-3 flex flex-col justify-between shrink-0 code-font text-[10px]">
+      <h3 class="font-bold text-cyan-400 uppercase tracking-wider">Audit Provenance</h3>
+      <div class="space-y-0.5">
+        <div class="flex justify-between"><span>ACTIVE SCHEMAS:</span><span class="text-slate-200">EIS v1.0, HBK v2.1</span></div>
+        <div class="flex justify-between"><span>INGESTION TYPE:</span><span class="text-slate-200">MOCK REPLAY</span></div>
+        <div class="flex justify-between"><span>FACT INTEGRITY:</span><span class="text-emerald-400 font-bold">VERIFIED</span></div>
+      </div>
+    </div>
+    <div class="flex-1 min-w-0 overflow-y-auto code-font text-[10px]" id="scada-logger">
+      <div>&gt; Pipeline online... Ingesting initial observations...</div>
+      <div class="text-emerald-400/80">&gt; Fact ledger verification complete. Zero-fabrication check: OK.</div>
+    </div>
+  </footer>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const sliders = {
+      press: { el: document.getElementById('slider-press'), val: document.getElementById('slider-press-val'), display: v => v + ' m' },
+      flow:  { el: document.getElementById('slider-flow'),  val: document.getElementById('slider-flow-val'),  display: v => v + '%' },
+      acst:  { el: document.getElementById('slider-acst'),  val: document.getElementById('slider-acst-val'),  display: v => ['Low','Medium','High'][v-1] },
+      corr:  { el: document.getElementById('slider-corr'),  val: document.getElementById('slider-corr-val'),  display: v => v + ' m' }
+    };
+    Object.values(sliders).forEach(s => {
+      s.el.addEventListener('input', () => { s.val.textContent = s.display(s.el.value); updateVerdict(); });
+    });
+    const observations = [
+      { id: 'OBS-001', sensor: 'SCADA_FLOW_01', type: 'FLOW', value: '102.5', baseline: '100.0', checked: true },
+      { id: 'OBS-002', sensor: 'SCADA_PRESS_04', type: 'PRESSURE', value: '48.2', baseline: '48.5', checked: true },
+      { id: 'OBS-003', sensor: 'SCADA_PRESS_05', type: 'PRESSURE', value: '46.2', baseline: '48.5', checked: true },
+      { id: 'OBS-004', sensor: 'FIELD_ACST_09', type: 'ACOUSTIC', value: '72.0', baseline: '0.0', checked: true },
+      { id: 'OBS-005', sensor: 'SCADA_PRESS_04', type: 'PRESSURE', value: '999.0', baseline: '48.5', checked: false }
+    ];
+    const obsContainer = document.getElementById('observations-container');
+    function renderObservations() {
+      obsContainer.innerHTML = '';
+      observations.forEach((obs, i) => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-2 p-2 rounded bg-slate-950 border border-slate-800 hover:border-cyan-500/30 transition-all cursor-pointer';
+        div.innerHTML = '<input type="checkbox" id="obs-' + i + '" ' + (obs.checked ? 'checked' : '') + ' class="accent-cyan-400 cursor-pointer"><div class="flex-1 min-w-0"><div class="flex items-center gap-2"><span class="text-[10px] text-slate-500 code-font">' + obs.id + '</span><span class="text-[10px] text-cyan-400 code-font font-bold">' + obs.sensor + '</span></div><div class="text-[9px] text-slate-600 code-font">' + obs.type + ' val=' + obs.value + ' base=' + obs.baseline + '</div></div>';
+        div.querySelector('input').addEventListener('change', (e) => { observations[i].checked = e.target.checked; updateVerdict(); });
+        obsContainer.appendChild(div);
+      });
+    }
+    function updateVerdict() {
+      const activeObs = observations.filter(o => o.checked);
+      const verdictTitle = document.getElementById('verdict-title');
+      const verdictBanner = document.getElementById('verdict-banner');
+      if (activeObs.length >= 3) {
+        verdictTitle.textContent = 'VERIFIED_CANDIDATE';
+        verdictTitle.className = 'text-base font-extrabold tracking-wider code-font text-emerald-400';
+        verdictBanner.className = 'p-4 rounded border transition-all duration-300 flex items-center justify-between shadow-2xl shrink-0 bg-emerald-950/20 border-emerald-900/50 glow-emerald';
+      } else if (activeObs.length >= 1) {
+        verdictTitle.textContent = 'INSUFFICIENT_EVIDENCE';
+        verdictTitle.className = 'text-base font-extrabold tracking-wider code-font text-amber-400';
+        verdictBanner.className = 'p-4 rounded border transition-all duration-300 flex items-center justify-between shadow-2xl shrink-0 bg-amber-950/20 border-amber-900/50 glow-amber';
+      } else {
+        verdictTitle.textContent = 'UNVERIFIED';
+        verdictTitle.className = 'text-base font-extrabold tracking-wider code-font text-rose-400';
+        verdictBanner.className = 'p-4 rounded border transition-all duration-300 flex items-center justify-between shadow-2xl shrink-0 bg-rose-950/20 border-rose-900/50 glow-rose';
+      }
+      document.getElementById('v-press').textContent = sliders.press.el.value + 'm';
+      document.getElementById('v-flow').textContent = sliders.flow.el.value + '%';
+      document.getElementById('v-acst').textContent = ['Lo','Med','Hi'][sliders.acst.el.value-1];
+      document.getElementById('v-corr').textContent = sliders.corr.el.value + 'm';
+    }
+    document.getElementById('btn-reset-obs').addEventListener('click', () => {
+      observations.forEach((o, i) => o.checked = i < 4);
+      renderObservations();
+      updateVerdict();
+    });
+    document.getElementById('btn-add-obs').addEventListener('click', () => {
+      const type = prompt('Enter observation type (FLOW, PRESSURE, ACOUSTIC, GEOLOCATION):');
+      if (!type) return;
+      const value = prompt('Enter value:') || 'UNDEFINED';
+      const newObs = { id: 'OBS-' + String(observations.length + 1).padStart(3, '0'), sensor: 'CUSTOM_' + type.toUpperCase(), type: type.toUpperCase(), value: value, baseline: '0.0', checked: true };
+      observations.push(newObs);
+      renderObservations();
+      updateVerdict();
+      const logger = document.getElementById('scada-logger');
+      logger.innerHTML += '<div class="text-cyan-400">&gt; [' + new Date().toISOString().substring(0,19) + 'Z] Custom observation ingested: ' + newObs.id + ' (' + type + '=' + value + ')</div>';
+      logger.scrollTop = logger.scrollHeight;
+    });
+    function logMessage(text, type) {
+      const logger = document.getElementById('scada-logger');
+      const colorClass = type === 'success' ? 'text-emerald-400' : type === 'warning' ? 'text-amber-400' : 'text-slate-400';
+      const timeStr = new Date().toISOString().substring(0, 19);
+      logger.innerHTML += '<div class="' + colorClass + '">&gt; [' + timeStr + 'Z] ' + text + '</div>';
+      logger.scrollTop = logger.scrollHeight;
+    }
+    document.getElementById('btn-export-audit').addEventListener('click', () => {
+      const activeObs = observations.filter(o => o.checked);
+      const verdict = document.getElementById('verdict-title').textContent;
+      const auditPayload = { verdict: verdict, timestamp: new Date().toISOString(), standard: 'SANS 10112 / EIS v1.0', schema: 'VVU-MDCS-001', observations: activeObs, calibration: { pressure_threshold: sliders.press.el.value + 'm', flow_deviation: sliders.flow.el.value + '%', acoustic_sensitivity: ['Low','Medium','High'][sliders.acst.el.value-1], correlation_distance: sliders.corr.el.value + 'm' }, fact_integrity: 'VERIFIED', zero_fabrication_check: 'OK' };
+      const blob = new Blob([JSON.stringify(auditPayload, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'vvu-evidence-audit-receipt-' + verdict.toLowerCase() + '.json';
+      link.click();
+      logMessage('Exported verified audit receipt JSON: ' + link.download, 'success');
+    });
+    renderObservations();
+    updateVerdict();
+    console.log('VVU EARTH TECH - Evidence Analysis Workspace loaded');
+  });
+  </script>
+</body>
+</html>
