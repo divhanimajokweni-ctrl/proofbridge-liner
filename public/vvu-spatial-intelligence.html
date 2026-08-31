@@ -596,8 +596,8 @@
 </style>
 
   <!-- Leaflet for 2D map overlay -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="/three/leaflet.css" />
+  <script src="/three/leaflet.js"></script>
 
 </head>
 <body>
@@ -611,20 +611,29 @@
 </div>
 <style>@keyframes scan{from{transform:translateX(-60%)}to{transform:translateX(380%)}}</style>
 <script>
-// Hide loading after 3s, show offline message if Three.js didn't load
-setTimeout(function(){
+// Hide loading after Three.js loads (should work offline now)
+function vvuHideLoading(){
   var t=typeof THREE;
-  if(t==='undefined'){
-    document.getElementById('vvu-offline-msg').style.display='block';
-    document.querySelector('#vvu-loading > div:nth-child(2)').textContent='OFFLINE MODE';
-    document.querySelector('#vvu-loading > div:nth-child(2)').style.color='#f59e0b';
+  if(t!=='undefined'){
+    var el=document.getElementById('vvu-loading');
+    if(el){el.style.opacity='0';el.style.pointerEvents='none';el.style.transition='opacity 0.5s';
+    setTimeout(function(){if(el)el.style.display='none';},600);}
   }else{
-    document.getElementById('vvu-loading').style.opacity='0';
-    document.getElementById('vvu-loading').style.pointerEvents='none';
-    document.getElementById('vvu-loading').style.transition='opacity 0.5s';
-    setTimeout(function(){document.getElementById('vvu-loading').style.display='none';},600);
+    // Fallback: if local Three.js also failed, show message after 5s
+    setTimeout(function(){
+      var t2=typeof THREE;
+      if(t2==='undefined'){
+        document.getElementById('vvu-offline-msg').style.display='block';
+        var ld=document.querySelector('#vvu-loading > div:nth-child(2)');
+        if(ld){ld.textContent='LOAD ERROR';ld.style.color='#ef4444';}
+      }
+    },5000);
   }
-},3000);
+}
+// Try hiding immediately (Three.js is now local, should load instantly)
+setTimeout(vvuHideLoading,500);
+// Also try after 2s (in case of slow device)
+setTimeout(vvuHideLoading,2000);
 </script>
 
 
@@ -1544,8 +1553,8 @@ function switchLocation(id) {
 <script type="importmap">
 {
   "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    "three": "/three/three.module.js",
+    "three/addons/": "/three/"
   }
 }
 </script>
