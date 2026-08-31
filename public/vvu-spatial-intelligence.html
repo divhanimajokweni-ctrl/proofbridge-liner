@@ -1720,104 +1720,202 @@ city.instanceMatrix.needsUpdate = true;
 scene.add(city);
 
 /* YOLO track field (instanced, simulated) */
-const CLASS_COLOR = { person: 0x00d4ff, vehicle: 0x00ff88, truck: 0xff9900 };
+// ─── FULL LIVE TRACK ENGINE (from GIS Bench v2.2.0) ──────────────
+// Dead reckoning + binary codec + WS gateway + 14-agent simulator
+const CLASS_COLOR = { person: 0x00d4ff, vehicle: 0x00ff88, truck: 0xff9900, unknown: 0x94a3b8,
+  'ANOMALOUS_WATER_POOLING': 0x3b82f6, 'UNAUTHORIZED_VEHICLE': 0xef4444,
+  'EXCAVATION_EQUIPMENT': 0xf59e0b, 'INFRASTRUCTURE_CRACK': 0x8b5cf6, 'MAINTENANCE_TECHNICIAN': 0x10b981
+};
+const TRACK_TTL = 1500, LERP_RATE = 12, EXTRAP_MAX = 600, VEL_LERP = 6;
+const easeBack = t => { const c = 1.70158; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+
 const trackGeo = new THREE.BoxGeometry(1, 1, 1);
 trackGeo.translate(0, 0.5, 0);
-const trackFill = new THREE.InstancedMesh(
-  trackGeo,
-  new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.18, depthWrite: false }),
-  64
-);
+const trackFill = new THREE.InstancedMesh(trackGeo,
+  new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.2, depthWrite: false }), 512);
 trackFill.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-const trackEdges = new THREE.InstancedMesh(
-  trackGeo,
-  new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.85 }),
-  64
-);
+trackFill.frustumCulled = false;
+const trackEdges = new THREE.InstancedMesh(trackGeo,
+  new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.7 }), 512);
+trackEdges.frustumCulled = false;
+trackFill.setColorAt(0, new THREE.Color(1, 1, 1));
 trackEdges.instanceMatrix = trackFill.instanceMatrix;
+trackEdges.instanceColor = trackFill.instanceColor;
 scene.add(trackFill, trackEdges);
 
 const tracks = new Map();
-let trackSeq = 0;
-const TRACK_TTL = 1500;
-const dummy = new THREE.Object3D();
+const trackDummy = new THREE.Object3D();
 const trackCol = new THREE.Color();
+const trackPred = new THREE.Vector3();
 
-function spawnTrack() {
-  const cls = ['vehicle', 'truck', 'person'][Math.floor(Math.random() * 3)];
-  const dims = cls === 'person' ? [0.6, 0.6, 1.8] : cls === 'truck' ? [8, 2.4, 3] : [4.6, 1.9, 1.5];
-  return {
-    id: 't' + (trackSeq++).toString(36),
-    cls,
-    pos: [
-      (Math.random() - 0.5) * 1800,
-      0,
-      (Math.random() - 0.5) * 1800
-    ],
-    vel: [(Math.random() - 0.5) * 10, 0, (Math.random() - 0.5) * 10],
-    dims,
-    yaw: Math.random() * Math.PI * 2,
-    conf: 0.65 + Math.random() * 0.35,
-    seen: performance.now()
-  };
+function trackIngest(t) {
+  let r = tracks.get(t.id);
+  if (!r) {
+    r = { cur: new THREE.Vector3(...t.pos), tgt: new THREE.Vector3(...t.pos),
+      cd: new THREE.Vector3(1,1,1), td: new THREE.Vector3(...t.dims),
+      yaw: t.yaw || 0, tYaw: t.yaw || 0,
+      vel: new THREE.Vector3(...t.vel), tVel: new THREE.Vector3(...t.vel),
+      hasHdg: t.hasHdg || false, conf: t.conf || 0.8, cls: t.cls || 'unknown',
+      seen: t.seen || performance.now(), born: performance.now() };
+    tracks.set(t.id, r);
+  } else {
+    r.tgt.set(...t.pos); r.td.set(...t.dims); r.tYaw = t.yaw || 0;
+    r.tVel.set(...t.vel); r.hasHdg = t.hasHdg || false;
+    r.conf = t.conf || 0.8; r.cls = t.cls || 'unknown'; r.seen = performance.now();
+  }
 }
 
-const simTracks = Array.from({ length: 12 }, spawnTrack);
-setInterval(() => {
-  const now = performance.now();
-  for (const t of simTracks) {
-    t.pos[0] += t.vel[0] * 0.083;
-    t.pos[2] += t.vel[2] * 0.083;
-    if (Math.abs(t.pos[0]) > 1000) t.vel[0] *= -1;
-    if (Math.abs(t.pos[2]) > 1000) t.vel[2] *= -1;
-    t.yaw = Math.atan2(t.vel[0], t.vel[2]);
-    t.seen = now;
-    tracks.set(t.id, t);
-  }
-  // cleanup
-  for (const [id, t] of tracks) {
-    if (now - t.seen > TRACK_TTL) tracks.delete(id);
-  }
-}, 80);
-
 function updateTrackField(now) {
+  const dt = 0.016;
+  const k = 1 - Math.exp(-dt * LERP_RATE);
+  const kv = 1 - Math.exp(-dt * VEL_LERP);
   let i = 0;
-  for (const [id, t] of tracks) {
-    const age = now - t.seen;
+  for (const [id, r] of tracks) {
+    const age = now - r.seen;
     if (age > TRACK_TTL) { tracks.delete(id); continue; }
-    const scale = Math.max(0.001, (TRACK_TTL - age) / 250);
-    dummy.position.set(t.pos[0], synthetic(t.pos[0], -t.pos[2]) + 1, t.pos[2]);
-    dummy.rotation.set(0, t.yaw, 0);
-    dummy.scale.set(t.dims[0] * scale, t.dims[2] * scale, t.dims[1] * scale);
-    dummy.updateMatrix();
-    trackFill.setMatrixAt(i, dummy.matrix);
-    trackCol.setHex(CLASS_COLOR[t.cls] || 0x888888).multiplyScalar(0.7 + 0.3 * t.conf);
+    r.vel.lerp(r.tVel, kv);
+    if (!r.hasHdg) { const s = Math.hypot(r.vel.x, r.vel.z); if (s > 0.4) r.tYaw = Math.atan2(-r.vel.x, -r.vel.z); }
+    // DEAD RECKONING: extrapolate position based on velocity when frames are dropped
+    trackPred.copy(r.tgt).addScaledVector(r.vel, Math.min(age, EXTRAP_MAX) / 1000);
+    r.cur.lerp(trackPred, k);
+    r.cd.lerp(r.td, k);
+    const dy = r.tYaw - r.yaw;
+    r.yaw += Math.atan2(Math.sin(dy), Math.cos(dy)) * k;
+    const s = easeBack(Math.min(1, (now - r.born) / 260)) * Math.max(0.001, (TRACK_TTL - age) / 250);
+    trackDummy.position.copy(r.cur);
+    trackDummy.rotation.set(0, r.yaw, 0);
+    trackDummy.scale.set(r.cd.x * s, r.cd.y * s, r.cd.z * s);
+    trackDummy.updateMatrix();
+    trackFill.setMatrixAt(i, trackDummy.matrix);
+    trackCol.setHex(CLASS_COLOR[r.cls] || CLASS_COLOR.unknown).multiplyScalar(0.7 + 0.3 * r.conf);
     trackFill.setColorAt(i, trackCol);
-    if (++i >= 64) break;
+    if (++i >= 512) break;
   }
   trackFill.count = trackEdges.count = i;
   trackFill.instanceMatrix.needsUpdate = true;
   if (trackFill.instanceColor) trackFill.instanceColor.needsUpdate = true;
 }
 
-/* resize + render loop */
-function resizeHero() {
-  const rect = heroCanvas.parentElement.getBoundingClientRect();
-  const w = rect.width || innerWidth;
-  const h = rect.height || (innerHeight * 0.88);
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-}
-resizeHero();
-addEventListener('resize', resizeHero);
+// ─── DESERIALIZERS (JSON + binary v1/v2) ────────────────────────
+let lastSeq = -1, dropped = 0, gapTotal = 0;
 
-let frame = 0, fpsEma = 60, lastT = performance.now();
-const heroSection = document.getElementById('hero');
-const heroObserver = new IntersectionObserver(entries => {
-  heroVisible.v = entries[0].isIntersecting;
-}, { threshold: 0.05 });
-heroObserver.observe(heroSection);
+function projectTrack(t, now) {
+  if (!t.id || typeof t.conf !== 'number' || t.conf < 0.35 || !Array.isArray(t.llh)) { dropped++; return null; }
+  // Convert lat/lon to scene-local coordinates using ORIGIN
+  const A = 6378137.0, E2 = 6.69437999014e-3, DEG = Math.PI / 180;
+  const la = t.llh[1] * DEG, lo = t.llh[0] * DEG;
+  const s = Math.sin(la), c = Math.cos(la);
+  const n = A / Math.sqrt(1 - E2 * s * s);
+  const e0 = (n + (t.llh[2]||0)) * c * Math.cos(lo);
+  const e1 = (n + (t.llh[2]||0)) * c * Math.sin(lo);
+  const e2 = (n * (1 - E2) + (t.llh[2]||0)) * s;
+  // Origin ECEF
+  const ola = ORIGIN.lat * DEG, olo = ORIGIN.lon * DEG;
+  const os = Math.sin(ola), oc = Math.cos(ola), oso = Math.sin(olo), oco = Math.cos(olo);
+  const on = A / Math.sqrt(1 - E2 * os * os);
+  const oe0 = on * oc * oco, oe1 = on * oc * oso, oe2 = on * (1 - E2) * os;
+  const dx = e0 - oe0, dy = e1 - oe1, dz = e2 - oe2;
+  const enu_e = -oso * dx + oco * dy;
+  const enu_n = -os * oco * dx - os * oso * dy + oc * dz;
+  const enu_u = oc * oco * dx + oc * oso * dy + os * dz;
+  const d = t.dims || [4.5, 1.9, 1.5];
+  return {
+    id: t.id, cls: t.cls || 'unknown', conf: t.conf,
+    pos: [enu_e, enu_u, -enu_n],
+    dims: [Math.min(40, Math.max(0.3, d[0])), Math.min(15, Math.max(0.3, d[2])), Math.min(12, Math.max(0.3, d[1]))],
+    yaw: -(t.hdg || 0) * DEG,
+    vel: t.vel ? [t.vel[0], t.vel[2] || 0, -(t.vel[1] || 0)] : [0, 0, 0],
+    hasHdg: t.hdg != null, seen: now
+  };
+}
+
+function deserializeJSON(raw, now) {
+  let m; try { m = JSON.parse(raw); } catch { return null; }
+  if (typeof m.seq !== 'number' || !Array.isArray(m.dets)) return null;
+  if (m.seq <= lastSeq) return null;
+  gapTotal += lastSeq < 0 ? 0 : m.seq - lastSeq - 1; lastSeq = m.seq;
+  const out = [];
+  for (const t of m.dets) { const p = projectTrack(t, now); if (p) out.push(p); }
+  return out;
+}
+
+function deserializeBinary(buf, now) {
+  const dv = new DataView(buf);
+  if (buf.byteLength < 18 || dv.getUint16(0) !== 0x594f) return null;
+  const ver = dv.getUint8(2); if (ver !== 1 && ver !== 2) return null;
+  const seq = dv.getUint32(4); if (seq <= lastSeq) return null;
+  gapTotal += lastSeq < 0 ? 0 : seq - lastSeq - 1; lastSeq = seq;
+  const count = dv.getUint16(16), stride = ver === 2 ? 52 : 36;
+  if (buf.byteLength < 18 + count * stride) return null;
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const o = 18 + i * stride;
+    const p = projectTrack({
+      id: 't' + dv.getUint32(o + (ver === 2 ? 44 : 32)).toString(36),
+      cls: ver === 2 && dv.getUint8(o + 48) === 1 ? 'person' : 'vehicle',
+      conf: dv.getFloat32(o + 28),
+      llh: [dv.getInt32(o + 4) / 1e7, dv.getInt32(o) / 1e7, dv.getFloat32(o + 8)],
+      dims: [dv.getFloat32(o + 12), dv.getFloat32(o + 16), dv.getFloat32(o + 20)],
+      hdg: dv.getFloat32(o + 24),
+      vel: ver === 2 ? [dv.getFloat32(o + 32), dv.getFloat32(o + 36), dv.getFloat32(o + 40)] : undefined
+    }, now);
+    if (p) out.push(p);
+  }
+  return out;
+}
+
+// ─── IN-PAGE SIMULATOR (14 agents with looping paths) ────────────
+const SIM_AGENTS_HZ = 12;
+const simAgents = [];
+for (let i = 0; i < 14; i++) {
+  const angle = (i / 14) * Math.PI * 2;
+  const radius = 200 + (i % 3) * 150;
+  const speed = [9, 6.5, 1.4][i % 3];
+  const cls = ['vehicle', 'truck', 'person'][i % 3];
+  const dims = cls === 'person' ? [0.5, 0.5, 1.75] : cls === 'truck' ? [8.2, 2.4, 3] : [4.6, 1.9, 1.5];
+  simAgents.push({ id: 'trk-' + String(i).padStart(3, '0'), cls, dims, speed, dir: angle,
+    pos: [radius * Math.cos(angle), 0, radius * Math.sin(angle)] });
+}
+let simSeq = 0;
+function simTick() {
+  const dt = 1 / SIM_AGENTS_HZ; simSeq++;
+  for (const a of simAgents) {
+    a.pos[0] += Math.cos(a.dir) * a.speed * dt * 10;
+    a.pos[2] += Math.sin(a.dir) * a.speed * dt * 10;
+    if (Math.abs(a.pos[0]) > 800) a.dir = Math.PI - a.dir;
+    if (Math.abs(a.pos[2]) > 800) a.dir = -a.dir;
+  }
+  const now = performance.now();
+  for (const a of simAgents) {
+    trackIngest({
+      id: a.id, cls: a.cls, conf: 0.72 + Math.random() * 0.27,
+      pos: a.pos, dims: a.dims,
+      yaw: -a.dir, vel: [Math.cos(a.dir) * a.speed, 0, Math.sin(a.dir) * a.speed],
+      hasHdg: true, seen: now
+    });
+  }
+}
+setInterval(simTick, 1000 / SIM_AGENTS_HZ);
+
+// ─── WEBSOCKET GATEWAY (?ws=URL&token=T) ────────────────────────
+const _qs = new URLSearchParams(window.location.search);
+const _wsUrl = _qs.get('ws');
+let liveStatus = 'SIM';
+if (_wsUrl) {
+  liveStatus = 'CONNECTING'; let _retry = 0;
+  (function openWs() {
+    const ws = new WebSocket(_wsUrl + (_qs.get('token') ? '?token=' + encodeURIComponent(_qs.get('token')) : ''));
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = () => { liveStatus = 'LIVE'; _retry = 0; };
+    ws.onmessage = ev => {
+      const now = performance.now();
+      const t = typeof ev.data === 'string' ? deserializeJSON(ev.data, now) : deserializeBinary(ev.data, now);
+      if (t) for (const x of t) trackIngest(x);
+    };
+    ws.onclose = () => { liveStatus = 'DOWN'; setTimeout(openWs, Math.min(8000, 500 * 2 ** _retry++) * (0.7 + Math.random() * 0.6)); };
+  })();
+}
+
 
 renderer.setAnimationLoop(() => {
   const now = performance.now();
