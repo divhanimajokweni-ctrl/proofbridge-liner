@@ -586,6 +586,13 @@
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.001s !important;animation-iteration-count:1 !important}
   }
+
+@media (max-width: 480px) {
+  #loc-tag { display: none !important; }
+  #loc-select { max-width: 140px !important; }
+  #loc-switcher { top: 58px !important; padding: 3px 4px !important; }
+}
+
 </style>
 </head>
 <body>
@@ -594,8 +601,8 @@
      SIM WARNING BANNER
      ═══════════════════════════════════════════════════════════════ -->
 <!-- Location Switcher -->
-<div id="loc-switcher" style="position:fixed;top:52px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:4px;padding:3px;background:rgba(2,6,23,0.85);backdrop-filter:blur(12px);border:1px solid rgba(0,212,255,0.2);border-radius:8px;pointer-events:auto">
-  <select id="loc-select" style="background:#0a0e17;color:#00d4ff;border:1px solid rgba(0,212,255,0.3);border-radius:6px;padding:4px 10px;font-size:11px;font-family:monospace;cursor:pointer;outline:none" onchange="switchLocation(this.value)">
+<div id="loc-switcher" style="position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:95;display:flex;gap:4px;padding:4px 6px;background:rgba(2,6,23,0.95);backdrop-filter:blur(16px);border:1px solid rgba(0,212,255,0.3);border-radius:8px;pointer-events:auto;max-width:calc(100vw - 20px);box-sizing:border-box">
+  <select id="loc-select" style="background:#0a0e17;color:#00d4ff;border:1px solid rgba(0,212,255,0.3);border-radius:6px;padding:5px 8px;font-size:11px;font-family:monospace;cursor:pointer;outline:none;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onchange="switchLocation(this.value)">
     <option value="default">Gqeberha (VVU HQ)</option>
     <option value="coega">Coega IDZ / Ward 42</option>
     <option value="ward4">Gqeberha Ward 4</option>
@@ -605,7 +612,7 @@
     <option value="secunda">Sasol Secunda Synfuels</option>
     <option value="teraco">Teraco Isando JB1</option>
   </select>
-  <span id="loc-tag" style="font-size:9px;color:#94a3b8;padding:5px 8px;background:rgba(0,212,255,0.1);border-radius:4px;align-self:center;font-family:monospace">Default — VVU Home Base</span>
+  <span id="loc-tag" style="font-size:9px;color:#94a3b8;padding:5px 8px;background:rgba(0,212,255,0.1);border-radius:4px;align-self:center;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">Default</span>
 </div>
 <script>
 function switchLocation(id) {
