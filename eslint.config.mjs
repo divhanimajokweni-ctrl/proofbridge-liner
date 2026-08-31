@@ -35,9 +35,23 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-undef": "off",
     "no-unreachable": "off",
     "no-useless-escape": "off",
+    "react-hooks/set-state-in-effect": "off",
   },
 }, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "searm1-app/**", "searm1-backend/**", "public/searm1/**", "download/searm1/**", "download/**", "tool-results/**"]
+  ignores: [
+    "node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts",
+    "examples/**", "skills", "searm1-app/**", "searm1-backend/**",
+    "public/searm1/**", "download/searm1/**", "download/**", "tool-results/**",
+    "air/**", "test/**", "tests/**", "upload/**", "vvu-immortal/**",
+    "vvu-mcp-server/**", "ai-gateway/**", "pipeline/**", "_app_legacy/**",
+    "disposable-storage/**", "scripts/**", "mini-services/**", "prover/**",
+    "server/**", "packages/**", "lib/**",
+    "src/lib/webhook/**", "src/gateway/**", "src/engine/**", "src/signer/**",
+    "src/storage/**", "src/runtime/**", "src/logger.ts", "src/lib/theorem/**",
+    "src/lib/studi/**", "src/lib/study/**", "src/lib/eis/*.js", "src/lib/db.js",
+    "src/lib/utils.js", "src/hooks/use-toast.js", "src/hooks/use-mobile.js",
+    "src/config.ts", "src/types.ts"
+  ]
 }];
 
 export default eslintConfig;

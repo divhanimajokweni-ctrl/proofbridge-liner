@@ -7,13 +7,10 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
-
-// ============================================================================
-// CORE VVU IVE MODELS
-// ============================================================================
 
 model Claim {
   id            String   @id @default(cuid())
@@ -22,7 +19,7 @@ model Claim {
   claimType     String   @default("empirical")
   state         String   @default("UNTESTED")
   intendedAction String @default("deploy")
-  safetyCritical Boolean  @default(true)
+  safetyCritical Boolean @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -94,20 +91,16 @@ model NIndComputation {
 }
 
 model HeatKernelStep {
-  id              String   @id @default(cuid())
-  claimId         String
-  step            Int
-  l2Norm          Float
-  highFreqEnergy  Float
-  nodeValues      String   @default("[]")
-  createdAt       DateTime @default(now())
+  id            String   @id @default(cuid())
+  claimId       String
+  step          Int
+  l2Norm        Float
+  highFreqEnergy Float
+  nodeValues    String   @default("[]")
+  createdAt     DateTime @default(now())
 
   @@index([claimId])
 }
-
-// ============================================================================
-// WEBHOOK DELIVERY SUBSYSTEM — VVU-IVE Reliability Contract v1.1
-// ============================================================================
 
 model Webhook {
   id          String   @id @default(cuid())
@@ -115,7 +108,7 @@ model Webhook {
   url         String
   type        String   @default("custom")
   secret      String   @default("")
-  nextSecret  String?  @default(null)
+  nextSecret  String?
   enabled     Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -176,15 +169,15 @@ model WebhookDeliveryAttempt {
 }
 
 model WebhookCircuitBreakerState {
-  id                    String   @id @default(cuid())
-  webhookId             String   @unique
-  webhook               Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
-  state                 String   @default("CLOSED")
-  terminalFailureCount  Int      @default(0)
-  openedAt              DateTime?
-  halfOpenProbeAt       DateTime?
-  halfOpenProbeResult   String?
-  updatedAt             DateTime @updatedAt
+  id                String   @id @default(cuid())
+  webhookId         String   @unique
+  webhook           Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  state             String   @default("CLOSED")
+  terminalFailureCount Int    @default(0)
+  openedAt          DateTime?
+  halfOpenProbeAt   DateTime?
+  halfOpenProbeResult String?
+  updatedAt         DateTime @updatedAt
 }
 
 model DeadLetterQueueEntry {
@@ -208,23 +201,19 @@ model DeadLetterQueueEntry {
 }
 
 model AuditEvent {
-  id         String   @id @default(cuid())
-  type       String
-  webhookId  String   @default("")
-  deliveryId String   @default("")
-  attemptId  String   @default("")
-  details    String   @default("{}")
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  type      String
+  webhookId String   @default("")
+  deliveryId String  @default("")
+  attemptId String   @default("")
+  details   String   @default("{}")
+  createdAt DateTime @default(now())
 
   @@index([type])
   @@index([webhookId])
   @@index([deliveryId])
   @@index([createdAt])
 }
-
-// ============================================================================
-// GOVERNANCE
-// ============================================================================
 
 model StudiGate {
   id          String   @id @default(cuid())

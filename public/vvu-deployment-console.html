@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VVU Gate 1 - Master Release Console</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{font-family:ui-monospace,monospace;background:#020617;color:#cbd5e1}</style>
+</head>
+<body class="min-h-screen flex flex-col">
+<div class="bg-amber-500 text-slate-950 font-bold text-xs tracking-widest text-center py-1 uppercase">SIMULATION DATA - NOT MUNICIPAL OPERATIONAL DATA</div>
+<header class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex justify-between items-center">
+<div class="flex items-center gap-3"><a href="/" class="text-slate-400 hover:text-cyan-300 text-xs font-bold uppercase">Home</a><h1 class="text-sm font-bold tracking-widest text-cyan-300">VVU GATE 1 - MASTER RELEASE CONSOLE</h1></div>
+<div class="text-xs text-slate-400">DESIGN FREEZE LEVEL 1 | SANS 10112 / EIS v1.0</div>
+</header>
+<main class="flex-1 p-4 overflow-y-auto">
+<div class="max-w-6xl mx-auto space-y-6">
+<section class="bg-slate-900 border border-slate-800 rounded p-4">
+<h2 class="text-xs font-bold text-cyan-400 uppercase mb-3">Master Deliverables Index (24 items)</h2>
+<table class="w-full text-xs"><thead><tr class="text-slate-500 border-b border-slate-800"><th class="text-left py-1">#</th><th class="text-left py-1">File</th><th class="text-left py-1 hidden sm:table-cell">Description</th><th class="text-right py-1">Status</th></tr></thead><tbody id="dlv"></tbody></table>
+</section>
+<section class="bg-slate-900 border border-slate-800 rounded p-4">
+<h2 class="text-xs font-bold text-cyan-400 uppercase mb-3">CI/CD Pipeline - 5-Stage Provenance Flow</h2>
+<div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-[10px]">
+<div class="p-2 rounded bg-slate-950 border border-emerald-500/30"><div class="text-emerald-400 font-bold">1. Vault Sync</div><div class="text-emerald-400 mt-1">OPERATIONAL</div></div>
+<div class="p-2 rounded bg-slate-950 border border-emerald-500/30"><div class="text-emerald-400 font-bold">2. SCADA Ingest</div><div class="text-emerald-400 mt-1">OPERATIONAL</div></div>
+<div class="p-2 rounded bg-slate-950 border border-emerald-500/30"><div class="text-emerald-400 font-bold">3. Obsidian Sync</div><div class="text-emerald-400 mt-1">OPERATIONAL</div></div>
+<div class="p-2 rounded bg-slate-950 border border-emerald-500/30"><div class="text-emerald-400 font-bold">4. Campaign Audit</div><div class="text-emerald-400 mt-1">OPERATIONAL</div></div>
+<div class="p-2 rounded bg-slate-950 border border-emerald-500/30"><div class="text-emerald-400 font-bold">5. Provenance Lock</div><div class="text-emerald-400 mt-1">OPERATIONAL</div></div>
+</div>
+</section>
+<section class="bg-slate-900 border border-slate-800 rounded p-4">
+<h2 class="text-xs font-bold text-cyan-400 uppercase mb-3">Active Commercial Pipeline</h2>
+<table class="w-full text-xs"><thead><tr class="text-slate-500 border-b border-slate-800"><th class="text-left py-1">Target</th><th class="text-left py-1 hidden sm:table-cell">Facility</th><th class="text-right py-1">Est. Annual Loss (ZAR)</th></tr></thead><tbody id="pl"></tbody><tfoot><tr class="border-t-2 border-amber-500/30 font-bold"><td class="py-2 text-amber-300" colspan="2">TOTAL</td><td class="py-2 text-right text-amber-300">R89,566,200.00</td></tr></tfoot></table>
+</section>
+<section class="bg-slate-900 border border-slate-800 rounded p-4">
+<h2 class="text-xs font-bold text-amber-400 uppercase mb-3">Security Posture</h2>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
+<div class="p-2 rounded bg-slate-950 border border-slate-800"><div class="text-cyan-400 font-bold">BLE Eavesdropping</div><div class="text-emerald-400 text-[10px] mt-1">MITIGATED</div></div>
+<div class="p-2 rounded bg-slate-950 border border-slate-800"><div class="text-cyan-400 font-bold">MITM</div><div class="text-emerald-400 text-[10px] mt-1">MITIGATED</div></div>
+<div class="p-2 rounded bg-slate-950 border border-slate-800"><div class="text-cyan-400 font-bold">Replay</div><div class="text-emerald-400 text-[10px] mt-1">MITIGATED</div></div>
+<div class="p-2 rounded bg-slate-950 border border-slate-800"><div class="text-cyan-400 font-bold">Key Compromise</div><div class="text-emerald-400 text-[10px] mt-1">MITIGATED</div></div>
+</div>
+</section>
+</div>
+</main>
+<footer class="bg-slate-900 border-t border-slate-800 p-3 text-[10px] text-slate-500 flex justify-between"><span>VVU, SANS 10112 / EIS v1.0, Gate 1, v5.0</span><span>Vaguely Vanity (Pty) Ltd, Reg 2026/259053/07</span></footer>
+<script>
+const D=[['1','vvu-gate1-executive-pack-v2.pdf','CIPC filing & investor prospectus'],['2','vvu-board-resolution-credit.pdf','Board Resolution R100k facility'],['3','vvu-growth-integrator-v5.py','B2B Outreach + BLE+TOTP Engine'],['4','vvu-daily-scheduler-v2.py','5+ clients/day campaign daemon'],['5','vvu-scada-importer.py','SANS 10112 CSV ingestion'],['6','vvu-b2b-vault-sync.py','Spreadsheet-to-Obsidian bridge'],['7','vvu-obsidian-sync.sh','Git gatekeeper with SANS scan'],['8','vvu-agent-logger.py','Campaign audit logger'],['9','vvu-mailbox-extractor-v2.py','Email log extractor'],['10','vvu-email-agent-v2.py','Resend API dispatcher'],['11','vvu-key-rotator.py','Credential rotator'],['12','vvu-secure-activation-docs.md','Secure activation docs'],['13','vvu-git-deployment-readme.md','Repository README'],['14','vvu-ci-cd-pipeline.yml','GitHub Actions CI/CD'],['15','vvu-pdu-user-guide.md','PDU corrosion SOP'],['16','vvu-gev-migration-playbook.md','3D engine migration'],['17','vvu-sentinel2-nir-profile.webp','Satellite remote sensing'],['18','vvu-onboarding-card.png','Field onboarding card'],['19','vvu-activation-vvu-hg-nmbm-01.txt','BLE+TOTP receipt'],['20','Till Slip Receipts (9 files)','B2B transaction receipts'],['21','vvu-deployment-console.html','This console'],['22','vvu-secure-activation.html','Secure Activation dashboard'],['23','vvu-e2e-suite.html','Evidence workspace'],['24','docs/gate-1-release-record.md','Release record']];
+const tb=document.getElementById('dlv');D.forEach(([n,f,d])=>{const tr=document.createElement('tr');tr.className='border-b border-slate-800/50';tr.innerHTML=`<td class="py-1 text-slate-500">${n}</td><td class="py-1 text-cyan-300 font-bold">${f}</td><td class="py-1 text-slate-400 hidden sm:table-cell">${d}</td><td class="py-1 text-right text-emerald-400">Published</td>`;tb.appendChild(tr)});
+const P=[['Teraco Data Environments','Isando JB1','R14,191,200'],['Sasol Limited','Secunda Synfuels','R13,950,000'],['Sibanye-Stillwater','Marikana','R10,800,000'],['Anglo American Platinum','Rustenburg','R8,325,000'],['Mondi Group','Merebank Mill','R8,775,000'],['Sappi Southern Africa','Ngodwana Mill','R9,675,000'],['AECI Limited','Modderfontein','R3,825,000'],['Illovo Sugar','Mpumalanga','R6,975,000'],['ArcelorMittal SA','Vanderbijlpark','R13,050,000']];
+const pb=document.getElementById('pl');P.forEach(([t,f,l])=>{const tr=document.createElement('tr');tr.className='border-b border-slate-800/50';tr.innerHTML=`<td class="py-1 text-slate-200">${t}</td><td class="py-1 text-slate-400 hidden sm:table-cell">${f}</td><td class="py-1 text-right text-amber-300">${l}</td>`;pb.appendChild(tr)});
+</script>
+</body>
+</html>

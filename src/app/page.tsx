@@ -1,126 +1,79 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ArrowRight, BarChart3, Boxes, Fingerprint, GitBranch, ShieldCheck, Sparkles } from 'lucide-react';
+
+const DESTINATIONS = [
+  { href: '/ive', title: 'IVE Shell', subtitle: 'Immersive Virtual Environment', description: '4-room interactive workspace: Build (3D hardware), Study (lessons), Data (EIS, HBK, sandbox, AIR, field), Finance (Ubuntu Pool, NMBM budget). 14 activities total.', icon: Boxes, accent: 'text-cyan-300', border: 'border-cyan-500/40 hover:border-cyan-400', glow: 'hover:shadow-cyan-500/20', cta: 'Enter IVE' },
+  { href: '/vvu-e2e-suite.html', title: 'B2B Suite', subtitle: 'Gate 1 Integration, Evidence Workspace', description: 'SANS 10112 / EIS v1.0 evidence analysis workspace with live SCADA ingestion, DMA calibration sliders, EIS verdict engine, and signed audit JSON export.', icon: BarChart3, accent: 'text-amber-300', border: 'border-amber-500/40 hover:border-amber-400', glow: 'hover:shadow-amber-500/20', cta: 'Open Workspace' },
+  { href: '/vvu-trust-dashboard.html', title: 'Trust Dashboard', subtitle: 'SEARM1, 3D Scene + B2B Pipeline', description: '4-panel 3D trust dashboard: Scene (Ward 42 3D visualization with leak/reset/focus/underground/demolish controls), One-Pager, Architecture, Pilot proposal form.', icon: ShieldCheck, accent: 'text-emerald-300', border: 'border-emerald-500/40 hover:border-emerald-400', glow: 'hover:shadow-emerald-500/20', cta: 'View Dashboard' },
+  { href: '/vvu-secure-activation.html', title: 'Secure Activation', subtitle: 'BLE + TOTP Handshake, Field Onboarding', description: 'On-site HBK Mk-II node activation. Scan the VVU Field Onboarding Card QR with Google Authenticator, submit the 6-digit TOTP code over encrypted BLE, provision with HMAC-SHA-256 audit anchor.', icon: Fingerprint, accent: 'text-rose-300', border: 'border-rose-500/40 hover:border-rose-400', glow: 'hover:shadow-rose-500/20', cta: 'Activate Node' },
+  { href: '/vvu-deployment-console.html', title: 'Deployment Console', subtitle: 'Gate 1 Master Release, CI/CD Pipeline', description: 'Complete compiled codebase and engineering manifest: 24 deliverables index, CI/CD pipeline visualization, 9-target R89.5M commercial pipeline, 8-vector security posture.', icon: GitBranch, accent: 'text-violet-300', border: 'border-violet-500/40 hover:border-violet-400', glow: 'hover:shadow-violet-500/20', cta: 'View Console' },
+];
 
 export default function Home() {
-  const [phase, setPhase] = useState<'sphere' | 'redirect'>('sphere');
-
-  useEffect(() => {
-    // Show the Trust Sphere with swirling rings for 4 seconds,
-    // then redirect to the Trust Dashboard
-    const timer = setTimeout(() => {
-      setPhase('redirect');
-      window.location.replace('/vvu-trust-dashboard.html');
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (phase === 'redirect') {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: '#060a10',
-        color: '#D4AF37',
-        fontFamily: 'ui-monospace, monospace',
-        gap: '1rem',
-      }}>
-        <div style={{ fontSize: '0.7em', color: '#5b7280', letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-          Loading Trust Dashboard…
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      background: '#060a10',
-      color: '#e8e6e0',
-      fontFamily: "'Syne', 'Georgia', serif",
-      gap: '2rem',
-      overflow: 'hidden',
-      position: 'relative',
-    }}>
-      {/* Swirling three rings — large, centered */}
-      <div style={{
-        position: 'relative',
-        width: '180px',
-        height: '180px',
-      }}>
-        <svg viewBox="0 0 100 100" fill="none" style={{
-          width: '100%',
-          height: '100%',
-          animation: 'ring-swirl-large 6s ease-in-out infinite',
-          transformOrigin: '50% 55%',
-          filter: 'drop-shadow(0 0 20px rgba(212, 175, 55, 0.3))',
-        }}>
-          <circle cx="35" cy="40" r="16" stroke="#D4AF37" strokeWidth="4" style={{ animation: 'ring-pulse-large 3s ease-in-out infinite', animationDelay: '0s' }} />
-          <circle cx="65" cy="40" r="16" stroke="#C9A84C" strokeWidth="4" style={{ animation: 'ring-pulse-large 3s ease-in-out infinite', animationDelay: '1s' }} />
-          <circle cx="50" cy="64" r="16" stroke="#FFFFFF" strokeWidth="4" style={{ animation: 'ring-pulse-large 3s ease-in-out infinite', animationDelay: '2s' }} />
-        </svg>
-      </div>
-
-      {/* Brand text */}
-      <div style={{ textAlign: 'center' }}>
-        <h1 style={{
-          fontSize: '1.8em',
-          fontWeight: 800,
-          letterSpacing: '0.04em',
-          color: '#e8e6e0',
-          margin: 0,
-        }}>
-          Venture Vision <span style={{ color: '#D4AF37' }}>Ubuntu</span>
-        </h1>
-        <div style={{
-          fontFamily: "'IBM Plex Mono', monospace",
-          fontSize: '0.6em',
-          color: '#5b7280',
-          letterSpacing: '0.15em',
-          textTransform: 'uppercase',
-          marginTop: '8px',
-        }}>
-          TRUST RUNTIME · VERIFICATION STATE SPACE
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+      <header className="flex-1 flex flex-col items-center justify-center px-6 py-16 sm:py-24 text-center">
+        <div className="mb-8 flex items-center justify-center">
+          <svg viewBox="0 0 100 100" fill="none" className="w-20 h-20 sm:w-24 sm:h-24">
+            <circle cx="35" cy="40" r="16" stroke="#22d3ee" strokeWidth="4" className="animate-pulse" />
+            <circle cx="65" cy="40" r="16" stroke="#fbbf24" strokeWidth="4" className="animate-pulse" style={{ animationDelay: '0.5s' }} />
+            <circle cx="50" cy="64" r="16" stroke="#34d399" strokeWidth="4" className="animate-pulse" style={{ animationDelay: '1s' }} />
+          </svg>
         </div>
-      </div>
-
-      {/* "We Serve Trust" */}
-      <div style={{
-        fontFamily: "'IBM Plex Mono', monospace",
-        fontSize: '0.7em',
-        color: '#D4AF37',
-        letterSpacing: '0.2em',
-        textTransform: 'uppercase',
-        opacity: 0.8,
-      }}>
-        We Serve Trust
-      </div>
-
-      {/* Inline animation keyframes */}
-      <style>{`
-        @keyframes ring-swirl-large {
-          0% { transform: rotate(0deg) scale(1); }
-          25% { transform: rotate(90deg) scale(1.1); }
-          50% { transform: rotate(180deg) scale(1); }
-          75% { transform: rotate(270deg) scale(1.1); }
-          100% { transform: rotate(360deg) scale(1); }
-        }
-        @keyframes ring-pulse-large {
-          0%, 100% { stroke-width: 4; opacity: 1; }
-          50% { stroke-width: 6; opacity: 0.6; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          svg { animation: none !important; }
-          circle { animation: none !important; }
-        }
-      `}</style>
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-cyan-300">
+          <Sparkles className="w-3.5 h-3.5" />
+          Venture Vision Ubuntu
+        </div>
+        <h1 className="mb-4 text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-cyan-300 via-amber-200 to-emerald-300 bg-clip-text text-transparent">
+          We Serve Trust
+        </h1>
+        <p className="max-w-2xl text-base sm:text-lg text-slate-400 leading-relaxed mb-2">
+          Evidence-verification platform for water infrastructure validation.
+          SANS 10112 / EIS v1.0 compliant. Zero Fabrication Mandate active.
+        </p>
+        <p className="text-xs text-slate-500 uppercase tracking-widest mb-12">
+          5 destinations, pick one to begin
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full max-w-6xl">
+          {DESTINATIONS.map((d) => {
+            const Icon = d.icon;
+            return (
+              <a key={d.href} href={d.href} className={`group relative flex flex-col items-start text-left p-6 rounded-xl border bg-slate-900/60 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl ${d.border} ${d.glow}`}>
+                <div className={`mb-4 flex items-center justify-center w-12 h-12 rounded-lg border ${d.border} ${d.accent} bg-slate-950/80`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+                <h2 className="text-lg font-bold text-slate-100 mb-0.5">{d.title}</h2>
+                <p className={`text-xs uppercase tracking-wider mb-3 ${d.accent}`}>{d.subtitle}</p>
+                <p className="text-sm text-slate-400 leading-relaxed mb-5 flex-1">{d.description}</p>
+                <div className={`inline-flex items-center gap-1.5 text-sm font-semibold ${d.accent} group-hover:gap-2.5 transition-all`}>
+                  {d.cta}
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </a>
+            );
+          })}
+        </div>
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-3 text-xs text-slate-500">
+          <span className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 font-semibold uppercase tracking-wider text-amber-400/80">
+            [SIMULATION - NOT MUNICIPAL OPERATIONAL DATA]
+          </span>
+          <span className="hidden sm:inline">.</span>
+          <span className="text-slate-500">Zero Fabrication Rule active</span>
+        </div>
+      </header>
+      <footer className="mt-auto border-t border-slate-800 bg-slate-950/80 backdrop-blur-sm">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-slate-400">Vaguely Vanity LLC (Pty) Ltd</span>
+            <span className="hidden sm:inline">.</span>
+            <span className="hidden sm:inline">Reg. 2026/259053/07</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span>14 Bird Street, Gqeberha, 6001</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
