@@ -5,13 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>▲ VVU · Verification Layer — GIS Bench</title>
 <!--
-  ▲ VVU VERIFICATION LAYER · v2.2.0-e2e
+  ▲ VVU VERIFICATION LAYER · v2.2.0-e2e · Multi‑view enabled
   ─────────────────────────────────────────────────────────────
   ?drop=0.25        chaos: 25% frame loss — dead reckoning must glide
   ?binary=1         exercise the packed 52-byte v2 codec end-to-end
   ?ws=URL&token=T   consume a production gateway instead of in-page sim
   Brand re-theme: edit the :root tokens below — one block, whole UI follows.
 -->
+<!-- Leaflet CSS for 2D map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   :root{
     --vvu-accent:#22d3ee; --vvu-accent2:#38bdf8;
@@ -75,6 +77,43 @@
     pointer-events:none;z-index:20;transition:background .7s}
   body.light #aura{mix-blend-mode:normal;opacity:.45}
   #stamp{margin-left:auto;font-size:10px;letter-spacing:.18em;color:var(--dim)}
+
+  /* ── map & inset containers ── */
+  #map {
+    position: fixed; bottom: 80px; right: 20px;
+    width: 320px; height: 320px; z-index: 40;
+    border-radius: 12px; border: 1px solid var(--glass-br);
+    box-shadow: var(--shadow); background: #0f172a;
+    display: none; pointer-events: auto;
+  }
+  body.light #map { background: #e2e8f0; }
+  #map .leaflet-control-attribution { font-size: 8px; background: rgba(0,0,0,0.3); color: #ccc; }
+  #map .leaflet-tile-pane { opacity: 0.85; }
+
+  #orthoView {
+    position: fixed; top: 80px; right: 20px;
+    width: 200px; height: 200px; z-index: 35;
+    border-radius: 12px; border: 1px solid var(--glass-br);
+    box-shadow: var(--shadow);
+    background: #020617;
+    display: none;
+    pointer-events: none; /* let mouse pass through to canvas */
+    overflow: hidden;
+  }
+  #orthoView .label {
+    position: absolute; top: 4px; left: 8px;
+    font-size: 9px; letter-spacing: .1em; color: var(--dim);
+    background: var(--glass-bg); padding: 2px 8px; border-radius: 6px;
+    backdrop-filter: blur(4px);
+  }
+  #orthoView canvas {
+    width: 100% !important; height: 100% !important;
+    display: block;
+  }
+  @media (max-width: 600px) {
+    #map { width: 200px; height: 200px; bottom: 70px; right: 10px; }
+    #orthoView { width: 140px; height: 140px; top: 70px; right: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -86,7 +125,14 @@
 <div id="aura"></div>
 <div id="hud">
   <div id="top">
-    <div id="brandbar" class="glass">
+    <div class="glass" style="display:flex;gap:2px;padding:4px;pointer-events:auto;align-items:center">
+            <a href="/ive" style="font:inherit;color:var(--dim);text-decoration:none;padding:5px 10px;border-radius:7px;letter-spacing:.08em;text-transform:uppercase;font-size:10px" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--dim)'">IVE</a>
+            <a href="/vvu-e2e-suite.html" style="font:inherit;color:var(--dim);text-decoration:none;padding:5px 10px;border-radius:7px;letter-spacing:.08em;text-transform:uppercase;font-size:10px" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--dim)'">B2B</a>
+            <a href="/vvu-trust-dashboard.html" style="font:inherit;color:var(--dim);text-decoration:none;padding:5px 10px;border-radius:7px;letter-spacing:.08em;text-transform:uppercase;font-size:10px" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--dim)'">Trust</a>
+            <a href="/vvu-secure-activation.html" style="font:inherit;color:var(--dim);text-decoration:none;padding:5px 10px;border-radius:7px;letter-spacing:.08em;text-transform:uppercase;font-size:10px" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--dim)'">Activate</a>
+            <a href="/vvu-deployment-console.html" style="font:inherit;color:var(--dim);text-decoration:none;padding:5px 10px;border-radius:7px;letter-spacing:.08em;text-transform:uppercase;font-size:10px" onmouseover="this.style.color='var(--ink)'" onmouseout="this.style.color='var(--dim)'">Console</a>
+          </div>
+          <div id="brandbar" class="glass">
       <span class="bmark" style="font-size:18px">▲</span>
       <span class="wordmark">VVU</span>
       <span class="lbl">Verification Layer · GIS Bench</span>
@@ -94,6 +140,9 @@
       <span class="chip" id="status">SIM</span>
     </div>
     <nav id="nav" class="glass" style="display:flex;gap:2px;padding:4px;pointer-events:auto"></nav>
+    <!-- view toggles -->
+    <button id="mapToggle" class="glass pad" style="pointer-events:auto" title="Toggle 2D map">🗺</button>
+    <button id="orthoToggle" class="glass pad" style="pointer-events:auto" title="Toggle top‑down inset">⊞</button>
     <button id="theme" class="glass pad" style="pointer-events:auto">◐</button>
   </div>
   <div id="bot">
@@ -107,6 +156,13 @@
   </div>
 </div>
 <div id="targets" class="glass"><span class="lbl">Live targets</span><div id="list"></div></div>
+
+<!-- 2D Map container -->
+<div id="map" class="glass"></div>
+<!-- Orthographic inset container -->
+<div id="orthoView" class="glass"><span class="label">TOP‑DOWN</span></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script type="importmap">
 {"imports":{
@@ -136,7 +192,16 @@ class EnuOrigin{
     return[-this.so*dx+this.co*dy,-this.sl*this.co*dx-this.sl*this.so*dy+this.cl*dz,
             this.cl*this.co*dx+this.cl*this.so*dy+this.sl*dz];}
 }
-const ORIGIN=new EnuOrigin(37.7889,-122.4060,0);
+// Default fallback (Gqeberha / Port Elizabeth — VVU home base)
+let ORIGIN=new EnuOrigin(-33.9608,25.6022,0);
+// Use device geolocation to center the 3D map on the user's actual position
+if(navigator.geolocation){
+  navigator.geolocation.getCurrentPosition(
+    pos=>{ORIGIN=new EnuOrigin(pos.coords.latitude,pos.coords.longitude,pos.coords.altitude||0);console.log('Geolocation:',pos.coords.latitude,pos.coords.longitude);},
+    err=>{console.warn('Geolocation denied — using default origin:',err.message);},
+    {enableHighAccuracy:true,timeout:5000,maximumAge:60000}
+  );
+}
 
 /* ── tween engine (gsap-free) ───────────────────────────────────────────── */
 const tweens=[];const easeIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
@@ -309,7 +374,7 @@ function deserializeBinary(buf,now){
       cls:ver===2&&dv.getUint8(o+48)===1?'person':'vehicle',
       conf:dv.getFloat32(o+28),llh:[dv.getInt32(o+4)/1e7,dv.getInt32(o)/1e7,dv.getFloat32(o+8)],
       dims:[dv.getFloat32(o+12),dv.getFloat32(o+16),dv.getFloat32(o+20)],
-      hdg:dv.getFloat32(o+24),
+      hdg:dv.getFloat32(o+24),                                  
       vel:ver===2?[dv.getFloat32(o+32),dv.getFloat32(o+36),dv.getFloat32(o+40)]:undefined},now);
     if(p)out.push(p);}
   return out;
@@ -425,11 +490,109 @@ $id('targets').addEventListener('click',e=>{
   tw(camera.position,{x:+row.dataset.x+180,y:+row.dataset.y+280,z:+row.dataset.z+260});
 });
 
-/* ── render loop (F4: all refs via $id — no window.status collision) ────── */
+/* ── 2D MAP (Leaflet) ──────────────────────────────────────────────────── */
+let map = null;
+let markerLayer = null;
+let mapVisible = false;
+
+function initMap() {
+  const container = document.getElementById('map');
+  if (!container) return;
+  map = L.map(container, { 
+    center: [ORIGIN.lat, ORIGIN.lon], 
+    zoom: 14,
+    zoomControl: false,
+    attributionControl: false
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+  // small attribution in corner
+  map.attributionControl.setPrefix('OSM');
+  markerLayer = L.layerGroup().addTo(map);
+  
+  // Update track markers every second
+  setInterval(() => {
+    if (!map || !markerLayer || !mapVisible) return;
+    markerLayer.clearLayers();
+    const now = performance.now();
+    for (const [id, r] of field.tracks) {
+      if (now - r.seen > 1500) continue;
+      // Convert ENU to lat/lon (approximate)
+      const lat = ORIGIN.lat + (r.cur.z) / 110540;
+      const lon = ORIGIN.lon + (r.cur.x) / (111320 * Math.cos(ORIGIN.lat * DEG));
+      const color = CLASS_COLOR[r.cls] ? '#' + CLASS_COLOR[r.cls].toString(16).padStart(6,'0') : '#94a3b8';
+      const marker = L.circleMarker([lat, lon], {
+        radius: Math.max(4, r.cd.x * 2),
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.6,
+        weight: 1.5
+      }).addTo(markerLayer);
+      marker.bindTooltip(`${r.cls} (${(r.conf*100)|0}%)`, { permanent: false, direction: 'top' });
+    }
+  }, 1000);
+}
+
+// Toggle map
+const mapToggle = document.getElementById('mapToggle');
+mapToggle.onclick = () => {
+  const el = document.getElementById('map');
+  mapVisible = !mapVisible;
+  if (mapVisible) {
+    el.style.display = 'block';
+    mapToggle.textContent = '✕';
+    if (!map) initMap();
+    else map.invalidateSize();
+  } else {
+    el.style.display = 'none';
+    mapToggle.textContent = '🗺';
+  }
+};
+
+/* ── ORTHOGRAPHIC INSET ────────────────────────────────────────────────── */
+let orthoVisible = false;
+const orthoContainer = document.getElementById('orthoView');
+const orthoCam = new THREE.OrthographicCamera(-500, 500, 500, -500, 1, 2000);
+orthoCam.position.set(0, 1200, 0);
+orthoCam.lookAt(0, 0, 0);
+
+// We'll render the inset using the same renderer with viewport/scissor.
+// We need to compute viewport dimensions relative to the ortho container.
+function renderOrthoInset() {
+  if (!orthoVisible) return;
+  const rect = orthoContainer.getBoundingClientRect();
+  const w = rect.width, h = rect.height;
+  if (w === 0 || h === 0) return;
+  const pixelRatio = renderer.getPixelRatio();
+  // Use device pixel ratio for crispness
+  const vw = Math.round(w * pixelRatio);
+  const vh = Math.round(h * pixelRatio);
+  const x = Math.round(rect.left * pixelRatio);
+  const y = Math.round((window.innerHeight - rect.bottom) * pixelRatio);
+  renderer.setViewport(x, y, vw, vh);
+  renderer.setScissor(x, y, vw, vh);
+  renderer.setScissorTest(true);
+  renderer.clear(true, true, true);
+  renderer.render(scene, orthoCam);
+  renderer.setScissorTest(false);
+}
+
+// Toggle ortho
+const orthoToggle = document.getElementById('orthoToggle');
+orthoToggle.onclick = () => {
+  orthoVisible = !orthoVisible;
+  orthoContainer.style.display = orthoVisible ? 'block' : 'none';
+  orthoToggle.textContent = orthoVisible ? '✕' : '⊞';
+};
+
+/* ── render loop ─────────────────────────────────────────────────────────── */
 const clock=new THREE.Clock();let emaMs=16.6,hudAt=0;
 const el={fps:$id('fps'),ms:$id('ms'),trk:$id('trk'),gap:$id('gap'),st:$id('status')};
 el.st.textContent=statusTxt;setInterval(()=>el.st.textContent=statusTxt,500);
 focus('GIS Bench');
+
 renderer.setAnimationLoop(()=>{
   const dt=Math.min(clock.getDelta(),.1),now=performance.now();
   emaMs=emaMs*.9+dt*1000*.1;
@@ -437,18 +600,35 @@ renderer.setAnimationLoop(()=>{
   field.update(dt,now);
   controls.update();
   for(const u of beamU)u.uTime.value=clock.elapsedTime;
+  
+  // Main render (full viewport)
+  renderer.setViewport(0,0,innerWidth*renderer.getPixelRatio(),innerHeight*renderer.getPixelRatio());
+  renderer.setScissorTest(false);
+  renderer.clear(true,true,true);
+  renderer.render(scene,camera);
+  
+  // Ortho inset render (if visible) - after main render to overlay
+  if (orthoVisible) renderOrthoInset();
+  
+  // HUD updates
   if(now-hudAt>250){hudAt=now;
     el.fps.textContent=String(Math.round(1000/emaMs));
     el.ms.textContent=emaMs.toFixed(1);
     el.gap.textContent=String(gapTotal+dropped);
     el.trk.textContent=String(field.fill.count);
     renderList();}
-  renderer.render(scene,camera);
 });
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  // Ortho camera doesn't need aspect change
+});
+
 requestAnimationFrame(()=>{const b=$id('boot');b.classList.add('done');
   setTimeout(()=>b.remove(),700);});
+
 </script>
 </body>
 </html>
