@@ -612,18 +612,97 @@ function switchLocation(id) {
   const loc = LOCATIONS.find(l => l.id === id);
   if (!loc) return;
   ORIGIN = { lat: loc.lat, lon: loc.lon, alt: loc.alt };
-  // Update readouts
+
+  // Update GPS readouts
   const fmt = (v, dir) => Math.abs(v).toFixed(4) + '\u00b0 ' + dir;
   const el = document.getElementById('rd-lat');
   const elon = document.getElementById('rd-lon');
   if (el) el.textContent = fmt(loc.lat, loc.lat >= 0 ? 'N' : 'S');
   if (elon) elon.textContent = fmt(loc.lon, loc.lon >= 0 ? 'E' : 'W');
+
   // Update tag
   const tag = document.getElementById('loc-tag');
   if (tag) tag.textContent = loc.tag;
   console.log('[VVU] Switched to:', loc.name, loc.lat, loc.lon);
-  // Re-center terrain (if the 3D scene has a recenter function)
-  if (typeof recenterTerrain === 'function') recenterTerrain(loc.lat, loc.lon, loc.alt);
+
+  // ── LOAD NEW SATELLITE TEXTURE for the new location ──
+  if (GMAPS_KEY && typeof THREE !== 'undefined') {
+    const satUrl = 'https://maps.googleapis.com/maps/api/staticmap?center='
+      + loc.lat + ',' + loc.lon
+      + '&zoom=15&size=640x640&maptype=satellite&key=' + GMAPS_KEY;
+    const loader = new THREE.TextureLoader();
+    loader.crossOrigin = 'anonymous';
+
+    // Fade out terrain during texture swap
+    if (typeof terrainMat !== 'undefined') {
+      terrainMat.opacity = 0.3;
+      terrainMat.transparent = true;
+      terrainMat.needsUpdate = true;
+    }
+
+    loader.load(satUrl, function(texture) {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      if (typeof terrainMat !== 'undefined') {
+        // Dispose old texture
+        if (terrainMat.map) terrainMat.map.dispose();
+        terrainMat.map = texture;
+        terrainMat.color.setHex(0xffffff);
+        terrainMat.emissiveIntensity = 0.15;
+        terrainMat.opacity = 1.0;
+        terrainMat.transparent = false;
+        terrainMat.needsUpdate = true;
+      }
+      console.log('[VVU] Satellite texture loaded for:', loc.name);
+    }, undefined, function(err) {
+      console.warn('[VVU] Satellite texture failed, using colored terrain:', err);
+      if (typeof terrainMat !== 'undefined') {
+        terrainMat.color.setHex(0x0a1830);
+        terrainMat.opacity = 1.0;
+        terrainMat.transparent = false;
+        terrainMat.needsUpdate = true;
+      }
+    });
+  }
+
+  // ── CAMERA FLY-TO: zoom in then pull back (visual transition) ──
+  if (typeof camera !== 'undefined' && typeof controls !== 'undefined') {
+    // Quick zoom-in animation
+    const startX = camera.position.x;
+    const startZ = camera.position.z;
+    const startY = camera.position.y;
+    const targetY = 200;  // zoom in closer
+    let progress = 0;
+    const flyDuration = 1200;  // ms
+    const flyStart = performance.now();
+
+    function flyAnim() {
+      const elapsed = performance.now() - flyStart;
+      progress = Math.min(1, elapsed / flyDuration);
+      const eased = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+      // First half: zoom in. Second half: pull back to orbit
+      if (progress < 0.5) {
+        camera.position.y = startY + (targetY - startY) * (eased * 2);
+      } else {
+        camera.position.y = targetY + (startY - targetY) * ((eased - 0.5) * 2);
+      }
+      camera.lookAt(0, 0, 0);
+      if (progress < 1) requestAnimationFrame(flyAnim);
+    }
+    flyAnim();
+  }
+
+  // ── REGENERATE ModelArts detections at new location ──
+  if (typeof maDetections !== 'undefined') {
+    // Force immediate regeneration
+    if (typeof generateModelArtsDetections === 'function') {
+      maDetections = generateModelArtsDetections();
+      if (typeof updateModelArtsUI === 'function') updateModelArtsUI(maDetections);
+    }
+  }
+
+  // ── UPDATE location name overlay ──
+  const nameEl = document.getElementById('loc-name-display');
+  if (nameEl) nameEl.textContent = loc.name;
 }
 </script>
 <div id="sim-banner">
@@ -1570,8 +1649,28 @@ const terrainMat = new THREE.MeshStandardMaterial({
   flatShading: true,
   wireframe: false
 });
-const terrain = new THREE.Mesh(geo, terrainMat);
+
 scene.add(terrain);
+
+// ── LOAD SATELLITE IMAGERY onto terrain ──
+const GMAPS_KEY_INIT = (typeof GMAPS_KEY !== 'undefined') ? GMAPS_KEY : '';
+if (GMAPS_KEY_INIT) {
+  const initSatUrl = 'https://maps.googleapis.com/maps/api/staticmap?center='
+    + ORIGIN.lat + ',' + ORIGIN.lon
+    + '&zoom=15&size=640x640&maptype=satellite&key=' + GMAPS_KEY_INIT;
+  const initLoader = new THREE.TextureLoader();
+  initLoader.crossOrigin = 'anonymous';
+  initLoader.load(initSatUrl, function(tex) {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    terrainMat.map = tex;
+    terrainMat.color.setHex(0xffffff);
+    terrainMat.emissiveIntensity = 0.15;
+    terrainMat.needsUpdate = true;
+    console.log('[VVU] Initial satellite texture loaded');
+  }, undefined, function(err) {
+    console.warn('[VVU] Initial satellite texture failed');
+  });
+}
 
 /* wireframe overlay (neon cyan) */
 const wireMat = new THREE.MeshBasicMaterial({
