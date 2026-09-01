@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>▲ VVU · Enterprise Platform</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    /* ─── ENTERPRISE UI ───────────────────────────────────────────── */
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { width:100%; height:100%; overflow:hidden; background:#050a18; font-family:'Segoe UI',system-ui,monospace; color:#e8edf3; }
+    .glass { background:rgba(15,23,42,0.6); backdrop-filter:blur(16px); border:1px solid rgba(14,165,233,0.12); border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+
+    /* ─── BOOT SCREEN ────────────────────────────────────────────── */
+    #boot { position:fixed; inset:0; z-index:999; display:grid; place-items:center; background:#050a18; transition:opacity 1.2s ease; }
+    #boot.done { opacity:0; pointer-events:none; }
+    .bwrap { text-align:center; max-width:420px; }
+    .bmark { font-size:56px; background:linear-gradient(90deg,#a5f3fc,#22d3ee,#38bdf8); -webkit-background-clip:text; background-clip:text; color:transparent; }
+    .bword { font-size:28px; font-weight:700; letter-spacing:.4em; color:#e2e8f0; margin:8px 0 4px; }
+    .bsub { font-size:10px; letter-spacing:.2em; color:#64748b; }
+    .bbar { width:200px; height:2px; background:#1e293b; margin:20px auto 0; overflow:hidden; border-radius:2px; }
+    .bbar i { display:block; height:100%; width:30%; background:linear-gradient(90deg,#a5f3fc,#22d3ee,#38bdf8); animation:scan 1.4s ease-in-out infinite alternate; border-radius:2px; }
+    @keyframes scan { from { transform:translateX(-80%) } to { transform:translateX(420%) } }
+
+    /* ─── THREE CANVAS ───────────────────────────────────────────── */
+    #three-canvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; }
+    #map-overlay { position:fixed; top:0; left:0; width:100%; height:100%; z-index:10; display:none; background:#0b0e14; }
+
+    /* ─── TOP BAR ────────────────────────────────────────────────── */
+    #topbar { position:fixed; top:0; left:0; right:0; z-index:20; display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background:rgba(5,10,24,0.85); backdrop-filter:blur(12px); border-bottom:1px solid rgba(255,255,255,0.04); }
+    #topbar .brand { display:flex; align-items:center; gap:10px; }
+    #topbar .brand svg { width:28px; height:28px; }
+    #topbar .brand h1 { font-size:15px; font-weight:700; letter-spacing:.08em; color:#e8edf3; }
+    #topbar .brand h1 span { color:#D4AF37; }
+    #topbar .brand .sub { font-size:8px; color:#64748b; letter-spacing:.12em; text-transform:uppercase; }
+    #topbar .status { display:flex; align-items:center; gap:14px; font-size:10px; color:#94a3b8; }
+    #topbar .status .dot { width:6px; height:6px; border-radius:50%; background:#4caf50; box-shadow:0 0 8px rgba(76,175,80,0.3); animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+    #topbar .status .badge { padding:2px 10px; border-radius:12px; background:rgba(212,175,55,0.12); border:1px solid rgba(212,175,55,0.2); color:#D4AF37; font-size:8px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+
+    /* ─── NAV ────────────────────────────────────────────────────── */
+    #nav { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:20; display:flex; gap:4px; padding:6px 10px; background:rgba(5,10,24,0.8); backdrop-filter:blur(14px); border:1px solid rgba(255,255,255,0.05); border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,0.5); pointer-events:auto; }
+    #nav button { font:inherit; font-size:10px; font-weight:600; color:#64748b; background:none; border:0; border-radius:8px; padding:6px 14px; cursor:pointer; text-transform:uppercase; letter-spacing:.04em; transition:0.2s; white-space:nowrap; }
+    #nav button:hover { color:#e8edf3; background:rgba(255,255,255,0.04); }
+    #nav button.on { color:#D4AF37; background:rgba(212,175,55,0.08); }
+    #nav button .icon { margin-right:4px; }
+
+    /* ─── HUD (top-right) ───────────────────────────────────────── */
+    #hud { position:fixed; top:64px; right:14px; z-index:20; display:flex; gap:4px; pointer-events:none; flex-wrap:wrap; justify-content:flex-end; }
+    #hud .stat { padding:4px 10px; min-width:48px; text-align:center; background:rgba(5,10,24,0.6); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.04); border-radius:6px; }
+    #hud .stat .lbl { font-size:7px; letter-spacing:.1em; color:#64748b; text-transform:uppercase; }
+    #hud .stat b { display:block; font-size:13px; margin-top:1px; color:#e8edf3; }
+
+    /* ─── TEMPERATURE ───────────────────────────────────────────── */
+    #temperature { position:fixed; top:12px; right:12px; z-index:20; background:rgba(0,0,0,0.5); backdrop-filter:blur(8px); border-radius:20px; padding:4px 12px; font-size:13px; font-weight:500; color:#fff; border:1px solid rgba(255,255,255,0.06); pointer-events:none; }
+    #temperature span { font-weight:300; font-size:11px; margin-left:3px; opacity:0.6; }
+
+    /* ─── OVERLAY VIEWS (clean, focused) ────────────────────────── */
+    .overlay-view { position:fixed; inset:0; z-index:15; display:none; background:rgba(5,10,24,0.92); backdrop-filter:blur(20px); pointer-events:auto; overflow:hidden; }
+    .overlay-view.open { display:flex; flex-direction:column; animation:fadeIn 0.5s ease; }
+    @keyframes fadeIn { from { opacity:0; transform:scale(0.97); } to { opacity:1; transform:scale(1); } }
+    .overlay-view .header { padding:16px 24px; border-bottom:1px solid rgba(255,255,255,0.04); display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
+    .overlay-view .header h2 { font-size:14px; font-weight:600; color:#e8edf3; }
+    .overlay-view .header h2 .accent { color:#D4AF37; }
+    .overlay-view .header .close { background:none; border:none; color:#64748b; font-size:18px; cursor:pointer; padding:0 8px; transition:0.2s; }
+    .overlay-view .header .close:hover { color:#e8edf3; }
+    .overlay-view .body { flex:1; overflow:auto; padding:20px; display:grid; place-items:center; }
+    .overlay-view .body .placeholder { text-align:center; color:#64748b; }
+    .overlay-view .body .placeholder .big { font-size:48px; margin-bottom:12px; }
+    .overlay-view .body .placeholder .desc { font-size:12px; max-width:400px; line-height:1.6; }
+
+    /* ─── TOGGLE MAP ────────────────────────────────────────────── */
+    #toggle-map { position:fixed; bottom:80px; right:20px; z-index:30; background:rgba(0,0,0,0.5); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,0.06); border-radius:50px; padding:6px 14px; color:#fff; font-size:11px; cursor:pointer; transition:0.3s; pointer-events:auto; }
+    #toggle-map:hover { background:rgba(255,255,255,0.06); }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────────────── */
+    @media (max-width:768px) {
+      #nav { bottom:16px; padding:4px 6px; gap:2px; flex-wrap:wrap; justify-content:center; max-width:96vw; }
+      #nav button { font-size:8px; padding:4px 8px; }
+      #hud { top:58px; right:6px; gap:2px; }
+      #hud .stat { padding:2px 6px; min-width:32px; }
+      #hud .stat b { font-size:10px; }
+      #topbar { padding:6px 12px; }
+      #topbar .brand h1 { font-size:12px; }
+      #topbar .status .badge { display:none; }
+      #temperature { font-size:11px; padding:2px 8px; top:6px; right:6px; }
+      #toggle-map { bottom:70px; right:10px; font-size:9px; padding:4px 10px; }
+    }
+    @media (max-width:480px) {
+      #nav button { font-size:7px; padding:3px 6px; }
+      #nav { padding:3px 4px; gap:1px; }
+      #hud .stat .lbl { font-size:6px; }
+      #hud .stat b { font-size:8px; }
+    }
+
+    /* ─── CUSTOM TOOLTIP ────────────────────────────────────────── */
+    .custom-tooltip { background:rgba(0,0,0,0.7)!important; backdrop-filter:blur(4px); border:1px solid rgba(255,255,255,0.06)!important; color:#e8edf3!important; font-size:10px!important; padding:3px 8px!important; border-radius:8px!important; }
+  </style>
+</head>
+<body>
+
+  <!-- ─── BOOT SCREEN ────────────────────────────────────────────── -->
+  <div id="boot">
+    <div class="bwrap">
+      <div class="bmark">▲</div>
+      <div class="bword">VVU</div>
+      <div class="bsub">VERIFICATION LAYER · COMPILING SPATIAL MATRIX</div>
+      <div class="bbar"><i></i></div>
+    </div>
+  </div>
+
+  <!-- ─── THREE CANVAS ───────────────────────────────────────────── -->
+  <div id="three-canvas"></div>
+  <div id="map-overlay"></div>
+
+  <!-- ─── TEMPERATURE ────────────────────────────────────────────── -->
+  <div id="temperature">13<span>°C</span></div>
+
+  <!-- ─── TOP BAR ────────────────────────────────────────────────── -->
+  <div id="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+      <div>
+        <h1>Venture <span>Vision</span> Ubuntu</h1>
+        <div class="sub">Spatial Intelligence · Verification Runtime</div>
+      </div>
+    </div>
+    <div class="status">
+      <span class="dot"></span>
+      <span>LIVE</span>
+      <span class="badge">Enterprise Tier</span>
+    </div>
+  </div>
+
+  <!-- ─── HUD ────────────────────────────────────────────────────── -->
+  <div id="hud">
+    <div class="stat"><span class="lbl">FPS</span><b id="fps">–</b></div>
+    <div class="stat"><span class="lbl">Agents</span><b id="agent-count">0</b></div>
+    <div class="stat"><span class="lbl">Trust</span><b id="trust-label">–</b></div>
+  </div>
+
+  <!-- ─── NAV ────────────────────────────────────────────────────── -->
+  <div id="nav" class="glass">
+    <button class="on" data-view="main"><span class="icon">⌂</span> Main</button>
+    <button data-view="trust"><span class="icon">◎</span> Trust</button>
+    <button data-view="infra"><span class="icon">💧</span> Water</button>
+    <button data-view="mining"><span class="icon">⛏️</span> Mining</button>
+    <button data-view="b2b"><span class="icon">🏭</span> B2B</button>
+  </div>
+
+  <!-- ─── TOGGLE MAP ─────────────────────────────────────────────── -->
+  <button id="toggle-map">🗺 Map</button>
+
+  <!-- ─── OVERLAY: TRUST SPHERE ──────────────────────────────────── -->
+  <div class="overlay-view" id="view-trust">
+    <div class="header">
+      <h2><span class="accent">◎</span> Trust Sphere · Verification State</h2>
+      <button class="close" data-close="view-trust">✕</button>
+    </div>
+    <div class="body">
+      <div class="placeholder">
+        <div class="big">◎</div>
+        <div class="desc"><strong>Trust Sphere</strong> — 380 nodes evolving through 7 states:<br>
+        Unknown → Identity → Contribution → Receipt → Hash → ZK Proof → Trust<br><br>
+        <span style="color:#D4AF37;">●</span> Self node highlighted · <span style="color:#64748b;">Hover</span> for details</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── OVERLAY: WATER NETWORK ──────────────────────────────────── -->
+  <div class="overlay-view" id="view-infra">
+    <div class="header">
+      <h2><span class="accent">💧</span> Water Network · Pressure & Flow</h2>
+      <button class="close" data-close="view-infra">✕</button>
+    </div>
+    <div class="body">
+      <div class="placeholder">
+        <div class="big">💧</div>
+        <div class="desc"><strong>Municipal Water Network</strong> — 4×4 grid with reservoir<br>
+        Pressure zones: <span style="color:#ef4444;">●</span> High · <span style="color:#22d3ee;">●</span> Medium · <span style="color:#3b82f6;">●</span> Low<br><br>
+        <span style="color:#64748b;">Double-click any node to simulate a leak</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── OVERLAY: MINING ──────────────────────────────────────────── -->
+  <div class="overlay-view" id="view-mining">
+    <div class="header">
+      <h2><span class="accent">⛏️</span> Mining · Subsurface Assets</h2>
+      <button class="close" data-close="view-mining">✕</button>
+    </div>
+    <div class="body">
+      <div class="placeholder">
+        <div class="big">⛏️</div>
+        <div class="desc"><strong>Deep-Level Mining</strong> — Shafts & Reef Facies<br>
+        CL / VCR gold-bearing seams · Dewatering columns<br><br>
+        <span style="color:#f59e0b;">●</span> Blast events · <span style="color:#f43f5e;">●</span> Leak detection</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── OVERLAY: B2B PIPELINE ───────────────────────────────────── -->
+  <div class="overlay-view" id="view-b2b">
+    <div class="header">
+      <h2><span class="accent">🏭</span> B2B Pipeline · Commercial Strategy</h2>
+      <button class="close" data-close="view-b2b">✕</button>
+    </div>
+    <div class="body">
+      <div class="placeholder">
+        <div class="big">🏭</div>
+        <div class="desc"><strong>Industrial Pipeline</strong> — 6 active targets<br>
+        <span style="color:#00ff88;">●</span> Pilot · <span style="color:#ffb800;">●</span> Proposal · <span style="color:#38bdf8;">●</span> Contacted<br>
+        <span style="color:#a78bfa;">●</span> Review · <span style="color:#64748b;">●</span> Not Contacted<br><br>
+        Total pipeline value: <strong style="color:#D4AF37;">R 149M</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SCRIPTS ──────────────────────────────────────────────────── -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="importmap">
+  {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ─── CONSTANTS ────────────────────────────────────────────────────
+    const ORIGIN = { lat: -33.9608, lon: 25.6022 };
+    const DEG = Math.PI / 180;
+
+    // ─── DOM ─────────────────────────────────────────────────────────
+    const container = document.getElementById('three-canvas');
+    const mapOverlay = document.getElementById('map-overlay');
+    const toggleBtn = document.getElementById('toggle-map');
+    const boot = document.getElementById('boot');
+
+    // ─── THREE.JS ────────────────────────────────────────────────────
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    container.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050a18);
+    scene.fog = new THREE.FogExp2(0x050a18, 0.00008);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 4000);
+    camera.position.set(200, 250, 450);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.maxPolarAngle = Math.PI / 2.1;
+    controls.target.set(0, 0, 0);
+    controls.minDistance = 50;
+    controls.maxDistance = 1200;
+    controls.update();
+
+    // Lights
+    scene.add(new THREE.HemisphereLight(0x38bdf8, 0x0b1220, 0.7));
+    const sun = new THREE.DirectionalLight(0xbfdcff, 1.0);
+    sun.position.set(-800, 1200, 600);
+    sun.castShadow = true;
+    sun.shadow.mapSize.width = 1024;
+    sun.shadow.mapSize.height = 1024;
+    scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x4a8cff, 0.3);
+    fill.position.set(400, 200, -500);
+    scene.add(fill);
+
+    // ─── TERRAIN ──────────────────────────────────────────────────────
+    const extent = 3000;
+    const terrainGeo = new THREE.PlaneGeometry(extent, extent, 80, 80);
+    terrainGeo.rotateX(-Math.PI / 2);
+    const tPos = terrainGeo.attributes.position;
+    const synth = (x, z) => 8 * Math.sin(x * 0.005) * Math.cos(z * 0.006) + 4 * Math.sin(x * 0.012 + 1.2) * Math.sin(z * 0.009);
+    for (let i = 0; i < tPos.count; i++) tPos.setY(i, synth(tPos.getX(i), -tPos.getZ(i)));
+    terrainGeo.computeVertexNormals();
+    const terrainMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9, metalness: 0.05, flatShading: true });
+    const terrain = new THREE.Mesh(terrainGeo, terrainMat);
+    terrain.receiveShadow = true;
+    scene.add(terrain);
+
+    // ─── BUILDINGS ────────────────────────────────────────────────────
+    const buildingMat = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, wireframe: true, transparent: true, opacity: 0.2 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.4 });
+    for (let i = 0; i < 35; i++) {
+      const w = Math.random() * 18 + 6;
+      const h = Math.random() * 45 + 12;
+      const d = Math.random() * 18 + 6;
+      const geo = new THREE.BoxGeometry(w, h, d);
+      geo.translate(0, h/2, 0);
+      const mesh = new THREE.Mesh(geo, i % 4 === 0 ? glowMat : buildingMat);
+      const x = (Math.random() * 700 - 350) + (Math.random() > 0.5 ? 60 : -60);
+      const z = (Math.random() * 700 - 350) + (Math.random() > 0.5 ? 60 : -60);
+      const y = synth(x, -z) || 0;
+      mesh.position.set(x, y, z);
+      mesh.castShadow = true;
+      scene.add(mesh);
+    }
+
+    // ─── ROADS ────────────────────────────────────────────────────────
+    const roadMat = new THREE.LineBasicMaterial({ color: 0x1a3a5a, transparent: true, opacity: 0.25 });
+    for (let i = 0; i < 15; i++) {
+      const pts = [];
+      let x = (Math.random() - 0.5) * 600;
+      let z = (Math.random() - 0.5) * 600;
+      for (let j = 0; j < 5; j++) pts.push(new THREE.Vector3(x + (Math.random()-0.5)*80, 0.3, z + (Math.random()-0.5)*80));
+      const curve = new THREE.CatmullRomCurve3(pts);
+      const geo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(15));
+      const line = new THREE.Line(geo, roadMat);
+      scene.add(line);
+    }
+
+    // ─── CITY LIGHTS ──────────────────────────────────────────────────
+    const lightMat = new THREE.MeshBasicMaterial({ color: 0x4a8cff, transparent: true, opacity: 0.12 });
+    const sphereGeo = new THREE.SphereGeometry(3, 6, 6);
+    for (let i = 0; i < 30; i++) {
+      const angle = Math.random() * 2 * Math.PI;
+      const rad = 200 + Math.random() * 600;
+      const x = rad * Math.cos(angle);
+      const z = rad * Math.sin(angle);
+      const y = synth(x, -z) + 2 + Math.random() * 2;
+      const light = new THREE.Mesh(sphereGeo, lightMat);
+      light.position.set(x, y, z);
+      scene.add(light);
+    }
+
+    // ─── AGENTS ──────────────────────────────────────────────────────
+    const CLASS_COLOR = { person: 0x22d3ee, vehicle: 0xa3e635, truck: 0xfb923c, unknown: 0x94a3b8 };
+    const TRACK_TTL = 1500, LERP_RATE = 12;
+
+    class TrackField {
+      constructor(max = 128) {
+        const g = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+        g.translate(0, 0.4, 0);
+        this.fill = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.15, depthWrite: false }), max);
+        this.fill.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+        this.fill.frustumCulled = false;
+        this.edges = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.4 }), max);
+        this.edges.frustumCulled = false;
+        this.fill.setColorAt(0, new THREE.Color(1,1,1));
+        this.edges.instanceMatrix = this.fill.instanceMatrix;
+        this.edges.instanceColor = this.fill.instanceColor;
+        this.max = max;
+        this.tracks = new Map();
+        this.dummy = new THREE.Object3D();
+        this.col = new THREE.Color();
+        scene.add(this.fill, this.edges);
+      }
+      ingest(t) {
+        let r = this.tracks.get(t.id);
+        if (!r) {
+          r = { cur: new THREE.Vector3(...t.pos), tgt: new THREE.Vector3(...t.pos), cd: new THREE.Vector3(1,1,1), td: new THREE.Vector3(...t.dims), yaw: t.yaw||0, tYaw: t.yaw||0, vel: new THREE.Vector3(...t.vel), tVel: new THREE.Vector3(...t.vel), hasHdg: t.hasHdg||false, conf: t.conf||0.8, cls: t.cls||'unknown', seen: t.seen||performance.now(), born: performance.now() };
+          this.tracks.set(t.id, r);
+        } else { r.tgt.set(...t.pos); r.td.set(...t.dims); r.tYaw = t.yaw||0; r.tVel.set(...t.vel); r.hasHdg = t.hasHdg||false; r.conf = t.conf||0.8; r.cls = t.cls||'unknown'; r.seen = performance.now(); }
+      }
+      update(dt, now) {
+        const k = 1 - Math.exp(-dt * LERP_RATE);
+        let i = 0;
+        for (const [id, r] of this.tracks) {
+          if (now - r.seen > TRACK_TTL) { this.tracks.delete(id); continue; }
+          r.cur.lerp(r.tgt, k);
+          r.cd.lerp(r.td, k);
+          const dy = r.tYaw - r.yaw;
+          r.yaw += Math.atan2(Math.sin(dy), Math.cos(dy)) * k;
+          const s = Math.max(0.01, 1 - (now - r.seen) / TRACK_TTL);
+          this.dummy.position.copy(r.cur);
+          this.dummy.rotation.set(0, r.yaw, 0);
+          this.dummy.scale.set(r.cd.x * s, r.cd.y * s, r.cd.z * s);
+          this.dummy.updateMatrix();
+          this.fill.setMatrixAt(i, this.dummy.matrix);
+          this.col.setHex(CLASS_COLOR[r.cls] || CLASS_COLOR.unknown);
+          this.fill.setColorAt(i, this.col);
+          i++;
+          if (i >= this.max) break;
+        }
+        this.fill.count = this.edges.count = i;
+        this.fill.instanceMatrix.needsUpdate = true;
+        if (this.fill.instanceColor) this.fill.instanceColor.needsUpdate = true;
+      }
+      getSnapshot() {
+        const now = performance.now();
+        const result = [];
+        for (const [id, r] of this.tracks) {
+          if (now - r.seen > TRACK_TTL) continue;
+          result.push({ id, pos: r.cur.clone(), cls: r.cls, conf: r.conf, dims: r.cd.clone(), yaw: r.yaw });
+        }
+        return result;
+      }
+    }
+    const field = new TrackField(128);
+
+    let agents = [], speedMultiplier = 1.0;
+    function createAgents(count) {
+      const newAgents = [];
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * 2 * Math.PI;
+        const dist = 200 + Math.random() * 500;
+        const speed = (2 + Math.random() * 4) * speedMultiplier;
+        const dir = Math.random() * 2 * Math.PI;
+        const cls = ['person', 'vehicle', 'truck'][i % 3];
+        newAgents.push({
+          id: 'trk-' + i, cls, conf: 0.7 + Math.random() * 0.25,
+          pos: new THREE.Vector3(dist * Math.cos(angle), 0, dist * Math.sin(angle)),
+          dir, speed,
+          dims: cls === 'person' ? [0.4,0.4,1.4] : cls === 'truck' ? [6,2,2.5] : [3.5,1.5,1.2],
+          yaw: 0, baseSpeed: speed / speedMultiplier
+        });
+      }
+      return newAgents;
+    }
+    agents = createAgents(12);
+
+    function simulateTracks() {
+      const now = performance.now();
+      for (const a of agents) {
+        a.pos.x += Math.cos(a.dir) * a.speed * 0.1;
+        a.pos.z += Math.sin(a.dir) * a.speed * 0.1;
+        if (Math.abs(a.pos.x) > 800) a.dir = Math.PI - a.dir;
+        if (Math.abs(a.pos.z) > 800) a.dir = -a.dir;
+        a.yaw = -a.dir;
+        field.ingest({ id: a.id, cls: a.cls, conf: a.conf, pos: [a.pos.x,0,a.pos.z], dims: a.dims, yaw: a.yaw, vel: [Math.cos(a.dir)*a.speed,0,Math.sin(a.dir)*a.speed], hasHdg: true, seen: now });
+      }
+    }
+    setInterval(simulateTracks, 200);
+
+    // ─── LEAFLET MAP ──────────────────────────────────────────────────
+    let map = null, mapVisible = false, markerLayer = null;
+    function initMap() {
+      if (map) return;
+      map = L.map(mapOverlay, {
+        center: [ORIGIN.lat, ORIGIN.lon],
+        zoom: 14,
+        zoomControl: false,
+        attributionControl: false,
+        fadeAnimation: true,
+      });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CartoDB',
+        subdomains: 'abcd', maxZoom: 19,
+      }).addTo(map);
+      markerLayer = L.layerGroup().addTo(map);
+      const locs = [
+        { lat: -33.9608, lng: 25.6022, label: 'Central Hub' },
+        { lat: -33.9580, lng: 25.6000, label: 'Capitol Mall' },
+        { lat: -33.9620, lng: 25.6050, label: '21st St.' },
+        { lat: -33.9575, lng: 25.6080, label: 'Rose Street' },
+      ];
+      for (const loc of locs) {
+        const marker = L.circleMarker([loc.lat, loc.lng], { radius: 2, color: '#4a8cff', fillColor: '#4a8cff', fillOpacity: 0.5, weight: 1 }).addTo(map);
+        marker.bindTooltip(loc.label, { permanent: false, direction: 'top', className: 'custom-tooltip' });
+      }
+      setTimeout(() => map.invalidateSize(), 100);
+    }
+    function updateMapMarkers() {
+      if (!map || !markerLayer || !mapVisible) return;
+      const tracks = field.getSnapshot();
+      markerLayer.clearLayers();
+      for (const t of tracks) {
+        const lat = ORIGIN.lat + (t.pos.z) / 110540;
+        const lon = ORIGIN.lon + (t.pos.x) / (111320 * Math.cos(ORIGIN.lat * DEG));
+        const color = CLASS_COLOR[t.cls] ? '#' + CLASS_COLOR[t.cls].toString(16).padStart(6,'0') : '#94a3b8';
+        const marker = L.circleMarker([lat, lon], { radius: Math.max(2, t.dims.x * 1.2), color, fillColor: color, fillOpacity: 0.5, weight: 1 });
+        marker.bindTooltip(`${t.cls}`, { permanent: false, direction: 'top', className: 'custom-tooltip' });
+        markerLayer.addLayer(marker);
+      }
+    }
+    setInterval(updateMapMarkers, 1500);
+    toggleBtn.addEventListener('click', () => {
+      mapVisible = !mapVisible;
+      mapOverlay.style.display = mapVisible ? 'block' : 'none';
+      toggleBtn.textContent = mapVisible ? '✕ Map' : '🗺 Map';
+      if (mapVisible) { if (!map) initMap(); else map.invalidateSize(); updateMapMarkers(); }
+    });
+
+    // ─── NAVIGATION ──────────────────────────────────────────────────
+    const navBtns = document.querySelectorAll('#nav button');
+    const views = {
+      main: { hide: [] },
+      trust: { show: 'view-trust' },
+      infra: { show: 'view-infra' },
+      mining: { show: 'view-mining' },
+      b2b: { show: 'view-b2b' },
+    };
+
+    // Close buttons
+    document.querySelectorAll('[data-close]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById(btn.dataset.close).classList.remove('open');
+        navBtns.forEach(b => b.classList.toggle('on', b.dataset.view === 'main'));
+      });
+    });
+
+    navBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        navBtns.forEach(b => b.classList.remove('on'));
+        btn.classList.add('on');
+
+        // Close all overlays
+        document.querySelectorAll('.overlay-view').forEach(el => el.classList.remove('open'));
+
+        if (view === 'main') {
+          // Main view: show nothing, just the 3D scene
+          return;
+        }
+
+        // Open the corresponding overlay
+        const overlay = document.getElementById(views[view]?.show);
+        if (overlay) overlay.classList.add('open');
+      });
+    });
+
+    // ─── TEMPERATURE & CLOCK ──────────────────────────────────────────
+    setInterval(() => {
+      const temp = (12 + Math.random() * 3).toFixed(1);
+      document.querySelector('#temperature').innerHTML = `${temp}<span>°C</span>`;
+    }, 5000);
+
+    // ─── RESIZE ──────────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      if (map) map.invalidateSize();
+    });
+
+    // ─── RENDER LOOP ──────────────────────────────────────────────────
+    const clock = new THREE.Clock();
+    let emaMs = 16.6, hudAt = 0;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.1);
+      const now = performance.now();
+      emaMs = emaMs * 0.9 + dt * 1000 * 0.1;
+
+      field.update(dt, now);
+      controls.update();
+
+      if (now - hudAt > 300) {
+        hudAt = now;
+        document.getElementById('fps').textContent = String(Math.round(1000 / emaMs));
+        document.getElementById('agent-count').textContent = agents.length;
+        document.getElementById('trust-label').textContent = '—';
+      }
+
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ─── BOOT DISMISS (progressive) ──────────────────────────────────
+    // Show trust sphere during boot (as a canvas overlay would be complex)
+    // For now, we just fade the boot screen after 2.5s with a smooth transition.
+    setTimeout(() => {
+      boot.classList.add('done');
+      setTimeout(() => boot.remove(), 1200);
+    }, 2500);
+
+    console.log('▲ VVU Enterprise Platform – clean, progressive loading, focused views.');
+    console.log('   Navigation: Main | Trust | Water | Mining | B2B');
+    console.log('   Each overlay is a clean, focused view – no clutter.');
+  </script>
+</body>
+</html>

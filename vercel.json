@@ -1,14 +1,26 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "public/vvu-trust-dashboard.html",
-      "use": "@vercel/static"
-    }
-  ],
+  "name": "vvu-enterprise-platform",
+  "framework": "nextjs",
+  "buildCommand": "bun run build",
+  "devCommand": "bun run dev",
+  "installCommand": "bun install",
+  "outputDirectory": ".next",
+  "regions": ["cpt1"],
+  "github": {
+    "enabled": true,
+    "silent": true
+  },
   "routes": [
-    { "src": "/enterprise", "dest": "/public/searm1-enterprise-suite.html" },
-    { "src": "/pipeline", "dest": "/public/searm1-pipeline.html" },
-    { "src": "/b2b", "dest": "/public/searm1-b2b-dashboard.html" }
-  ]
+    { "src": "/vvu-enterprise-platform.html", "dest": "/public/vvu-enterprise-platform.html" },
+    { "src": "/vvu-spatial-intelligence.html", "dest": "/public/vvu-spatial-intelligence.html" },
+    { "src": "/searm1-b2b-dashboard.html", "dest": "/public/searm1-b2b-dashboard.html" },
+    { "src": "/vvu-gis-bench.html", "dest": "/public/vvu-gis-bench.html" },
+    { "src": "/three/(.*)", "dest": "/public/three/$1" },
+    { "src": "/brand/(.*)", "dest": "/public/brand/$1" },
+    { "src": "/vvv/(.*)", "dest": "/public/vvv/$1" }
+  ],
+  "env": {
+    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0"
+  }
 }

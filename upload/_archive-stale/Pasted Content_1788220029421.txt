@@ -1,0 +1,1191 @@
+Ran 19 commands, edited 10 files · 6 notes
+Ran 19 commands, edited 10 files · 6 notes
+
+Refresh repo and check next.config + contexts API routes
+bash
+
+cd /home/claude/repo && git pull --quiet 2>&1 | tail -5
+echo "=== next.config.ts ==="
+cat next.config.ts 2>/dev/null || cat next.config.js 2>/dev/null
+echo ""
+echo "=== search for /api/contexts routes ==="
+find . -path ./.git -prune -o -type d -ipath '*api/contexts*' -print 2>/dev/null
+find . -path ./.git -prune -o -type f -ipath '*contexts*route*' -print 2>/dev/null
+Output
+
+error: Your local changes to the following files would be overwritten by merge:
+	public/vvu-3d-gis-traffic.html
+Please commit your changes or stash them before you merge.
+Aborting
+=== next.config.ts ===
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  output: "standalone",
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  reactStrictMode: false,
+  allowedDevOrigins: ["*.space-z.ai", "*.chatglm.cn", "localhost", "127.0.0.1"],
+};
+
+export default nextConfig;
+
+=== search for /api/contexts routes ===
+
+Stash local fix, pull latest remote, check current HEAD and ignoreBuildErrors state
+bash
+
+cd /home/claude/repo && git stash && git pull --quiet 2>&1 | tail -5
+git log -1 --format='%H %s'
+echo "=== confirm ignoreBuildErrors still true on remote HEAD (claim says 'fixed' — is it?) ==="
+grep -n "ignoreBuildErrors" next.config.ts
+Output
+
+Saved working directory and index state WIP on main: 1f9db4b fix: correct OrbitControls importmap path to /three/
+5573f33b8a0316a50be2d157ee03a37e6b80e67a fix: correct ALL broken ./public/three/ paths to /three/
+=== confirm ignoreBuildErrors still true on remote HEAD (claim says 'fixed' — is it?) ===
+6:    ignoreBuildErrors: true,
+
+Locate the Trust API routes mentioned in the claim
+bash
+
+cd /home/claude/repo && echo "=== search broadly for 'contexts' API/journal/verify routes ==="
+find . -path ./.git -prune -o -type d -iname 'api' -print 2>/dev/null
+echo "---"
+find . -path ./.git -prune -o -type f \( -iname '*.ts' -o -iname '*.tsx' \) -print 2>/dev/null | xargs grep -ln "x-trust-context-id\|journal\|/verify" 2>/dev/null | grep -v node_modules | head -20
+Output
+
+=== search broadly for 'contexts' API/journal/verify routes ===
+./src/gateway/api
+./src/app/api
+./disposable-storage/VVU-Dashboard/src/app/api
+./_app_legacy/api
+./searm1-backend/packages/api
+./upload/VVU-Legacy-Dashboard/VVU-Dashboard/src/app/api
+./contracts/api
+---
+./server/safekrypte-lite.ts
+./server/vvu-operatus-server.ts
+./src/__tests__/kernel/deterministic-suite.test.ts
+./packages/trust-runtime/src/index.ts
+./packages/trust-runtime/src/context-manager.ts
+./packages/trust-runtime/src/receipt-engine.ts
+./packages/trust-runtime/src/event-journal.ts
+./packages/trust-runtime/src/hash-chain.ts
+./packages/trust-runtime/__tests__/event-journal-async.test.ts
+./packages/trust-runtime/__tests__/context-manager-async.test.ts
+./packages/trust-api/src/middleware.ts
+./packages/trust-api/src/routes.ts
+./packages/trust-api/src/enforce-policy-gate.ts
+./packages/bartbot/src/tasks/self-audit.task.ts
+./packages/bartbot/src/tasks/security-sentinel.task.ts
+./packages/bartbot/src/tasks/policy-sync.task.ts
+./packages/bartbot/src/scheduler.ts
+./packages/trust-events/src/definitions.ts
+./packages/trust-crypto/src/receipts.ts
+./disposable-storage/VVU-Dashboard/src/components/epistemic/kernel-verification.tsx
+
+Inspect trust-api routes and middleware for auth coverage
+bash
+
+cd /home/claude/repo && echo "=== packages/trust-api/src/routes.ts ==="
+cat packages/trust-api/src/routes.ts
+echo ""
+echo "=== packages/trust-api/src/middleware.ts ==="
+cat packages/trust-api/src/middleware.ts
+Output
+
+=== packages/trust-api/src/routes.ts ===
+// packages/trust-api/src/routes.ts
+// ───────────────────────────────────────────────────────────────
+// Trust API Routes
+// API endpoints for Trust Context lifecycle and operations
+// ───────────────────────────────────────────────────────────────
+
+import { Router, type Request, type Response } from 'express';
+import type { 
+  TrustContextManager,
+  RiskEngine,
+  ReceiptEngine,
+} from '@proofbridge/trust-runtime';
+import type { 
+  CreateTrustContextRequest,
+  JournalEventRequest,
+  AgentTransactionRequest,
+} from '@proofbridge/trust-types';
+import { createTrustMiddleware, createVerificationGuard } from './middleware';
+
+export interface TrustApiConfig {
+  contextManager: TrustContextManager;
+  riskEngine: RiskEngine;
+  receiptEngine: ReceiptEngine;
+}
+
+export function createTrustRouter(config: TrustApiConfig): Router {
+  const router = Router();
+  const { contextManager, riskEngine, receiptEngine } = config;
+
+  const trustMiddleware = createTrustMiddleware({ contextManager, riskEngine });
+  const verificationGuard = createVerificationGuard({ contextManager, riskEngine });
+
+  /**
+   * POST /contexts
+   * Create a new Trust Context
+   */
+  router.post('/contexts', async (req: Request, res: Response) => {
+    try {
+      const request = req.body as CreateTrustContextRequest;
+      const result = await contextManager.createContext(request);
+      
+      // Generate configuration receipt
+      const receipt = receiptEngine.generateConfigurationReceipt(
+        result.context.contextId,
+        result.context.trustAnchor,
+        result.context.receiptRoot
+      );
+
+      res.status(201).json({
+        ...result.response,
+        receipt,
+      });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  /**
+   * GET /contexts/:id
+   * Get Trust Context details
+   */
+  router.get('/contexts/:id', async (req: Request, res: Response) => {
+    const context = contextManager.getContext(req.params.id as string);
+    if (!context) {
+      return res.status(404).json({ error: 'Context not found' });
+    }
+    res.json(context);
+  });
+
+  /**
+   * POST /journal
+   * Journal a new event
+   */
+  router.post('/journal', trustMiddleware, async (req: Request, res: Response) => {
+    try {
+      const context = (req as any).trustContext;
+      const request = req.body as JournalEventRequest;
+      
+      const journal = contextManager.getJournal(context.contextId);
+      if (!journal) {
+        return res.status(500).json({ error: 'Event Journal not initialized' });
+      }
+
+      const result = await journal.journalEvent(request);
+      
+      // Generate receipt
+      const receipt = receiptEngine.generateEventJournalReceipt(
+        context.contextId,
+        result.event,
+        result.chainLink.chainHash,
+        [], // TODO: Merkle proof
+        0
+      );
+
+      res.status(201).json({
+        event: result.event,
+        chainLink: result.chainLink,
+        receipt,
+      });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  /**
+   * POST /verify
+   * Verify a transaction request
+   */
+  router.post('/verify', trustMiddleware, verificationGuard, async (req: Request, res: Response) => {
+    try {
+      const context = (req as any).trustContext;
+      const transactionRequest = req.body as AgentTransactionRequest;
+      const verificationResult = (req as any).verificationResult;
+
+      // Generate verification receipt
+      const receipt = receiptEngine.generateVerificationReceipt(
+        context.contextId,
+        transactionRequest.agentId,
+        verificationResult.allowed ? 'approved' : 'rejected',
+        verificationResult.reason || 'Verified by Risk Engine',
+        context.receiptRoot,
+        [], // TODO: Merkle proof
+        verificationResult.latencyMs,
+        verificationResult.riskScore
+      );
+
+      res.json({
+        ...verificationResult,
+        receipt,
+      });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
+  });
+
+  return router;
+}
+
+=== packages/trust-api/src/middleware.ts ===
+// packages/trust-api/src/middleware.ts
+// ───────────────────────────────────────────────────────────────
+// Trust API Middleware
+// Enforces Trust Context integrity and policy verification
+// ───────────────────────────────────────────────────────────────
+
+import type { Request, Response, NextFunction } from 'express';
+import type { 
+  TrustContextManager,
+  RiskEngine,
+} from '@proofbridge/trust-runtime';
+import type { 
+  AgentTransactionRequest,
+  VerificationResult 
+} from '@proofbridge/trust-types';
+
+export interface TrustApiMiddlewareConfig {
+  contextManager: TrustContextManager;
+  riskEngine: RiskEngine;
+}
+
+/**
+ * Trust API Middleware Factory
+ */
+export function createTrustMiddleware(config: TrustApiMiddlewareConfig) {
+  const { contextManager, riskEngine } = config;
+
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const contextId = req.headers['x-trust-context-id'] as string;
+
+    if (!contextId) {
+      return res.status(400).json({
+        error: 'Missing x-trust-context-id header',
+      });
+    }
+
+    const context = contextManager.getContext(contextId);
+    if (!context) {
+      return res.status(404).json({
+        error: `Trust Context not found: ${contextId}`,
+      });
+    }
+
+    if (context.status !== 'active') {
+      return res.status(403).json({
+        error: `Trust Context is ${context.status}`,
+      });
+    }
+
+    // Attach context to request for downstream use
+    (req as any).trustContext = context;
+    
+    next();
+  };
+}
+
+/**
+ * Verification Guard Middleware
+ * Enforces the Risk Engine's verification policy
+ */
+export function createVerificationGuard(config: TrustApiMiddlewareConfig) {
+  const { riskEngine } = config;
+
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const transactionRequest = req.body as AgentTransactionRequest;
+
+    if (!transactionRequest.agentId || !transactionRequest.targetContract) {
+      return res.status(400).json({
+        error: 'Invalid AgentTransactionRequest payload',
+      });
+    }
+
+    const context = (req as any).trustContext;
+    const result: VerificationResult = riskEngine.verifyRequest(
+      transactionRequest,
+      context.verificationPolicy
+    );
+
+    if (!result.allowed) {
+      return res.status(403).json({
+        error: 'Transaction rejected by Risk Engine',
+        reason: result.reason,
+        verification: result,
+      });
+    }
+
+    // Attach verification result for receipt generation
+    (req as any).verificationResult = result;
+
+    next();
+  };
+}
+
+Check deploy.sh and gmaps key exposure claim
+bash
+
+cd /home/claude/repo && echo "=== infra/deploy.sh ==="
+cat infra/deploy.sh 2>/dev/null || find . -path ./.git -prune -o -iname 'deploy.sh' -print 2>/dev/null
+echo ""
+echo "=== gmaps_key search ==="
+grep -rn "gmaps_key\|GOOGLE_MAPS_API_KEY" --include=*.tsx --include=*.ts . 2>/dev/null | grep -v node_modules | grep -v /.git
+Output
+
+=== infra/deploy.sh ===
+#!/bin/bash
+# deploy.sh - Production deployment
+
+set -e
+
+echo "VVU Earth-Tech Production Deployment"
+echo "========================================"
+
+npm install
+pip install -r requirements.txt 2>/dev/null || true
+
+echo "Compiling contracts..."
+npx hardhat compile
+
+echo "Running tests..."
+npx hardhat test 2>/dev/null || echo "Hardhat tests skipped (requires network)"
+
+echo "Deploying CircuitBreaker..."
+source .env 2>/dev/null || true
+python scripts/deploy.py
+
+echo "Building frontend..."
+npm run build
+
+echo "Deployment complete!"
+
+=== gmaps_key search ===
+./open-source/earth-tech-ui/spatial-network-visualization.tsx:121:const GOOGLE_MAPS_API_KEY = ''; // Set via environment or prop
+./open-source/earth-tech-ui/spatial-network-visualization.tsx:173:  apiKey = GOOGLE_MAPS_API_KEY,
+./src/app/page.tsx:11:    const gmapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+./src/app/page.tsx:13:      ? `/vvu-3d-gis-traffic.html?gmaps_key=${encodeURIComponent(gmapsKey)}`
+Actually, set -e is already present in the deploy script, contradicting the doc's claim that it needs to be added. But I notice the || true and || echo fallback patterns still swallow failures even with set -e enabled, since those constructs suppress the non-zero exit codes regardless.…
+
+
+Check modelarts deploy script and gmaps_key consumption in the HTML
+bash
+
+cd /home/claude/repo && echo "=== modelarts/vvu-deploy-all.sh ==="
+cat modelarts/vvu-deploy-all.sh 2>/dev/null
+echo ""
+echo "=== does vvu-3d-gis-traffic.html actually consume gmaps_key from URL? ==="
+grep -n "gmaps_key\|URLSearchParams" public/vvu-3d-gis-traffic.html
+Output
+
+=== modelarts/vvu-deploy-all.sh ===
+#!/usr/bin/env bash
+# =============================================================================
+# COMPANY: VAGUELY VANITY LLC / VENTURE VISION UBUNTU (VVU)
+# MODULE: VVU-DEPLOY-ALL.SH-v1.0 (ALL-AMD SECURE DEPLOYMENT ORCHESTRATOR)
+# DESCRIPTION: Master deployment script tailored for AMD ROCm/HIP workstations.
+#              Automates local environment audits, verifies GPU profiling paths,
+#              triggers multi-tenant CRM synchronization, runs the SANS-linter,
+#              and locks down local Git commit state for secure main branch release.
+# =============================================================================
+
+# High-contrast terminal SCADA styling (AMD Crimson & Emerald theme)
+AMBER='\033[0;33m'
+EMERALD='\033[0;32m'
+CRIMSON='\033[0;31m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+echo -e "${CYAN}======================================================================${NC}"
+echo -e "${CYAN}     VENTURE VISION UBUNTU (VVU) - MASTER ALL-AMD DEPLOYMENT UTILITY  ${NC}"
+echo -e "${CYAN}======================================================================${NC}"
+
+# Define baseline directories
+ENV_FILE=".env"
+VAULT_DIR="./20_Clients"
+
+# ─── GATE 1: AMD HARDWARE & ROCOm/HIP PATH AUDIT ──────────────────────────────
+echo -e "\n${CYAN}[1/5] Auditing AMD Workstation Compiler Chain (ROCm/HIP)...${NC}"
+AMD_PASS=1
+
+# 1. Check for ROCm path
+if [ -d "/opt/rocm" ]; then
+    echo -e "  [+] Found local AMD ROCm installation path at: ${EMERALD}/opt/rocm${NC}"
+else
+    # Fallback env check
+    if [ -n "$ROCM_PATH" ]; then
+        echo -e "  [+] Detected ROCM_PATH environment variable: ${EMERALD}$ROCM_PATH${NC}"
+    else
+        echo -e "  [!] ${AMBER}Warning: Default AMD ROCm (/opt/rocm) directory not found. Please verify local driver status.${NC}"
+        AMD_PASS=0
+    fi
+fi
+
+# 2. Check for hipcc compiler
+if command -v hipcc &> /dev/null; then
+    echo -e "  [+] Detected AMD HIP Compiler (hipcc): ${EMERALD}$(which hipcc)${NC}"
+else
+    # Fallback to check inside /opt/rocm/bin
+    if [ -f "/opt/rocm/bin/hipcc" ]; then
+        export PATH=$PATH:/opt/rocm/bin
+        echo -e "  [+] AMD HIP Compiler added to PATH: ${EMERALD}/opt/rocm/bin/hipcc${NC}"
+    else
+        echo -e "  [!] ${AMBER}Warning: 'hipcc' compiler not accessible in path. High-fidelity hardware-aware model exports may fail.${NC}"
+        AMD_PASS=0
+    fi
+fi
+
+if [ $AMD_PASS -eq 1 ]; then
+    echo -e "${EMERALD}[SUCCESS] Workstation compiler chain aligned under all-AMD hardware invariants.${NC}"
+else
+    echo -e "${AMBER}[!] Warning: AMD hardware toolchains are incomplete. Check ROCm/HIP paths before exporting models to edge FPGA DPUs.${NC}"
+fi
+
+
+# ─── GATE 2: LOCAL SECURITY & API CONFIGURATION AUDIT ───────────────────────
+echo -e "\n${CYAN}[2/5] Running Local Environment and API Key Check...${NC}"
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "  [!] ${CRIMSON}Error: Local '.env' configuration file is missing!${NC}"
+    exit 1
+fi
+
+# Verify GCP Key existence
+if grep -q "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" "$ENV_FILE"; then
+    GCP_KEY=$(grep "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" "$ENV_FILE" | cut -d'"' -f2)
+    # Check if key is populated with default placeholder or valid string length
+    if [[ "$GCP_KEY" == *"placeholder"* ]] || [ -z "$GCP_KEY" ]; then
+        echo -e "  [!] ${AMBER}Warning: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is unset or holds a placeholder in .env.${NC}"
+        echo -e "      The 3D GIS Bench landing page will load, but terrain and buildings will remain black.${NC}"
+    else
+        echo -e "  [+] Found Google Maps API Key prefix: ${EMERALD}${GCP_KEY:0:10}... (Length: ${#GCP_KEY})${NC}"
+    fi
+else
+    echo -e "  [!] ${CRIMSON}Error: 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY' parameter not defined in .env.${NC}"
+    exit 1
+fi
+
+echo -e "${EMERALD}[SUCCESS] Workspace environment variables validated successfully.${NC}"
+
+
+# ─── GATE 3: EXCEL TO MULTI-TENANT MD CRM SYNC ──────────────────────────────
+echo -e "\n${CYAN}[3/5] Executing Multi-Tenant CRM Synchronization...${NC}"
+if [ -f "automation/vvu-b2b-vault-sync-v2.py" ]; then
+    python3 automation/vvu-b2b-vault-sync-v2.py
+    if [ $? -ne 0 ]; then
+        echo -e "  [!] ${CRIMSON}Error: Spreadsheet-to-Vault sync engine returned execution errors.${NC}"
+        exit 1
+    fi
+else
+    # Fallback to local execution if not in automation folder
+    if [ -f "vvu-b2b-vault-sync-v2.py" ]; then
+        python3 vvu-b2b-vault-sync-v2.py
+        if [ $? -ne 0 ]; then
+            echo -e "  [!] ${CRIMSON}Error: Spreadsheet-to-Vault sync engine returned execution errors.${NC}"
+            exit 1
+        fi
+    else
+        echo -e "  [!] ${AMBER}Warning: CRM Sync script 'vvu-b2b-vault-sync-v2.py' not found. Skipping sync pass.${NC}"
+    fi
+fi
+
+
+# ─── GATE 4: SANS LINTER & PRE-COMMIT PROVENANCE VERIFICATION ───────────────
+echo -e "\n${CYAN}[4/5] Executing SANS Linter & Integrity Verification...${NC}"
+if [ -f "automation/vvu-obsidian-sync-v2.sh" ]; then
+    bash automation/vvu-obsidian-sync-v2.sh
+    if [ $? -ne 0 ]; then
+        echo -e "  [!] ${CRIMSON}Error: Local pre-commit SANS audit failed. Commit blocked.${NC}"
+        exit 1
+    fi
+else
+    if [ -f "vvu-obsidian-sync-v2.sh" ]; then
+        bash vvu-obsidian-sync-v2.sh
+        if [ $? -ne 0 ]; then
+            echo -e "  [!] ${CRIMSON}Error: Local pre-commit SANS audit failed. Commit blocked.${NC}"
+            exit 1
+        fi
+    else
+        echo -e "  [!] ${CRIMSON}Error: Pre-commit SANS script 'vvu-obsidian-sync-v2.sh' is missing!${NC}"
+        exit 1
+    fi
+fi
+
+
+# ─── GATE 5: MASTER DEPLOYMENT PACKAGING & WORKSTATION LOCKDOWN ───────────────
+echo -e "\n${CYAN}[5/5] Securing Workstation Files & Executing Final Release Lock...${NC}"
+
+# Lock down .env file permissions
+chmod 600 "$ENV_FILE"
+echo -e "  [+] Hardened configuration file permissions: ${EMERALD}chmod 600 .env${NC}"
+
+# Check for uncommitted git changes
+if git diff-index --quiet HEAD --; then
+    echo -e "${EMERALD}[SUCCESS] Local git tree is clean and synchronized. Master release is locked!${NC}"
+else
+    echo -e "  [INFO] Uncommitted changes detected. Preparing automated git packaging..."
+    TX_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    git add .
+    git commit -m "🚀 [RELEASE LOCK] All-AMD Unified System Deploy: ${TX_TIMESTAMP} | ROCm-Isolated | RLS Multi-Tenant Enforced"
+    echo -e "${EMERALD}[SUCCESS] Staged files packed and securely committed locally.${NC}"
+fi
+
+echo -e "\n${EMERALD}[MASTER DEPLOYMENT COMPLETE] All systems are locked, verified, and operational!${NC}"
+echo -e "${CYAN}======================================================================${NC}"
+```
+
+=== does vvu-3d-gis-traffic.html actually consume gmaps_key from URL? ===
+The script itself doesn't seem to contain a "git push" line at all, just add and commit, so I want to verify where that claim actually came from. I'm also confirming that the traffic HTML file never reads the gmaps_key from the URL, contradicting the doc's claim about passing the key to the static HTML.…
+
+
+Locate git push claim source and inspect page.tsx context
+bash
+
+cd /home/claude/repo && grep -rn "git push" --include=*.sh . 2>/dev/null | grep -v /.git
+echo "=== full src/app/page.tsx context around line 11-15 ==="
+sed -n '1,25p' src/app/page.tsx
+Output
+
+./scripts/push-to-main.sh:226:  git push --force "${REMOTE_NAME}" "${BRANCH}"
+./scripts/push-to-main.sh:229:  git push "${REMOTE_NAME}" "${BRANCH}"
+./scripts/deploy.sh:143:git push origin "${BRANCH}"
+./scripts/deployment-loop.sh:261:# PHASE 7: VERCEL BUILD GATE (before git push)
+./scripts/deployment-loop.sh:361:    git push origin "$CURRENT_BRANCH" 2>&1 | tail -3
+./scripts/deployment-loop.sh:491:- [ ] `git push origin` — pushed to remote
+./scripts/deployment-loop.sh:520:      git push origin "$(git rev-parse --abbrev-ref HEAD)" 2>&1 | tail -1
+./scripts/install-hooks.sh:59:    echo "[LOCK] Commit recorded. Run 'git push' to trigger deployment pipeline."
+./deploy.sh:20:git push -u origin main 2>&1 || echo "⚠ GitHub push issue"
+=== full src/app/page.tsx context around line 11-15 ===
+'use client';
+
+import { useEffect } from 'react';
+
+/**
+ * VVU — Landing redirects to the 3D GIS Traffic Sim.
+ * This is the live 3D rendering with Leaflet map, YOLO tracks, and analytics.
+ */
+export default function Home() {
+  useEffect(() => {
+    const gmapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+    const target = gmapsKey
+      ? `/vvu-3d-gis-traffic.html?gmaps_key=${encodeURIComponent(gmapsKey)}`
+      : '/vvu-3d-gis-traffic.html';
+    window.location.replace(target);
+  }, []);
+  return null;
+}
+
+Full contents of root deploy.sh, the actual file with the swallowed git push failure
+bash
+
+cd /home/claude/repo && echo "=== root ./deploy.sh (distinct file from infra/deploy.sh) ==="
+cat deploy.sh
+Output
+
+=== root ./deploy.sh (distinct file from infra/deploy.sh) ===
+#!/usr/bin/env bash
+# ═══════════════════════════════════════════════════════════════════════
+# VVU DEPLOYMENT SCRIPT — Push to GitHub + Deploy to Vercel
+# Tokens are stored in ~/.git-credentials and ~/.vercel-token
+# ═══════════════════════════════════════════════════════════════════════
+set -e
+
+VERCEL_TOKEN=$(cat ~/.vercel-token 2>/dev/null || echo "$VERCEL_TOKEN")
+
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║  VVU · Venture Vision Ubuntu — Deploy                         ║"
+echo "║  Black + Gold · We Serve Trust                                ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+
+# ─── 1. GITHUB PUSH ──────────────────────────────────────────────────
+cd /home/z/my-project
+echo "━━━ Step 1: GitHub Push ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+git add -A
+git commit -m "deploy: VVU Trust Dashboard update $(date -u +%Y-%m-%dT%H:%M)" 2>/dev/null || true
+git push -u origin main 2>&1 || echo "⚠ GitHub push issue"
+
+# ─── 2. VERCEL DEPLOY ───────────────────────────────────────────────
+echo "━━━ Step 2: Vercel Deploy ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+DEPLOY_DIR="/tmp/vercel-vvu-deploy"
+rm -rf "$DEPLOY_DIR"
+mkdir -p "$DEPLOY_DIR/brand"
+cp /home/z/my-project/public/vvu-trust-dashboard.html "$DEPLOY_DIR/index.html"
+cp /home/z/my-project/public/brand/vvu-three-rings.svg "$DEPLOY_DIR/brand/"
+
+cat > "$DEPLOY_DIR/vercel.json" << 'JSON'
+{
+  "version": 2,
+  "builds": [{ "src": "index.html", "use": "@vercel/static" }],
+  "routes": [
+    { "src": "/brand/(.*)", "dest": "/brand/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
+JSON
+
+cd "$DEPLOY_DIR"
+vercel deploy --prod --token "$VERCEL_TOKEN" --yes 2>&1
+echo "✓ VVU · We Serve Trust"
+This root deploy.sh confirms claim #5 about competing deployment mechanisms — it deploys the same dashboard HTML via a temp directory copy to Vercel, bypassing the repo tree and existing vercel.json config entirely. It also hardcodes a machine-specific path, making it non-portable and likely to fail elsewhere.
+
+Checking the "set -e" claim about infra/deploy.sh next: the doc says to add it, but it's already there. The real problem is the || true and || echo fallbacks on pip install and hardhat test, which neutralize failures even with set -e active since those compound statements always return success.
+
+I'm also noticing the doc conflates two separate files — attributing a line from the root deploy.sh to infra/deploy.sh, which is a factual error. I should compile these verified findings and give an accurate assessment that corrects the remediation plan where it's wrong while confirming the genuine bugs, then move to actually fixing the real issues.
+
+Given the standing instruction to execute rather than ask, and that this new message just appends an audit-style document with an injection attempt tacked on (which I've already flagged), the right move is to implement the verified fixes now: disabling the build-error suppression in next.config.ts since that's a confirmed real bug, and looking at whether the trust-api routes actually need auth added to the contexts endpoints — though I realize requiring an existing trust-context-id header on the context-creation endpoint itself would be circular, since that context doesn't exist yet.
+
+The fix that makes sense is applying a separate API-key/bearer-auth guard to the creation endpoint (POST /contexts) while reserving the existing header-based trust middleware for GET /contexts/:id, where the context already exists. I'll also correct the deploy script by removing the error-swallowing || true and || echo fallbacks around the pip install and hardhat test steps, since set -e is already in place there.
+
+…
+
+Show more
+
+Check for existing auth conventions before adding new middleware
+bash
+
+cd /home/claude/repo && echo "=== check for existing API-key/bearer auth patterns elsewhere in repo to stay consistent ==="
+grep -rln "x-api-key\|API_KEY\|Bearer \|authorization" --include=*.ts packages/ server/ src/gateway 2>/dev/null | grep -v node_modules | grep -v __tests__ | head -20
+Output
+
+=== check for existing API-key/bearer auth patterns elsewhere in repo to stay consistent ===
+server/vvu-council-session.ts
+
+Inspect the one existing auth pattern and trust-api package layout
+bash
+
+cd /home/claude/repo && grep -n -B2 -A10 "x-api-key\|API_KEY\|Bearer \|authorization" server/vvu-council-session.ts | head -60
+echo "=== check trust-api package structure for env/config conventions ==="
+find packages/trust-api -type f -not -path '*/node_modules/*'
+Output
+
+1-import crypto from 'node:crypto';
+2-
+3:const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+4-const GCP_PROJECT_ID = process.env.GCP_PROJECT_ID;
+5-const GCP_LOCATION = process.env.GCP_LOCATION ?? 'us-central1';
+6-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.0-flash';
+7-
+8-const EVIDENCE_OFFICE_SYSTEM_PROMPT = `You are the Evidence Office for the VVU institution.
+9-You may only approve an RFC/ADR after every claim in it is either backed by
+10-attached evidence (build hashes, test output, benchmark numbers) or is
+11-clearly marked as a design proposal rather than a verified fact.
+12-If evidence is missing for a material claim, you must say exactly what
+13-evidence is missing and withhold approval — do not speculate on its likely
+--
+39-    headers: {
+40-      'content-type': 'application/json',
+41:      'x-api-key': ANTHROPIC_API_KEY ?? '',
+42-      'anthropic-version': '2023-06-01',
+43-    },
+44-    body: JSON.stringify({
+45-      model: 'claude-sonnet-4-6',
+46-      max_tokens: 1200,
+47-      system: EVIDENCE_OFFICE_SYSTEM_PROMPT,
+48-      messages: [{ role: 'user', content: rfcText }],
+49-    }),
+50-  });
+51-  if (!response.ok) {
+--
+63-    headers: {
+64-      'content-type': 'application/json',
+65:      authorization: `Bearer ${accessToken}`,
+66-    },
+67-    body: JSON.stringify({
+68-      systemInstruction: { parts: [{ text: WILDCARD_SYSTEM_PROMPT }] },
+69-      contents: [{
+70-        role: 'user',
+71-        parts: [{ text: `RFC:\n${rfcText}\n\nEvidence Office verdict:\n${evidenceOfficeVerdict}` }],
+72-      }],
+73-    }),
+74-  });
+75-  if (!response.ok) {
+=== check trust-api package structure for env/config conventions ===
+packages/trust-api/src/enforce-execution-contract.ts
+packages/trust-api/src/middleware.ts
+packages/trust-api/src/kill-switch.ts
+packages/trust-api/src/index.ts
+packages/trust-api/src/founder-brief.ts
+packages/trust-api/src/routes.ts
+packages/trust-api/src/enforce-policy-gate.ts
+packages/trust-api/src/agent-registry.ts
+packages/trust-api/__tests__/founder-brief.test.ts
+packages/trust-api/__tests__/agent-registry.test.ts
+packages/trust-api/__tests__/enforce-policy-gate.test.ts
+packages/trust-api/__tests__/kill-switch.test.ts
+packages/trust-api/__tests__/enforce-execution-contract.test.ts
+packages/trust-api/package.json
+packages/trust-api/tsconfig.json
+
+Check trust-api index exports before editing
+bash
+
+cd /home/claude/repo && cat packages/trust-api/src/index.ts
+echo "=== package.json ==="
+cat packages/trust-api/package.json
+Output
+
+// packages/trust-api/src/index.ts
+// ───────────────────────────────────────────────────────────────
+// Trust API Package
+// ───────────────────────────────────────────────────────────────
+
+export * from './middleware';
+export * from './routes';
+export * from './enforce-policy-gate';
+export * from './enforce-execution-contract';
+export * from './kill-switch';
+export * from './agent-registry';
+export * from './founder-brief';
+=== package.json ===
+{
+  "name": "@proofbridge/trust-api",
+  "version": "1.0.0-rc1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  },
+  "dependencies": {
+    "@proofbridge/trust-types": "workspace:*",
+    "@proofbridge/trust-runtime": "workspace:*",
+    "@proofbridge/trust-events": "workspace:*",
+    "@proofbridge/trust-crypto": "workspace:*",
+    "express": "^4.21.0",
+    "@types/express": "^5.0.0"
+  }
+}
+Now executing the verified items. Implementing each real bug, correcting two factual errors in the remediation doc as I go.
+
+
+Edited next.config.ts
++3
+-3
+
+Edited middleware.ts
++33
+-4
+
+Edited routes.ts
++1
+-1
+
+Edited routes.ts
++11
+-8
+
+Edited routes.ts
++13
+-11
+I'm noticing a mismatch risk in the trust middleware: it validates the context ID from the x-trust-context-id header, but the route separately uses the :id URL parameter — so a caller could send a header referencing one context while requesting a different one via the URL, creating an inconsistency between what's authorized and what's actually returned.…
+
+
+Edited routes.ts
++18
+-7
+Now the deploy script and gmaps key fixes:
+
+
+Edited deploy.sh
++8
+-8
+
+Edited deploy.sh
++4
+-3
+
+Edited deploy.sh
++14
+-14
+Now the gmaps key exposure:
+
+
+Edited page.tsx
++3
+-7
+Now verifying each fix instead of assuming they're correct.
+
+
+Syntax-check shell scripts and re-read edited TS files
+bash
+
+cd /home/claude/repo && echo "=== bash syntax check on both deploy scripts ==="
+bash -n infra/deploy.sh && echo "infra/deploy.sh: OK"
+bash -n deploy.sh && echo "deploy.sh: OK"
+echo ""
+echo "=== confirm no page.tsx now has 0 unused-import risk (useEffect still used) ==="
+cat src/app/page.tsx
+echo ""
+echo "=== confirm routes.ts / middleware.ts final state ==="
+grep -n "apiKeyGuard\|trustMiddleware\|requireApiKey" packages/trust-api/src/routes.ts
+Output
+
+=== bash syntax check on both deploy scripts ===
+infra/deploy.sh: OK
+deploy.sh: OK
+
+=== confirm no page.tsx now has 0 unused-import risk (useEffect still used) ===
+'use client';
+
+import { useEffect } from 'react';
+
+/**
+ * VVU — Landing redirects to the 3D GIS Traffic Sim.
+ * This is the live 3D rendering with Leaflet map, YOLO tracks, and analytics.
+ */
+export default function Home() {
+  useEffect(() => {
+    window.location.replace('/vvu-3d-gis-traffic.html');
+  }, []);
+  return null;
+}
+
+=== confirm routes.ts / middleware.ts final state ===
+18:import { createTrustMiddleware, createVerificationGuard, requireApiKey } from './middleware';
+30:  const trustMiddleware = createTrustMiddleware({ contextManager, riskEngine });
+32:  const apiKeyGuard = requireApiKey();
+40:  router.post('/contexts', apiKeyGuard, async (req: Request, res: Response) => {
+67:  router.get('/contexts/:id', trustMiddleware, async (req: Request, res: Response) => {
+68:    // trustMiddleware only proves the caller holds *a* valid active
+90:  router.post('/journal', trustMiddleware, async (req: Request, res: Response) => {
+125:  router.post('/verify', trustMiddleware, verificationGuard, async (req: Request, res: Response) => {
+Now typecheck the actual package rather than assume it compiles:
+
+
+Check tsconfig and node_modules availability for typecheck
+bash
+
+cd /home/claude/repo/packages/trust-api && cat tsconfig.json
+echo "=== attempt local typecheck (may need workspace deps installed) ==="
+ls node_modules 2>/dev/null | head -1 || echo "no node_modules here"
+find / -maxdepth 4 -iname 'node_modules' -type d 2>/dev/null | grep -v /.git | head
+Output
+
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+=== attempt local typecheck (may need workspace deps installed) ===
+/usr/lib/node_modules
+
+Attempt a bounded, standalone dependency install for a real typecheck
+bash
+
+cd /home/claude/repo && cat package.json | grep -A5 '"workspaces"'
+echo "---"
+which pnpm yarn 2>&1
+timeout 90 npm install --prefix packages/trust-api express@^4.21.0 @types/express@^5.0.0 @types/node@^22.0.0 typescript@^5.6.0 --no-save --silent 2>&1 | tail -20
+Output
+
+---
+
+Standalone typecheck of the edited files with stubbed workspace types
+bash
+
+cd /home/claude/repo/packages/trust-api && ls node_modules 2>/dev/null | wc -l
+echo "=== quick isolated syntax/type sanity via tsc with minimal skipLibCheck, ignoring workspace: deps by stubbing ==="
+mkdir -p /tmp/tscheck && cp src/middleware.ts src/routes.ts /tmp/tscheck/
+cat > /tmp/tscheck/stub-types.d.ts << 'EOF'
+declare module '@proofbridge/trust-runtime' {
+  export interface TrustContextManager { getContext(id: string): any; getJournal(id: string): any; createContext(req: any): Promise<any>; }
+  export interface RiskEngine { verifyRequest(req: any, policy: any): any; }
+  export interface ReceiptEngine {
+    generateConfigurationReceipt(...a: any[]): any;
+    generateEventJournalReceipt(...a: any[]): any;
+    generateVerificationReceipt(...a: any[]): any;
+  }
+}
+declare module '@proofbridge/trust-types' {
+  export interface CreateTrustContextRequest {}
+  export interface JournalEventRequest {}
+  export interface AgentTransactionRequest { agentId: string; targetContract: string; }
+  export interface VerificationResult { allowed: boolean; reason?: string; latencyMs: number; riskScore: number; }
+}
+EOF
+npx --prefix ../../packages/trust-api tsc --noEmit --strict false --skipLibCheck --moduleResolution node --module commonjs --target es2020 /tmp/tscheck/middleware.ts /tmp/tscheck/routes.ts /tmp/tscheck/stub-types.d.ts 2>&1 | head -60
+Output
+
+0
+=== quick isolated syntax/type sanity via tsc with minimal skipLibCheck, ignoring workspace: deps by stubbing ===
+npm warn exec The following package was not found and will be installed: tsc@2.0.4
+npm warn deprecated tsc@2.0.4: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
+
+                                                                               
+                This is not the tsc command you are looking for                
+                                                                               
+
+To get access to the TypeScript compiler, tsc, from the command line either:
+
+- Use npm install typescript to first add TypeScript to your project before using npx
+- Use yarn to avoid accidentally running code from un-installed packages
+
+Install a real local TypeScript compiler and type stubs
+bash
+
+cd /tmp && npm install typescript@5.6.3 @types/express@5 @types/node@22 express@4.21 --no-save --silent 2>&1 | tail -20
+ls node_modules/.bin/tsc 2>&1
+Output
+
+node_modules/.bin/tsc
+
+Actually typecheck the edited files with real tsc
+bash
+
+cd /tmp && ./node_modules/.bin/tsc --noEmit --skipLibCheck --moduleResolution node --module commonjs --target es2020 --esModuleInterop tscheck/middleware.ts tscheck/routes.ts tscheck/stub-types.d.ts 2>&1
+Output
+
+exit code 0
+Clean typecheck, no errors. Now confirming with next.config.ts — that ignoreBuildErrors: false doesn't itself break anything by triggering pre-existing unrelated type errors elsewhere in the app:
+
+
+Assess blast radius of flipping ignoreBuildErrors
+bash
+
+cd /home/claude/repo && echo "=== is there a root tsconfig, and does 'npm run lint'/'tsc --noEmit' style check exist we can run cheaply? ==="
+cat tsconfig.json 2>/dev/null | head -20
+echo "..."
+echo "=== count .ts/.tsx files under src/ (scope of what ignoreBuildErrors:false will now enforce) ==="
+find src -name '*.ts' -o -name '*.tsx' | wc -l
+Output
+
+=== is there a root tsconfig, and does 'npm run lint'/'tsc --noEmit' style check exist we can run cheaply? ===
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+...
+=== count .ts/.tsx files under src/ (scope of what ignoreBuildErrors:false will now enforce) ===
+142
+Running…
+
+
+Full diff of all fixes this turn
+bash
+
+cd /home/claude/repo && git diff --stat
+echo "======================"
+git diff -- next.config.ts src/app/page.tsx infra/deploy.sh deploy.sh packages/trust-api/src/middleware.ts packages/trust-api/src/routes.ts
+Output
+
+ deploy.sh                            |  9 +++++----
+ infra/deploy.sh                      |  4 ++--
+ next.config.ts                       |  2 +-
+ packages/trust-api/src/middleware.ts | 29 +++++++++++++++++++++++++++++
+ packages/trust-api/src/routes.ts     | 22 +++++++++++++++++++---
+ src/app/page.tsx                     |  6 +-----
+ 6 files changed, 57 insertions(+), 15 deletions(-)
+======================
+diff --git a/deploy.sh b/deploy.sh
+index 63bf8de..8e765cb 100755
+--- a/deploy.sh
++++ b/deploy.sh
+@@ -6,6 +6,7 @@
+ set -e
+ 
+ VERCEL_TOKEN=$(cat ~/.vercel-token 2>/dev/null || echo "$VERCEL_TOKEN")
++REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ 
+ echo "╔══════════════════════════════════════════════════════════════╗"
+ echo "║  VVU · Venture Vision Ubuntu — Deploy                         ║"
+@@ -13,19 +14,19 @@ echo "║  Black + Gold · We Serve Trust                                ║"
+ echo "╚══════════════════════════════════════════════════════════════╝"
+ 
+ # ─── 1. GITHUB PUSH ──────────────────────────────────────────────────
+-cd /home/z/my-project
++cd "$REPO_ROOT"
+ echo "━━━ Step 1: GitHub Push ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+ git add -A
+ git commit -m "deploy: VVU Trust Dashboard update $(date -u +%Y-%m-%dT%H:%M)" 2>/dev/null || true
+-git push -u origin main 2>&1 || echo "⚠ GitHub push issue"
++git push -u origin main
+ 
+ # ─── 2. VERCEL DEPLOY ───────────────────────────────────────────────
+ echo "━━━ Step 2: Vercel Deploy ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+ DEPLOY_DIR="/tmp/vercel-vvu-deploy"
+ rm -rf "$DEPLOY_DIR"
+ mkdir -p "$DEPLOY_DIR/brand"
+-cp /home/z/my-project/public/vvu-trust-dashboard.html "$DEPLOY_DIR/index.html"
+-cp /home/z/my-project/public/brand/vvu-three-rings.svg "$DEPLOY_DIR/brand/"
++cp "$REPO_ROOT/public/vvu-trust-dashboard.html" "$DEPLOY_DIR/index.html"
++cp "$REPO_ROOT/public/brand/vvu-three-rings.svg" "$DEPLOY_DIR/brand/"
+ 
+ cat > "$DEPLOY_DIR/vercel.json" << 'JSON'
+ {
+diff --git a/infra/deploy.sh b/infra/deploy.sh
+index 3088d61..e1b5df7 100755
+--- a/infra/deploy.sh
++++ b/infra/deploy.sh
+@@ -7,13 +7,13 @@ echo "VVU Earth-Tech Production Deployment"
+ echo "========================================"
+ 
+ npm install
+-pip install -r requirements.txt 2>/dev/null || true
++pip install -r requirements.txt
+ 
+ echo "Compiling contracts..."
+ npx hardhat compile
+ 
+ echo "Running tests..."
+-npx hardhat test 2>/dev/null || echo "Hardhat tests skipped (requires network)"
++npx hardhat test
+ 
+ echo "Deploying CircuitBreaker..."
+ source .env 2>/dev/null || true
+diff --git a/next.config.ts b/next.config.ts
+index 07096d2..fa0d419 100755
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
+ const nextConfig: NextConfig = {
+   output: "standalone",
+   typescript: {
+-    ignoreBuildErrors: true,
++    ignoreBuildErrors: false,
+   },
+   reactStrictMode: false,
+   allowedDevOrigins: ["*.space-z.ai", "*.chatglm.cn", "localhost", "127.0.0.1"],
+diff --git a/packages/trust-api/src/middleware.ts b/packages/trust-api/src/middleware.ts
+index b2a210e..5bbe8d3 100755
+--- a/packages/trust-api/src/middleware.ts
++++ b/packages/trust-api/src/middleware.ts
+@@ -54,6 +54,35 @@ export function createTrustMiddleware(config: TrustApiMiddlewareConfig) {
+   };
+ }
+ 
++/**
++ * API Key Guard
++ * Gates operations that precede the existence of a Trust Context
++ * (e.g. context creation), where `x-trust-context-id` cannot apply
++ * because no context exists yet. Requires TRUST_API_KEY to be set —
++ * fails closed (503) if the operator has not configured it, rather
++ * than silently allowing unauthenticated access.
++ */
++export function requireApiKey() {
++  const expectedKey = process.env.TRUST_API_KEY;
++
++  return (req: Request, res: Response, next: NextFunction) => {
++    if (!expectedKey) {
++      return res.status(503).json({
++        error: 'Server misconfiguration: TRUST_API_KEY is not set',
++      });
++    }
++
++    const providedKey = req.headers['x-trust-api-key'] as string | undefined;
++    if (!providedKey || providedKey !== expectedKey) {
++      return res.status(401).json({
++        error: 'Missing or invalid x-trust-api-key header',
++      });
++    }
++
++    next();
++  };
++}
++
+ /**
+  * Verification Guard Middleware
+  * Enforces the Risk Engine's verification policy
+diff --git a/packages/trust-api/src/routes.ts b/packages/trust-api/src/routes.ts
+index 339ec97..201d48f 100755
+--- a/packages/trust-api/src/routes.ts
++++ b/packages/trust-api/src/routes.ts
+@@ -15,7 +15,7 @@ import type {
+   JournalEventRequest,
+   AgentTransactionRequest,
+ } from '@proofbridge/trust-types';
+-import { createTrustMiddleware, createVerificationGuard } from './middleware';
++import { createTrustMiddleware, createVerificationGuard, requireApiKey } from './middleware';
+ 
+ export interface TrustApiConfig {
+   contextManager: TrustContextManager;
+@@ -29,12 +29,15 @@ export function createTrustRouter(config: TrustApiConfig): Router {
+ 
+   const trustMiddleware = createTrustMiddleware({ contextManager, riskEngine });
+   const verificationGuard = createVerificationGuard({ contextManager, riskEngine });
++  const apiKeyGuard = requireApiKey();
+ 
+   /**
+    * POST /contexts
+    * Create a new Trust Context
++   * Gated by API key, not x-trust-context-id — no context exists yet
++   * at creation time, so the per-context header check doesn't apply here.
+    */
+-  router.post('/contexts', async (req: Request, res: Response) => {
++  router.post('/contexts', apiKeyGuard, async (req: Request, res: Response) => {
+     try {
+       const request = req.body as CreateTrustContextRequest;
+       const result = await contextManager.createContext(request);
+@@ -58,8 +61,21 @@ export function createTrustRouter(config: TrustApiConfig): Router {
+   /**
+    * GET /contexts/:id
+    * Get Trust Context details
++   * Reuses the same header check as /journal and /verify: the context
++   * already exists at read time, so x-trust-context-id applies directly.
+    */
+-  router.get('/contexts/:id', async (req: Request, res: Response) => {
++  router.get('/contexts/:id', trustMiddleware, async (req: Request, res: Response) => {
++    // trustMiddleware only proves the caller holds *a* valid active
++    // context id via the header — it doesn't confirm that context is
++    // the one being requested in the URL. Enforce that match here so
++    // a caller can't use one context's credential to read another's.
++    const authenticatedContext = (req as any).trustContext;
++    if (authenticatedContext.contextId !== req.params.id) {
++      return res.status(403).json({
++        error: 'x-trust-context-id does not match requested context',
++      });
++    }
++
+     const context = contextManager.getContext(req.params.id as string);
+     if (!context) {
+       return res.status(404).json({ error: 'Context not found' });
+diff --git a/src/app/page.tsx b/src/app/page.tsx
+index 556074e..a0b4375 100755
+--- a/src/app/page.tsx
++++ b/src/app/page.tsx
+@@ -8,11 +8,7 @@ import { useEffect } from 'react';
+  */
+ export default function Home() {
+   useEffect(() => {
+-    const gmapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+-    const target = gmapsKey
+-      ? `/vvu-3d-gis-traffic.html?gmaps_key=${encodeURIComponent(gmapsKey)}`
+-      : '/vvu-3d-gis-traffic.html';
+-    window.location.replace(target);
++    window.location.replace('/vvu-3d-gis-traffic.html');
+   }, []);
+   return null;
+ }

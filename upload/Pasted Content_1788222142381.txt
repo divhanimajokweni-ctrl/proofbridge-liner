@@ -1,0 +1,1102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>▲ VVU · Verification Layer — GIS Bench</title>
+<!--
+  ▲ VVU VERIFICATION LAYER · v2.2.0-e2e
+  ─────────────────────────────────────────────────────────────
+  ?drop=0.25        chaos: 25% frame loss — dead reckoning must glide
+  ?binary=1         exercise the packed 52-byte v2 codec end-to-end
+  ?ws=URL&token=T   consume a production gateway instead of in-page sim
+  Brand re-theme: edit the :root tokens below — one block, whole UI follows.
+-->
+<style>
+  :root{
+    --vvu-accent:#22d3ee; --vvu-accent2:#38bdf8;
+    --vvu-grad:linear-gradient(90deg,#a5f3fc 0%,#22d3ee 45%,#38bdf8 100%);
+    --glass-bg:rgba(15,23,42,.45); --glass-br:rgba(14,165,233,.18);
+    --ink:#e2e8f0; --dim:#94a3b8; --acc:#38bdf8;
+    --shadow:0 8px 32px rgba(0,0,0,.37);
+  }
+  body.light{
+    --glass-bg:rgba(255,255,255,.62); --glass-br:rgba(15,23,42,.10);
+    --ink:#0f172a; --dim:#475569; --acc:#0369a1;
+    --shadow:0 8px 32px rgba(15,23,42,.12);
+  }
+  html,body{margin:0;height:100%;overflow:hidden;font:12px ui-monospace,Menlo,monospace;
+    color:var(--ink);background:#020617}
+  canvas{display:block}
+  .glass{background:var(--glass-bg);backdrop-filter:blur(16px) saturate(180%);
+    -webkit-backdrop-filter:blur(16px) saturate(180%);
+    border:1px solid var(--glass-br);border-radius:12px;box-shadow:var(--shadow)}
+  .wordmark{font-weight:700;letter-spacing:.22em;
+    background:var(--vvu-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .chip{border:1px solid var(--glass-br);border-radius:999px;padding:2px 9px;font-size:10px;
+    letter-spacing:.12em;color:var(--dim)}
+  .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  /* ── boot splash ── */
+  #boot{position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:#020617;
+    transition:opacity .6s ease}
+  #boot.done{opacity:0;pointer-events:none}
+  .bwrap{text-align:center}
+  .bmark{font-size:44px;background:var(--vvu-grad);-webkit-background-clip:text;
+    background-clip:text;color:transparent;line-height:1}
+  .bword{font-size:26px;font-weight:700;letter-spacing:.5em;margin:10px 0 6px;color:#e2e8f0}
+  .bsub{font-size:10px;letter-spacing:.3em;color:#64748b}
+  .bbar{width:190px;height:2px;background:#1e293b;border-radius:2px;margin:18px auto 0;overflow:hidden}
+  .bbar i{display:block;height:100%;width:40%;background:var(--vvu-grad);
+    animation:scan 1.1s ease-in-out infinite alternate}
+  @keyframes scan{from{transform:translateX(-60%)}to{transform:translateX(380%)}}
+  @media (prefers-reduced-motion:reduce){.bbar i{animation:none;width:100%}}
+  /* ── HUD ── */
+  #hud{position:fixed;inset:0;z-index:30;pointer-events:none;display:flex;
+    flex-direction:column;justify-content:space-between}
+  #top,#bot{display:flex;gap:8px;padding:14px;align-items:center}
+  #top{justify-content:space-between}
+  #brandbar{display:flex;align-items:center;gap:12px;padding:9px 16px}
+  .pad{padding:10px 14px}
+  button{font:inherit;color:var(--dim);background:none;border:0;border-radius:7px;
+    padding:5px 10px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase}
+  button:hover{color:var(--ink)}
+  button.on{color:var(--acc);background:color-mix(in srgb,var(--acc) 18%,transparent)}
+  #stats{display:flex;gap:8px}
+  .stat b{display:block;font-size:17px;margin-top:2px;
+    background:var(--vvu-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #targets{position:fixed;right:14px;top:70px;width:235px;max-height:44vh;overflow:auto;
+    pointer-events:auto;padding:10px}
+  .row{display:flex;justify-content:space-between;gap:8px;padding:4px 6px;border-radius:6px;
+    cursor:pointer;color:var(--dim)}
+  .row:hover{background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--ink)}
+  #aura{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:640px;height:300px;
+    border-radius:50%;filter:blur(120px);
+    background:var(--vvu-aura,rgba(14,165,233,.18));mix-blend-mode:screen;
+    pointer-events:none;z-index:20;transition:background .7s}
+  body.light #aura{mix-blend-mode:normal;opacity:.45}
+  #stamp{margin-left:auto;font-size:10px;letter-spacing:.18em;color:var(--dim)}
+</style>
+</head>
+<body>
+<div id="boot"><div class="bwrap">
+  <div class="bmark">▲</div><div class="bword">VVU</div>
+  <div class="bsub">VERIFICATION LAYER · COMPILING SPATIAL MATRIX</div>
+  <div class="bbar"><i></i></div>
+</div></div>
+<div id="aura"></div>
+<div id="hud">
+  <div id="top">
+    <div id="brandbar" class="glass">
+      <span class="bmark" style="font-size:18px">▲</span>
+      <span class="wordmark">VVU</span>
+      <span class="lbl">Verification Layer · GIS Bench</span>
+      <span class="chip" id="ver">v2.2.0</span>
+      <span class="chip" id="status">SIM</span>
+    </div>
+    <nav id="nav" class="glass" style="display:flex;gap:2px;padding:4px;pointer-events:auto"></nav>
+    <button id="theme" class="glass pad" style="pointer-events:auto">◐</button>
+  </div>
+  <div id="bot">
+    <div id="stats">
+      <div class="glass pad stat"><span class="lbl">FPS</span><b id="fps">–</b></div>
+      <div class="glass pad stat"><span class="lbl">Frame MS</span><b id="ms">–</b></div>
+      <div class="glass pad stat"><span class="lbl">Tracks</span><b id="trk">0</b></div>
+      <div class="glass pad stat"><span class="lbl">Gaps</span><b id="gap">0</b></div>
+    </div>
+    <div id="stamp">▲ VVU FRAMEWORK // SPATIAL VERIFICATION · TRACK B SELF-HOSTED</div>
+  </div>
+</div>
+<div id="targets" class="glass"><span class="lbl">Live targets</span><div id="list"></div></div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const QS=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DEG=Math.PI/180;
+const $id=i=>document.getElementById(i);
+
+/* ── ENU core: WGS84 → local east/north/up ─────────────────────────────── */
+const A=6378137.0,E2=6.69437999014e-3;
+function g2e(lat,lon,alt){const la=lat*DEG,lo=lon*DEG,s=Math.sin(la),c=Math.cos(la),
+  n=A/Math.sqrt(1-E2*s*s);
+  return[(n+alt)*c*Math.cos(lo),(n+alt)*c*Math.sin(lo),(n*(1-E2)+alt)*s];}
+class EnuOrigin{
+  constructor(lat,lon,alt=0){this.o=g2e(lat,lon,alt);
+    const la=lat*DEG,lo=lon*DEG;this.sl=Math.sin(la);this.cl=Math.cos(la);
+    this.so=Math.sin(lo);this.co=Math.cos(lo);}
+  fromLlah(lat,lon,alt){const e=g2e(lat,lon,alt),dx=e[0]-this.o[0],dy=e[1]-this.o[1],dz=e[2]-this.o[2];
+    return[-this.so*dx+this.co*dy,-this.sl*this.co*dx-this.sl*this.so*dy+this.cl*dz,
+            this.cl*this.co*dx+this.cl*this.so*dy+this.sl*dz];}
+}
+const ORIGIN=new EnuOrigin(37.7889,-122.4060,0);
+
+/* ── tween engine (gsap-free) ───────────────────────────────────────────── */
+const tweens=[];const easeIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+function tw(o,to,dur=1.25){const from={};for(const k in to)from[k]=o[k];
+  tweens.push({o,from,to,t0:performance.now(),dur:RM?0:dur*1000});}
+function stepTweens(now){for(let i=tweens.length-1;i>=0;i--){const t=tweens[i];
+  const p=t.dur?Math.min(1,(now-t.t0)/t.dur):1,e=easeIO(p);
+  for(const k in t.to)t.o[k]=t.from[k]+(t.to[k]-t.from[k])*e;
+  if(p>=1)tweens.splice(i,1);}}
+
+/* ── scene substrate ────────────────────────────────────────────────────── */
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const DARK={bg:'#020617',ground:0x0b1220},LIGHT={bg:'#dbe4ef',ground:0xc7d2e0};
+scene.background=new THREE.Color(DARK.bg);
+scene.fog=new THREE.FogExp2(DARK.bg,0.00016);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,1,40000);
+camera.position.set(300,900,1400);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.maxPolarAngle=Math.PI/2.15;
+scene.add(new THREE.HemisphereLight(0x0ea5e9,0x020617,.9));
+const sun=new THREE.DirectionalLight(0x93c5fd,.8);sun.position.set(-2000,3000,1500);scene.add(sun);
+
+/* ── terrain: Terrarium DEM → synthetic fallback ────────────────────────── */
+async function terrariumTile(lat,lon,z=13){
+  const n=2**z,tx=Math.floor((lon+180)/360*n),
+        ty=Math.floor((1-Math.log(Math.tan(lat*DEG)+1/Math.cos(lat*DEG))/Math.PI)/2*n);
+  const img=await new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';
+    i.onload=()=>res(i);i.onerror=rej;
+    i.src=`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${tx}/${ty}.png`;});
+  const cv=document.createElement('canvas');cv.width=cv.height=img.width;
+  const ctx=cv.getContext('2d');ctx.drawImage(img,0,0);
+  const px=ctx.getImageData(0,0,img.width,img.height).data,S=img.width;
+  return(u,v)=>{const x=Math.min(S-1,Math.max(0,u*S|0)),y=Math.min(S-1,Math.max(0,v*S|0)),i=(y*S+x)*4;
+    return px[i]*256+px[i+1]+px[i+2]/256-32768;};
+}
+const synthetic=(e,n)=>10*Math.sin(e*.0035)*Math.cos(n*.0042)+6*Math.sin(e*.011+1.7)*Math.sin(n*.009)+3;
+let sampler=synthetic,extent=3600;
+try{
+  const elev=await terrariumTile(ORIGIN.lat,ORIGIN.lon,13);
+  extent=40075016.7*Math.cos(ORIGIN.lat*DEG)/(2**13);
+  sampler=(e,n)=>elev(.5+e/extent,.5-n/extent);
+}catch{console.warn('DEM offline → synthetic terrain');}
+const geo=new THREE.PlaneGeometry(extent,extent,192,192);geo.rotateX(-Math.PI/2);
+const pos=geo.attributes.position;
+for(let i=0;i<pos.count;i++)pos.setY(i,sampler(pos.getX(i),-pos.getZ(i)));
+geo.computeVertexNormals();
+const terrainMat=new THREE.MeshStandardMaterial({color:DARK.ground,roughness:.95,metalness:.05,flatShading:true});
+scene.add(new THREE.Mesh(geo,terrainMat));
+
+/* ── neon emission beams ────────────────────────────────────────────────── */
+const VERT=`uniform float uTime,uPulseSpeed,uPulseLen,uAmp,uBase,uPhase;
+varying float vEnergy;varying vec3 vNormalV,vViewV;
+void main(){
+  float head=fract(uTime*uPulseSpeed+uPhase);
+  float d=head-uv.x; d-=floor(d);
+  float tail=exp(-d/max(uPulseLen,1e-4)*3.0);
+  float lead=smoothstep(0.,.02,d);
+  vEnergy=uBase+tail*lead;
+  vec3 p=position+normal*(tail*lead*uAmp);
+  vec4 mv=modelViewMatrix*vec4(p,1.);
+  vNormalV=normalize(normalMatrix*normal);vViewV=-mv.xyz;
+  gl_Position=projectionMatrix*mv;}`;
+const FRAG=`precision highp float;
+uniform vec3 uCoreColor,uGlowColor;uniform float uIntensity,uBase;
+varying float vEnergy;varying vec3 vNormalV,vViewV;
+void main(){
+  float facing=clamp(dot(normalize(vNormalV),normalize(vViewV)),0.,1.);
+  float tube=pow(facing,1.7);
+  vec3 col=mix(uGlowColor,uCoreColor,vEnergy*vEnergy);
+  gl_FragColor=vec4(col*(0.6+2.2*vEnergy),tube*(uBase*.35+vEnergy)*uIntensity);}`;
+function beamMaterial(){return new THREE.ShaderMaterial({vertexShader:VERT,fragmentShader:FRAG,
+  uniforms:{uTime:{value:0},uPulseSpeed:{value:.12},uPulseLen:{value:.14},uAmp:{value:.7},
+    uBase:{value:.05},uPhase:{value:Math.random()},uIntensity:{value:1},
+    uCoreColor:{value:new THREE.Color('#7dd3fc')},uGlowColor:{value:new THREE.Color('#0284c7')}},
+  transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});}
+function makeBeam(pts,r=1.4){
+  const v=pts.map(([e,n,l])=>new THREE.Vector3(e,sampler(e,n)+l,-n));
+  const m=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v,false,'catmullrom',.2),256,r,10,false),beamMaterial());
+  m.frustumCulled=false;scene.add(m);return m;}
+const beamU=[
+ [[-300,400,8],[0,500,8],[400,300,8],[500,-200,8]],
+ [[-500,-300,8],[-100,-450,8],[300,-350,8],[550,100,8]],
+].map(p=>makeBeam(p).material.uniforms);
+
+/* ── YOLO volumetric field (instanced + dead reckoning) ─────────────────── */
+const CLASS_COLOR={person:0x22d3ee,vehicle:0xa3e635,truck:0xfb923c,unknown:0x94a3b8};
+const TRACK_TTL=1500,LERP_RATE=12,EXTRAP_MAX=600,VEL_LERP=6;
+const easeBack=t=>{const c=1.70158;return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2);};
+class TrackField{
+  constructor(max=512){
+    const g=new THREE.BoxGeometry(1,1,1);g.translate(0,.5,0);
+    this.fill=new THREE.InstancedMesh(g,new THREE.MeshBasicMaterial({transparent:true,opacity:.13,depthWrite:false}),max);
+    this.fill.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.fill.frustumCulled=false;
+    this.edges=new THREE.InstancedMesh(g,new THREE.MeshBasicMaterial({wireframe:true,transparent:true,opacity:.85}),max);
+    this.edges.frustumCulled=false;
+    this.fill.setColorAt(0,new THREE.Color(1,1,1));
+    this.edges.instanceMatrix=this.fill.instanceMatrix;
+    this.edges.instanceColor=this.fill.instanceColor;
+    this.max=max;this.tracks=new Map();this.dummy=new THREE.Object3D();
+    this.col=new THREE.Color();this.pred=new THREE.Vector3();
+    scene.add(this.fill,this.edges);
+  }
+  ingest(t){let r=this.tracks.get(t.id);
+    if(!r){r={cur:new THREE.Vector3(...t.pos),tgt:new THREE.Vector3(...t.pos),
+      cd:new THREE.Vector3(.01,.01,.01),td:new THREE.Vector3(...t.dims),
+      yaw:t.yaw,tYaw:t.yaw,vel:new THREE.Vector3(...t.vel),tVel:new THREE.Vector3(...t.vel),
+      hasHdg:t.hasHdg,conf:t.conf,cls:t.cls,seen:t.seen,born:t.seen};this.tracks.set(t.id,r);}
+    else{r.tgt.set(...t.pos);r.td.set(...t.dims);r.tYaw=t.yaw;r.tVel.set(...t.vel);
+      r.hasHdg=t.hasHdg;r.conf=t.conf;r.cls=t.cls;r.seen=t.seen;}}
+  update(dt,now){
+    const k=1-Math.exp(-dt*LERP_RATE),kv=1-Math.exp(-dt*VEL_LERP);let i=0;
+    for(const[id,r]of this.tracks){
+      const age=now-r.seen;
+      if(age>TRACK_TTL){this.tracks.delete(id);continue;}
+      r.vel.lerp(r.tVel,kv);
+      if(!r.hasHdg){const s=Math.hypot(r.vel.x,r.vel.z);if(s>.4)r.tYaw=Math.atan2(-r.vel.x,-r.vel.z);}
+      this.pred.copy(r.tgt).addScaledVector(r.vel,Math.min(age,EXTRAP_MAX)/1000);
+      r.cur.lerp(this.pred,k);
+      r.cd.lerp(r.td,k);
+      const dy=r.tYaw-r.yaw;r.yaw+=Math.atan2(Math.sin(dy),Math.cos(dy))*k;
+      const s=easeBack(Math.min(1,(now-r.born)/260))*Math.max(.001,(TRACK_TTL-age)/250);
+      this.dummy.position.copy(r.cur);this.dummy.rotation.set(0,r.yaw,0);
+      this.dummy.scale.set(r.cd.x*s,r.cd.y*s,r.cd.z*s);this.dummy.updateMatrix();
+      this.fill.setMatrixAt(i,this.dummy.matrix);
+      this.col.setHex(CLASS_COLOR[r.cls]??CLASS_COLOR.unknown).multiplyScalar(.7+.3*r.conf);
+      this.fill.setColorAt(i,this.col);
+      if(++i>=this.max)break;
+    }
+    this.fill.count=this.edges.count=i;
+    this.fill.instanceMatrix.needsUpdate=true;
+    if(this.fill.instanceColor)this.fill.instanceColor.needsUpdate=true;
+  }
+}
+const field=new TrackField(512);
+
+/* ── deserializers (JSON + binary v1/v2) ────────────────────────────────── */
+let lastSeq=-1,dropped=0,gapTotal=0;
+function project(t,now){
+  if(!t.id||typeof t.conf!=='number'||t.conf<.35||!Array.isArray(t.llh)){dropped++;return null;}
+  const[e,n,u]=ORIGIN.fromLlah(t.llh[1],t.llh[0],t.llh[2]||0);
+  const d=t.dims||[4.5,1.9,1.5];
+  return{id:t.id,cls:t.cls||'unknown',conf:t.conf,pos:[e,u,-n],
+    dims:[Math.min(40,Math.max(.3,d[0])),Math.min(15,Math.max(.3,d[2])),Math.min(12,Math.max(.3,d[1]))],
+    yaw:-(t.hdg||0)*DEG,
+    vel:t.vel?[t.vel[0],t.vel[2]||0,-(t.vel[1]||0)]:[0,0,0],
+    hasHdg:t.hdg!=null,seen:now};
+}
+function deserialize(raw,now){
+  let m;try{m=JSON.parse(raw)}catch{return null}
+  if(typeof m.seq!=='number'||!Array.isArray(m.dets))return null;
+  if(m.seq<=lastSeq)return null;
+  gapTotal+=lastSeq<0?0:m.seq-lastSeq-1;lastSeq=m.seq;
+  const out=[];for(const t of m.dets){const p=project(t,now);if(p)out.push(p);}
+  return out;
+}
+function deserializeBinary(buf,now){
+  const dv=new DataView(buf);
+  if(buf.byteLength<18||dv.getUint16(0)!==0x594f)return null;
+  const ver=dv.getUint8(2);if(ver!==1&&ver!==2)return null;
+  const seq=dv.getUint32(4);if(seq<=lastSeq)return null;
+  gapTotal+=lastSeq<0?0:seq-lastSeq-1;lastSeq=seq;
+  const count=dv.getUint16(16),stride=ver===2?52:36;
+  if(buf.byteLength<18+count*stride)return null;
+  const out=[];
+  for(let i=0;i<count;i++){const o=18+i*stride;
+    const p=project({id:'t'+dv.getUint32(o+(ver===2?44:32)).toString(36),
+      cls:ver===2&&dv.getUint8(o+48)===1?'person':'vehicle',
+      conf:dv.getFloat32(o+28),llh:[dv.getInt32(o+4)/1e7,dv.getInt32(o)/1e7,dv.getFloat32(o+8)],
+      dims:[dv.getFloat32(o+12),dv.getFloat32(o+16),dv.getFloat32(o+20)],
+      hdg:dv.getFloat32(o+24),                                  // F5: raw degrees — project() owns the sign
+      vel:ver===2?[dv.getFloat32(o+32),dv.getFloat32(o+36),dv.getFloat32(o+40)]:undefined},now);
+    if(p)out.push(p);}
+  return out;
+}
+
+/* ── in-page simulator ──────────────────────────────────────────────────── */
+const SIM={hz:12,drop:parseFloat(QS.get('drop')??'0'),binary:QS.get('binary')==='1'};
+const LOOPS=[
+ [[-122.4080,37.7893],[-122.4040,37.7900],[-122.4010,37.7885],[-122.4050,37.7875]],
+ [[-122.4060,37.7850],[-122.4020,37.7860],[-122.4000,37.7840],[-122.4050,37.7830]],
+ [[-122.4100,37.7910],[-122.4060,37.7925],[-122.4030,37.7910],[-122.4080,37.7898]],
+].map(L=>L.map(([lon,lat])=>[(lon-ORIGIN.lon)*111320*Math.cos(ORIGIN.lat*DEG),(lat-ORIGIN.lat)*110540]));
+const KINDS=[{cls:'vehicle',dims:[4.6,1.9,1.5],v:9},{cls:'truck',dims:[8.2,2.4,3],v:6.5},
+             {cls:'person',dims:[.5,.5,1.75],v:1.4}];
+const agents=Array.from({length:14},(_,i)=>{const k=KINDS[i%3],L=LOOPS[i%LOOPS.length];
+  return{id:'trk-'+String(i).padStart(3,'0'),...k,L,wp:0,e:L[0][0],n:L[0][1],ve:0,vn:0};});
+let seq=0;
+function simTick(){
+  const dt=1/SIM.hz;seq++;
+  for(const a of agents){
+    const T=a.L[(a.wp+1)%a.L.length],dx=T[0]-a.e,dy=T[1]-a.n,d=Math.hypot(dx,dy);
+    if(d<a.v*dt)a.wp=(a.wp+1)%a.L.length;
+    a.ve=dx/(d||1)*a.v;a.vn=dy/(d||1)*a.v;a.e+=a.ve*dt;a.n+=a.vn*dt;
+  }
+  if(SIM.drop&&Math.random()<SIM.drop)return;
+  const KX=111320*Math.cos(ORIGIN.lat*DEG),KY=110540;
+  const dets=agents.map(a=>({id:a.id,cls:a.cls,conf:+(.72+Math.random()*.27).toFixed(2),
+    llh:[+(ORIGIN.lon+a.e/KX).toFixed(7),+(ORIGIN.lat+a.n/KY).toFixed(7),0],dims:a.dims,
+    hdg:+((Math.atan2(a.ve,a.vn)/DEG+360)%360).toFixed(1),
+    vel:[+a.ve.toFixed(2),+a.vn.toFixed(2),0]}));
+  const now=performance.now();let tgts;
+  if(SIM.binary){
+    const buf=new ArrayBuffer(18+dets.length*52),dv=new DataView(buf);
+    dv.setUint16(0,0x594f);dv.setUint8(2,2);dv.setUint32(4,seq);
+    dv.setFloat64(8,Date.now());dv.setUint16(16,dets.length);
+    dets.forEach((t,i)=>{const o=18+i*52;
+      dv.setInt32(o,Math.round(t.llh[1]*1e7));dv.setInt32(o+4,Math.round(t.llh[0]*1e7));
+      dv.setFloat32(o+8,0);dv.setFloat32(o+12,t.dims[0]);dv.setFloat32(o+16,t.dims[1]);
+      dv.setFloat32(o+20,t.dims[2]);dv.setFloat32(o+24,t.hdg);dv.setFloat32(o+28,t.conf);
+      dv.setFloat32(o+32,t.vel[0]);dv.setFloat32(o+36,t.vel[1]);dv.setFloat32(o+40,t.vel[2]);
+      let h=7;for(const c of t.id)h=(h*31+c.charCodeAt(0))>>>0;dv.setUint32(o+44,h);
+      dv.setUint8(o+48,t.cls==='person'?1:0);});
+    tgts=deserializeBinary(buf,now);
+  }else tgts=deserialize(JSON.stringify({seq,t:Date.now(),src:'sim',dets}),now);
+  if(tgts)for(const t of tgts)field.ingest(t);
+}
+
+/* ── live gateway (?ws=) ────────────────────────────────────────────────── */
+let statusTxt='SIM';
+const wsUrl=QS.get('ws');
+if(wsUrl){
+  statusTxt='CONNECTING';let retry=0;
+  (function open(){
+    const ws=new WebSocket(wsUrl+(QS.get('token')?`?token=${encodeURIComponent(QS.get('token'))}`:''));
+    ws.binaryType='arraybuffer';
+    ws.onopen=()=>{statusTxt='LIVE';retry=0};
+    ws.onmessage=ev=>{const now=performance.now();
+      const t=typeof ev.data==='string'?deserialize(ev.data,now):deserializeBinary(ev.data,now);
+      if(t)for(const x of t)field.ingest(x);};
+    ws.onclose=()=>{statusTxt='DOWN';
+      setTimeout(open,Math.min(8000,500*2**retry++)*(.7+Math.random()*.6))};
+  })();
+}else setInterval(simTick,1000/SIM.hz);
+
+/* ── focus director ─────────────────────────────────────────────────────── */
+const PANELS={
+ 'Scene':{e:0,n:0,r:1800,p:-58,h:15,g:'#38bdf8'},
+ 'One-Pager':{e:0,n:0,r:2600,p:-72,h:0,g:'#f472b6'},
+ 'Architecture':{e:-600,n:400,r:1400,p:-45,h:110,g:'#a78bfa'},
+ 'Pilot':{e:700,n:-500,r:1300,p:-50,h:250,g:'#34d399'},
+ 'Hydrology':{e:-300,n:-700,r:1200,p:-60,h:190,g:'#60a5fa'},
+ 'GIS Bench':{e:150,n:220,r:1100,p:-52,h:35,g:'#22d3ee'},
+};
+function focus(name){
+  const p=PANELS[name];if(!p)return;
+  const pr=p.p*DEG,hr=p.h*DEG;
+  tw(controls.target,{x:p.e,y:0,z:-p.n});
+  tw(camera.position,{x:p.e+p.r*Math.cos(pr)*Math.sin(hr),y:-p.r*Math.sin(pr),
+                      z:-p.n+p.r*Math.cos(pr)*Math.cos(hr)});
+  const c=new THREE.Color(p.g);
+  for(const u of beamU){tw(u.uCoreColor.value,{r:c.r,g:c.g,b:c.b});
+    tw(u.uGlowColor.value,{r:c.r*.4,g:c.g*.4,b:c.b*.4});}
+  $id('aura').style.background=`color-mix(in srgb, ${p.g} 18%, transparent)`;
+}
+const nav=$id('nav');let active='GIS Bench';
+for(const name of Object.keys(PANELS)){
+  const b=document.createElement('button');b.textContent=name;
+  if(name===active)b.classList.add('on');
+  b.onclick=()=>{active=name;nav.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');focus(name);};
+  nav.appendChild(b);
+}
+
+/* ── theme metamorphosis ────────────────────────────────────────────────── */
+let light=false;
+ $id('theme').onclick=()=>{light=!light;
+  document.body.classList.toggle('light',light);
+  const th=light?LIGHT:DARK;
+  scene.background.set(th.bg);scene.fog.color.set(th.bg);
+  terrainMat.color.set(th.ground);};
+
+/* ── target list + lock-on ──────────────────────────────────────────────── */
+const listEl=$id('list');
+function renderList(){
+  listEl.innerHTML=[...field.tracks.values()].slice(0,14).map(r=>{
+    const sp=Math.hypot(r.vel.x,r.vel.z).toFixed(1);
+    return`<div class="row" data-x="${r.cur.x.toFixed(1)}" data-y="${r.cur.y.toFixed(1)}" data-z="${r.cur.z.toFixed(1)}">
+      <span style="color:var(--acc)">${r.cls}</span><span>${(r.conf*100)|0}% · ${sp} m/s</span></div>`;}).join('');
+}
+ $id('targets').addEventListener('click',e=>{
+  const row=e.target.closest('.row');if(!row)return;
+  tw(controls.target,{x:+row.dataset.x,y:+row.dataset.y,z:+row.dataset.z});
+  tw(camera.position,{x:+row.dataset.x+180,y:+row.dataset.y+280,z:+row.dataset.z+260});
+});
+
+/* ── render loop (F4: all refs via $id — no window.status collision) ────── */
+const clock=new THREE.Clock();let emaMs=16.6,hudAt=0;
+const el={fps:$id('fps'),ms:$id('ms'),trk:$id('trk'),gap:$id('gap'),st:$id('status')};
+el.st.textContent=statusTxt;setInterval(()=>el.st.textContent=statusTxt,500);
+focus('GIS Bench');
+renderer.setAnimationLoop(()=>{
+  const dt=Math.min(clock.getDelta(),.1),now=performance.now();
+  emaMs=emaMs*.9+dt*1000*.1;
+  stepTweens(now);
+  field.update(dt,now);
+  controls.update();
+  for(const u of beamU)u.uTime.value=clock.elapsedTime;
+  if(now-hudAt>250){hudAt=now;
+    el.fps.textContent=String(Math.round(1000/emaMs));
+    el.ms.textContent=emaMs.toFixed(1);
+    el.gap.textContent=String(gapTotal+dropped);
+    el.trk.textContent=String(field.fill.count);
+    renderList();}
+  renderer.render(scene,camera);
+});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+requestAnimationFrame(()=>{const b=$id('boot');b.classList.add('done');
+  setTimeout(()=>b.remove(),700);});
+</script>
+</body>
+</html>All three, compiled. Extraction surfaced a few source inconsistencies worth knowing before you cite them — flagged inline (D1 notes).
+
+---
+
+# 1️⃣ Related-Work Section (manuscript-ready)
+
+## II. Related Work
+
+The transition of distribution networks toward inverter-dominated operation compresses three engineering problems into one design space: the grid must absorb generation whose behavior is dictated by compliance standards, the conversion assets mediating that exchange degrade in ways that are increasingly hard to observe, and the communication fabric binding them must remain cheap, reliable, and standard-conformant. The works surveyed here attack these problems at separate layers of the same stack; their combination exposes the gap this thesis/manuscript addresses.
+
+### A. Grid Integration of Inverter-Interfaced Generation
+
+Compliance with IEEE 1547 volt-var control extracts a measurable energy price from distributed photovoltaic (PV) owners, and Issa *et al.* [1] provide the most complete quantification of that price to date. Integrating IEEE 1547 compliance, feeder loading and strength, distributed energy resource (DER) penetration, and NSRDB-derived irradiance models [9] into full-year OpenDSS–MATLAB co-simulations over three IEEE test feeders [8], they show that for any feeder there exists an optimal penetration percentage $S_P$ (25–35% across the 13-, 34-, and 123-bus cases) minimizing relative curtailment. Below this optimum, lost generation is attributable to the feeder's *own* undervoltage regulation burden rather than the PVs; above it, reverse power flow dominates. The asymmetry is feeder-dependent: weak feeders suffer at both penetration extremes, strong feeders only at low penetration. Two second-order findings matter for planners: fixed capacitor banks asymmetrically benefit low-penetration operation, and on-load tap changers, while globally beneficial, can *increase* the volt-var effort demanded of inverters outside their effective regulation sections. Earlier studies had evaluated mixed constant-power-factor/voltage-active modes [1, refs. 18–19] or compared support modes on low-voltage feeders, where reactive algorithms are inherently less effective [1, ref. 20]; [1] extends the analysis to medium voltage with real irradiance and a hosting-capacity (HC) interpretation: HC as a function of the curtailment level tolerable by consumer-owned DERs.
+
+Where [1] accepts converter coupling and prices its side effects, Gerber and Kamper [5] remove the converter entirely. Their slip-synchronous wind turbine system (SS-WTS) connects a dual-speed synchronous generator directly to the grid, with damping provided by a slip permanent-magnet coupling (S-PMC). Their central contribution is a four-parameter stability map — S-PMC rated slip, turbine-to-generator inertia ratio κ, generator synchronous reactance $X_s$, and S-PMC pullout torque — establishing that under the most severe symmetrical three-phase low-voltage ride-through (LVRT), synchronous reactance must fall to 0.29 p.u. for the geared topology, that the folk rule "pullout torque > 2 p.u." is not universal (required values span 1.4–2.2 p.u. depending on slip and κ), and that the high-speed S-PMC placement dominates on mass, cost, and damping. Notably, the paper corrects prior stability claims in the SS-WTS literature: modeling the S-PMC as a simple gain produces incorrect LVRT results, and prior stability demonstrations at 50% load do not extend to rated operation. Both [1] and [5] thus convert standards compliance into *design-space constraints* — tolerable curtailment in one case, admissible reactance and pullout torque in the other — a symmetry this work exploits.
+
+### B. Condition Monitoring of Conversion Assets
+
+Two complementary failure modes motivate drive-level diagnostics: insulation degradation and winding faults. Lee *et al.* [2] review partial discharge (PD) in wide-bandgap (WBG) drives, where high slew rates invalidate the classical assumption that peak turn voltage — and hence PD location — occurs at the first turn. Using high-frequency π-models across capacitive, inductive, and distributed PD-object geometries (with and without rotor), they show that LC resonance can migrate the peak-voltage location beyond the first turn, that skin and surface/space charge effects make PDIV and repetitive PDIV trends inconsistent across switching frequencies and slew rates, and that WBG switching ringing displaces the spectral zero-magnitude point into the tens of GHz — leaving MHz-band PD invisible even with conventional 300–500 MHz high-pass filtering. Their remedy is signal-side: active cancellation of common-mode voltage and ground current via analog or digital active EMI filters restores PD signal-to-noise ratio without new sensing hardware.
+
+Dawed *et al.* [4] address interturn short-circuit (ITSC) faults in six-phase induction machines using vector space decomposition (VSD): fault-induced odd-order harmonics appear in the $xy$ subspace, which is decoupled from rotor parameters and carries no flux or torque contribution in sinusoidally wound machines. Their multi-LMS compensator adaptively suppresses these harmonics while promoting the first-order compensation voltage magnitude itself — $F_{idx} = \sqrt{(v_{x'}^{(1)})^2 + (v_{y'}^{(1)})^2}$ — as a direct fault-severity index, eliminating post-processing filters, spectral analysis, and dedicated sensors. A plane-fit correction $F^{asy}_{idx} \approx \alpha_0 + \alpha_1 N_m + \alpha_2 T_e$ removes operating-point-dependent asymmetry without lookup tables. Hardware validation on a 1.25 kW SPIM detects two shorted turns ($\gamma = 1.52\%$) at 400 r/min at 17n arithmetic operations per iteration — substantially below multi-PI alternatives. The subspace parity structure (even-order harmonics in $xy$, odd in $\alpha\beta$) additionally confers intrinsic immunity to eccentricity and broken-rotor-bar faults in symmetrical machines.
+
+The shared trend across [2] and [4] is *instrumentation-free diagnostics*: both derive health indices from signals the power stage already produces, at a cost compatible with embedded controllers.
+
+### C. Communication and Aggregation of DERs
+
+Guaiana *et al.* [3] supply the connective tissue between grid operator and DER fleet. Their three-device architecture — a DG/ESS concentrator (Linux SBC + ST8500 PLC modem) at the MV/LV substation, PLC interface bridges at each plant, and an intelligent electronic device (IED) virtualizing heterogeneous converters behind a canonical 16-register Modbus map — is validated both in laboratory and on an LV line of the Favignana distribution network. Measured performance is production-grade: 100% delivery success on PRIME 1.4 channels 3 and 8 (mean latency 0.35–0.81 s), bit error rates near zero for BPSK across all eight PRIME channels, and end-to-end remote command actuation on a 20 kWh storage system in under 4 s — an order of magnitude inside the 50 s requirement of the Italian CEI 0-21 connection rule. Because the design is deliberately hardware-agnostic (any SoC running Python and Node-RED is a drop-in replacement), it constitutes a realistic B2B ingestion boundary; its acknowledged gap is device-level security, deferred to future IEC 62443 alignment.
+
+### D. Electrified Demand and the Smart-Load Edge
+
+Zissis *et al.* [6] frame the demand side. Lighting consumes 13.7% of global electricity and drives 4.2% of greenhouse-gas emissions; solid-state lighting is now decisively dominant (commercial LED efficacies exceeding 210 lm/W plug-in against a 683 lm/W thermodynamic ceiling; white OLED panel efficacy rising from 1 to 160 lm/W between 1987 and 2020, with a projected 325–400 lm/W ceiling). Their argument is less about the sources than about what they enable: a "fourth revolution" in which lighting becomes a networked, sensor-coupled IoT subsystem — the largest distributed actuator in the built environment — raising governance questions (privacy of sensing-rich luminaires, affordability, temporal-light-modulation standards) that fall outside pure power engineering.
+
+### E. Synthesis
+
+Read together, [1]–[6] form a layered but *disconnected* stack: generation-side economics ([1], [5]), conversion-health observability ([2], [4]), a standard-conformant telemetry pipe ([3]), and a massive flexible load ([6]). Each layer is individually mature; none consumes the others' outputs. The concentrator of [3] moves SoC/SoH/power registers but has no notion of hosting capacity, curtailment attribution, or asset health; the fault index of [4] exists only inside a drive's control loop; the curtailment economics of [1] require per-bus time series that no deployed architecture currently delivers at scale; and the flexible lighting fleet of [6] is absent from the curtailment calculus entirely. Closing that loop — a unified DER telemetry plane whose payloads are exactly the quantities [1] and [4] compute, transported by an architecture like [3], and acted upon by loads like [6] — is the contribution this work develops.
+
+### Table I — Comparison of Surveyed Works
+
+| Ref | Layer | Platform / method | Validation | Headline quantitative result | Principal limitation |
+|---|---|---|---|---|---|
+| [1] | Generation · grid | OpenDSS + MATLAB co-sim; 3 IEEE MV feeders; full-year NSRDB irradiance, 10-min steps | Simulation (extensive sweep) | Optimal $S_P$ 25–35%; curtailment regime split (undervoltage vs. reverse flow); TC shifts optimum (30→15%, 13-bus) | Static PV allocation; no storage or demand-side co-optimization |
+| [2] | Conversion health | Review + HF π-model case study (7 turns, 800 V, 50 kHz, 10/100 V/ns) | Simulation + literature | $V_{peak}$ migrates off turn 1 at 100 V/ns (distributed + rotor); E-field ×8 at 50 kHz vs 5 kHz | No unified PDIV model across geometries; HPF cutoff problem unresolved in practice |
+| [3] | Comms · aggregation | PRIME 1.4 PLC + Modbus TCP/RTU; 3 custom devices | Lab + on-field (Favignana LV grid) | 100% success; mean latency 0.35–0.81 s; remote ESS command < 4 s vs 50 s limit | Device-level security (IEC 62443) deferred; 8PSK BER channel-dependent |
+| [4] | Conversion health | Multi-LMS on TMS320F28379D; 1.25 kW SPIM testbench | Hardware experiments | Detects γ = 1.52% (2 turns) at 400 r/min; $F_{idx}$ ∝ severity; 17n ops vs multi-PI | Per-machine plane-fit calibration; sensitivity degrades at very low speed |
+| [5] | Generation · grid | Simulink dq model + grid swing emulation; 5 MW scale | Simulation, parameter sweeps | $X_s \le$ 0.29 p.u. for 3-φ LVRT (geared); pullout 1.4–2.2 p.u.; high-speed S-PMC optimal | Criteria anchored at $\alpha_c = 0.031$ rad/s² (first-order approximation beyond) |
+| [6] | End use | Review: LED/OLED technology + market | Literature / market data | Lighting = 13.7% of electricity; LED ≥ 210 lm/W; OLED 160 lm/W (2020) | Lighting-specific; no grid-interaction quantification |
+
+### References
+
+```
+[1]  W. A. M. Issa, L. G. Junior, L. M. Tolbert, and J. O. P. Pinto, "Analysis of IEEE 1547
+     voltage–reactive power mode control impact on the energy generation curtailment of
+     grid-connected photovoltaic systems," IEEE Open J. Ind. Appl., vol. 7, pp. 48–64, 2026,
+     doi: 10.1109/OJIA.2025.3627886.
+[2]  K. Lee, H. Kim, J. Im, S. A. Sufi, C. Park, and W. Lee, "A review of partial discharge in
+     high-frequency and high-speed WBG-based electric drives," IEEE Open J. Ind. Appl., vol. 7,
+     pp. 79–89, 2026, doi: 10.1109/OJIA.2025.3648282.
+[3]  S. Guaiana, N. Panzavecchia, G. Artale, A. Cataliotti, V. Ditta, V. Cosentino, G. Tinè, and
+     D. Di Cara, "Implementation and experimental validation of a PLC-based infrastructure for
+     distributed generation and storage systems remote management," IEEE Open J. Ind. Appl.,
+     vol. 7, pp. 24–35, 2026, doi: 10.1109/OJIA.2025.3637381.
+[4]  H. A. Dawed, K. A. Al Jaafari, A. R. Beig, and Z. Aung, "Multi-LMS harmonic compensation for
+     real-time detection of interturn short-circuit fault in six-phase induction machines,"
+     IEEE Open J. Ind. Appl., vol. 7, pp. 36–47, 2026, doi: 10.1109/OJIA.2025.3647228.
+[5]  R. Gerber and M. J. Kamper, "Stability analysis of grid-strengthening geared direct
+     grid-connected dual-speed slip-synchronous wind turbines," IEEE Open J. Ind. Appl., vol. 7,
+     pp. 3–23, 2026, doi: 10.1109/OJIA.2025.3636406.
+[6]  G. Zissis, D. Buso, and M. Ternisien, "Solid-state lighting technologies: Operating
+     principles, state of the art, and future challenges," IEEE Ind. Appl. Mag., vol. 31, no. 2,
+     pp. 46–56, Mar./Apr. 2025, doi: 10.1109/MIAS.2024.3484368.
+[7]  IEEE Standard for Interconnection and Interoperability of Distributed Energy Resources with
+     Associated Electric Power Systems Interfaces, IEEE Std 1547-2018, 2018.
+[8]  K. P. Schneider et al., "Analytic considerations and design basis for the IEEE distribution
+     test feeders," IEEE Trans. Power Syst., vol. 33, no. 3, pp. 3181–3188, May 2018.
+[9]  M. Sengupta, Y. Xie, A. Lopez, A. Habte, G. Maclaurin, and J. Shelby, "The national solar
+     radiation data base (NSRDB)," Renewable Sustain. Energy Rev., vol. 89, pp. 51–60, 2018.
+[10] IEC 60270: High-voltage Testing and Measuring Techniques — Partial Discharge Measurements,
+     IEC, 2015.
+[11] IEC TS 61934: Electrical Insulating Materials and Systems — Electrical Measurement of Partial
+     Discharges (PD) Under Short Rise Time and Repetitive Voltage Impulses, IEC, 2024.
+[12] T. A. Lipo, Analysis of Synchronous Machines, 2nd ed. Boca Raton, FL, USA: CRC Press, 2012.
+[13] P. Kundur, Power System Stability and Control. New York, NY, USA: McGraw-Hill, 1994.
+[14] J. A. Duffie, W. A. Beckman, and N. Blair, Solar Engineering of Thermal Processes,
+     Photovoltaics and Wind, 5th ed. Hoboken, NJ, USA: Wiley, 2020.
+```
+
+---
+
+# 2️⃣ VVU B2B Platform — DER Domain Grounding
+
+The design principle: **VVU attaches to the [3] architecture as just another SCADA-class client** (the paper's own Node-RED client establishes that pattern) — zero changes to their hardware, zero changes to the existing gateway/`/upstream`/JWT stack. All three paper domains land as data + panels.
+
+## 2.1 Layer mapping
+
+| VVU layer | Paper concept | Mechanism |
+|---|---|---|
+| Ingestion (`/upstream`) | [3] DG/ESS concentrator (base node) | Modbus TCP poll (FC 3/4) of concentrator memory blocks, 1 Hz — same cycle as their Node-RED client; P3's own latency data (mean 0.35–0.81 s) makes 1 Hz safe |
+| Frame protocol | [3] IED Modbus map (0x00–0x0F) | DER frame type `der` — one plant = one IED block, 0xFF sentinel handling |
+| GIS Bench render | [1] curtailment maps (Figs. 21–34) | Feeder bus graph in the 3D scene; node color = Eff bin (exact P1 legend bins) |
+| Analytics panels | [1] Eqs. (7)(9)(10), Tables 4–6 | See panel spec §2.4 |
+| Condition stream | [4] $F_{idx}$ + plane-fit | New `drive` frame class; LMS stays on the drive DSP, plane-fit can run server-side |
+
+## 2.2 Frame schema v3 (wire-compatible with the existing gateway — it's opaque fanout)
+
+```ts
+// packages/protocol/src/der.ts
+export interface DerPlantFrame {
+  type: 'der';
+  seq: number; t: number; src: string;          // src = concentrator EUI48 (base node)
+  plants: DerPlant[];
+}
+export interface DerPlant {
+  id: string;                                   // concentrator block index or EUI48
+  feeder: string; bus: string;                  // GIS placement keys (P1 curtailment map)
+  pv:  { mode: number; powerW: number; nominalW: number } | null;   // null = 0xFF absent
+  ess: { mode: number; invMode: number; powerW: number;
+         soc: number; soh: number; nominalW: number; nominalWh: number } | null;
+  contactor: 0 | 1;                             // remote-disconnect state (CEI 0-21)
+  lastUpdateMs: number;
+}
+export interface DriveHealthFrame {             // P4 condition stream (low rate, JSON is fine)
+  type: 'drive';
+  seq: number; t: number; src: string;          // src = drive asset id
+  fidx: number;                                 // raw Eq. (23) [4]
+  alpha?: [number, number, number];             // per-machine plane-fit (α0, α1, α2) if drive publishes
+  nm: number; te: number;                       // operating point → server applies Eqs. (24)(25)
+  dfXy: number;                                 // distortion factor — quality gate on the index
+}
+```
+
+## 2.3 Ingest adapter — concentrator → gateway (Python, runs on any P3-compatible SoC or a platform pod)
+
+```python
+# services/ingest/modbus_poller.py
+# Attaches VVU to the [3] architecture as a SCADA-class Modbus TCP client.
+# Memory layout per [3]: AR (availability register) @ 0x00, then one BLOCK per
+# connected plant, each BLOCK_WORDS long + a last-update register.
+import json, time, jwt, asyncio, websockets
+from pymodbus.client import ModbusTcpClient
+
+IED, ABSENT, BLOCK_WORDS = range(0x10), 0xFF, 17
+GW_URL, JWT_KEY = "ws://gateway:8080/upstream", __import__("os").environ["VVU_JWT_KEY"]
+
+def word32(hi, lo): return ((hi & 0xFFFF) << 16) | (lo & 0xFFFF)
+
+def read_plant(c, idx):
+    r = c.read_holding_registers(1 + idx * BLOCK_WORDS, BLOCK_WORDS, slave=1)
+    if r.isError(): return None
+    w = r.registers + [0] * (BLOCK_WORDS - len(r.registers))
+    pv_present  = w[IED.PV_NOM_MSW]  != ABSENT          # 0xFF sentinel per [3]
+    ess_present = w[IED.ESS_NOM_MSW] != ABSENT
+    return {
+        "id": f"{idx:02d}",
+        "pv":  None if not pv_present else
+               {"mode": w[0], "powerW": word32(w[1], w[2]),
+                "nominalW": word32(w[9], w[10])},
+        "ess": None if not ess_present else
+               {"mode": w[5], "invMode": w[6], "powerW": word32(w[7], w[8]),
+                "soc": w[3], "soh": w[4],
+                "nominalW": word32(w[11], w[12]), "nominalWh": word32(w[13], w[14])},
+        "contactor": w[15] & 1,
+        "lastUpdateMs": w[16] * 1000,
+    }
+
+def discover(c):                       # AR bit-scan → live plant blocks
+    ar = c.read_holding_registers(0, 1, slave=1)
+    return [i for i in range(16) if not ar.isError() and (ar.registers[0] >> i) & 1]
+
+async def run(feeder, bus_map, poll_hz=1.0):
+    token = jwt.encode({"sub": "ingest-01", "scopes": ["stream:write"]}, JWT_KEY, "HS256")
+    async with websockets.connect(f"{GW_URL}?token={token}", ping_interval=20) as ws:
+        c = ModbusTcpClient(bus_map["concentrator_ip"], port=502)
+        seq, c.connect() = 0, c.connect()
+        while True:
+            seq += 1
+            plants = [p for i in discover(c) if (p := read_plant(c, i))]
+            for p in plants: p["feeder"], p["bus"] = feeder, bus_map.get(p["id"], "unknown")
+            await ws.send(json.dumps({"type": "der", "seq": seq, "t": int(time.time()*1000),
+                                      "src": bus_map["concentrator_id"], "plants": plants}))
+            await asyncio.sleep(1.0 / poll_hz)
+```
+
+## 2.4 Analytics panel spec — [1] metrics → VVU HUD
+
+| Panel | Source | Inputs | Behavior |
+|---|---|---|---|
+| `eff` worst-first list | Eq. (9) [1] | per-inverter P(t), Pmpp(t) time series | ascending sort = highest curtailment bus; feeds GIS node colors |
+| `mf` deviation index | Eq. (10) [1] | per-node phase voltage magnitudes | badge when >1.02 p.u. sample rate crosses the Table 5 [1] baselines (2.6 / 19.33 / 8.12%) |
+| `sP` penetration gauge | Eq. (7) inverted | aggregated nominal W per feeder | current $S_P$ vs. optimal marker from the feeder lookup (25/30/35%) |
+| **`regime` chip** | [1] §IV-A | $S_P$ vs. optimal | annotates **"undervoltage-driven"** (below optimum — curtailment is the feeder's, not the customer's) vs. **"reverse-flow-driven"** — this is the single most valuable B2B insight the platform can display: it assigns ownership of the energy loss |
+| `tc` overlay | Table 6 [1] | tap-changer state stream | optimal marker relocates live (e.g., 13-bus 30% → 15%) |
+| `hosting` estimator | [1] contribution 3 | offline sweep cache per feeder | ε_max slider → max admissible $S_P$ where Eff ≥ 1 − ε_max |
+
+**GIS coloring** — canonical bins matching the P1 curtailment-map legends:
+
+```ts
+export const EFF_BINS: [number, number, string][] = [
+  [0.95, 0.96, '#c2410c'], [0.96, 0.97, '#dc2626'], [0.97, 0.98, '#84cc16'],
+  [0.98, 0.99, '#14b8a6'], [0.99, 1.01, '#3b82f6'],
+];  // no-PV nodes → '#6b7280' (paper gray); bins vary slightly across Figs. 21–34 — canonicalized
+```
+
+## 2.5 $F_{idx}$ condition stream — publish path
+
+Two options; prefer (a) for B2B:
+
+- **(a) IED map extension** (vendor registers 0x10–0x17: $F_{idx}$ as u32 fixed-point ×1e6, $N_m$, $T_e$, quality flags) — flows through the entire [3] stack unchanged, including PLC. Requires cooperation from the drive/IED vendor.
+- **(b) Out-of-band** from the drive host PC (P4's own serial-acquisition precedent) directly to `/upstream` — works today with unmodified [3] hardware, bypasses PLC.
+
+**Alarm policy (important):** alarm on the *plane-fit residual* $F^{itsc}_{idx} = F_{idx} - (\alpha_0 + \alpha_1 N_m + \alpha_2 T_e)$ exceeding k·σ of the asset's own residual distribution — never an absolute $F_{idx}$ threshold. This is P4's core design philosophy (operating-point-dependent healthy threshold) carried into the platform. If the drive publishes only raw $F_{idx}$ + $(N_m, T_e)$, the server applies the per-asset α vector — which is why `alpha` is optional in `DriveHealthFrame`.
+
+---
+
+# 3️⃣ Deep Extraction — datasets + reference implementations
+
+```
+vvu-der-extract/
+├── data/
+│   ├── p5_table4_max_xs_pmsg.csv       ├── p5_table5_max_xs_wrsg.csv
+│   ├── p5_table6_min_pullout_pmsg.csv  ├── p5_table7_min_pullout_wrsg.csv
+│   ├── p3_ied_modbus_map.csv           ├── p3_latency_ber.csv
+│   ├── p2_pi_model_params.csv          ├── p1_feeder_summary.csv
+│   └── p4_spim_parameters.csv
+├── python/vvu_der_reference.py         # runnable, self-testing
+└── ts/ied-modbus.ts
+```
+
+## 3.1 CSVs
+
+**Tables 4–7 [5]** — `slip` = S-PMC rated slip (%), `k5`…`k50` = inertia ratio κ columns.
+
+```csv
+# p5_table4_max_xs_pmsg.csv — max allowable PMSG Xs (p.u.) under 3-φ LVRT [Fig. 30(a)]
+slip,k5,k10,k15,k20,k25,k30,k40,k50
+0.5,0.371,0.384,0.385,0.378,0.374,0.375,0.372,0.371
+0.75,0.454,0.491,0.480,0.483,0.460,0.504,0.480,0.474
+1.0,0.527,0.619,0.628,0.580,0.558,0.575,0.595,0.554
+1.25,0.487,0.625,0.661,0.658,0.625,0.590,0.607,0.630
+1.5,0.453,0.625,0.703,0.697,0.634,0.613,0.617,0.637
+1.75,0.422,0.593,0.703,0.708,0.662,0.639,0.630,0.645
+2.0,0.396,0.559,0.680,0.719,0.690,0.667,0.648,0.657
+2.25,0.373,0.524,0.650,0.733,0.721,0.697,0.671,0.672
+2.5,0.353,0.491,0.617,0.721,0.748,0.727,0.696,0.690
+3.0,0.321,0.433,0.554,0.672,0.747,0.772,0.746,0.727
+3.5,0.297,0.387,0.499,0.602,0.694,0.765,0.790,0.769
+4.0,0.279,0.352,0.446,0.536,0.636,0.724,0.817,0.812
+4.5,0.264,0.325,0.402,0.486,0.577,0.657,0.788,0.837
+5.0,0.253,0.306,0.368,0.445,0.518,0.593,0.740,0.839
+5.5,0.244,0.291,0.342,0.407,0.469,0.545,0.684,0.797
+6.0,0.237,0.276,0.325,0.375,0.435,0.498,0.620,0.744
+6.5,0.232,0.264,0.307,0.349,0.404,0.455,0.570,0.693
+7.0,0.228,0.254,0.291,0.330,0.376,0.421,0.529,0.631
+```
+
+```csv
+# p5_table5_max_xs_wrsg.csv — max allowable WRSG Xs (p.u.) [Fig. 30(b)]
+slip,k5,k10,k15,k20,k25,k30,k40,k50
+0.5,0.438,0.433,0.432,0.434,0.434,0.432,0.431,0.430
+0.75,0.609,0.590,0.548,0.556,0.536,0.523,0.546,0.547
+1.0,0.567,0.673,0.682,0.631,0.629,0.622,0.632,0.614
+1.25,0.534,0.672,0.704,0.670,0.635,0.629,0.657,0.680
+1.5,0.506,0.644,0.704,0.685,0.650,0.641,0.662,0.682
+1.75,0.482,0.618,0.697,0.694,0.668,0.657,0.669,0.688
+2.0,0.462,0.590,0.689,0.714,0.696,0.681,0.681,0.697
+2.25,0.445,0.562,0.666,0.724,0.720,0.705,0.697,0.708
+2.5,0.431,0.533,0.638,0.724,0.737,0.728,0.715,0.722
+3.0,0.411,0.484,0.579,0.693,0.751,0.763,0.750,0.744
+3.5,0.399,0.448,0.535,0.630,0.708,0.764,0.785,0.776
+4.0,0.393,0.423,0.491,0.566,0.653,0.739,0.812,0.812
+4.5,0.387,0.412,0.456,0.514,0.606,0.683,0.793,0.830
+5.0,0.383,0.401,0.430,0.487,0.551,0.617,0.755,0.838
+5.5,0.379,0.392,0.417,0.456,0.504,0.561,0.709,0.811
+6.0,0.376,0.386,0.407,0.432,0.468,0.531,0.644,0.756
+6.5,0.374,0.382,0.396,0.414,0.452,0.492,0.585,0.715
+7.0,0.373,0.379,0.389,0.409,0.432,0.461,0.556,0.657
+```
+
+```csv
+# p5_table6_min_pullout_pmsg.csv — min S-PMC pullout torque (p.u.), PMSG [Fig. 31(a)]
+slip,k5,k10,k15,k20,k25,k30,k40,k50
+0.5,2.231,2.163,2.149,2.099,2.151,2.110,2.159,2.124
+0.75,2.176,2.124,2.124,2.095,2.134,2.098,2.113,2.092
+1.0,2.075,2.080,2.095,2.085,2.115,2.083,2.068,2.056
+1.25,1.942,2.035,2.063,2.072,2.094,2.067,2.025,2.020
+1.5,1.822,1.974,2.026,2.059,2.065,2.043,1.970,1.970
+1.75,1.702,1.882,1.952,1.999,2.012,1.998,1.922,1.892
+2.0,1.619,1.797,1.873,1.924,1.948,1.943,1.887,1.830
+2.25,1.579,1.721,1.794,1.844,1.874,1.880,1.851,1.787
+2.5,1.566,1.658,1.716,1.761,1.794,1.810,1.804,1.751
+3.0,1.560,1.612,1.650,1.685,1.713,1.734,1.746,1.716
+3.5,1.554,1.580,1.600,1.622,1.640,1.658,1.681,1.674
+4.0,1.546,1.562,1.567,1.577,1.584,1.594,1.616,1.625
+4.5,1.535,1.556,1.554,1.552,1.551,1.550,1.560,1.573
+5.0,1.524,1.553,1.553,1.545,1.537,1.528,1.522,1.526
+5.5,1.512,1.548,1.552,1.547,1.538,1.528,1.512,1.501
+6.0,1.500,1.543,1.551,1.548,1.540,1.529,1.504,1.479
+6.5,1.487,1.538,1.549,1.550,1.543,1.532,1.498,1.459
+7.0,1.474,1.533,1.548,1.551,1.546,1.535,1.495,1.442
+```
+
+```csv
+# p5_table7_min_pullout_wrsg.csv — min S-PMC pullout torque (p.u.), WRSG [Fig. 31(b)]
+slip,k5,k10,k15,k20,k25,k30,k40,k50
+0.5,2.156,2.241,2.193,2.204,2.214,2.229,2.176,2.211
+0.75,2.075,2.171,2.144,2.135,2.155,2.137,2.116,2.155
+1.0,1.992,2.100,2.091,2.098,2.096,2.071,2.054,2.095
+1.25,1.910,2.028,2.037,2.044,2.038,2.013,1.993,2.034
+1.5,1.818,1.954,1.984,2.020,1.976,1.948,1.924,1.970
+1.75,1.728,1.867,1.909,1.959,1.921,1.880,1.847,1.879
+2.0,1.654,1.782,1.832,1.888,1.871,1.858,1.785,1.792
+2.25,1.594,1.702,1.759,1.812,1.817,1.825,1.738,1.722
+2.5,1.543,1.630,1.688,1.732,1.752,1.760,1.701,1.668
+3.0,1.501,1.571,1.623,1.653,1.679,1.685,1.661,1.626
+3.5,1.466,1.525,1.566,1.584,1.609,1.613,1.616,1.592
+4.0,1.438,1.492,1.522,1.531,1.552,1.546,1.571,1.562
+4.5,1.418,1.472,1.492,1.500,1.516,1.490,1.528,1.528
+5.0,1.404,1.456,1.473,1.486,1.495,1.467,1.492,1.491
+5.5,1.392,1.441,1.460,1.479,1.487,1.467,1.478,1.467
+6.0,1.379,1.427,1.449,1.472,1.479,1.472,1.466,1.446
+6.5,1.366,1.413,1.437,1.465,1.472,1.477,1.455,1.425
+7.0,1.353,1.400,1.425,1.458,1.466,1.481,1.447,1.407
+```
+
+> **D1 note:** saliency rule from [5] §IX — for salient machines use **max**(X_d, X_q) as the table's $X_s$ argument; HESG values interpolate between the PMSG and WRSG tables weighted by the PM/field excitation split.
+
+```csv
+# p3_ied_modbus_map.csv — IED memory map, Table I [3]
+offset,register,access,encoding
+0x00,PV Inverter operational mode,R/W,u16 enum (CEI 0-21 modes)
+0x01,PV instantaneous power _MSWord,R/W,u16 hi of u32 [W]
+0x02,PV instantaneous power _LSWord,R/W,u16 lo of u32 [W]
+0x03,ESS SoC,R,u16 [%]
+0x04,ESS SoH,R,u16 [%]
+0x05,ESS operational mode,R/W,u16 enum
+0x06,ESS Inverter operational mode,R/W,u16 enum
+0x07,ESS instantaneous power _MSWord,R/W,u16 hi of u32 [W]
+0x08,ESS instantaneous power _LSWord,R/W,u16 lo of u32 [W]
+0x09,PV Nominal Inverter power _MSWord,R,u16 hi of u32 [W]
+0x0A,PV Nominal Inverter power _LSWord,R,u16 lo of u32 [W]
+0x0B,ESS Nominal Inverter power _MSWord,R,u16 hi of u32 [W]
+0x0C,ESS Nominal Inverter power _LSWord,R,u16 lo of u32 [W]
+0x0D,ESS Nominal Energy _MSWord,R,u16 hi of u32 [Wh]
+0x0E,ESS Nominal Energy _LSWord,R,u16 lo of u32 [Wh]
+0x0F,Contactor Status,R/W,u16 bool
+```
+
+```csv
+# p3_latency_ber.csv — measured link performance [3]
+metric,channel,value,unit
+retransmissions,3,22,count
+retransmissions,8,26,count
+success_rate,3,100,%
+success_rate,8,100,%
+latency_min,3,0.111,s
+latency_min,8,0.108,s
+latency_max,3,1.010,s
+latency_max,8,1.149,s
+latency_mean,3,0.385,s
+latency_mean,8,0.353,s
+latency_std,3,0.153,s
+latency_std,8,0.139,s
+remote_cmd_delay_min,lab,0.484,s
+remote_cmd_delay_max,lab,1.259,s
+remote_cmd_delay_mean,lab,0.806,s
+remote_cmd_delay_std,lab,0.230,s
+remote_cmd_delay_cei021_limit,-,50,s
+remote_cmd_onfield,favignana,<4,s
+ber_bpsk,1,2.35e-4,-
+ber_bpsk,2,0,-
+ber_bpsk,3,0,-
+ber_bpsk,4,0,-
+ber_bpsk,5,0,-
+ber_bpsk,6,9.80e-6,-
+ber_bpsk,7,0,-
+ber_bpsk,8,0,-
+ber_8psk,1,5.99e-1,-
+ber_8psk,2,7.60e-3,-
+ber_8psk,3,4.90e-5,-
+ber_8psk,4,3.19e-3,-
+ber_8psk,5,0,-
+ber_8psk,6,0,-
+ber_8psk,7,1.86e-4,-
+ber_8psk,8,2.84e-5,-
+```
+
+```csv
+# p2_pi_model_params.csv — HF turn-to-turn π-model, Table II [2]  (C_inter: "—" = neglected)
+geometry,Rst_ohm,Lst,Ret_ohm,Cs,Rkg_ohm
+capacitive,0.055,3.264e-9,8.164,4.79e-9,22.5
+inductive,0.385,2.285e-6,57.15,47.9e-12,157.5
+distributed_wo_rotor,0.385,22.85e-9,57.15,Ref[2]-eq9,157.5
+distributed_w_rotor,0.347,137.1e-9,57.15,Ref[2]-eq9,157.5
+```
+
+```csv
+# p1_feeder_summary.csv — consolidated Tables 1, 4, 5, 6 [1]
+feeder,strength,impedance,loading,optimal_SP_noTC_pct,optimal_SP_withTC_pct,minCurt_SP_pct,minVoltDev_SP_pct,overvolt_pct_at_minCurt,overvolt_pct_at_minVoltDev
+13bus,strong,inductive,high,30,15,30,60,0.001,2.6
+34bus,weak,resistive,low,25,35,25,45,2.7,19.33
+123bus,strong,inductive,medium,35,20,35,95,0.29,8.12
+```
+
+```csv
+# p4_spim_parameters.csv — Table I [4]
+param,value,unit
+power,1.25,kW
+voltage,85,V
+speed,960,rpm
+torque,4,N·m
+Rs,1.57,ohm
+Rr,1.8,ohm
+Lsr,365,mH
+Lls,17.4,mH
+Llr,17.4,mH
+poles,6,-
+J,0.0194,kg·m2
+B,0.0015,N·m·s
+stator_slots,36,-
+rotor_slots,28,-
+turns_per_phase,132,-
+turns_per_slot,44,-
+lamination_diameter,160,mm
+bore_diameter,100,mm
+airgap,0.6,mm
+winding,double layer,-
+controller,TMS320F28379D,-
+lms_mu,0.001,-
+lms_orders_xy,1..7,-
+lms_orders_dq,6,12,-
+```
+
+## 3.2 Reference implementation (runnable + self-testing)
+
+```python
+# python/vvu_der_reference.py
+"""Portable reference implementations + dataset loaders for the VVU DER extraction.
+Sources — IEEE Open J. Ind. Appl., vol. 7, 2026:
+  [1] Issa 10.1109/OJIA.2025.3627886 · [2] Lee 10.1109/OJIA.2025.3648282
+  [4] Dawed 10.1109/OJIA.2025.3647228 · [5] Gerber 10.1109/OJIA.2025.3636406
+Self-test:  python vvu_der_reference.py   (numpy only)"""
+import csv, math, os
+import numpy as np
+
+DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data")
+
+# ── [1] volt-var & curtailment analytics ─────────────────────────────────────
+def volt_var_q(v, k_abs, k_gen, v_l, v_u, v_min, v_max):
+    """Eq. (1) [1]: Q(V̄) — piecewise volt-var. Sign: Q>0 injection, Q<0 absorption.
+    Saturates outside [v_min, v_max]."""
+    if v <= v_min: return k_abs * (v_l - v_min)
+    if v >= v_max: return k_gen * (v_u - v_max)
+    if v < v_l:    return k_abs * (v_l - v)
+    if v > v_u:    return k_gen * (v_u - v)
+    return 0.0
+
+def eff(p, pmpp):
+    """Eq. (9) [1]: generation performance factor = ∫P dt / ∫Pmpp dt ∈ (0, 1]."""
+    return float(np.trapz(p) / np.trapz(pmpp))
+
+def voltage_deviation_index(voltages):
+    """Eq. (10) [1]: M_f = ΣΣ ||V_n^i|−1| / (N·N_n). Input flattened over
+    (timesteps × nodes × phases)."""
+    return float(np.mean(np.abs(np.abs(np.asarray(voltages)) - 1.0)))
+
+def pmpp_per_bus(p_nom_loads, p_mult, irrad, sp_pct):
+    """Eq. (7) [1]: zero-net-energy PV allocation at bus k for penetration S_P [%]."""
+    return float(np.sum(p_nom_loads) * np.trapz(p_mult) / np.trapz(irrad) * sp_pct / 100.0)
+
+# ── [2] PD / WBG-drive insulation ────────────────────────────────────────────
+def resonance_freq(l_eq, c_eq):
+    """Eq. (2) [2]: f_res = 1/(2π√(L_eq·C_eq)) [Hz] — governs V_peak migration."""
+    return 1.0 / (2.0 * math.pi * math.sqrt(l_eq * c_eq))
+
+def v_steady_turn(k, n_turns, v_dc):
+    """Eq. (1) [2]: V_steady,k/N = V_dc(1−(k−1)/N). PD-location test: V_res > V_steady."""
+    return v_dc * (1.0 - (k - 1) / n_turns)
+
+def pdiv_darkin(t_film, eps_r, rectangular=True):
+    """Eqs. (3)/(4) [2]: Darkin PDIV [V]. t_film = insulation film thickness, ε_r = rel. permittivity.
+    Rectangular wire ⇒ 2^0.46 ≈ 1.375× higher PDIV (PD less likely) — per [2] §V-B."""
+    x = (2.0 * t_film / eps_r) if rectangular else (t_film / eps_r)
+    return math.sqrt(2.0) * 163.0 * x ** 0.46
+
+# ── [4] multi-LMS ITSC diagnostics ───────────────────────────────────────────
+class MultiLMS:
+    """Multi-harmonic LMS compensator, Eqs. (1)–(12) [4]. Tracks each harmonic order n of
+    the xy-subspace current i_xy; the per-harmonic estimate v_x/y doubles as fault-index
+    source. Weights → [A_n·sinφ_n, A_n·cosφ_n] (Eq. 7)."""
+    def __init__(self, orders, mu=1e-3, fs=1.0, f0=50.0):
+        self.orders, self.mu, self.fs, self.f0 = list(orders), mu, fs, f0
+        self.k = 0
+        self.w = {n: np.zeros(2) for n in self.orders}
+    def step(self, ixy):
+        self.k += 1
+        t = (self.k - 1) / self.fs
+        out = {}
+        for n in self.orders:
+            x = np.array([math.cos(2*math.pi*n*self.f0*t),          # Eq. (8)
+                          math.sin(2*math.pi*n*self.f0*t)])
+            e = ixy - (self.w[n] @ x)                               # Eq. (1): ε = d − y, d = i_xy
+            self.w[n] += 2.0 * self.mu * e * x                      # Eqs. (3)/(10)/(11)
+            out[n] = float(self.w[n] @ x)                           # Eq. (9)
+        return out
+
+class RotaryFaultIndex:
+    """Eqs. (20)–(23) [4]: rotate the xy error at −ω_e ([D] = e^{−jω_e t}) — the 1st harmonic
+    becomes DC — and track it with per-axis unit-basis LMS (the G^(0) unit). F_idx = |v|."""
+    def __init__(self, mu=5e-3, fs=1.0):
+        self.mu, self.fs, self.k, self.w = mu, fs, 0, np.zeros(2)
+    def step(self, ixy_complex, we):
+        self.k += 1
+        r = ixy_complex * np.exp(-1j * we * (self.k - 1) / self.fs)  # Eq. (20)
+        x = np.array([r.real, r.imag])
+        self.w += 2.0 * self.mu * (x - self.w)                       # DC tracking
+        return math.hypot(*self.w)                                   # Eq. (23)
+
+def f_idx_corrected(f_idx, nm, te, alpha):
+    """Eqs. (24)/(25) [4]: F_idx^itsc = F_idx − (α0 + α1·N_m + α2·T_e)."""
+    return f_idx - (alpha[0] + alpha[1]*nm + alpha[2]*te)
+
+# ── [5] SS-WTS stability criteria ────────────────────────────────────────────
+def inertia_ratio(jt, gr, j_sc_coil, j_sg, j_sc_pm):
+    """Eq. (18) [5]: κ = (J_t/GR² + J_SCcoil)/(J_SG + J_SCpm). All high-speed side; GR=1 direct-drive."""
+    return (jt / gr**2 + j_sc_coil) / (j_sg + j_sc_pm)
+
+def accel_coeff(tt, jt):
+    """Eq. (19) [5]: α_c = T_t/J_t [rad/s²]. Criteria tables validated at α_c = 0.031 rad/s²."""
+    return tt / jt
+
+SLIPS  = [0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0]
+KAPPAS = [5,10,15,20,25,30,40,50]
+_FILES = {("PMSG","xs"):"p5_table4_max_xs_pmsg.csv", ("WRSG","xs"):"p5_table5_max_xs_wrsg.csv",
+          ("PMSG","T"):"p5_table6_min_pullout_pmsg.csv", ("WRSG","T"):"p5_table7_min_pullout_wrsg.csv"}
+_CACHE = {}
+
+def _table(machine, kind):
+    key = (machine, kind)
+    if key not in _CACHE:
+        with open(os.path.join(DATA, _FILES[key])) as f:
+            _CACHE[key] = np.array([[float(x) for x in r] for r in list(csv.reader(f))[1:]])
+    return _CACHE[key]
+
+def _bilinear(M, slip, kappa):
+    s = min(max(slip, SLIPS[0]), SLIPS[-1]); k = min(max(kappa, KAPPAS[0]), KAPPAS[-1])
+    si = min(np.searchsorted(SLIPS, s) - 1, len(SLIPS)-2); ki = min(np.searchsorted(KAPPAS, k)-1, 6)
+    s0,s1,k0,k1 = SLIPS[si],SLIPS[si+1],KAPPAS[ki],KAPPAS[ki+1]
+    ts = (s-s0)/(s1-s0) if s1>s0 else 0.0; tk = (k-k0)/(k1-k0) if k1>k0 else 0.0
+    return float(M[si,ki]*(1-ts)*(1-tk) + M[si,ki+1]*(1-ts)*tk
+               + M[si+1,ki]*ts*(1-tk)     + M[si+1,ki+1]*ts*tk)
+
+def max_sync_reactance(slip_pct, kappa, machine="PMSG"):
+    """Tables 4/5 [5]: max allowable X_s (p.u.) under symmetrical 3-φ LVRT.
+    Salient machines: pass max(X_d, X_q). Below-surface ⇒ stable. Clamped at grid edges."""
+    return _bilinear(_table(machine, "xs"), slip_pct, kappa)
+
+def min_pullout_torque(slip_pct, kappa, machine="PMSG"):
+    """Tables 6/7 [5]: min S-PMC pullout torque (p.u.) for LVRT stability."""
+    return _bilinear(_table(machine, "T"), slip_pct, kappa)
+
+# ── self-test ────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    # T1 — [5] anchor: α_c from Table 1 numbers matches the paper's 0.031 rad/s²
+    a = accel_coeff(4.93e6, 160e6)
+    assert abs(a - 0.031) < 0.001, a
+    print(f"T1 α_c = {a:.4f} rad/s²  ✓ (paper: 0.031)")
+
+    # T2 — [5] claim "pullout 1.4–2.2 p.u., not universally >2"
+    T6 = _table("PMSG","T"); T7 = _table("WRSG","T")
+    lo = min(T6.min(), T7.min()); hi = max(T6.max(), T7.max())
+    assert 1.35 <= lo <= 1.45 and 2.15 <= hi <= 2.30
+    print(f"T2 pullout range {lo:.3f}–{hi:.3f} p.u. ✓ (paper: 'as low as 1.4, as high as 2.2')")
+
+    # T3 — interpolation exact at nodes; anchors: (1.0%, κ=10) PMSG Xs = 0.619
+    assert abs(max_sync_reactance(1.0, 10) - 0.619) < 1e-12
+    mid = max_sync_reactance(1.125, 7.5)          # bilinear between 4 nodes
+    assert 0.55 < mid < 0.70
+    print(f"T3 bilinear: node-exact ✓, midpoint {mid:.4f} ✓")
+
+    # T4 — [4] LMS recovers a synthesized harmonic: z(k)=A·sin(2π·5·f0·t+φ), 5th order
+    A, phi, fs, f0 = 0.05, 0.7, 10_000, 50.0
+    lms = MultiLMS([5], mu=1e-3, fs=fs, f0=f0)
+    for k in range(8000):
+        lms.step(A*math.sin(2*math.pi*5*f0*(k/fs) + phi))
+    exp = np.array([A*math.sin(phi), A*math.cos(phi)])
+    assert np.allclose(lms.w[5], exp, rtol=0.02), lms.w[5]
+    print(f"T4 LMS w = [{lms.w[5][0]:.5f}, {lms.w[5][1]:.5f}]  ✓ (expect [{exp[0]:.5f}, {exp[1]:.5f}])")
+
+    # T5 — [4] rotary F_idx tracks a known fault DC; plane-fit nulls healthy offset
+    fi = RotaryFaultIndex(mu=5e-3, fs=fs)
+    we, Af, B = 2*math.pi*f0, 5e-4, 2e-4                 # fault + healthy asymmetry offset
+    for k in range(20000): v = fi.step(Af + B + 1e-4j*math.sin(2*math.pi*13*k/fs), we)
+    f_raw, f_cor = v, f_idx_corrected(v, 0, 0, [B, 0, 0])
+    assert abs(f_cor) < 3e-5 and abs(f_raw - (Af + B)) < 2e-5
+    print(f"T5 F_idx raw={f_raw:.2e} (expect {Af+B:.1e}), corrected={f_cor:.2e} ✓")
+
+    # T6 — [1] volt-var: deadband zero, linear slope, saturation clamps
+    q = volt_var_q(1.0, 1.2, 1.2, 0.98, 1.02, 0.9, 1.1)
+    assert q == 0.0 and abs(volt_var_q(0.94, 1.2, 1.2, .98, 1.02, .9, 1.1) - 1.2*0.04) < 1e-12
+    assert abs(volt_var_q(0.5, 1.2, 1.2, .98, 1.02, .9, 1.1) - 1.2*0.08) < 1e-12
+    print("T6 volt-var ✓")
+
+    # T7 — [2] PDIV: rectangular/round ratio = 2^0.46; V_steady endpoints
+    r = pdiv_darkin(0.1, 3.0, True) / pdiv_darkin(0.1, 3.0, False)
+    assert abs(r - 2**0.46) < 1e-9
+    assert v_steady_turn(1, 7, 800) == 800 and abs(v_steady_turn(7, 7, 800) - 800/7) < 1e-9
+    print(f"T7 PDIV ratio = 2^0.46 ✓, V_steady endpoints ✓")
+
+    # T8 — [1] Eff identity
+    t = np.linspace(0, 1, 100); assert abs(eff(np.sin(t), np.sin(t)) - 1.0) < 1e-9
+    print("T8 Eff identity ✓")
+    print("\nALL 8 SELF-TESTS GREEN")
+```
+
+```bash
+pip install numpy && python vvu_der_reference.py
+# → T1…T8 · ALL 8 SELF-TESTS GREEN
+```
+
+## 3.3 TypeScript — IED map constants
+
+```ts
+// ts/ied-modbus.ts — IED memory map, Table I [3] (Guaiana et al., DOI 10.1109/OJIA.2025.3637381)
+export const IED = {
+  PV_MODE: 0x00, PV_POW_MSW: 0x01, PV_POW_LSW: 0x02,
+  ESS_SOC: 0x03, ESS_SOH: 0x04, ESS_MODE: 0x05, ESS_INV_MODE: 0x06,
+  ESS_POW_MSW: 0x07, ESS_POW_LSW: 0x08,
+  PV_NOM_MSW: 0x09, PV_NOM_LSW: 0x0A, ESS_NOM_MSW: 0x0B, ESS_NOM_LSW: 0x0C,
+  ESS_EN_MSW: 0x0D, ESS_EN_LSW: 0x0E, CONTACTOR: 0x0F,
+} as const;
+export const ABSENT = 0xff;                 // sentinel for absent PV/ESS side [3 §II-C]
+export const BLOCK_WORDS = 17;              // 16 map registers + last-update register
+export const AR_OFFSET = 0x00;              // availability register: 1 bit per connected plant
+export const word32 = (hi: number, lo: number): number =>
+  ((hi & 0xffff) << 16) | (lo & 0xffff);    // [W] / [Wh], unsigned
+```
+
+---
+
+## Source inconsistencies found during extraction (flag before citing)
+
+| # | Paper | Issue | Handling |
+|---|---|---|---|
+| 1 | [3] | Wattmeter named **DMG100** in Table 4 caption but **DMG110** in body text | Cite as "Lovato DMG wattmeter"; accuracy figures are unambiguous |
+| 2 | [4] | DF for x-axis xy current: figure 11 label says **7.26%**, body text says **7.29%** (same for y: 3.31 vs 3.33) | Use body-text values; note the label discrepancy if quoting |
+| 3 | [5] | Eq. (4) λ_qs line contains typographic artifacts (overlapping subscript glyphs) in the typeset source | Extracted as λ_qs = −L_qs·i_qs + L_dfs·i_fs by symmetry with λ_ds — verify against the original before deriving anything from it |
+| 4 | [1] | Tabulated optimal-tilt values differ between Table 2 (33.7°) and Table 3 (33.07°) | Table 3 is the simulation-parameter table — use 33.07° for reproduction; 33.7° is the numeric optimum discussion |
+| 5 | [2] | PDIV trends are genuinely contradictory *within the literature it surveys* (−6% vs +20.4% vs +73.5% for frequency increases) — the paper's own point | Don't cite any single trend; cite the voltage–time theory (V_peak × T_PDIV) as the reconciliation |
+
+The self-test in §3.2 is the guard: if you re-transcribe Tables 4–7 from the PDF, re-run it — T2/T3 will catch transcription slips. Want the extraction extended with the [2] detection-method comparison table (Table V, 9 methods × 6 parameters) as CSV too, or the [5] Tables 2–3 (S-PMC position / gearbox variation parameters)?

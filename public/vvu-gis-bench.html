@@ -79,8 +79,51 @@
   #stamp{margin-left:auto;font-size:10px;letter-spacing:.18em;color:var(--dim)}
 </style>
   <link rel="stylesheet" href="/three/leaflet.css" />
+  <style>
+    /* ── MISSION FLOW RAIL (fixed top, slim, non-intrusive) ── */
+    #mf-rail{
+      position:fixed;top:0;left:0;right:0;z-index:60;
+      display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow-x:auto;
+      padding:5px 12px;
+      background:linear-gradient(90deg,rgba(0,212,255,.10),rgba(0,255,136,.06));
+      border-bottom:1px solid rgba(0,212,255,.35);
+      backdrop-filter:blur(10px);
+      font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;
+      pointer-events:auto;
+    }
+    #mf-rail .mf-label{color:var(--dim,#94a3b8);text-transform:uppercase;white-space:nowrap;margin-right:4px}
+    #mf-rail .mf-chip{
+      display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+      padding:3px 9px;border:1px solid rgba(148,163,184,.3);border-radius:3px;
+      color:var(--dim,#94a3b8);text-decoration:none;text-transform:uppercase;
+      background:rgba(15,23,42,.55);transition:.2s;
+    }
+    #mf-rail .mf-chip:hover{color:#22d3ee;border-color:#22d3ee;background:rgba(34,211,238,.1)}
+    #mf-rail .mf-chip.is-here{
+      color:#22d3ee;border-color:rgba(34,211,238,.6);background:rgba(34,211,238,.12);
+      box-shadow:0 0 10px rgba(34,211,238,.25);
+    }
+    #mf-rail .mf-chip.is-here::before{content:'●';color:#22d3ee}
+    #mf-rail .mf-chip .n{color:#a5f3fc;font-weight:700}
+    #mf-rail .mf-sep{color:rgba(34,211,238,.6)}
+    /* push the existing HUD down by the rail height (~28px) */
+    #hud{top:28px !important}
+    #boot .bwrap{padding-top:28px}
+    @media(max-width:600px){
+      #mf-rail{font-size:9px}
+      #mf-rail .mf-label{display:none}
+    }
+  </style>
 </head>
 <body>
+<nav id="mf-rail" aria-label="Mission Flow">
+  <span class="mf-label">◀ MISSION FLOW</span>
+  <a class="mf-chip" href="/vvu-spatial-intelligence.html"><span class="n">01</span> Spatial Intelligence</a>
+  <span class="mf-sep">→</span>
+  <a class="mf-chip" href="/searm1-b2b-dashboard.html"><span class="n">02</span> Enterprise B2B Dashboard</a>
+  <span class="mf-sep">→</span>
+  <a class="mf-chip is-here" href="/vvu-gis-bench.html"><span class="n">03</span> GIS Verification Bench</a>
+</nav>
 <div id="boot"><div class="bwrap">
   <div class="bmark">▲</div><div class="bword">VVU</div>
   <div class="bsub">VERIFICATION LAYER · COMPILING SPATIAL MATRIX</div>

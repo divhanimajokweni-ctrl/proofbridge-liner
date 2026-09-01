@@ -543,6 +543,111 @@
   .sec-card.c5{top:38%;left:-2%}
   .sec-card.c6{top:50%;left:50%;transform:translate(-50%,-50%);visibility:hidden}
 
+  /* ── 13b. MISSION FLOW (transition to enterprise + ops) ── */
+  #mission-flow{
+    padding:56px 24px 64px;border-top:1px solid var(--line);
+    background:
+      radial-gradient(ellipse at 20% 0%,rgba(0,212,255,.06),transparent 55%),
+      radial-gradient(ellipse at 80% 100%,rgba(0,255,136,.05),transparent 55%);
+  }
+  #mission-flow .mf-head{
+    display:flex;align-items:baseline;gap:14px;margin-bottom:30px;
+    padding-bottom:12px;border-bottom:1px dashed var(--line);flex-wrap:wrap;
+  }
+  #mission-flow .mf-id{font-size:11px;color:var(--dim);letter-spacing:.22em}
+  #mission-flow .mf-title{
+    font-family:var(--sans);font-size:22px;font-weight:700;letter-spacing:.14em;
+    color:var(--ink-bright);
+  }
+  #mission-flow .mf-title em{font-style:normal;color:var(--cyan);text-shadow:var(--glow-cyan)}
+  #mission-flow .mf-sub{font-size:11px;color:var(--dim);letter-spacing:.14em;margin-left:auto}
+  .mf-track{
+    display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:14px;align-items:stretch;
+    max-width:1300px;margin:0 auto;
+  }
+  .mf-stage{
+    position:relative;background:var(--bg-glass);backdrop-filter:blur(10px);
+    border:1px solid var(--line);border-radius:10px;padding:24px 22px;
+    transition:border-color .3s,transform .3s,box-shadow .3s;cursor:pointer;
+    overflow:hidden;display:flex;flex-direction:column;min-height:220px;
+  }
+  .mf-stage::before,.mf-stage::after{content:'';position:absolute;width:14px;height:14px;border-color:var(--cyan);border-style:solid;opacity:.7}
+  .mf-stage::before{top:8px;left:8px;border-width:1.5px 0 0 1.5px}
+  .mf-stage::after{bottom:8px;right:8px;border-width:0 1.5px 1.5px 0}
+  .mf-stage:hover{
+    border-color:var(--cyan);transform:translateY(-4px);
+    box-shadow:0 12px 40px rgba(0,212,255,.18),0 0 0 1px var(--cyan);
+  }
+  .mf-stage.active{
+    border-color:var(--green);
+    background:linear-gradient(180deg,rgba(0,255,136,.06),var(--bg-glass));
+    box-shadow:0 0 0 1px rgba(0,255,136,.4),0 0 28px rgba(0,255,136,.18);
+  }
+  .mf-stage.active::before,.mf-stage.active::after{border-color:var(--green)}
+  .mf-stage .mf-num{
+    font-size:11px;letter-spacing:.22em;color:var(--dim);margin-bottom:6px;
+  }
+  .mf-stage.active .mf-num{color:var(--green)}
+  .mf-stage h3{
+    font-family:var(--sans);font-size:17px;font-weight:700;letter-spacing:.08em;
+    color:var(--ink-bright);margin-bottom:4px;
+  }
+  .mf-stage .mf-stage-tag{
+    font-size:10px;letter-spacing:.18em;color:var(--cyan);margin-bottom:14px;
+    text-transform:uppercase;
+  }
+  .mf-stage.active .mf-stage-tag{color:var(--green)}
+  .mf-stage p{
+    font-size:12px;line-height:1.55;color:var(--ink);opacity:.85;
+    flex:1;margin-bottom:14px;
+  }
+  .mf-stage .mf-cta{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;
+    color:var(--cyan);padding:8px 14px;border:1px solid var(--cyan);border-radius:4px;
+    background:rgba(0,212,255,.06);transition:.25s;width:fit-content;
+  }
+  .mf-stage:hover .mf-cta{background:var(--cyan);color:#021018;box-shadow:var(--glow-cyan)}
+  .mf-stage.active .mf-cta{color:var(--green);border-color:var(--green);background:rgba(0,255,136,.08)}
+  .mf-stage.active:hover .mf-cta{background:var(--green);color:#021018;box-shadow:var(--glow-green)}
+  .mf-stage .mf-cta .arrow{transition:transform .25s}
+  .mf-stage:hover .mf-cta .arrow{transform:translateX(4px)}
+  .mf-stage .mf-status{
+    position:absolute;top:14px;right:14px;
+    font-size:9px;letter-spacing:.18em;padding:3px 8px;border-radius:2px;
+    background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.4);
+  }
+  .mf-stage:not(.active) .mf-status{
+    background:rgba(125,138,158,.08);color:var(--dim);border-color:rgba(125,138,158,.25);
+  }
+  .mf-arrow{
+    display:flex;align-items:center;justify-content:center;
+    color:var(--cyan);font-size:22px;opacity:.7;
+  }
+  .mf-arrow svg{filter:drop-shadow(0 0 6px rgba(0,212,255,.6))}
+  .mf-progress-rail{
+    max-width:1300px;margin:28px auto 0;height:6px;
+    background:rgba(0,212,255,.08);border:1px solid var(--line);border-radius:3px;
+    position:relative;overflow:hidden;
+  }
+  .mf-progress-rail i{
+    display:block;height:100%;width:33.33%;
+    background:linear-gradient(90deg,var(--green),var(--cyan));
+    box-shadow:var(--glow-green);
+    animation:mfRail 4s ease-in-out infinite alternate;
+  }
+  @keyframes mfRail{0%{width:33.33%}100%{width:66.66%}}
+  .mf-progress-lbl{
+    max-width:1300px;margin:8px auto 0;display:flex;justify-content:space-between;
+    font-size:10px;letter-spacing:.18em;color:var(--dim);
+  }
+  .mf-progress-lbl b{color:var(--green)}
+  @media(max-width:900px){
+    .mf-track{grid-template-columns:1fr;gap:10px}
+    .mf-arrow{transform:rotate(90deg)}
+    .mf-stage{min-height:auto}
+  }
+
   /* ── 14. FOOTER ── */
   #footer{padding:48px 24px 24px;text-align:center;position:relative;overflow:hidden}
   .footer-globe{position:absolute;inset:0;display:grid;place-items:center;opacity:.35;pointer-events:none}
@@ -611,29 +716,33 @@
 </div>
 <style>@keyframes scan{from{transform:translateX(-60%)}to{transform:translateX(380%)}}</style>
 <script>
-// Hide loading after Three.js loads (should work offline now)
+// ─── Preloader hide logic ───────────────────────────────────────────
+// NOTE: THREE is loaded as an ES module (import * as THREE from 'three')
+// inside a <script type="module">, which means THREE is module-scoped and
+// NOT attached to window. Therefore `typeof THREE === 'undefined'` in the
+// global scope, regardless of whether the module actually loaded. The
+// previous version of this function checked typeof THREE and — because it
+// was always undefined — showed a fake "LOAD ERROR / OFFLINE" message
+// forever, hiding the actual hero. The real content renders fine; we just
+// need to hide the splash unconditionally.
 function vvuHideLoading(){
-  var t=typeof THREE;
-  if(t!=='undefined'){
-    var el=document.getElementById('vvu-loading');
-    if(el){el.style.opacity='0';el.style.pointerEvents='none';el.style.transition='opacity 0.5s';
-    setTimeout(function(){if(el)el.style.display='none';},600);}
-  }else{
-    // Fallback: if local Three.js also failed, show message after 5s
-    setTimeout(function(){
-      var t2=typeof THREE;
-      if(t2==='undefined'){
-        document.getElementById('vvu-offline-msg').style.display='block';
-        var ld=document.querySelector('#vvu-loading > div:nth-child(2)');
-        if(ld){ld.textContent='LOAD ERROR';ld.style.color='#ef4444';}
-      }
-    },5000);
-  }
+  var el=document.getElementById('vvu-loading');
+  if(!el || el.style.display==='none') return;
+  el.style.opacity='0';
+  el.style.pointerEvents='none';
+  el.style.transition='opacity 0.4s ease';
+  setTimeout(function(){ if(el) el.style.display='none'; }, 500);
 }
-// Try hiding immediately (Three.js is now local, should load instantly)
-setTimeout(vvuHideLoading,500);
-// Also try after 2s (in case of slow device)
-setTimeout(vvuHideLoading,2000);
+// Hide as soon as the DOM is interactive (don't wait for the module)
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(vvuHideLoading, 200); });
+} else {
+  setTimeout(vvuHideLoading, 200);
+}
+// Hard fallback: no matter what, the splash is gone by 3s
+setTimeout(vvuHideLoading, 3000);
+// Belt-and-suspenders: hide again after the module definitely loaded
+window.addEventListener('load', function(){ setTimeout(vvuHideLoading, 100); });
 </script>
 
 
@@ -842,6 +951,7 @@ function switchLocation(id) {
     <a href="#metrics">Metrics</a>
     <a href="#alerts">Alerts</a>
     <a href="#security">Security</a>
+    <a href="#mission-flow" style="color:var(--green);border:1px solid rgba(0,255,136,.35);background:rgba(0,255,136,.08)">▶ Mission Flow</a>
   </nav>
   <div class="meta">
     <span class="dot"></span>
@@ -1492,6 +1602,79 @@ function switchLocation(id) {
       <div class="t">RBAC + Quorum</div>
       <div class="d">Role-bound scopes · 2-of-3 multisig for critical ops</div>
     </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     13b. MISSION FLOW — routine transition through the enterprise B2B
+          dashboard into the GIS Verification Bench ops console.
+     ═══════════════════════════════════════════════════════════════ -->
+<section id="mission-flow">
+  <div class="mf-head">
+    <span class="mf-id">§ 13b · ROUTINE TRANSITION</span>
+    <h2 class="mf-title">MISSION <em>FLOW</em></h2>
+    <span class="mf-sub">LANDING → ENTERPRISE B2B → OPERATIONS</span>
+  </div>
+
+  <div class="mf-track">
+    <!-- STAGE 01 — Spatial Intelligence (this page) -->
+    <a class="mf-stage active" href="#hero" aria-label="Stage 1 — Spatial Intelligence Command Center (current view)">
+      <span class="mf-status">YOU ARE HERE</span>
+      <div class="mf-num">STAGE 01 / 03</div>
+      <h3>Spatial Intelligence</h3>
+      <div class="mf-stage-tag">COMMAND CENTER · THIS VIEW</div>
+      <p>Synthesized observability surface. YOLO edge-AI detections, Sentinel-2
+         remote sensing, BLE+TOTP secure authentication, fused into a single
+         geospatial decision layer. The first thing every operator sees on
+         entry — situational awareness, zero click required.</p>
+      <span class="mf-cta">RE-ENTER HERO <span class="arrow">↑</span></span>
+    </a>
+
+    <div class="mf-arrow" aria-hidden="true">
+      <svg width="36" height="20" viewBox="0 0 36 20" fill="none">
+        <path d="M2 10 H30 M22 3 L31 10 L22 17" stroke="#00d4ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <!-- STAGE 02 — Enterprise B2B Dashboard -->
+    <a class="mf-stage" href="/searm1-b2b-dashboard.html" aria-label="Stage 2 — Enterprise Business-to-Business Dashboard">
+      <span class="mf-status">NEXT</span>
+      <div class="mf-num">STAGE 02 / 03</div>
+      <h3>Enterprise B2B Dashboard</h3>
+      <div class="mf-stage-tag">PIPELINE · INDUSTRIAL TARGETS</div>
+      <p>The routine divides here into the business-to-business pipeline:
+         industrial targets, subsector loss analytics, tariff &amp;
+         effluent parameters, PDU proposals and active pilots. Decision-maker
+         funnel from first contact through closed pilot, with R-value
+         quantification per facility.</p>
+      <span class="mf-cta">ENTERPRISE DASHBOARD <span class="arrow">→</span></span>
+    </a>
+
+    <div class="mf-arrow" aria-hidden="true">
+      <svg width="36" height="20" viewBox="0 0 36 20" fill="none">
+        <path d="M2 10 H30 M22 3 L31 10 L22 17" stroke="#00d4ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <!-- STAGE 03 — GIS Verification Bench (current ops console) -->
+    <a class="mf-stage" href="/vvu-gis-bench.html" aria-label="Stage 3 — GIS Verification Bench operational console">
+      <span class="mf-status">FINAL</span>
+      <div class="mf-num">STAGE 03 / 03</div>
+      <h3>GIS Verification Bench</h3>
+      <div class="mf-stage-tag">OPERATIONS · FIELD CONSOLE</div>
+      <p>The routine transitions to the live verification layer — satellite
+         imagery, YOLO track field, leak detection, Bayesian localisation,
+         MNF baseline and the packed 52-byte v2 codec exercised end-to-end.
+         Dead-reckoning glide, chaos injection, and the full EIS evidence
+         pipeline running against the GIS bench.</p>
+      <span class="mf-cta">OPEN OPS CONSOLE <span class="arrow">→</span></span>
+    </a>
+  </div>
+
+  <div class="mf-progress-rail" aria-hidden="true"><i></i></div>
+  <div class="mf-progress-lbl">
+    <span>ROUTINE PROGRESS</span>
+    <span><b>1</b> OF 3 STAGES · 33.33%</span>
   </div>
 </section>
 

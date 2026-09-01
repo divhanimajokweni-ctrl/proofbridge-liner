@@ -80,27 +80,6 @@ tr:hover td{background:var(--bg-elev)}
 /* Mobile-first responsive */
 @media(max-width:768px){.stats-grid{grid-template-columns:1fr 1fr;gap:8px}.stat-card .value{font-size:1.2em}.subsector-bar .name{min-width:120px;font-size:0.65em}.subsector-bar .val{min-width:80px;font-size:0.6em}table{font-size:0.6em}th,td{padding:4px}.params-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.stats-grid{grid-template-columns:1fr}.params-grid{grid-template-columns:1fr}.header h1{font-size:0.9em}table{font-size:0.55em}}
-/* ── MISSION FLOW RAIL ── */
-.mf-rail{
-  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-  padding:8px 16px;background:linear-gradient(90deg,rgba(0,212,255,.06),rgba(0,255,136,.04));
-  border-bottom:1px solid var(--line);font-size:.65em;letter-spacing:.12em;
-}
-.mf-rail .mf-rail-label{color:var(--dim);text-transform:uppercase;margin-right:6px}
-.mf-rail .mf-chip{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:4px 10px;border:1px solid var(--line);border-radius:3px;
-  color:var(--dim);text-decoration:none;text-transform:uppercase;
-  background:rgba(13,20,29,.6);transition:.2s;
-}
-.mf-rail .mf-chip:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(0,212,255,.08)}
-.mf-rail .mf-chip.is-here{
-  color:var(--green);border-color:rgba(0,255,136,.55);background:rgba(0,255,136,.08);
-  box-shadow:0 0 12px rgba(0,255,136,.18);
-}
-.mf-rail .mf-chip.is-here::before{content:'●';color:var(--green)}
-.mf-rail .mf-chip .n{color:var(--cyan);font-weight:700}
-.mf-rail .mf-sep{color:var(--cyan);opacity:.6}
 </style>
 </head>
 <body>
@@ -111,14 +90,6 @@ tr:hover td{background:var(--bg-elev)}
   </div>
   <div class="badge">● ACTIVE · 5-GATE ROADMAP</div>
 </div>
-<nav class="mf-rail" aria-label="Mission Flow">
-  <span class="mf-rail-label">◀ MISSION FLOW</span>
-  <a class="mf-chip" href="/vvu-spatial-intelligence.html"><span class="n">01</span> Spatial Intelligence</a>
-  <span class="mf-sep">→</span>
-  <a class="mf-chip is-here" href="/searm1-b2b-dashboard.html"><span class="n">02</span> Enterprise B2B Dashboard</a>
-  <span class="mf-sep">→</span>
-  <a class="mf-chip" href="/vvu-gis-bench.html"><span class="n">03</span> GIS Verification Bench</a>
-</nav>
 <div class="container">
   <div class="stats-grid" id="stats-grid">
     <div class="stat-card"><div class="label">Pipeline Targets</div><div class="value" id="s-targets">—</div><div class="trend" id="s-targets-t">loading…</div></div>

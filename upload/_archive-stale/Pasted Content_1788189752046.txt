@@ -1,0 +1,801 @@
+asted Content_1788189718044.txt
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>▲ VVU · 3D GIS Bench v2.5</title>
+<!--
+  ▲ VENTURE VISION UBUNTU — GIS BENCH v2.5
+  ────────────────────────────────────────────────
+  - Geospatial 3D terrain with live YOLO tracks.
+  - Toggleable analytics sidebar (right).
+  - Geolocation (GPS) – fallback to Gqeberha.
+  - Visual modes: DEFAULT / FLIR / NVG.
+-->
+<style>
+  /* ── Reset & Base ── */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:100%; height:100%; overflow:hidden; font-family:'Courier New',monospace; background:#020617; color:#e2e8f0; }
+
+  /* ── 3D Canvas ── */
+  #three-canvas { display:block; width:100vw; height:100vh; }
+
+  /* ── Glassmorphism utils ── */
+  .glass {
+    background: rgba(15,23,42,0.7);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border:1px solid rgba(14,165,233,0.15);
+    box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  }
+
+  /* ── SIMULATION ADVISORY ── */
+  #advisory {
+    position:fixed; top:0; left:50%; transform:translateX(-50%);
+    background:#f59e0b; color:#000; padding:4px 24px;
+    font-size:10px; font-weight:700; letter-spacing:0.2em;
+    border-radius:0 0 12px 12px; z-index:100;
+    text-transform:uppercase; pointer-events:none;
+    box-shadow:0 4px 20px rgba(0,0,0,0.6);
+  }
+
+  /* ── HUD Header ── */
+  #hud-header {
+    position:fixed; top:20px; left:20px; right:20px;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    z-index:40; pointer-events:none;
+  }
+  #brand {
+    pointer-events:auto;
+    padding:10px 18px; border-radius:12px;
+    background:rgba(15,23,42,0.8); backdrop-filter:blur(12px);
+    border:1px solid rgba(14,165,233,0.2);
+  }
+  #brand h1 {
+    font-size:14px; font-weight:700; color:#34d399;
+    display:flex; align-items:center; gap:8px;
+    letter-spacing:0.05em;
+  }
+  #brand h1 svg { width:18px; height:18px; animation:pulse 2s infinite; }
+  #brand small {
+    display:block; font-size:9px; color:#94a3b8; margin-top:2px;
+    letter-spacing:0.1em; text-transform:uppercase;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+
+  #hud-controls {
+    display:flex; gap:8px; pointer-events:auto;
+    flex-wrap:wrap; justify-content:flex-end;
+  }
+  .btn-group {
+    background:rgba(15,23,42,0.8); backdrop-filter:blur(12px);
+    border:1px solid rgba(14,165,233,0.2); border-radius:8px;
+    display:flex; padding:4px; gap:2px;
+  }
+  .btn-group button {
+    background:transparent; border:none; padding:4px 10px;
+    border-radius:6px; font-size:9px; font-weight:700;
+    color:#94a3b8; cursor:pointer; transition:0.2s;
+    text-transform:uppercase; letter-spacing:0.05em;
+  }
+  .btn-group button:hover { color:#e2e8f0; }
+  .btn-group button.active {
+    background:#34d399; color:#020617; box-shadow:0 0 12px rgba(52,211,153,0.3);
+  }
+  .btn-group button.active-optics {
+    background:#0ea5e9; color:#020617;
+  }
+
+  /* ── Bottom Telemetry ── */
+  #telemetry {
+    position:fixed; bottom:24px; left:24px;
+    width:340px; padding:12px 16px; border-radius:12px;
+    background:rgba(15,23,42,0.85); backdrop-filter:blur(12px);
+    border:1px solid rgba(14,165,233,0.15);
+    z-index:40; pointer-events:none;
+  }
+  #telemetry h3 {
+    font-size:10px; color:#38bdf8; display:flex; align-items:center; gap:6px;
+    border-bottom:1px solid rgba(30,41,59,0.8); padding-bottom:6px; margin-bottom:8px;
+  }
+  #telemetry .grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:2px 12px;
+    font-size:9px; color:#94a3b8;
+  }
+  #telemetry .grid .val { text-align:right; font-weight:bold; color:#e2e8f0; }
+  #telemetry .grid .val.green { color:#34d399; }
+  #telemetry .grid .val.cyan { color:#38bdf8; }
+
+  /* ── Sidebar Toggle (right edge) ── */
+  #sidebar-toggle {
+    position:fixed; top:50%; right:16px; transform:translateY(-50%);
+    width:40px; height:100px; z-index:50;
+    background:rgba(15,23,42,0.8); backdrop-filter:blur(12px);
+    border:1px solid rgba(14,165,233,0.2); border-right:none;
+    border-radius:12px 0 0 12px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px; cursor:pointer; transition:0.3s;
+    box-shadow:-4px 0 20px rgba(0,0,0,0.6);
+    pointer-events:auto;
+  }
+  #sidebar-toggle:hover { background:rgba(30,41,59,0.9); border-color:#34d399; }
+  #sidebar-toggle .dot {
+    width:6px; height:6px; border-radius:50%; background:#34d399;
+    animation:pulse 1.5s infinite;
+  }
+  #sidebar-toggle svg { width:22px; height:22px; color:#94a3b8; transition:0.3s; }
+  #sidebar-toggle:hover svg { color:#34d399; }
+  #sidebar-toggle .label {
+    font-size:7px; font-weight:700; color:#64748b;
+    text-transform:uppercase; letter-spacing:0.1em;
+    writing-mode:vertical-rl; transform:rotate(180deg);
+    margin-top:4px;
+  }
+  #sidebar-toggle.open { right:360px; }  /* when sidebar is open, move button */
+
+  /* ── Analytics Sidebar ── */
+  #analytics-sidebar {
+    position:fixed; top:0; right:0; width:380px; height:100%;
+    background:rgba(15,23,42,0.95); backdrop-filter:blur(20px);
+    border-left:1px solid rgba(14,165,233,0.2);
+    box-shadow:-10px 0 40px rgba(0,0,0,0.8);
+    z-index:45; overflow-y:auto; padding:24px 20px;
+    transform:translateX(100%);
+    transition:transform 0.35s cubic-bezier(0.22,1,0.36,1);
+    pointer-events:auto;
+  }
+  #analytics-sidebar.open { transform:translateX(0); }
+
+  /* scrollbar style */
+  #analytics-sidebar::-webkit-scrollbar { width:4px; }
+  #analytics-sidebar::-webkit-scrollbar-track { background:transparent; }
+  #analytics-sidebar::-webkit-scrollbar-thumb { background:#334155; border-radius:4px; }
+
+  #analytics-sidebar .close-btn {
+    position:absolute; top:16px; right:16px;
+    background:transparent; border:none; color:#94a3b8; font-size:20px;
+    cursor:pointer; transition:0.2s;
+  }
+  #analytics-sidebar .close-btn:hover { color:#e2e8f0; }
+
+  .analytics-section {
+    margin-bottom:24px;
+  }
+  .analytics-section h2 {
+    font-size:12px; font-weight:700; color:#38bdf8;
+    display:flex; align-items:center; gap:8px;
+    border-bottom:1px solid #1e293b; padding-bottom:10px; margin-bottom:12px;
+  }
+  .analytics-card {
+    background:rgba(2,6,23,0.6); border:1px solid #1e293b; border-radius:10px;
+    padding:14px; margin-bottom:16px;
+  }
+  .analytics-card .title {
+    font-size:10px; font-weight:700; color:#34d399;
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:8px;
+  }
+  .analytics-card .title .badge {
+    font-size:9px; color:#94a3b8; font-weight:400;
+  }
+  .stat-row {
+    display:flex; justify-content:space-between; font-size:9px; color:#94a3b8;
+    padding:2px 0;
+  }
+  .stat-row .value { color:#e2e8f0; font-weight:bold; }
+  .stat-row .value.highlight { color:#34d399; }
+  .stat-row .value.warning { color:#f59e0b; }
+  .stat-row .value.danger { color:#ef4444; }
+  .progress-bar {
+    width:100%; height:4px; background:#1e293b; border-radius:4px;
+    margin:4px 0 8px; overflow:hidden;
+  }
+  .progress-bar .fill {
+    height:100%; background:#38bdf8; border-radius:4px;
+    transition:width 0.8s ease;
+  }
+  .grid-2col {
+    display:grid; grid-template-columns:1fr 1fr; gap:6px 12px;
+  }
+
+  /* ── Visual mode CSS filters ── */
+  .mode-flir #three-canvas {
+    filter: hue-rotate(180deg) brightness(0.95) contrast(1.25);
+  }
+  .mode-nvg #three-canvas {
+    filter: saturate(1.5) contrast(1.25) brightness(1.1) sepia(0.2) hue-rotate(80deg);
+  }
+  /* Green phosphor overlay for NVG */
+  .mode-nvg::after {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:5;
+    background:radial-gradient(circle at center, rgba(0,255,0,0.03) 0%, rgba(0,0,0,0.3) 100%);
+  }
+
+  /* ── Responsive tweaks ── */
+  @media (max-width:640px) {
+    #hud-header { flex-direction:column; gap:8px; align-items:stretch; }
+    #hud-controls { justify-content:flex-start; }
+    #telemetry { left:12px; right:12px; width:auto; bottom:12px; }
+    #analytics-sidebar { width:100%; }
+    #sidebar-toggle { right:8px; width:32px; height:80px; }
+    #sidebar-toggle.open { right:calc(100% - 32px); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Advisory banner -->
+<div id="advisory">SIMULATION WORKSPACE — NOT MUNICIPAL OPERATIONAL SCADA</div>
+
+<!-- 3D Canvas container -->
+<div id="three-canvas"></div>
+
+<!-- HUD Header -->
+<header id="hud-header">
+  <div id="brand" class="glass">
+    <h1>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+      VENTURE VISION UBUNTU — 3D GIS BENCH
+    </h1>
+    <small>SANS 10112 / EIS v1.0 EVIDENCE COMPLIANT PLATFORM</small>
+  </div>
+  <div id="hud-controls">
+    <!-- Layer Toggles -->
+    <div class="btn-group" id="layer-group">
+      <button data-layer="TERRAIN" class="active">TERRAIN</button>
+      <button data-layer="HEATMAP">HEATMAP</button>
+      <button data-layer="INFRASTRUCTURE">INFRA</button>
+    </div>
+    <!-- Optics Modes -->
+    <div class="btn-group" id="optics-group">
+      <button data-mode="DEFAULT" class="active active-optics">DEFAULT</button>
+      <button data-mode="FLIR">FLIR</button>
+      <button data-mode="NVG">NVG</button>
+    </div>
+  </div>
+</header>
+
+<!-- Bottom Telemetry -->
+<div id="telemetry" class="glass">
+  <h3>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M8 2v20M16 2v20M2 8h20M2 16h20"/></svg>
+    LOCAL NODE PAIRING STATUS
+  </h3>
+  <div class="grid">
+    <span>ACTIVE GATEWAY:</span><span class="val green">VVU-HG-NMBM-01</span>
+    <span>PAIRING MECHANISM:</span><span class="val">BLE + TOTP HANDSHAKE</span>
+    <span>MFA CODE SYNC:</span><span class="val cyan">VERIFIED_CANDIDATE</span>
+    <span>ENVELOPE COMPLIANCE:</span><span class="val green">SANS 1200 / PASS</span>
+  </div>
+</div>
+
+<!-- Sidebar Toggle Button -->
+<div id="sidebar-toggle">
+  <div class="dot"></div>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="9 18 15 12 9 6"></polyline>
+  </svg>
+  <span class="label">ANALYTICS</span>
+</div>
+
+<!-- Analytics Sidebar -->
+<aside id="analytics-sidebar">
+  <button class="close-btn" id="close-sidebar">✕</button>
+  <div style="padding-top:20px;">
+    <h2 style="font-size:14px; color:#38bdf8; display:flex; align-items:center; gap:8px; border-bottom:1px solid #1e293b; padding-bottom:14px; margin-bottom:20px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      METROPOLITAN METRICS
+    </h2>
+
+    <!-- Section: System Performance -->
+    <div class="analytics-card">
+      <div class="title">
+        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px;"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg> SYSTEM PERFORMANCE</span>
+        <span class="badge" id="fps-badge">60 FPS</span>
+      </div>
+      <div class="stat-row"><span>FRAME RENDER TIME</span><span class="value" id="frame-ms">16.6 ms</span></div>
+      <div class="stat-row"><span>ACTIVE SCADA CALLS</span><span class="value" id="api-calls">12 /s</span></div>
+      <div class="stat-row"><span>TOTAL B2B REQUESTS</span><span class="value highlight" id="api-requests">148 req</span></div>
+    </div>
+
+    <!-- Section: People Counter -->
+    <div class="analytics-card">
+      <div class="title">
+        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> PEOPLE COUNTER (YOLO)</span>
+        <span class="badge" id="people-total">1,077</span>
+      </div>
+      <div class="stat-row"><span>PUBLIC STREETWAYS</span><span class="value" id="people-street">542</span></div>
+      <div class="progress-bar"><div class="fill" id="bar-street" style="width:50%"></div></div>
+      <div class="stat-row"><span>COMMERCIAL SIDEWALKS</span><span class="value" id="people-sidewalk">384</span></div>
+      <div class="progress-bar"><div class="fill" id="bar-sidewalk" style="width:36%"></div></div>
+      <div class="stat-row"><span>ALLEYWAYS & BYPASSES</span><span class="value" id="people-alley">151</span></div>
+      <div class="progress-bar"><div class="fill" id="bar-alley" style="width:14%"></div></div>
+    </div>
+
+    <!-- Section: Vehicle Breakdown -->
+    <div class="analytics-card">
+      <div class="title">
+        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px;"><rect x="1" y="3" width="15" height="13"/><polyline points="16 8 20 8 23 11 23 16 16 16"/><circle cx="5.5" cy="18" r="2.5"/><circle cx="18.5" cy="18" r="2.5"/></svg> METRO VEHICLE METRICS</span>
+        <span class="badge" id="vehicle-total">TOTAL: 45</span>
+      </div>
+      <div class="grid-2col">
+        <div class="stat-row"><span>HEAVY TRUCKS</span><span class="value" id="veh-trucks">8</span></div>
+        <div class="stat-row"><span>TRANSIT BUSES</span><span class="value" id="veh-buses">4</span></div>
+        <div class="stat-row"><span>COMMERCIAL CARS</span><span class="value" id="veh-cars">28</span></div>
+        <div class="stat-row"><span>LOGISTICS VANS</span><span class="value" id="veh-vans">5</span></div>
+      </div>
+    </div>
+
+    <!-- Section: Marso Traffic -->
+    <div class="analytics-card">
+      <div class="title">
+        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px;"><rect x="2" y="2" width="20" height="8"/><path d="M6 10v8M18 10v8M10 18h4"/></svg> MARSO TRAFFIC FLOWS</span>
+      </div>
+      <div class="stat-row"><span>LIVESTOCK / FLOW</span><span class="value highlight" id="marso-animals">12 units/h</span></div>
+      <div class="stat-row"><span>VEHICULAR FLUX</span><span class="value highlight" id="marso-vehicles">31 trans/h</span></div>
+    </div>
+
+    <!-- Section: Factory Inspections -->
+    <div class="analytics-card">
+      <div class="title">
+        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg> FACTORY INSPECTIONS</span>
+        <span class="badge" id="factory-yield">99.4% YIELD</span>
+      </div>
+      <div class="stat-row"><span>DETECTED ANOMALIES/DEFECTS</span><span class="value danger" id="factory-defects">3 LIMIT-VIOLATIONS</span></div>
+    </div>
+
+    <!-- Section: Retail & Foot Traffic -->
+    <div class="analytics-card">
+      <div class="title">
+        <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:6px;"><circle cx="12" cy="12" r="10"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg> RETAIL & FOOT TRAFFIC</span>
+      </div>
+      <div class="stat-row"><span>STORE CUSTOMERS</span><span class="value" id="retail-customers">188</span></div>
+      <div class="stat-row"><span>ZONE FOOT TRAFFIC</span><span class="value" id="retail-foot">420 people</span></div>
+    </div>
+  </div>
+</aside>
+
+<!-- Three.js + logic -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ─── CONFIG ────────────────────────────────────────────────
+const GQEBERHA_LAT = -33.9608;
+const GQEBERHA_LNG = 25.6022;
+const DEG = Math.PI / 180;
+
+// ─── DOM REFS ──────────────────────────────────────────────
+const canvasContainer = document.getElementById('three-canvas');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const sidebar = document.getElementById('analytics-sidebar');
+const closeSidebar = document.getElementById('close-sidebar');
+
+// ─── GEOLOCATION ────────────────────────────────────────────
+let originLat = GQEBERHA_LAT;
+let originLng = GQEBERHA_LNG;
+let gpsStatus = 'STANDBY';
+
+if ('geolocation' in navigator) {
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      originLat = pos.coords.latitude;
+      originLng = pos.coords.longitude;
+      gpsStatus = 'LOCKED';
+      // Update scene center after terrain is loaded (see below)
+    },
+    err => {
+      console.warn('Geolocation fallback to Gqeberha', err);
+      gpsStatus = 'FAILED';
+    },
+    { enableHighAccuracy: true, timeout: 5000 }
+  );
+}
+
+// ─── ENU CONVERSION ────────────────────────────────────────
+const A = 6378137.0, E2 = 6.69437999014e-3;
+function g2e(lat, lon, alt) {
+  const la = lat * DEG, lo = lon * DEG;
+  const s = Math.sin(la), c = Math.cos(la);
+  const n = A / Math.sqrt(1 - E2 * s * s);
+  return [
+    (n + alt) * c * Math.cos(lo),
+    (n + alt) * c * Math.sin(lo),
+    (n * (1 - E2) + alt) * s
+  ];
+}
+class EnuOrigin {
+  constructor(lat, lon, alt = 0) {
+    this.o = g2e(lat, lon, alt);
+    const la = lat * DEG, lo = lon * DEG;
+    this.sl = Math.sin(la); this.cl = Math.cos(la);
+    this.so = Math.sin(lo); this.co = Math.cos(lo);
+    this.lat = lat; this.lon = lon;
+  }
+  fromLlah(lat, lon, alt) {
+    const e = g2e(lat, lon, alt);
+    const dx = e[0] - this.o[0], dy = e[1] - this.o[1], dz = e[2] - this.o[2];
+    return [
+      -this.so * dx + this.co * dy,
+      -this.sl * this.co * dx - this.sl * this.so * dy + this.cl * dz,
+       this.cl * this.co * dx + this.cl * this.so * dy + this.sl * dz
+    ];
+  }
+}
+let ORIGIN = new EnuOrigin(originLat, originLng, 0);
+
+// ─── THREE.JS SETUP ────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+canvasContainer.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const DARK_BG = 0x020617;
+scene.background = new THREE.Color(DARK_BG);
+scene.fog = new THREE.FogExp2(DARK_BG, 0.00016);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 40000);
+camera.position.set(300, 900, 1400);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI / 2.15;
+controls.target.set(0, 0, 0);
+controls.update();
+
+// Lights
+scene.add(new THREE.HemisphereLight(0x0ea5e9, 0x020617, 0.9));
+const sun = new THREE.DirectionalLight(0x93c5fd, 0.8);
+sun.position.set(-2000, 3000, 1500);
+scene.add(sun);
+
+// ─── TERRAIN ────────────────────────────────────────────────
+// Use synthetic fallback (fast) – no external DEM to keep it self-contained.
+const extent = 3600;
+const geo = new THREE.PlaneGeometry(extent, extent, 128, 128);
+geo.rotateX(-Math.PI / 2);
+const pos = geo.attributes.position;
+const synth = (e, n) => 10 * Math.sin(e * 0.0035) * Math.cos(n * 0.0042) + 6 * Math.sin(e * 0.011 + 1.7) * Math.sin(n * 0.009) + 3;
+for (let i = 0; i < pos.count; i++) {
+  pos.setY(i, synth(pos.getX(i), -pos.getZ(i)));
+}
+geo.computeVertexNormals();
+const terrainMat = new THREE.MeshStandardMaterial({
+  color: 0x0b1220,
+  roughness: 0.95,
+  metalness: 0.05,
+  flatShading: true,
+});
+const terrain = new THREE.Mesh(geo, terrainMat);
+scene.add(terrain);
+
+// ─── NEON BEAMS (simplified for performance) ──────────────
+const beamMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.15, wireframe: false });
+const beamGeo = new THREE.CylinderGeometry(0.5, 0.5, 20, 8);
+const beam1 = new THREE.Mesh(beamGeo, beamMat);
+beam1.position.set(-200, 10, 300);
+scene.add(beam1);
+const beam2 = new THREE.Mesh(beamGeo, beamMat);
+beam2.position.set(400, 10, -150);
+scene.add(beam2);
+// Add some point lights for glow
+const glowLight = new THREE.PointLight(0x22d3ee, 0.5, 400);
+glowLight.position.set(0, 100, 0);
+scene.add(glowLight);
+
+// ─── TRACK FIELD (YOLO simulation) ────────────────────────
+const CLASS_COLOR = { person: 0x22d3ee, vehicle: 0xa3e635, truck: 0xfb923c, unknown: 0x94a3b8 };
+const TRACK_TTL = 1500;
+const LERP_RATE = 12;
+
+class TrackField {
+  constructor(max = 256) {
+    const g = new THREE.BoxGeometry(1, 1, 1);
+    g.translate(0, 0.5, 0);
+    this.fill = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.2, depthWrite: false }), max);
+    this.fill.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.fill.frustumCulled = false;
+    this.edges = new THREE.InstancedMesh(g, new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.6 }), max);
+    this.edges.frustumCulled = false;
+    this.fill.setColorAt(0, new THREE.Color(1,1,1));
+    this.edges.instanceMatrix = this.fill.instanceMatrix;
+    this.edges.instanceColor = this.fill.instanceColor;
+    this.max = max;
+    this.tracks = new Map();
+    this.dummy = new THREE.Object3D();
+    this.col = new THREE.Color();
+    this.pred = new THREE.Vector3();
+    scene.add(this.fill, this.edges);
+  }
+  ingest(t) {
+    let r = this.tracks.get(t.id);
+    if (!r) {
+      r = {
+        cur: new THREE.Vector3(...t.pos),
+        tgt: new THREE.Vector3(...t.pos),
+        cd: new THREE.Vector3(1, 1, 1),
+        td: new THREE.Vector3(...t.dims),
+        yaw: t.yaw || 0,
+        tYaw: t.yaw || 0,
+        vel: new THREE.Vector3(...t.vel),
+        tVel: new THREE.Vector3(...t.vel),
+        hasHdg: t.hasHdg || false,
+        conf: t.conf || 0.8,
+        cls: t.cls || 'unknown',
+        seen: t.seen || performance.now(),
+        born: performance.now()
+      };
+      this.tracks.set(t.id, r);
+    } else {
+      r.tgt.set(...t.pos);
+      r.td.set(...t.dims);
+      r.tYaw = t.yaw || 0;
+      r.tVel.set(...t.vel);
+      r.hasHdg = t.hasHdg || false;
+      r.conf = t.conf || 0.8;
+      r.cls = t.cls || 'unknown';
+      r.seen = performance.now();
+    }
+  }
+  update(dt, now) {
+    const k = 1 - Math.exp(-dt * LERP_RATE);
+    let i = 0;
+    for (const [id, r] of this.tracks) {
+      if (now - r.seen > TRACK_TTL) { this.tracks.delete(id); continue; }
+      r.cur.lerp(r.tgt, k);
+      r.cd.lerp(r.td, k);
+      const dy = r.tYaw - r.yaw;
+      r.yaw += Math.atan2(Math.sin(dy), Math.cos(dy)) * k;
+      const s = Math.max(0.01, 1 - (now - r.seen) / TRACK_TTL);
+      this.dummy.position.copy(r.cur);
+      this.dummy.rotation.set(0, r.yaw, 0);
+      this.dummy.scale.set(r.cd.x * s, r.cd.y * s, r.cd.z * s);
+      this.dummy.updateMatrix();
+      this.fill.setMatrixAt(i, this.dummy.matrix);
+      this.col.setHex(CLASS_COLOR[r.cls] || CLASS_COLOR.unknown);
+      this.fill.setColorAt(i, this.col);
+      i++;
+      if (i >= this.max) break;
+    }
+    this.fill.count = this.edges.count = i;
+    this.fill.instanceMatrix.needsUpdate = true;
+    if (this.fill.instanceColor) this.fill.instanceColor.needsUpdate = true;
+  }
+}
+const field = new TrackField(256);
+
+// ─── SIMULATE TRACKS ──────────────────────────────────────
+// Generate some random moving agents around the origin
+const agents = [];
+for (let i = 0; i < 14; i++) {
+  const angle = Math.random() * 2 * Math.PI;
+  const dist = 300 + Math.random() * 800;
+  const speed = 2 + Math.random() * 6;
+  const dir = Math.random() * 2 * Math.PI;
+  const cls = ['person', 'vehicle', 'truck'][i % 3];
+  agents.push({
+    id: 'trk-' + i,
+    cls: cls,
+    conf: 0.7 + Math.random() * 0.25,
+    pos: new THREE.Vector3(dist * Math.cos(angle), 0, dist * Math.sin(angle)),
+    dir: dir,
+    speed: speed,
+    dims: cls === 'person' ? [0.5, 0.5, 1.7] : cls === 'truck' ? [8, 2.5, 3] : [4.5, 1.8, 1.5],
+    yaw: 0
+  });
+}
+
+function simulateTracks() {
+  const now = performance.now();
+  for (const a of agents) {
+    a.pos.x += Math.cos(a.dir) * a.speed * 0.1;
+    a.pos.z += Math.sin(a.dir) * a.speed * 0.1;
+    // Bounce off boundaries
+    if (Math.abs(a.pos.x) > 800) a.dir = Math.PI - a.dir;
+    if (Math.abs(a.pos.z) > 800) a.dir = -a.dir;
+    a.yaw = -a.dir;
+    const track = {
+      id: a.id,
+      cls: a.cls,
+      conf: a.conf,
+      pos: [a.pos.x, 0, a.pos.z],
+      dims: a.dims,
+      yaw: a.yaw,
+      vel: [Math.cos(a.dir) * a.speed, 0, Math.sin(a.dir) * a.speed],
+      hasHdg: true,
+      seen: now
+    };
+    field.ingest(track);
+  }
+}
+setInterval(simulateTracks, 100);
+
+// ─── GEOLOCATION CENTERING ─────────────────────────────────
+function centerOnOrigin(lat, lon) {
+  // Recreate ORIGIN (we keep it global)
+  ORIGIN = new EnuOrigin(lat, lon, 0);
+  // Move camera and controls target to (0,0,0) relative to new origin
+  controls.target.set(0, 0, 0);
+  camera.position.set(300, 900, 1400);
+  controls.update();
+}
+// If geolocation succeeded, center there
+if (gpsStatus === 'LOCKED') {
+  centerOnOrigin(originLat, originLng);
+} else {
+  centerOnOrigin(GQEBERHA_LAT, GQEBERHA_LNG);
+}
+
+// ─── ANALYTICS SIMULATION ──────────────────────────────────
+const metrics = {
+  fps: 60,
+  frameMs: 16.6,
+  apiCalls: 12,
+  apiRequests: 148,
+  peopleTotal: 1077,
+  peopleStreet: 542,
+  peopleSidewalk: 384,
+  peopleAlley: 151,
+  vehiclesTotal: 45,
+  vehTrucks: 8,
+  vehBuses: 4,
+  vehCars: 28,
+  vehVans: 5,
+  marsoAnimals: 12,
+  marsoVehicles: 31,
+  factoryDefects: 3,
+  factoryYield: 99.4,
+  retailCustomers: 188,
+  retailFoot: 420
+};
+
+function updateAnalyticsUI() {
+  document.getElementById('fps-badge').textContent = `${metrics.fps} FPS`;
+  document.getElementById('frame-ms').textContent = `${metrics.frameMs} ms`;
+  document.getElementById('api-calls').textContent = `${metrics.apiCalls} /s`;
+  document.getElementById('api-requests').textContent = `${metrics.apiRequests} req`;
+
+  document.getElementById('people-total').textContent = metrics.peopleTotal;
+  document.getElementById('people-street').textContent = metrics.peopleStreet;
+  document.getElementById('people-sidewalk').textContent = metrics.peopleSidewalk;
+  document.getElementById('people-alley').textContent = metrics.peopleAlley;
+  document.getElementById('bar-street').style.width = `${(metrics.peopleStreet / metrics.peopleTotal * 100)}%`;
+  document.getElementById('bar-sidewalk').style.width = `${(metrics.peopleSidewalk / metrics.peopleTotal * 100)}%`;
+  document.getElementById('bar-alley').style.width = `${(metrics.peopleAlley / metrics.peopleTotal * 100)}%`;
+
+  document.getElementById('vehicle-total').textContent = `TOTAL: ${metrics.vehiclesTotal}`;
+  document.getElementById('veh-trucks').textContent = metrics.vehTrucks;
+  document.getElementById('veh-buses').textContent = metrics.vehBuses;
+  document.getElementById('veh-cars').textContent = metrics.vehCars;
+  document.getElementById('veh-vans').textContent = metrics.vehVans;
+
+  document.getElementById('marso-animals').textContent = `${metrics.marsoAnimals} units/h`;
+  document.getElementById('marso-vehicles').textContent = `${metrics.marsoVehicles} trans/h`;
+
+  document.getElementById('factory-yield').textContent = `${metrics.factoryYield}% YIELD`;
+  document.getElementById('factory-defects').textContent = `${metrics.factoryDefects} LIMIT-VIOLATIONS`;
+
+  document.getElementById('retail-customers').textContent = metrics.retailCustomers;
+  document.getElementById('retail-foot').textContent = `${metrics.retailFoot} people`;
+}
+
+// Update metrics every 2.5 seconds with random variations
+setInterval(() => {
+  metrics.fps = Math.max(20, 60 + Math.floor(Math.random() * 10) - 5);
+  metrics.frameMs = parseFloat((1000 / metrics.fps).toFixed(1));
+  metrics.apiCalls = Math.max(5, metrics.apiCalls + Math.floor(Math.random() * 3) - 1);
+  metrics.apiRequests += Math.floor(Math.random() * 5);
+  metrics.peopleTotal += Math.floor(Math.random() * 20) - 10;
+  metrics.peopleStreet = Math.max(0, metrics.peopleStreet + Math.floor(Math.random() * 10) - 5);
+  metrics.peopleSidewalk = Math.max(0, metrics.peopleSidewalk + Math.floor(Math.random() * 8) - 4);
+  metrics.peopleAlley = Math.max(0, metrics.peopleAlley + Math.floor(Math.random() * 5) - 2);
+  metrics.vehiclesTotal = Math.max(20, metrics.vehiclesTotal + Math.floor(Math.random() * 4) - 2);
+  metrics.vehTrucks = Math.max(2, metrics.vehTrucks + Math.floor(Math.random() * 2) - 1);
+  metrics.vehBuses = Math.max(1, metrics.vehBuses + Math.floor(Math.random() * 2) - 1);
+  metrics.vehCars = Math.max(10, metrics.vehCars + Math.floor(Math.random() * 4) - 2);
+  metrics.vehVans = Math.max(1, metrics.vehVans + Math.floor(Math.random() * 2) - 1);
+  metrics.marsoAnimals = Math.max(5, metrics.marsoAnimals + Math.floor(Math.random() * 4) - 2);
+  metrics.marsoVehicles = Math.max(15, metrics.marsoVehicles + Math.floor(Math.random() * 4) - 2);
+  metrics.factoryDefects = Math.max(0, metrics.factoryDefects + (Math.random() > 0.8 ? 1 : -1));
+  metrics.factoryYield = Math.min(99.9, Math.max(98.0, metrics.factoryYield + (Math.random() - 0.5) * 0.4));
+  metrics.retailCustomers = Math.max(80, metrics.retailCustomers + Math.floor(Math.random() * 12) - 6);
+  metrics.retailFoot = Math.max(200, metrics.retailFoot + Math.floor(Math.random() * 20) - 10);
+  updateAnalyticsUI();
+}, 2500);
+
+// ─── SIDEBAR TOGGLE ────────────────────────────────────────
+let sidebarOpen = false;
+function toggleSidebar(open) {
+  sidebarOpen = (open !== undefined) ? open : !sidebarOpen;
+  sidebar.classList.toggle('open', sidebarOpen);
+  sidebarToggle.classList.toggle('open', sidebarOpen);
+}
+sidebarToggle.addEventListener('click', () => toggleSidebar());
+closeSidebar.addEventListener('click', () => toggleSidebar(false));
+
+// ─── LAYER & OPTICS TOGGLES ──────────────────────────────
+document.querySelectorAll('#layer-group button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#layer-group button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const layer = btn.dataset.layer;
+    // Change terrain color / style based on layer (simple mock)
+    if (layer === 'HEATMAP') {
+      terrainMat.color.setHex(0x7f1d1d);
+      terrainMat.emissive = new THREE.Color(0xff4500);
+      terrainMat.emissiveIntensity = 0.2;
+    } else if (layer === 'INFRASTRUCTURE') {
+      terrainMat.color.setHex(0x1e293b);
+      terrainMat.emissive = new THREE.Color(0x38bdf8);
+      terrainMat.emissiveIntensity = 0.1;
+    } else {
+      terrainMat.color.setHex(0x0b1220);
+      terrainMat.emissive = new THREE.Color(0x000000);
+      terrainMat.emissiveIntensity = 0;
+    }
+  });
+});
+
+document.querySelectorAll('#optics-group button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#optics-group button').forEach(b => b.classList.remove('active', 'active-optics'));
+    btn.classList.add('active', 'active-optics');
+    const mode = btn.dataset.mode;
+    document.body.className = `mode-${mode.toLowerCase()}`;
+  });
+});
+
+// ─── RESIZE ──────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── RENDER LOOP ────────────────────────────────────────────
+const clock = new THREE.Clock();
+let frameCount = 0, lastFpsUpdate = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  const now = performance.now();
+
+  // Update tracks
+  field.update(dt, now);
+
+  // Update controls
+  controls.update();
+
+  // Simple pulse for glow
+  glowLight.intensity = 0.3 + 0.2 * Math.sin(now * 0.002);
+
+  // Render
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// ─── BOOT SPLASH (Fade out) ──────────────────────────────
+// Not needed, but we keep a small delay to show terrain building
+setTimeout(() => {
+  // ensure everything is visible
+}, 200);
+
+console.log('▲ VVU GIS Bench v2.5 — Operational');
+</script>
+</body>
+</html>

@@ -1,0 +1,1012 @@
+Understood — time to **level up**.  
+
+You now have a **ModelArts pipeline** (YOLO object detection) with real classes: water pooling, unauthorized vehicles, excavation equipment, infrastructure cracks, and maintenance techs. Your dashboard should **stop simulating generic tracks** and start displaying **these real‑world detections** with appropriate colours, labels, and confidence scores.
+
+We’ll upgrade the 3D GIS Bench to:
+
+- Use the **ModelArts class set** (names & colours).
+- Show **detection markers** that look like real alerts (with confidence rings).
+- Add a **“ModelArts” panel** in the analytics sidebar showing per‑class counts.
+- Provide a **demo mode** that loads a sample detection JSON (mimicking inference results from the edge).
+- Keep the satellite map and POIs – they now serve as the real‑world backdrop for these detections.
+
+---
+
+## 📁 Final `index.html` – ModelArts‑Integrated 3D GIS Bench
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>▲ VVU · 3D GIS Bench v2.6 – ModelArts</title>
+<style>
+  /* ── same base styles as before, plus a few additions ── */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:100%; height:100%; overflow:hidden; font-family:'Courier New',monospace; background:#020617; color:#e2e8f0; }
+  #three-canvas { display:block; width:100vw; height:100vh; }
+  .glass { background: rgba(15,23,42,0.7); backdrop-filter: blur(12px) saturate(180%); -webkit-backdrop-filter: blur(12px) saturate(180%); border:1px solid rgba(14,165,233,0.15); box-shadow:0 8px 32px rgba(0,0,0,0.5); }
+  #advisory { position:fixed; top:0; left:50%; transform:translateX(-50%); background:#f59e0b; color:#000; padding:4px 24px; font-size:10px; font-weight:700; letter-spacing:0.2em; border-radius:0 0 12px 12px; z-index:100; text-transform:uppercase; pointer-events:none; box-shadow:0 4px 20px rgba(0,0,0,0.6); }
+  #api-warning { position:fixed; top:40px; left:50%; transform:translateX(-50%); background:#ef4444; color:#fff; padding:6px 18px; font-size:10px; font-weight:600; border-radius:8px; z-index:99; display:none; pointer-events:none; box-shadow:0 4px 12px rgba(0,0,0,0.5); letter-spacing:0.05em; }
+  /* ── HUD and other elements identical to previous version ── */
+  /* ... (keep all the CSS from the last final version) ... */
+  /* add ModelArts class color hints in the sidebar */
+  .class-badge { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+  .ma-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; font-size:9px; }
+  .ma-stats-grid .label { color:#94a3b8; }
+  .ma-stats-grid .value { font-weight:bold; text-align:right; }
+</style>
+</head>
+<body>
+<!-- Advisory -->
+<div id="advisory">SIMULATION WORKSPACE — MODELARTS DETECTION DEMO</div>
+<div id="api-warning">⚠️ Google Maps API key missing – map overlay disabled</div>
+
+<!-- 3D Canvas -->
+<div id="three-canvas"></div>
+
+<!-- Map overlay -->
+<div id="map-overlay" class="glass">
+  <div id="google-map-container" class="map-container"></div>
+</div>
+
+<!-- HUD Header -->
+<header id="hud-header">
+  <div id="brand" class="glass">
+    <h1>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      VENTURE VISION UBUNTU — 3D GIS BENCH
+    </h1>
+    <small>ModelArts v1.0 – Gqeberha Leak Detection</small>
+  </div>
+  <div id="hud-controls">
+    <div class="btn-group" id="layer-group">
+      <button data-layer="TERRAIN" class="active">TERRAIN</button>
+      <button data-layer="HEATMAP">HEATMAP</button>
+      <button data-layer="INFRASTRUCTURE">INFRA</button>
+    </div>
+    <div class="btn-group" id="optics-group">
+      <button data-mode="DEFAULT" class="active active-optics">DEFAULT</button>
+      <button data-mode="FLIR">FLIR</button>
+      <button data-mode="NVG">NVG</button>
+    </div>
+    <button id="map-toggle" class="glass" style="pointer-events:auto; padding:6px 12px; border-radius:8px; background:rgba(15,23,42,0.8); border:1px solid rgba(14,165,233,0.2); color:#94a3b8; font-size:10px; cursor:pointer;">🗺 MAP</button>
+    <button id="demo-toggle" class="glass" style="pointer-events:auto; padding:6px 12px; border-radius:8px; background:rgba(15,23,42,0.8); border:1px solid #34d399; color:#34d399; font-size:10px; cursor:pointer;">📡 SIM</button>
+  </div>
+</header>
+
+<!-- Bottom Telemetry -->
+<div id="telemetry" class="glass">
+  <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M8 2v20M16 2v20M2 8h20M2 16h20"/></svg> MODELARTS EDGE NODE</h3>
+  <div class="grid">
+    <span>MODEL:</span><span class="val green">YOLOv8_Quantized</span>
+    <span>DEPLOYMENT:</span><span class="val cyan">Kria K26 (ONNX)</span>
+    <span>FRAME LATENCY:</span><span class="val" id="inference-ms">22 ms</span>
+    <span>DETECTIONS/s:</span><span class="val" id="detections-rate">12</span>
+  </div>
+</div>
+
+<!-- Sidebar Toggle -->
+<div id="sidebar-toggle">
+  <div class="dot"></div>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+  <span class="label">ANALYTICS</span>
+</div>
+
+<!-- Analytics Sidebar -->
+<aside id="analytics-sidebar">
+  <button class="close-btn" id="close-sidebar">✕</button>
+  <div style="padding-top:20px;">
+    <h2 style="font-size:14px; color:#38bdf8; display:flex; align-items:center; gap:8px; border-bottom:1px solid #1e293b; padding-bottom:14px; margin-bottom:20px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      MODELARTS DETECTION METRICS
+    </h2>
+
+    <!-- System Performance -->
+    <div class="analytics-card">
+      <div class="title"><span>⚡ SYSTEM PERFORMANCE</span><span class="badge" id="fps-badge">60 FPS</span></div>
+      <div class="stat-row"><span>FRAME RENDER TIME</span><span class="value" id="frame-ms">16.6 ms</span></div>
+      <div class="stat-row"><span>INFERENCE TIME</span><span class="value" id="inf-time">22 ms</span></div>
+      <div class="stat-row"><span>TOTAL DETECTIONS</span><span class="value highlight" id="total-dets">0</span></div>
+    </div>
+
+    <!-- Per-class counts (from ModelArts) -->
+    <div class="analytics-card">
+      <div class="title"><span>📊 CLASS BREAKDOWN</span></div>
+      <div class="ma-stats-grid" id="class-stats">
+        <span class="label"><span class="class-badge" style="background:#3b82f6;"></span>WATER_POOLING</span><span class="value" id="count-0">0</span>
+        <span class="label"><span class="class-badge" style="background:#ef4444;"></span>UNAUTHORIZED_VEHICLE</span><span class="value" id="count-1">0</span>
+        <span class="label"><span class="class-badge" style="background:#f59e0b;"></span>EXCAVATION_EQUIP</span><span class="value" id="count-2">0</span>
+        <span class="label"><span class="class-badge" style="background:#8b5cf6;"></span>INFRASTRUCTURE_CRACK</span><span class="value" id="count-3">0</span>
+        <span class="label"><span class="class-badge" style="background:#10b981;"></span>MAINTENANCE_TECH</span><span class="value" id="count-4">0</span>
+      </div>
+    </div>
+
+    <!-- Alert log -->
+    <div class="analytics-card">
+      <div class="title"><span>🚨 RECENT ALERTS</span></div>
+      <div id="alert-log" style="font-size:9px; color:#94a3b8; max-height:120px; overflow-y:auto;">
+        <div>— No alerts —</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- Google Maps API -->
+<script>
+  const GOOGLE_MAPS_API_KEY = 'AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0';
+  const hasValidKey = GOOGLE_MAPS_API_KEY && GOOGLE_MAPS_API_KEY.startsWith('AIzaSy') && GOOGLE_MAPS_API_KEY.length > 20;
+  window.hasValidKey = hasValidKey;
+  if (!hasValidKey) {
+    document.getElementById('api-warning').style.display = 'block';
+    console.warn('⚠️ Google Maps API key missing.');
+  } else {
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&callback=initGoogleMap&libraries=places&v=weekly`;
+    script.async = true; script.defer = true;
+    document.head.appendChild(script);
+  }
+</script>
+
+<!-- Three.js importmap -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ─── CONFIG ────────────────────────────────────────────────
+const DEG = Math.PI / 180;
+const GQEBERHA_LAT = -33.9608;
+const GQEBERHA_LNG = 25.6022;
+
+// ModelArts class definitions (from YAML)
+const CLASSES = [
+  { id: 0, name: 'ANOMALOUS_WATER_POOLING', color: 0x3b82f6 },
+  { id: 1, name: 'UNAUTHORIZED_VEHICLE', color: 0xef4444 },
+  { id: 2, name: 'EXCAVATION_EQUIPMENT', color: 0xf59e0b },
+  { id: 3, name: 'INFRASTRUCTURE_CRACK', color: 0x8b5cf6 },
+  { id: 4, name: 'MAINTENANCE_TECHNICIAN', color: 0x10b981 }
+];
+const CLASS_COLOR = Object.fromEntries(CLASSES.map(c => [c.name, c.color]));
+const CLASS_NAMES = CLASSES.map(c => c.name);
+
+// ─── DOM REFS ──────────────────────────────────────────────
+const canvasContainer = document.getElementById('three-canvas');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const sidebar = document.getElementById('analytics-sidebar');
+const closeSidebar = document.getElementById('close-sidebar');
+const mapToggleBtn = document.getElementById('map-toggle');
+const mapOverlay = document.getElementById('map-overlay');
+const demoBtn = document.getElementById('demo-toggle');
+
+// ─── ENU CONVERSION ────────────────────────────────────────
+const A = 6378137.0, E2 = 6.69437999014e-3;
+function g2e(lat, lon, alt) {
+  const la = lat * DEG, lo = lon * DEG;
+  const s = Math.sin(la), c = Math.cos(la);
+  const n = A / Math.sqrt(1 - E2 * s * s);
+  return [(n + alt) * c * Math.cos(lo), (n + alt) * c * Math.sin(lo), (n * (1 - E2) + alt) * s];
+}
+class EnuOrigin {
+  constructor(lat, lon, alt = 0) {
+    this.o = g2e(lat, lon, alt);
+    const la = lat * DEG, lo = lon * DEG;
+    this.sl = Math.sin(la); this.cl = Math.cos(la);
+    this.so = Math.sin(lo); this.co = Math.cos(lo);
+    this.lat = lat; this.lon = lon;
+  }
+  fromLlah(lat, lon, alt) {
+    const e = g2e(lat, lon, alt);
+    const dx = e[0] - this.o[0], dy = e[1] - this.o[1], dz = e[2] - this.o[2];
+    return [
+      -this.so * dx + this.co * dy,
+      -this.sl * this.co * dx - this.sl * this.so * dy + this.cl * dz,
+       this.cl * this.co * dx + this.cl * this.so * dy + this.sl * dz
+    ];
+  }
+}
+
+// ─── LOAD CONFIG ───────────────────────────────────────────
+let config = null;
+let targetLat = GQEBERHA_LAT, targetLng = GQEBERHA_LNG;
+try {
+  const res = await fetch('config.json');
+  if (res.ok) {
+    config = await res.json();
+    if (config.location?.coordinates) {
+      targetLat = config.location.coordinates.lat;
+      targetLng = config.location.coordinates.lng;
+    }
+  }
+} catch (e) { console.warn('config.json not found, using fallback'); }
+
+let ORIGIN = new EnuOrigin(targetLat, targetLng, 0);
+
+// ─── THREE.JS SETUP ──────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+canvasContainer.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020617);
+scene.fog = new THREE.FogExp2(0x020617, 0.0002);
+
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 40000);
+camera.position.set(200, 300, 500);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI / 2.15;
+controls.target.set(0, 0, 0);
+controls.update();
+
+// Lights
+scene.add(new THREE.HemisphereLight(0x0ea5e9, 0x020617, 0.9));
+const sun = new THREE.DirectionalLight(0x93c5fd, 0.8);
+sun.position.set(-2000, 3000, 1500);
+scene.add(sun);
+
+// ─── TERRAIN (satellite texture) ──────────────────────────
+const extent = 2000;
+const geo = new THREE.PlaneGeometry(extent, extent, 64, 64);
+geo.rotateX(-Math.PI / 2);
+const pos = geo.attributes.position;
+for (let i = 0; i < pos.count; i++) pos.setY(i, 0);
+geo.computeVertexNormals();
+
+const terrainMat = new THREE.MeshStandardMaterial({ roughness: 0.6, metalness: 0.1, side: THREE.DoubleSide });
+const terrain = new THREE.Mesh(geo, terrainMat);
+scene.add(terrain);
+
+// Load satellite
+const textureLoader = new THREE.TextureLoader();
+const satUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${targetLat},${targetLng}&zoom=16&size=640x640&maptype=satellite&key=${GOOGLE_MAPS_API_KEY}`;
+textureLoader.load(satUrl, (texture) => {
+  terrainMat.map = texture;
+  terrainMat.color.setHex(0xffffff);
+  terrainMat.needsUpdate = true;
+}, undefined, () => { terrainMat.color.setHex(0x2d3a4a); });
+
+// ─── MODELARTS DETECTION MANAGER ──────────────────────────
+let detections = [];
+let detectionMarkers = [];
+let isDemoMode = true;
+let frameCount = 0;
+
+// Sample detection data (simulating ModelArts output)
+function generateSampleDetections() {
+  const now = Date.now();
+  const count = 5 + Math.floor(Math.random() * 12);
+  const dets = [];
+  for (let i = 0; i < count; i++) {
+    const cls = CLASSES[Math.floor(Math.random() * CLASSES.length)];
+    const angle = Math.random() * 2 * Math.PI;
+    const radius = 50 + Math.random() * 300;
+    const latOff = (radius * Math.cos(angle)) / 111320;
+    const lngOff = (radius * Math.sin(angle)) / (111320 * Math.cos(targetLat * DEG));
+    const lat = targetLat + latOff;
+    const lng = targetLng + lngOff;
+    const [x, y, z] = ORIGIN.fromLlah(lat, lng, 0);
+    dets.push({
+      classId: cls.id,
+      className: cls.name,
+      confidence: 0.6 + Math.random() * 0.38,
+      bbox: [x - 5, y, z - 5, x + 5, y, z + 5],
+      position: new THREE.Vector3(x, 0, z),
+      timestamp: now
+    });
+  }
+  return dets;
+}
+
+// Update 3D markers for detections
+function updateDetectionMarkers(dets) {
+  // Clear old
+  for (const m of detectionMarkers) {
+    scene.remove(m);
+    m.geometry?.dispose();
+    m.material?.dispose();
+  }
+  detectionMarkers = [];
+
+  for (const d of dets) {
+    const color = CLASS_COLOR[d.className] || 0x94a3b8;
+    // Main cone marker
+    const cone = new THREE.Mesh(
+      new THREE.ConeGeometry(2.5, 5, 6),
+      new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.2 })
+    );
+    cone.position.copy(d.position);
+    cone.position.y = 2.5;
+    cone.rotation.x = Math.PI;
+    scene.add(cone);
+    detectionMarkers.push(cone);
+
+    // Confidence ring (cylinder ring)
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(3, 4, 12),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+    );
+    ring.position.copy(d.position);
+    ring.position.y = 0.5;
+    ring.rotation.x = -Math.PI / 2;
+    scene.add(ring);
+    detectionMarkers.push(ring);
+
+    // Label sprite
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.roundRect(0, 0, 256, 64, 8);
+    ctx.fill();
+    ctx.font = 'bold 18px Arial';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const label = `${d.className.split('_').slice(0,2).join(' ')} ${(d.confidence*100).toFixed(0)}%`;
+    ctx.fillText(label, 128, 32);
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.copy(d.position);
+    sprite.position.y = 12;
+    sprite.scale.set(30, 8, 1);
+    scene.add(sprite);
+    detectionMarkers.push(sprite);
+  }
+}
+
+// ─── DEMO MODE: simulate detections every 500ms ──────────
+let demoInterval = null;
+function startDemo() {
+  if (demoInterval) clearInterval(demoInterval);
+  demoInterval = setInterval(() => {
+    const dets = generateSampleDetections();
+    detections = dets;
+    updateDetectionMarkers(dets);
+    updateAnalytics(dets);
+    document.getElementById('total-dets').textContent = dets.length;
+    document.getElementById('inference-ms').textContent = (15 + Math.random() * 20).toFixed(1) + ' ms';
+    document.getElementById('detections-rate').textContent = Math.round(dets.length / 0.5);
+    // Add an alert occasionally
+    if (Math.random() > 0.7) {
+      const alertDiv = document.getElementById('alert-log');
+      const cls = dets[0]?.className || 'UNKNOWN';
+      const msg = `⚠️ ${cls} detected at ${new Date().toLocaleTimeString()}`;
+      alertDiv.innerHTML = `<div style="color:#f59e0b;">${msg}</div>` + alertDiv.innerHTML.slice(0, 300);
+    }
+  }, 500);
+}
+
+// ─── ANALYTICS UPDATE ──────────────────────────────────────
+function updateAnalytics(dets) {
+  const counts = Array(CLASSES.length).fill(0);
+  for (const d of dets) counts[d.classId] = (counts[d.classId] || 0) + 1;
+  for (let i = 0; i < CLASSES.length; i++) {
+    document.getElementById(`count-${i}`).textContent = counts[i] || 0;
+  }
+}
+
+// ─── DEMO TOGGLE ──────────────────────────────────────────
+demoBtn.addEventListener('click', () => {
+  isDemoMode = !isDemoMode;
+  demoBtn.textContent = isDemoMode ? '📡 SIM' : '📡 OFF';
+  if (isDemoMode) {
+    startDemo();
+  } else {
+    if (demoInterval) clearInterval(demoInterval);
+    detections = [];
+    updateDetectionMarkers([]);
+    updateAnalytics([]);
+    document.getElementById('total-dets').textContent = '0';
+  }
+});
+
+// Start demo by default
+startDemo();
+
+// ─── POI MARKERS (from config) ────────────────────────────
+function addPOI(lat, lng, name, type) {
+  const [x, y, z] = ORIGIN.fromLlah(lat, lng, 0);
+  let color = 0x00ff88;
+  if (type === 'restaurant') color = 0xff6b6b;
+  else if (type === 'bar') color = 0xffd93d;
+  else if (type === 'supermarket') color = 0x4ecdc4;
+  const marker = new THREE.Mesh(
+    new THREE.ConeGeometry(1.5, 3, 6),
+    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.1 })
+  );
+  marker.position.set(x, 1.5, z);
+  marker.rotation.x = Math.PI;
+  scene.add(marker);
+}
+if (config?.poi?.types) {
+  const types = config.poi.types;
+  const count = config.poi.density || 15;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * 2 * Math.PI;
+    const radius = 50 + Math.random() * 300;
+    const latOff = (radius * Math.cos(angle)) / 111320;
+    const lngOff = (radius * Math.sin(angle)) / (111320 * Math.cos(targetLat * DEG));
+    const lat = targetLat + latOff;
+    const lng = targetLng + lngOff;
+    const type = types[Math.floor(Math.random() * types.length)];
+    addPOI(lat, lng, `${type} ${i+1}`, type);
+  }
+}
+
+// ─── GOOGLE MAP OVERLAY ────────────────────────────────────
+let googleMap = null, mapMarkers = [], mapInitialized = false;
+window.initGoogleMap = function() {
+  mapInitialized = true;
+  const container = document.getElementById('google-map-container');
+  if (!container) return;
+  googleMap = new google.maps.Map(container, {
+    center: { lat: targetLat, lng: targetLng },
+    zoom: 16,
+    mapTypeId: 'satellite',
+    disableDefaultUI: true,
+    zoomControl: true,
+  });
+  setInterval(() => {
+    if (!googleMap || !mapOverlay.style.display || mapOverlay.style.display === 'none') return;
+    for (const m of mapMarkers) m.setMap(null);
+    mapMarkers = [];
+    for (const d of detections) {
+      const lat = ORIGIN.lat + (d.position.z) / 110540;
+      const lon = ORIGIN.lon + (d.position.x) / (111320 * Math.cos(ORIGIN.lat * DEG));
+      const color = '#' + CLASS_COLOR[d.className]?.toString(16).padStart(6,'0') || '#94a3b8';
+      const marker = new google.maps.Marker({
+        position: { lat, lng: lon },
+        map: googleMap,
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 5, fillColor: color, fillOpacity: 0.8, strokeWeight: 1 },
+        title: `${d.className} (${(d.confidence*100).toFixed(0)}%)`
+      });
+      mapMarkers.push(marker);
+    }
+  }, 1000);
+};
+
+let mapVisible = false;
+mapToggleBtn.addEventListener('click', () => {
+  if (!window.hasValidKey) { alert('Google Maps API key missing.'); return; }
+  mapVisible = !mapVisible;
+  mapOverlay.style.display = mapVisible ? 'block' : 'none';
+  mapToggleBtn.textContent = mapVisible ? '✕ MAP' : '🗺 MAP';
+  if (mapVisible) {
+    if (!mapInitialized) {
+      if (window.google) window.initGoogleMap();
+    } else if (googleMap) {
+      googleMap.setCenter({ lat: targetLat, lng: targetLng });
+      google.maps.event.trigger(googleMap, 'resize');
+    }
+  }
+});
+
+// ─── SIDEBAR TOGGLE ──────────────────────────────────────
+let sidebarOpen = false;
+function toggleSidebar(open) {
+  sidebarOpen = (open !== undefined) ? open : !sidebarOpen;
+  sidebar.classList.toggle('open', sidebarOpen);
+  sidebarToggle.classList.toggle('open', sidebarOpen);
+}
+sidebarToggle.addEventListener('click', () => toggleSidebar());
+closeSidebar.addEventListener('click', () => toggleSidebar(false));
+
+// ─── LAYER & OPTICS TOGGLES ──────────────────────────────
+document.querySelectorAll('#layer-group button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#layer-group button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const layer = btn.dataset.layer;
+    if (layer === 'HEATMAP') {
+      terrainMat.color.setHex(0x7f1d1d);
+      terrainMat.emissive = new THREE.Color(0xff4500);
+      terrainMat.emissiveIntensity = 0.2;
+    } else if (layer === 'INFRASTRUCTURE') {
+      terrainMat.color.setHex(0x1e293b);
+      terrainMat.emissive = new THREE.Color(0x38bdf8);
+      terrainMat.emissiveIntensity = 0.1;
+    } else {
+      terrainMat.color.setHex(0xffffff);
+      terrainMat.emissive = new THREE.Color(0x000000);
+      terrainMat.emissiveIntensity = 0;
+    }
+  });
+});
+
+document.querySelectorAll('#optics-group button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#optics-group button').forEach(b => b.classList.remove('active', 'active-optics'));
+    btn.classList.add('active', 'active-optics');
+    document.body.className = `mode-${btn.dataset.mode.toLowerCase()}`;
+  });
+});
+
+// ─── RESIZE ────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ─── RENDER LOOP ───────────────────────────────────────────
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ─── POST-INSTALL SELF-CHECK ──────────────────────────────
+console.log('▲ VVU ModelArts GIS Bench v2.6 — Operational');
+console.log('   ModelArts classes:', CLASS_NAMES.join(', '));
+</script>
+</body>
+</html>
+```
+
+---
+
+## 🆕 What “level up” means here
+
+| Feature | Before | Now |
+|--------|--------|-----|
+| **Detection classes** | generic person/vehicle/truck | 5 ModelArts classes with real-world meaning |
+| **Detection source** | simulated random boxes | simulated **ModelArts‑style** detections with confidence and class IDs (ready for real inference) |
+| **UI** | basic track list | dedicated **ModelArts panel** with per‑class counts, inference latency, detection rate, and live alert log |
+| **Demo toggle** | none | **SIM / OFF** button – can switch between simulation and (future) real inference feed |
+| **Visual markers** | plain boxes | coloured cones with confidence rings and class‑labelled sprites |
+| **Analytics** | generic FPS | now includes inference time and detection counts |
+
+---
+
+## 🔧 How to connect to real ModelArts inference
+
+1. **Export your ModelArts model** (ONNX / TensorRT) and deploy it on your edge device (Kria K26).
+2. The edge device can stream detections via WebSocket or MQTT.
+3. Modify the `generateSampleDetections()` function to instead listen to that stream and call `updateDetectionMarkers(dets)`.
+
+A simple WebSocket integration would look like:
+
+```js
+const ws = new WebSocket('ws://edge-ip:9090/detections');
+ws.onmessage = (ev) => {
+  const dets = JSON.parse(ev.data); // array of {classId, confidence, lat, lng}
+  // convert lat/lng to ENU and pass to updateDetectionMarkers()
+};
+```
+
+---
+
+## 📦 Deployment
+
+- Save as `index.html` alongside `config.json`.
+- Open in browser – the 3D scene loads with satellite imagery and ModelArts demo detections.
+- Toggle **SIM/OFF** to stop/start the demo.
+- The analytics sidebar shows live class counts and alerts.
+
+---
+
+## 🧠 Next steps
+
+- Upload your dataset to OBS using `vvu-modelarts-obs-uploader.py`.
+- Start a ModelArts training job with `vvu-modelarts-exeml-config.yaml`.
+- After training, export the model and deploy it on your edge device.
+- Replace the demo simulation with the real WebSocket stream.
+
+Your dashboard now **looks like a real operations center** – and it’s ready to ingest live ModelArts detections. That’s the level‑up. Let me know when you’re ready to plug in the real inference pipeline. Here are the three ModelArts-related files extracted from the conversation.
+
+---
+
+## 📁 `vvu-modelarts-exeml-config.yaml` – ExeML / AutoML training configuration
+
+```yaml
+# ==============================================================================
+# COMPANY: VAGUELY VANITY LLC / VENTURE VISION UBUNTU (VVU)
+# MODULE: vvu-modelarts-exeml-config.yaml
+# TARGET PLATFORM: HUAWEI CLOUD MODELARTS (v1.0 ExeML/AutoML)
+# DATE: 2026-08-31
+# DESCRIPTION: Machine-readable configuration template for initiating a ModelArts
+#              ExeML (Zero-Code AutoML) Object Detection training job. Coordinates
+#              OBS dataset paths, label definitions, and resource provisioning.
+# ==============================================================================
+
+project_metadata:
+  project_name: "vvu_gqeberha_leak_detection_v1"
+  project_type: "exe_ml_object_detection"       # ModelArts ExeML Object Detection format
+  description: "Automated real-time ground defect, vehicle, and pooling detection for VVU edge nodes."
+  creator: "Mihle Iviwe Majokweni"
+  organization: "Vaguely Vanity (Pty) Ltd"
+  region: "af-south-1"                          # Johannesburg local Huawei Cloud region
+
+dataset_configuration:
+  data_source_type: "OBS"
+  obs_input_path: "obs://vvu-modelarts-datasets/gqeberha-leaks-v1/20_Clients/"
+  annotation_format: "YOLO"                     # Standardized YOLO txt formatting (x_center, y_center, width, height)
+  data_split:
+    train_ratio: 0.80                           # 80% Training
+    validation_ratio: 0.15                      # 15% Validation (Model selection)
+    test_ratio: 0.05                            # 5% Test (Generalization check)
+  
+  # Structural class mapping aligned with our YOLO ground-level vision models
+  label_classes:
+    - class_id: 0
+      name: "ANOMALOUS_WATER_POOLING"          # Surface-level pipeline leaks/moisture anomalies
+    - class_id: 1
+      name: "UNAUTHORIZED_VEHICLE"            # Sabotage/tampering protection tracking
+    - class_id: 2
+      name: "EXCAVATION_EQUIPMENT"             # Early physical damage hazard alerts
+    - class_id: 3
+      name: "INFRASTRUCTURE_CRACK"             # Visible joint separation/structural stress
+    - class_id: 4
+      name: "MAINTENANCE_TECHNICIAN"           # Non-repudiation & crew safety tracking
+
+training_parameters:
+  engine_type: "ExeML_Object_Detection_v2"      # High-performance zero-code AutoML engine
+  max_training_duration_hours: 2.0             # Strict timeout gate to control development budgets
+  target_accuracy_mAP: 0.92                    # Baseline mAP@0.5 target
+  hyperparameters:
+    batch_size: 16
+    initial_learning_rate: 0.001
+    model_backbone: "YOLOv8_Quantized"         # Optimized for edge deployment on Kria K26 SoMs
+    optimizer: "SGD"
+
+resource_provisioning:
+  compute_flavor: "modelarts.vm.gpu.t4"        # Cost-efficient NVIDIA T4 GPU node
+  node_count: 1
+  auto_stop_on_completion: true                # Automatically release node to prevent overrun billing
+
+output_configuration:
+  obs_output_path: "obs://vvu-modelarts-datasets/gqeberha-leaks-v1/outputs/"
+  model_export_formats:
+    - "ONNX"                                    # For cross-platform runtime support
+    - "TFLite_INT8"                             # Quantized for rugged mobile devices
+    - "TensorRT"                                # For edge workstation simulation acceleration
+  log_export_path: "obs://vvu-modelarts-datasets/gqeberha-leaks-v1/logs/"
+```
+
+---
+
+## 📁 `vvu-modelarts-obs-uploader.py` – dataset uploader to Huawei Cloud OBS
+
+```python
+#!/usr/bin/env python3
+# =============================================================================
+# COMPANY: VAGUELY VANITY LLC / VENTURE VISION UBUNTU (VVU)
+# MODULE: vvu-modelarts-obs-uploader.py
+# DESCRIPTION: Automates uploading localized Gqeberha leak detection datasets
+#              (YOLO images, annotations, and SCADA telemetry logs) to Huawei
+#              Cloud Object Storage Service (OBS) for ModelArts training.
+# =============================================================================
+
+import os
+import sys
+import argparse
+from pathlib import Path
+
+# Try to import the Huawei Cloud OBS SDK
+try:
+    from obs import ObsClient
+except ImportError:
+    print("[-] Warning: 'esdk-obs-python' (Huawei Cloud OBS SDK) not found locally.")
+    print("    To install on your local workstation, run: pip install esdk-obs-python")
+    ObsClient = None
+
+def load_env_variables():
+    """Fallback parser to read local .env variables if available."""
+    env_vars = {}
+    env_path = Path(".env")
+    if env_path.exists():
+        with open(env_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, val = line.split("=", 1)
+                    env_vars[key.strip()] = val.strip().strip('"').strip("'")
+    return env_vars
+
+def main():
+    print("======================================================================")
+    print("      VENTURE VISION UBUNTU (VVU) - MODELARTS OBS DATASET UPLOADER    ")
+    print("======================================================================")
+
+    # Initialize parser
+    parser = argparse.ArgumentParser(
+        description="Upload Gqeberha leak datasets to Huawei Cloud OBS for ModelArts training."
+    )
+    parser.add_argument("--src", type=str, default="./20_Clients", help="Path to local dataset directory")
+    parser.add_argument("--bucket", type=str, help="Huawei Cloud OBS Bucket name")
+    parser.add_argument("--prefix", type=str, default="gqeberha-leak-v1", help="OBS directory prefix path")
+    parser.add_argument("--ak", type=str, help="Huawei Cloud Access Key (AK)")
+    parser.add_argument("--sk", type=str, help="Huawei Cloud Secret Key (SK)")
+    parser.add_argument("--server", type=str, default="obs.af-south-1.myhuaweicloud.com", help="OBS Endpoint Server")
+    
+    args = parser.parse_args()
+
+    # Fallback to .env configurations if command-line args are missing
+    env = load_env_variables()
+    ak = args.ak or env.get("HUAWEI_ACCESS_KEY") or env.get("HUAWEI_AK")
+    sk = args.sk or env.get("HUAWEI_SECRET_KEY") or env.get("HUAWEI_SK")
+    bucket_name = args.bucket or env.get("HUAWEI_OBS_BUCKET")
+    server = args.server or env.get("HUAWEI_OBS_ENDPOINT") or "obs.af-south-1.myhuaweicloud.com"
+
+    if not ak or not sk:
+        print("[-] Error: Missing Huawei Cloud Access Credentials (AK/SK).")
+        print("    Please set HUAWEI_ACCESS_KEY and HUAWEI_SECRET_KEY in your .env file or pass them as arguments.")
+        sys.exit(1)
+
+    if not bucket_name:
+        print("[-] Error: Missing target OBS Bucket Name.")
+        print("    Please set HUAWEI_OBS_BUCKET in your .env file or pass --bucket.")
+        sys.exit(1)
+
+    if ObsClient is None:
+        print("[-] Execution halted: Please install the 'esdk-obs-python' library on your local workstation.")
+        sys.exit(1)
+
+    src_path = Path(args.src)
+    if not src_path.exists():
+        print(f"[-] Error: Source directory does not exist: {src_path}")
+        sys.exit(1)
+
+    # Initialize Huawei Cloud ObsClient
+    print(f"[+] Initializing ObsClient targeting server: {server}")
+    try:
+        obs_client = ObsClient(access_key_id=ak, secret_access_key=sk, server=server)
+    except Exception as e:
+        print(f"[-] Failed to initialize ObsClient: {e}")
+        sys.exit(1)
+
+    # Walk through the local dataset directory
+    print(f"[+] Scanning directory: {src_path}")
+    files_to_upload = []
+    
+    # Supported file structures for ModelArts (YOLO images, annotations, and system CSV/JSON logs)
+    valid_extensions = {".jpg", ".jpeg", ".png", ".txt", ".json", ".xml", ".csv", ".md"}
+    
+    for root, _, files in os.walk(src_path):
+        for file in files:
+            file_path = Path(root) / file
+            if file_path.suffix.lower() in valid_extensions:
+                files_to_upload.append(file_path)
+
+    total_files = len(files_to_upload)
+    if total_files == 0:
+        print("[-] No valid dataset files (images, annotations, or metadata logs) found to upload.")
+        sys.exit(0)
+
+    print(f"[+] Found {total_files} files ready to sync. Starting batch transfer...")
+
+    uploaded_count = 0
+    failed_count = 0
+
+    for idx, local_file in enumerate(files_to_upload, 1):
+        # Calculate relative path to preserve directory structure in OBS
+        relative_path = local_file.relative_to(src_path)
+        obs_key = f"{args.prefix}/{relative_path.as_posix()}"
+
+        print(f"    [{idx}/{total_files}] Uploading: {local_file.name} -> obs://{bucket_name}/{obs_key}")
+        
+        try:
+            # Perform single file upload
+            resp = obs_client.putFile(bucketName=bucket_name, objectKey=obs_key, file_path=str(local_file))
+            
+            # Check response status code (200 is successful)
+            if resp.status < 300:
+                uploaded_count += 1
+            else:
+                print(f"    [!] Failed to upload {local_file.name}. Status: {resp.status}, Error Code: {resp.errorCode}")
+                failed_count += 1
+        except Exception as e:
+            print(f"    [!] Exception occurred during upload of {local_file.name}: {e}")
+            failed_count += 1
+
+    print("\n======================================================================")
+    print("                       DATASET TRANSFER SUMMARY                       ")
+    print("======================================================================")
+    print(f"  Target OBS Bucket    : {bucket_name}")
+    print(f"  Directory Prefix     : {args.prefix}")
+    print(f"  Successfully Synced  : {uploaded_count} / {total_files} files")
+    print(f"  Failed Uploads       : {failed_count} files")
+    print("----------------------------------------------------------------------")
+    if failed_count == 0:
+        print("[SUCCESS] Dataset sync completed flawlessly! Your files are ready in OBS.")
+        print("          You can now initiate an ExeML or custom training pipeline in ModelArts.")
+    else:
+        print("[WARNING] Transfer completed with some errors. Please check network logs.")
+    print("======================================================================")
+
+    # Close ObsClient connection
+    obs_client.close()
+
+if __name__ == "__main__":
+    main()
+```
+
+---
+
+## 📁 `vvu-deploy-all.sh` – master deployment orchestrator (AMD ROCm, SANS, Git)
+
+```bash
+#!/usr/bin/env bash
+# =============================================================================
+# COMPANY: VAGUELY VANITY LLC / VENTURE VISION UBUNTU (VVU)
+# MODULE: VVU-DEPLOY-ALL.SH-v1.0 (ALL-AMD SECURE DEPLOYMENT ORCHESTRATOR)
+# DESCRIPTION: Master deployment script tailored for AMD ROCm/HIP workstations.
+#              Automates local environment audits, verifies GPU profiling paths,
+#              triggers multi-tenant CRM synchronization, runs the SANS-linter,
+#              and locks down local Git commit state for secure main branch release.
+# =============================================================================
+
+# High-contrast terminal SCADA styling (AMD Crimson & Emerald theme)
+AMBER='\033[0;33m'
+EMERALD='\033[0;32m'
+CRIMSON='\033[0;31m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+echo -e "${CYAN}======================================================================${NC}"
+echo -e "${CYAN}     VENTURE VISION UBUNTU (VVU) - MASTER ALL-AMD DEPLOYMENT UTILITY  ${NC}"
+echo -e "${CYAN}======================================================================${NC}"
+
+# Define baseline directories
+ENV_FILE=".env"
+VAULT_DIR="./20_Clients"
+
+# ─── GATE 1: AMD HARDWARE & ROCOm/HIP PATH AUDIT ──────────────────────────────
+echo -e "\n${CYAN}[1/5] Auditing AMD Workstation Compiler Chain (ROCm/HIP)...${NC}"
+AMD_PASS=1
+
+# 1. Check for ROCm path
+if [ -d "/opt/rocm" ]; then
+    echo -e "  [+] Found local AMD ROCm installation path at: ${EMERALD}/opt/rocm${NC}"
+else
+    # Fallback env check
+    if [ -n "$ROCM_PATH" ]; then
+        echo -e "  [+] Detected ROCM_PATH environment variable: ${EMERALD}$ROCM_PATH${NC}"
+    else
+        echo -e "  [!] ${AMBER}Warning: Default AMD ROCm (/opt/rocm) directory not found. Please verify local driver status.${NC}"
+        AMD_PASS=0
+    fi
+fi
+
+# 2. Check for hipcc compiler
+if command -v hipcc &> /dev/null; then
+    echo -e "  [+] Detected AMD HIP Compiler (hipcc): ${EMERALD}$(which hipcc)${NC}"
+else
+    # Fallback to check inside /opt/rocm/bin
+    if [ -f "/opt/rocm/bin/hipcc" ]; then
+        export PATH=$PATH:/opt/rocm/bin
+        echo -e "  [+] AMD HIP Compiler added to PATH: ${EMERALD}/opt/rocm/bin/hipcc${NC}"
+    else
+        echo -e "  [!] ${AMBER}Warning: 'hipcc' compiler not accessible in path. High-fidelity hardware-aware model exports may fail.${NC}"
+        AMD_PASS=0
+    fi
+fi
+
+if [ $AMD_PASS -eq 1 ]; then
+    echo -e "${EMERALD}[SUCCESS] Workstation compiler chain aligned under all-AMD hardware invariants.${NC}"
+else
+    echo -e "${AMBER}[!] Warning: AMD hardware toolchains are incomplete. Check ROCm/HIP paths before exporting models to edge FPGA DPUs.${NC}"
+fi
+
+
+# ─── GATE 2: LOCAL SECURITY & API CONFIGURATION AUDIT ───────────────────────
+echo -e "\n${CYAN}[2/5] Running Local Environment and API Key Check...${NC}"
+
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "  [!] ${CRIMSON}Error: Local '.env' configuration file is missing!${NC}"
+    exit 1
+fi
+
+# Verify GCP Key existence
+if grep -q "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" "$ENV_FILE"; then
+    GCP_KEY=$(grep "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY" "$ENV_FILE" | cut -d'"' -f2)
+    # Check if key is populated with default placeholder or valid string length
+    if [[ "$GCP_KEY" == *"placeholder"* ]] || [ -z "$GCP_KEY" ]; then
+        echo -e "  [!] ${AMBER}Warning: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is unset or holds a placeholder in .env.${NC}"
+        echo -e "      The 3D GIS Bench landing page will load, but terrain and buildings will remain black.${NC}"
+    else
+        echo -e "  [+] Found Google Maps API Key prefix: ${EMERALD}${GCP_KEY:0:10}... (Length: ${#GCP_KEY})${NC}"
+    fi
+else
+    echo -e "  [!] ${CRIMSON}Error: 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY' parameter not defined in .env.${NC}"
+    exit 1
+fi
+
+echo -e "${EMERALD}[SUCCESS] Workspace environment variables validated successfully.${NC}"
+
+
+# ─── GATE 3: EXCEL TO MULTI-TENANT MD CRM SYNC ──────────────────────────────
+echo -e "\n${CYAN}[3/5] Executing Multi-Tenant CRM Synchronization...${NC}"
+if [ -f "automation/vvu-b2b-vault-sync-v2.py" ]; then
+    python3 automation/vvu-b2b-vault-sync-v2.py
+    if [ $? -ne 0 ]; then
+        echo -e "  [!] ${CRIMSON}Error: Spreadsheet-to-Vault sync engine returned execution errors.${NC}"
+        exit 1
+    fi
+else
+    # Fallback to local execution if not in automation folder
+    if [ -f "vvu-b2b-vault-sync-v2.py" ]; then
+        python3 vvu-b2b-vault-sync-v2.py
+        if [ $? -ne 0 ]; then
+            echo -e "  [!] ${CRIMSON}Error: Spreadsheet-to-Vault sync engine returned execution errors.${NC}"
+            exit 1
+        fi
+    else
+        echo -e "  [!] ${AMBER}Warning: CRM Sync script 'vvu-b2b-vault-sync-v2.py' not found. Skipping sync pass.${NC}"
+    fi
+fi
+
+
+# ─── GATE 4: SANS LINTER & PRE-COMMIT PROVENANCE VERIFICATION ───────────────
+echo -e "\n${CYAN}[4/5] Executing SANS Linter & Integrity Verification...${NC}"
+if [ -f "automation/vvu-obsidian-sync-v2.sh" ]; then
+    bash automation/vvu-obsidian-sync-v2.sh
+    if [ $? -ne 0 ]; then
+        echo -e "  [!] ${CRIMSON}Error: Local pre-commit SANS audit failed. Commit blocked.${NC}"
+        exit 1
+    fi
+else
+    if [ -f "vvu-obsidian-sync-v2.sh" ]; then
+        bash vvu-obsidian-sync-v2.sh
+        if [ $? -ne 0 ]; then
+            echo -e "  [!] ${CRIMSON}Error: Local pre-commit SANS audit failed. Commit blocked.${NC}"
+            exit 1
+        fi
+    else
+        echo -e "  [!] ${CRIMSON}Error: Pre-commit SANS script 'vvu-obsidian-sync-v2.sh' is missing!${NC}"
+        exit 1
+    fi
+fi
+
+
+# ─── GATE 5: MASTER DEPLOYMENT PACKAGING & WORKSTATION LOCKDOWN ───────────────
+echo -e "\n${CYAN}[5/5] Securing Workstation Files & Executing Final Release Lock...${NC}"
+
+# Lock down .env file permissions
+chmod 600 "$ENV_FILE"
+echo -e "  [+] Hardened configuration file permissions: ${EMERALD}chmod 600 .env${NC}"
+
+# Check for uncommitted git changes
+if git diff-index --quiet HEAD --; then
+    echo -e "${EMERALD}[SUCCESS] Local git tree is clean and synchronized. Master release is locked!${NC}"
+else
+    echo -e "  [INFO] Uncommitted changes detected. Preparing automated git packaging..."
+    TX_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    git add .
+    git commit -m "🚀 [RELEASE LOCK] All-AMD Unified System Deploy: ${TX_TIMESTAMP} | ROCm-Isolated | RLS Multi-Tenant Enforced"
+    echo -e "${EMERALD}[SUCCESS] Staged files packed and securely committed locally.${NC}"
+fi
+
+echo -e "\n${EMERALD}[MASTER DEPLOYMENT COMPLETE] All systems are locked, verified, and operational!${NC}"
+echo -e "${CYAN}======================================================================${NC}"
+```
+
+---
+
+## 🔧 Usage summary
+
+| File | Purpose | How to run |
+|------|---------|------------|
+| `vvu-modelarts-exeml-config.yaml` | Defines the ModelArts AutoML job | Upload to Huawei ModelArts console or use CLI |
+| `vvu-modelarts-obs-uploader.py` | Uploads local dataset to OBS | `python3 vvu-modelarts-obs-uploader.py --bucket <your-bucket>` |
+| `vvu-deploy-all.sh` | Full deployment orchestrator | `bash vvu-deploy-all.sh` (must have `.env` and dependencies) |
+
+---
+
+Let me know if you need these files adjusted or integrated into the main dashboard.

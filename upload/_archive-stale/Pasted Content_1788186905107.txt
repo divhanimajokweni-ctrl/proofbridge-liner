@@ -1,0 +1,676 @@
+Here is a single, self‑contained HTML dashboard that gives you three live views in one page:
+
+· Main 3D perspective – full screen, interactive, with tracked objects.
+· 2D OpenStreetMap overlay – togglable, with the same tracks projected to real lat/lon.
+· Top‑down orthographic inset – togglable, showing the same 3D scene from above (useful for heading and density).
+
+All views share the same track data, so what you see is coherent across every angle — that’s the silent visual trust you’re after.
+
+---
+
+🚀 Features
+
+· One WebGLRenderer with multiple viewports → minimal GPU overhead.
+· Leaflet for the 2D map (toggled with a button).
+· Orthographic camera for the top‑down inset (toggled separately).
+· Performance stats (FPS, frame time, tracks, gaps) are still live.
+· Brand dashboard (v2.2.0‑e2e) fully preserved.
+
+---
+
+📁 How to use
+
+1. Save the HTML file anywhere.
+2. Open it in a modern browser (Chrome / Edge / Firefox).
+3. Use the 🗺 button to show/hide the 2D map.
+4. Use the ⊞ button to show/hide the orthographic inset.
+5. The main 3D view responds to mouse drag/zoom as before.
+
+---
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>▲ VVU · Verification Layer — GIS Bench</title>
+<!--
+  ▲ VVU VERIFICATION LAYER · v2.2.0-e2e · Multi‑view enabled
+  ─────────────────────────────────────────────────────────────
+  ?drop=0.25        chaos: 25% frame loss — dead reckoning must glide
+  ?binary=1         exercise the packed 52-byte v2 codec end-to-end
+  ?ws=URL&token=T   consume a production gateway instead of in-page sim
+  Brand re-theme: edit the :root tokens below — one block, whole UI follows.
+-->
+<!-- Leaflet CSS for 2D map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root{
+    --vvu-accent:#22d3ee; --vvu-accent2:#38bdf8;
+    --vvu-grad:linear-gradient(90deg,#a5f3fc 0%,#22d3ee 45%,#38bdf8 100%);
+    --glass-bg:rgba(15,23,42,.45); --glass-br:rgba(14,165,233,.18);
+    --ink:#e2e8f0; --dim:#94a3b8; --acc:#38bdf8;
+    --shadow:0 8px 32px rgba(0,0,0,.37);
+  }
+  body.light{
+    --glass-bg:rgba(255,255,255,.62); --glass-br:rgba(15,23,42,.10);
+    --ink:#0f172a; --dim:#475569; --acc:#0369a1;
+    --shadow:0 8px 32px rgba(15,23,42,.12);
+  }
+  html,body{margin:0;height:100%;overflow:hidden;font:12px ui-monospace,Menlo,monospace;
+    color:var(--ink);background:#020617}
+  canvas{display:block}
+  .glass{background:var(--glass-bg);backdrop-filter:blur(16px) saturate(180%);
+    -webkit-backdrop-filter:blur(16px) saturate(180%);
+    border:1px solid var(--glass-br);border-radius:12px;box-shadow:var(--shadow)}
+  .wordmark{font-weight:700;letter-spacing:.22em;
+    background:var(--vvu-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .chip{border:1px solid var(--glass-br);border-radius:999px;padding:2px 9px;font-size:10px;
+    letter-spacing:.12em;color:var(--dim)}
+  .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  /* ── boot splash ── */
+  #boot{position:fixed;inset:0;z-index:99;display:grid;place-items:center;background:#020617;
+    transition:opacity .6s ease}
+  #boot.done{opacity:0;pointer-events:none}
+  .bwrap{text-align:center}
+  .bmark{font-size:44px;background:var(--vvu-grad);-webkit-background-clip:text;
+    background-clip:text;color:transparent;line-height:1}
+  .bword{font-size:26px;font-weight:700;letter-spacing:.5em;margin:10px 0 6px;color:#e2e8f0}
+  .bsub{font-size:10px;letter-spacing:.3em;color:#64748b}
+  .bbar{width:190px;height:2px;background:#1e293b;border-radius:2px;margin:18px auto 0;overflow:hidden}
+  .bbar i{display:block;height:100%;width:40%;background:var(--vvu-grad);
+    animation:scan 1.1s ease-in-out infinite alternate}
+  @keyframes scan{from{transform:translateX(-60%)}to{transform:translateX(380%)}}
+  @media (prefers-reduced-motion:reduce){.bbar i{animation:none;width:100%}}
+  /* ── HUD ── */
+  #hud{position:fixed;inset:0;z-index:30;pointer-events:none;display:flex;
+    flex-direction:column;justify-content:space-between}
+  #top,#bot{display:flex;gap:8px;padding:14px;align-items:center}
+  #top{justify-content:space-between}
+  #brandbar{display:flex;align-items:center;gap:12px;padding:9px 16px}
+  .pad{padding:10px 14px}
+  button{font:inherit;color:var(--dim);background:none;border:0;border-radius:7px;
+    padding:5px 10px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase}
+  button:hover{color:var(--ink)}
+  button.on{color:var(--acc);background:color-mix(in srgb,var(--acc) 18%,transparent)}
+  #stats{display:flex;gap:8px}
+  .stat b{display:block;font-size:17px;margin-top:2px;
+    background:var(--vvu-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  #targets{position:fixed;right:14px;top:70px;width:235px;max-height:44vh;overflow:auto;
+    pointer-events:auto;padding:10px}
+  .row{display:flex;justify-content:space-between;gap:8px;padding:4px 6px;border-radius:6px;
+    cursor:pointer;color:var(--dim)}
+  .row:hover{background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--ink)}
+  #aura{position:fixed;left:50%;bottom:0;transform:translateX(-50%);width:640px;height:300px;
+    border-radius:50%;filter:blur(120px);
+    background:var(--vvu-aura,rgba(14,165,233,.18));mix-blend-mode:screen;
+    pointer-events:none;z-index:20;transition:background .7s}
+  body.light #aura{mix-blend-mode:normal;opacity:.45}
+  #stamp{margin-left:auto;font-size:10px;letter-spacing:.18em;color:var(--dim)}
+
+  /* ── map & inset containers ── */
+  #map {
+    position: fixed; bottom: 80px; right: 20px;
+    width: 320px; height: 320px; z-index: 40;
+    border-radius: 12px; border: 1px solid var(--glass-br);
+    box-shadow: var(--shadow); background: #0f172a;
+    display: none; pointer-events: auto;
+  }
+  body.light #map { background: #e2e8f0; }
+  #map .leaflet-control-attribution { font-size: 8px; background: rgba(0,0,0,0.3); color: #ccc; }
+  #map .leaflet-tile-pane { opacity: 0.85; }
+
+  #orthoView {
+    position: fixed; top: 80px; right: 20px;
+    width: 200px; height: 200px; z-index: 35;
+    border-radius: 12px; border: 1px solid var(--glass-br);
+    box-shadow: var(--shadow);
+    background: #020617;
+    display: none;
+    pointer-events: none; /* let mouse pass through to canvas */
+    overflow: hidden;
+  }
+  #orthoView .label {
+    position: absolute; top: 4px; left: 8px;
+    font-size: 9px; letter-spacing: .1em; color: var(--dim);
+    background: var(--glass-bg); padding: 2px 8px; border-radius: 6px;
+    backdrop-filter: blur(4px);
+  }
+  #orthoView canvas {
+    width: 100% !important; height: 100% !important;
+    display: block;
+  }
+  @media (max-width: 600px) {
+    #map { width: 200px; height: 200px; bottom: 70px; right: 10px; }
+    #orthoView { width: 140px; height: 140px; top: 70px; right: 10px; }
+  }
+</style>
+</head>
+<body>
+<div id="boot"><div class="bwrap">
+  <div class="bmark">▲</div><div class="bword">VVU</div>
+  <div class="bsub">VERIFICATION LAYER · COMPILING SPATIAL MATRIX</div>
+  <div class="bbar"><i></i></div>
+</div></div>
+<div id="aura"></div>
+<div id="hud">
+  <div id="top">
+    <div id="brandbar" class="glass">
+      <span class="bmark" style="font-size:18px">▲</span>
+      <span class="wordmark">VVU</span>
+      <span class="lbl">Verification Layer · GIS Bench</span>
+      <span class="chip" id="ver">v2.2.0</span>
+      <span class="chip" id="status">SIM</span>
+    </div>
+    <nav id="nav" class="glass" style="display:flex;gap:2px;padding:4px;pointer-events:auto"></nav>
+    <!-- view toggles -->
+    <button id="mapToggle" class="glass pad" style="pointer-events:auto" title="Toggle 2D map">🗺</button>
+    <button id="orthoToggle" class="glass pad" style="pointer-events:auto" title="Toggle top‑down inset">⊞</button>
+    <button id="theme" class="glass pad" style="pointer-events:auto">◐</button>
+  </div>
+  <div id="bot">
+    <div id="stats">
+      <div class="glass pad stat"><span class="lbl">FPS</span><b id="fps">–</b></div>
+      <div class="glass pad stat"><span class="lbl">Frame MS</span><b id="ms">–</b></div>
+      <div class="glass pad stat"><span class="lbl">Tracks</span><b id="trk">0</b></div>
+      <div class="glass pad stat"><span class="lbl">Gaps</span><b id="gap">0</b></div>
+    </div>
+    <div id="stamp">▲ VVU FRAMEWORK // SPATIAL VERIFICATION · TRACK B SELF-HOSTED</div>
+  </div>
+</div>
+<div id="targets" class="glass"><span class="lbl">Live targets</span><div id="list"></div></div>
+
+<!-- 2D Map container -->
+<div id="map" class="glass"></div>
+<!-- Orthographic inset container -->
+<div id="orthoView" class="glass"><span class="label">TOP‑DOWN</span></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const QS=new URLSearchParams(location.search);
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DEG=Math.PI/180;
+const $id=i=>document.getElementById(i);
+
+/* ── ENU core: WGS84 → local east/north/up ─────────────────────────────── */
+const A=6378137.0,E2=6.69437999014e-3;
+function g2e(lat,lon,alt){const la=lat*DEG,lo=lon*DEG,s=Math.sin(la),c=Math.cos(la),
+  n=A/Math.sqrt(1-E2*s*s);
+  return[(n+alt)*c*Math.cos(lo),(n+alt)*c*Math.sin(lo),(n*(1-E2)+alt)*s];}
+class EnuOrigin{
+  constructor(lat,lon,alt=0){this.o=g2e(lat,lon,alt);
+    const la=lat*DEG,lo=lon*DEG;this.sl=Math.sin(la);this.cl=Math.cos(la);
+    this.so=Math.sin(lo);this.co=Math.cos(lo);}
+  fromLlah(lat,lon,alt){const e=g2e(lat,lon,alt),dx=e[0]-this.o[0],dy=e[1]-this.o[1],dz=e[2]-this.o[2];
+    return[-this.so*dx+this.co*dy,-this.sl*this.co*dx-this.sl*this.so*dy+this.cl*dz,
+            this.cl*this.co*dx+this.cl*this.so*dy+this.sl*dz];}
+}
+const ORIGIN=new EnuOrigin(37.7889,-122.4060,0);
+
+/* ── tween engine (gsap-free) ───────────────────────────────────────────── */
+const tweens=[];const easeIO=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+function tw(o,to,dur=1.25){const from={};for(const k in to)from[k]=o[k];
+  tweens.push({o,from,to,t0:performance.now(),dur:RM?0:dur*1000});}
+function stepTweens(now){for(let i=tweens.length-1;i>=0;i--){const t=tweens[i];
+  const p=t.dur?Math.min(1,(now-t.t0)/t.dur):1,e=easeIO(p);
+  for(const k in t.to)t.o[k]=t.from[k]+(t.to[k]-t.from[k])*e;
+  if(p>=1)tweens.splice(i,1);}}
+
+/* ── scene substrate ────────────────────────────────────────────────────── */
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const DARK={bg:'#020617',ground:0x0b1220},LIGHT={bg:'#dbe4ef',ground:0xc7d2e0};
+scene.background=new THREE.Color(DARK.bg);
+scene.fog=new THREE.FogExp2(DARK.bg,0.00016);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,1,40000);
+camera.position.set(300,900,1400);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.maxPolarAngle=Math.PI/2.15;
+scene.add(new THREE.HemisphereLight(0x0ea5e9,0x020617,.9));
+const sun=new THREE.DirectionalLight(0x93c5fd,.8);sun.position.set(-2000,3000,1500);scene.add(sun);
+
+/* ── terrain: Terrarium DEM → synthetic fallback ────────────────────────── */
+async function terrariumTile(lat,lon,z=13){
+  const n=2**z,tx=Math.floor((lon+180)/360*n),
+        ty=Math.floor((1-Math.log(Math.tan(lat*DEG)+1/Math.cos(lat*DEG))/Math.PI)/2*n);
+  const img=await new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';
+    i.onload=()=>res(i);i.onerror=rej;
+    i.src=`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${tx}/${ty}.png`;});
+  const cv=document.createElement('canvas');cv.width=cv.height=img.width;
+  const ctx=cv.getContext('2d');ctx.drawImage(img,0,0);
+  const px=ctx.getImageData(0,0,img.width,img.height).data,S=img.width;
+  return(u,v)=>{const x=Math.min(S-1,Math.max(0,u*S|0)),y=Math.min(S-1,Math.max(0,v*S|0)),i=(y*S+x)*4;
+    return px[i]*256+px[i+1]+px[i+2]/256-32768;};
+}
+const synthetic=(e,n)=>10*Math.sin(e*.0035)*Math.cos(n*.0042)+6*Math.sin(e*.011+1.7)*Math.sin(n*.009)+3;
+let sampler=synthetic,extent=3600;
+try{
+  const elev=await terrariumTile(ORIGIN.lat,ORIGIN.lon,13);
+  extent=40075016.7*Math.cos(ORIGIN.lat*DEG)/(2**13);
+  sampler=(e,n)=>elev(.5+e/extent,.5-n/extent);
+}catch{console.warn('DEM offline → synthetic terrain');}
+const geo=new THREE.PlaneGeometry(extent,extent,192,192);geo.rotateX(-Math.PI/2);
+const pos=geo.attributes.position;
+for(let i=0;i<pos.count;i++)pos.setY(i,sampler(pos.getX(i),-pos.getZ(i)));
+geo.computeVertexNormals();
+const terrainMat=new THREE.MeshStandardMaterial({color:DARK.ground,roughness:.95,metalness:.05,flatShading:true});
+scene.add(new THREE.Mesh(geo,terrainMat));
+
+/* ── neon emission beams ────────────────────────────────────────────────── */
+const VERT=`uniform float uTime,uPulseSpeed,uPulseLen,uAmp,uBase,uPhase;
+varying float vEnergy;varying vec3 vNormalV,vViewV;
+void main(){
+  float head=fract(uTime*uPulseSpeed+uPhase);
+  float d=head-uv.x; d-=floor(d);
+  float tail=exp(-d/max(uPulseLen,1e-4)*3.0);
+  float lead=smoothstep(0.,.02,d);
+  vEnergy=uBase+tail*lead;
+  vec3 p=position+normal*(tail*lead*uAmp);
+  vec4 mv=modelViewMatrix*vec4(p,1.);
+  vNormalV=normalize(normalMatrix*normal);vViewV=-mv.xyz;
+  gl_Position=projectionMatrix*mv;}`;
+const FRAG=`precision highp float;
+uniform vec3 uCoreColor,uGlowColor;uniform float uIntensity,uBase;
+varying float vEnergy;varying vec3 vNormalV,vViewV;
+void main(){
+  float facing=clamp(dot(normalize(vNormalV),normalize(vViewV)),0.,1.);
+  float tube=pow(facing,1.7);
+  vec3 col=mix(uGlowColor,uCoreColor,vEnergy*vEnergy);
+  gl_FragColor=vec4(col*(0.6+2.2*vEnergy),tube*(uBase*.35+vEnergy)*uIntensity);}`;
+function beamMaterial(){return new THREE.ShaderMaterial({vertexShader:VERT,fragmentShader:FRAG,
+  uniforms:{uTime:{value:0},uPulseSpeed:{value:.12},uPulseLen:{value:.14},uAmp:{value:.7},
+    uBase:{value:.05},uPhase:{value:Math.random()},uIntensity:{value:1},
+    uCoreColor:{value:new THREE.Color('#7dd3fc')},uGlowColor:{value:new THREE.Color('#0284c7')}},
+  transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});}
+function makeBeam(pts,r=1.4){
+  const v=pts.map(([e,n,l])=>new THREE.Vector3(e,sampler(e,n)+l,-n));
+  const m=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(v,false,'catmullrom',.2),256,r,10,false),beamMaterial());
+  m.frustumCulled=false;scene.add(m);return m;}
+const beamU=[
+ [[-300,400,8],[0,500,8],[400,300,8],[500,-200,8]],
+ [[-500,-300,8],[-100,-450,8],[300,-350,8],[550,100,8]],
+].map(p=>makeBeam(p).material.uniforms);
+
+/* ── YOLO volumetric field (instanced + dead reckoning) ─────────────────── */
+const CLASS_COLOR={person:0x22d3ee,vehicle:0xa3e635,truck:0xfb923c,unknown:0x94a3b8};
+const TRACK_TTL=1500,LERP_RATE=12,EXTRAP_MAX=600,VEL_LERP=6;
+const easeBack=t=>{const c=1.70158;return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2);};
+class TrackField{
+  constructor(max=512){
+    const g=new THREE.BoxGeometry(1,1,1);g.translate(0,.5,0);
+    this.fill=new THREE.InstancedMesh(g,new THREE.MeshBasicMaterial({transparent:true,opacity:.13,depthWrite:false}),max);
+    this.fill.instanceMatrix.setUsage(THREE.DynamicDrawUsage);this.fill.frustumCulled=false;
+    this.edges=new THREE.InstancedMesh(g,new THREE.MeshBasicMaterial({wireframe:true,transparent:true,opacity:.85}),max);
+    this.edges.frustumCulled=false;
+    this.fill.setColorAt(0,new THREE.Color(1,1,1));
+    this.edges.instanceMatrix=this.fill.instanceMatrix;
+    this.edges.instanceColor=this.fill.instanceColor;
+    this.max=max;this.tracks=new Map();this.dummy=new THREE.Object3D();
+    this.col=new THREE.Color();this.pred=new THREE.Vector3();
+    scene.add(this.fill,this.edges);
+  }
+  ingest(t){let r=this.tracks.get(t.id);
+    if(!r){r={cur:new THREE.Vector3(...t.pos),tgt:new THREE.Vector3(...t.pos),
+      cd:new THREE.Vector3(.01,.01,.01),td:new THREE.Vector3(...t.dims),
+      yaw:t.yaw,tYaw:t.yaw,vel:new THREE.Vector3(...t.vel),tVel:new THREE.Vector3(...t.vel),
+      hasHdg:t.hasHdg,conf:t.conf,cls:t.cls,seen:t.seen,born:t.seen};this.tracks.set(t.id,r);}
+    else{r.tgt.set(...t.pos);r.td.set(...t.dims);r.tYaw=t.yaw;r.tVel.set(...t.vel);
+      r.hasHdg=t.hasHdg;r.conf=t.conf;r.cls=t.cls;r.seen=t.seen;}}
+  update(dt,now){
+    const k=1-Math.exp(-dt*LERP_RATE),kv=1-Math.exp(-dt*VEL_LERP);let i=0;
+    for(const[id,r]of this.tracks){
+      const age=now-r.seen;
+      if(age>TRACK_TTL){this.tracks.delete(id);continue;}
+      r.vel.lerp(r.tVel,kv);
+      if(!r.hasHdg){const s=Math.hypot(r.vel.x,r.vel.z);if(s>.4)r.tYaw=Math.atan2(-r.vel.x,-r.vel.z);}
+      this.pred.copy(r.tgt).addScaledVector(r.vel,Math.min(age,EXTRAP_MAX)/1000);
+      r.cur.lerp(this.pred,k);
+      r.cd.lerp(r.td,k);
+      const dy=r.tYaw-r.yaw;r.yaw+=Math.atan2(Math.sin(dy),Math.cos(dy))*k;
+      const s=easeBack(Math.min(1,(now-r.born)/260))*Math.max(.001,(TRACK_TTL-age)/250);
+      this.dummy.position.copy(r.cur);this.dummy.rotation.set(0,r.yaw,0);
+      this.dummy.scale.set(r.cd.x*s,r.cd.y*s,r.cd.z*s);this.dummy.updateMatrix();
+      this.fill.setMatrixAt(i,this.dummy.matrix);
+      this.col.setHex(CLASS_COLOR[r.cls]??CLASS_COLOR.unknown).multiplyScalar(.7+.3*r.conf);
+      this.fill.setColorAt(i,this.col);
+      if(++i>=this.max)break;
+    }
+    this.fill.count=this.edges.count=i;
+    this.fill.instanceMatrix.needsUpdate=true;
+    if(this.fill.instanceColor)this.fill.instanceColor.needsUpdate=true;
+  }
+}
+const field=new TrackField(512);
+
+/* ── deserializers (JSON + binary v1/v2) ────────────────────────────────── */
+let lastSeq=-1,dropped=0,gapTotal=0;
+function project(t,now){
+  if(!t.id||typeof t.conf!=='number'||t.conf<.35||!Array.isArray(t.llh)){dropped++;return null;}
+  const[e,n,u]=ORIGIN.fromLlah(t.llh[1],t.llh[0],t.llh[2]||0);
+  const d=t.dims||[4.5,1.9,1.5];
+  return{id:t.id,cls:t.cls||'unknown',conf:t.conf,pos:[e,u,-n],
+    dims:[Math.min(40,Math.max(.3,d[0])),Math.min(15,Math.max(.3,d[2])),Math.min(12,Math.max(.3,d[1]))],
+    yaw:-(t.hdg||0)*DEG,
+    vel:t.vel?[t.vel[0],t.vel[2]||0,-(t.vel[1]||0)]:[0,0,0],
+    hasHdg:t.hdg!=null,seen:now};
+}
+function deserialize(raw,now){
+  let m;try{m=JSON.parse(raw)}catch{return null}
+  if(typeof m.seq!=='number'||!Array.isArray(m.dets))return null;
+  if(m.seq<=lastSeq)return null;
+  gapTotal+=lastSeq<0?0:m.seq-lastSeq-1;lastSeq=m.seq;
+  const out=[];for(const t of m.dets){const p=project(t,now);if(p)out.push(p);}
+  return out;
+}
+function deserializeBinary(buf,now){
+  const dv=new DataView(buf);
+  if(buf.byteLength<18||dv.getUint16(0)!==0x594f)return null;
+  const ver=dv.getUint8(2);if(ver!==1&&ver!==2)return null;
+  const seq=dv.getUint32(4);if(seq<=lastSeq)return null;
+  gapTotal+=lastSeq<0?0:seq-lastSeq-1;lastSeq=seq;
+  const count=dv.getUint16(16),stride=ver===2?52:36;
+  if(buf.byteLength<18+count*stride)return null;
+  const out=[];
+  for(let i=0;i<count;i++){const o=18+i*stride;
+    const p=project({id:'t'+dv.getUint32(o+(ver===2?44:32)).toString(36),
+      cls:ver===2&&dv.getUint8(o+48)===1?'person':'vehicle',
+      conf:dv.getFloat32(o+28),llh:[dv.getInt32(o+4)/1e7,dv.getInt32(o)/1e7,dv.getFloat32(o+8)],
+      dims:[dv.getFloat32(o+12),dv.getFloat32(o+16),dv.getFloat32(o+20)],
+      hdg:dv.getFloat32(o+24),                                  
+      vel:ver===2?[dv.getFloat32(o+32),dv.getFloat32(o+36),dv.getFloat32(o+40)]:undefined},now);
+    if(p)out.push(p);}
+  return out;
+}
+
+/* ── in-page simulator ──────────────────────────────────────────────────── */
+const SIM={hz:12,drop:parseFloat(QS.get('drop')??'0'),binary:QS.get('binary')==='1'};
+const LOOPS=[
+ [[-122.4080,37.7893],[-122.4040,37.7900],[-122.4010,37.7885],[-122.4050,37.7875]],
+ [[-122.4060,37.7850],[-122.4020,37.7860],[-122.4000,37.7840],[-122.4050,37.7830]],
+ [[-122.4100,37.7910],[-122.4060,37.7925],[-122.4030,37.7910],[-122.4080,37.7898]],
+].map(L=>L.map(([lon,lat])=>[(lon-ORIGIN.lon)*111320*Math.cos(ORIGIN.lat*DEG),(lat-ORIGIN.lat)*110540]));
+const KINDS=[{cls:'vehicle',dims:[4.6,1.9,1.5],v:9},{cls:'truck',dims:[8.2,2.4,3],v:6.5},
+             {cls:'person',dims:[.5,.5,1.75],v:1.4}];
+const agents=Array.from({length:14},(_,i)=>{const k=KINDS[i%3],L=LOOPS[i%LOOPS.length];
+  return{id:'trk-'+String(i).padStart(3,'0'),...k,L,wp:0,e:L[0][0],n:L[0][1],ve:0,vn:0};});
+let seq=0;
+function simTick(){
+  const dt=1/SIM.hz;seq++;
+  for(const a of agents){
+    const T=a.L[(a.wp+1)%a.L.length],dx=T[0]-a.e,dy=T[1]-a.n,d=Math.hypot(dx,dy);
+    if(d<a.v*dt)a.wp=(a.wp+1)%a.L.length;
+    a.ve=dx/(d||1)*a.v;a.vn=dy/(d||1)*a.v;a.e+=a.ve*dt;a.n+=a.vn*dt;
+  }
+  if(SIM.drop&&Math.random()<SIM.drop)return;
+  const KX=111320*Math.cos(ORIGIN.lat*DEG),KY=110540;
+  const dets=agents.map(a=>({id:a.id,cls:a.cls,conf:+(.72+Math.random()*.27).toFixed(2),
+    llh:[+(ORIGIN.lon+a.e/KX).toFixed(7),+(ORIGIN.lat+a.n/KY).toFixed(7),0],dims:a.dims,
+    hdg:+((Math.atan2(a.ve,a.vn)/DEG+360)%360).toFixed(1),
+    vel:[+a.ve.toFixed(2),+a.vn.toFixed(2),0]}));
+  const now=performance.now();let tgts;
+  if(SIM.binary){
+    const buf=new ArrayBuffer(18+dets.length*52),dv=new DataView(buf);
+    dv.setUint16(0,0x594f);dv.setUint8(2,2);dv.setUint32(4,seq);
+    dv.setFloat64(8,Date.now());dv.setUint16(16,dets.length);
+    dets.forEach((t,i)=>{const o=18+i*52;
+      dv.setInt32(o,Math.round(t.llh[1]*1e7));dv.setInt32(o+4,Math.round(t.llh[0]*1e7));
+      dv.setFloat32(o+8,0);dv.setFloat32(o+12,t.dims[0]);dv.setFloat32(o+16,t.dims[1]);
+      dv.setFloat32(o+20,t.dims[2]);dv.setFloat32(o+24,t.hdg);dv.setFloat32(o+28,t.conf);
+      dv.setFloat32(o+32,t.vel[0]);dv.setFloat32(o+36,t.vel[1]);dv.setFloat32(o+40,t.vel[2]);
+      let h=7;for(const c of t.id)h=(h*31+c.charCodeAt(0))>>>0;dv.setUint32(o+44,h);
+      dv.setUint8(o+48,t.cls==='person'?1:0);});
+    tgts=deserializeBinary(buf,now);
+  }else tgts=deserialize(JSON.stringify({seq,t:Date.now(),src:'sim',dets}),now);
+  if(tgts)for(const t of tgts)field.ingest(t);
+}
+
+/* ── live gateway (?ws=) ────────────────────────────────────────────────── */
+let statusTxt='SIM';
+const wsUrl=QS.get('ws');
+if(wsUrl){
+  statusTxt='CONNECTING';let retry=0;
+  (function open(){
+    const ws=new WebSocket(wsUrl+(QS.get('token')?`?token=${encodeURIComponent(QS.get('token'))}`:''));
+    ws.binaryType='arraybuffer';
+    ws.onopen=()=>{statusTxt='LIVE';retry=0};
+    ws.onmessage=ev=>{const now=performance.now();
+      const t=typeof ev.data==='string'?deserialize(ev.data,now):deserializeBinary(ev.data,now);
+      if(t)for(const x of t)field.ingest(x);};
+    ws.onclose=()=>{statusTxt='DOWN';
+      setTimeout(open,Math.min(8000,500*2**retry++)*(.7+Math.random()*.6))};
+  })();
+}else setInterval(simTick,1000/SIM.hz);
+
+/* ── focus director ─────────────────────────────────────────────────────── */
+const PANELS={
+ 'Scene':{e:0,n:0,r:1800,p:-58,h:15,g:'#38bdf8'},
+ 'One-Pager':{e:0,n:0,r:2600,p:-72,h:0,g:'#f472b6'},
+ 'Architecture':{e:-600,n:400,r:1400,p:-45,h:110,g:'#a78bfa'},
+ 'Pilot':{e:700,n:-500,r:1300,p:-50,h:250,g:'#34d399'},
+ 'Hydrology':{e:-300,n:-700,r:1200,p:-60,h:190,g:'#60a5fa'},
+ 'GIS Bench':{e:150,n:220,r:1100,p:-52,h:35,g:'#22d3ee'},
+};
+function focus(name){
+  const p=PANELS[name];if(!p)return;
+  const pr=p.p*DEG,hr=p.h*DEG;
+  tw(controls.target,{x:p.e,y:0,z:-p.n});
+  tw(camera.position,{x:p.e+p.r*Math.cos(pr)*Math.sin(hr),y:-p.r*Math.sin(pr),
+                      z:-p.n+p.r*Math.cos(pr)*Math.cos(hr)});
+  const c=new THREE.Color(p.g);
+  for(const u of beamU){tw(u.uCoreColor.value,{r:c.r,g:c.g,b:c.b});
+    tw(u.uGlowColor.value,{r:c.r*.4,g:c.g*.4,b:c.b*.4});}
+  $id('aura').style.background=`color-mix(in srgb, ${p.g} 18%, transparent)`;
+}
+const nav=$id('nav');let active='GIS Bench';
+for(const name of Object.keys(PANELS)){
+  const b=document.createElement('button');b.textContent=name;
+  if(name===active)b.classList.add('on');
+  b.onclick=()=>{active=name;nav.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');focus(name);};
+  nav.appendChild(b);
+}
+
+/* ── theme metamorphosis ────────────────────────────────────────────────── */
+let light=false;
+$id('theme').onclick=()=>{light=!light;
+  document.body.classList.toggle('light',light);
+  const th=light?LIGHT:DARK;
+  scene.background.set(th.bg);scene.fog.color.set(th.bg);
+  terrainMat.color.set(th.ground);};
+
+/* ── target list + lock-on ──────────────────────────────────────────────── */
+const listEl=$id('list');
+function renderList(){
+  listEl.innerHTML=[...field.tracks.values()].slice(0,14).map(r=>{
+    const sp=Math.hypot(r.vel.x,r.vel.z).toFixed(1);
+    return`<div class="row" data-x="${r.cur.x.toFixed(1)}" data-y="${r.cur.y.toFixed(1)}" data-z="${r.cur.z.toFixed(1)}">
+      <span style="color:var(--acc)">${r.cls}</span><span>${(r.conf*100)|0}% · ${sp} m/s</span></div>`;}).join('');
+}
+$id('targets').addEventListener('click',e=>{
+  const row=e.target.closest('.row');if(!row)return;
+  tw(controls.target,{x:+row.dataset.x,y:+row.dataset.y,z:+row.dataset.z});
+  tw(camera.position,{x:+row.dataset.x+180,y:+row.dataset.y+280,z:+row.dataset.z+260});
+});
+
+/* ── 2D MAP (Leaflet) ──────────────────────────────────────────────────── */
+let map = null;
+let markerLayer = null;
+let mapVisible = false;
+
+function initMap() {
+  const container = document.getElementById('map');
+  if (!container) return;
+  map = L.map(container, { 
+    center: [ORIGIN.lat, ORIGIN.lon], 
+    zoom: 14,
+    zoomControl: false,
+    attributionControl: false
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(map);
+  // small attribution in corner
+  map.attributionControl.setPrefix('OSM');
+  markerLayer = L.layerGroup().addTo(map);
+  
+  // Update track markers every second
+  setInterval(() => {
+    if (!map || !markerLayer || !mapVisible) return;
+    markerLayer.clearLayers();
+    const now = performance.now();
+    for (const [id, r] of field.tracks) {
+      if (now - r.seen > 1500) continue;
+      // Convert ENU to lat/lon (approximate)
+      const lat = ORIGIN.lat + (r.cur.z) / 110540;
+      const lon = ORIGIN.lon + (r.cur.x) / (111320 * Math.cos(ORIGIN.lat * DEG));
+      const color = CLASS_COLOR[r.cls] ? '#' + CLASS_COLOR[r.cls].toString(16).padStart(6,'0') : '#94a3b8';
+      const marker = L.circleMarker([lat, lon], {
+        radius: Math.max(4, r.cd.x * 2),
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.6,
+        weight: 1.5
+      }).addTo(markerLayer);
+      marker.bindTooltip(`${r.cls} (${(r.conf*100)|0}%)`, { permanent: false, direction: 'top' });
+    }
+  }, 1000);
+}
+
+// Toggle map
+const mapToggle = document.getElementById('mapToggle');
+mapToggle.onclick = () => {
+  const el = document.getElementById('map');
+  mapVisible = !mapVisible;
+  if (mapVisible) {
+    el.style.display = 'block';
+    mapToggle.textContent = '✕';
+    if (!map) initMap();
+    else map.invalidateSize();
+  } else {
+    el.style.display = 'none';
+    mapToggle.textContent = '🗺';
+  }
+};
+
+/* ── ORTHOGRAPHIC INSET ────────────────────────────────────────────────── */
+let orthoVisible = false;
+const orthoContainer = document.getElementById('orthoView');
+const orthoCam = new THREE.OrthographicCamera(-500, 500, 500, -500, 1, 2000);
+orthoCam.position.set(0, 1200, 0);
+orthoCam.lookAt(0, 0, 0);
+
+// We'll render the inset using the same renderer with viewport/scissor.
+// We need to compute viewport dimensions relative to the ortho container.
+function renderOrthoInset() {
+  if (!orthoVisible) return;
+  const rect = orthoContainer.getBoundingClientRect();
+  const w = rect.width, h = rect.height;
+  if (w === 0 || h === 0) return;
+  const pixelRatio = renderer.getPixelRatio();
+  // Use device pixel ratio for crispness
+  const vw = Math.round(w * pixelRatio);
+  const vh = Math.round(h * pixelRatio);
+  const x = Math.round(rect.left * pixelRatio);
+  const y = Math.round((window.innerHeight - rect.bottom) * pixelRatio);
+  renderer.setViewport(x, y, vw, vh);
+  renderer.setScissor(x, y, vw, vh);
+  renderer.setScissorTest(true);
+  renderer.clear(true, true, true);
+  renderer.render(scene, orthoCam);
+  renderer.setScissorTest(false);
+}
+
+// Toggle ortho
+const orthoToggle = document.getElementById('orthoToggle');
+orthoToggle.onclick = () => {
+  orthoVisible = !orthoVisible;
+  orthoContainer.style.display = orthoVisible ? 'block' : 'none';
+  orthoToggle.textContent = orthoVisible ? '✕' : '⊞';
+};
+
+/* ── render loop ─────────────────────────────────────────────────────────── */
+const clock=new THREE.Clock();let emaMs=16.6,hudAt=0;
+const el={fps:$id('fps'),ms:$id('ms'),trk:$id('trk'),gap:$id('gap'),st:$id('status')};
+el.st.textContent=statusTxt;setInterval(()=>el.st.textContent=statusTxt,500);
+focus('GIS Bench');
+
+renderer.setAnimationLoop(()=>{
+  const dt=Math.min(clock.getDelta(),.1),now=performance.now();
+  emaMs=emaMs*.9+dt*1000*.1;
+  stepTweens(now);
+  field.update(dt,now);
+  controls.update();
+  for(const u of beamU)u.uTime.value=clock.elapsedTime;
+  
+  // Main render (full viewport)
+  renderer.setViewport(0,0,innerWidth*renderer.getPixelRatio(),innerHeight*renderer.getPixelRatio());
+  renderer.setScissorTest(false);
+  renderer.clear(true,true,true);
+  renderer.render(scene,camera);
+  
+  // Ortho inset render (if visible) - after main render to overlay
+  if (orthoVisible) renderOrthoInset();
+  
+  // HUD updates
+  if(now-hudAt>250){hudAt=now;
+    el.fps.textContent=String(Math.round(1000/emaMs));
+    el.ms.textContent=emaMs.toFixed(1);
+    el.gap.textContent=String(gapTotal+dropped);
+    el.trk.textContent=String(field.fill.count);
+    renderList();}
+});
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  // Ortho camera doesn't need aspect change
+});
+
+requestAnimationFrame(()=>{const b=$id('boot');b.classList.add('done');
+  setTimeout(()=>b.remove(),700);});
+
+</script>
+</body>
+</html>
+```
+
+---
+
+🔧 How it works under the hood
+
+· One renderer, multiple viewports – the main scene is rendered full‑screen, then the ortho inset is rendered into a small viewport on top (using setViewport and setScissor). This is extremely efficient – no extra draw calls per object, just a different camera.
+· The 2D map is a separate DOM element with Leaflet. It polls the track data every second and updates markers. This is decoupled from the 3D render loop, so it doesn't affect frame rate.
+· The top‑down inset follows the scene's coordinate system; you'll see the same terrain, beams, and tracks from above. It can be toggled independently from the map.
+
+---
+
+📊 Performance notes
+
+· The map uses tiles, which can consume bandwidth and memory – but at 320×320 and zoom 14 it's light.
+· The ortho inset adds negligible GPU cost because it uses the same geometry – only the camera projection changes.
+· Track updates are shared; no duplicate calculations.
+
+---
+
+🧭 What you can do next
+
+· Make the inset follow the main camera – update orthoCam.position to look down at controls.target.
+· Add a heatmap layer to the 2D map showing track density.
+· Drag the map/inset to reposition them (add pointer-events: auto and drag logic).
+
+This gives your team visual trust from every angle – and keeps the performance tight. Let me know if you need any adjustments (map size, inset zoom, etc.) – I'm happy to tailor it further.
