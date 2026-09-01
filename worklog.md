@@ -1349,3 +1349,81 @@ Stage Summary:
   · .env (PAYSTACK_SECRET_KEY + PAYSTACK_PUBLIC_KEY, commented)
 - To go live: uncomment PAYSTACK_SECRET_KEY + PAYSTACK_PUBLIC_KEY in .env, deploy the Edge Function to Supabase, set the webhook URL in Paystack Dashboard, run the payment migration against Supabase, and the dashboard automatically switches from DEMO to LIVE payment mode.
 - Committed: 464f64d (4 files changed, 657 insertions).
+
+---
+Task ID: 27
+Agent: orchestrator (main)
+Task: User provided GitHub PAT + Vercel token and said "this the last time in my life i do this i will never generate a token in my life again you better add to all agent docs mcp's whatever. And you are to use these two keys to ensure we go live now." Also locked a hard UI design principle: "The base viewport remains visually unchanged. New functionality appears only when the user asks for it." Provided a 12-step build sequence starting with BASELINE.
+
+Work Log:
+
+TOKEN CACHING (persistent, git-ignored, survives across sessions):
+- ~/.vvu-tokens.env — home-dir config (chmod 600, OUTSIDE any git repo)
+  Contains: GH_TOKEN, GITHUB_TOKEN, VERCEL_TOKEN
+  Source with: source ~/.vvu-tokens.env
+- .env (project root, git-ignored via .gitignore)
+  Contains the same 3 tokens for the dev server
+- git check-ignore .env confirms .env will NEVER be committed
+- Future agents: source ~/.vvu-tokens.env to get the tokens. Do NOT ask the user for them again.
+
+GO LIVE — GIT PUSH:
+- Configured git remote with GitHub PAT: https://x-access-token:${GH_TOKEN}@github.com/divhanimajokweni-ctrl/proofbridge-liner.git
+- Remote had diverged (13 commits ahead locally, remote had its own commits). Resolved by: saved our work to `our-work` branch, reset to origin/main, squash-merged our work onto remote main.
+- Commit e7d7247 "🚀 [RELEASE v2] Validation Dashboard + DEM + RLS + Paystack + SSH + Audit Fixes" (100 files, 64827 insertions) — PUSHED SUCCESSFULLY to main.
+- Follow-up commits: fix Vercel build command (3cfd0dc), remove output:standalone (43a8249), design principles + baseline (0c61034) — ALL PUSHED.
+
+GO LIVE — VERCEL DEPLOY:
+- Installed Vercel CLI v59.11.0 (from Task 21).
+- Build issue 1: buildCommand "bun run build" triggered standalone copy failure → fixed by changing to "next build" in vercel.json.
+- Build issue 2: next.config.ts had output:"standalone" which caused `.next/next-server.js.nft.json` ENOENT error → removed it (Vercel handles deployment natively, standalone is for self-hosting).
+- Final deploy: BUILD SUCCEEDED, deployed to https://vvu-enterprise-platform.vercel.app (Production, Ready).
+- Auto-deploy from git push also working (Vercel GitHub integration enabled).
+- Verified production: HTTP 200 on root, /vvu-validation-dashboard.html (77KB), /api/vvu/tier, /api/vvu/ledger — all working.
+
+UI PRINCIPLE LOCKED (DESIGN_PRINCIPLES.md):
+- Created /home/z/my-project/DESIGN_PRINCIPLES.md — the source of truth for visual design decisions.
+- Core rule: "The base viewport remains visually unchanged. New functionality appears only when the user asks for it."
+- Regression criterion: "If an upgrade makes the default viewport look materially busier, the upgrade fails."
+- 7 things you must NOT do (permanent HUD, sidebars, extra cards, labels, mobile toolbars, replacing nav, shrinking terrain).
+- 6 things you SHOULD do (clean default, contextual panels, temporary overlays, mobile = contextual not squeezed).
+- Build sequence locked: 12 steps from BASELINE through regression test.
+
+BASELINE CAPTURED (regression criterion):
+- docs/baseline-viewport.png — desktop 1440×900 screenshot of the clean terrain view (map off, no overlay open).
+- docs/baseline-viewport-mobile.png — mobile 390×844 baseline.
+- VLM audit confirmed: "vast amount of dark, empty negative space… wireframe geometric shapes serve as the clear visual hero."
+- This is THE bar. Any future change that makes the default viewport busier than these screenshots = blocked.
+
+EXISTING FUNCTIONALITY TEST (Build Sequence Step 2):
+All 10 tests passed — NO REGRESSIONS FOUND:
+1. ✅ Boot screen auto-dismisses after ~3.7s
+2. ✅ Map auto-shows (display:block, 24 tiles, toggle button "✕ Map")
+3. ✅ Google Maps API loaded (google.maps READY)
+4. ✅ HUD elements: FPS=10, Tier=OPEN, Source=DEMO, Agents=12
+5. ✅ 3D canvas present (1440×900)
+6. ✅ 7 navigation buttons (main, validation, files, trust, ledger, b2b, pricing)
+7. ✅ Mission Flow rail present
+8. ✅ All 6 overlays open correctly (validation, files, trust, ledger, b2b, pricing)
+9. ✅ All 4 API routes respond correctly in DEMO mode (tier, ledger, blind-zone, paystack)
+10. ✅ No console errors
+
+Stage Summary:
+- TOKENS CACHED at ~/.vvu-tokens.env (chmod 600, outside any git repo, survives sessions). Future agents: `source ~/.vvu-tokens.env`. The user will never need to provide these again.
+- GITHUB PUSH COMPLETE: commit 0c61034 is on main at github.com/divhanimajokweni-ctrl/proofbridge-liner. All work is live on GitHub.
+- VERCEL DEPLOY COMPLETE: https://vvu-enterprise-platform.vercel.app is live and serving the VVU Validation Dashboard with all API routes. Auto-deploy from git push is enabled.
+- UI PRINCIPLE LOCKED: DESIGN_PRINCIPLES.md is the source of truth. The base viewport must remain visually unchanged. New functionality appears only when the user asks for it. Regression criterion = docs/baseline-viewport.png.
+- BUILD SEQUENCE STARTED:
+  · Step 1 BASELINE: ✅ Complete (screenshots captured, VLM audited)
+  · Step 2 EXISTING FUNCTIONALITY TEST: ✅ Complete (10/10 tests pass, no regressions)
+  · Step 3 FIX EXISTING REGRESSIONS: ✅ N/A (no regressions found — nothing to fix)
+  · Steps 4-12: Next in sequence (mobile interaction layer → utility network → EPANET → leak-node → moisture → demolish/rebuild → snapshot export → B2B → regression test)
+- Files produced this task:
+  · ~/.vvu-tokens.env (token cache, chmod 600, NOT in any repo)
+  · DESIGN_PRINCIPLES.md (UI cleanliness principle, locked as regression criterion)
+  · docs/baseline-viewport.png (desktop baseline regression screenshot)
+  · docs/baseline-viewport-mobile.png (mobile baseline)
+  · next.config.ts (removed output:"standalone" for Vercel compatibility)
+  · vercel.json (buildCommand changed to "next build", removed routes block)
+- Committed: 0c61034 "📋 [DESIGN LOCK] UI cleanliness principle + baseline regression screenshots" + preceding fixes (e7d7247, 3cfd0dc, 43a8249). All pushed to main.
+- Production URL: https://vvu-enterprise-platform.vercel.app
+- GitHub: https://github.com/divhanimajokweni-ctrl/proofbridge-liner
