@@ -154,15 +154,15 @@ const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-per
 renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 document.body.appendChild(renderer.domElement);
 const scene=new THREE.Scene();
-const DARK={bg:'#020617',ground:0x0b1220},LIGHT={bg:'#dbe4ef',ground:0xc7d2e0};
+const DARK={bg:'#020617',ground:0x1a3a5c},LIGHT={bg:'#dbe4ef',ground:0xc7d2e0};
 scene.background=new THREE.Color(DARK.bg);
 scene.fog=new THREE.FogExp2(DARK.bg,0.00016);
 const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,1,40000);
 camera.position.set(300,900,1400);
 const controls=new OrbitControls(camera,renderer.domElement);
 controls.enableDamping=true;controls.maxPolarAngle=Math.PI/2.15;
-scene.add(new THREE.HemisphereLight(0x0ea5e9,0x020617,.9));
-const sun=new THREE.DirectionalLight(0x93c5fd,.8);sun.position.set(-2000,3000,1500);scene.add(sun);
+scene.add(new THREE.HemisphereLight(0x4a9eff,0x1a3a5c,1.5));
+const sun=new THREE.DirectionalLight(0xffffff,1.5);sun.position.set(-2000,3000,1500);scene.add(sun);
 
 /* ── terrain: Terrarium DEM → synthetic fallback ────────────────────────── */
 async function terrariumTile(lat,lon,z=13){
@@ -188,7 +188,7 @@ const geo=new THREE.PlaneGeometry(extent,extent,192,192);geo.rotateX(-Math.PI/2)
 const pos=geo.attributes.position;
 for(let i=0;i<pos.count;i++)pos.setY(i,sampler(pos.getX(i),-pos.getZ(i)));
 geo.computeVertexNormals();
-const terrainMat=new THREE.MeshStandardMaterial({color:DARK.ground,roughness:.95,metalness:.05,flatShading:true});
+const terrainMat=new THREE.MeshStandardMaterial({color:0x1a3a5c,roughness:.95,metalness:.05,flatShading:true});
 scene.add(new THREE.Mesh(geo,terrainMat));
 
 /* ── neon emission beams ────────────────────────────────────────────────── */
