@@ -165,29 +165,12 @@ scene.add(new THREE.HemisphereLight(0x4a9eff,0x1a3a5c,1.5));
 scene.add(new THREE.AmbientLight(0x4060a0,0.8));
 const sun=new THREE.DirectionalLight(0xffffff,1.5);sun.position.set(-2000,3000,1500);scene.add(sun);
 
-/* ── terrain: Terrarium DEM → synthetic fallback ────────────────────────── */
-async function terrariumTile(lat,lon,z=13){
-  const n=2**z,tx=Math.floor((lon+180)/360*n),
-        ty=Math.floor((1-Math.log(Math.tan(lat*DEG)+1/Math.cos(lat*DEG))/Math.PI)/2*n);
-  const img=await new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';
-    i.onload=()=>res(i);i.onerror=rej;
-    i.src=`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${tx}/${ty}.png`;});
-  const cv=document.createElement('canvas');cv.width=cv.height=img.width;
-  const ctx=cv.getContext('2d');ctx.drawImage(img,0,0);
-  const px=ctx.getImageData(0,0,img.width,img.height).data,S=img.width;
-  return(u,v)=>{const x=Math.min(S-1,Math.max(0,u*S|0)),y=Math.min(S-1,Math.max(0,v*S|0)),i=(y*S+x)*4;
-    return px[i]*256+px[i+1]+px[i+2]/256-32768;};
-}
+/* ── terrain: synthetic only (no async, no network) ──── */
 const synthetic=(e,n)=>10*Math.sin(e*.0035)*Math.cos(n*.0042)+6*Math.sin(e*.011+1.7)*Math.sin(n*.009)+3;
-let sampler=synthetic,extent=3600;
-try{
-  const elev=await terrariumTile(ORIGIN.lat,ORIGIN.lon,13);
-  extent=40075016.7*Math.cos(ORIGIN.lat*DEG)/(2**13);
-  sampler=(e,n)=>elev(.5+e/extent,.5-n/extent);
-}catch{console.warn('DEM offline → synthetic terrain');}
+const extent=3600;
 const geo=new THREE.PlaneGeometry(extent,extent,192,192);geo.rotateX(-Math.PI/2);
 const pos=geo.attributes.position;
-for(let i=0;i<pos.count;i++)pos.setY(i,sampler(pos.getX(i),-pos.getZ(i)));
+for(let i=0;i<pos.count;i++)pos.setY(i,synthetic(pos.getX(i),-pos.getZ(i)));
 geo.computeVertexNormals();
 const terrainMat=new THREE.MeshStandardMaterial({color:0x2a5a8c,roughness:.6,metalness:.05,flatShading:true});
 scene.add(new THREE.Mesh(geo,terrainMat));
