@@ -1,0 +1,963 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { 
+  Activity, ShieldCheck, ShieldAlert, Cpu, Eye, Navigation, 
+  Map, BarChart2, Users, Truck, AlertTriangle, Layers, Maximize2, 
+  ChevronRight, RefreshCw, Smartphone, TrendingUp, ShoppingBag,
+  Camera, EyeOff, CheckCircle, Database
+} from 'lucide-react';
+import * as THREE from 'three';
+
+// --- SYSTEM GEOLOCATION FALLBACK CONSTANTS ---
+const GQEBERHA_LAT = -33.9608;
+const GQEBERHA_LNG = 25.6022;
+
+interface GISBenchProps {
+  gpuTier?: number | null; // Passed from client-side detect-gpu hook (1-3)
+}
+
+export default function Geospatial3DGISBench({ gpuTier = 3 }: GISBenchProps) {
+  // --- UI STATES ---
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isB2BOpen, setIsB2BOpen] = useState(false);
+  const [isDemolished, setIsDemolished] = useState(false);
+  const [gpsCoordinates, setGpsCoordinates] = useState({ lat: GQEBERHA_LAT, lng: GQEBERHA_LNG });
+  const [gpsStatus, setGpsStatus] = useState<'STANDBY' | 'ACQUIRING' | 'LOCKED' | 'FAILED'>('STANDBY');
+  const [selectedLayer, setSelectedLayer] = useState<'TERRAIN' | 'HEATMAP' | 'INFRASTRUCTURE'>('TERRAIN');
+  const [activeVisualMode, setActiveVisualMode] = useState<'DEFAULT' | 'FLIR' | 'NVG'>('DEFAULT');
+
+  // --- TELEMETRY / HOVER METRICS ---
+  const [cursorCoordinates, setCursorCoordinates] = useState({ lat: GQEBERHA_LAT, lng: GQEBERHA_LNG, elev: 12.4 });
+  const [activeLeakNode, setActiveLeakNode] = useState<string | null>(null);
+  const [tankWaterLevel, setTankWaterLevel] = useState(8.5); // meters
+
+  // --- DYNAMIC ANALYTICS SIMULATION STATE (UPDATES EVERY 2.5s) ---
+  const [liveMetrics, setLiveMetrics] = useState({
+    fps: 60,
+    frameTimeMs: 16.6,
+    apiCalls: 12,
+    apiRequests: 148,
+    peopleCountTotal: 1077,
+    peopleStreet: 542,
+    peopleSidewalk: 384,
+    peopleAlley: 151,
+    vehiclesTotal: 45,
+    vehiclesTrucks: 8,
+    vehiclesBuses: 4,
+    vehiclesCars: 28,
+    vehiclesVans: 5,
+    marsoAnimals: 12,
+    marsoVehicles: 31,
+    factoryDefects: 3,
+    factoryYieldRate: 99.4,
+    retailCustomers: 188,
+    retailFootTraffic: 420
+  });
+
+  // --- DOM REFS FOR THREE.JS AND LAYOUT ---
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+
+  // 🛡️ THE CRITICAL PERFORMANCE INVARIANT: Throttle heavy features on low-spec hardware (Tier < 2)
+  const enableAnimations = useMemo(() => {
+    if (typeof gpuTier === 'number' && gpuTier < 2) {
+      console.warn("⚠️ [VVU PERF] Low-spec GPU detected (Tier < 2). Disabling post-processing and reducing WebGL terrain mesh density.");
+      return false;
+    }
+    return true;
+  }, [gpuTier]);
+
+  // --- INITIAL GEOLOCATION RESOLUTION ---
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setGpsStatus('FAILED');
+      return;
+    }
+    setGpsStatus('ACQUIRING');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setGpsCoordinates({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setGpsStatus('LOCKED');
+      },
+      (error) => {
+        console.error("Geolocation capture error. Falling back to Gqeberha base coordinates:", error);
+        setGpsStatus('FAILED');
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  }, []);
+
+  // --- DYNAMIC METRICS LOOP (Simulating real-time edge AI streams) ---
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveMetrics(prev => {
+        const fpsVariance = Math.floor(Math.random() * 5) - 2;
+        const targetFps = enableAnimations ? 60 : 30;
+        const currentFps = Math.max(targetFps + fpsVariance, 12);
+        
+        return {
+          fps: currentFps,
+          frameTimeMs: parseFloat((1000 / currentFps).toFixed(1)),
+          apiCalls: prev.apiCalls + Math.floor(Math.random() * 3) - 1,
+          apiRequests: prev.apiRequests + Math.floor(Math.random() * 5),
+          peopleCountTotal: prev.peopleCountTotal + Math.floor(Math.random() * 11) - 5,
+          peopleStreet: prev.peopleStreet + Math.floor(Math.random() * 5) - 2,
+          peopleSidewalk: prev.peopleSidewalk + Math.floor(Math.random() * 4) - 2,
+          peopleAlley: prev.peopleAlley + Math.floor(Math.random() * 2) - 1,
+          vehiclesTotal: prev.vehiclesTotal + Math.floor(Math.random() * 3) - 1,
+          vehiclesTrucks: prev.vehiclesTrucks,
+          vehiclesBuses: prev.vehiclesBuses,
+          vehiclesCars: prev.vehiclesCars + Math.floor(Math.random() * 2) - 1,
+          vehiclesVans: prev.vehiclesVans,
+          marsoAnimals: Math.max(0, prev.marsoAnimals + Math.floor(Math.random() * 3) - 1),
+          marsoVehicles: prev.marsoVehicles + Math.floor(Math.random() * 2) - 1,
+          factoryDefects: Math.max(0, prev.factoryDefects + (Math.random() > 0.85 ? 1 : -1)),
+          factoryYieldRate: parseFloat((99.0 + Math.random() * 0.9).toFixed(2)),
+          retailCustomers: prev.retailCustomers + Math.floor(Math.random() * 7) - 3,
+          retailFootTraffic: prev.retailFootTraffic + Math.floor(Math.random() * 10) - 4
+        };
+      });
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [enableAnimations]);
+
+  // --- REAL-TIME WATER LEVEL INTERACTION ---
+  useEffect(() => {
+    let animFrame: number;
+    const animateTank = () => {
+      setTankWaterLevel(prev => {
+        if (activeLeakNode) {
+          // Drops quickly during a simulated pipeline leak
+          return Math.max(1.8, parseFloat((prev - 0.05).toFixed(3)));
+        } else {
+          // Recovers slowly up to normal capacity of 10.0m
+          return Math.min(10.0, parseFloat((prev + 0.01).toFixed(3)));
+        }
+      });
+      animFrame = requestAnimationFrame(animateTank);
+    };
+    animFrame = requestAnimationFrame(animateTank);
+    return () => cancelAnimationFrame(animFrame);
+  }, [activeLeakNode]);
+
+  // --- MAIN THREE.JS SIMULATION IMPLEMENTATION ---
+  useEffect(() => {
+    if (!canvasRef.current || !canvasContainerRef.current) return;
+
+    const width = canvasContainerRef.current.clientWidth;
+    const height = canvasContainerRef.current.clientHeight;
+
+    // 1. Initialise Scene, Camera and WebGL Renderer
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x020617); // Slate-950
+
+    const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    camera.position.set(35, 45, 50);
+
+    const renderer = new THREE.WebGLRenderer({ 
+      canvas: canvasRef.current, 
+      antialias: enableAnimations,
+      preserveDrawingBuffer: true // Required for clean high-res PNG snapshots
+    });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    rendererRef.current = renderer;
+
+    // Ambient and Directional Scene Lights
+    const ambientLight = new THREE.AmbientLight(0x1e293b, 1.5);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0x0ea5e9, 2.5);
+    dirLight.position.set(10, 50, 10);
+    scene.add(dirLight);
+
+    // 2. stable Local Cartesian Coordinate transformation (ECEF relative to local origin)
+    // Map bounds represents a stable 10km2 flat plane centered at Gqeberha coordinates
+    const mapCenterLat = GQEBERHA_LAT;
+    const mapCenterLng = GQEBERHA_LNG;
+
+    const geodeticToLocalCartesian = (lat: number, lng: number) => {
+      const R = 6378137; // Earth Radius in meters
+      const dLat = (lat - mapCenterLat) * (Math.PI / 180);
+      const dLng = (lng - mapCenterLng) * (Math.PI / 180);
+      const x = R * dLng * Math.cos(mapCenterLat * Math.PI / 180);
+      const z = R * dLat; // local elevation mapped along standard 3D space
+      return { x, z };
+    };
+
+    const localCartesianToGeodetic = (x: number, z: number) => {
+      const R = 6378137;
+      const lat = mapCenterLat + (z / R) * (180 / Math.PI);
+      const lng = mapCenterLng + (x / (R * Math.cos(mapCenterLat * Math.PI / 180))) * (180 / Math.PI);
+      return { lat, lng };
+    };
+
+    // 3. Neon Grid Fragment Shader Material (Asynchronously Loaded Terrain Visual)
+    const terrainSize = 80;
+    const terrainSegments = enableAnimations ? 80 : 30; // Reduce vertices dynamically for Tier-1 GPUs
+    const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
+
+    // Elevate plane vertices to model realistic rolling coastal dunes
+    const pos = terrainGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const px = pos.getX(i);
+      const py = pos.getY(i);
+      // Realistic multi-frequency noise modeling Gqeberha dunes
+      const elevation = Math.sin(px * 0.1) * Math.cos(py * 0.1) * 3 + Math.sin(px * 0.03) * 4;
+      pos.setZ(i, elevation);
+    }
+    terrainGeo.computeVertexNormals();
+
+    const customVertexShader = `
+      varying vec2 vUv;
+      varying float vElevation;
+      void main() {
+        vUv = uv;
+        vElevation = position.z;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+
+    const customFragmentShader = `
+      varying vec2 vUv;
+      varying float vElevation;
+      uniform float uTime;
+      uniform vec3 uColor;
+      void main() {
+        // High-contrast Neon Grid aesthetic
+        float gridX = abs(fract(vUv.x * 25.0 - 0.5) - 0.5) / fwidth(vUv.x * 25.0);
+        float gridY = abs(fract(vUv.y * 25.0 - 0.5) - 0.5) / fwidth(vUv.y * 25.0);
+        float grid = 1.0 - min(gridX, gridY);
+        grid = clamp(grid, 0.0, 1.0);
+
+        // Pulsing radar sweep scanline
+        float scanline = sin(vUv.y * 50.0 - uTime * 4.0) * 0.5 + 0.5;
+        vec3 finalColor = mix(vec3(0.01, 0.02, 0.08), uColor, grid * 0.4);
+        finalColor += uColor * scanline * 0.1;
+        
+        // Color-scale based on height relief
+        finalColor += vec3(0.0, 0.05, 0.1) * (vElevation + 7.0) * 0.1;
+        
+        gl_FragColor = vec4(finalColor, 1.0);
+      }
+    `;
+
+    const terrainMaterial = new THREE.ShaderMaterial({
+      vertexShader: customVertexShader,
+      fragmentShader: customFragmentShader,
+      uniforms: {
+        uTime: { value: 0 },
+        uColor: { value: new THREE.Color(0x0ea5e9) } // Cyan accent
+      },
+      wireframe: false
+    });
+
+    const terrainMesh = new THREE.Mesh(terrainGeo, terrainMaterial);
+    terrainMesh.rotation.x = -Math.PI / 2;
+    scene.add(terrainMesh);
+
+    // 4. CityGML Utility Network ADE (Interactive Pipeline Structures)
+    // Multi-material pipes and node tracking spheres
+    const pipeGroup = new THREE.Group();
+    scene.add(pipeGroup);
+
+    // Dynamic pipe data containing positions, specifications, and materials
+    const pipeSegments = [
+      { id: 'PIPE-HDPE-01', material: 'HDPE', color: 0x10b981, start: [-25, -2], end: [-10, 1] },
+      { id: 'PIPE-PVCO-02', material: 'PVC-O', color: 0x3b82f6, start: [-10, 1], end: [10, -3] },
+      { id: 'PIPE-DI-03', material: 'Ductile Iron', color: 0x64748b, start: [10, -3], end: [25, 4] }
+    ];
+
+    const pipeMeshMap: { [key: string]: THREE.Mesh } = {};
+    const nodeSpheres: THREE.Mesh[] = [];
+
+    // Helper to evaluate absolute terrain elevation height at any local coordinate
+    const getTerrainHeight = (lx: number, lz: number) => {
+      // Linear approximation matching Plane dune height logic
+      return Math.sin(lx * 0.1) * Math.cos(lz * 0.1) * 3 + Math.sin(lx * 0.03) * 4;
+    };
+
+    pipeSegments.forEach(pipe => {
+      const hStart = getTerrainHeight(pipe.start[0], pipe.start[1]) - 1.5; // Placed at a burial depth of 1.5m
+      const hEnd = getTerrainHeight(pipe.end[0], pipe.end[1]) - 1.5;
+
+      const pStart = new THREE.Vector3(pipe.start[0], hStart, pipe.start[1]);
+      const pEnd = new THREE.Vector3(pipe.end[0], hEnd, pipe.end[1]);
+
+      const distance = pStart.distanceTo(pEnd);
+      const pipeGeo = new THREE.CylinderGeometry(0.4, 0.4, distance, 12);
+      
+      const pipeMat = new THREE.MeshStandardMaterial({
+        color: pipe.color,
+        roughness: 0.2,
+        metalness: 0.8,
+        emissive: pipe.color,
+        emissiveIntensity: 0.15
+      });
+
+      const mesh = new THREE.Mesh(pipeGeo, pipeMat);
+      
+      // Position and orient cylinder between points
+      const position = pStart.clone().add(pEnd).multiplyScalar(0.5);
+      mesh.position.copy(position);
+      
+      const direction = pEnd.clone().sub(pStart).normalize();
+      const up = new THREE.Vector3(0, 1, 0);
+      mesh.quaternion.setFromUnitVectors(up, direction);
+
+      pipeGroup.add(mesh);
+      pipeMeshMap[pipe.id] = mesh;
+
+      // Create interactive, georeferenced Node Spheres at pipeline endpoints
+      const nodeGeo = new THREE.SphereGeometry(0.7, 16, 16);
+      const nodeMat = new THREE.MeshStandardMaterial({
+        color: 0x3b82f6, // Vibrant Blue
+        roughness: 0.1,
+        emissive: 0x3b82f6,
+        emissiveIntensity: 0.3
+      });
+
+      const startNode = new THREE.Mesh(nodeGeo, nodeMat.clone());
+      startNode.position.copy(pStart);
+      startNode.userData = { id: `${pipe.id}-START`, desc: `${pipe.material} Joint`, latLng: localCartesianToGeodetic(pStart.x, pStart.z) };
+      pipeGroup.add(startNode);
+      nodeSpheres.push(startNode);
+
+      const endNode = new THREE.Mesh(nodeGeo, nodeMat.clone());
+      endNode.position.copy(pEnd);
+      endNode.userData = { id: `${pipe.id}-END`, desc: `${pipe.material} Joint`, latLng: localCartesianToGeodetic(pEnd.x, pEnd.z) };
+      pipeGroup.add(endNode);
+      nodeSpheres.push(endNode);
+    });
+
+    // 5. EPANET Storage Tank Model (Elevated topographic asset)
+    const tankX = -18;
+    const tankZ = -22;
+    const tankBaseY = getTerrainHeight(tankX, tankZ) + 4; // Elevated on a structural framework
+
+    const tankGroup = new THREE.Group();
+    scene.add(tankGroup);
+
+    // Structural support grid
+    const trussGeo = new THREE.CylinderGeometry(0.1, 0.1, 8, 8);
+    const trussMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.9 });
+    for (let i = -1; i <= 1; i += 2) {
+      for (let j = -1; j <= 1; j += 2) {
+        const truss = new THREE.Mesh(trussGeo, trussMat);
+        truss.position.set(tankX + i * 2, tankBaseY - 4, tankZ + j * 2);
+        tankGroup.add(truss);
+      }
+    }
+
+    // Storage Tank Reservoir Body
+    const tankGeo = new THREE.CylinderGeometry(3.5, 3.5, 6, 24);
+    const tankMat = new THREE.MeshStandardMaterial({
+      color: 0x64748b, // Industrial Metallic Grey
+      roughness: 0.3,
+      metalness: 0.7,
+      transparent: true,
+      opacity: 0.85
+    });
+    const tankBody = new THREE.Mesh(tankGeo, tankMat);
+    tankBody.position.set(tankX, tankBaseY + 3, tankZ);
+    tankGroup.add(tankBody);
+
+    // Dynamic, floating 3D water level disc representing current head capacity
+    const waterGeo = new THREE.CylinderGeometry(3.4, 3.4, 0.1, 24);
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x0ea5e9, // Glowing Blue water
+      roughness: 0.1,
+      transparent: true,
+      opacity: 0.9,
+      emissive: 0x0ea5e9,
+      emissiveIntensity: 0.4
+    });
+    const waterLevelMesh = new THREE.Mesh(waterGeo, waterMat);
+    waterLevelMesh.position.set(tankX, tankBaseY, tankZ); // Height animated inside render loop
+    tankGroup.add(waterLevelMesh);
+
+    // 6. CesiumJS Style Dev Toggle Structure Group
+    const buildGroup = new THREE.Group();
+    scene.add(buildGroup);
+
+    const mockBuildings: THREE.Mesh[] = [];
+    const residentialColors = [0xd97706, 0xb45309]; // Warm amber/copper shades
+    const industrialColors = [0x475569, 0x1e293b];  // Cool titanium/steel shades
+
+    // Spawn 12 local structural models fanning around coordinates
+    for (let i = 0; i < 12; i++) {
+      const bx = (Math.sin(i * 0.5) * 22) + (Math.random() * 4 - 2);
+      const bz = (Math.cos(i * 0.5) * 22) + (Math.random() * 4 - 2);
+      const by = getTerrainHeight(bx, bz);
+
+      const bWidth = 2 + Math.random() * 2;
+      const bHeight = 4 + Math.random() * 8;
+      const bGeo = new THREE.BoxGeometry(bWidth, bHeight, bWidth);
+      
+      const isInd = i % 3 === 0; // Classify 1 in 3 structures as industrial
+      const color = isInd ? industrialColors[0] : residentialColors[0];
+      
+      const bMat = new THREE.MeshStandardMaterial({
+        color: color,
+        roughness: 0.4,
+        metalness: isInd ? 0.9 : 0.1
+      });
+
+      const building = new THREE.Mesh(bGeo, bMat);
+      building.position.set(bx, by + bHeight / 2, bz);
+      building.userData = { isIndustrial: isInd, baseHeight: bHeight };
+      buildGroup.add(building);
+      mockBuildings.push(building);
+    }
+
+    // 7. Sentinel-2 Soil Moisture Anomaly (Dynamic vegetation/leak moisture circle)
+    const leakDecalGeo = new THREE.RingGeometry(0.1, 6, 32);
+    const leakDecalMat = new THREE.MeshBasicMaterial({
+      color: 0x10b981, // Rich Moisture Green
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide
+    });
+    const leakDecal = new THREE.Mesh(leakDecalGeo, leakDecalMat);
+    leakDecal.rotation.x = -Math.PI / 2;
+    scene.add(leakDecal);
+
+    // 8. Dynamic Camera Mouse Orbit controls (No external dependency required)
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    let cameraAngleX = 0.5;
+    let cameraAngleY = 0.8;
+    let cameraRadius = 65;
+
+    const updateCameraPosition = () => {
+      camera.position.x = cameraRadius * Math.sin(cameraAngleY) * Math.cos(cameraAngleX);
+      camera.position.z = cameraRadius * Math.sin(cameraAngleY) * Math.sin(cameraAngleX);
+      camera.position.y = cameraRadius * Math.cos(cameraAngleY) + 10;
+      camera.lookAt(0, 0, 0);
+    };
+    updateCameraPosition();
+
+    const handleMouseDown = () => { isDragging = true; };
+    const handleMouseUp = () => { isDragging = false; };
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaMove = {
+        x: e.offsetX - previousMousePosition.x,
+        y: e.offsetY - previousMousePosition.y
+      };
+
+      if (isDragging) {
+        cameraAngleX += deltaMove.x * 0.007;
+        cameraAngleY = Math.max(0.1, Math.min(Math.PI / 2 - 0.05, cameraAngleY - deltaMove.y * 0.007));
+        updateCameraPosition();
+      }
+
+      previousMousePosition = { x: e.offsetX, y: e.offsetY };
+
+      // --- 9. INTERACTIVE RAYCASTER TELEMETRY OVERLAY ---
+      const mouse = new THREE.Vector2(
+        (e.offsetX / width) * 2 - 1,
+        -(e.offsetY / height) * 2 + 1
+      );
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      // Project cursor onto terrain mesh
+      const intersects = raycaster.intersectObject(terrainMesh);
+      if (intersects.length > 0) {
+        const point = intersects[0].point;
+        const coords = localCartesianToGeodetic(point.x, point.z);
+        setCursorCoordinates({
+          lat: coords.lat,
+          lng: coords.lng,
+          elev: parseFloat((point.y + 12).toFixed(2)) // Map local space offset to elevation baseline
+        });
+      }
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      cameraRadius = Math.max(20, Math.min(150, cameraRadius + e.deltaY * 0.05));
+      updateCameraPosition();
+    };
+
+    const handleCanvasClick = (e: MouseEvent) => {
+      const mouse = new THREE.Vector2(
+        (e.offsetX / width) * 2 - 1,
+        -(e.offsetY / height) * 2 + 1
+      );
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      // Cast rays across node endpoints
+      const intersects = raycaster.intersectObjects(nodeSpheres);
+      if (intersects.length > 0) {
+        const node = intersects[0].object as THREE.Mesh;
+        const nodeId = node.userData.id;
+        
+        if (activeLeakNode === nodeId) {
+          // Deactivate leak if already running on node
+          setActiveLeakNode(null);
+          node.scale.set(1.0, 1.0, 1.0);
+          (node.material as THREE.MeshStandardMaterial).color.setHex(0x3b82f6);
+          (node.material as THREE.MeshStandardMaterial).emissive.setHex(0x3b82f6);
+        } else {
+          // Reset previous leak nodes
+          nodeSpheres.forEach(s => {
+            s.scale.set(1.0, 1.0, 1.0);
+            (s.material as THREE.MeshStandardMaterial).color.setHex(0x3b82f6);
+            (s.material as THREE.MeshStandardMaterial).emissive.setHex(0x3b82f6);
+          });
+
+          // Trigger Leak State on target Node
+          setActiveLeakNode(nodeId);
+          node.scale.set(1.6, 1.6, 1.6); // Scale up node physically
+          (node.material as THREE.MeshStandardMaterial).color.setHex(0xef4444); // Glow Crimson red
+          (node.material as THREE.MeshStandardMaterial).emissive.setHex(0xef4444);
+          
+          // Relocate Soil Moisture Decal onto leak epicenter
+          leakDecal.position.copy(node.position);
+          leakDecal.position.y += 0.15; // Raised slightly above physical terrain mesh
+        }
+      } else {
+        // Clear leaks when clicking empty space
+        const terrainIntersects = raycaster.intersectObject(terrainMesh);
+        if (terrainIntersects.length > 0 && !intersects.length) {
+          setActiveLeakNode(null);
+          nodeSpheres.forEach(s => {
+            s.scale.set(1.0, 1.0, 1.0);
+            (s.material as THREE.MeshStandardMaterial).color.setHex(0x3b82f6);
+            (s.material as THREE.MeshStandardMaterial).emissive.setHex(0x3b82f6);
+          });
+        }
+      }
+    };
+
+    const canvas = canvasRef.current;
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('wheel', handleWheel);
+    canvas.addEventListener('click', handleCanvasClick);
+
+    // --- 10. ROBUST RESIZEOBSERVER INITIALIZATION GATES ---
+    const resizeObserver = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        const { width: w, height: h } = entry.contentRect;
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+    });
+    resizeObserver.observe(canvasContainerRef.current);
+
+    // 100ms Fallback sizing trigger
+    const resizeTimeout = setTimeout(() => {
+      if (canvasContainerRef.current) {
+        const w = canvasContainerRef.current.clientWidth;
+        const h = canvasContainerRef.current.clientHeight;
+        renderer.setSize(w, h);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      }
+    }, 100);
+
+    // --- 11. CENTRALIZED WEBGL RENDER LOOP ---
+    const clock = new THREE.Clock();
+    let animationFrameId: number;
+
+    const render = () => {
+      const elapsedTime = clock.getElapsedTime();
+
+      // Update Custom fragment shader time uniforms
+      terrainMaterial.uniforms.uTime.value = elapsedTime;
+
+      // Animate fluid level within EPANET elevated reservoir
+      const targetWaterY = tankBaseY + (tankWaterLevel / 10) * 5.8;
+      waterLevelMesh.position.y = THREE.MathUtils.lerp(waterLevelMesh.position.y, targetWaterY, 0.1);
+
+      // Handle CesiumJS Dev Toggle Style Swaps
+      mockBuildings.forEach(building => {
+        const scale = building.scale.y;
+        if (isDemolished) {
+          if (!building.userData.isIndustrial) {
+            // Shrink/Hide residential structures
+            building.scale.y = THREE.MathUtils.lerp(scale, 0, 0.1);
+            building.position.y = THREE.MathUtils.lerp(building.position.y, -10, 0.1);
+          } else {
+            // Scale up & reveal Industrial Assets with glass-strip styling
+            building.scale.y = THREE.MathUtils.lerp(scale, 1.4, 0.1);
+            (building.material as THREE.MeshStandardMaterial).color.setHex(0x38bdf8); // Glowing Glass cyan
+            (building.material as THREE.MeshStandardMaterial).metalness = 0.95;
+          }
+        } else {
+          // Rebuild baseline urban distribution
+          const targetScale = building.userData.isIndustrial ? 1.0 : 1.0;
+          building.scale.y = THREE.MathUtils.lerp(scale, targetScale, 0.1);
+          building.position.y = THREE.MathUtils.lerp(building.position.y, getTerrainHeight(building.position.x, building.position.z) + (building.userData.baseHeight * targetScale) / 2, 0.1);
+          (building.material as THREE.MeshStandardMaterial).color.setHex(building.userData.isIndustrial ? industrialColors[0] : residentialColors[0]);
+          (building.material as THREE.MeshStandardMaterial).metalness = building.userData.isIndustrial ? 0.9 : 0.1;
+        }
+      });
+
+      // Handle Sentinel-2 Soil Moisture Anomaly animations during active leaks
+      if (activeLeakNode) {
+        leakDecalMat.opacity = THREE.MathUtils.lerp(leakDecalMat.opacity, 0.75, 0.05);
+        const ringScale = 1.0 + Math.sin(elapsedTime * 6.0) * 0.15; // Pulse moisture spot
+        leakDecal.scale.set(ringScale, ringScale, 1.0);
+      } else {
+        leakDecalMat.opacity = THREE.MathUtils.lerp(leakDecalMat.opacity, 0, 0.1);
+      }
+
+      renderer.render(scene, camera);
+      animationFrameId = requestAnimationFrame(render);
+    };
+    render();
+
+    // Clean up connections on unmount GATES
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      clearTimeout(resizeTimeout);
+      resizeObserver.disconnect();
+      if (canvas) {
+        canvas.removeEventListener('mousedown', handleMouseDown);
+        canvas.removeEventListener('mouseup', handleMouseUp);
+        canvas.removeEventListener('mousemove', handleMouseMove);
+        canvas.removeEventListener('wheel', handleWheel);
+        canvas.removeEventListener('click', handleCanvasClick);
+      }
+      terrainGeo.dispose();
+      terrainMaterial.dispose();
+      pipeGroup.traverse(obj => {
+        if (obj instanceof THREE.Mesh) {
+          obj.geometry.dispose();
+          if (Array.isArray(obj.material)) {
+            obj.material.forEach(m => m.dispose());
+          } else {
+            obj.material.dispose();
+          }
+        }
+      });
+      renderer.dispose();
+    };
+  }, [enableAnimations, isDemolished, activeLeakNode, tankWaterLevel]);
+
+  // --- 📷 HIGH-RES PNG SNAPSHOT EXPORTER (B2B Presentation Ready) ---
+  const handleExportSnapshot = () => {
+    if (!rendererRef.current || !canvasRef.current) return;
+    // Force a single, static high-res frame render immediately prior to export
+    const dataURL = canvasRef.current.toDataURL("image/png");
+    
+    // Create browser download link
+    const link = document.createElement('a');
+    link.download = `vvu_3d_gis_bench_snapshot_${new Date().toISOString().split('T')[0]}.png`;
+    link.href = dataURL;
+    link.click();
+  };
+
+  return (
+    <div className={`relative w-full h-screen bg-slate-950 text-slate-100 overflow-hidden font-mono select-none ${
+      activeVisualMode === 'FLIR' ? 'filter hue-rotate-180 brightness-95 contrast-125' : 
+      activeVisualMode === 'NVG' ? 'filter saturate-150 contrast-125 brightness-110 green-phosphor' : ''
+    }`}>
+      
+      {/* 🟢 STRICT SIMULATION ADVISORY */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-amber-500 text-black px-8 py-1.5 font-bold text-xs tracking-widest z-50 rounded-b-md shadow-2xl pointer-events-none">
+        SIMULATION WORKSPACE — NOT MUNICIPAL OPERATIONAL SCADA
+      </div>
+
+      {/* 🚀 THREE.JS WEBGL RENDER CONTROLLER CANVAS */}
+      <div ref={canvasContainerRef} className="absolute inset-0 w-full h-full z-0">
+        <canvas ref={canvasRef} className="w-full h-full block" />
+      </div>
+
+      {/* --- HUD HEADER --- */}
+      <header className="absolute top-12 left-6 right-6 flex justify-between items-start z-30 pointer-events-none">
+        <div className="bg-slate-900/90 border border-slate-800 backdrop-blur px-4 py-3 rounded shadow-2xl pointer-events-auto">
+          <h1 className="text-sm font-bold text-emerald-400 flex items-center gap-2">
+            <Activity className="w-4 h-4 animate-pulse" />
+            VENTURE VISION UBUNTU — 3D GIS BENCH v3.0
+          </h1>
+          <p className="text-[10px] text-slate-400 mt-1 uppercase">SANS 10112 / EIS v1.0 EVIDENCE COMPLIANT PLATFORM</p>
+        </div>
+
+        {/* Visual Mode Toggles & Spatial Layers (HUD Controls) */}
+        <div className="flex gap-3 pointer-events-auto">
+          {/* Layers Controls */}
+          <div className="bg-slate-900/90 border border-slate-800 backdrop-blur rounded flex p-1 shadow-2xl">
+            {(['TERRAIN', 'HEATMAP', 'INFRASTRUCTURE'] as const).map(layer => (
+              <button
+                key={layer}
+                onClick={() => setSelectedLayer(layer)}
+                className={`px-3 py-1.5 rounded text-[9px] font-bold transition-all ${
+                  selectedLayer === layer ? 'bg-emerald-500 text-black shadow-lg' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {layer}
+              </button>
+            ))}
+          </div>
+
+          {/* Optics Shader Modes */}
+          <div className="bg-slate-900/90 border border-slate-800 backdrop-blur rounded flex p-1 shadow-2xl">
+            {(['DEFAULT', 'FLIR', 'NVG'] as const).map(mode => (
+              <button
+                key={mode}
+                onClick={() => setActiveVisualMode(mode)}
+                className={`px-3 py-1.5 rounded text-[9px] font-bold transition-all ${
+                  activeVisualMode === mode ? 'bg-sky-500 text-black shadow-lg' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      {/* --- LIVE COORDINATE MOUSE TRACER (ENU OFFSETS) --- */}
+      <div className="absolute top-32 left-6 bg-slate-900/95 border border-slate-800/80 backdrop-blur-md p-3 rounded text-[10px] space-y-1 z-30 w-72">
+        <div className="text-sky-400 font-bold uppercase tracking-wider border-b border-slate-800 pb-1 flex items-center justify-between">
+          <span>🛰️ Georeferenced Telemetry</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping" />
+        </div>
+        <div className="flex justify-between"><span>CURSOR LAT:</span><span className="text-slate-200 font-bold">{cursorCoordinates.lat.toFixed(6)} S</span></div>
+        <div className="flex justify-between"><span>CURSOR LNG:</span><span className="text-slate-200 font-bold">{cursorCoordinates.lng.toFixed(6)} E</span></div>
+        <div className="flex justify-between"><span>ELEVATION:</span><span className="text-emerald-400 font-bold">{cursorCoordinates.elev} m</span></div>
+        <div className="flex justify-between"><span>COORDINATE CRS:</span><span className="text-slate-400">EPSG:4326 (WGS84)</span></div>
+      </div>
+
+      {/* --- FLOATING CONTROLLER / DEV GATES PANEL --- */}
+      <div className="absolute top-52 right-6 bg-slate-900/95 border border-slate-800/80 backdrop-blur-md p-4 rounded text-[10px] space-y-3 z-30 w-64 pointer-events-auto">
+        <div className="text-purple-400 font-bold uppercase tracking-wider border-b border-slate-800 pb-1">
+          ⚙️ CesiumJS Developer Gates
+        </div>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span>URBAN STRUCTURE STYLE:</span>
+            <button
+              onClick={() => setIsDemolished(prev => !prev)}
+              className={`px-3 py-1 rounded text-[8px] font-bold transition-all ${
+                isDemolished ? 'bg-rose-500 text-black' : 'bg-slate-800 text-emerald-400 border border-slate-700'
+              }`}
+            >
+              {isDemolished ? 'DEMOLISH ON' : 'BASELINE REBUILD'}
+            </button>
+          </div>
+          <div className="flex justify-between items-center">
+            <span>EXPORT SNAPSHOT:</span>
+            <button
+              onClick={handleExportSnapshot}
+              className="bg-emerald-500 hover:bg-emerald-400 text-black px-3 py-1 rounded text-[8px] font-bold flex items-center gap-1 transition-all"
+            >
+              <Camera className="w-3 h-3" /> CAPTURE PNG
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* --- BOTTOM FLOATING TELEMETRY FEED (11-FIELD PROVENANCE CARD) --- */}
+      <div className="absolute bottom-6 left-6 w-96 bg-slate-900/90 border border-slate-800 backdrop-blur p-4 rounded shadow-2xl z-30 space-y-3 pointer-events-auto">
+        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+          <h3 className="text-xs font-bold text-sky-400 flex items-center gap-2">
+            <Smartphone className="w-4 h-4" /> LOCAL NODE PAIRING STATUS
+          </h3>
+          <button
+            onClick={() => setIsB2BOpen(prev => !prev)}
+            className="text-[9px] bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-2 py-0.5 rounded transition-all"
+          >
+            {isB2BOpen ? 'HIDE CRM' : 'SHOW PIPELINE'}
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-y-1.5 text-[10px] text-slate-400">
+          <div>ACTIVE GATEWAY:</div><div className="text-emerald-400 font-bold text-right">VVU-HG-NMBM-01</div>
+          <div>PAIRING MECHANISM:</div><div className="text-right">BLE + TOTP HANDSHAKE</div>
+          <div>MFA CODE SYNC:</div><div className="text-right text-sky-400 font-bold">VERIFIED_CANDIDATE</div>
+          <div>ENVELOPE COMPLIANCE:</div><div className="text-right text-emerald-500">SANS 1200 / PASS</div>
+          
+          <div className="col-span-2 border-t border-slate-800 my-1 pt-1.5 text-slate-300 font-bold flex justify-between">
+            <span>🏰 EPANET STORAGE TANK STATE</span>
+            <span className="text-[9px] text-slate-400">Hazen-Williams C=120</span>
+          </div>
+          <div>RESERVOIR WATER DEPTH:</div>
+          <div className={`text-right font-bold ${activeLeakNode ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+            {tankWaterLevel} m {activeLeakNode && '(LEAK DROP)'}
+          </div>
+        </div>
+
+        {/* Dynamic Warning Alert on active leak */}
+        {activeLeakNode && (
+          <div className="bg-rose-950/40 border border-rose-900 text-rose-300 rounded p-2.5 text-[9px] flex items-start gap-2 animate-pulse mt-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+            <div>
+              <span className="font-bold uppercase block">🚨 ACTIVE LEAKAGE DETECTED</span>
+              Epicenter localized at node sphere <span className="text-white font-bold">{activeLeakNode}</span>. 
+              Sentinel-2 soil moisture ring generated. Reservoir level dropping at 50mm/s.
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* --- INTEGRATED B2B PIPELINE METRICS PORTAL --- */}
+      {isB2BOpen && (
+        <div className="absolute bottom-6 left-[416px] w-96 bg-slate-900/90 border border-slate-800 backdrop-blur p-4 rounded shadow-2xl z-30 space-y-3 pointer-events-auto animate-fade-in">
+          <div className="text-emerald-400 font-bold uppercase tracking-wider text-[11px] border-b border-slate-800 pb-1.5 flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4" /> B2B CRM Pipeline Overview
+          </div>
+          <div className="grid grid-cols-2 gap-y-1.5 text-[10px] text-slate-400">
+            <div>PIPELINE ASSET VALUE:</div><div className="text-white font-bold text-right">ZAR 2,684,315</div>
+            <div>ACTIVE TARGET LIST:</div><div className="text-right text-sky-400 font-bold">20 JSE Corporate Accounts</div>
+            <div>LEASING SYSTEM:</div><div className="text-right">Terminal-as-a-Service (TaaS)</div>
+          </div>
+          <div className="border-t border-slate-800 pt-2">
+            <div className="text-[9px] font-bold text-slate-500 mb-1.5">ACTIVE DEVOPS INTEGRATION GATES:</div>
+            <div className="space-y-1 text-[8px] text-slate-400">
+              <div className="flex justify-between items-center bg-slate-950/40 p-1 rounded"><span>🤖 Prospecting Agent</span><span className="text-emerald-400 font-bold">ACTIVE_ENRICH</span></div>
+              <div className="flex justify-between items-center bg-slate-950/40 p-1 rounded"><span>🔍 Research & Personalization</span><span className="text-emerald-400 font-bold">TARRIF_MATCH</span></div>
+              <div className="flex justify-between items-center bg-slate-950/40 p-1 rounded"><span>📧 Sequencing Handler</span><span className="text-sky-400">WAITING_CRON</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- FLOATING TRIGGER SIDEBAR BUTTON (GLOWING GLASS) --- */}
+      <button
+        onClick={() => setIsSidebarOpen(prev => !prev)}
+        style={{ right: isSidebarOpen ? '416px' : '16px' }}
+        className="absolute top-1/2 -translate-y-1/2 w-10 h-24 bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-emerald-500/50 backdrop-blur rounded-l-lg shadow-[0_0_20px_rgba(2,6,23,0.8)] z-40 flex flex-col justify-center items-center gap-1.5 group cursor-pointer transition-all duration-300 pointer-events-auto"
+      >
+        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+        <ChevronRight className={`w-5 h-5 text-slate-400 group-hover:text-emerald-400 transition-transform ${isSidebarOpen ? '' : 'rotate-180'}`} />
+        <span className="text-[8px] font-bold text-slate-500 group-hover:text-emerald-400 tracking-widest writing-vertical rotate-180 uppercase mt-1">
+          ANALYTICS
+        </span>
+      </button>
+
+      {/* --- RETRACTABLE HIGH-DENSITY ANALYTICS SIDEBAR --- */}
+      <aside
+        style={{ display: isSidebarOpen ? 'block' : 'none' }}
+        className="absolute top-0 right-0 w-96 h-full bg-slate-900/95 border-l border-slate-800/80 backdrop-blur-xl shadow-[-10px_0_30px_rgba(2,6,23,0.9)] p-6 overflow-y-auto z-30 pointer-events-auto"
+      >
+        <div className="flex flex-col gap-6 pt-12">
+          {/* Header info */}
+          <div className="border-b border-slate-800 pb-4">
+            <h2 className="text-sm font-bold text-sky-400 flex items-center gap-2">
+              <BarChart2 className="w-4 h-4" /> METROPOLITAN METRICS
+            </h2>
+            <p className="text-[10px] text-slate-500 mt-1 uppercase">Live feed from local YOLO and satellite models</p>
+          </div>
+
+          {/* SECTION 1: GLOBAL FEED STATUS (System Heartbeat) */}
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded p-4">
+            <h3 className="text-[11px] font-bold text-emerald-400 flex items-center justify-between mb-3">
+              <span className="flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5" /> SYSTEM PERFORMANCE</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            </h3>
+            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div className="text-slate-400">FPS / RENDERING:</div>
+              <div className={`text-right font-bold ${liveMetrics.fps > 45 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {liveMetrics.fps} FPS
+              </div>
+              <div className="text-slate-400">FRAME RENDER TIME:</div>
+              <div className="text-right text-slate-200">{liveMetrics.frameTimeMs} ms</div>
+              <div className="text-slate-400">ACTIVE SCADA CALLS:</div>
+              <div className="text-right text-slate-200">{liveMetrics.apiCalls}/s</div>
+              <div className="text-slate-400">TOTAL B2B REQUESTS:</div>
+              <div className="text-right text-sky-400 font-bold">{liveMetrics.apiRequests} req</div>
+            </div>
+          </div>
+
+          {/* SECTION 2: CITYWIDE PEOPLE COUNTER */}
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded p-4">
+            <h3 className="text-[11px] font-bold text-sky-400 flex items-center justify-between mb-3 border-b border-slate-900 pb-1.5">
+              <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> PEOPLE COUNTER (YOLO)</span>
+              <span className="text-[10px] text-sky-300 font-mono">{liveMetrics.peopleCountTotal}</span>
+            </h3>
+            <div className="space-y-2 text-[10px]">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">PUBLIC STREETWAYS:</span>
+                <span className="text-slate-200">{liveMetrics.peopleStreet}</span>
+              </div>
+              <div className="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div className="bg-sky-400 h-full transition-all duration-1000" style={{ width: `${(liveMetrics.peopleStreet / liveMetrics.peopleCountTotal) * 100}%` }} />
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">COMMERCIAL SIDEWALKS:</span>
+                <span className="text-slate-200">{liveMetrics.peopleSidewalk}</span>
+              </div>
+              <div className="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div className="bg-sky-400 h-full transition-all duration-1000" style={{ width: `${(liveMetrics.peopleSidewalk / liveMetrics.peopleCountTotal) * 100}%` }} />
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">ALLEYWAYS & BYPASSES:</span>
+                <span className="text-slate-200">{liveMetrics.peopleAlley}</span>
+              </div>
+              <div className="w-full bg-slate-900 h-1.5 rounded overflow-hidden">
+                <div className="bg-sky-400 h-full transition-all duration-1000" style={{ width: `${(liveMetrics.peopleAlley / liveMetrics.peopleCountTotal) * 100}%` }} />
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 3: METROPOLITAN VEHICLE BREAKDOWN */}
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded p-4">
+            <h3 className="text-[11px] font-bold text-amber-500 flex items-center justify-between mb-3 border-b border-slate-900 pb-1.5">
+              <span className="flex items-center gap-1.5"><Truck className="w-3.5 h-3.5" /> METRO VEHICLE METRICS</span>
+              <span className="text-[10px] text-amber-400 font-mono">TOTAL: {liveMetrics.vehiclesTotal}</span>
+            </h3>
+            <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
+              <div>HEAVY TRUCKS:</div><div className="text-right text-slate-200 font-bold">{liveMetrics.vehiclesTrucks}</div>
+              <div>TRANSIT BUSES:</div><div className="text-right text-slate-200 font-bold">{liveMetrics.vehiclesBuses}</div>
+              <div>COMMERCIAL CARS:</div><div className="text-right text-slate-200 font-bold">{liveMetrics.vehiclesCars}</div>
+              <div>LOGISTICS VANS:</div><div className="text-right text-slate-200 font-bold">{liveMetrics.vehiclesVans}</div>
+            </div>
+          </div>
+
+          {/* SECTION 4: MARSO TRANSIT FLOWS */}
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded p-4">
+            <h3 className="text-[11px] font-bold text-rose-500 flex items-center gap-1.5 mb-3">
+              <Layers className="w-3.5 h-3.5" /> MARSO TRAFFIC FLOWS
+            </h3>
+            <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
+              <div>LIVESTOCK / FLOW:</div><div className="text-right text-rose-400 font-bold">{liveMetrics.marsoAnimals} units/h</div>
+              <div>VEHICULAR FLUX:</div><div className="text-right text-rose-400 font-bold">{liveMetrics.marsoVehicles} trans/h</div>
+            </div>
+          </div>
+
+          {/* SECTION 5: FACTORY DEFECT STATISTICS */}
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded p-4">
+            <h3 className="text-[11px] font-bold text-purple-400 flex items-center justify-between mb-3">
+              <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> FACTORY INSPECTIONS</span>
+              <span className="text-[10px] text-purple-300 font-mono">{liveMetrics.factoryYieldRate}% YIELD</span>
+            </h3>
+            <div className="space-y-2 text-[10px] text-slate-400">
+              <div className="flex justify-between items-center">
+                <span>DETECTED ANOMALIES/DEFECTS:</span>
+                <span className={`font-bold ${liveMetrics.factoryDefects > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                  {liveMetrics.factoryDefects} LIMIT-VIOLATIONS
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 6: MICRO-LOCATION RETAIL */}
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded p-4">
+            <h3 className="text-[11px] font-bold text-sky-400 flex items-center gap-1.5 mb-3">
+              <ShoppingBag className="w-3.5 h-3.5" /> RETAIL & FOOT TRAFFIC
+            </h3>
+            <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400">
+              <div>STORE CUSTOMERS:</div><div className="text-right text-slate-200 font-bold">{liveMetrics.retailCustomers}</div>
+              <div>ZONE FOOT TRAFFIC:</div><div className="text-right text-slate-200 font-bold">{liveMetrics.retailFootTraffic} people</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  );
+}
