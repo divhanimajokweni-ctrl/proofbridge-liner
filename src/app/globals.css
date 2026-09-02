@@ -160,3 +160,56 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* VVU micro-interactions — subtle hover lifts + focus rings on interactive
+   elements. Keeps the SCADA aesthetic while adding tactile feedback. */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible {
+  outline: 2px solid #F3E38A;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+button:not(:disabled):hover {
+  filter: brightness(1.15);
+  transition: filter 160ms ease;
+}
+
+button:not(:disabled):active {
+  transform: translateY(1px);
+  transition: transform 80ms ease;
+}
+
+kbd {
+  display: inline-block;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background: rgba(107, 138, 64, 0.12);
+  border: 1px solid rgba(107, 138, 64, 0.25);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  font-weight: 600;
+}
+
+/* Subtle scanline overlay for the SCADA feel — applied via ::before on body */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0,
+    transparent 2px,
+    rgba(107, 138, 64, 0.012) 2px,
+    rgba(107, 138, 64, 0.012) 4px
+  );
+}
+
+/* Ensure interactive content sits above the scanline overlay */
+header, main, aside, footer, [role="dialog"], [data-sonner-toaster] {
+  position: relative;
+  z-index: 2;
+}

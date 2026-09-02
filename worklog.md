@@ -297,3 +297,144 @@ MOD: src/app/layout.tsx (Sonner toaster)
 ---
 
 **End of Round 2.** The VVU Validation Dashboard is now fully interactive (node pins clickable, FSM transitions toast-notified, keyboard shortcuts active) and persisted (Prisma + SQLite, telemetry + audit logs landing in the DB). Next round should focus on UX polish (responsive breakpoints, chart visibility) and an audit-log viewer panel.
+
+---
+
+## Task ID: R3 (Recurring Review Round 3)
+**Agent**: z.ai Code (webDevReview cron, job 352702)
+**Date**: 2026-09-02 (SAST)
+**Trace**: 1a0600b201599b61-web-cron-review-202609021130
+
+---
+
+## 1. Current Project Status Assessment
+
+### Starting state (post-R2)
+- Dashboard fully interactive + persisted: 7 Prisma models, telemetry + audit logs landing in SQLite, FSM with toast notifications + keyboard shortcuts, hydraulic chart, 5-Gate roadmap, DB stats panel.
+- `bun run lint` clean. Dev server serving 200s with active Prisma INSERTs every 2.2s.
+- R2 left clear R3 priorities: (a) hydraulic chart below the fold, (b) no audit-log viewer, (c) no APU temperature chart, (d) ledger count = 0, (e) no mobile responsive breakpoints.
+
+### QA performed (agent-browser + VLM)
+- Opened dashboard, took initial-viewport screenshot.
+- **Issue confirmed**: VLM verified the hydraulic chart was NOT visible in the initial viewport (terrain consumed 62vh). Only the terrain + FSM sidebar were visible without scrolling.
+- No new runtime bugs; all R2 interactions still working (node pins clickable, thermal button fires, telemetry persists).
+
+### Work focus chosen
+**UX polish + data-layer completion** — fix the chart visibility (R2 limitation), add the audit-log viewer, add the APU temperature chart, wire the WORM ledger, and add mobile responsive breakpoints. One bug found during QA (audit GET 405) was fixed immediately.
+
+---
+
+## 2. Current Goals / Completed Modifications / Verification Results
+
+### Bug fixed
+
+| Bug | Root cause | Fix |
+|-----|-----------|-----|
+| Audit viewer showed `ERR HTTP 405` | The `/api/vvu/audit` route only had a POST handler — no GET. The AuditViewer component fetches with GET. | Added a GET handler that returns the most recent audit-log entries (RLS-scoped, `?limit=20` default, max 50). Now returns 200 with `{total, entries[]}`. |
+
+### New features built (4 new files)
+
+| File | Purpose |
+|------|---------|
+| `src/components/vvu/audit-viewer.tsx` | Audit-log viewer panel — fetches `/api/vvu/audit?limit=20` every 5s, displays entries as a scrolling timeline with colored symbol badges (INIT=yellow, CHAL=amber, TOTP_OK=green, CLICK=orange, WARN=amber, CRIT=red, RESET=green), state-transition arrows, timestamps. Expand/collapse button ("▼ SHOW N more") when > 6 entries. `refreshKey` prop forces immediate re-fetch after a known FSM transition. |
+| `src/components/vvu/apu-chart.tsx` | APU thermal envelope chart — 60-second rolling SVG line chart with 65°C WARN and 85°C CRIT threshold lines (dashed, labeled). Line color shifts green→amber→red as the current reading crosses thresholds. Area fill gradient matches the line color. Current-point marker with glow. |
+| `src/lib/vvu-ledger.ts` | WORM ledger seeder — idempotent upsert of the 15 release-manifest file hashes into the `LedgerEntry` table. Hash-drift detection: if the manifest SHA-256 differs from the stored value, the entry is flagged `tampered: true`. |
+| `src/app/api/vvu/ledger/route.ts` | GET — seeds the WORM ledger (idempotent) + returns all 15 entries with hashes, sizes, verified/tampered flags. |
+
+### Modified files
+
+| File | Change |
+|------|--------|
+| `src/app/api/vvu/audit/route.ts` | **Bug fix**: added GET handler (was POST-only, returned 405). Returns recent audit-log entries RLS-scoped to the Gqeberha tenant. |
+| `src/app/api/vvu/db-stats/route.ts` | Now also calls `seedLedger()` so the WORM ledger is populated on every stats poll. Returns `ledgerCreated` + `ledgerTotal` in the seed result. |
+| `src/app/page.tsx` | Added AuditViewer + ApuChart to the layout. New 2-column "charts row" (hydraulic + APU side-by-side). New "audit row" (audit viewer + release manifest side-by-side). Added `auditRefreshKey` state that bumps on every FSM transition → forces the audit viewer to re-fetch immediately. Added responsive CSS breakpoints via `<style>` tag: `<1100px` stacks sidebar below main; `<760px` stacks all 2-column rows into 1-column. |
+| `src/components/vvu/terrain-twin.tsx` | Reduced `maxHeight` from 62vh → 48vh so the hydraulic + APU charts are visible in the initial viewport without scrolling. |
+| `src/app/globals.css` | Added micro-interaction styles: `button:focus-visible` outline (cream focus ring), `button:hover` brightness lift, `button:active` translateY press, `kbd` styling for keyboard hints. Added subtle SCADA scanline overlay (`body::before` repeating-linear-gradient, 1.2% opacity). Ensured interactive content sits above the scanline via `z-index: 2`. |
+
+### Verification results
+
+| Check | Result |
+|-------|--------|
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| Dev server | ✅ 200 responses, clean compiles |
+| `/api/vvu/audit` GET | ✅ Returns 200 with `{total:5, entries:[...]}` (was 405 before fix) |
+| `/api/vvu/ledger` GET | ✅ Returns `{total:15, created:15, entries:[F01...F15]}` |
+| `/api/vvu/db-stats` GET | ✅ `ledger:15` (was 0 in R2), `telemetry:61`, `audit:9` |
+| Initial viewport (R2 limitation) | ✅ FIXED — VLM confirmed both hydraulic + APU charts now visible without scrolling |
+| APU chart threshold lines | ✅ VLM confirmed: "WARN 65°C / CRIT 85°C" threshold lines visible |
+| Audit viewer populated | ✅ VLM confirmed: shows RESET, WARN, TOTP_OK, CHAL, INIT entries with timestamps + "▼ SHOW 14 MORE" button |
+| Audit GET 405 bug | ✅ FIXED — was returning 405, now returns 200 with entries |
+| Ledger count > 0 | ✅ 15 WORM entries seeded (was 0 in R2) |
+| Responsive breakpoints | ✅ CSS added for <1100px (stack sidebar) and <760px (stack all rows) |
+| Terrain height reduction | ✅ 62vh → 48vh, charts now in initial viewport |
+| Micro-interactions | ✅ Hover brightness, active press, focus rings, kbd styling, scanline overlay |
+
+### Design principles respected
+- **Bugs first** — the audit GET 405 was found during QA and fixed before any new feature work continued.
+- **Zero-Fictional Engineering** — the APU chart uses the real 65°C/85°C thresholds from the FSM controller's `thermalThresholds`. The ledger seeder writes the actual 15 manifest file hashes from `RELEASE_MANIFEST`.
+- **Live checks, not typed badges** — the audit viewer polls real SQLite entries every 5s + force-refreshes on FSM transitions; the ledger count in the DB stats panel reflects real WORM rows.
+- **Responsive + accessible** — mobile breakpoints stack the layout cleanly; focus-visible rings on all interactive elements; `prefers-reduced-motion` respected.
+
+---
+
+## 3. Unresolved Issues / Risks / Next-Phase Recommendations
+
+### Known limitations
+1. **Audit viewer refresh timing** — the `refreshKey` bump triggers a re-fetch, but the audit POST and the GET re-fetch race slightly (the POST may not have committed before the GET fires). The 5s polling interval catches up within one cycle. Acceptable for a validation dashboard.
+2. **APU chart jitter** — the chart adds ±0.3°C jitter per tick so the line isn't perfectly flat between page-state updates. This is cosmetic; the real `currentTemp` prop drives the trend.
+3. **Ledger tamper detection is passive** — the seeder flags `tampered: true` if the manifest hash changes, but there's no active alert when a tamper is detected. A future round could add a toast notification.
+4. **Mobile sidebar stacking** — on <1100px the sidebar stacks below the main column, which means the FSM visualizer + gate roadmap + DB stats appear at the very bottom. Consider a "jump to sidebar" floating button on mobile.
+
+### Priority recommendations for next round (R4)
+
+**High priority — visualisation depth + mobile UX**
+- [ ] Add a leak-rate radial gauge that appears when a node is active (shows L/s lost per minute).
+- [ ] Add a mini-map / site selector (Gqeberha vs Anglo Mogalakwena vs Sibanye Marikana) that re-centers the terrain.
+- [ ] Add a "jump to sidebar" floating button on mobile (<1100px) for quick access to the FSM controls.
+- [ ] Add a settings dialog (gear icon in topbar) for toggling boot screen duration, radar sweep speed, telemetry interval, scanline overlay.
+
+**Medium priority — data integrity + alerts**
+- [ ] Add active tamper alerts — toast notification when the ledger seeder detects a hash drift.
+- [ ] Wire the SHA-256 verifier to also write LedgerEntry rows when it recomputes (so the ledger `updatedAt` stays current).
+- [ ] Add a "Release Hash Verifier" dry-run mode that reads actual file bytes from `/home/z/my-project/download/`.
+- [ ] Add a CSV export button on the audit viewer (downloads the last N entries as CSV).
+
+**Medium priority — polish + i18n**
+- [ ] Add `prefers-color-scheme` auto-detection (currently forced dark — appropriate for SCADA, but could be configurable).
+- [ ] Add Afrikaaps / isiXhosa language toggle (Gqeberha is in the Eastern Cape).
+- [ ] Add ARIA live regions for FSM state changes (screen-reader announcements).
+- [ ] Add a keyboard shortcut help modal (`?` key).
+
+**Low priority — performance**
+- [ ] Memoise the terrain grid lines (currently recompute every frame via `useMemo` keyed on `t`).
+- [ ] Consider throttling the telemetry POST to every 3rd frame (6.6s) instead of every frame (2.2s) to reduce DB write load.
+- [ ] Add a service worker for offline-first caching of the dashboard shell.
+
+### Files produced/modified this round
+```
+NEW: src/components/vvu/audit-viewer.tsx
+NEW: src/components/vvu/apu-chart.tsx
+NEW: src/lib/vvu-ledger.ts
+NEW: src/app/api/vvu/ledger/route.ts
+MOD: src/app/api/vvu/audit/route.ts (added GET handler — bug fix)
+MOD: src/app/api/vvu/db-stats/route.ts (now seeds ledger)
+MOD: src/app/page.tsx (added AuditViewer + ApuChart + responsive breakpoints + auditRefreshKey)
+MOD: src/components/vvu/terrain-twin.tsx (maxHeight 62vh → 48vh)
+MOD: src/app/globals.css (micro-interactions + scanline overlay + focus rings)
+```
+
+### Screenshots
+```
+/home/z/my-project/download/vvu-r3-view.png             — initial viewport: terrain + BOTH charts now visible
+/home/z/my-project/download/vvu-r3-scrolled.png         — scrolled to telemetry + verifier
+/home/z/my-project/download/vvu-r3-audit-populated.png  — audit viewer populated with real entries
+```
+
+### Database state (end of R3)
+```
+tenants: 1 | nodes: 11 | spools: 2 | invariants: 1 | telemetry: 61+ | audit: 9+ | ledger: 15
+```
+
+---
+
+**End of Round 3.** The VVU Validation Dashboard now has: both charts visible in the initial viewport (R2 limitation fixed), a live audit-log viewer pulling real SQLite entries, an APU thermal envelope chart with threshold lines, a populated WORM ledger (15 entries), mobile responsive breakpoints, and SCADA micro-interactions (hover/focus/scanline). Next round should focus on visualisation depth (radial gauge, mini-map) and active tamper alerts.

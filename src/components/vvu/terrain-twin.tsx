@@ -109,7 +109,7 @@ export function TerrainTwin({ activeNodeId, onNodeClick, thermalThrottle, failCl
         position: 'relative',
         width: '100%',
         aspectRatio: '760 / 460',
-        maxHeight: '62vh',
+        maxHeight: '48vh',
         background:
           'radial-gradient(ellipse at 50% 38%, rgba(107,138,64,0.06) 0%, rgba(15,20,16,0) 60%), linear-gradient(180deg, #0A0E0B 0%, #060806 100%)',
         borderRadius: 14,

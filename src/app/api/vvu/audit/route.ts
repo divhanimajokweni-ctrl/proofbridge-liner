@@ -6,6 +6,37 @@ export const dynamic = 'force-dynamic';
 
 const GQEBERHA_TENANT_ID = 'e1002324-0000-0000-0000-000000000001';
 
+// GET /api/vvu/audit?limit=20
+// Returns the most recent audit-log entries (RLS-scoped to the Gqeberha tenant).
+export async function GET(req: NextRequest) {
+  const limit = Math.min(50, Number(req.nextUrl.searchParams.get('limit') ?? '20'));
+  try {
+    const entries = await db.auditLog.findMany({
+      where: { tenantId: GQEBERHA_TENANT_ID },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+    return NextResponse.json({
+      total: entries.length,
+      entries: entries.map((e) => ({
+        id: e.id,
+        actor: e.actor,
+        action: e.action,
+        fromState: e.fromState,
+        toState: e.toState,
+        symbol: e.symbol,
+        reason: e.reason,
+        createdAt: e.createdAt.toISOString(),
+      })),
+    });
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
 // POST /api/vvu/audit
 // Append-only audit-log entry. RLS-scoped to the Gqeberha tenant.
 export async function POST(req: NextRequest) {

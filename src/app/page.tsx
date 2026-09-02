@@ -10,8 +10,10 @@ import { TelemetryFeed } from '@/components/vvu/telemetry-feed';
 import { VerificationPanel } from '@/components/vvu/verification-panel';
 import { ReleaseManifest } from '@/components/vvu/release-manifest';
 import { HydraulicChart } from '@/components/vvu/hydraulic-chart';
+import { ApuChart } from '@/components/vvu/apu-chart';
 import { GateRoadmap } from '@/components/vvu/gate-roadmap';
 import { DbStatsPanel } from '@/components/vvu/db-stats-panel';
+import { AuditViewer } from '@/components/vvu/audit-viewer';
 import { Footer } from '@/components/vvu/footer';
 import { VVUFSMController, VVUNodeState } from '@/lib/vvu-fsm-controller';
 import { DEFAULT_TENANT, TENANTS } from '@/lib/vvu-telemetry';
@@ -27,6 +29,7 @@ export default function Home() {
   const [fsmState, setFsmState] = useState<VVUNodeState>(VVUNodeState.DISCONNECTED);
   const [fsmLog, setFsmLog] = useState<ReturnType<VVUFSMController['getLog']>>([]);
   const [lastTemp, setLastTemp] = useState(48);
+  const [auditRefreshKey, setAuditRefreshKey] = useState(0);
 
   const fsmRef = useRef<VVUFSMController | null>(null);
   const prevFsmStateRef = useRef<VVUNodeState>(VVUNodeState.DISCONNECTED);
@@ -89,6 +92,8 @@ export default function Home() {
             reason: log?.reason,
           });
           prevFsmStateRef.current = newState;
+          // Bump the audit viewer refresh key so it re-fetches immediately.
+          setAuditRefreshKey((k) => k + 1);
         }
       },
     });
@@ -283,6 +288,7 @@ export default function Home() {
       </div>
 
       <main
+        className="vvu-main"
         style={{
           flex: 1,
           maxWidth: 1600,
@@ -294,7 +300,7 @@ export default function Home() {
           gap: '1rem',
         }}
       >
-        {/* Left column: terrain hero + hydraulic chart + telemetry + manifest */}
+        {/* Left column: terrain hero + hydraulic chart + APU chart + telemetry + manifest */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0 }}>
           <section>
             <div
@@ -338,11 +344,20 @@ export default function Home() {
             />
           </section>
 
-          <section>
+          <section
+            className="vvu-charts-row"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+              gap: '1rem',
+            }}
+          >
             <HydraulicChart nodeId={activeNodeId ?? 'pipe'} thermalThrottle={thermalThrottle} />
+            <ApuChart currentTemp={lastTemp} thermalThrottle={thermalThrottle} failClosed={failClosed} />
           </section>
 
           <section
+            className="vvu-data-row"
             style={{
               display: 'grid',
               gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
@@ -353,13 +368,22 @@ export default function Home() {
             <VerificationPanel />
           </section>
 
-          <section>
+          <section
+            className="vvu-audit-row"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+              gap: '1rem',
+            }}
+          >
+            <AuditViewer refreshKey={auditRefreshKey} />
             <ReleaseManifest />
           </section>
         </div>
 
         {/* Right column: FSM visualizer + gate roadmap + DB stats (sticky) */}
         <aside
+          className="vvu-sidebar"
           style={{
             position: 'sticky',
             top: 84,
@@ -391,6 +415,26 @@ export default function Home() {
 
       {/* hidden tick to keep the component reactive to sensor updates */}
       <span aria-hidden style={{ display: 'none' }}>{tick}</span>
+
+      <style>{`
+        @media (max-width: 1100px) {
+          .vvu-main {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+          .vvu-sidebar {
+            position: static !important;
+            max-height: none !important;
+            overflow-y: visible !important;
+          }
+        }
+        @media (max-width: 760px) {
+          .vvu-charts-row,
+          .vvu-data-row,
+          .vvu-audit-row {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
