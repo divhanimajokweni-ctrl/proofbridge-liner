@@ -1213,3 +1213,30 @@ Prompt → Zoo Agent → SMT → STEP → SHA-256 → Decision Ledger (RLS) → 
 - ✅ Reg 2026/259053/07 shown in footer on `/analytics` (and in the existing P00 footer)
 
 **End of Dual-Route Implementation.**
+
+---
+
+## Task ID: EXEC-BUNDLE (Executive Bundle + Chapter 5 Lab + Solidity Fix)
+**Agent**: z.ai Code
+**Date**: 2026-09-02 (SAST)
+
+### Deliverables produced
+
+| File | Location | Purpose |
+|------|----------|---------|
+| `VVU_Executive_Bundle.md` | `/home/z/my-project/upload/vvu-bundle/` | Executive summary — 9 sections covering routes, ledger chain, 19-file manifest, DFA, 5 Gate-3C proofs, corporate identity, 5-gate roadmap, hardware spec, next steps |
+| `Chapter_5_Lab_Demo_to_Mine_in_3_Minutes.md` | `/home/z/my-project/upload/vvu-bundle/` | 3-minute demo script — pre-demo checklist, minute-by-minute walkthrough, WORM moment, hash-is-proof moment, B-BBEE close, post-demo follow-up table, what NOT to say |
+| `figure-4-1-operator.png` | `/home/z/my-project/download/` | Operator View screenshot (Borromean logo, 3D terrain, status badges, lime toggle) |
+| `figure-4-1-analyst.png` | `/home/z/my-project/download/` | Analyst View screenshot (dark + lime theme, FSM badge, Trust Gates, WORM events, lime toggle) |
+
+### Solidity contract status
+- **Bug investigated:** `authorizedAgentssg.sender]` was a Read tool display artifact — the raw bytes confirm the contract was already correct (`authorizedAgents[msg.sender]`, 2 occurrences, hex `5b6d73672e73656e6465725d`).
+- **Hash unchanged:** `8620915e0acbb53265f77e6a9fac429b3bb09920b1a14c2932aec313fd89dade` — matches the manifest. Design Freeze Level 1 intact.
+
+### Verification
+- 19-file hash verifier: ✅ all OK
+- VLM Operator View: ✅ Borromean rings + 3D terrain + toggle visible
+- VLM Analyst View: ✅ dark + lime theme + FSM badge + Trust Gates + toggle visible
+- Figure 4.1 caption: *"One DFA, two projections — Operator vs Analyst — same ledger, Reg 2026/259053/07, R0 build."*
+
+**End of Executive Bundle.**
