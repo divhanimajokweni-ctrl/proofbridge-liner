@@ -6,12 +6,15 @@
   "devCommand": "next dev",
   "installCommand": "bun install",
   "outputDirectory": ".next",
-  "regions": ["cpt1"],
+  "regions": [
+    "cpt1"
+  ],
   "github": {
     "enabled": true,
     "silent": true
   },
   "env": {
-    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "@google-maps-api-key"
+    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": "@google-maps-api-key",
+    "GOOGLE_MAPS_API_KEY": "@google-maps-api-key"
   }
 }
