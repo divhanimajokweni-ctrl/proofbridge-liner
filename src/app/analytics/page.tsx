@@ -4,7 +4,7 @@
 'use client'
 import { useEffect } from 'react'
 
-const SPATIAL_INTELLIGENCE_HREF = '/vvu-spatial-intelligence.html'
+const SPATIAL_INTELLIGENCE_HREF = '/vvu-validation-dashboard.html'
 
 export default function AnalyticsPage() {
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function AnalyticsPage() {
           VVU
         </div>
         <div style={{ marginTop: 12, opacity: 0.7 }}>
-          INITIALIZING SPATIAL INTELLIGENCE…
+          INITIALIZING ANALYTICS WORKSPACE…
         </div>
       </div>
     </div>
