@@ -21,8 +21,9 @@ export function LeakGauge({ activeNodeId, flowRate, pressureHead }: LeakGaugePro
   // that scales with the active node's stress.
   useEffect(() => {
     if (!activeNodeId) {
-      setLeakRate(0);
-      return;
+      // Defer the reset to avoid calling setState synchronously in the effect body.
+      const reset = setTimeout(() => setLeakRate(0), 0);
+      return () => clearTimeout(reset);
     }
     const interval = setInterval(() => {
       // Q = Cd × A × √(2 × g × h) → L/s, then × 60 → L/min

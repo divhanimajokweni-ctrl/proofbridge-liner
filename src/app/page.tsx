@@ -14,6 +14,10 @@ import { ApuChart } from '@/components/vvu/apu-chart';
 import { GateRoadmap } from '@/components/vvu/gate-roadmap';
 import { DbStatsPanel } from '@/components/vvu/db-stats-panel';
 import { AuditViewer } from '@/components/vvu/audit-viewer';
+import { LeakGauge } from '@/components/vvu/leak-gauge';
+import { SiteSelector } from '@/components/vvu/site-selector';
+import { SettingsDialog, DEFAULT_SETTINGS, VvuSettings } from '@/components/vvu/settings-dialog';
+import { KeyboardHelp, useKeyboardHelp } from '@/components/vvu/keyboard-help';
 import { Footer } from '@/components/vvu/footer';
 import { VVUFSMController, VVUNodeState } from '@/lib/vvu-fsm-controller';
 import { DEFAULT_TENANT, TENANTS } from '@/lib/vvu-telemetry';
@@ -30,6 +34,8 @@ export default function Home() {
   const [fsmLog, setFsmLog] = useState<ReturnType<VVUFSMController['getLog']>>([]);
   const [lastTemp, setLastTemp] = useState(48);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
+  const [settings, setSettings] = useState<VvuSettings>(DEFAULT_SETTINGS);
+  const { open: helpOpen, setOpen: setHelpOpen } = useKeyboardHelp();
 
   const fsmRef = useRef<VVUFSMController | null>(null);
   const prevFsmStateRef = useRef<VVUNodeState>(VVUNodeState.DISCONNECTED);
@@ -150,7 +156,7 @@ export default function Home() {
     setLastTemp(45);
   }, []);
 
-  // Keyboard shortcuts: T = thermal, C = critical, R = reset, L = leak on pipe
+  // Keyboard shortcuts: T = thermal, C = critical, R = reset, L = leak, 1/2/3 = tenant
   useEffect(() => {
     if (booting) return;
     const onKey = (e: KeyboardEvent) => {
@@ -160,6 +166,9 @@ export default function Home() {
       else if (k === 'c') handleSimulateCritical();
       else if (k === 'r') handleAuthorisedReset();
       else if (k === 'l') handleNodeClick('pipe');
+      else if (k === '1') setTenantIdx(0);
+      else if (k === '2') setTenantIdx(1);
+      else if (k === '3') setTenantIdx(2);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -240,6 +249,11 @@ export default function Home() {
     >
       <Topbar badges={badges} tenantName={TENANTS[tenantIdx].slug} />
 
+      {/* Settings gear — fixed top-right, above all panels */}
+      <div style={{ position: 'fixed', top: 12, right: 14, zIndex: 50 }}>
+        <SettingsDialog settings={settings} onChange={setSettings} />
+      </div>
+
       {/* Tenant switcher strip — demonstrates RLS scoping */}
       <div
         style={{
@@ -282,9 +296,23 @@ export default function Home() {
           </span>
           <span style={{ color: '#3A4533' }}>|</span>
           <span style={{ color: '#5A6B4F' }}>
-            KEYS: <kbd style={{ color: '#9DB36B' }}>T</kbd>thermal · <kbd style={{ color: '#E27373' }}>C</kbd>crit · <kbd style={{ color: '#9DB36B' }}>R</kbd>reset · <kbd style={{ color: '#E0944A' }}>L</kbd>leak
+            KEYS: <kbd style={{ color: '#9DB36B' }}>T</kbd> · <kbd style={{ color: '#E27373' }}>C</kbd> · <kbd style={{ color: '#9DB36B' }}>R</kbd> · <kbd style={{ color: '#E0944A' }}>L</kbd> · <kbd style={{ color: '#F3E38A' }}>1-3</kbd> · <kbd style={{ color: '#F3E38A' }}>?</kbd>help
           </span>
         </span>
+      </div>
+
+      {/* Site selector mini-map — picks the deployment site / RLS tenant */}
+      <div style={{ padding: '0.6rem 1.1rem 0', maxWidth: 1600, margin: '0 auto', width: '100%' }}>
+        <SiteSelector
+          activeSlug={TENANTS[tenantIdx].slug}
+          onSelect={(slug) => {
+            const idx = TENANTS.findIndex((t) => t.slug === slug);
+            if (idx >= 0 && idx !== tenantIdx) {
+              setTenantIdx(idx);
+              toast.success(`RLS session switched · ${TENANTS[idx].name}`);
+            }
+          }}
+        />
       </div>
 
       <main
@@ -302,7 +330,7 @@ export default function Home() {
       >
         {/* Left column: terrain hero + hydraulic chart + APU chart + telemetry + manifest */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0 }}>
-          <section>
+          <section style={{ position: 'relative' }}>
             <div
               style={{
                 display: 'flex',
@@ -341,6 +369,12 @@ export default function Home() {
               onNodeClick={handleNodeClick}
               thermalThrottle={thermalThrottle}
               failClosed={failClosed}
+            />
+            {/* Leak-rate radial gauge overlay — appears when a node is active */}
+            <LeakGauge
+              activeNodeId={activeNodeId}
+              flowRate={42}
+              pressureHead={38}
             />
           </section>
 
@@ -412,6 +446,9 @@ export default function Home() {
       </main>
 
       <Footer />
+
+      {/* Keyboard shortcut help modal — toggled by ? key */}
+      <KeyboardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
 
       {/* hidden tick to keep the component reactive to sensor updates */}
       <span aria-hidden style={{ display: 'none' }}>{tick}</span>

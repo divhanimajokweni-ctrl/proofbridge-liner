@@ -438,3 +438,139 @@ tenants: 1 | nodes: 11 | spools: 2 | invariants: 1 | telemetry: 61+ | audit: 9+ 
 ---
 
 **End of Round 3.** The VVU Validation Dashboard now has: both charts visible in the initial viewport (R2 limitation fixed), a live audit-log viewer pulling real SQLite entries, an APU thermal envelope chart with threshold lines, a populated WORM ledger (15 entries), mobile responsive breakpoints, and SCADA micro-interactions (hover/focus/scanline). Next round should focus on visualisation depth (radial gauge, mini-map) and active tamper alerts.
+
+---
+
+## Task ID: R4+R5 (Recurring Review Rounds 4+5 — combined due to tool outage)
+**Agent**: z.ai Code (webDevReview cron, job 352702)
+**Date**: 2026-09-02 (SAST)
+**Trace**: 1a0600b201599b61-web-cron-review-202609021145 + ...2092111
+
+---
+
+## 1. Current Project Status Assessment
+
+### Starting state (post-R3)
+- R3 completed: audit viewer, APU chart, WORM ledger (15 entries), responsive breakpoints, SCADA micro-interactions.
+- R4 began building 4 new component files (leak-gauge, site-selector, settings-dialog, keyboard-help) + CSV export on audit-viewer.
+- **R4 was interrupted by a persistent tool infrastructure failure** — all tools (Bash, Read, Edit, Grep, Glob, TodoWrite, LS) returned errors for the remainder of the round. The 4 component files were written to disk, but the `page.tsx` integration edit never landed.
+- R5 resumed: confirmed the 4 files exist on disk, found 1 lint error in leak-gauge.tsx, and completed the full integration.
+
+### QA performed (agent-browser + VLM)
+- Opened dashboard, took interactive snapshot — confirmed all R3 panels still present + the 4 new R4 components now wired (settings gear, site selector, CSV export, keyboard help).
+- **Bug found**: `leak-gauge.tsx` had `setLeakRate(0)` called synchronously in an effect body → `react-hooks/set-state-in-effect` lint error.
+- **Interaction tested**: clicked "SIM 78°C" button → DFA transitioned to LEAK_SIMULATION_ACTIVE, terrain turned orange, toast notification fired, **leak gauge overlay appeared** in the top-right of the terrain with semicircular gauge + needle + L/min readout.
+- **Settings dialog tested**: opened via gear icon — sliders for boot duration, radar speed, telemetry interval, scanline opacity + auto-scroll toggle all render correctly. Closed via "Done" button.
+- Site selector renders with mini-map of SA + 3 pulsing pins (Gqeberha/Mogalakwena/Marikana).
+
+### Work focus chosen
+**Complete the R4 integration + fix the lint bug** — this was a recovery round. The 4 new components were already on disk; the work was to wire them into `page.tsx`, fix the lint error, and verify everything renders.
+
+---
+
+## 2. Current Goals / Completed Modifications / Verification Results
+
+### Bug fixed
+
+| Bug | Root cause | Fix |
+|-----|-----------|-----|
+| `leak-gauge.tsx` lint error | `setLeakRate(0)` called synchronously in effect body when `activeNodeId` is null. | Deferred the reset via `setTimeout(() => setLeakRate(0), 0)` with a cleanup return — same pattern used in R2/R3 for the same rule. |
+
+### R4 components integrated into page.tsx (the interrupted step, now complete)
+
+| Component | Integration |
+|-----------|-------------|
+| `LeakGauge` | Rendered as an overlay inside the terrain `<section>` (which now has `position: relative`). Passes `activeNodeId`, `flowRate=42`, `pressureHead=38`. Appears top-right of the terrain when a leak is active. |
+| `SiteSelector` | Rendered in a new strip below the tenant switcher. `onSelect` finds the matching tenant index and calls `setTenantIdx` + fires a toast. |
+| `SettingsDialog` | Rendered in a fixed-position container (top: 12, right: 14, z-index: 50) so the gear icon floats above all panels. |
+| `KeyboardHelp` | Rendered after `<Footer />`, controlled by `helpOpen` state from `useKeyboardHelp()` hook. |
+
+### New state + handlers in page.tsx
+
+| Addition | Purpose |
+|----------|---------|
+| `settings` state (`VvuSettings`) | Holds boot duration, radar speed, telemetry interval, scanline opacity, auto-scroll-on-leak. Initialised to `DEFAULT_SETTINGS`. |
+| `useKeyboardHelp()` hook | Manages the `?`/`Esc` key binding + `helpOpen` state for the keyboard help modal. |
+| Keyboard `1`/`2`/`3` shortcuts | Switch RLS tenant to Gqeberha / Anglo Mogalakwena / Sibanye Marikana. |
+| Updated KEYS hint | Now shows `T · C · R · L · 1-3 · ?help` in the tenant strip. |
+
+### Verification results
+
+| Check | Result |
+|-------|--------|
+| `bun run lint` | ✅ 0 errors, 0 warnings (was 1 error before leak-gauge fix) |
+| Dev server | ✅ 200 responses, clean compiles |
+| Interactive snapshot | ✅ All 4 new components present: "Open settings" button, 3 site groups, "Export CSV" button, site buttons |
+| Settings dialog | ✅ VLM confirmed: "DASHBOARD SETTINGS modal containing sliders for Boot screen duration, Radar sweep speed, Telemetry interval, Scanline opacity + Auto-scroll toggle ON" |
+| Leak gauge overlay | ✅ VLM confirmed: "semicircular gauge with a needle, numerical value (XX.X L/min), and the text 'Leak Rate'" — appears when a leak is active |
+| Thermal throttle | ✅ VLM confirmed: DFA shows "LEAK", terrain orange-tinted, toast notification fired |
+| Site selector | ✅ Renders with mini-map + 3 pulsing pins + site list |
+| CSV export button | ✅ Present on audit viewer header (Download icon) |
+| Keyboard 1/2/3 | ✅ Wired (switches tenantIdx) |
+| Keyboard ? | ✅ Wired (toggles help modal via useKeyboardHelp hook) |
+
+### Database state (end of R5)
+```
+tenants: 1 | nodes: 11 | spools: 2 | invariants: 1 | telemetry: 645 | audit: 37 | ledger: 15
+```
+
+---
+
+## 3. Unresolved Issues / Risks / Next-Phase Recommendations
+
+### Known limitations
+1. **Settings don't persist yet** — the `settings` state is in-memory only. Changing the boot duration or telemetry interval updates the state but doesn't yet reconfigure the live components (e.g. the boot screen still uses the hardcoded 3600ms, the telemetry feed still uses 2200ms). Wiring the settings to actually control the components is the next step.
+2. **Leak gauge flowRate/pressureHead are hardcoded** — the `<LeakGauge flowRate={42} pressureHead={38} />` props are static. They should be fed from the live telemetry stream so the gauge reflects the actual node's sensor data.
+3. **Site selector doesn't re-center the terrain** — selecting Anglo Mogalakwena or Sibanye Marikana updates the tenant context (RLS scoping) but the terrain still shows Gqeberha. A future round could swap the terrain coordinates per site.
+4. **Keyboard help modal `?` key** — the `useKeyboardHelp` hook binds `?` and `Escape`, but the `?` character requires Shift+/ on most keyboards. The hook handles both `?` and `Shift+/`.
+
+### Priority recommendations for next round (R6)
+
+**High priority — wire settings to live components**
+- [ ] Pass `settings.bootDurationMs` to `<BootScreen>` (currently hardcoded).
+- [ ] Pass `settings.telemetryIntervalMs` to `<TelemetryFeed>` and `<HydraulicChart>` intervals.
+- [ ] Pass `settings.radarSpeedS` to `<TerrainTwin>` radar sweep animation.
+- [ ] Apply `settings.scanlineOpacity` to the `body::before` scanline overlay via a CSS variable.
+- [ ] Feed live telemetry `flowRate` + `pressureHead` into `<LeakGauge>` instead of hardcoded values.
+
+**Medium priority — site-aware terrain**
+- [ ] Add per-site terrain configurations (different node coordinates for Mogalakwena vs Marikana vs Gqeberha).
+- [ ] Animate the terrain transition when the site selector changes.
+- [ ] Add a site-specific accent color that propagates to the topbar badges.
+
+**Medium priority — active tamper alerts**
+- [ ] Add a toast notification when the ledger seeder detects a hash drift (`tampered: true`).
+- [ ] Wire the SHA-256 verifier to also write LedgerEntry rows when it recomputes.
+- [ ] Add a "Release Hash Verifier" dry-run mode that reads actual file bytes from `/home/z/my-project/download/`.
+
+**Low priority — polish + a11y**
+- [ ] Add ARIA live regions for FSM state changes (screen-reader announcements).
+- [ ] Add a "jump to sidebar" floating button on mobile (<1100px).
+- [ ] Add Afrikaaps / isiXhosa language toggle (Gqeberha is in the Eastern Cape).
+- [ ] Memoise the terrain grid lines (performance).
+
+### Files produced/modified this round
+```
+R4 (created during tool outage, confirmed present):
+NEW: src/components/vvu/leak-gauge.tsx
+NEW: src/components/vvu/site-selector.tsx
+NEW: src/components/vvu/settings-dialog.tsx
+NEW: src/components/vvu/keyboard-help.tsx
+MOD: src/components/vvu/audit-viewer.tsx (CSV export button)
+
+R5 (recovery + integration):
+FIX: src/components/vvu/leak-gauge.tsx (deferred setState — lint fix)
+MOD: src/app/page.tsx (imported + wired all 4 R4 components, added settings state, useKeyboardHelp hook, 1/2/3 keyboard shortcuts, updated KEYS hint, LeakGauge overlay in terrain section, SiteSelector strip, SettingsDialog fixed gear, KeyboardHelp modal)
+```
+
+### Screenshots
+```
+/home/z/my-project/download/vvu-r5-settings.png       — settings dialog open with all sliders
+/home/z/my-project/download/vvu-r5-leak-final.png      — leak gauge NOT yet visible (pre-trigger)
+/home/z/my-project/download/vvu-r5-thermal.png         — leak gauge VISIBLE after SIM 78°C: gauge + orange terrain + toast
+/home/z/my-project/download/vvu-r5-leak-keyboard.png   — keyboard L test
+```
+
+---
+
+**End of Rounds 4+5.** The VVU Validation Dashboard now has: a leak-rate radial gauge overlay (FAVAD-calculated L/min), a site selector mini-map (3 SA mining sites), a settings dialog (5 configurable parameters), a keyboard shortcut help modal (`?` key), CSV export on the audit viewer, and tenant-switching via `1`/`2`/`3` keys. The R4 tool outage was fully recovered — all 4 components are wired, lint is clean, and VLM confirmed the leak gauge + settings dialog render correctly. Next round should wire the settings to actually control the live components (boot duration, telemetry interval, radar speed).
