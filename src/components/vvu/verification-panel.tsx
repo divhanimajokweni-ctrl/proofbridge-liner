@@ -32,7 +32,7 @@ function toHex(buf: ArrayBuffer): string {
 
 async function recomputeHash(f: ReleaseFile): Promise<string> {
   const bytes = canonicalBytes(f);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const digest = await crypto.subtle.digest('SHA-256', bytes.buffer as ArrayBuffer);
   return toHex(digest);
 }
 
