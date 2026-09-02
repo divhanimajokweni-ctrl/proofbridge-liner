@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Download } from 'lucide-react';
 
 // Audit-log viewer — fetches recent AuditLog entries from /api/vvu/audit
 // and displays them as a scrolling timeline with state-transition badges.
@@ -63,6 +64,36 @@ export function AuditViewer({ refreshKey }: AuditViewerProps) {
 
   const shown = expanded ? entries : entries.slice(0, 6);
 
+  const exportCsv = () => {
+    const header = 'id,createdAt,actor,action,symbol,fromState,toState,reason\n';
+    const rows = entries
+      .map((e) =>
+        [
+          e.id,
+          e.createdAt,
+          e.actor,
+          e.action,
+          e.symbol ?? '',
+          e.fromState ?? '',
+          e.toState ?? '',
+          (e.reason ?? '').replace(/,/g, ';'),
+        ]
+          .map((v) => `"${v}"`)
+          .join(',')
+      )
+      .join('\n');
+    const csv = header + rows;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vvu-audit-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div
       style={{
@@ -75,7 +106,7 @@ export function AuditViewer({ refreshKey }: AuditViewerProps) {
         gap: '0.6rem',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
         <h3
           style={{
             fontFamily: 'var(--font-geist-mono), monospace',
@@ -88,15 +119,39 @@ export function AuditViewer({ refreshKey }: AuditViewerProps) {
         >
           Audit Log · WORM
         </h3>
-        <span
-          style={{
-            fontFamily: 'var(--font-geist-mono), monospace',
-            fontSize: '0.58rem',
-            color: loading ? '#8B9A7B' : error ? '#E27373' : '#6B8A40',
-          }}
-        >
-          {loading ? 'SYNCING…' : error ? `ERR ${error}` : `${entries.length} ENTRIES`}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span
+            style={{
+              fontFamily: 'var(--font-geist-mono), monospace',
+              fontSize: '0.58rem',
+              color: loading ? '#8B9A7B' : error ? '#E27373' : '#6B8A40',
+            }}
+          >
+            {loading ? 'SYNCING…' : error ? `ERR ${error}` : `${entries.length} ENTRIES`}
+          </span>
+          {entries.length > 0 && (
+            <button
+              onClick={exportCsv}
+              title="Export audit log as CSV"
+              aria-label="Export CSV"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 24,
+                height: 24,
+                borderRadius: 4,
+                background: 'rgba(107, 138, 64, 0.1)',
+                border: '1px solid rgba(107, 138, 64, 0.25)',
+                color: '#9DB36B',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              <Download size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div
