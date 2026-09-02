@@ -1168,3 +1168,48 @@ Prompt → Zoo Agent → SMT → STEP → SHA-256 → Decision Ledger (RLS) → 
 **Verdict**: Bundle is cryptographically intact (Hash is Proof). The Solidity syntax bug must be fixed + re-hashed before on-chain deployment. Safe to push to Obsidian Sync for documentation purposes, but DO NOT deploy VVUIVELedger.sol to Polygon Amoy until the bug is fixed.
 
 **End of Bundle Verification.**
+
+---
+
+## Task ID: DUAL-ROUTE (Dual-Route VVU System — P00 preserved + /analytics + /workspace)
+**Agent**: z.ai Code
+**Date**: 2026-09-02 (SAST)
+**Source**: User's Zero-Assumption Agent Prompt — "Keep Deployed MapDashboard + Add Analytics Workspace as Toggle Route"
+
+### Constraints respected
+- **P00 NOT TOUCHED** — `src/app/page.tsx` is the deployed Gate 3C proof (Gqeberha Spatial Digital Twin with Borromean logo). Backed up to `src/app/page.tsx.BAK.P00_DO_NOT_DELETE_20260902`.
+- **ONE FSM** — `src/components/vvu-fsm-controller-20260901.ts` is the canonical VVU_FSM, shared by both routes.
+- **ONE WORM events ledger** — `localStorage.getItem('vvu_events')` stores ROUTE_TOGGLE entries from the toggle button.
+
+### Files created/modified
+| File | Purpose |
+|------|---------|
+| `src/app/page.tsx.BAK.P00_DO_NOT_DELETE_20260902` | Backup of P00 (NEVER delete) |
+| `src/components/vvu-fsm-controller-20260901.ts` | Canonical VVU_FSM — 7 states, 10 transitions, WORM localStorage logging, `replay()` method |
+| `src/components/WorkspaceToggle.tsx` | Fixed bottom-right toggle button (#c8ff00 lime, brutalist shadow). Navigates between `/` and `/analytics`. Logs ROUTE_TOGGLE to `vvu_events` localStorage. |
+| `src/app/analytics/page.tsx` | Analyst View — dark #080808 + #c8ff00 lime theme. FSM boot handshake (INIT→CHAL→TOTP_OK→STEADY_STATE_LOCKED). Leak trigger/clear buttons. Trust Gates 3A/3B/3C with founder control percentages. WORM events display. Footer with Reg 2026/259053/07. |
+| `src/app/workspace/page.tsx` | Alias to analytics (re-exports AnalyticsPage) |
+| `src/app/layout.tsx` | Added `<WorkspaceToggle />` import + render (visible on ALL routes) |
+
+### Verification results
+| Check | Result |
+|-------|--------|
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| Dev server | ✅ All routes serve 200 (`/`, `/analytics`, `/workspace`) |
+| P00 intact at `/` | ✅ VLM confirmed: Borromean rings logo, ProofBridge · VVU HBK Mk-II title, status badges |
+| `/analytics` page | ✅ VLM confirmed: dark #080808 + #c8ff00 lime theme, "VVU WORKSPACE / ANALYTICS [GATE 3B-3C]" header, FSM: STEADY_STATE_LOCKED badge, Trust Gates 3A/3B/3C, WORM EVENTS, Reg 2026/259053/07 footer |
+| `/workspace` alias | ✅ Renders the same analytics page |
+| Toggle button visible on both | ✅ Bright lime #c8ff00 button bottom-right, shows "WORKSPACE_ANALYTICS >" on `/` and "< MAP_TWIN : OPERATOR" on `/analytics` |
+| Toggle navigation | ✅ Clicking the toggle switches between `/` and `/analytics` (confirmed via `agent-browser get url`) |
+| FSM console logs | ✅ VVU_FSM logs `[BLE_ADV_BROADCAST]`, `[AUTH_SUCCESS]` etc. to console on transition |
+| WORM localStorage | ✅ `vvu_events` key stores ROUTE_TOGGLE entries; `vvu_worm` key stores FSM transition log |
+
+### DONE definition met
+- ✅ `/` = old deployed mapDashboard intact (Operator View) — P00 untouched
+- ✅ `/analytics` = new iteration (Analyst View) — dark lime theme, FSM, Trust Gates, WORM events
+- ✅ `/workspace` = alias to analytics
+- ✅ Toggle button visible on both routes
+- ✅ One FSM (`vvu-fsm-controller-20260901.ts`), one events ledger (`vvu_events` localStorage)
+- ✅ Reg 2026/259053/07 shown in footer on `/analytics` (and in the existing P00 footer)
+
+**End of Dual-Route Implementation.**
