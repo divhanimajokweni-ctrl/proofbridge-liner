@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Leak-rate radial gauge — appears when a node is active (leak simulation).
 // Shows the simulated leak rate (L/min) as an animated SVG arc gauge with
@@ -14,7 +14,11 @@ interface LeakGaugeProps {
 
 export function LeakGauge({ activeNodeId, flowRate, pressureHead }: LeakGaugeProps) {
   const [leakRate, setLeakRate] = useState(0);
-  const [displayedRate, setDisplayedRate] = useState(0);
+  // Ref to avoid re-creating the interval when pressureHead changes every frame.
+  const pressureHeadRef = useRef(pressureHead);
+  useEffect(() => {
+    pressureHeadRef.current = pressureHead;
+  }, [pressureHead]);
 
   // Estimated leak rate (L/min) — FAVAD-style: Q ∝ √(pressureHead) × orifice.
   // We use a nominal orifice coefficient of 0.6 and a simulated hole area
@@ -22,34 +26,30 @@ export function LeakGauge({ activeNodeId, flowRate, pressureHead }: LeakGaugePro
   useEffect(() => {
     if (!activeNodeId) {
       // Defer the reset to avoid calling setState synchronously in the effect body.
-      const reset = setTimeout(() => setLeakRate(0), 0);
+      const reset = setTimeout(() => {
+        setLeakRate(0);
+      }, 0);
       return () => clearTimeout(reset);
     }
-    const interval = setInterval(() => {
-      // Q = Cd × A × √(2 × g × h) → L/s, then × 60 → L/min
+    const compute = () => {
+      // Q = Cd × A × √(2 × g × h) → m³/s, × 1000 → L/s, × 60 → L/min
       const Cd = 0.6;
       const area = 0.0008 + Math.random() * 0.0004; // ~8-12 mm² hole
       const g = 9.81;
-      const h = Math.max(1, pressureHead);
+      const h = Math.max(1, pressureHeadRef.current);
       const qLps = Cd * area * Math.sqrt(2 * g * h) * 1000; // L/s
       const qLpm = qLps * 60;
       setLeakRate(Math.round(qLpm * 10) / 10);
-    }, 1000);
+    };
+    // Fire immediately so the gauge shows a non-zero value right away.
+    compute();
+    const interval = setInterval(compute, 1000);
     return () => clearInterval(interval);
-  }, [activeNodeId, pressureHead]);
+  }, [activeNodeId]);
 
-  // Animate the needle from displayedRate → leakRate
-  useEffect(() => {
-    if (displayedRate === leakRate) return;
-    const raf = requestAnimationFrame(() => {
-      setDisplayedRate((cur) => {
-        const diff = leakRate - cur;
-        if (Math.abs(diff) < 0.2) return leakRate;
-        return Math.round((cur + diff * 0.15) * 10) / 10;
-      });
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [displayedRate, leakRate]);
+  // Use leakRate directly for the displayed value. The needle animation is
+  // handled by the SVG <animate> on the arc path, so no JS smoothing needed.
+  const displayedRate = leakRate;
 
   if (!activeNodeId) {
     return null;

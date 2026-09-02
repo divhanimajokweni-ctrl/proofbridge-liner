@@ -17,11 +17,12 @@ interface DataPoint {
 interface HydraulicChartProps {
   nodeId: string;
   thermalThrottle: boolean;
+  intervalMs?: number;
 }
 
 const MAX_POINTS = 60;
 
-export function HydraulicChart({ nodeId, thermalThrottle }: HydraulicChartProps) {
+export function HydraulicChart({ nodeId, thermalThrottle, intervalMs = 1000 }: HydraulicChartProps) {
   const [points, setPoints] = useState<DataPoint[]>([]);
   const prevNodeIdRef = useRef<string>(nodeId);
 
@@ -43,9 +44,9 @@ export function HydraulicChart({ nodeId, thermalThrottle }: HydraulicChartProps)
       const head = 38 + Math.cos(phase / 11) * 4 + Math.random() * 1.5;
       const temp = 48 + Math.sin(phase / 23) * 7 + Math.random() * 1.6;
       setPoints((cur) => [...cur, { t: now, flow, head, temp }].slice(-MAX_POINTS));
-    }, 1000);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [nodeId]);
+  }, [nodeId, intervalMs]);
 
   const W = 520;
   const H = 180;

@@ -192,7 +192,9 @@ kbd {
   font-weight: 600;
 }
 
-/* Subtle scanline overlay for the SCADA feel — applied via ::before on body */
+/* Subtle scanline overlay for the SCADA feel — applied via ::before on body.
+   Opacity is driven by the --vvu-scanline-opacity CSS variable set from
+   the settings dialog (defaults to 0.012 when unset). */
 body::before {
   content: '';
   position: fixed;
@@ -203,9 +205,10 @@ body::before {
     0deg,
     transparent 0,
     transparent 2px,
-    rgba(107, 138, 64, 0.012) 2px,
-    rgba(107, 138, 64, 0.012) 4px
+    rgba(107, 138, 64, var(--vvu-scanline-opacity, 0.012)) 2px,
+    rgba(107, 138, 64, var(--vvu-scanline-opacity, 0.012)) 4px
   );
+  transition: background 200ms ease;
 }
 
 /* Ensure interactive content sits above the scanline overlay */

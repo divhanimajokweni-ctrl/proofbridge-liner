@@ -17,6 +17,7 @@ interface TerrainTwinProps {
   onNodeClick: (nodeId: string) => void;
   thermalThrottle: boolean;
   failClosed: boolean;
+  radarSpeedS?: number;
 }
 
 interface Pin {
@@ -48,7 +49,7 @@ function iso(gx: number, gy: number, gz: number, cx: number, cy: number, t: numb
   return { x: sx, y: sy };
 }
 
-export function TerrainTwin({ activeNodeId, onNodeClick, thermalThrottle, failClosed }: TerrainTwinProps) {
+export function TerrainTwin({ activeNodeId, onNodeClick, thermalThrottle, failClosed, radarSpeedS = 6 }: TerrainTwinProps) {
   const [t, setT] = useState(0);
 
   useEffect(() => {
@@ -128,7 +129,7 @@ export function TerrainTwin({ activeNodeId, onNodeClick, thermalThrottle, failCl
           height: '42%',
           transformOrigin: 'top center',
           background: 'linear-gradient(180deg, rgba(243,227,138,0) 0%, rgba(243,227,138,0.18) 100%)',
-          animation: 'vvuRadar 6s linear infinite',
+          animation: `vvuRadar ${radarSpeedS}s linear infinite`,
           pointerEvents: 'none',
           zIndex: 1,
         }}

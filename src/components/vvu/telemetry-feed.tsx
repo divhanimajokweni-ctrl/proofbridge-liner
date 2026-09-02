@@ -11,6 +11,8 @@ import {
 
 interface TelemetryFeedProps {
   nodeId: string;
+  intervalMs?: number;
+  onTelemetry?: (flowRate: number, pressureHead: number, apuTemperature: number) => void;
 }
 
 interface FeedEntry {
@@ -19,7 +21,7 @@ interface FeedEntry {
   persisted: boolean;
 }
 
-export function TelemetryFeed({ nodeId }: TelemetryFeedProps) {
+export function TelemetryFeed({ nodeId, intervalMs = 2200, onTelemetry }: TelemetryFeedProps) {
   const [entries, setEntries] = useState<FeedEntry[]>([]);
   const [paused, setPaused] = useState(false);
   const entriesRef = useRef<FeedEntry[]>([]);
@@ -46,9 +48,11 @@ export function TelemetryFeed({ nodeId }: TelemetryFeedProps) {
       }
       const next = [{ payload, result, persisted }, ...entriesRef.current].slice(0, 8);
       setEntries(next);
-    }, 2200);
+      // Notify parent of the latest sensor reading (drives the leak gauge).
+      onTelemetry?.(payload.flowRate, payload.pressureHead, payload.apuTemperature);
+    }, intervalMs);
     return () => clearInterval(interval);
-  }, [paused, nodeId]);
+  }, [paused, nodeId, intervalMs, onTelemetry]);
 
   return (
     <div

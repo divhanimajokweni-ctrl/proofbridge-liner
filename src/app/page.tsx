@@ -18,6 +18,7 @@ import { LeakGauge } from '@/components/vvu/leak-gauge';
 import { SiteSelector } from '@/components/vvu/site-selector';
 import { SettingsDialog, DEFAULT_SETTINGS, VvuSettings } from '@/components/vvu/settings-dialog';
 import { KeyboardHelp, useKeyboardHelp } from '@/components/vvu/keyboard-help';
+import { useTamperAlert } from '@/components/vvu/use-tamper-alert';
 import { Footer } from '@/components/vvu/footer';
 import { VVUFSMController, VVUNodeState } from '@/lib/vvu-fsm-controller';
 import { DEFAULT_TENANT, TENANTS } from '@/lib/vvu-telemetry';
@@ -36,6 +37,9 @@ export default function Home() {
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
   const [settings, setSettings] = useState<VvuSettings>(DEFAULT_SETTINGS);
   const { open: helpOpen, setOpen: setHelpOpen } = useKeyboardHelp();
+  const [liveFlow, setLiveFlow] = useState(42);
+  const [liveHead, setLiveHead] = useState(38);
+  useTamperAlert();
 
   const fsmRef = useRef<VVUFSMController | null>(null);
   const prevFsmStateRef = useRef<VVUNodeState>(VVUNodeState.DISCONNECTED);
@@ -233,7 +237,7 @@ export default function Home() {
   const failClosed = fsmState === VVUNodeState.FAIL_CLOSED_LOCKDOWN;
 
   if (booting) {
-    return <BootScreen onDismiss={() => setBooting(false)} />;
+    return <BootScreen onDismiss={() => setBooting(false)} durationMs={settings.bootDurationMs} />;
   }
 
   return (
@@ -245,6 +249,8 @@ export default function Home() {
         background:
           'radial-gradient(ellipse at 50% -10%, rgba(107,138,64,0.06) 0%, rgba(15,20,16,0) 55%), #060806',
         color: '#C9D4BD',
+        // CSS variable consumed by the scanline overlay in globals.css
+        ['--vvu-scanline-opacity' as string]: settings.scanlineOpacity,
       }}
     >
       <Topbar badges={badges} tenantName={TENANTS[tenantIdx].slug} />
@@ -369,12 +375,13 @@ export default function Home() {
               onNodeClick={handleNodeClick}
               thermalThrottle={thermalThrottle}
               failClosed={failClosed}
+              radarSpeedS={settings.radarSpeedS}
             />
-            {/* Leak-rate radial gauge overlay — appears when a node is active */}
+            {/* Leak-rate radial gauge overlay — fed by live telemetry stream */}
             <LeakGauge
               activeNodeId={activeNodeId}
-              flowRate={42}
-              pressureHead={38}
+              flowRate={liveFlow}
+              pressureHead={liveHead}
             />
           </section>
 
@@ -386,7 +393,7 @@ export default function Home() {
               gap: '1rem',
             }}
           >
-            <HydraulicChart nodeId={activeNodeId ?? 'pipe'} thermalThrottle={thermalThrottle} />
+            <HydraulicChart nodeId={activeNodeId ?? 'pipe'} thermalThrottle={thermalThrottle} intervalMs={Math.max(1000, settings.telemetryIntervalMs / 2)} />
             <ApuChart currentTemp={lastTemp} thermalThrottle={thermalThrottle} failClosed={failClosed} />
           </section>
 
@@ -398,7 +405,14 @@ export default function Home() {
               gap: '1rem',
             }}
           >
-            <TelemetryFeed nodeId={activeNodeId ?? 'pipe'} />
+            <TelemetryFeed
+              nodeId={activeNodeId ?? 'pipe'}
+              intervalMs={settings.telemetryIntervalMs}
+              onTelemetry={(flow, head) => {
+                setLiveFlow(flow);
+                setLiveHead(head);
+              }}
+            />
             <VerificationPanel />
           </section>
 
