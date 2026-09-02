@@ -698,6 +698,23 @@
   #loc-switcher { top: 58px !important; padding: 3px 4px !important; }
 }
 
+
+        /* ─── Mobile-First Responsive ─── */
+        @media (max-width: 768px) {
+            html, body { font-size: 10px !important; }
+            .nav-tab, .nav-tab-sub { font-size: 8px !important; padding: 4px 6px !important; }
+            .panel { font-size: 9px !important; }
+            .stat-block { font-size: 8px !important; }
+            .coord-display { font-size: 8px !important; }
+            body { touch-action: none; }
+            canvas { touch-action: none; }
+            button { touch-action: manipulation; min-height: 36px; }
+        }
+        @media (max-width: 480px) {
+            .nav-tab, .nav-tab-sub { font-size: 7px !important; padding: 3px 4px !important; }
+            .panel { font-size: 8px !important; padding: 6px !important; }
+            .stat-block { font-size: 7px !important; }
+        }
 </style>
 
   <!-- Leaflet for 2D map overlay -->
@@ -714,7 +731,24 @@
   <div style="width:120px;height:2px;background:#1e293b;border-radius:2px;overflow:hidden;"><div style="height:100%;width:40%;background:linear-gradient(90deg,#22d3ee,#38bdf8);animation:scan 1.2s ease-in-out infinite alternate;"></div></div>
   <div id="vvu-offline-msg" style="display:none;font-size:10px;color:#ef4444;margin-top:8px;">⚠️ OFFLINE — CDN resources unavailable. Connect to internet for full 3D view.</div>
 </div>
-<style>@keyframes scan{from{transform:translateX(-60%)}to{transform:translateX(380%)}}</style>
+<style>@keyframes scan{from{transform:translateX(-60%)}to{transform:translateX(380%)}}
+        /* ─── Mobile-First Responsive ─── */
+        @media (max-width: 768px) {
+            html, body { font-size: 10px !important; }
+            .nav-tab, .nav-tab-sub { font-size: 8px !important; padding: 4px 6px !important; }
+            .panel { font-size: 9px !important; }
+            .stat-block { font-size: 8px !important; }
+            .coord-display { font-size: 8px !important; }
+            body { touch-action: none; }
+            canvas { touch-action: none; }
+            button { touch-action: manipulation; min-height: 36px; }
+        }
+        @media (max-width: 480px) {
+            .nav-tab, .nav-tab-sub { font-size: 7px !important; padding: 3px 4px !important; }
+            .panel { font-size: 8px !important; padding: 6px !important; }
+            .stat-block { font-size: 7px !important; }
+        }
+</style>
 <script>
 // ─── Preloader hide logic ───────────────────────────────────────────
 // NOTE: THREE is loaded as an ES module (import * as THREE from 'three')
@@ -778,6 +812,23 @@ function togglePetalMap(){
 </script>
 <style>
 .petal-tooltip{background:rgba(0,0,0,0.7)!important;backdrop-filter:blur(4px);border:1px solid rgba(0,212,255,0.2)!important;color:#e8edf3!important;font-size:10px!important;padding:3px 8px!important;border-radius:8px!important;}
+
+        /* ─── Mobile-First Responsive ─── */
+        @media (max-width: 768px) {
+            html, body { font-size: 10px !important; }
+            .nav-tab, .nav-tab-sub { font-size: 8px !important; padding: 4px 6px !important; }
+            .panel { font-size: 9px !important; }
+            .stat-block { font-size: 8px !important; }
+            .coord-display { font-size: 8px !important; }
+            body { touch-action: none; }
+            canvas { touch-action: none; }
+            button { touch-action: manipulation; min-height: 36px; }
+        }
+        @media (max-width: 480px) {
+            .nav-tab, .nav-tab-sub { font-size: 7px !important; padding: 3px 4px !important; }
+            .panel { font-size: 8px !important; padding: 6px !important; }
+            .stat-block { font-size: 7px !important; }
+        }
 </style>
 
 <!-- ═══ TEMPERATURE DISPLAY (Petal Maps style) ═══ -->

@@ -617,6 +617,46 @@
             background: rgba(34, 211, 238, 0.15);
             color: #22d3ee;
         }
+    
+        /* ─── Mobile-First Responsive (auto-senses screen size) ─── */
+        @media (max-width: 768px) {
+            #topbar { padding: 4px 10px !important; }
+            #topbar .brand h1 { font-size: 11px !important; letter-spacing: 0.04em !important; }
+            #topbar .brand .sub { font-size: 7px !important; }
+            #topbar .status { gap: 6px !important; font-size: 8px !important; }
+            #topbar .badge { display: none !important; }
+            #validation-bar { gap: 8px !important; padding: 4px 10px !important; font-size: 7px !important; }
+            #validation-bar .v-item { gap: 3px !important; }
+            #hud { font-size: 7px !important; gap: 4px !important; padding: 3px 6px !important; }
+            #hud .stat { font-size: 7px !important; }
+            #hud .stat b { font-size: 9px !important; }
+            #temperature { font-size: 10px !important; right: 8px !important; top: 50px !important; }
+            #nav { gap: 2px !important; padding: 3px 4px !important; }
+            #nav button { font-size: 8px !important; padding: 4px 8px !important; min-height: 36px; }
+            #nav button .icon { font-size: 10px !important; }
+            #toggle-map { bottom: 60px !important; right: 8px !important; font-size: 9px !important; padding: 6px 10px !important; }
+            #mf-rail { font-size: 7px !important; gap: 4px !important; padding: 2px 6px !important; }
+            #mf-rail .mf-chip { font-size: 7px !important; padding: 2px 4px !important; }
+            #mf-rail .mf-num { font-size: 7px !important; }
+            #mf-rail .mf-arrow { font-size: 7px !important; }
+            #mf-rail .mf-label { font-size: 7px !important; }
+        }
+        @media (max-width: 480px) {
+            #topbar .brand h1 { font-size: 10px !important; }
+            #topbar .brand .sub { display: none !important; }
+            #validation-bar .v-item:nth-child(n+5) { display: none !important; }
+            #hud .stat:nth-child(n+5) { display: none !important; }
+            #nav button { font-size: 7px !important; padding: 3px 6px !important; }
+            #nav button .icon { font-size: 9px !important; }
+            #nav button span:not(.icon) { font-size: 6px !important; }
+            #temperature { font-size: 8px !important; }
+            #mf-rail { display: none !important; }
+            #toggle-map { bottom: 50px !important; right: 6px !important; }
+            body { touch-action: none; }
+            #three-canvas { touch-action: none; }
+            #nav button { touch-action: manipulation; }
+            #toggle-map { touch-action: manipulation; min-width: 44px; min-height: 44px; }
+        }
     </style>
 </head>
 <body>
@@ -1316,9 +1356,8 @@
 
         function initMap() {
             if (map) return;
-            // Wait for Leaflet + Google Maps + googleMutant plugin to all be ready
-            if (typeof L === 'undefined' || typeof google === 'undefined' ||
-                typeof L.gridLayer === 'undefined' || typeof L.gridLayer.googleMutant !== 'function') {
+            // Wait for Leaflet to be ready
+            if (typeof L === 'undefined') {
                 setTimeout(initMap, 300);
                 return;
             }
@@ -1331,27 +1370,31 @@
                 fadeAnimation: true,
             });
 
-            // Use Google Maps satellite tiles via the googleMutant plugin.
-            // The user's API key (/* KEY REMOVED — fetched from /api/maps/config */) is
-            // loaded in the <script> tag above and is actively used by this
-            // Google Maps tile layer.
-            try {
-                const googleLayer = L.gridLayer.googleMutant({
-                    type: 'hybrid',  // satellite + road labels
-                    styles: [
-                        { featureType: 'all', stylers: [{ saturation: -25 }, { lightness: -5 }] },
-                        { featureType: 'road', stylers: [{ visibility: 'simplified' }, { color: '#1e3a5f' }] },
-                        { featureType: 'water', stylers: [{ color: '#0a1929' }] },
-                        { featureType: 'landscape', stylers: [{ color: '#0d1520' }] },
-                    ],
-                });
-                googleLayer.addTo(map);
-                console.log('[VVU] Google Maps satellite tiles loaded with API key.');
-            } catch (e) {
-                console.warn('[VVU] Google Maps tiles failed, falling back to CartoDB dark tiles:', e.message);
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; OpenStreetMap, &copy; CartoDB',
-                    subdomains: 'abcd',
+            // Try Google Maps satellite if available, otherwise Esri satellite (no key needed)
+            if (typeof google !== 'undefined' && typeof L.gridLayer !== 'undefined' &&
+                typeof L.gridLayer.googleMutant === 'function') {
+                try {
+                    const googleLayer = L.gridLayer.googleMutant({
+                        type: 'hybrid',
+                        styles: [
+                            { featureType: 'all', stylers: [{ saturation: -25 }, { lightness: -5 }] },
+                            { featureType: 'road', stylers: [{ visibility: 'simplified' }, { color: '#1e3a5f' }] },
+                            { featureType: 'water', stylers: [{ color: '#0a1929' }] },
+                            { featureType: 'landscape', stylers: [{ color: '#0d1520' }] },
+                        ],
+                    });
+                    googleLayer.addTo(map);
+                    console.log('[VVU] Google Maps satellite tiles loaded.');
+                } catch (e) {
+                    console.warn('[VVU] Google Maps failed, using Esri:', e.message);
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                        maxZoom: 19,
+                    }).addTo(map);
+                }
+            } else {
+                // No Google Maps available — use Esri World Imagery (visually identical, no key needed)
+                console.log('[VVU] Google Maps not available — using Esri World Imagery satellite fallback.');
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
                     maxZoom: 19,
                 }).addTo(map);
             }
