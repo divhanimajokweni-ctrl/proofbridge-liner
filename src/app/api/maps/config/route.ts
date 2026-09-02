@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 // If no key is set, returns { hasKey: false } and the frontend
 // falls back to Esri satellite (visually identical, no key needed).
 export async function GET() {
-  const key = process.env.GOOGLE_MAPS_API_KEY;
+  const key = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (key && key.startsWith("AIzaSy")) {
     return NextResponse.json({ hasKey: true, key });
   }
