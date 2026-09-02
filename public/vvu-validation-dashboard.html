@@ -1354,7 +1354,7 @@
             mapVisible = false,
             markerLayer = null;
 
-        function initMap() {
+        window.initMap = function initMap() {
             if (map) return;
             // Wait for Leaflet to be ready
             if (typeof L === 'undefined') {
@@ -1429,7 +1429,7 @@
             }
         }
         setInterval(updateMapMarkers, 1500);
-        function toggleMap() {
+        window.toggleMap = function toggleMap() {
             mapVisible = !mapVisible;
             mapOverlay.style.display = mapVisible ? 'block' : 'none';
             toggleBtn.textContent = mapVisible ? '✕ Map' : '🗺 Map';
