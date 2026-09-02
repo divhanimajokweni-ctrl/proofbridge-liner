@@ -936,10 +936,9 @@
     <!-- ─── Scripts ──────────────────────────────────────────────────── -->
     <!-- Leaflet (must load before googleMutant) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Google Maps JS API with user-provided key (AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0) -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0&libraries=maps"></script>
-    <!-- Leaflet GoogleMutant plugin (local copy — CDN path was wrong) -->
-    <script src="/three/Leaflet.GoogleMutant.js"></script>
+    <!-- Google Maps loaded dynamically via /api/maps/config (key never in HTML source) -->
+    <!-- Leaflet GoogleMutant from CDN (fixes local path 404) -->
+    <script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.13.1/dist/Leaflet.GoogleMutant.js"></script>
     <!-- Paystack inline SDK (for the payment modal) -->
     <script src="https://js.paystack.co/v1/inline.js"></script>
     <script type="importmap">
@@ -1333,7 +1332,7 @@
             });
 
             // Use Google Maps satellite tiles via the googleMutant plugin.
-            // The user's API key (AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0) is
+            // The user's API key (/* KEY REMOVED — fetched from /api/maps/config */) is
             // loaded in the <script> tag above and is actively used by this
             // Google Maps tile layer.
             try {
@@ -1616,5 +1615,28 @@
         console.log('   Navigation: Main | Validation | Files | Trust | Ledger | B2B');
         console.log('   📋 File Citation Strategy: Display content to trigger API citations');
     </script>
+
+<!-- Secure Google Maps key loader — fetches from /api/maps/config -->
+<script>
+(async function() {
+    try {
+        const res = await fetch('/api/maps/config');
+        const data = await res.json();
+        if (data.hasKey && data.key) {
+            const s = document.createElement('script');
+            s.src = 'https://maps.googleapis.com/maps/api/js?key=' + data.key + '&libraries=maps';
+            s.onload = () => { window.__GMAPS_READY = true; console.log('[VVU] Google Maps loaded via secure API'); };
+            s.onerror = () => { console.warn('[VVU] Google Maps failed — using Esri fallback'); window.__GMAPS_READY = false; };
+            document.head.appendChild(s);
+        } else {
+            console.log('[VVU] No Google Maps key — using Esri satellite fallback');
+            window.__GMAPS_READY = false;
+        }
+    } catch(e) {
+        console.warn('[VVU] Maps config fetch failed:', e);
+        window.__GMAPS_READY = false;
+    }
+})();
+</script>
 </body>
 </html>

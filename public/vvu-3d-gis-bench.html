@@ -377,7 +377,15 @@
 <!-- Google Maps API script -->
 <script>
   const _urlParams = new URLSearchParams(window.location.search);
-  const GOOGLE_MAPS_API_KEY = _urlParams.get('gmaps_key') || 'AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0';
+  let GOOGLE_MAPS_API_KEY = _urlParams.get('gmaps_key') || '';
+    // Secure: fetch from /api/maps/config if not in URL
+    if (!GOOGLE_MAPS_API_KEY) {
+        try {
+            const r = await fetch('/api/maps/config');
+            const d = await r.json();
+            if (d.hasKey) GOOGLE_MAPS_API_KEY = d.key;
+        } catch(e) {}
+    }
   const hasValidKey = GOOGLE_MAPS_API_KEY && GOOGLE_MAPS_API_KEY.startsWith('AIzaSy') && GOOGLE_MAPS_API_KEY.length > 20;
   window.hasValidKey = hasValidKey;
   if (!hasValidKey) {

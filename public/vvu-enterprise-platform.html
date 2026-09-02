@@ -279,10 +279,9 @@
   <!-- ─── SCRIPTS ──────────────────────────────────────────────────── -->
   <!-- Leaflet (must load before googleMutant) -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Google Maps JS API with user-provided key (AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0&libraries=maps"></script>
+  <!-- Google Maps loaded dynamically via /api/maps/config -->
   <!-- Leaflet GoogleMutant plugin (local copy — CDN path was wrong) -->
-  <script src="/three/Leaflet.GoogleMutant.js"></script>
+  <script src="https://unpkg.com/leaflet.gridlayer.googlemutant@0.13.1/dist/Leaflet.GoogleMutant.js"></script>
   <script type="importmap">
   {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
   </script>
@@ -708,7 +707,7 @@
       });
 
       // Use Google Maps satellite tiles via the googleMutant plugin.
-      // The user's API key (AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0) is
+      // The user's API key () is
       // loaded in the <script> tag above and is actively used by this
       // Google Maps tile layer — this is the "map displaying" the user
       // has been asking for.
@@ -854,7 +853,7 @@
     console.log('   Includes: Dashboard | CI/CD Pipeline | Git Hooks | Agent Ledger');
     console.log('   Navigation: Main | Trust | Water | Mining | B2B | Ledger');
     console.log('   Map: Google Maps satellite tiles (hybrid) via googleMutant plugin');
-    console.log('   Google Maps API key: AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0');
+    console.log('   Google Maps API key: ');
   </script>
 </body>
 </html>

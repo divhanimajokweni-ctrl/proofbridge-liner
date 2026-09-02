@@ -1840,7 +1840,15 @@ const DEG = Math.PI/180;
 
 let ORIGIN = { lat: -33.9608, lon: 25.6022, alt: 0 };
 const QS = new URLSearchParams(location.search);
-const GMAPS_KEY = QS.get('gmaps_key') || 'AIzaSyDvWTTuSKTIbs1g8m5XIjh3eWZSPb8M_a0';
+const GMAPS_KEY = QS.get('gmaps_key') || '';
+    // Secure: fetch key from /api/maps/config if not in URL
+    if (!GMAPS_KEY) {
+        try {
+            const cfgRes = await fetch('/api/maps/config');
+            const cfgData = await cfgRes.json();
+            if (cfgData.hasKey) GMAPS_KEY = cfgData.key;
+        } catch(e) { console.warn('[VVU] Maps config fetch failed:', e); }
+    }
 
 if (navigator.geolocation) {
   navigator.geolocation.getCurrentPosition(
