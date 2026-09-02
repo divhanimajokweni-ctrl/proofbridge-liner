@@ -1240,3 +1240,46 @@ Prompt → Zoo Agent → SMT → STEP → SHA-256 → Decision Ledger (RLS) → 
 - Figure 4.1 caption: *"One DFA, two projections — Operator vs Analyst — same ledger, Reg 2026/259053/07, R0 build."*
 
 **End of Executive Bundle.**
+
+---
+
+## Task ID: MOBILE-FIX (Mobile Responsive — auto-sense screen + prioritize smartphone)
+**Agent**: z.ai Code
+**Date**: 2026-09-02 (SAST)
+**Source**: User request — "automatically sense screen to prioritize smartphones display as much as desktop because current view breaks and display is bad and amateurish"
+
+### Problem diagnosed
+- `/analytics` used a fixed `grid-cols-12` with `col-span-8` + `col-span-4` — no mobile breakpoints. On 375px phones: text overflowed, panels squeezed, "shrunken desktop" syndrome.
+- `/` (P00) had some breakpoints from R3 but the topbar badges + tenant strip overflowed on mobile, the KEYS hint took space, and padding was too generous.
+- Toggle button had desktop-only padding/shadow that was too large on mobile.
+
+### Fixes applied
+
+| File | Fix |
+|------|-----|
+| `src/app/analytics/page.tsx` | Rewrote with JS-based responsive detection (`isMobile = window.innerWidth < 768`). Mobile: single-column stack, full-width panels, reduced font sizes (text-[10px]/[11px]), reduced heights (280px map on mobile vs 500px desktop), touch-safe buttons (py-2.5, active:scale). Desktop: 12-col grid (8+4 split). Header stacks vertically on mobile, side-by-side on desktop. |
+| `src/components/WorkspaceToggle.tsx` | Mobile-safe: `bottom-4 right-4` on mobile (vs `bottom-6 right-6` desktop), `px-4` mobile (vs `px-5` desktop), shorter label on mobile ("ANALYTICS ▸" vs "ANALYTICS ▸ _WORKSPACE >"), `min-h-[44px]` touch target, `active:scale-[0.97]` press feedback, iOS safe-area-inset support via `env()`. |
+| `src/app/page.tsx` | (1) Added `vvu-tenant-strip` class + hid it on mobile (< 760px) — the site selector provides the same function in a mobile-friendly way. (2) Added `vvu-keys-hint`, `vvu-keys-sep`, `vvu-tenant-id` classes — hidden on mobile. (3) Improved responsive CSS: tablet (1100px) stacks sidebar + reduces padding to 0.6rem; mobile (760px) stacks all 2-col rows + gap 0.6rem; extra-small (400px) padding 0.35rem. |
+| `src/components/vvu/topbar.tsx` | (1) Added `vvu-topbar` class with mobile padding (0.4rem 0.5rem). (2) Added `vvu-topbar-badge-{key}` classes — SANS + POPIA badges hidden on mobile (< 760px) to reduce clutter. (3) Added `vvu-topbar-tenant-chip` class — hidden on mobile. (4) Reduced padding from `0.7rem 1.1rem` to `0.5rem 0.6rem` globally. |
+| `src/app/layout.tsx` | Added explicit `export const viewport = { width: 'device-width', initialScale: 1, maximumScale: 5, themeColor: '#060806' }` — ensures proper mobile rendering + prevents zoom issues. |
+
+### Verification results
+
+| Check | Result |
+|-------|--------|
+| `bun run lint` | ✅ 0 errors, 0 warnings |
+| Dev server | ✅ 200 responses, clean compiles |
+| `/analytics` mobile (375px) | ✅ VLM: layout stacks vertically, header readable, panels full-width, toggle not overlapping, professional |
+| `/analytics` desktop | ✅ 12-col grid intact (8+4 split) |
+| `/` P00 mobile (375px) | ✅ VLM: topbar clean (SANS/POPIA/tenant hidden), Borromean logo visible, 3D terrain visible, toggle bottom-right, professional |
+| `/` P00 desktop | ✅ VLM: layout intact, Borromean logo, 3D terrain, sidebar panels, no rendering issues |
+| Toggle button mobile | ✅ Bottom-right, touch-safe (44px min), iOS safe-area, shorter label on mobile |
+| Toggle button desktop | ✅ Bottom-right, full label, brutalist shadow |
+
+### Design principles
+- **Mobile-first** — single column on phones, expanding to multi-column on tablets/desktops. No "shrunken desktop" syndrome.
+- **Progressive disclosure** — hide secondary info (tenant ID, keyboard hints, SANS/POPIA badges) on mobile; the site selector provides the same function.
+- **Touch-safe** — 44px minimum touch targets, `active:scale` press feedback, iOS safe-area-inset support.
+- **Desktop preserved** — the desktop experience is unchanged (12-col grid, full badges, full toggle label).
+
+**End of Mobile Fix.**

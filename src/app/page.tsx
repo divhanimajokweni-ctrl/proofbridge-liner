@@ -329,8 +329,11 @@ export default function Home() {
         <SettingsDialog settings={settings} onChange={setSettings} />
       </div>
 
-      {/* Tenant switcher strip — demonstrates RLS scoping */}
+      {/* Tenant switcher strip — demonstrates RLS scoping.
+          Hidden on mobile (< 760px) to avoid overflow; the site selector
+          below provides the same tenant-switching capability in a mobile-friendly layout. */}
       <div
+        className="vvu-tenant-strip"
         style={{
           borderBottom: '1px solid rgba(107,138,64,0.1)',
           background: 'rgba(10, 14, 11, 0.5)',
@@ -366,11 +369,11 @@ export default function Home() {
           </button>
         ))}
         <span style={{ color: '#5A6B4F', marginLeft: 'auto', display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-          <span>
+          <span className="vvu-tenant-id">
             vvu.current_tenant_id = <span style={{ color: '#F3E38A' }}>{TENANTS[tenantIdx].id.slice(0, 13)}…</span>
           </span>
-          <span style={{ color: '#3A4533' }}>|</span>
-          <span style={{ color: '#5A6B4F' }}>
+          <span style={{ color: '#3A4533' }} className="vvu-keys-sep">|</span>
+          <span style={{ color: '#5A6B4F' }} className="vvu-keys-hint">
             KEYS: <kbd style={{ color: '#9DB36B' }}>T</kbd> · <kbd style={{ color: '#E27373' }}>C</kbd> · <kbd style={{ color: '#9DB36B' }}>R</kbd> · <kbd style={{ color: '#E0944A' }}>L</kbd> · <kbd style={{ color: '#F3E38A' }}>1-3</kbd> · <kbd style={{ color: '#F3E38A' }}>?</kbd>help
           </span>
         </span>
@@ -542,9 +545,11 @@ export default function Home() {
       <span aria-hidden style={{ display: 'none' }}>{tick}</span>
 
       <style>{`
+        /* Tablet — stack sidebar below main */
         @media (max-width: 1100px) {
           .vvu-main {
             grid-template-columns: minmax(0, 1fr) !important;
+            padding: 0.6rem !important;
           }
           .vvu-sidebar {
             position: static !important;
@@ -552,11 +557,32 @@ export default function Home() {
             overflow-y: visible !important;
           }
         }
+        /* Mobile — single column, reduced padding, stacked rows */
         @media (max-width: 760px) {
+          .vvu-main {
+            padding: 0.5rem !important;
+            gap: 0.6rem !important;
+          }
           .vvu-charts-row,
           .vvu-data-row,
           .vvu-audit-row {
             grid-template-columns: minmax(0, 1fr) !important;
+            gap: 0.6rem !important;
+          }
+        }
+        /* Extra-small phones — tighten further */
+        @media (max-width: 400px) {
+          .vvu-main {
+            padding: 0.35rem !important;
+          }
+        }
+        /* Mobile — hide keyboard hints + tenant strip to save space */
+        @media (max-width: 760px) {
+          .vvu-keys-hint,
+          .vvu-keys-sep,
+          .vvu-tenant-id,
+          .vvu-tenant-strip {
+            display: none !important;
           }
         }
       `}</style>

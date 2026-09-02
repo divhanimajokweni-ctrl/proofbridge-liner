@@ -33,8 +33,9 @@ export function Topbar({ badges, tenantName }: TopbarProps) {
         backdropFilter: 'blur(14px)',
         WebkitBackdropFilter: 'blur(14px)',
         borderBottom: '1px solid rgba(107, 138, 64, 0.18)',
-        padding: '0.7rem 1.1rem',
+        padding: '0.5rem 0.6rem',
       }}
+      className="vvu-topbar"
     >
       <div
         style={{
@@ -90,6 +91,7 @@ export function Topbar({ badges, tenantName }: TopbarProps) {
               <div
                 key={b.key}
                 title={b.tooltip ?? `${b.label}: ${b.value}`}
+                className={`vvu-topbar-badge vvu-topbar-badge-${b.key}`}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -120,6 +122,7 @@ export function Topbar({ badges, tenantName }: TopbarProps) {
             );
           })}
           <div
+            className="vvu-topbar-tenant-chip"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -140,6 +143,18 @@ export function Topbar({ badges, tenantName }: TopbarProps) {
           </div>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 760px) {
+          .vvu-topbar {
+            padding: 0.4rem 0.5rem !important;
+          }
+          .vvu-topbar-badge-sans,
+          .vvu-topbar-badge-popia,
+          .vvu-topbar-tenant-chip {
+            display: none !important;
+          }
+        }
+      `}</style>
     </header>
   );
 }
