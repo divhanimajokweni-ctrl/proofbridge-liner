@@ -24,6 +24,7 @@ import { Footer } from '@/components/vvu/footer';
 import { VVUFSMController, VVUNodeState } from '@/lib/vvu-fsm-controller';
 import { DEFAULT_TENANT, TENANTS } from '@/lib/vvu-telemetry';
 import { RELEASE_MANIFEST } from '@/lib/vvu-release-manifest';
+import { getSiteConfig } from '@/lib/vvu-sites';
 
 const GQEBERHA_TENANT_ID = 'e1002324-0000-0000-0000-000000000001';
 
@@ -40,7 +41,7 @@ export default function Home() {
   const { open: helpOpen, setOpen: setHelpOpen } = useKeyboardHelp();
   const [liveFlow, setLiveFlow] = useState(42);
   const [liveHead, setLiveHead] = useState(38);
-  useTamperAlert();
+  const { triggerCheck: triggerTamperCheck } = useTamperAlert();
 
   const fsmRef = useRef<VVUFSMController | null>(null);
   const prevFsmStateRef = useRef<VVUNodeState>(VVUNodeState.DISCONNECTED);
@@ -139,10 +140,26 @@ export default function Home() {
   const handleNodeClick = useCallback((nodeId: string) => {
     const fsm = fsmRef.current;
     if (!fsm) return;
-    if (fsm.getState() === VVUNodeState.LEAK_SIMULATION_ACTIVE && activeNodeId === nodeId) {
+    const state = fsm.getState();
+    // If the FSM isn't in STEADY_STATE_LOCKED, try to complete the handshake
+    // first so CLICK is accepted. This handles the race where a user clicks
+    // a node before the boot handshake finishes.
+    if (state === VVUNodeState.DISCONNECTED) {
+      fsm.dispatch('INIT');
+      fsm.dispatch('CHAL');
+      fsm.dispatch('TOTP_OK');
+    } else if (state === VVUNodeState.PAIRING_BLE) {
+      fsm.dispatch('CHAL');
+      fsm.dispatch('TOTP_OK');
+    } else if (state === VVUNodeState.TOTP_VERIFICATION) {
+      fsm.dispatch('TOTP_OK');
+    }
+    // Now in STEADY_STATE_LOCKED (or LEAK_SIMULATION_ACTIVE) — dispatch CLICK or CLEAR.
+    const currentState = fsm.getState();
+    if (currentState === VVUNodeState.LEAK_SIMULATION_ACTIVE && activeNodeId === nodeId) {
       fsm.dispatch('CLEAR');
       setActiveNodeId(null);
-    } else {
+    } else if (currentState === VVUNodeState.STEADY_STATE_LOCKED || currentState === VVUNodeState.LEAK_SIMULATION_ACTIVE) {
       fsm.dispatch('CLICK', { nodeId });
       setActiveNodeId(nodeId);
     }
@@ -163,6 +180,20 @@ export default function Home() {
     fsmRef.current?.updateTemperature(45);
     setLastTemp(45);
   }, []);
+
+  const handleTamperTest = useCallback(async () => {
+    try {
+      await fetch('/api/vvu/tamper-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: 'F01' }),
+      });
+      // Force an immediate tamper-alert re-fetch (no 30s wait).
+      triggerTamperCheck();
+    } catch {
+      /* non-fatal */
+    }
+  }, [triggerTamperCheck]);
 
   // Keyboard shortcuts: T = thermal, C = critical, R = reset, L = leak, 1/2/3 = tenant
   useEffect(() => {
@@ -361,7 +392,7 @@ export default function Home() {
                   letterSpacing: '0.01em',
                 }}
               >
-                Gqeberha Spatial Digital Twin
+                {getSiteConfig(TENANTS[tenantIdx].slug).name} Spatial Digital Twin
               </h2>
               <span
                 style={{
@@ -380,6 +411,9 @@ export default function Home() {
               thermalThrottle={thermalThrottle}
               failClosed={failClosed}
               radarSpeedS={settings.radarSpeedS}
+              sitePins={getSiteConfig(TENANTS[tenantIdx].slug).pins}
+              siteHudLabel={getSiteConfig(TENANTS[tenantIdx].slug).hudLabel}
+              siteCoords={getSiteConfig(TENANTS[tenantIdx].slug).coords}
             />
             {/* Leak-rate radial gauge overlay — fed by live telemetry stream.
                 Shows when a node is active OR the FSM is in LEAK_SIMULATION_ACTIVE. */}
@@ -461,7 +495,7 @@ export default function Home() {
             onSimulateCritical={handleSimulateCritical}
           />
           <GateRoadmap />
-          <DbStatsPanel />
+          <DbStatsPanel onTamperTest={handleTamperTest} />
         </aside>
       </main>
 

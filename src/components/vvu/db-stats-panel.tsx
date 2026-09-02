@@ -22,7 +22,11 @@ interface DbStats {
   };
 }
 
-export function DbStatsPanel() {
+interface DbStatsPanelProps {
+  onTamperTest?: () => void;
+}
+
+export function DbStatsPanel({ onTamperTest }: DbStatsPanelProps) {
   const [stats, setStats] = useState<DbStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,15 +46,18 @@ export function DbStatsPanel() {
     }
   };
 
-  const triggerTamperTest = async () => {
+  const handleTamperClick = async () => {
     setTesting(true);
     try {
-      await fetch('/api/vvu/tamper-test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId: 'F01' }),
-      });
-      // The tamper alert hook will pick this up on its next 30s poll.
+      if (onTamperTest) {
+        await onTamperTest();
+      } else {
+        await fetch('/api/vvu/tamper-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileId: 'F01' }),
+        });
+      }
     } catch {
       /* non-fatal */
     } finally {
@@ -186,7 +193,7 @@ export function DbStatsPanel() {
       >
         <span>file:/home/z/my-project/db/custom.db · RLS-scoped</span>
         <button
-          onClick={triggerTamperTest}
+          onClick={handleTamperClick}
           disabled={testing}
           title="Artificially flag ledger entry F01 as tampered to demo the alert"
           style={{

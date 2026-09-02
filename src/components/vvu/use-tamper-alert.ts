@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 // Active tamper alert — polls /api/vvu/ledger periodically and fires a toast
 // if any ledger entry is flagged `tampered: true`. Also fires once on mount
-// to confirm the ledger is clean.
+// to confirm the ledger is clean. Returns a `triggerCheck` function so the
+// tamper-test button can force an immediate re-fetch (no 30s wait).
 
 const POLL_INTERVAL_MS = 30000; // 30s
 
@@ -18,6 +19,11 @@ interface LedgerEntry {
 
 export function useTamperAlert() {
   const prevTamperedRef = useRef<Set<string>>(new Set());
+  const [trigger, setTrigger] = useState(0);
+
+  const triggerCheck = useCallback(() => {
+    setTrigger((t) => t + 1);
+  }, []);
 
   useEffect(() => {
     const check = async () => {
@@ -49,9 +55,21 @@ export function useTamperAlert() {
 
     const kick = setTimeout(check, 2000); // first check after boot settles
     const interval = setInterval(check, POLL_INTERVAL_MS);
+    // When triggerCheck is called, re-fetch after a short delay (lets the
+    // tamper-test API write complete first).
+    if (trigger > 0) {
+      const manual = setTimeout(check, 500);
+      return () => {
+        clearTimeout(kick);
+        clearInterval(interval);
+        clearTimeout(manual);
+      };
+    }
     return () => {
       clearTimeout(kick);
       clearInterval(interval);
     };
-  }, []);
+  }, [trigger]);
+
+  return { triggerCheck };
 }

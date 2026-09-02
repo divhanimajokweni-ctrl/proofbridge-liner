@@ -18,6 +18,10 @@ interface TerrainTwinProps {
   thermalThrottle: boolean;
   failClosed: boolean;
   radarSpeedS?: number;
+  sitePins?: Pin[];
+  siteAccent?: string;
+  siteHudLabel?: string;
+  siteCoords?: { lat: number; lon: number };
 }
 
 interface Pin {
@@ -28,7 +32,7 @@ interface Pin {
   gz: number;
 }
 
-const PINS: Pin[] = [
+const DEFAULT_PINS: Pin[] = [
   { id: 'inlet', label: 'Inlet Meter Pod', gx: -2.4, gy: -1.6, gz: 0.62 },
   { id: 'outlet', label: 'Outlet Meter Pod', gx: 2.4, gy: 1.6, gz: 0.6 },
   { id: 'pipe', label: 'Pressure Pipe', gx: 0, gy: 0, gz: 0.48 },
@@ -49,7 +53,18 @@ function iso(gx: number, gy: number, gz: number, cx: number, cy: number, t: numb
   return { x: sx, y: sy };
 }
 
-export function TerrainTwin({ activeNodeId, onNodeClick, thermalThrottle, failClosed, radarSpeedS = 6 }: TerrainTwinProps) {
+export function TerrainTwin({
+  activeNodeId,
+  onNodeClick,
+  thermalThrottle,
+  failClosed,
+  radarSpeedS = 6,
+  sitePins,
+  siteAccent,
+  siteHudLabel,
+  siteCoords,
+}: TerrainTwinProps) {
+  const PINS = sitePins ?? DEFAULT_PINS;
   const [t, setT] = useState(0);
 
   useEffect(() => {
@@ -285,8 +300,10 @@ export function TerrainTwin({ activeNodeId, onNodeClick, thermalThrottle, failCl
 
         {/* HUD corners — pointer-events:none */}
         <g fontFamily="var(--font-geist-mono), monospace" fontSize={9} fill={accent} style={{ pointerEvents: 'none' }}>
-          <text x={16} y={22}>GQEBERHA · HUMEWOOD TEST GROUNDS</text>
-          <text x={16} y={36} fill="#8B9A7B">33.9608°S · 25.6022°E · ENU mm</text>
+          <text x={16} y={22}>{siteHudLabel ?? 'GQEBERHA · HUMEWOOD TEST GROUNDS'}</text>
+          <text x={16} y={36} fill="#8B9A7B">
+            {siteCoords ? `${Math.abs(siteCoords.lat).toFixed(4)}°S · ${siteCoords.lon.toFixed(4)}°E` : '33.9608°S · 25.6022°E'} · ENU mm
+          </text>
           <text x={W - 16} y={22} textAnchor="end" fill={accent}>
             DFA · {failClosed ? 'FAIL_CLOSED_LOCKDOWN' : thermalThrottle ? 'THERMAL_THROTTLE' : 'STEADY_STATE_LOCKED'}
           </text>
