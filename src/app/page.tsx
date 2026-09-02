@@ -28,6 +28,75 @@ import { getSiteConfig } from '@/lib/vvu-sites';
 
 const GQEBERHA_TENANT_ID = 'e1002324-0000-0000-0000-000000000001';
 
+// Module-level FSM instance holder — avoids React 19's react-hooks/refs rule
+// entirely by not using a ref. The FSM is created once per component mount
+// and stored in a closure captured by the useState lazy initializer.
+// The `getFsm` getter is captured in the factory's closure, avoiding the
+// need to pass a ref.
+
+interface FsmDeps {
+  setActiveNodeId: (id: string | null) => void;
+  setLastTemp: (t: number) => void;
+  setFsmState: (s: VVUNodeState) => void;
+  setFsmLog: (l: ReturnType<VVUFSMController['getLog']>) => void;
+  setAuditRefreshKey: (f: (n: number) => number) => void;
+  writeAudit: (action: string, details: { fromState?: string; toState?: string; symbol?: string; reason?: string }) => void;
+}
+
+function createFsmController(deps: FsmDeps): VVUFSMController {
+  const { setActiveNodeId, setLastTemp, setFsmState, setFsmLog, setAuditRefreshKey, writeAudit } = deps;
+  // Both the FSM instance and the prev-state are captured in closure variables
+  // so logTransition can read them without refs (avoids react-hooks/refs).
+  let instance: VVUFSMController | null = null;
+  let prevFsmState: VVUNodeState = VVUNodeState.DISCONNECTED;
+  instance = new VVUFSMController({
+    onLeakActivate: (nodeId) => {
+      setActiveNodeId(nodeId);
+      toast.info(`Leak simulation active · node ${nodeId}`, {
+        description: 'DFA → LEAK_SIMULATION_ACTIVE · particle system engaged',
+      });
+    },
+    onLeakClear: () => {
+      setActiveNodeId(null);
+      toast.success('Leak cleared · returning to steady state');
+    },
+    onThermalThrottle: (temp) => {
+      setLastTemp(temp);
+      toast.warning(`Thermal throttle · APU ${temp.toFixed(1)}°C`, {
+        description: 'Vertex decimation 62.5% · mesh density reduced',
+      });
+    },
+    onFailClosed: (reason) => {
+      toast.error(`FAIL-CLOSED LOCKDOWN · ${reason}`, {
+        description: 'Hardware disconnect · WORM flush · authorised reset required',
+      });
+    },
+    onResetComplete: () => {
+      toast.success('Authorised reset complete · STEADY_STATE_LOCKED');
+    },
+    logTransition: () => {
+      const f = instance;
+      if (!f) return;
+      const newState = f.getState();
+      const prev = prevFsmState;
+      setFsmState(newState);
+      setFsmLog(f.getLog());
+      if (newState !== prev) {
+        const log = f.getLog()[0];
+        writeAudit('STATE_TRANSITION', {
+          fromState: prev,
+          toState: newState,
+          symbol: log?.symbol,
+          reason: log?.reason,
+        });
+        prevFsmState = newState;
+        setAuditRefreshKey((k) => k + 1);
+      }
+    },
+  });
+  return instance;
+}
+
 export default function Home() {
   const [booting, setBooting] = useState(true);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
@@ -43,9 +112,6 @@ export default function Home() {
   const [liveHead, setLiveHead] = useState(38);
   const { triggerCheck: triggerTamperCheck } = useTamperAlert();
 
-  const fsmRef = useRef<VVUFSMController | null>(null);
-  const prevFsmStateRef = useRef<VVUNodeState>(VVUNodeState.DISCONNECTED);
-
   // Helper: write an audit-log entry via the API (fire-and-forget).
   const writeAudit = useCallback(
     (action: string, details: { fromState?: string; toState?: string; symbol?: string; reason?: string }) => {
@@ -60,66 +126,36 @@ export default function Home() {
     []
   );
 
-  // FSM controller — created once on mount inside an effect.
+  // FSM controller — created once via useState lazy initializer. The factory
+  // captures the instance + prev-state in closure variables so logTransition
+  // can read them without refs. This resolves the R8 node-click dispatch
+  // race where the useEffect cleanup set fsmRef.current = null. The `fsm`
+  // value is stable across re-renders (useState never re-invokes the
+// initializer). No refs are passed to the factory (avoids react-hooks/refs).
+  const [fsm] = useState(() =>
+    createFsmController({
+      setActiveNodeId,
+      setLastTemp,
+      setFsmState,
+      setFsmLog,
+      setAuditRefreshKey,
+      writeAudit,
+    })
+  );
+
+  // Boot handshake — drive the FSM through DISCONNECTED → STEADY_STATE_LOCKED
+  // once the boot screen dismisses.
   useEffect(() => {
     if (booting) return;
-    fsmRef.current = new VVUFSMController({
-      onLeakActivate: (nodeId) => {
-        setActiveNodeId(nodeId);
-        toast.info(`Leak simulation active · node ${nodeId}`, {
-          description: 'DFA → LEAK_SIMULATION_ACTIVE · particle system engaged',
-        });
-      },
-      onLeakClear: () => {
-        setActiveNodeId(null);
-        toast.success('Leak cleared · returning to steady state');
-      },
-      onThermalThrottle: (temp) => {
-        setLastTemp(temp);
-        toast.warning(`Thermal throttle · APU ${temp.toFixed(1)}°C`, {
-          description: 'Vertex decimation 62.5% · mesh density reduced',
-        });
-      },
-      onFailClosed: (reason) => {
-        toast.error(`FAIL-CLOSED LOCKDOWN · ${reason}`, {
-          description: 'Hardware disconnect · WORM flush · authorised reset required',
-        });
-      },
-      onResetComplete: () => {
-        toast.success('Authorised reset complete · STEADY_STATE_LOCKED');
-      },
-      logTransition: () => {
-        const f = fsmRef.current;
-        if (!f) return;
-        const newState = f.getState();
-        const prev = prevFsmStateRef.current;
-        setFsmState(newState);
-        setFsmLog(f.getLog());
-        if (newState !== prev) {
-          const log = f.getLog()[0];
-          writeAudit('STATE_TRANSITION', {
-            fromState: prev,
-            toState: newState,
-            symbol: log?.symbol,
-            reason: log?.reason,
-          });
-          prevFsmStateRef.current = newState;
-          // Bump the audit viewer refresh key so it re-fetches immediately.
-          setAuditRefreshKey((k) => k + 1);
-        }
-      },
-    });
-    // Staggered handshake: DISCONNECTED → PAIRING_BLE → TOTP_VERIFICATION → STEADY_STATE_LOCKED.
-    const t1 = setTimeout(() => fsmRef.current?.dispatch('INIT'), 80);
-    const t2 = setTimeout(() => fsmRef.current?.dispatch('CHAL'), 420);
-    const t3 = setTimeout(() => fsmRef.current?.dispatch('TOTP_OK'), 880);
+    const t1 = setTimeout(() => fsm.dispatch('INIT'), 80);
+    const t2 = setTimeout(() => fsm.dispatch('CHAL'), 420);
+    const t3 = setTimeout(() => fsm.dispatch('TOTP_OK'), 880);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
-      fsmRef.current = null;
     };
-  }, [booting, writeAudit]);
+  }, [booting, fsm]);
 
   // Live APU temperature sensor simulation (mock I²C read every 2s).
   // Paused while a leak is active so the FSM doesn't auto-recover and clear
@@ -130,16 +166,14 @@ export default function Home() {
       if (activeNodeId) return; // don't perturb thermal while leak is active
       const t = Date.now() / 1000;
       const base = 48 + Math.sin(t / 23) * 7 + Math.random() * 1.6;
-      fsmRef.current?.updateTemperature(Math.round(base * 10) / 10);
-      setLastTemp(fsmRef.current?.getLastTemp() ?? base);
+      fsm.updateTemperature(Math.round(base * 10) / 10);
+      setLastTemp(fsm.getLastTemp());
       setTick((n) => n + 1);
     }, 2000);
     return () => clearInterval(interval);
-  }, [booting, activeNodeId]);
+  }, [booting, activeNodeId, fsm]);
 
   const handleNodeClick = useCallback((nodeId: string) => {
-    const fsm = fsmRef.current;
-    if (!fsm) return;
     const state = fsm.getState();
     // If the FSM isn't in STEADY_STATE_LOCKED, try to complete the handshake
     // first so CLICK is accepted. This handles the race where a user clicks
@@ -163,23 +197,23 @@ export default function Home() {
       fsm.dispatch('CLICK', { nodeId });
       setActiveNodeId(nodeId);
     }
-  }, [activeNodeId]);
+  }, [fsm, activeNodeId]);
 
   const handleSimulateThermal = useCallback(() => {
-    fsmRef.current?.updateTemperature(78);
+    fsm.updateTemperature(78);
     setLastTemp(78);
-  }, []);
+  }, [fsm]);
 
   const handleSimulateCritical = useCallback(() => {
-    fsmRef.current?.updateTemperature(88);
+    fsm.updateTemperature(88);
     setLastTemp(88);
-  }, []);
+  }, [fsm]);
 
   const handleAuthorisedReset = useCallback(() => {
-    fsmRef.current?.authorizedReset();
-    fsmRef.current?.updateTemperature(45);
+    fsm.authorizedReset();
+    fsm.updateTemperature(45);
     setLastTemp(45);
-  }, []);
+  }, [fsm]);
 
   const handleTamperTest = useCallback(async () => {
     try {
