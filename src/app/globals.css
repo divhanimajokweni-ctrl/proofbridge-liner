@@ -216,3 +216,45 @@ header, main, aside, footer, [role="dialog"], [data-sonner-toaster] {
   position: relative;
   z-index: 2;
 }
+
+/* VVU panel hover glow — subtle sage-green border lift on the SCADA panels.
+   Applied via a shared class so every panel gets the same tactile feedback. */
+.vvu-panel-hover {
+  transition: border-color 220ms ease, box-shadow 220ms ease;
+}
+.vvu-panel-hover:hover {
+  border-color: rgba(107, 138, 64, 0.35) !important;
+  box-shadow: 0 0 0 1px rgba(107, 138, 64, 0.12), 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* Subtle entrance animation for panels mounting into view */
+@keyframes vvuPanelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.vvu-enter {
+  animation: vvuPanelEnter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Sonner toast theme overrides — match the SCADA dark aesthetic */
+[data-sonner-toaster] [data-sonner-toast] {
+  background: rgba(15, 20, 16, 0.96) !important;
+  border: 1px solid rgba(107, 138, 64, 0.3) !important;
+  color: #C9D4BD !important;
+  font-family: var(--font-geist-mono), monospace !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="error"] {
+  border-color: rgba(176, 42, 42, 0.45) !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="warning"] {
+  border-color: rgba(196, 109, 26, 0.4) !important;
+}
+[data-sonner-toaster] [data-sonner-toast][data-type="success"] {
+  border-color: rgba(107, 138, 64, 0.45) !important;
+}

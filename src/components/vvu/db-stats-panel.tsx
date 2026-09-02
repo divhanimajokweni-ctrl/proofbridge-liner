@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ShieldAlert } from 'lucide-react';
 
 // Sovereign DB stats panel — reads from /api/vvu/db-stats (which calls the
 // Prisma-backed seeder). Shows live row counts per table, proving the
@@ -25,6 +26,7 @@ export function DbStatsPanel() {
   const [stats, setStats] = useState<DbStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
 
   const fetchStats = async () => {
     try {
@@ -37,6 +39,22 @@ export function DbStatsPanel() {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const triggerTamperTest = async () => {
+    setTesting(true);
+    try {
+      await fetch('/api/vvu/tamper-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId: 'F01' }),
+      });
+      // The tamper alert hook will pick this up on its next 30s poll.
+    } catch {
+      /* non-fatal */
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -159,9 +177,38 @@ export function DbStatsPanel() {
           fontSize: '0.55rem',
           color: '#5A6B4F',
           letterSpacing: '0.06em',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '0.5rem',
+          flexWrap: 'wrap',
         }}
       >
-        file:/home/z/my-project/db/custom.db · RLS-scoped to vvu.current_tenant_id
+        <span>file:/home/z/my-project/db/custom.db · RLS-scoped</span>
+        <button
+          onClick={triggerTamperTest}
+          disabled={testing}
+          title="Artificially flag ledger entry F01 as tampered to demo the alert"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.3rem',
+            padding: '0.25rem 0.5rem',
+            borderRadius: 4,
+            background: 'rgba(176, 42, 42, 0.12)',
+            border: '1px solid rgba(176, 42, 42, 0.3)',
+            color: '#E27373',
+            fontFamily: 'inherit',
+            fontSize: '0.55rem',
+            cursor: testing ? 'wait' : 'pointer',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            opacity: testing ? 0.6 : 1,
+          }}
+        >
+          <ShieldAlert size={11} />
+          {testing ? 'Testing…' : 'Tamper Test'}
+        </button>
       </div>
     </div>
   );

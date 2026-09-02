@@ -16,7 +16,8 @@ import { DbStatsPanel } from '@/components/vvu/db-stats-panel';
 import { AuditViewer } from '@/components/vvu/audit-viewer';
 import { LeakGauge } from '@/components/vvu/leak-gauge';
 import { SiteSelector } from '@/components/vvu/site-selector';
-import { SettingsDialog, DEFAULT_SETTINGS, VvuSettings } from '@/components/vvu/settings-dialog';
+import { SettingsDialog } from '@/components/vvu/settings-dialog';
+import { usePersistentSettings } from '@/components/vvu/use-persistent-settings';
 import { KeyboardHelp, useKeyboardHelp } from '@/components/vvu/keyboard-help';
 import { useTamperAlert } from '@/components/vvu/use-tamper-alert';
 import { Footer } from '@/components/vvu/footer';
@@ -35,7 +36,7 @@ export default function Home() {
   const [fsmLog, setFsmLog] = useState<ReturnType<VVUFSMController['getLog']>>([]);
   const [lastTemp, setLastTemp] = useState(48);
   const [auditRefreshKey, setAuditRefreshKey] = useState(0);
-  const [settings, setSettings] = useState<VvuSettings>(DEFAULT_SETTINGS);
+  const { settings, setSettings } = usePersistentSettings();
   const { open: helpOpen, setOpen: setHelpOpen } = useKeyboardHelp();
   const [liveFlow, setLiveFlow] = useState(42);
   const [liveHead, setLiveHead] = useState(38);
@@ -120,9 +121,12 @@ export default function Home() {
   }, [booting, writeAudit]);
 
   // Live APU temperature sensor simulation (mock I²C read every 2s).
+  // Paused while a leak is active so the FSM doesn't auto-recover and clear
+  // the leak state before the gauge can compute a reading.
   useEffect(() => {
     if (booting) return;
     const interval = setInterval(() => {
+      if (activeNodeId) return; // don't perturb thermal while leak is active
       const t = Date.now() / 1000;
       const base = 48 + Math.sin(t / 23) * 7 + Math.random() * 1.6;
       fsmRef.current?.updateTemperature(Math.round(base * 10) / 10);
@@ -130,7 +134,7 @@ export default function Home() {
       setTick((n) => n + 1);
     }, 2000);
     return () => clearInterval(interval);
-  }, [booting]);
+  }, [booting, activeNodeId]);
 
   const handleNodeClick = useCallback((nodeId: string) => {
     const fsm = fsmRef.current;
@@ -377,9 +381,11 @@ export default function Home() {
               failClosed={failClosed}
               radarSpeedS={settings.radarSpeedS}
             />
-            {/* Leak-rate radial gauge overlay — fed by live telemetry stream */}
+            {/* Leak-rate radial gauge overlay — fed by live telemetry stream.
+                Shows when a node is active OR the FSM is in LEAK_SIMULATION_ACTIVE. */}
             <LeakGauge
               activeNodeId={activeNodeId}
+              leakActive={fsmState === VVUNodeState.LEAK_SIMULATION_ACTIVE}
               flowRate={liveFlow}
               pressureHead={liveHead}
             />

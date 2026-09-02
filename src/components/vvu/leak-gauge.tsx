@@ -8,12 +8,17 @@ import { useEffect, useRef, useState } from 'react';
 
 interface LeakGaugeProps {
   activeNodeId: string | null;
+  leakActive: boolean; // true when FSM is in LEAK_SIMULATION_ACTIVE
   flowRate: number; // L/s — drives the leak rate estimate
   pressureHead: number; // m — drives the leak severity
 }
 
-export function LeakGauge({ activeNodeId, flowRate, pressureHead }: LeakGaugeProps) {
+export function LeakGauge({ activeNodeId, leakActive, flowRate, pressureHead }: LeakGaugeProps) {
   const [leakRate, setLeakRate] = useState(0);
+  // The gauge shows when either a specific node is active OR the FSM is in
+  // LEAK_SIMULATION_ACTIVE (e.g. via the thermal-recovery path).
+  const active = leakActive || !!activeNodeId;
+  const label = activeNodeId ?? 'pipe';
   // Ref to avoid re-creating the interval when pressureHead changes every frame.
   const pressureHeadRef = useRef(pressureHead);
   useEffect(() => {
@@ -24,7 +29,7 @@ export function LeakGauge({ activeNodeId, flowRate, pressureHead }: LeakGaugePro
   // We use a nominal orifice coefficient of 0.6 and a simulated hole area
   // that scales with the active node's stress.
   useEffect(() => {
-    if (!activeNodeId) {
+    if (!active) {
       // Defer the reset to avoid calling setState synchronously in the effect body.
       const reset = setTimeout(() => {
         setLeakRate(0);
@@ -43,15 +48,15 @@ export function LeakGauge({ activeNodeId, flowRate, pressureHead }: LeakGaugePro
     };
     // Fire immediately so the gauge shows a non-zero value right away.
     compute();
-    const interval = setInterval(compute, 1000);
+    const interval = setInterval(compute, 500);
     return () => clearInterval(interval);
-  }, [activeNodeId]);
+  }, [active]);
 
   // Use leakRate directly for the displayed value. The needle animation is
   // handled by the SVG <animate> on the arc path, so no JS smoothing needed.
   const displayedRate = leakRate;
 
-  if (!activeNodeId) {
+  if (!active) {
     return null;
   }
 
@@ -112,7 +117,7 @@ export function LeakGauge({ activeNodeId, flowRate, pressureHead }: LeakGaugePro
           fontWeight: 700,
         }}
       >
-        ⚠ Leak Rate · {activeNodeId}
+        ⚠ Leak Rate · {label}
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="auto" style={{ display: 'block' }}>
         <defs>
