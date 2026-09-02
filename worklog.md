@@ -1098,3 +1098,73 @@ tenants: 1 | nodes: 11 | spools: 2 | invariants: 1 | telemetry: 1126 | audit: 16
 ---
 
 **End of Round 9.** The VVU Validation Dashboard's R8 critical bug is FIXED — the FSM creation pattern now uses `useState(() => createFsmController({...}))` with a factory that captures the instance + prev-state in closure variables (no refs, no `useEffect` cleanup). The node-click dispatch race is resolved: keyboard `L` now transitions the FSM to LEAK_SIMULATION_ACTIVE with the gauge showing 1078.9 L/min. The thermal path (SIM 78°C) also works (876.7 L/min). All React 19 strict rules are satisfied. Next round should focus on polish (site accent propagation, terrain animations) + the SHA-256 verifier ledger wiring.
+
+---
+
+## Task ID: BUNDLE-VERIFY (VVU Master Textbook v0.3 FINAL — Design Freeze Verification)
+**Agent**: z.ai Code
+**Date**: 2026-09-02 (SAST)
+**Source**: Uploaded `VVU_Master_Textbook_v0.3_FINAL_BUNDLE.zip` from user
+
+### Verification performed
+1. Unzipped bundle to `/home/z/my-project/upload/vvu-bundle/`
+2. Ran `vvu-hash-verifier-v3-FINAL.sh` — **all 19 SHA-256 entries returned OK**
+3. Independently verified hashes via `sha256sum -c .vvu/hashes/manifest_v0.3_final.sha256` — **all match**
+4. Inspected key artifacts: VVUIVELedger.sol, decision ledger SQL, master textbook, zoo_step_verifier.py
+
+### Results
+
+| Check | Result |
+|-------|--------|
+| 19-file SHA-256 verification | ✅ ALL OK — Design Freeze Level 1 confirmed |
+| Hash manifest integrity | ✅ `.vvu/hashes/manifest_v0.3_final.sha256` matches all files |
+| Bundle completeness | ✅ 20 files (19 manifest entries + manifest itself), 69K total |
+| Master textbook structure | ✅ Chapters 1-5 + Appendices A-H + Glossary, 1068 lines |
+| On-chain ledger (VVUIVELedger.sol) | ⚠️ Syntax bug found (see below) |
+| Decision ledger SQL | ✅ WORM rules (no_update, no_delete) + RLS policies intact |
+| Python sidecar (zoo_step_verifier.py) | ✅ Web3 bridge with SHA-256 + registerEvidence ABI |
+
+### ⚠️ CRITICAL: Solidity syntax bug in VVUIVELedger.sol
+
+**File**: `contracts/VVUIVELedger.sol`
+**Lines**: 38, 43
+**Issue**: `authorizedAgentssg.sender]` — missing `[` and `m`, should be `authorizedAgents[msg.sender]`
+
+```solidity
+// Line 38 (current — BROKEN):
+require(authorizedAgentssg.sender] || msg.sender == owner(), "Not authorized agent");
+
+// Line 38 (should be):
+require(authorizedAgents[msg.sender] || msg.sender == owner(), "Not authorized agent");
+
+// Line 43 (current — BROKEN):
+authorizedAgentssg.sender] = true;
+
+// Line 43 (should be):
+authorizedAgents[msg.sender] = true;
+```
+
+**Impact**: The contract will not compile. The `onlyAuthorized` modifier and constructor are both broken.
+**Recommendation**: Fix before deploying to Polygon Amoy. Per the "NO EDITS WITHOUT RE-HASH" principle, this fix requires re-hashing `VVUIVELedger.sol` and updating the manifest + verifier script.
+
+### Bundle contents (17 unique files)
+```
+Core docs:       VVU_Master_Textbook_v0.3.md, VVU_Guardrail_Doc_v1.md
+On-chain:         contracts/VVUIVELedger.sol
+SQL schemas:     vvu-decision-ledger-20260901.sql, vvu-init-db-20260901.sh
+TypeScript:       vvu-telemetry-controller-20260901.ts, vvu-ble-fsm-20260901.ts
+Shell scripts:   vvu-deploy-all-v3-20260901.sh, vvu-ssh-setup-20260901.sh
+Python sidecars:  zoo_step_verifier.py, vvu-sister-system.py
+Appendices:      CIPC_BBBEE_flow.md, MOI_Article5.md, SHA_Gate3.md,
+                 Financial_Scenarios.xlsx, ESD_Scripts.md
+Verifiers:       Vvu-Hash-Verifier-V3-20260901.sh, vvu-hash-verifier-v3-FINAL.sh
+```
+
+### Sovereign ledger chain confirmed
+```
+Prompt → Zoo Agent → SMT → STEP → SHA-256 → Decision Ledger (RLS) → VVUIVELedger.sol → tx hash → Customer verification
+```
+
+**Verdict**: Bundle is cryptographically intact (Hash is Proof). The Solidity syntax bug must be fixed + re-hashed before on-chain deployment. Safe to push to Obsidian Sync for documentation purposes, but DO NOT deploy VVUIVELedger.sol to Polygon Amoy until the bug is fixed.
+
+**End of Bundle Verification.**
