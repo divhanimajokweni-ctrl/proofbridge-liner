@@ -1,8 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// =============================================================================
+// VVU Sovereign Database Schema · vvu-pis-db-schema-20260901
+// Multi-tenant Row-Level Security (RLS) · POPIA-compliant · SANS 1200
+// Mirrors the sovereign DB initialised by vvu-init-db-20260901.sh
+// =============================================================================
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +13,149 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
+// ─── Tenant isolation root ─────────────────────────────────────────────────
+model Tenant {
   id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
+  name      String
+  slug      String   @unique
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  anchors       GeographicAnchor[]
+  nodes         PhysicalNode[]
+  spools        PipeSpoolProfile[]
+  invariants    HydraulicInvariant[]
+  telemetryLogs TelemetryLog[]
+  auditLogs     AuditLog[]
+  ledgerEntries LedgerEntry[]
 }
 
-model Post {
+// ─── WGS84 → ECEF reference coordinates ────────────────────────────────────
+model GeographicAnchor {
+  id          String   @id @default(cuid())
+  tenantId    String
+  siteName    String
+  latitude    Float
+  longitude   Float
+  originEcefX Float
+  originEcefY Float
+  originEcefZ Float
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// ─── ENU coordinates (mm) for all hardware modules ─────────────────────────
+model PhysicalNode {
+  id            String   @id @default(cuid())
+  tenantId      String
+  componentName String
+  xEnuMm        Float
+  yEnuMm        Float
+  zEnuMm        Float
+  functionalRole String
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// ─── SANS/EN structural calibration (DN100, DN300) ─────────────────────────
+model PipeSpoolProfile {
+  id               String   @id @default(cuid())
+  tenantId         String
+  nominalSize      String
+  outerDiameterMm  Float
+  innerDiameterMm  Float
+  wallThicknessMm  Float
+  materialGrade    String
+  flangeStandard   String
+  boltSpecification String
+  targetTorqueNm   Float
+  createdAt        DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// ─── Safe-harbour hydraulic bounds (wave celerity, FAVAD, corrosion) ───────
+model HydraulicInvariant {
+  id                     String  @id @default(cuid())
+  tenantId               String
+  minWaveCelerityMs      Float   @default(200.0)
+  maxWaveCelerityMs      Float   @default(1400.0)
+  minFavadExponent       Float   @default(0.5)
+  maxFavadExponent       Float   @default(2.5)
+  maxSacrificialCorrosionMm Float @default(10.0)
+  minFactorOfSafety      Float   @default(1.5)
+  maxFactorOfSafety      Float   @default(3.0)
+  createdAt              DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// ─── Edge telemetry ingestion (RLS-scoped) ─────────────────────────────────
+model TelemetryLog {
+  id               String   @id @default(cuid())
+  tenantId         String
+  nodeId           String
+  flowRate         Float
+  pressureHead     Float
+  acousticAbnormal Boolean  @default(false)
+  apuTemperature   Float
+  systemState      String   @default("STEADY_STATE")
+  estimatedCelerity Float
+  invariantOk      Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([nodeId])
+  @@index([createdAt])
+}
+
+// ─── Append-only audit trail (state transitions, key rotations) ────────────
+model AuditLog {
   id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
+  tenantId  String
+  actor     String
+  action    String
+  fromState String?
+  toState   String?
+  symbol    String?
+  reason    String?
+  metadata  String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+// ─── WORM evidence store (SHA-256 canonical bytes) ─────────────────────────
+model LedgerEntry {
+  id         String   @id @default(cuid())
+  tenantId   String
+  fileId     String
+  filename   String
+  sha256     String
+  sizeBytes  Int
+  verified   Boolean  @default(true)
+  tampered   Boolean  @default(false)
+  commitHash String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([fileId])
+  @@unique([tenantId, fileId])
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,6 +59,18 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        <SonnerToaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'rgba(15, 20, 16, 0.95)',
+              border: '1px solid rgba(107, 138, 64, 0.3)',
+              color: '#C9D4BD',
+              fontFamily: 'var(--font-geist-mono), monospace',
+              fontSize: '0.72rem',
+            },
+          }}
+        />
       </body>
     </html>
   );

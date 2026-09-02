@@ -8,6 +8,7 @@ interface FSMVisualizerProps {
   lastTemp: number;
   onReset: () => void;
   onSimulateThermal: () => void;
+  onSimulateCritical?: () => void;
 }
 
 const STATE_ORDER: VVUNodeState[] = [
@@ -36,6 +37,7 @@ export function FSMVisualizer({
   lastTemp,
   onReset,
   onSimulateThermal,
+  onSimulateCritical,
 }: FSMVisualizerProps) {
   return (
     <div
@@ -216,42 +218,66 @@ export function FSMVisualizer({
       </div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', gap: '0.4rem' }}>
-        <button
-          onClick={onSimulateThermal}
-          style={{
-            flex: 1,
-            padding: '0.45rem 0.6rem',
-            borderRadius: 6,
-            background: 'rgba(196, 109, 26, 0.14)',
-            border: '1px solid rgba(196, 109, 26, 0.35)',
-            color: '#E0944A',
-            fontFamily: 'var(--font-geist-mono), monospace',
-            fontSize: '0.64rem',
-            letterSpacing: '0.08em',
-            cursor: 'pointer',
-            textTransform: 'uppercase',
-          }}
-        >
-          Simulate 78°C
-        </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <div style={{ display: 'flex', gap: '0.4rem' }}>
+          <button
+            onClick={onSimulateThermal}
+            style={{
+              flex: 1,
+              padding: '0.45rem 0.6rem',
+              borderRadius: 6,
+              background: 'rgba(196, 109, 26, 0.14)',
+              border: '1px solid rgba(196, 109, 26, 0.35)',
+              color: '#E0944A',
+              fontFamily: 'var(--font-geist-mono), monospace',
+              fontSize: '0.62rem',
+              letterSpacing: '0.08em',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+            }}
+            title="Keyboard: T"
+          >
+            Sim 78°C <span style={{ color: '#5A6B4F', fontSize: '0.55rem' }}>[T]</span>
+          </button>
+          {onSimulateCritical && (
+            <button
+              onClick={onSimulateCritical}
+              style={{
+                flex: 1,
+                padding: '0.45rem 0.6rem',
+                borderRadius: 6,
+                background: 'rgba(176, 42, 42, 0.18)',
+                border: '1px solid rgba(176, 42, 42, 0.45)',
+                color: '#E27373',
+                fontFamily: 'var(--font-geist-mono), monospace',
+                fontSize: '0.62rem',
+                letterSpacing: '0.08em',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+              }}
+              title="Keyboard: C"
+            >
+              Sim 88°C <span style={{ color: '#5A6B4F', fontSize: '0.55rem' }}>[C]</span>
+            </button>
+          )}
+        </div>
         <button
           onClick={onReset}
           style={{
-            flex: 1,
             padding: '0.45rem 0.6rem',
             borderRadius: 6,
-            background: 'rgba(176, 42, 42, 0.14)',
-            border: '1px solid rgba(176, 42, 42, 0.35)',
-            color: '#E27373',
+            background: 'rgba(107, 138, 64, 0.12)',
+            border: '1px solid rgba(107, 138, 64, 0.35)',
+            color: '#9DB36B',
             fontFamily: 'var(--font-geist-mono), monospace',
             fontSize: '0.64rem',
             letterSpacing: '0.08em',
             cursor: 'pointer',
             textTransform: 'uppercase',
           }}
+          title="Keyboard: R"
         >
-          Authorised Reset
+          Authorised Reset <span style={{ color: '#5A6B4F', fontSize: '0.55rem' }}>[R]</span>
         </button>
       </div>
     </div>

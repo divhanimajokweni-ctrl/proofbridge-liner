@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { TelemetryPayload, TelemetryResult, generateMockTelemetry, validateTelemetry, DEFAULT_TENANT } from '@/lib/vvu-telemetry';
+import {
+  TelemetryPayload,
+  TelemetryResult,
+  generateMockTelemetry,
+  validateTelemetry,
+  DEFAULT_TENANT,
+} from '@/lib/vvu-telemetry';
 
 interface TelemetryFeedProps {
   nodeId: string;
@@ -10,6 +16,7 @@ interface TelemetryFeedProps {
 interface FeedEntry {
   payload: TelemetryPayload;
   result: TelemetryResult;
+  persisted: boolean;
 }
 
 export function TelemetryFeed({ nodeId }: TelemetryFeedProps) {
@@ -23,10 +30,21 @@ export function TelemetryFeed({ nodeId }: TelemetryFeedProps) {
 
   useEffect(() => {
     if (paused) return;
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const payload = generateMockTelemetry(DEFAULT_TENANT.id, nodeId);
       const result = validateTelemetry(payload);
-      const next = [{ payload, result }, ...entriesRef.current].slice(0, 8);
+      let persisted = false;
+      try {
+        const res = await fetch('/api/vvu/telemetry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        persisted = res.ok;
+      } catch {
+        persisted = false;
+      }
+      const next = [{ payload, result, persisted }, ...entriesRef.current].slice(0, 8);
       setEntries(next);
     }, 2200);
     return () => clearInterval(interval);
@@ -114,14 +132,49 @@ export function TelemetryFeed({ nodeId }: TelemetryFeedProps) {
               <Metric label="STATE" value={e.result.state} color={rejected ? '#E27373' : '#9DB36B'} />
               <Metric label="FLOW" value={`${e.payload.flowRate.toFixed(2)} L/s`} color="#9DB36B" />
               <Metric label="HEAD" value={`${e.payload.pressureHead.toFixed(2)} m`} color="#9DB36B" />
-              <Metric label="APU" value={`${e.payload.apuTemperature.toFixed(1)} °C`} color={
-                e.payload.apuTemperature >= 85 ? '#E27373'
-                  : e.payload.apuTemperature >= 65 ? '#E0944A'
-                  : '#9DB36B'
-              } />
-              <Metric label="CELERITY" value={`${e.result.estimatedCelerity.toFixed(1)} m/s`} color={e.result.invariantOk ? '#9DB36B' : '#E27373'} />
-              <div style={{ gridColumn: '1 / -1', color: '#5A6B4F', fontSize: '0.58rem', borderTop: '1px dashed rgba(107,138,64,0.15)', paddingTop: '0.3rem', marginTop: '0.1rem' }}>
-                {e.result.logId} · {e.payload.acousticAbnormal ? '⚠ acoustic abnormal' : 'acoustic nominal'} · {new Date(e.payload.timestamp).toLocaleTimeString('en-ZA', { hour12: false })}
+              <Metric
+                label="APU"
+                value={`${e.payload.apuTemperature.toFixed(1)} °C`}
+                color={
+                  e.payload.apuTemperature >= 85
+                    ? '#E27373'
+                    : e.payload.apuTemperature >= 65
+                      ? '#E0944A'
+                      : '#9DB36B'
+                }
+              />
+              <Metric
+                label="CELERITY"
+                value={`${e.result.estimatedCelerity.toFixed(1)} m/s`}
+                color={e.result.invariantOk ? '#9DB36B' : '#E27373'}
+              />
+              <div
+                style={{
+                  gridColumn: '1 / -1',
+                  color: '#5A6B4F',
+                  fontSize: '0.58rem',
+                  borderTop: '1px dashed rgba(107,138,64,0.15)',
+                  paddingTop: '0.3rem',
+                  marginTop: '0.1rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                }}
+              >
+                <span>
+                  {e.result.logId} · {e.payload.acousticAbnormal ? '⚠ acoustic abnormal' : 'acoustic nominal'}
+                </span>
+                <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <span
+                    style={{
+                      color: e.persisted ? '#6B8A40' : '#8B9A7B',
+                      fontSize: '0.55rem',
+                    }}
+                  >
+                    {e.persisted ? '● DB' : '○ MEM'}
+                  </span>
+                  <span>{new Date(e.payload.timestamp).toLocaleTimeString('en-ZA', { hour12: false })}</span>
+                </span>
               </div>
             </div>
           );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { BootScreen } from '@/components/vvu/boot-screen';
 import { Topbar, TopbarBadge } from '@/components/vvu/topbar';
 import { TerrainTwin } from '@/components/vvu/terrain-twin';
@@ -8,10 +9,15 @@ import { FSMVisualizer } from '@/components/vvu/fsm-visualizer';
 import { TelemetryFeed } from '@/components/vvu/telemetry-feed';
 import { VerificationPanel } from '@/components/vvu/verification-panel';
 import { ReleaseManifest } from '@/components/vvu/release-manifest';
+import { HydraulicChart } from '@/components/vvu/hydraulic-chart';
+import { GateRoadmap } from '@/components/vvu/gate-roadmap';
+import { DbStatsPanel } from '@/components/vvu/db-stats-panel';
 import { Footer } from '@/components/vvu/footer';
 import { VVUFSMController, VVUNodeState } from '@/lib/vvu-fsm-controller';
 import { DEFAULT_TENANT, TENANTS } from '@/lib/vvu-telemetry';
 import { RELEASE_MANIFEST } from '@/lib/vvu-release-manifest';
+
+const GQEBERHA_TENANT_ID = 'e1002324-0000-0000-0000-000000000001';
 
 export default function Home() {
   const [booting, setBooting] = useState(true);
@@ -22,23 +28,68 @@ export default function Home() {
   const [fsmLog, setFsmLog] = useState<ReturnType<VVUFSMController['getLog']>>([]);
   const [lastTemp, setLastTemp] = useState(48);
 
-  // FSM controller — created once on mount inside an effect (no ref access
-  // during render, satisfies react-hooks/refs). Callbacks only call stable
-  // setState updaters, so there's no stale-closure risk.
   const fsmRef = useRef<VVUFSMController | null>(null);
+  const prevFsmStateRef = useRef<VVUNodeState>(VVUNodeState.DISCONNECTED);
 
-  // Create the FSM + drive the boot handshake once the boot screen dismisses.
+  // Helper: write an audit-log entry via the API (fire-and-forget).
+  const writeAudit = useCallback(
+    (action: string, details: { fromState?: string; toState?: string; symbol?: string; reason?: string }) => {
+      fetch('/api/vvu/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: GQEBERHA_TENANT_ID, actor: 'dashboard', action, ...details }),
+      }).catch(() => {
+        /* audit write failures are non-fatal */
+      });
+    },
+    []
+  );
+
+  // FSM controller — created once on mount inside an effect.
   useEffect(() => {
     if (booting) return;
     fsmRef.current = new VVUFSMController({
-      onLeakActivate: (nodeId) => setActiveNodeId(nodeId),
-      onLeakClear: () => setActiveNodeId(null),
-      onThermalThrottle: (temp) => setLastTemp(temp),
+      onLeakActivate: (nodeId) => {
+        setActiveNodeId(nodeId);
+        toast.info(`Leak simulation active · node ${nodeId}`, {
+          description: 'DFA → LEAK_SIMULATION_ACTIVE · particle system engaged',
+        });
+      },
+      onLeakClear: () => {
+        setActiveNodeId(null);
+        toast.success('Leak cleared · returning to steady state');
+      },
+      onThermalThrottle: (temp) => {
+        setLastTemp(temp);
+        toast.warning(`Thermal throttle · APU ${temp.toFixed(1)}°C`, {
+          description: 'Vertex decimation 62.5% · mesh density reduced',
+        });
+      },
+      onFailClosed: (reason) => {
+        toast.error(`FAIL-CLOSED LOCKDOWN · ${reason}`, {
+          description: 'Hardware disconnect · WORM flush · authorised reset required',
+        });
+      },
+      onResetComplete: () => {
+        toast.success('Authorised reset complete · STEADY_STATE_LOCKED');
+      },
       logTransition: () => {
         const f = fsmRef.current;
         if (!f) return;
-        setFsmState(f.getState());
+        const newState = f.getState();
+        const prev = prevFsmStateRef.current;
+        setFsmState(newState);
         setFsmLog(f.getLog());
+        if (newState !== prev) {
+          const log = f.getLog()[0];
+          writeAudit('STATE_TRANSITION', {
+            fromState: prev,
+            toState: newState,
+            symbol: log?.symbol,
+            reason: log?.reason,
+          });
+          prevFsmStateRef.current = newState;
+        }
       },
     });
     // Staggered handshake: DISCONNECTED → PAIRING_BLE → TOTP_VERIFICATION → STEADY_STATE_LOCKED.
@@ -51,14 +102,13 @@ export default function Home() {
       clearTimeout(t3);
       fsmRef.current = null;
     };
-  }, [booting]);
+  }, [booting, writeAudit]);
 
   // Live APU temperature sensor simulation (mock I²C read every 2s).
   useEffect(() => {
     if (booting) return;
     const interval = setInterval(() => {
       const t = Date.now() / 1000;
-      // Stay in safe band by default; the "Simulate 78°C" button forces WARN.
       const base = 48 + Math.sin(t / 23) * 7 + Math.random() * 1.6;
       fsmRef.current?.updateTemperature(Math.round(base * 10) / 10);
       setLastTemp(fsmRef.current?.getLastTemp() ?? base);
@@ -80,9 +130,13 @@ export default function Home() {
   }, [activeNodeId]);
 
   const handleSimulateThermal = useCallback(() => {
-    // Force a WARN transition to demonstrate thermal throttle + hysteresis.
     fsmRef.current?.updateTemperature(78);
     setLastTemp(78);
+  }, []);
+
+  const handleSimulateCritical = useCallback(() => {
+    fsmRef.current?.updateTemperature(88);
+    setLastTemp(88);
   }, []);
 
   const handleAuthorisedReset = useCallback(() => {
@@ -90,6 +144,21 @@ export default function Home() {
     fsmRef.current?.updateTemperature(45);
     setLastTemp(45);
   }, []);
+
+  // Keyboard shortcuts: T = thermal, C = critical, R = reset, L = leak on pipe
+  useEffect(() => {
+    if (booting) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const k = e.key.toLowerCase();
+      if (k === 't') handleSimulateThermal();
+      else if (k === 'c') handleSimulateCritical();
+      else if (k === 'r') handleAuthorisedReset();
+      else if (k === 'l') handleNodeClick('pipe');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [booting, handleSimulateThermal, handleSimulateCritical, handleAuthorisedReset, handleNodeClick]);
 
   // Topbar badges — derived from live state, never typed.
   const badges: TopbarBadge[] = useMemo(() => {
@@ -147,6 +216,7 @@ export default function Home() {
   }, [fsmState, lastTemp]);
 
   const thermalThrottle = fsmState === VVUNodeState.THERMAL_THROTTLE;
+  const failClosed = fsmState === VVUNodeState.FAIL_CLOSED_LOCKDOWN;
 
   if (booting) {
     return <BootScreen onDismiss={() => setBooting(false)} />;
@@ -201,8 +271,14 @@ export default function Home() {
             {t.slug}
           </button>
         ))}
-        <span style={{ color: '#5A6B4F', marginLeft: 'auto' }}>
-          vvu.current_tenant_id = <span style={{ color: '#F3E38A' }}>{TENANTS[tenantIdx].id.slice(0, 13)}…</span>
+        <span style={{ color: '#5A6B4F', marginLeft: 'auto', display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+          <span>
+            vvu.current_tenant_id = <span style={{ color: '#F3E38A' }}>{TENANTS[tenantIdx].id.slice(0, 13)}…</span>
+          </span>
+          <span style={{ color: '#3A4533' }}>|</span>
+          <span style={{ color: '#5A6B4F' }}>
+            KEYS: <kbd style={{ color: '#9DB36B' }}>T</kbd>thermal · <kbd style={{ color: '#E27373' }}>C</kbd>crit · <kbd style={{ color: '#9DB36B' }}>R</kbd>reset · <kbd style={{ color: '#E0944A' }}>L</kbd>leak
+          </span>
         </span>
       </div>
 
@@ -218,7 +294,7 @@ export default function Home() {
           gap: '1rem',
         }}
       >
-        {/* Left column: terrain hero + telemetry + manifest */}
+        {/* Left column: terrain hero + hydraulic chart + telemetry + manifest */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: 0 }}>
           <section>
             <div
@@ -247,18 +323,23 @@ export default function Home() {
                 style={{
                   fontFamily: 'var(--font-geist-mono), monospace',
                   fontSize: '0.62rem',
-                  color: '#8B9A7B',
+                  color: activeNodeId ? '#E0944A' : '#8B9A7B',
                   letterSpacing: '0.1em',
                 }}
               >
-                {activeNodeId ? `LEAK NODE · ${activeNodeId.toUpperCase()}` : 'CLICK A NODE PIN TO SIMULATE A LEAK'}
+                {activeNodeId ? `◉ LEAK NODE · ${activeNodeId.toUpperCase()}` : 'CLICK A NODE PIN TO SIMULATE A LEAK'}
               </span>
             </div>
             <TerrainTwin
               activeNodeId={activeNodeId}
               onNodeClick={handleNodeClick}
               thermalThrottle={thermalThrottle}
+              failClosed={failClosed}
             />
+          </section>
+
+          <section>
+            <HydraulicChart nodeId={activeNodeId ?? 'pipe'} thermalThrottle={thermalThrottle} />
           </section>
 
           <section
@@ -277,7 +358,7 @@ export default function Home() {
           </section>
         </div>
 
-        {/* Right column: FSM visualizer (sticky) */}
+        {/* Right column: FSM visualizer + gate roadmap + DB stats (sticky) */}
         <aside
           style={{
             position: 'sticky',
@@ -285,6 +366,12 @@ export default function Home() {
             alignSelf: 'start',
             minWidth: 0,
             height: 'fit-content',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            maxHeight: 'calc(100vh - 100px)',
+            overflowY: 'auto',
+            paddingRight: '2px',
           }}
         >
           <FSMVisualizer
@@ -293,7 +380,10 @@ export default function Home() {
             lastTemp={lastTemp}
             onReset={handleAuthorisedReset}
             onSimulateThermal={handleSimulateThermal}
+            onSimulateCritical={handleSimulateCritical}
           />
+          <GateRoadmap />
+          <DbStatsPanel />
         </aside>
       </main>
 
