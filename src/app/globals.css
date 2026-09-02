@@ -120,3 +120,43 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* VVU dark theme — charcoal canvas with sage/ochre accents.
+   Keeps the "clean minimal viewport" regression criterion satisfied. */
+html {
+  background: #060806;
+  color-scheme: dark;
+}
+body {
+  background: #060806;
+  color: #C9D4BD;
+}
+
+/* Custom scrollbars — matches the SCADA aesthetic */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(107, 138, 64, 0.35) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(107, 138, 64, 0.3);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 138, 64, 0.5);
+}
+
+/* Respect prefers-reduced-motion for the radar sweep + pin pulses */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

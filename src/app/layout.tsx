@@ -14,24 +14,35 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "ProofBridge · VVU HBK Mk-II Validation Dashboard",
+  description:
+    "Venture Vision Ubuntu — sovereign, offline-first verification for mining & municipal water infrastructure. Borromean-ringed, B-BBEE Level 1, SANS 1200 compliant.",
+  keywords: [
+    "VVU",
+    "ProofBridge",
+    "Hydro-Gateway",
+    "Borromean",
+    "Gqeberha",
+    "SANS 1200",
+    "POPIA",
+    "B-BBEE Level 1",
+    "Zero-Fictional Engineering",
+  ],
+  authors: [{ name: "Vaguely Vanity LLC (Pty) Ltd", url: "mailto:dvh@venturevisionubuntu.co.za" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='32' r='22' fill='none' stroke='%23C46D1A' stroke-width='6'/%3E%3Ccircle cx='34' cy='60' r='22' fill='none' stroke='%236B8A40' stroke-width='6'/%3E%3Ccircle cx='66' cy='60' r='22' fill='none' stroke='%23F3E38A' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='6' fill='%23FFFAC2'/%3E%3C/svg%3E",
   },
   openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
+    title: "ProofBridge · VVU HBK Mk-II Validation Dashboard",
+    description:
+      "Sovereign, offline-first verification · Borromean rings · B-BBEE Level 1 · 135% recognition",
+    siteName: "ProofBridge · VVU",
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
+    card: "summary",
+    title: "ProofBridge · VVU Validation Dashboard",
+    description: "Sovereign, offline-first verification · Borromean rings · B-BBEE Level 1",
   },
 };
 
