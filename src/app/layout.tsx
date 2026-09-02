@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import WorkspaceToggle from "@/components/WorkspaceToggle";
 
 export const metadata: Metadata = {
   title: "Venture Vision Ubuntu — We Serve Trust",
@@ -12,6 +13,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#060a10',
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -21,6 +29,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased" style={{ background: '#060a10' }}>
         {children}
+        <WorkspaceToggle />
         <Toaster />
       </body>
     </html>
