@@ -33,6 +33,23 @@ artifacts/contract-address.txt
 .env.production
 .env.development
 .env.preview
+.env*
+!.env.example
+
+# SSH / deploy credentials — never commit
+.deploy-keys/
+*.pem
+*.key
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# Secret manifests — keep templates only
+**/secret.yaml
+**/secrets.yaml
+!**/secret.example.yaml
+!**/secrets.example.yaml
 
 # Test / E2E artifacts
 test-results/
@@ -58,5 +75,3 @@ skills/
 tool-results/
 upload/
 prompt
-.vercel
-.env*
